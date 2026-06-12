@@ -330,6 +330,132 @@
   padding: 9px 10px;
 }
 
+.trainingSectionWorkspace {
+  --training-section-shell-offset: calc(var(--demo-route-header-height, calc(96px + env(safe-area-inset-top))) + 24px);
+  --training-section-scroll-height: calc(100dvh - var(--training-section-shell-offset));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(176px, 220px);
+  align-items: start;
+  gap: 12px;
+  min-height: 0;
+}
+
+.sectionScrollPane {
+  display: grid;
+  min-width: 0;
+  max-height: var(--training-section-scroll-height);
+  min-height: min(420px, var(--training-section-scroll-height));
+  align-content: start;
+  gap: 12px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 2px;
+  padding-bottom: 18px;
+  scrollbar-width: thin;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent 100%);
+}
+
+.trainingSectionRail {
+  display: grid;
+  min-width: 0;
+  max-height: var(--training-section-scroll-height);
+  min-height: min(420px, var(--training-section-scroll-height));
+  align-content: start;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
+  overflow: hidden;
+  border: 1px solid var(--demo-glass-accent-border);
+  border-radius: var(--demo-radius);
+  background:
+    linear-gradient(135deg, var(--demo-route-header-highlight), transparent 58%),
+    color-mix(in srgb, var(--demo-glass-bg) 78%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--demo-inset-highlight) 58%, transparent),
+    0 12px 30px color-mix(in srgb, var(--demo-bg) 10%, transparent);
+  padding: 0 6px 6px;
+  -webkit-backdrop-filter: var(--demo-glass-blur);
+  backdrop-filter: var(--demo-glass-blur);
+}
+
+.trainingSectionRailHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  margin-inline: -6px;
+  border-bottom: 1px solid var(--demo-glass-accent-border);
+  border-radius: calc(var(--demo-radius) - 1px) calc(var(--demo-radius) - 1px) 8px 8px;
+  background: color-mix(in srgb, var(--demo-glass-bg) 94%, transparent);
+  padding: 8px 9px;
+}
+
+.trainingSectionRailHeader strong {
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+}
+
+.trainingSectionRailHeader span {
+  color: var(--demo-faint);
+  font-size: 10px;
+}
+
+.trainingSectionRailList {
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  gap: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.trainingSectionRailItem {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-glass-soft);
+  color: inherit;
+  padding: 8px;
+  text-decoration: none;
+}
+
+.trainingSectionRailItem:hover,
+.trainingSectionRailItem:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-field-bg);
+  outline: none;
+}
+
+.trainingSectionRailItemActive {
+  border-color: rgba(0, 217, 146, 0.62);
+  background: var(--demo-selected);
+}
+
+.trainingSectionRailItem strong,
+.trainingSectionRailItem span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingSectionRailItem strong {
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 560;
+}
+
+.trainingSectionRailItem span {
+  color: var(--demo-faint);
+  font-size: 10px;
+}
+
 .sectionGrid {
   display: grid;
   min-width: 0;
@@ -414,6 +540,22 @@
   white-space: nowrap;
 }
 
+.sectionHeaderActions {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+}
+
+.sectionHeaderActions :where([data-demo-ui-button="true"]) {
+  width: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+  padding: 0;
+}
+
 .sectionImages {
   display: grid;
   min-width: 0;
@@ -442,14 +584,272 @@
   white-space: nowrap;
 }
 
+.sceneBlockList {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.sceneBlockCard {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background: var(--demo-field-bg);
+  padding: 10px;
+}
+
+.sceneBlockBody {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.sceneBlockSource {
+  width: fit-content;
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  background: var(--demo-glass-soft);
+  color: var(--demo-green);
+  font-size: 10px;
+  font-weight: 640;
+  padding: 2px 7px;
+}
+
+.sceneBlockBody strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sceneBlockBody p {
+  min-width: 0;
+  margin: 0;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.sceneBlockActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(76px, auto));
+  gap: 6px;
+}
+
+.sceneBlockActions :where([data-demo-ui-button="true"]) {
+  min-height: 32px;
+  border-radius: 8px;
+  padding-inline: 8px;
+}
+
+.referencePicker {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.64fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.referenceSourceTree {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.referenceSourceGroup {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background: var(--demo-glass-soft);
+  padding: 9px;
+}
+
+.referenceSourceGroupHeader {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.referenceSourceGroupHeader strong {
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.referenceSourceGroupHeader span {
+  color: var(--demo-faint);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.referenceCandidateList {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.referenceCandidate {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: 9px;
+  background: var(--demo-field-bg);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 7px;
+  text-align: left;
+}
+
+.referenceCandidate:not(:has(:global([class*="imagePreviewFrame"]))) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.referenceCandidate:hover,
+.referenceCandidate:focus-visible,
+.referenceCandidateActive {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-selected);
+  outline: none;
+}
+
+.referenceCandidate :global([class*="imagePreviewFrame"]) {
+  width: 42px;
+  min-width: 42px;
+  height: 52px;
+  min-height: 52px;
+  border-radius: 7px;
+}
+
+.referenceCandidate span,
+.referencePreview > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.referenceCandidate strong,
+.referenceCandidate em,
+.referenceCandidate small,
+.referencePreview strong,
+.referencePreview p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.referenceCandidate strong,
+.referencePreview strong {
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 620;
+  white-space: nowrap;
+}
+
+.referenceCandidate em {
+  color: var(--demo-green);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.referenceCandidate small,
+.referencePreview p {
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.referenceCandidate small {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.referencePreview {
+  position: sticky;
+  top: 8px;
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 1px solid var(--demo-glass-accent-border);
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, var(--demo-route-header-highlight), transparent 58%),
+    var(--demo-glass-bg);
+  padding: 10px;
+}
+
+.referencePreview :global([class*="imagePreviewFrame"]) {
+  aspect-ratio: 4 / 5;
+  min-height: 0;
+  border-radius: 9px;
+}
+
+.referencePreview p {
+  margin: 0;
+  white-space: normal;
+}
+
+.referencePreview :where([data-demo-ui-button="true"]) {
+  width: 100%;
+  justify-content: center;
+}
+
 @media (max-width: 980px) {
   .overviewGrid,
-  .twoCol {
+  .twoCol,
+  .referencePicker {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 639px) {
+  .trainingSectionWorkspace {
+    --training-section-shell-offset: calc(var(--demo-route-header-height, calc(60px + env(safe-area-inset-top))) + 126px + env(safe-area-inset-bottom));
+    --training-section-scroll-height: clamp(280px, calc(100dvh - var(--training-section-shell-offset)), 640px);
+    grid-template-columns: minmax(92px, 31vw) minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .trainingSectionRail {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 0;
+  }
+
+  .sectionScrollPane {
+    grid-column: 2;
+    grid-row: 1;
+    min-height: 0;
+    padding-right: 0;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .trainingSectionRailItem {
+    padding: 8px 7px;
+  }
+
+  .trainingSectionRailItem strong,
+  .trainingSectionRailItem span {
+    white-space: normal;
+  }
+
   .projectNav {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -472,7 +872,6 @@
   }
 
   .entityRow,
-  .sectionCardHeader,
   .sectionActions {
     grid-template-columns: 1fr;
     align-items: start;
@@ -490,5 +889,34 @@
 
   .sectionActions {
     display: grid;
+  }
+
+  .sectionCardHeader {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .sectionHeaderActions {
+    width: 100%;
+    justify-content: flex-start;
+    padding-left: 36px;
+  }
+
+  .sceneBlockCard,
+  .referenceCandidate {
+    grid-template-columns: 1fr;
+  }
+
+  .sceneBlockActions {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sceneBlockActions :where([data-demo-ui-button="true"]) {
+    width: 100%;
+  }
+
+  .referencePreview {
+    position: static;
   }
 }

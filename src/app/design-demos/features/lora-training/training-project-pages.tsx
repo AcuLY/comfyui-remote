@@ -5,8 +5,12 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import {
   Archive,
+  ArrowDown,
+  ArrowUp,
   Check,
+  Copy,
   CopyPlus,
+  Edit3,
   FileText,
   GripVertical,
   ImagePlus,
@@ -17,7 +21,7 @@ import {
   Trash2,
 } from "lucide-react";
 
-import type { DemoData } from "../../data";
+import type { DemoData, DemoImage } from "../../data";
 import { cx, demoHref } from "../../routing";
 import { ImageListSmall } from "../../shared/media/image-list-small";
 import { ImagePreviewFrame } from "../../shared/media/image-preview-frame";
@@ -31,7 +35,7 @@ import { Panel } from "../../shared/primitives/panel";
 import { SegmentedControl } from "../../shared/primitives/segmented-control";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { buildLoraTrainingDemoData } from "./fixtures";
-import type { LoraTrainingImageResult, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingTaskKind, LoraTrainingTaskStatus } from "./types";
+import type { LoraTrainingImageResult, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus } from "./types";
 import s from "./training-project-pages.module.css";
 
 const PROJECT_TABS = [
@@ -219,6 +223,155 @@ function RunRows({ runs }: { runs: LoraTrainingRun[] }) {
   );
 }
 
+type ReferenceCandidate = {
+  id: string;
+  title: string;
+  detail: string;
+  image?: DemoImage;
+  meta?: string;
+};
+
+type ReferenceSourceGroup = {
+  id: string;
+  title: string;
+  description: string;
+  items: ReferenceCandidate[];
+};
+
+function TrainingSectionRail({
+  activeSectionId,
+  project,
+}: {
+  activeSectionId?: string;
+  project: LoraTrainingProject;
+}) {
+  return (
+    <nav className={s.trainingSectionRail} aria-label="训练小节导航">
+      <div className={s.trainingSectionRailHeader}>
+        <strong>小节导航</strong>
+        <span>{project.sections.length} 小节</span>
+      </div>
+      <div className={s.trainingSectionRailList}>
+        {project.sections.map((section) => {
+          const resultCount = project.resultPool.filter((result) => result.sectionId === section.id).length;
+          return (
+            <Link
+              aria-current={activeSectionId === section.id ? "page" : undefined}
+              className={cx(s.trainingSectionRailItem, activeSectionId === section.id && s.trainingSectionRailItemActive)}
+              href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}
+              key={section.id}
+            >
+              <strong>{section.title}</strong>
+              <span>{resultCount} 张结果</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
+function TrainingSectionWorkspace({
+  activeSectionId,
+  children,
+  project,
+}: {
+  activeSectionId?: string;
+  children: ReactNode;
+  project: LoraTrainingProject;
+}) {
+  return (
+    <div className={s.trainingSectionWorkspace}>
+      <div className={s.sectionScrollPane}>
+        {children}
+      </div>
+      <TrainingSectionRail activeSectionId={activeSectionId} project={project} />
+    </div>
+  );
+}
+
+function SceneBlockCard({
+  block,
+  index,
+  total,
+}: {
+  block: LoraTrainingSectionBlock;
+  index: number;
+  total: number;
+}) {
+  return (
+    <article className={s.sceneBlockCard}>
+      <div className={s.sceneBlockBody}>
+        <span className={s.sceneBlockSource}>{block.source}</span>
+        <strong>{block.title}</strong>
+        <p>{block.text}</p>
+      </div>
+      <div className={s.sceneBlockActions} aria-label={`${block.title} 操作`}>
+        <Button size="sm" icon={Edit3} ariaLabel={`编辑场景块：${block.title}`} feedback={{ title: "编辑场景块入口已预览", detail: block.title }}>编辑</Button>
+        <Button size="sm" icon={ArrowUp} disabled={index === 0} ariaLabel={`上移场景块：${block.title}`} feedback={{ title: "排序动作已预览", detail: `上移 ${block.title}` }}>上移</Button>
+        <Button size="sm" icon={ArrowDown} disabled={index === total - 1} ariaLabel={`下移场景块：${block.title}`} feedback={{ title: "排序动作已预览", detail: `下移 ${block.title}` }}>下移</Button>
+        <Button size="sm" icon={Trash2} tone="danger" ariaLabel={`删除场景块：${block.title}`} feedback={{ tone: "warning", title: "删除场景块需要确认", detail: block.title }}>删除</Button>
+      </div>
+    </article>
+  );
+}
+
+function ReferencePicker({
+  onPreviewReference,
+  previewReference,
+  referenceSourceTree,
+}: {
+  onPreviewReference: (candidate: ReferenceCandidate) => void;
+  previewReference: ReferenceCandidate | null;
+  referenceSourceTree: ReferenceSourceGroup[];
+}) {
+  return (
+    <div className={s.referencePicker}>
+      <div className={s.referenceSourceTree}>
+        {referenceSourceTree.map((group) => (
+          <section className={s.referenceSourceGroup} key={group.id}>
+            <div className={s.referenceSourceGroupHeader}>
+              <strong>{group.title}</strong>
+              <span>{group.description}</span>
+            </div>
+            <div className={s.referenceCandidateList}>
+              {group.items.map((candidate) => (
+                <button
+                  className={cx(s.referenceCandidate, previewReference?.id === candidate.id && s.referenceCandidateActive)}
+                  key={candidate.id}
+                  type="button"
+                  onClick={() => onPreviewReference(candidate)}
+                >
+                  {candidate.image ? <ImagePreviewFrame image={candidate.image} /> : null}
+                  <span>
+                    <strong>{candidate.title}</strong>
+                    <em>{candidate.meta ?? group.title}</em>
+                    <small>{candidate.detail}</small>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+      <aside className={s.referencePreview} aria-label="引用预览">
+        {previewReference?.image ? <ImagePreviewFrame image={previewReference.image} /> : null}
+        <div>
+          <strong>{previewReference?.title ?? "选择一个引用"}</strong>
+          <p>{previewReference?.detail ?? "点击左侧候选只会更新预览，不会直接写入任务。确认后再添加引用。"}</p>
+        </div>
+        <Button
+          icon={Plus}
+          disabled={!previewReference}
+          feedback={{ title: "引用已加入任务草稿", detail: previewReference?.title }}
+        >
+          添加引用
+        </Button>
+      </aside>
+    </div>
+  );
+}
+
 export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   const training = useTraining(data);
 
@@ -355,10 +508,14 @@ function SectionCard({ index, project, section }: { index: number; project: Lora
             <span>{String(index + 1).padStart(2, "0")}</span>
             <strong>{section.title}</strong>
           </Link>
-          <StatusBadge status={section.enabled ? "ready" : "draft"} label={section.enabled ? "启用" : "停用"} />
+          <div className={s.sectionHeaderActions}>
+            <StatusBadge status={section.enabled ? "ready" : "draft"} label={section.enabled ? "启用" : "停用"} />
+            <Button icon={Copy} iconOnly size="sm" tone="subtle" ariaLabel={`复制小节：${section.title}`} feedback={{ title: "小节已复制", detail: section.title }} />
+            <Button icon={Trash2} iconOnly size="sm" tone="danger" ariaLabel={`删除小节：${section.title}`} feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.title }} />
+          </div>
         </div>
         <Link className={s.sectionImages} href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}>
-          <ImageListSmall images={section.images} limit={section.images.length} showCounts wide />
+          <ImageListSmall images={section.images} limit={4} showCounts wide />
         </Link>
         <div className={s.sectionActions}>
           <span>更新 {section.updatedAt} · {section.blocks.length} 个场景块</span>
@@ -376,9 +533,11 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
   return (
     <div className={s.page}>
       <ProjectHeader active="sections" project={project} actions={<Button icon={Plus} tone="primary" feedback={{ title: "新建小节入口已预览" }}>新建小节</Button>} />
-      <div className={s.sectionGrid}>
-        {project.sections.map((section, index) => <SectionCard index={index} key={section.id} project={project} section={section} />)}
-      </div>
+      <TrainingSectionWorkspace activeSectionId={project.sections[0]?.id} project={project}>
+        <div className={s.sectionGrid}>
+          {project.sections.map((section, index) => <SectionCard index={index} key={section.id} project={project} section={section} />)}
+        </div>
+      </TrainingSectionWorkspace>
     </div>
   );
 }
@@ -396,30 +555,35 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
         title={`${project.title} / ${section.title}`}
         actions={<ButtonLink href={`/training/projects/${project.id}/sections/${section.id}/generation-tasks/new`} icon={ImagePlus} tone="primary">生成样本</ButtonLink>}
       />
-      <div className={s.twoCol}>
-        <Panel title="场景块">
-          <div className={s.entityRows}>
-            {section.blocks.map((block) => (
-              <div className={s.entityRow} key={block.id}>
-                <div>
-                  <strong>{block.title}</strong>
-                  <span>{block.source} · {block.text}</span>
-                </div>
-                <Button icon={Trash2} iconOnly size="sm" tone="danger" ariaLabel={`移除场景块：${block.title}`} feedback={{ tone: "warning", title: "移除场景块需要确认", detail: block.title }} />
-              </div>
-            ))}
-          </div>
+      <TrainingSectionWorkspace activeSectionId={section.id} project={project}>
+        <div className={s.twoCol}>
+          <Panel
+            title="场景块"
+            subtitle="预制块和本地块按合成顺序生效，可单独编辑、排序或删除。"
+            actions={(
+              <>
+                <Button size="sm" icon={CopyPlus} feedback={{ title: "导入预制入口已预览", detail: section.title }}>导入预制</Button>
+                <Button size="sm" icon={Plus} feedback={{ title: "添加本地块入口已预览", detail: section.title }}>添加本地块</Button>
+              </>
+            )}
+          >
+            <div className={s.sceneBlockList}>
+              {section.blocks.map((block, index) => (
+                <SceneBlockCard block={block} index={index} key={block.id} total={section.blocks.length} />
+              ))}
+            </div>
+          </Panel>
+          <Panel title="合成预览">
+            <div className={s.formStack}>
+              <Field readOnly multiline features={{ clipboard: true }} label="合成场景描述" value={section.resolvedScene} />
+              <Field readOnly multiline features={{ clipboard: true }} label="图片提示词" value={section.imagePrompt} />
+            </div>
+          </Panel>
+        </div>
+        <Panel title="小节结果">
+          <TrainingResultGrid results={project.resultPool.filter((result) => result.sectionId === section.id)} title={`${section.title} 结果`} />
         </Panel>
-        <Panel title="合成预览">
-          <div className={s.formStack}>
-            <Field readOnly multiline features={{ clipboard: true }} label="合成场景描述" value={section.resolvedScene} />
-            <Field readOnly multiline features={{ clipboard: true }} label="图片提示词" value={section.imagePrompt} />
-          </div>
-        </Panel>
-      </div>
-      <Panel title="小节结果">
-        <TrainingResultGrid results={project.resultPool.filter((result) => result.sectionId === section.id)} title={`${section.title} 结果`} />
-      </Panel>
+      </TrainingSectionWorkspace>
     </div>
   );
 }
@@ -427,6 +591,53 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
 export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }: { data: DemoData; projectId?: string; sectionId?: string }) {
   const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
+  const referenceSourceTree: ReferenceSourceGroup[] = project && section ? [
+    {
+      id: "profile",
+      title: "角色资料",
+      description: "文本源",
+      items: [
+        { id: "profile-usage", title: "使用提示词", detail: project.usagePrompt, meta: "默认选入" },
+        { id: "profile-detail", title: "角色细节", detail: project.detailPrompt, meta: "默认选入" },
+      ],
+    },
+    {
+      id: "section",
+      title: "小节场景",
+      description: "当前小节",
+      items: [
+        { id: "section-scene", title: section.title, detail: section.resolvedScene, meta: "合成场景" },
+        { id: "section-prompt", title: "图片提示词", detail: section.imagePrompt, meta: "生成提示词" },
+      ],
+    },
+    {
+      id: "references",
+      title: "参考图",
+      description: "自由候选",
+      items: project.referenceImages.map((reference) => ({
+        id: reference.id,
+        title: reference.label,
+        detail: reference.note,
+        image: reference.image,
+        meta: referenceKindLabel(reference.kind),
+      })),
+    },
+    {
+      id: "result-pool",
+      title: "结果池",
+      description: "最近产物",
+      items: project.resultPool.slice(0, 4).map((result) => ({
+        id: result.id,
+        title: result.sourceLabel,
+        detail: result.caption,
+        image: result.image,
+        meta: reviewStatusLabel(result.reviewStatus),
+      })),
+    },
+  ] : [];
+  const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
+  const activePreviewReference = previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
+
   if (!project || !section) return <EmptyPage title="没有生成任务上下文" />;
 
   return (
@@ -440,11 +651,11 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
       />
       <div className={s.twoCol}>
         <Panel title="引用源">
-          <div className={s.entityRows}>
-            <div className={s.entityRow}><div><strong>角色资料</strong><span>{project.usagePrompt}</span></div><StatusBadge status="ready" label="已选" /></div>
-            <div className={s.entityRow}><div><strong>小节场景</strong><span>{section.resolvedScene}</span></div><StatusBadge status="ready" label="已选" /></div>
-            <div className={s.entityRow}><div><strong>参考图</strong><span>{project.images.slice(0, 3).length} 张候选，点击只预览，需显式添加。</span></div><Button size="sm" icon={Plus}>添加</Button></div>
-          </div>
+          <ReferencePicker
+            referenceSourceTree={referenceSourceTree}
+            previewReference={activePreviewReference}
+            onPreviewReference={setPreviewReference}
+          />
         </Panel>
         <Panel title="任务内容">
           <div className={s.formStack}>
