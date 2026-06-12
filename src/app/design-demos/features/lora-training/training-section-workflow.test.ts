@@ -119,6 +119,23 @@ test("training section detail imports training presets into local scene blocks",
   assert.doesNotMatch(detailPage, /导入预制入口已预览/, "preset import should not be a preview-only placeholder");
 });
 
+test("training section detail saves a visible local section draft", () => {
+  const detailPage = sourceBetween(
+    "export function LoraTrainingProjectSectionDetailPage",
+    "export function LoraTrainingGenerationComposePage",
+  );
+
+  assert.match(detailPage, /sectionDraft/, "section detail should expose a saved local section draft");
+  assert.match(detailPage, /setSectionDraft/, "section save should update local draft state");
+  assert.match(detailPage, /handleSaveSection/, "section detail should define a save handler");
+  assert.match(detailPage, /onClick=\{handleSaveSection\}/, "section save action should call the local save handler");
+  assert.match(detailPage, /sceneBlocks\.length/, "saved section draft should include current scene block count");
+  assert.match(detailPage, /scenePreview/, "saved section draft should use current composed scene text");
+  assert.match(detailPage, /小节保存草稿/, "section detail should render a visible saved draft panel");
+  assert.match(detailPage, /generation-tasks\/new/, "saving the section should not replace the generation action");
+  assert.doesNotMatch(detailPage, /小节已保存/, "section save should not remain feedback-only");
+});
+
 test("generation compose uses an explicit reference source tree with preview then add", () => {
   const composePage = sourceBetween(
     "export function LoraTrainingGenerationComposePage",
@@ -163,6 +180,7 @@ test("training section workflow has responsive rail and compact action styles", 
     "sceneBlockActions",
     "referenceSourceTree",
     "referencePreview",
+    "sectionDraftGrid",
   ]) {
     assert.match(cssSource, new RegExp(`\\.${className}\\b`), `${className} CSS should exist`);
   }

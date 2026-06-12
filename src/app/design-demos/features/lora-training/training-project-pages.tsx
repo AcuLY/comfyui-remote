@@ -960,9 +960,19 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     results: project?.resultPool ?? [],
   }));
   const [editingSceneBlockId, setEditingSceneBlockId] = useState<string | null>(null);
+  const [sectionDraft, setSectionDraft] = useState<{
+    blockCount: number;
+    firstBlock: string;
+    imagePrompt: string;
+    projectTitle: string;
+    scenePreview: string;
+    sectionId: string;
+    sectionTitle: string;
+  } | null>(null);
   const sceneBlocks = sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
   const sectionResults = (sectionResultState.projectId === project?.id ? sectionResultState.results : project?.resultPool ?? [])
     .filter((result) => result.sectionId === section?.id);
+  const visibleSectionDraft = sectionDraft?.sectionId === section?.id ? sectionDraft : null;
   if (!project || !section) return <EmptyPage title="没有训练小节详情" />;
 
   const activeProject = project;
@@ -1024,13 +1034,36 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     }));
   }
 
+  function handleSaveSection() {
+    setSectionDraft({
+      blockCount: sceneBlocks.length,
+      firstBlock: sceneBlocks[0]?.title ?? "无场景块",
+      imagePrompt: activeSection.imagePrompt,
+      projectTitle: activeProject.title,
+      scenePreview: scenePreview || activeSection.resolvedScene,
+      sectionId: activeSection.id,
+      sectionTitle: activeSection.title,
+    });
+  }
+
   return (
     <div className={s.page}>
       <ProjectHeader
         active="sections"
         project={project}
         title={`${project.title} / ${section.title}`}
-        actions={<ButtonLink href={`/training/projects/${project.id}/sections/${section.id}/generation-tasks/new`} icon={ImagePlus} tone="primary">生成样本</ButtonLink>}
+        actions={(
+          <>
+            <Button
+              icon={Save}
+              onClick={handleSaveSection}
+              feedback={{ title: visibleSectionDraft ? "小节保存草稿已更新" : "小节保存草稿已记录", detail: section.title }}
+            >
+              {visibleSectionDraft ? "更新小节草稿" : "保存小节"}
+            </Button>
+            <ButtonLink href={`/training/projects/${project.id}/sections/${section.id}/generation-tasks/new`} icon={ImagePlus} tone="primary">生成样本</ButtonLink>
+          </>
+        )}
       />
       <TrainingSectionWorkspace activeSectionId={section.id} project={project}>
         <div className={s.twoCol}>
@@ -1075,6 +1108,17 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
             </div>
           </Panel>
         </div>
+        {visibleSectionDraft ? (
+          <Panel title="小节保存草稿" subtitle="页面内记录当前场景块、合成场景和图片提示词。">
+            <dl className={s.sectionDraftGrid}>
+              <div><dt>项目</dt><dd>{visibleSectionDraft.projectTitle}</dd></div>
+              <div><dt>小节</dt><dd>{visibleSectionDraft.sectionTitle}</dd></div>
+              <div><dt>场景块</dt><dd>{visibleSectionDraft.blockCount} 个 · {visibleSectionDraft.firstBlock}</dd></div>
+              <div><dt>图片提示词</dt><dd>{visibleSectionDraft.imagePrompt}</dd></div>
+              <div><dt>合成场景</dt><dd>{visibleSectionDraft.scenePreview}</dd></div>
+            </dl>
+          </Panel>
+        ) : null}
         <Panel title="小节结果">
           <TrainingResultGrid
             onReviewStatusChange={handleReviewSectionResult}

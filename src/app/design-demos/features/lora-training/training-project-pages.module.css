@@ -117,6 +117,7 @@
 .createdProjectDraft,
 .generationTaskDraft,
 .profileDraft,
+.sectionDraftGrid,
 .trainingDraft {
   display: grid;
   min-width: 0;
@@ -128,6 +129,7 @@
 .createdProjectDraft div,
 .generationTaskDraft div,
 .profileDraft div,
+.sectionDraftGrid div,
 .trainingDraft div {
   display: grid;
   min-width: 0;
@@ -141,6 +143,7 @@
 .createdProjectDraft dt,
 .generationTaskDraft dt,
 .profileDraft dt,
+.sectionDraftGrid dt,
 .trainingDraft dt {
   color: var(--demo-faint);
   font-size: 10px;
@@ -150,6 +153,7 @@
 .createdProjectDraft dd,
 .generationTaskDraft dd,
 .profileDraft dd,
+.sectionDraftGrid dd,
 .trainingDraft dd {
   min-width: 0;
   margin: 0;
@@ -1128,6 +1132,7 @@
   .createdProjectDraft,
   .generationTaskDraft,
   .profileDraft,
+  .sectionDraftGrid,
   .trainingDraft,
   .referenceImageGrid,
   .trainingResultGrid {
