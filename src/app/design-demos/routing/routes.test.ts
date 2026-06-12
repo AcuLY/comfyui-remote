@@ -138,3 +138,17 @@ test("LoRA training header specs use product-facing copy instead of internal sch
     }
   }
 });
+
+test("LoRA training route header actions are navigable instead of inert buttons", () => {
+  const trainingSpecs = buildHeaderSpecs(fallbackData(null))
+    .flatMap((group) => group.specs)
+    .filter((spec) => spec.group === "LoRA 训练");
+
+  assert.ok(trainingSpecs.length > 0, "LoRA training header specs should exist");
+
+  for (const spec of trainingSpecs) {
+    for (const action of spec.actions ?? []) {
+      assert.ok(action.href, `${spec.key} header action "${action.label}" should have a real href or be removed`);
+    }
+  }
+});

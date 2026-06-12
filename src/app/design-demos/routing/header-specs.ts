@@ -176,7 +176,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         eyebrow: "LoRA 训练",
         title: "运行",
         subtitle: "训练集图片生成、角色描述文本和 LoRA 训练任务集中处理。",
-        actions: [headerAction("启动训练", Play, "primary")],
         meta: ["生成任务", "训练任务", "状态筛选"],
         status: "训练运行",
       },
@@ -187,7 +186,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         eyebrow: "LoRA 训练",
         title: "训练项目",
         subtitle: "管理角色资料、最近结果、数据集版本和训练入口。",
-        actions: [headerAction("新建项目", Plus, "primary")],
+        actions: [headerAction("新建项目", Plus, "primary", currentRoute(routes, "training-project-new"))],
         meta: ["当前项目", "已归档", "最近结果"],
         status: "训练项目",
       },
@@ -199,7 +198,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "生成任务详情",
         subtitle: "展示最终输入、输出图片和任务状态，保留来源脉络。",
         back: { href: "/training/runs", label: "返回运行" },
-        actions: [headerAction("项目详情", ExternalLink)],
+        actions: [headerAction("项目详情", ExternalLink, "default", currentRoute(routes, "training-project-detail"))],
         status: "生成详情",
       },
       {
@@ -210,7 +209,10 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "训练任务详情",
         subtitle: "展示冻结数据集、训练配置、日志和最终 LoRA 产物。",
         back: { href: "/training/runs", label: "返回运行" },
-        actions: [headerAction("数据集版本", History), headerAction("创建预制", Plus, "primary")],
+        actions: [
+          headerAction("数据集版本", History, "default", currentRoute(routes, "training-project-dataset-revision")),
+          headerAction("创建预制", Plus, "primary", currentRoute(routes, "training-preset-new")),
+        ],
         status: "训练详情",
       },
       {
@@ -221,7 +223,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "新建训练项目",
         subtitle: "选择模板、填写角色资料，并创建初始小节。",
         back: { href: "/training/projects", label: "返回训练项目" },
-        actions: [headerAction("创建项目", Save, "primary")],
         status: "新建",
       },
       {
@@ -232,7 +233,10 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "训练项目总览",
         subtitle: "角色资料、最近任务、训练入口和最近产物。",
         back: { href: "/training/projects", label: "返回训练项目" },
-        actions: [headerAction("启动训练", Play, "primary"), headerAction("保存为模板", Copy)],
+        actions: [
+          headerAction("启动训练", Play, "primary", currentRoute(routes, "training-project-dataset")),
+          headerAction("保存为模板", Copy, "default", currentRoute(routes, "training-template-new")),
+        ],
         status: "项目总览",
       },
       {
@@ -243,7 +247,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "角色资料",
         subtitle: "管理角色文本与自由参考图。",
         back: { href: "/training/projects", label: "返回训练项目" },
-        actions: [headerAction("保存资料", Save, "primary")],
         status: "资料",
       },
       {
@@ -254,7 +257,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "小节列表",
         subtitle: "参考生图 section cards，管理小节顺序、场景块和生成入口。",
         back: { href: "/training/projects", label: "返回训练项目" },
-        actions: [headerAction("新建小节", Plus, "primary")],
         status: "小节",
       },
       {
@@ -265,7 +267,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "小节详情",
         subtitle: "场景块、合成场景描述、生成入口和小节结果同页展示。",
         back: { href: currentRoute(routes, "training-project-sections"), label: "返回小节" },
-        actions: [headerAction("生成样本", Plus, "primary")],
+        actions: [headerAction("生成样本", Plus, "primary", currentRoute(routes, "training-generation-compose"))],
         status: "小节详情",
       },
       {
@@ -276,7 +278,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "新建生成任务",
         subtitle: "选择来源资料、补充提示词并预览最终输入。",
         back: { href: currentRoute(routes, "training-project-section-detail"), label: "返回小节" },
-        actions: [headerAction("运行生成", Play, "primary")],
         status: "生成编排",
       },
       {
@@ -287,7 +288,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "项目结果池",
         subtitle: "项目级图片审查、批量保留/剔除、说明文本和大图预览。",
         back: { href: currentRoute(routes, "training-project-detail"), label: "返回项目" },
-        actions: [headerAction("批量保留", Save, "primary")],
         status: "结果池",
       },
       {
@@ -298,7 +298,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "数据集",
         subtitle: "训练准备、已保留草稿、冻结版本和启动训练入口。",
         back: { href: currentRoute(routes, "training-project-detail"), label: "返回项目" },
-        actions: [headerAction("启动训练", Play, "primary")],
         status: "数据集",
       },
       {
@@ -319,7 +318,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "项目训练任务",
         subtitle: "项目内训练任务记录，详情可跳转到全局训练任务页。",
         back: { href: currentRoute(routes, "training-project-detail"), label: "返回项目" },
-        actions: [headerAction("启动训练", Play, "primary")],
+        actions: [headerAction("启动训练", Play, "primary", currentRoute(routes, "training-project-dataset"))],
         status: "项目任务",
       },
       {
@@ -330,7 +329,7 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "项目生成任务",
         subtitle: "项目内生成任务记录，详情可跳转到全局生成任务页。",
         back: { href: currentRoute(routes, "training-project-detail"), label: "返回项目" },
-        actions: [headerAction("新建生成任务", Plus, "primary")],
+        actions: [headerAction("新建生成任务", Plus, "primary", currentRoute(routes, "training-generation-compose"))],
         status: "项目任务",
       },
       {
@@ -340,7 +339,10 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         eyebrow: "训练预制",
         title: "训练预制",
         subtitle: "管理可复用的角色场景描述，按分类和文件夹整理。",
-        actions: [headerAction("排序规则", Shuffle), headerAction("新建", Plus, "primary")],
+        actions: [
+          headerAction("排序规则", Shuffle, "default", currentRoute(routes, "training-preset-sort-rules")),
+          headerAction("新建", Plus, "primary", currentRoute(routes, "training-preset-new")),
+        ],
         status: "预制",
       },
       {
@@ -351,7 +353,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "训练预制详情",
         subtitle: "编辑角色场景描述，并展示删除影响。",
         back: { href: "/training/presets", label: "返回训练预制" },
-        actions: [headerAction("保存", Save, "primary")],
         status: "预制详情",
       },
       {
@@ -362,7 +363,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "新建训练预制",
         subtitle: "创建可复用的角色场景描述，后续可导入训练小节。",
         back: { href: "/training/presets", label: "返回训练预制" },
-        actions: [headerAction("创建预制", Save, "primary")],
         status: "草稿",
       },
       {
@@ -373,7 +373,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "排序规则",
         subtitle: "合成顺序和分类内顺序。",
         back: { href: "/training/presets", label: "返回训练预制" },
-        actions: [headerAction("保存全部", Save, "primary")],
         status: "排序",
       },
       {
@@ -383,7 +382,10 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         eyebrow: "训练模板",
         title: "训练模板",
         subtitle: "训练模板只作为创建项目时的初始配置。",
-        actions: [headerAction("从模板创建项目", Copy), headerAction("新建模板", Plus, "primary")],
+        actions: [
+          headerAction("从模板创建项目", Copy, "default", currentRoute(routes, "training-project-new")),
+          headerAction("新建模板", Plus, "primary", currentRoute(routes, "training-template-new")),
+        ],
         status: "模板",
       },
       {
@@ -394,7 +396,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "新建训练模板",
         subtitle: "模板信息、默认规则和初始小节。",
         back: { href: "/training/templates", label: "返回训练模板" },
-        actions: [headerAction("创建模板", Save, "primary")],
         status: "新建模板",
       },
       {
@@ -405,7 +406,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "编辑训练模板",
         subtitle: "项目级指引、小节默认设置和预制/本地块。",
         back: { href: "/training/templates", label: "返回训练模板" },
-        actions: [headerAction("保存模板", Save, "primary")],
         status: "编辑模板",
       },
       {
@@ -416,7 +416,6 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         title: "模板小节",
         subtitle: "模板小节和项目小节保持同一场景块编辑心智。",
         back: { href: currentRoute(routes, "training-template-edit"), label: "返回模板" },
-        actions: [headerAction("保存小节", Save, "primary")],
         status: "模板小节",
       },
     ]),
