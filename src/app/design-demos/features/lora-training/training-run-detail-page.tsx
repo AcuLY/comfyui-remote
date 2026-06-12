@@ -118,9 +118,7 @@ export function LoraTrainingRunDetailPage({
     <div className={s.page}>
       <PageHeader
         back={{ href: "/training/runs", label: "返回运行" }}
-        eyebrow={isGeneration ? "生成任务" : "训练任务"}
         title={`${run.projectTitle} / ${run.title}`}
-        subtitle={`${run.summary} · ${run.timestamp}`}
         actions={(
             <>
               <ButtonLink href={projectHref} icon={FileText}>项目详情</ButtonLink>

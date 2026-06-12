@@ -10,6 +10,21 @@ const detailCss = readFileSync(resolve(testDir, "training-run-detail-page.module
 const fixtureSource = readFileSync(resolve(testDir, "fixtures.ts"), "utf8");
 const typesSource = readFileSync(resolve(testDir, "types.ts"), "utf8");
 
+test("training run detail keeps the compact detail header", () => {
+  const headerStart = detailSource.indexOf("<PageHeader");
+  const headerEnd = detailSource.indexOf("/>", headerStart);
+  assert.notEqual(headerStart, -1, "training run detail should render a PageHeader");
+  assert.notEqual(headerEnd, -1, "training run detail PageHeader should be self-closing");
+
+  const headerSource = detailSource.slice(headerStart, headerEnd);
+
+  assert.match(headerSource, /back=\{\{ href: "\/training\/runs", label: "返回运行" \}\}/, "detail header should keep the back link");
+  assert.match(headerSource, /title=\{`\$\{run\.projectTitle\} \/ \$\{run\.title\}`\}/, "detail header should use the task object title");
+  assert.match(headerSource, /actions=/, "detail header should keep direct object actions");
+  assert.doesNotMatch(headerSource, /eyebrow=/, "detail header should not duplicate the task kind above the title");
+  assert.doesNotMatch(headerSource, /subtitle=/, "detail header should keep summary and timestamp inside the page body");
+});
+
 test("training run fixtures expose final artifact, config, logs, and frozen caption samples", () => {
   for (const field of [
     "finalLoraArtifactId",
