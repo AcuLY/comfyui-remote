@@ -282,6 +282,34 @@ test("training dataset readiness is a lightweight preparation summary, not a sta
   assert.match(datasetPageSource, /project\.datasetVersion/, "preparation summary should keep the active dataset version visible");
 });
 
+test("training dataset revision rows respond to their own panel width", () => {
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(revisionPageStart, -1);
+
+  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+  const entityRowsRule = cssSource.match(/\.entityRows\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+
+  assert.match(datasetPageSource, /entityRowsSurface/, "dataset revision rows should be wrapped in a list surface container");
+  assert.match(
+    cssSource,
+    /\.entityRowsSurface\s*\{[\s\S]*?container-type:\s*inline-size/,
+    "dataset revision rows should query a dedicated panel-width surface",
+  );
+  assert.match(
+    cssSource,
+    /@container\s*\(min-width:\s*520px\)\s*\{[\s\S]*?\.entityRows\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "dataset revision rows should expand at the managed-list container breakpoint",
+  );
+  assert.doesNotMatch(entityRowsRule, /container-type:\s*inline-size/, "dataset revision rows should not query their own width directly");
+  assert.doesNotMatch(
+    cssSource,
+    /@media\s*\(min-width:\s*720px\)\s*\{\s*\.entityRows\s*\{/,
+    "dataset revision rows should not use viewport width to decide their column count",
+  );
+});
+
 test("training result cards keep thumbnail density and clamp captions", () => {
   assert.match(cssSource, /\.trainingResultGrid\b/, "training result grid CSS should exist");
   assert.match(cssSource, /\.trainingResultCard\b/, "training result cards should exist");

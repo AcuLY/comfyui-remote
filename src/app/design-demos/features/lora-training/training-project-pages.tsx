@@ -1665,16 +1665,18 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
           <p className={s.bodyText}>准备信息保持在训练入口附近，完整样本与冻结快照继续由下方草稿和版本列表承载。</p>
         </Panel>
         <Panel title="冻结版本">
-          <div className={s.entityRows}>
-            {project.datasetRevisions.map((revision) => (
-              <Link className={s.entityRow} href={demoHref(`/training/projects/${project.id}/dataset/revisions/${revision.id}`)} key={revision.id}>
-                <div>
-                  <strong>{revision.version}</strong>
-                  <span>{revision.itemCount} 张 · 缺说明文本 {revision.captionMissingCount} · {revision.manifestName}</span>
-                </div>
-                <StatusBadge status={revision.status} label={revision.status === "ready" ? "可训练" : revision.status === "draft" ? "草稿" : "训练中"} />
-              </Link>
-            ))}
+          <div className={s.entityRowsSurface}>
+            <div className={s.entityRows}>
+              {project.datasetRevisions.map((revision) => (
+                <Link className={s.entityRow} href={demoHref(`/training/projects/${project.id}/dataset/revisions/${revision.id}`)} key={revision.id}>
+                  <div>
+                    <strong>{revision.version}</strong>
+                    <span>{revision.itemCount} 张 · 缺说明文本 {revision.captionMissingCount} · {revision.manifestName}</span>
+                  </div>
+                  <StatusBadge status={revision.status} label={revision.status === "ready" ? "可训练" : revision.status === "draft" ? "草稿" : "训练中"} />
+                </Link>
+              ))}
+            </div>
           </div>
         </Panel>
       </div>
