@@ -42,6 +42,18 @@ test("training preset library uses the shared managed-library row model", () => 
   assert.match(cssSource, /\.trainingPresetItemList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "training preset rows should expand to two columns");
 });
 
+test("training preset folder and item lists share the responsive two-column layout", () => {
+  const responsiveListBlock = cssSource.match(/@media \(min-width: 900px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+
+  assert.match(responsiveListBlock, /\.trainingPresetFolderGrid\b/, "training preset folders should also expand at the library breakpoint");
+  assert.match(responsiveListBlock, /\.trainingPresetItemList\b/, "training preset items should expand at the same breakpoint");
+  assert.match(
+    responsiveListBlock,
+    /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "training preset library lists should use the same two-column grid rule",
+  );
+});
+
 test("training preset library drag handles reorder visible presets locally", () => {
   const itemStart = pageSource.indexOf("function TrainingPresetLibraryItemRow");
   const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
