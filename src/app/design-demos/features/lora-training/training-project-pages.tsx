@@ -1174,9 +1174,17 @@ function SectionCard({
 
 export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const project = findProject(data, projectId);
-  const [localSections, setLocalSections] = useState(() => project?.sections ?? []);
-  const [orderedSectionIds, setOrderedSectionIds] = useState(() => project?.sections.map((section) => section.id) ?? []);
+  const [localSectionState, setLocalSections] = useState(() => ({
+    projectId: project?.id ?? null,
+    sections: project?.sections ?? [],
+  }));
+  const [orderedSectionState, setOrderedSectionIds] = useState(() => ({
+    ids: project?.sections.map((section) => section.id) ?? [],
+    projectId: project?.id ?? null,
+  }));
   if (!project) return <EmptyPage title="没有训练小节数据" />;
+  const localSections = localSectionState.projectId === project.id ? localSectionState.sections : project.sections;
+  const orderedSectionIds = orderedSectionState.projectId === project.id ? orderedSectionState.ids : project.sections.map((section) => section.id);
   const sectionMap = new Map(localSections.map((section) => [section.id, section]));
   const sections = orderedSectionIds
     .map((sectionId) => sectionMap.get(sectionId))
@@ -1192,63 +1200,85 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
       updatedAt: "刚刚",
     };
     setLocalSections((current) => {
-      const sourceIndex = current.findIndex((item) => item.id === section.id);
-      if (sourceIndex === -1) return [...current, copy];
-      return [
-        ...current.slice(0, sourceIndex + 1),
-        copy,
-        ...current.slice(sourceIndex + 1),
-      ];
+      const currentSections = current.projectId === project.id ? current.sections : project.sections;
+      const sourceIndex = currentSections.findIndex((item) => item.id === section.id);
+      const sections = sourceIndex === -1
+        ? [...currentSections, copy]
+        : [
+          ...currentSections.slice(0, sourceIndex + 1),
+          copy,
+          ...currentSections.slice(sourceIndex + 1),
+        ];
+      return { projectId: project.id, sections };
     });
     setOrderedSectionIds((current) => {
-      const sourceIndex = current.indexOf(section.id);
-      if (sourceIndex === -1) return [...current, copyId];
-      return [
-        ...current.slice(0, sourceIndex + 1),
-        copyId,
-        ...current.slice(sourceIndex + 1),
-      ];
+      const currentIds = current.projectId === project.id ? current.ids : project.sections.map((item) => item.id);
+      const sourceIndex = currentIds.indexOf(section.id);
+      const ids = sourceIndex === -1
+        ? [...currentIds, copyId]
+        : [
+          ...currentIds.slice(0, sourceIndex + 1),
+          copyId,
+          ...currentIds.slice(sourceIndex + 1),
+        ];
+      return { ids, projectId: project.id };
     });
   }
 
   function handleDeleteSection(sectionId: string) {
-    setLocalSections((current) => current.filter((section) => section.id !== sectionId));
-    setOrderedSectionIds((current) => current.filter((id) => id !== sectionId));
+    setLocalSections((current) => {
+      const currentSections = current.projectId === project.id ? current.sections : project.sections;
+      return {
+        projectId: project.id,
+        sections: currentSections.filter((section) => section.id !== sectionId),
+      };
+    });
+    setOrderedSectionIds((current) => {
+      const currentIds = current.projectId === project.id ? current.ids : project.sections.map((section) => section.id);
+      return {
+        ids: currentIds.filter((id) => id !== sectionId),
+        projectId: project.id,
+      };
+    });
   }
 
   function handleReorderSections(nextSectionIds: string[]) {
-    setOrderedSectionIds(nextSectionIds);
+    setOrderedSectionIds({ ids: nextSectionIds, projectId: project.id });
   }
 
   function handleAddSection() {
+    const source = localSections[0];
+    const draftNumber = nextProjectSectionDraftNumber(localSections);
+    const draftId = `new-section-${draftNumber}`;
+    const draftIndex = localSections.length + 1;
+    const draft: LoraTrainingSection = source ? {
+      ...source,
+      id: draftId,
+      title: `新小节 ${draftIndex}`,
+      updatedAt: "刚刚",
+      images: [],
+      resultStatus: "pending",
+    } : {
+      id: draftId,
+      title: `新小节 ${draftIndex}`,
+      enabled: true,
+      updatedAt: "刚刚",
+      blocks: [
+        { id: "draft-local-block", source: "本地", title: "本地场景描述", text: "补充这个小节的训练场景描述。" },
+      ],
+      resolvedScene: "补充这个小节的训练场景描述。",
+      imagePrompt: "生成干净、可训练的角色样本。",
+      images: [],
+      resultStatus: "pending",
+    };
     setLocalSections((current) => {
-      const source = current[0];
-      const draftNumber = nextProjectSectionDraftNumber(current);
-      const draftId = `new-section-${draftNumber}`;
-      const draftIndex = current.length + 1;
-      const draft: LoraTrainingSection = source ? {
-        ...source,
-        id: draftId,
-        title: `新小节 ${draftIndex}`,
-        updatedAt: "刚刚",
-        images: [],
-        resultStatus: "pending",
-      } : {
-        id: draftId,
-        title: `新小节 ${draftIndex}`,
-        enabled: true,
-        updatedAt: "刚刚",
-        blocks: [
-          { id: "draft-local-block", source: "本地", title: "本地场景描述", text: "补充这个小节的训练场景描述。" },
-        ],
-        resolvedScene: "补充这个小节的训练场景描述。",
-        imagePrompt: "生成干净、可训练的角色样本。",
-        images: [],
-        resultStatus: "pending",
-      };
-      return [...current, draft];
+      const currentSections = current.projectId === project.id ? current.sections : project.sections;
+      return { projectId: project.id, sections: [...currentSections, draft] };
     });
-    setOrderedSectionIds((current) => [...current, draftId]);
+    setOrderedSectionIds((current) => {
+      const currentIds = current.projectId === project.id ? current.ids : project.sections.map((section) => section.id);
+      return { ids: [...currentIds, draft.id], projectId: project.id };
+    });
   }
 
   return (

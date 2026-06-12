@@ -69,6 +69,19 @@ test("training section list copy and delete actions update local front-end state
   assert.doesNotMatch(sectionCard, /删除小节需要确认/, "delete feedback should describe the local section removal, not a confirmation placeholder");
 });
 
+test("training section list keeps local section state scoped to the active project", () => {
+  const sectionsPage = sourceBetween(
+    "export function LoraTrainingProjectSectionsPage",
+    "export function LoraTrainingProjectSectionDetailPage",
+  );
+
+  assert.match(sectionsPage, /projectId:\s*project\?\.id \?\? null/, "local section state should remember the source project id");
+  assert.match(sectionsPage, /localSectionState\.projectId === project\.id \? localSectionState\.sections : project\.sections/, "section cards should fall back to the active project's sections after route changes");
+  assert.match(sectionsPage, /orderedSectionState\.projectId === project\.id \? orderedSectionState\.ids : project\.sections\.map\(\(section\) => section\.id\)/, "section order should fall back to the active project after route changes");
+  assert.doesNotMatch(sectionsPage, /const \[localSections, setLocalSections\] = useState\(\(\) => project\?\.sections \?\? \[\]\)/, "local sections should not be a project-agnostic state array");
+  assert.doesNotMatch(sectionsPage, /const \[orderedSectionIds, setOrderedSectionIds\] = useState\(\(\) => project\?\.sections\.map\(\(section\) => section\.id\) \?\? \[\]\)/, "local section order should not be a project-agnostic state array");
+});
+
 test("training section list drag handles reorder the local section list", () => {
   const sectionsPage = sourceBetween(
     "export function LoraTrainingProjectSectionsPage",
@@ -90,10 +103,10 @@ test("training section copy inserts the duplicate directly after the source sect
     "export function LoraTrainingProjectSectionDetailPage",
   );
 
-  assert.match(sectionsPage, /const sourceIndex = current\.findIndex\(\(item\) => item\.id === section\.id\)/, "copy should find the source section position");
-  assert.match(sectionsPage, /\.\.\.current\.slice\(0, sourceIndex \+ 1\),\s*copy,\s*\.\.\.current\.slice\(sourceIndex \+ 1\)/, "local section copy should stay adjacent to the source");
-  assert.match(sectionsPage, /const sourceIndex = current\.indexOf\(section\.id\)/, "copy should find the source id position in the visible order");
-  assert.match(sectionsPage, /\.\.\.current\.slice\(0, sourceIndex \+ 1\),\s*copyId,\s*\.\.\.current\.slice\(sourceIndex \+ 1\)/, "visible section order should insert the copy after the source");
+  assert.match(sectionsPage, /const sourceIndex = currentSections\.findIndex\(\(item\) => item\.id === section\.id\)/, "copy should find the source section position");
+  assert.match(sectionsPage, /\.\.\.currentSections\.slice\(0, sourceIndex \+ 1\),\s*copy,\s*\.\.\.currentSections\.slice\(sourceIndex \+ 1\)/, "local section copy should stay adjacent to the source");
+  assert.match(sectionsPage, /const sourceIndex = currentIds\.indexOf\(section\.id\)/, "copy should find the source id position in the visible order");
+  assert.match(sectionsPage, /\.\.\.currentIds\.slice\(0, sourceIndex \+ 1\),\s*copyId,\s*\.\.\.currentIds\.slice\(sourceIndex \+ 1\)/, "visible section order should insert the copy after the source");
   assert.doesNotMatch(sectionsPage, /setOrderedSectionIds\(\(current\) => \[\.\.\.current, copyId\]\)/, "copy should not append to the end of the section order");
 });
 
@@ -117,7 +130,7 @@ test("training section list scans existing section ids for local copy and draft 
   assert.match(pagesSource, /function nextProjectSectionCopyNumber/, "section copy ids should use a shared ordinal helper");
   assert.match(pagesSource, /function nextProjectSectionDraftNumber/, "new section draft ids should use a shared ordinal helper");
   assert.match(sectionsPage, /nextProjectSectionCopyNumber\(localSections, section\.id\)/, "copy ids should scan existing copied section ids");
-  assert.match(sectionsPage, /nextProjectSectionDraftNumber\(current\)/, "new section ids should scan existing draft section ids");
+  assert.match(sectionsPage, /nextProjectSectionDraftNumber\(localSections\)/, "new section ids should scan existing draft section ids");
   assert.doesNotMatch(sectionsPage, /copyId = `\$\{section\.id\}-copy-\$\{Date\.now\(\)\}`/, "copy ids should not depend on Date.now");
   assert.doesNotMatch(sectionsPage, /draftId = `new-section-\$\{Date\.now\(\)\}`/, "draft ids should not depend on Date.now");
 });
