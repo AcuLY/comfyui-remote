@@ -64,3 +64,21 @@ test("sortable training resource lists use ancestor surfaces for container queri
     "Training template list should not query its own width directly",
   );
 });
+
+test("training preset sort panels use the shared container-driven list breakpoint", () => {
+  assert.match(
+    resourcesCss,
+    /\.page\s*\{[\s\S]*?container-type:\s*inline-size/,
+    "Training resource pages should expose the workspace width as a query container",
+  );
+  assert.match(
+    resourcesCss,
+    /@container\s*\(min-width:\s*520px\)\s*\{[\s\S]*?\.trainingPresetSortGrid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "Training preset sort panels should expand at the same container breakpoint as other managed lists",
+  );
+  assert.doesNotMatch(
+    resourcesCss,
+    /@media\s*\(min-width:\s*700px\)\s*\{[\s\S]*?\.trainingPresetSortGrid/,
+    "Training preset sort panels should not depend on the viewport width",
+  );
+});
