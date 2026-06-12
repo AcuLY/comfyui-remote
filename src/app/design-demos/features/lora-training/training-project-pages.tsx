@@ -519,7 +519,7 @@ function ReferencePicker({
   const previewAlreadyAdded = previewReference ? selectedReferenceIds.has(previewReference.id) : false;
 
   function handleAddReference() {
-    if (!previewReference) return;
+    if (!previewReference || previewAlreadyAdded) return;
     if (onAddReference) {
       onAddReference(previewReference);
       return;
@@ -564,7 +564,7 @@ function ReferencePicker({
         </div>
         <Button
           icon={Plus}
-          disabled={!previewReference}
+          disabled={!previewReference || previewAlreadyAdded}
           onClick={handleAddReference}
           feedback={{ title: "引用已加入任务草稿", detail: previewReference?.title }}
         >

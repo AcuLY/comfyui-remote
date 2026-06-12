@@ -239,6 +239,14 @@ test("reference picker records explicitly added references in local front-end st
   assert.match(pickerSource, /已添加引用/, "reference picker should render added references instead of only showing a toast");
 });
 
+test("reference picker disables references that have already been added", () => {
+  const pickerSource = sourceBetween("function ReferencePicker", "export function LoraTrainingProjectFormPage");
+
+  assert.match(pickerSource, /previewAlreadyAdded/, "reference picker should know when the previewed reference is already selected");
+  assert.match(pickerSource, /if \(!previewReference \|\| previewAlreadyAdded\) return;/, "add handler should short-circuit duplicate selected references");
+  assert.match(pickerSource, /disabled=\{!previewReference \|\| previewAlreadyAdded\}/, "add button should be disabled after a reference is already selected");
+});
+
 test("generation compose carries explicitly added references into the task draft", () => {
   const composePage = sourceBetween(
     "export function LoraTrainingGenerationComposePage",
