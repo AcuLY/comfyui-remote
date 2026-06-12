@@ -31,6 +31,17 @@ test("censoring actions do not require latentFilePath and project batch defaults
   assert.match(source, /reviewStatus:\s*\{\s*in:\s*reviewStatuses/);
 });
 
+test("project marker batch censoring targets pixiv, preview, and cover images", () => {
+  const source = readSource("src/lib/actions/censoring.ts");
+
+  assert.match(source, /ProjectCensorMode\s*=\s*"all"\s*\|\s*"kept"\s*\|\s*"marked"/);
+  assert.match(source, /mode\s*===\s*"marked"/);
+  assert.match(source, /coverImageId/);
+  assert.match(source, /featured:\s*true/);
+  assert.match(source, /featured2:\s*true/);
+  assert.match(source, /id:\s*coverImageId/);
+});
+
 test("censoring cancellation stays local instead of mutating ComfyUI queues", () => {
   const source = readSource("src/lib/actions/censoring.ts");
 

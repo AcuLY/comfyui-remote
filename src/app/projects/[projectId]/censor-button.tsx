@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Loader2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { censorProjectImages } from "@/lib/actions";
+import { censorProjectImages, type ProjectCensorMode } from "@/lib/actions";
 
 export function CensorButton({ projectId }: { projectId: string }) {
   const router = useRouter();
@@ -24,7 +24,7 @@ export function CensorButton({ projectId }: { projectId: string }) {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpen]);
 
-  function handleCensor(mode: "all" | "kept") {
+  function handleCensor(mode: ProjectCensorMode) {
     setMenuOpen(false);
     startTransition(async () => {
       try {
@@ -71,6 +71,14 @@ export function CensorButton({ projectId }: { projectId: string }) {
           >
             <span className="font-medium">仅保留</span>
             <span className="text-zinc-500">只打码已审核通过的</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => handleCensor("marked")}
+            className="flex w-full items-center gap-2 border-t border-white/5 px-3 py-2 text-left text-[11px] text-zinc-200 transition hover:bg-white/[0.06]"
+          >
+            <span className="font-medium">p站 + 预览 + 封面</span>
+            <span className="text-zinc-500">只打码已标记图片</span>
           </button>
         </div>
       )}

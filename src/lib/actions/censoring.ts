@@ -1,11 +1,30 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import type { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { wakeUpCensoringProcessor } from "@/server/services/censoring-executor";
 import { CENSORING_CANCELLABLE_STATUSES } from "@/lib/actions/cancellation-helpers";
 
 const CENSORING_ACTIVE_STATUSES = [...CENSORING_CANCELLABLE_STATUSES];
+export type ProjectCensorMode = "all" | "kept" | "marked";
+
+function buildProjectCensorMarkerWhere(
+  mode: ProjectCensorMode,
+  coverImageId: string | null,
+): Prisma.ImageResultWhereInput {
+  if (mode !== "marked") {
+    return {};
+  }
+
+  return {
+    OR: [
+      { featured: true },
+      { featured2: true },
+      ...(coverImageId ? [{ id: coverImageId }] : []),
+    ],
+  };
+}
 
 export type CensoringPreview = {
   totalKept: number;
@@ -127,20 +146,31 @@ export async function censorImage(
   }
 }
 
-export async function censorProjectImages(projectId: string, mode: "all" | "kept" = "all"): Promise<{
+export async function censorProjectImages(projectId: string, mode: ProjectCensorMode = "all"): Promise<{
   success: boolean;
   message: string;
   taskCount: number;
 }> {
   try {
-    const reviewStatuses = mode === "kept" ? ["kept"] : ["kept", "pending"];
+    const reviewStatuses: ("kept" | "pending")[] = mode === "kept" ? ["kept"] : ["kept", "pending"];
+    const project = mode === "marked"
+      ? await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { coverImageId: true },
+      })
+      : null;
+    const markerWhere = buildProjectCensorMarkerWhere(mode, project?.coverImageId ?? null);
+    const baseImageWhere: Prisma.ImageResultWhereInput = {
+      run: { projectId },
+      reviewStatus: { in: reviewStatuses },
+      censoredAt: null,
+      ...markerWhere,
+    };
 
     // Find all images without censoring that don't have an active task
     const images = await prisma.imageResult.findMany({
       where: {
-        run: { projectId },
-        reviewStatus: { in: reviewStatuses as ("kept" | "pending")[] },
-        censoredAt: null,
+        ...baseImageWhere,
         censoringTasks: {
           none: {},
         },
@@ -151,9 +181,7 @@ export async function censorProjectImages(projectId: string, mode: "all" | "kept
     // Also find images with only failed/cancelled tasks (allow retry)
     const imagesWithFailedTasks = await prisma.imageResult.findMany({
       where: {
-        run: { projectId },
-        reviewStatus: { in: reviewStatuses as ("kept" | "pending")[] },
-        censoredAt: null,
+        ...baseImageWhere,
         censoringTasks: {
           every: { status: { in: ["failed", "cancelled"] } },
           some: {},

@@ -18,6 +18,7 @@ test("project export image names pad indexes to the digit count of the image tot
   );
 
   const format = projectExport.formatExportImageFileName;
+  assert.ok(format, "project export service should expose the image filename formatter");
   assert.equal(format("Exported Project", 1, 9), "Exported Project_1.jpg");
   assert.equal(format("Exported Project", 1, 10), "Exported Project_01.jpg");
   assert.equal(format("Exported Project", 9, 100), "Exported Project_009.jpg");
@@ -50,14 +51,15 @@ test("project export pixiv and preview selections include only censored images",
     { featured: false, featured2: true, censoredFilePath: "images/c-censored.png" },
   ];
 
-  assert.deepEqual(
-    projectExport.selectCensoredFeatureImages(images, "featured").map((image) => image.censoredFilePath),
-    ["images/a-censored.png"],
-  );
-  assert.deepEqual(
-    projectExport.selectCensoredFeatureImages(images, "featured2").map((image) => image.censoredFilePath),
-    ["images/c-censored.png"],
-  );
+  const selectCensoredFeatureImages = projectExport.selectCensoredFeatureImages;
+  assert.ok(selectCensoredFeatureImages, "project export service should expose censored feature selection");
+
+  assert.deepEqual(selectCensoredFeatureImages(images, "featured").map((image) => image.censoredFilePath), [
+    "images/a-censored.png",
+  ]);
+  assert.deepEqual(selectCensoredFeatureImages(images, "featured2").map((image) => image.censoredFilePath), [
+    "images/c-censored.png",
+  ]);
 });
 
 test("project export no longer creates duplicate censored pixiv and preview folders", () => {
@@ -65,4 +67,11 @@ test("project export no longer creates duplicate censored pixiv and preview fold
 
   assert.doesNotMatch(source, /pixivCensoredDir|previewCensoredDir/);
   assert.doesNotMatch(source, /pixiv_censored|preview_censored/);
+});
+
+test("project export no longer creates a whole-project censored zip", () => {
+  const source = readFileSync(resolve(process.cwd(), "src/server/services/project-export-service.ts"), "utf8");
+
+  assert.doesNotMatch(source, /_censored\.zip/);
+  assert.doesNotMatch(source, /tempCensoredJpgDir|censoredZipPath|censoredJpgFiles/);
 });

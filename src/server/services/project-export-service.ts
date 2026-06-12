@@ -104,7 +104,6 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   const pixivDir = join(exportDir, "pixiv");
   const previewDir = join(exportDir, "preview");
   const tempJpgDir = join(exportDir, "_temp_jpg");
-  const tempCensoredJpgDir = join(exportDir, "_temp_censored_jpg");
 
   const allKept: { filePath: string; featured: boolean; featured2: boolean; censoredFilePath: string | null }[] = [];
   for (const section of project.sections) {
@@ -128,11 +127,6 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   await mkdir(pixivDir, { recursive: true });
   await mkdir(previewDir, { recursive: true });
 
-  const hasCensored = allKept.some((img) => img.censoredFilePath);
-  if (hasCensored) {
-    await mkdir(tempCensoredJpgDir, { recursive: true });
-  }
-
   try {
     await sharp(coverSourcePath).jpeg({ quality: 90 }).toFile(join(exportDir, "cover.jpg"));
   } catch (error) {
@@ -153,11 +147,9 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   }
 
   const jpgFiles: string[] = [];
-  const censoredJpgFiles: string[] = [];
   let globalIndex = 1;
   let pixivIndex = 1;
   let previewIndex = 1;
-  let censoredCount = 0;
 
   for (const image of allKept) {
     const sourcePath = resolve(/* turbopackIgnore: true */ process.cwd(), image.filePath);
@@ -178,11 +170,6 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
       const censoredSourcePath = resolve(process.cwd(), image.censoredFilePath);
       try {
         await access(censoredSourcePath);
-        const censoredJpgName = formatExportImageFileName(exportName, globalIndex, totalImageCount);
-        const censoredJpgPath = join(tempCensoredJpgDir, censoredJpgName);
-        await sharp(censoredSourcePath).jpeg({ quality: 90 }).toFile(censoredJpgPath);
-        censoredJpgFiles.push(censoredJpgPath);
-        censoredCount++;
 
         if (image.featured) {
           const pixivName = formatExportImageFileName(exportName, pixivIndex, pixivImageCount);
@@ -221,17 +208,6 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   }
   await rm(tempJpgDir, { recursive: true, force: true });
 
-  // Create censored zip if there are censored images
-  if (censoredCount > 0) {
-    const censoredZipPath = join(exportDir, `${exportName}_censored.zip`);
-    await createZip(tempCensoredJpgDir, censoredZipPath);
-  }
-
-  for (const filePath of censoredJpgFiles) {
-    await unlink(filePath).catch(() => {});
-  }
-  await rm(tempCensoredJpgDir, { recursive: true, force: true });
-
   const pixivFiles = await readdir(pixivDir).catch(() => []);
   if (pixivFiles.length === 0) {
     await rm(pixivDir, { recursive: true, force: true });
@@ -249,7 +225,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
 
   return {
     success: true,
-    message: `图片整合完成：${allKept.length} 张保留图打包为 ${exportName}.zip，封面已输出 cover.jpg${pixivIndex > 1 ? `，${pixivIndex - 1} 张 p站打码图输出到 pixiv/` : ""}${previewIndex > 1 ? `，${previewIndex - 1} 张预览打码图输出到 preview/` : ""}${censoredCount > 0 ? `，${censoredCount} 张和谐版打包为 ${exportName}_censored.zip` : ""}`,
+    message: `图片整合完成：${allKept.length} 张保留图打包为 ${exportName}.zip，封面已输出 cover.jpg${pixivIndex > 1 ? `，${pixivIndex - 1} 张 p站打码图输出到 pixiv/` : ""}${previewIndex > 1 ? `，${previewIndex - 1} 张预览打码图输出到 preview/` : ""}`,
     path: exportDir,
   };
 }
