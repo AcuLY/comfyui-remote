@@ -807,6 +807,12 @@
   overflow-wrap: anywhere;
 }
 
+.sceneBlockEditor {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
 .sceneBlockActions {
   display: grid;
   grid-template-columns: repeat(2, minmax(76px, auto));

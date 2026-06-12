@@ -20,6 +20,8 @@ import { buildLoraTrainingDemoData } from "./fixtures";
 import type { LoraTrainingPreset, LoraTrainingSectionBlock, LoraTrainingTemplate } from "./types";
 import s from "./training-resource-pages.module.css";
 
+type TemplateSceneBlockPatch = Partial<Pick<LoraTrainingSectionBlock, "text" | "title">>;
+
 function presetStatus(preset: LoraTrainingPreset) {
   return preset.status === "active" ? <StatusBadge status="ready" label="启用" /> : <StatusBadge status="archived" label="停用" />;
 }
@@ -157,25 +159,46 @@ function TrainingPresetSortPanel({
 function TemplateSceneBlockCard({
   block,
   index,
+  isEditing,
   onDelete,
+  onEdit,
   onMove,
+  onUpdate,
   total,
 }: {
   block: LoraTrainingSectionBlock;
   index: number;
+  isEditing?: boolean;
   onDelete?: (blockId: string) => void;
+  onEdit?: (blockId: string | null) => void;
   onMove?: (index: number, direction: -1 | 1) => void;
+  onUpdate?: (blockId: string, patch: TemplateSceneBlockPatch) => void;
   total: number;
 }) {
   return (
     <article className={s.templateSceneBlockCard}>
       <div className={s.templateSceneBlockBody}>
         <span>{block.source === "预制" ? "预制块" : "本地块"}</span>
-        <strong>{block.title}</strong>
-        <p>{block.text}</p>
+        {isEditing ? (
+          <div className={s.templateSceneBlockEditor}>
+            <Field label="模板块标题" value={block.title} onChange={(value) => onUpdate?.(block.id, { title: value })} />
+            <Field
+              multiline
+              features={{ clipboard: true, resize: true }}
+              label="模板块文本"
+              value={block.text}
+              onChange={(value) => onUpdate?.(block.id, { text: value })}
+            />
+          </div>
+        ) : (
+          <>
+            <strong>{block.title}</strong>
+            <p>{block.text}</p>
+          </>
+        )}
       </div>
       <div className={s.templateSceneBlockActions} aria-label={`${block.title} 操作`}>
-        <Button size="sm" icon={Edit3} ariaLabel={`编辑模板场景块：${block.title}`} feedback={{ title: "编辑模板场景块入口已预览", detail: block.title }}>编辑</Button>
+        <Button size="sm" icon={Edit3} ariaLabel={isEditing ? `收起模板场景块编辑：${block.title}` : `编辑模板场景块：${block.title}`} onClick={() => onEdit?.(isEditing ? null : block.id)}>{isEditing ? "收起" : "编辑"}</Button>
         <Button size="sm" icon={ArrowUp} disabled={index === 0} onClick={() => onMove?.(index, -1)} ariaLabel={`上移模板场景块：${block.title}`} feedback={{ title: "模板块已上移", detail: block.title }}>上移</Button>
         <Button size="sm" icon={ArrowDown} disabled={index === total - 1} onClick={() => onMove?.(index, 1)} ariaLabel={`下移模板场景块：${block.title}`} feedback={{ title: "模板块已下移", detail: block.title }}>下移</Button>
         <Button size="sm" icon={Trash2} tone="danger" onClick={() => onDelete?.(block.id)} ariaLabel={`删除模板场景块：${block.title}`} feedback={{ tone: "warning", title: "模板块已从草稿移除", detail: block.title }}>删除</Button>
@@ -644,6 +667,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     blocks: section?.blocks ?? [],
     sectionId: section?.id ?? null,
   }));
+  const [editingTemplateBlockId, setEditingTemplateBlockId] = useState<string | null>(null);
   const sceneBlocks = sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
   if (!template || !section) return <EmptyPage title="没有模板小节数据" />;
 
@@ -687,7 +711,12 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     updateTemplateBlocks((current) => moveTemplateBlock(current, index, direction));
   }
 
+  function handleUpdateTemplateBlock(blockId: string, patch: TemplateSceneBlockPatch) {
+    updateTemplateBlocks((current) => current.map((block) => (block.id === blockId ? { ...block, ...patch } : block)));
+  }
+
   function handleDeleteTemplateBlock(blockId: string) {
+    if (editingTemplateBlockId === blockId) setEditingTemplateBlockId(null);
     updateTemplateBlocks((current) => current.filter((block) => block.id !== blockId));
   }
 
@@ -731,9 +760,12 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
               <TemplateSceneBlockCard
                 block={block}
                 index={blockIndex}
+                isEditing={editingTemplateBlockId === block.id}
                 key={block.id}
                 onDelete={handleDeleteTemplateBlock}
+                onEdit={setEditingTemplateBlockId}
                 onMove={handleMoveTemplateBlock}
+                onUpdate={handleUpdateTemplateBlock}
                 total={sceneBlocks.length}
               />
             ))}

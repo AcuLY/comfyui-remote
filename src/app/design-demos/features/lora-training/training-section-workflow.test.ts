@@ -88,10 +88,21 @@ test("training section detail scene-block actions update local front-end state",
   assert.match(detailPage, /handleAddLocalSceneBlock/, "section detail should add a local draft block");
   assert.match(detailPage, /handleMoveSceneBlock/, "section detail should reorder blocks locally");
   assert.match(detailPage, /handleDeleteSceneBlock/, "section detail should delete blocks locally");
+  assert.match(detailPage, /editingSceneBlockId/, "section detail should track the block currently being edited");
+  assert.match(detailPage, /handleUpdateSceneBlock/, "section detail should update block text fields locally");
   assert.match(detailPage, /sceneBlocks\.map/, "block list should render the local block state");
+  assert.match(detailPage, /isEditing=\{editingSceneBlockId === block\.id\}/, "block cards should receive edit state");
+  assert.match(detailPage, /onEdit=\{setEditingSceneBlockId\}/, "block cards should toggle local edit state");
+  assert.match(detailPage, /onUpdate=\{handleUpdateSceneBlock\}/, "block cards should push edits into local state");
+  assert.match(sceneBlockCard, /isEditing/, "scene block card should render an edit mode");
+  assert.match(sceneBlockCard, /label="场景块标题"/, "edit mode should expose a title field");
+  assert.match(sceneBlockCard, /label="场景块文本"/, "edit mode should expose a text field");
+  assert.match(sceneBlockCard, /onUpdate\?\.\(block\.id, \{ title: value \}\)/, "title edits should update the local block");
+  assert.match(sceneBlockCard, /onUpdate\?\.\(block\.id, \{ text: value \}\)/, "text edits should update the local block");
   assert.match(sceneBlockCard, /onMove\?\.\(index, -1\)/, "move-up button should call the move handler");
   assert.match(sceneBlockCard, /onMove\?\.\(index, 1\)/, "move-down button should call the move handler");
   assert.match(sceneBlockCard, /onDelete\?\.\(block\.id\)/, "delete button should call the delete handler");
+  assert.doesNotMatch(detailPage, /编辑场景块入口已预览/, "scene-block editing should not be a preview-only placeholder");
 });
 
 test("training section detail imports training presets into local scene blocks", () => {
