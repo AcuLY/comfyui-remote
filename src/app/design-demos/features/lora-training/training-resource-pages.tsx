@@ -265,6 +265,57 @@ function TemplateSceneBlockCard({
   );
 }
 
+function TrainingPresetLibraryItemRow({
+  index,
+  onDelete,
+  onToggleSelected,
+  preset,
+  selected,
+}: {
+  index: number;
+  onDelete: () => void;
+  onToggleSelected: (checked: boolean) => void;
+  preset: LoraTrainingPreset;
+  selected: boolean;
+}) {
+  const { ref, style, handleProps } = useDemoSortable(preset.id);
+
+  return (
+    <div ref={ref} style={style}>
+      <UnitRowShell
+        className={s.trainingPresetItemFrame}
+        selected={selected}
+        dragHandle={<GripVertical className={s.grip} aria-hidden="true" {...handleProps} />}
+        leading={(
+          <Checkbox
+            checked={selected}
+            label={`选择训练预制：${preset.title}`}
+            onCheckedChange={onToggleSelected}
+            stopPropagation
+            variant="compact"
+          />
+        )}
+        title={<Link className={s.trainingPresetTitleLink} href={demoHref(`/training/presets/${preset.id}`)}>{preset.title}</Link>}
+        description={<Link className={s.trainingPresetDescriptionLink} href={demoHref(`/training/presets/${preset.id}`)}>{preset.sceneDescriptionText}</Link>}
+        body={(
+          <div className={s.trainingPresetUsageChips}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <span>{preset.folder}</span>
+            <span>{presetUsageLabel(preset)}</span>
+          </div>
+        )}
+        meta={<div className={s.trainingPresetMeta}>{presetStatus(preset)}<span>更新 {preset.updatedAt}</span></div>}
+        actions={(
+          <div className={s.trainingPresetActions}>
+            <ButtonLink href={`/training/presets/${preset.id}`} size="sm" icon={Edit3}>编辑</ButtonLink>
+            <Button size="sm" tone="danger" icon={Trash2} iconOnly ariaLabel={`删除训练预制：${preset.title}`} onClick={onDelete} feedback={{ tone: "warning", title: "删除训练预制需要确认", detail: preset.title }} />
+          </div>
+        )}
+      />
+    </div>
+  );
+}
+
 export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
   const training = buildLoraTrainingDemoData(data);
   const categories = uniquePresetCategories(training.presets);
@@ -272,9 +323,15 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [hiddenPresetIds, setHiddenPresetIds] = useState<Set<string>>(() => new Set());
-  const categoryPresets = training.presets.filter((preset) => preset.category === activeCategory && !hiddenPresetIds.has(preset.id));
+  const [orderedPresetIds, setOrderedPresetIds] = useState(() => training.presets.reduce<string[]>((ids, preset) => [...ids, preset.id], []));
+  const presetMap = new Map(training.presets.reduce<Array<[string, LoraTrainingPreset]>>((entries, preset) => [...entries, [preset.id, preset]], []));
+  const orderedPresets = orderedPresetIds
+    .map((presetId) => presetMap.get(presetId))
+    .filter((preset): preset is LoraTrainingPreset => Boolean(preset));
+  const categoryPresets = orderedPresets.filter((preset) => preset.category === activeCategory && !hiddenPresetIds.has(preset.id));
   const folders = uniquePresetFolders(categoryPresets);
   const visiblePresets = categoryPresets.filter((preset) => !currentFolder || preset.folder === currentFolder);
+  const visiblePresetIds = visiblePresets.map((preset) => preset.id);
   const selectedCount = selectedIds.size;
   const newPresetInCategoryHref = `/training/presets/new?category=${encodeURIComponent(activeCategory)}${currentFolder ? `&folder=${encodeURIComponent(currentFolder)}` : ""}`;
 
@@ -299,6 +356,14 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
   function hideSelectedPresets() {
     setHiddenPresetIds((previous) => new Set([...previous, ...selectedIds]));
     setSelectedIds(new Set());
+  }
+
+  function handleReorderPresets(nextVisiblePresetIds: string[]) {
+    const visiblePresetIdSet = new Set(visiblePresetIds);
+    const reorderedVisiblePresetIds = [...nextVisiblePresetIds];
+    setOrderedPresetIds((current) =>
+      current.map((presetId) => visiblePresetIdSet.has(presetId) ? reorderedVisiblePresetIds.shift() ?? presetId : presetId),
+    );
   }
 
   return (
@@ -380,43 +445,18 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
               </div>
             ) : null}
             <div className={s.trainingPresetItemList}>
-              {visiblePresets.map((preset, index) => {
-                const selected = selectedIds.has(preset.id);
-
-                return (
-                  <UnitRowShell
+              <SortableList items={visiblePresetIds} onReorder={handleReorderPresets}>
+                {visiblePresets.map((preset, index) => (
+                  <TrainingPresetLibraryItemRow
+                    index={index}
                     key={preset.id}
-                    className={s.trainingPresetItemFrame}
-                    selected={selected}
-                    dragHandle={<GripVertical className={s.grip} aria-hidden="true" />}
-                    leading={(
-                      <Checkbox
-                        checked={selected}
-                        label={`选择训练预制：${preset.title}`}
-                        onCheckedChange={(checked) => togglePresetSelection(preset.id, checked)}
-                        stopPropagation
-                        variant="compact"
-                      />
-                    )}
-                    title={<Link className={s.trainingPresetTitleLink} href={demoHref(`/training/presets/${preset.id}`)}>{preset.title}</Link>}
-                    description={<Link className={s.trainingPresetDescriptionLink} href={demoHref(`/training/presets/${preset.id}`)}>{preset.sceneDescriptionText}</Link>}
-                    body={(
-                      <div className={s.trainingPresetUsageChips}>
-                        <span>{String(index + 1).padStart(2, "0")}</span>
-                        <span>{preset.folder}</span>
-                        <span>{presetUsageLabel(preset)}</span>
-                      </div>
-                    )}
-                    meta={<div className={s.trainingPresetMeta}>{presetStatus(preset)}<span>更新 {preset.updatedAt}</span></div>}
-                    actions={(
-                      <div className={s.trainingPresetActions}>
-                        <ButtonLink href={`/training/presets/${preset.id}`} size="sm" icon={Edit3}>编辑</ButtonLink>
-                        <Button size="sm" tone="danger" icon={Trash2} iconOnly ariaLabel={`删除训练预制：${preset.title}`} onClick={() => hidePreset(preset.id)} feedback={{ tone: "warning", title: "删除训练预制需要确认", detail: preset.title }} />
-                      </div>
-                    )}
+                    onDelete={() => hidePreset(preset.id)}
+                    onToggleSelected={(checked) => togglePresetSelection(preset.id, checked)}
+                    preset={preset}
+                    selected={selectedIds.has(preset.id)}
                   />
-                );
-              })}
+                ))}
+              </SortableList>
             </div>
             {visiblePresets.length === 0 ? <div className={s.emptyInline}>当前分类或文件夹没有训练预制</div> : null}
           </div>

@@ -13,15 +13,18 @@ test("training resource pages keep backend wiring notes out of user-facing copy"
 });
 
 test("training preset library uses the shared managed-library row model", () => {
+  const itemStart = pageSource.indexOf("function TrainingPresetLibraryItemRow");
   const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  assert.notEqual(itemStart, -1);
   assert.notEqual(presetsStart, -1);
   assert.notEqual(detailStart, -1);
 
   const presetsSource = pageSource.slice(presetsStart, detailStart);
+  const presetsWithItemSource = pageSource.slice(itemStart, detailStart);
 
-  assert.match(presetsSource, /UnitRowShell/, "training presets should use the shared managed row shell");
-  assert.match(presetsSource, /Checkbox/, "training presets should expose row selection controls");
+  assert.match(presetsWithItemSource, /UnitRowShell/, "training presets should use the shared managed row shell");
+  assert.match(presetsWithItemSource, /Checkbox/, "training presets should expose row selection controls");
   assert.match(presetsSource, /SelectionBatchBar/, "training presets should expose batch actions after selection");
   assert.match(presetsSource, /FolderBreadcrumb/, "training presets should show folder path context");
   assert.match(presetsSource, /FolderRow/, "training presets should expose folder rows before item rows");
@@ -31,6 +34,27 @@ test("training preset library uses the shared managed-library row model", () => 
   assert.doesNotMatch(presetsSource, /training\.presets\.map/, "training presets should not render all presets in every category view");
   assert.match(cssSource, /\.trainingPresetLibrarySurface\b/, "training presets should have a dedicated library surface");
   assert.match(cssSource, /\.trainingPresetItemList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "training preset rows should expand to two columns");
+});
+
+test("training preset library drag handles reorder visible presets locally", () => {
+  const itemStart = pageSource.indexOf("function TrainingPresetLibraryItemRow");
+  const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  assert.notEqual(itemStart, -1);
+  assert.notEqual(presetsStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const itemSource = pageSource.slice(itemStart, presetsStart);
+  const presetsSource = pageSource.slice(presetsStart, detailStart);
+
+  assert.match(presetsSource, /orderedPresetIds/, "training preset library should keep a local preset order");
+  assert.match(presetsSource, /visiblePresetIds/, "training preset library should derive the currently visible sortable ids");
+  assert.match(presetsSource, /handleReorderPresets/, "training preset library should define a local reorder handler");
+  assert.match(presetsSource, /<SortableList items=\{visiblePresetIds\} onReorder=\{handleReorderPresets\}>/, "visible training presets should use the shared sortable wrapper");
+  assert.match(itemSource, /useDemoSortable\(preset\.id\)/, "training preset rows should attach sortable behavior to each row");
+  assert.match(itemSource, /ref=\{ref\}/, "training preset rows should apply sortable refs");
+  assert.match(itemSource, /style=\{style\}/, "training preset rows should apply sortable transforms");
+  assert.match(itemSource, /\{\.\.\.handleProps\}/, "training preset row drag handles should receive sortable handle props");
 });
 
 test("training preset new actions route into a real new-preset form", () => {
