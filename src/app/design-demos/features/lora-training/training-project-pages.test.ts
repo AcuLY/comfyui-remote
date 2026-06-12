@@ -276,6 +276,21 @@ test("training project create page manages initial section seeds locally", () =>
   assert.match(formSource, /handleDeleteSeedSection\(section\.id\)/, "delete button should call the seed delete handler");
 });
 
+test("training project create page toggles initial section enabled state locally", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /handleToggleSeedSection/, "initial section seeds should expose an enable toggle handler");
+  assert.match(formSource, /enabled:\s*!section\.enabled/, "toggle handler should flip the section enabled state");
+  assert.match(formSource, /handleToggleSeedSection\(section\.id\)/, "seed card toggle button should call the handler");
+  assert.match(formSource, /section\.enabled \? "停用" : "启用"/, "toggle action should visibly switch between enabling and disabling");
+  assert.match(formSource, /sectionSeeds\.filter\(\(section\) => section\.enabled\)\.length/, "created draft should use current local enabled state");
+});
+
 test("training project create page creates a local front-end draft instead of previewing a backend placeholder", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");

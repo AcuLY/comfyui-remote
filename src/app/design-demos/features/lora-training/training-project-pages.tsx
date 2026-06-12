@@ -573,6 +573,12 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     setSectionSeeds((current) => current.filter((section) => section.id !== sectionId));
   }
 
+  function handleToggleSeedSection(sectionId: string) {
+    setSectionSeeds((current) => current.map((section) => (
+      section.id === sectionId ? { ...section, enabled: !section.enabled } : section
+    )));
+  }
+
   function handleCreateProjectDraft() {
     setCreatedProjectDraft({
       autoFreezeDataset: trainingDefaults.autoFreezeDataset,
@@ -634,6 +640,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
                   </div>
                   <p>{section.blockCount} 个场景块 · {section.scenePreview}</p>
                   <div className={s.sectionSeedActions}>
+                    <Button size="sm" icon={Check} onClick={() => handleToggleSeedSection(section.id)} feedback={{ title: section.enabled ? "初始小节已停用" : "初始小节已启用", detail: section.title }}>{section.enabled ? "停用" : "启用"}</Button>
                     <Button size="sm" icon={Copy} onClick={() => handleCopySeedSection(section)} feedback={{ title: "初始小节已复制", detail: section.title }}>复制</Button>
                     <Button size="sm" tone="danger" icon={Trash2} onClick={() => handleDeleteSeedSection(section.id)} feedback={{ tone: "warning", title: "初始小节已移除", detail: section.title }}>删除</Button>
                   </div>
