@@ -151,7 +151,7 @@ test("section results thumbnail list reads the same optimistic image state as th
   );
   const runLoop = sourceSlice(
     gridSource,
-    "{runs.map((run) => {",
+    "{runsWithImages.map((run) => {",
     "                {/* Batch action buttons",
   );
 
@@ -219,6 +219,119 @@ test("section results thumbnail list reads the same optimistic image state as th
     pageSource,
     /data\.totalPending/,
     "section results server page should not keep stale pending totals outside the optimistic provider",
+  );
+});
+
+test("section results can switch the lightbox to a project-wide continuous review sequence", () => {
+  const repositorySource = readFileSync(
+    "src/server/repositories/project-view-repository/detail-view.ts",
+    "utf8",
+  );
+  const pageSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx",
+    "utf8",
+  );
+  const gridSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",
+    "utf8",
+  );
+  const gallerySource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-gallery.tsx",
+    "utf8",
+  );
+  const sectionResultsData = sourceSlice(
+    repositorySource,
+    "export type SectionResultsData = {",
+    "export type ProjectResultsData = {",
+  );
+  const providerUsage = sourceSlice(
+    gridSource,
+    "<ResultsGalleryProvider",
+    "</ResultsGalleryProvider>",
+  );
+
+  assert.match(
+    sectionResultsData,
+    /continuousReviewImages:/,
+    "section results data should include the project-wide continuous review image sequence",
+  );
+  assert.match(
+    repositorySource,
+    /const continuousReviewImages = orderedProjectSections\.flatMap/,
+    "section results repository should build the continuous sequence in folder-scoped section order",
+  );
+  assert.match(
+    repositorySource,
+    /sectionId: section\.id,[\s\S]*sectionName: section\.name/,
+    "continuous review images should carry section identity for the lightbox header",
+  );
+  assert.match(
+    pageSource,
+    /continuousReviewImages=\{data\.continuousReviewImages\}/,
+    "section results page should pass the project-wide sequence to the client grid",
+  );
+  assert.match(
+    gridSource,
+    /const \[continuousReviewEnabled, setContinuousReviewEnabled\] = useState\(false\)/,
+    "continuous review should default off",
+  );
+  assert.match(
+    gridSource,
+    /连续审核/,
+    "results page should render a visible continuous review switch",
+  );
+  assert.match(
+    providerUsage,
+    /allImages=\{continuousReviewEnabled \? continuousReviewImages : allImages\}/,
+    "provider should only use the project-wide sequence when the switch is enabled",
+  );
+  assert.match(
+    gallerySource,
+    /sectionSortOrder: number/,
+    "gallery images should include section order for cross-section context",
+  );
+  assert.match(
+    gallerySource,
+    /第 \{current\.sectionSortOrder \+ 1\} 小节/,
+    "lightbox header should show the section when navigating a continuous sequence",
+  );
+});
+
+test("section results render runs without visible images at the collapsed bottom", () => {
+  const gridSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",
+    "utf8",
+  );
+
+  assert.match(
+    gridSource,
+    /const runsWithImages = useMemo\(\(\) => runs\.filter\(\(run\) => run\.images\.length > 0\), \[runs\]\)/,
+    "results grid should split visible runs before rendering",
+  );
+  assert.match(
+    gridSource,
+    /const emptyRuns = useMemo\(\(\) => runs\.filter\(\(run\) => run\.images\.length === 0\), \[runs\]\)/,
+    "results grid should collect runs that have no visible images",
+  );
+  assertBefore(
+    gridSource,
+    "{runsWithImages.map((run) => {",
+    "{emptyRuns.length > 0 && (",
+    "runs with images should render before the collapsed no-image run group",
+  );
+  assert.match(
+    gridSource,
+    /<details[\s\S]*data-empty-runs/,
+    "no-image runs should be rendered in a collapsed details group",
+  );
+  assert.doesNotMatch(
+    sourceSlice(
+      gridSource,
+      "{runsWithImages.map((run) => {",
+      "{emptyRuns.length > 0 && (",
+    ),
+    /runImages\.length === 0 \?/,
+    "normal run cards should no longer render full inline empty placeholders",
   );
 });
 

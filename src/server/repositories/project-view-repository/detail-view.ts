@@ -236,36 +236,79 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
 // Section Results — 小节结果页
 // ---------------------------------------------------------------------------
 
+type SectionResultImageData = {
+  id: string;
+  src: string;
+  full: string;
+  status: ReviewStatus;
+  featured: boolean;
+  featured2: boolean;
+  cover: boolean;
+  censoredSrc: string | null;
+  censoredFull: string | null;
+  censoredAt: string | null;
+};
+
+type SectionResultRunData = {
+  id: string;
+  runIndex: number;
+  status: string;
+  createdAt: string;
+  images: SectionResultImageData[];
+};
+
+type ContinuousReviewImageData = SectionResultImageData & {
+  runIndex: number;
+  sectionId: string;
+  sectionName: string;
+  sectionSortOrder: number;
+};
+
+type SectionResultImageSource = {
+  id: string;
+  thumbPath: string | null;
+  filePath: string;
+  reviewStatus: string;
+  featured: boolean;
+  featured2: boolean;
+  censoredFilePath: string | null;
+  censoredThumbPath: string | null;
+  censoredAt: Date | null;
+};
+
 export type SectionResultsData = {
   projectId: string;
   projectTitle: string;
   sectionId: string;
   sectionName: string;
+  sectionSortOrder: number;
   batchSize: number | null;
   sectionFolderId: string | null;
   previousSection: { id: string; name: string } | null;
   nextSection: { id: string; name: string } | null;
   nextPendingSection: { id: string; name: string } | null;
-  runs: {
-    id: string;
-    runIndex: number;
-    status: string;
-    createdAt: string;
-    images: {
-      id: string;
-      src: string;
-      full: string;
-      status: ReviewStatus;
-      featured: boolean;
-      featured2: boolean;
-      cover: boolean;
-      censoredSrc: string | null;
-      censoredFull: string | null;
-      censoredAt: string | null;
-    }[];
-  }[];
+  runs: SectionResultRunData[];
+  continuousReviewImages: ContinuousReviewImageData[];
   totalPending: number;
 };
+
+function serializeSectionResultImage(
+  img: SectionResultImageSource,
+  coverImageId: string | null,
+): SectionResultImageData {
+  return {
+    id: img.id,
+    src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
+    full: toImageUrl(img.filePath) ?? "",
+    status: img.reviewStatus as ReviewStatus,
+    featured: img.featured,
+    featured2: img.featured2,
+    cover: img.id === coverImageId,
+    censoredSrc: img.censoredThumbPath ? toImageUrl(img.censoredThumbPath) ?? "" : null,
+    censoredFull: img.censoredFilePath ? toImageUrl(img.censoredFilePath) ?? "" : null,
+    censoredAt: img.censoredAt ? img.censoredAt.toISOString() : null,
+  };
+}
 
 export type ProjectResultsData = {
   id: string;
@@ -350,7 +393,35 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
     prisma.projectSection.findMany({
       where: { projectId: pos.project.id },
       orderBy: { sortOrder: "asc" },
-      select: { id: true, name: true, folderId: true, sortOrder: true },
+      select: {
+        id: true,
+        name: true,
+        folderId: true,
+        sortOrder: true,
+        runs: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            runIndex: true,
+            status: true,
+            createdAt: true,
+            images: {
+              orderBy: { createdAt: "asc" },
+              select: {
+                id: true,
+                thumbPath: true,
+                filePath: true,
+                reviewStatus: true,
+                featured: true,
+                featured2: true,
+                censoredFilePath: true,
+                censoredThumbPath: true,
+                censoredAt: true,
+              },
+            },
+          },
+        },
+      },
     }),
     prisma.run.findMany({
       where: {
@@ -412,18 +483,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
   const runs = pos.runs.map((run) => {
     const images = run.images
       .filter((img) => img.reviewStatus !== "trashed")
-      .map((img) => ({
-        id: img.id,
-        src: toImageUrl(img.thumbPath ?? img.filePath) ?? "",
-        full: toImageUrl(img.filePath) ?? "",
-        status: img.reviewStatus as ReviewStatus,
-        featured: img.featured,
-        featured2: img.featured2,
-        cover: img.id === pos.project.coverImageId,
-        censoredSrc: img.censoredThumbPath ? toImageUrl(img.censoredThumbPath) ?? "" : null,
-        censoredFull: img.censoredFilePath ? toImageUrl(img.censoredFilePath) ?? "" : null,
-        censoredAt: img.censoredAt ? img.censoredAt.toISOString() : null,
-      }));
+      .map((img) => serializeSectionResultImage(img, pos.project.coverImageId));
 
     const runPending = images.filter((img) => img.status === "pending").length;
     totalPending += runPending;
@@ -436,18 +496,33 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
       images,
     };
   });
+  const continuousReviewImages = orderedProjectSections.flatMap((section) =>
+    section.runs.flatMap((run) =>
+      run.images
+        .filter((img) => img.reviewStatus !== "trashed")
+        .map((img) => ({
+          ...serializeSectionResultImage(img, pos.project.coverImageId),
+          runIndex: run.runIndex,
+          sectionId: section.id,
+          sectionName: section.name || `小节 ${section.sortOrder + 1}`,
+          sectionSortOrder: section.sortOrder,
+        })),
+    ),
+  );
 
   return {
     projectId: pos.project.id,
     projectTitle: pos.project.title,
     sectionId: pos.id,
     sectionName: pos.name || `小节`,
+    sectionSortOrder: pos.sortOrder,
     batchSize: resolvedBatchSize ?? projectDefaultBatchSize,
     sectionFolderId: pos.folderId,
     previousSection,
     nextSection,
     nextPendingSection,
     runs,
+    continuousReviewImages,
     totalPending,
   };
 }

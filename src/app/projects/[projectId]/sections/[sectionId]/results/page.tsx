@@ -97,7 +97,10 @@ export default async function SectionResultsPage({
         <ResultsGrid
           key={`${sectionId}:${data.batchSize ?? 2}`}
           runs={data.runs}
+          continuousReviewImages={data.continuousReviewImages}
           sectionId={sectionId}
+          sectionName={data.sectionName}
+          sectionSortOrder={data.sectionSortOrder}
           initialBatchSize={data.batchSize ?? 2}
         />
       </SectionCard>

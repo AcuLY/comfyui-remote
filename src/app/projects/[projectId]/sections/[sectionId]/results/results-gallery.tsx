@@ -30,6 +30,9 @@ type GalleryImage = {
   featured2: boolean;
   cover: boolean;
   runIndex: number;
+  sectionId: string;
+  sectionName: string;
+  sectionSortOrder: number;
   censoredSrc: string | null;
   censoredFull: string | null;
   censoredAt: string | null;
@@ -86,22 +89,35 @@ export function ResultsGalleryProvider({
   const pendingReviewIdsRef = useRef<Set<string>>(new Set());
   const knownImageByIdRef = useRef<Map<string, GalleryImage>>(new Map());
   const imageOrderByIdRef = useRef<Map<string, number>>(new Map());
+  const currentImageIdRef = useRef<string | null>(null);
   const [, startTransition] = useTransition();
+
+  const current = allImages[currentIndex];
+
+  useEffect(() => {
+    currentImageIdRef.current = current?.id ?? null;
+  }, [current?.id]);
 
   useEffect(() => {
     initialImages.forEach((image, index) => {
       knownImageByIdRef.current.set(image.id, image);
       imageOrderByIdRef.current.set(image.id, index);
     });
-    setAllImages(
-      reconcileReviewImagesWithOptimisticReviews(
-        initialImages,
-        optimisticReviewsRef.current,
-      ),
+    const reconciled = reconcileReviewImagesWithOptimisticReviews(
+      initialImages,
+      optimisticReviewsRef.current,
     );
+    setAllImages(reconciled);
+    setCurrentIndex((previousIndex) => {
+      const currentImageId = currentImageIdRef.current;
+      if (currentImageId) {
+        const nextIndex = reconciled.findIndex((image) => image.id === currentImageId);
+        if (nextIndex >= 0) return nextIndex;
+      }
+      return Math.min(previousIndex, Math.max(reconciled.length - 1, 0));
+    });
   }, [initialImages]);
 
-  const current = allImages[currentIndex];
   const imageById = useMemo(
     () => new Map(allImages.map((image) => [image.id, image])),
     [allImages],
@@ -692,7 +708,7 @@ export function ResultsGalleryProvider({
           <div className="z-10 flex items-center justify-between gap-3 px-3 py-3 sm:px-4">
             <div className="flex min-w-0 items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs text-zinc-300">
               <span className="truncate">
-                Run #{current.runIndex} / {currentIndex + 1}/{allImages.length}
+                第 {current.sectionSortOrder + 1} 小节 · {current.sectionName} · Run #{current.runIndex} / {currentIndex + 1}/{allImages.length}
               </span>
               {current.status === "pending" && (
                 <span className="rounded bg-amber-500/80 px-1.5 py-0.5 text-[10px] text-white">

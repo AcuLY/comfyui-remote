@@ -48,17 +48,30 @@ type RunData = {
   }[];
 };
 
+type GalleryImageData = RunData["images"][number] & {
+  runIndex: number;
+  sectionId: string;
+  sectionName: string;
+  sectionSortOrder: number;
+};
+
 type ResultsGalleryUndoHelpers = {
   restoreImages: (imageIds: string[]) => void;
 };
 
 export function ResultsGrid({
   runs,
+  continuousReviewImages,
   sectionId,
+  sectionName,
+  sectionSortOrder,
   initialBatchSize,
 }: {
   runs: RunData[];
+  continuousReviewImages: GalleryImageData[];
   sectionId: string;
+  sectionName: string;
+  sectionSortOrder: number;
   initialBatchSize: number;
 }) {
   const router = useRouter();
@@ -66,6 +79,7 @@ export function ResultsGrid({
   const [isPending, startTransition] = useTransition();
   const [lastTrashedIds, setLastTrashedIds] = useState<string[]>([]);
   const [tempBatchSize, setTempBatchSize] = useState(initialBatchSize);
+  const [continuousReviewEnabled, setContinuousReviewEnabled] = useState(false);
 
   const handleQuickRun = useCallback(async () => {
     if (isPending) return;
@@ -87,10 +101,15 @@ export function ResultsGrid({
         run.images.map((img) => ({
           ...img,
           runIndex: run.runIndex,
+          sectionId,
+          sectionName,
+          sectionSortOrder,
         })),
       ),
-    [runs],
+    [runs, sectionId, sectionName, sectionSortOrder],
   );
+  const runsWithImages = useMemo(() => runs.filter((run) => run.images.length > 0), [runs]);
+  const emptyRuns = useMemo(() => runs.filter((run) => run.images.length === 0), [runs]);
 
   function toggleSelect(id: string, e?: React.MouseEvent) {
     e?.stopPropagation();
@@ -259,7 +278,7 @@ export function ResultsGrid({
 
   return (
     <ResultsGalleryProvider
-      allImages={allImages}
+      allImages={continuousReviewEnabled ? continuousReviewImages : allImages}
       onUndo={handleUndo}
     >
       {({ openImageLightbox, getImage, reviewImages, imageCount, pendingImageCount, isFeatured, isFeatured2, isCover }) => {
@@ -270,7 +289,7 @@ export function ResultsGrid({
               <div className="min-w-0">
                 <div className="text-xs font-medium text-zinc-300">临时运行</div>
                 <div className="mt-0.5 text-[11px] text-zinc-500">
-                  Batch {tempBatchSize} · {imageCount} 张图片
+                  Batch {tempBatchSize} · {continuousReviewEnabled ? `连续 ${imageCount}` : imageCount} 张图片
                   {pendingImageCount > 0 ? ` · ${pendingImageCount} 张待审` : ""}
                 </div>
               </div>
@@ -282,6 +301,33 @@ export function ResultsGrid({
                   disabled={isPending}
                   size="sm"
                 />
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={continuousReviewEnabled}
+                  data-continuous-review-toggle
+                  onClick={() => setContinuousReviewEnabled((enabled) => !enabled)}
+                  className={`inline-flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs transition ${
+                    continuousReviewEnabled
+                      ? "border-cyan-400/30 bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/20"
+                      : "border-white/10 bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08] hover:text-zinc-200"
+                  }`}
+                  title="开启后左右切图会跨小节"
+                >
+                  <span
+                    className={`relative h-4 w-7 rounded-full transition ${
+                      continuousReviewEnabled ? "bg-cyan-400/50" : "bg-zinc-700"
+                    }`}
+                    aria-hidden="true"
+                  >
+                    <span
+                      className={`absolute top-0.5 size-3 rounded-full bg-white transition-transform ${
+                        continuousReviewEnabled ? "translate-x-3.5" : "translate-x-0.5"
+                      }`}
+                    />
+                  </span>
+                  连续审核
+                </button>
                 <button
                   type="button"
                   data-results-run-section
@@ -304,7 +350,7 @@ export function ResultsGrid({
           )}
 
           {/* Image grid by run */}
-          {runs.map((run) => {
+          {runsWithImages.map((run) => {
             const runImages = run.images
               .map((image) => getImage(image.id))
               .filter((image): image is NonNullable<ReturnType<typeof getImage>> => Boolean(image));
@@ -357,89 +403,83 @@ export function ResultsGrid({
                 </div>
 
                 {/* Image grid */}
-                {runImages.length === 0 ? (
-                  <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center text-[11px] text-zinc-600">
-                    无图片
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5">
-                    {runImages.map((img) => {
-                      const featured = isFeatured(img.id);
-                      const featured2 = isFeatured2(img.id);
-                      const cover = isCover(img.id);
-                      const isSelected = selected.has(img.id);
-                      return (
-                        <div
-                          key={img.id}
-                          className={`group relative cursor-pointer overflow-hidden rounded-xl border transition ${
+                <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5">
+                  {runImages.map((img) => {
+                    const featured = isFeatured(img.id);
+                    const featured2 = isFeatured2(img.id);
+                    const cover = isCover(img.id);
+                    const isSelected = selected.has(img.id);
+                    return (
+                      <div
+                        key={img.id}
+                        className={`group relative cursor-pointer overflow-hidden rounded-xl border transition ${
+                          isSelected
+                            ? "border-sky-400/50 ring-2 ring-sky-400/30"
+                            : img.status === "kept"
+                              ? "border-emerald-500/30 hover:border-sky-500/40"
+                              : "border-white/10 hover:border-sky-500/40"
+                        }`}
+                        onClick={() => openImageLightbox(img.id)}
+                      >
+                        {/* Checkbox */}
+                        <button
+                          onClick={(e) => toggleSelect(img.id, e)}
+                          className={`absolute left-1.5 top-1.5 z-10 flex size-5 items-center justify-center rounded border transition ${
                             isSelected
-                              ? "border-sky-400/50 ring-2 ring-sky-400/30"
-                              : img.status === "kept"
-                                ? "border-emerald-500/30 hover:border-sky-500/40"
-                                : "border-white/10 hover:border-sky-500/40"
+                              ? "border-sky-400 bg-sky-500 text-white"
+                              : "border-white/20 bg-black/30 text-transparent hover:border-white/40"
                           }`}
-                          onClick={() => openImageLightbox(img.id)}
                         >
-                          {/* Checkbox */}
-                          <button
-                            onClick={(e) => toggleSelect(img.id, e)}
-                            className={`absolute left-1.5 top-1.5 z-10 flex size-5 items-center justify-center rounded border transition ${
-                              isSelected
-                                ? "border-sky-400 bg-sky-500 text-white"
-                                : "border-white/20 bg-black/30 text-transparent hover:border-white/40"
-                            }`}
-                          >
-                            <Check className="size-3" />
-                          </button>
+                          <Check className="size-3" />
+                        </button>
 
-                          {/* Featured markers */}
-                          {(featured || featured2 || cover) && (
-                            <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
-                              {featured && (
-                                <Star className="size-3.5 fill-amber-400 text-amber-400 drop-shadow" />
-                              )}
-                              {featured2 && (
-                                <Eye className="size-3.5 rounded-full bg-cyan-400/90 p-0.5 text-zinc-950 shadow" />
-                              )}
-                              {cover && (
-                                <ImageIcon className="size-3.5 rounded-full bg-violet-400/90 p-0.5 text-zinc-950 shadow" />
-                              )}
-                            </div>
-                          )}
+                        {/* Featured markers */}
+                        {(featured || featured2 || cover) && (
+                          <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
+                            {featured && (
+                              <Star className="size-3.5 fill-amber-400 text-amber-400 drop-shadow" />
+                            )}
+                            {featured2 && (
+                              <Eye className="size-3.5 rounded-full bg-cyan-400/90 p-0.5 text-zinc-950 shadow" />
+                            )}
+                            {cover && (
+                              <ImageIcon className="size-3.5 rounded-full bg-violet-400/90 p-0.5 text-zinc-950 shadow" />
+                            )}
+                          </div>
+                        )}
 
-                          {/* Censored badge */}
-                          {img.censoredAt && (
-                            <div className="absolute bottom-5 right-1.5">
-                              <Shield className="size-3.5 text-amber-400 drop-shadow" />
-                            </div>
-                          )}
+                        {/* Censored badge */}
+                        {img.censoredAt && (
+                          <div className="absolute bottom-5 right-1.5">
+                            <Shield className="size-3.5 text-amber-400 drop-shadow" />
+                          </div>
+                        )}
 
-                          <Image
-                            src={img.src}
-                            alt=""
-                            width={200}
-                            height={280}
-                            loading="lazy"
-                            className="aspect-[3/4] w-full object-cover"
-                            unoptimized
-                          />
+                        <Image
+                          src={img.src}
+                          alt=""
+                          width={200}
+                          height={280}
+                          loading="lazy"
+                          className="aspect-[3/4] w-full object-cover"
+                          unoptimized
+                        />
 
-                          {/* Status badges */}
-                          {img.status === "pending" && !isSelected && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-amber-500/80 py-0.5 text-center text-[8px] font-medium text-white">
-                              待审
-                            </div>
-                          )}
-                          {img.status === "kept" && !isSelected && (
-                            <div className="absolute bottom-0 left-0 right-0 bg-emerald-500/80 py-0.5 text-center text-[8px] font-medium text-white">
-                              保留
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                        {/* Status badges */}
+                        {img.status === "pending" && !isSelected && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-amber-500/80 py-0.5 text-center text-[8px] font-medium text-white">
+                            待审
+                          </div>
+                        )}
+                        {img.status === "kept" && !isSelected && (
+                          <div className="absolute bottom-0 left-0 right-0 bg-emerald-500/80 py-0.5 text-center text-[8px] font-medium text-white">
+                            保留
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
 
                 {/* Batch action buttons — one set per run */}
                 {runImages.length > 0 && (
@@ -537,6 +577,39 @@ export function ResultsGrid({
               </div>
             );
           })}
+
+          {emptyRuns.length > 0 && (
+            <details
+              data-empty-runs
+              className="rounded-xl border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-zinc-400"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-zinc-300 marker:hidden">
+                <span>无图片运行</span>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] text-zinc-500">
+                  {emptyRuns.length} 个
+                </span>
+              </summary>
+              <div className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                {emptyRuns.map((run) => (
+                  <HardNavigationLink
+                    key={run.id}
+                    href={`/queue/${run.id}`}
+                    className="flex min-w-0 items-center gap-2 rounded-lg border border-white/5 bg-black/10 px-2 py-1.5 text-[11px] text-zinc-500 transition hover:border-sky-500/20 hover:text-sky-300"
+                  >
+                    <span className="shrink-0 text-zinc-400">Run #{run.runIndex}</span>
+                    <span
+                      className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] ${
+                        RUN_STATUS_BADGE[run.status] ?? RUN_STATUS_BADGE.queued
+                      }`}
+                    >
+                      {run.status}
+                    </span>
+                    <span className="truncate">{run.createdAt}</span>
+                  </HardNavigationLink>
+                ))}
+              </div>
+            </details>
+          )}
 
         </div>
         );
