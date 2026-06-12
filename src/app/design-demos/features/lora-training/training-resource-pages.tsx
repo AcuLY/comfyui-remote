@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { ArrowDown, ArrowUp, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
 import { cx, demoHref } from "../../routing";
 import { Button, ButtonLink } from "../../shared/primitives/button";
+import { Checkbox } from "../../shared/primitives/checkbox";
 import { EmptyPage } from "../../shared/primitives/empty-page";
 import { Field } from "../../shared/primitives/field";
 import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { Panel } from "../../shared/primitives/panel";
 import { StatusBadge } from "../../shared/primitives/status-badge";
+import { FolderBreadcrumb, FolderRow, SelectionBatchBar, UnitRowShell } from "../../shared/patterns";
 import { buildLoraTrainingDemoData } from "./fixtures";
 import type { LoraTrainingPreset, LoraTrainingSectionBlock, LoraTrainingTemplate } from "./types";
 import s from "./training-resource-pages.module.css";
@@ -28,6 +31,19 @@ function findPreset(data: DemoData, presetId?: string) {
 function findTemplate(data: DemoData, templateId?: string) {
   const training = buildLoraTrainingDemoData(data);
   return training.templates.find((template) => template.id === templateId) ?? training.templates[0];
+}
+
+function uniquePresetCategories(presets: LoraTrainingPreset[]) {
+  return Array.from(new Set(presets.reduce<string[]>((items, preset) => [...items, preset.category], [])));
+}
+
+function uniquePresetFolders(presets: LoraTrainingPreset[]) {
+  return Array.from(new Set(presets.reduce<string[]>((items, preset) => [...items, preset.folder], [])));
+}
+
+function presetUsageLabel(preset: LoraTrainingPreset) {
+  const usageCount = preset.projectUsage.length + preset.templateUsage.length;
+  return usageCount > 0 ? `${usageCount} 处引用` : "未引用";
 }
 
 function TemplateSceneBlockCard({
@@ -58,7 +74,38 @@ function TemplateSceneBlockCard({
 
 export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
   const training = buildLoraTrainingDemoData(data);
-  const categories = [...new Set(training.presets.map((preset) => preset.category))];
+  const categories = uniquePresetCategories(training.presets);
+  const [activeCategory, setActiveCategory] = useState(categories[0] ?? "");
+  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [hiddenPresetIds, setHiddenPresetIds] = useState<Set<string>>(() => new Set());
+  const categoryPresets = training.presets.filter((preset) => preset.category === activeCategory && !hiddenPresetIds.has(preset.id));
+  const folders = uniquePresetFolders(categoryPresets);
+  const visiblePresets = categoryPresets.filter((preset) => !currentFolder || preset.folder === currentFolder);
+  const selectedCount = selectedIds.size;
+
+  function togglePresetSelection(presetId: string, checked: boolean) {
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      if (checked) next.add(presetId);
+      else next.delete(presetId);
+      return next;
+    });
+  }
+
+  function hidePreset(presetId: string) {
+    setHiddenPresetIds((previous) => new Set(previous).add(presetId));
+    setSelectedIds((previous) => {
+      const next = new Set(previous);
+      next.delete(presetId);
+      return next;
+    });
+  }
+
+  function hideSelectedPresets() {
+    setHiddenPresetIds((previous) => new Set([...previous, ...selectedIds]));
+    setSelectedIds(new Set());
+  }
 
   return (
     <div className={s.page}>
@@ -76,26 +123,108 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
       <div className={s.resourceLayout}>
         <aside className={s.resourceRail}>
           <strong>分类</strong>
-          {categories.map((category, index) => (
-            <button className={cx(index === 0 && s.railItemActive)} type="button" key={category}>
+          {categories.map((category) => (
+            <button
+              className={cx(activeCategory === category && s.railItemActive)}
+              type="button"
+              key={category}
+              onClick={() => {
+                setActiveCategory(category);
+                setCurrentFolder(null);
+                setSelectedIds(new Set());
+              }}
+            >
               <span>{category}</span>
-              <em>{training.presets.filter((preset) => preset.category === category).length}</em>
+              <em>{training.presets.filter((preset) => preset.category === category && !hiddenPresetIds.has(preset.id)).length}</em>
             </button>
           ))}
         </aside>
         <section className={s.resourceWorkspace}>
-          <div className={s.resourceGrid}>
-            {training.presets.map((preset, index) => (
-              <Link className={s.resourceRow} href={demoHref(`/training/presets/${preset.id}`)} key={preset.id}>
-                <GripVertical className={s.grip} aria-hidden="true" />
-                <div>
-                  <strong>{preset.title}</strong>
-                  <span>{String(index + 1).padStart(2, "0")} · {preset.category} / {preset.folder} · 更新 {preset.updatedAt}</span>
-                  <p>{preset.sceneDescriptionText}</p>
-                </div>
-                {presetStatus(preset)}
-              </Link>
-            ))}
+          <header className={s.trainingPresetWorkspaceHeader}>
+            <div>
+              <strong>{activeCategory || "训练预制"}</strong>
+              <span>{categoryPresets.length} 个 scene description · 当前文件夹 {currentFolder ?? "全部"}</span>
+            </div>
+            <Button size="sm" icon={Plus} feedback={{ title: "新建训练预制入口已预览", detail: activeCategory }}>新建到当前分类</Button>
+          </header>
+          <div className={s.trainingPresetContextBar}>
+            <FolderBreadcrumb
+              items={currentFolder ? [{ id: currentFolder, label: currentFolder }] : []}
+              onNavigate={setCurrentFolder}
+              rootLabel={activeCategory || "分类"}
+              size="sm"
+            />
+            <span>{visiblePresets.length} 个可见预制</span>
+          </div>
+          {selectedCount > 0 ? (
+            <SelectionBatchBar
+              className={s.trainingPresetBatchBar}
+              selectedCount={selectedCount}
+              subject="个训练预制"
+              onClear={() => setSelectedIds(new Set())}
+              actions={(
+                <Button size="sm" tone="danger" icon={Trash2} onClick={hideSelectedPresets} feedback={{ tone: "warning", title: "批量删除训练预制需要确认", detail: `${selectedCount} 项` }}>
+                  删除所选
+                </Button>
+              )}
+            />
+          ) : null}
+          <div className={s.trainingPresetLibrarySurface}>
+            {!currentFolder && folders.length > 0 ? (
+              <div className={s.trainingPresetFolderGrid}>
+                {folders.map((folder) => (
+                  <FolderRow
+                    key={folder}
+                    name={folder}
+                    countLabel={`${categoryPresets.filter((preset) => preset.folder === folder).length} 个预制`}
+                    onOpen={() => {
+                      setCurrentFolder(folder);
+                      setSelectedIds(new Set());
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null}
+            <div className={s.trainingPresetItemList}>
+              {visiblePresets.map((preset, index) => {
+                const selected = selectedIds.has(preset.id);
+
+                return (
+                  <UnitRowShell
+                    key={preset.id}
+                    className={s.trainingPresetItemFrame}
+                    selected={selected}
+                    dragHandle={<GripVertical className={s.grip} aria-hidden="true" />}
+                    leading={(
+                      <Checkbox
+                        checked={selected}
+                        label={`选择训练预制：${preset.title}`}
+                        onCheckedChange={(checked) => togglePresetSelection(preset.id, checked)}
+                        stopPropagation
+                        variant="compact"
+                      />
+                    )}
+                    title={<Link className={s.trainingPresetTitleLink} href={demoHref(`/training/presets/${preset.id}`)}>{preset.title}</Link>}
+                    description={<Link className={s.trainingPresetDescriptionLink} href={demoHref(`/training/presets/${preset.id}`)}>{preset.sceneDescriptionText}</Link>}
+                    body={(
+                      <div className={s.trainingPresetUsageChips}>
+                        <span>{String(index + 1).padStart(2, "0")}</span>
+                        <span>{preset.folder}</span>
+                        <span>{presetUsageLabel(preset)}</span>
+                      </div>
+                    )}
+                    meta={<div className={s.trainingPresetMeta}>{presetStatus(preset)}<span>更新 {preset.updatedAt}</span></div>}
+                    actions={(
+                      <div className={s.trainingPresetActions}>
+                        <ButtonLink href={`/training/presets/${preset.id}`} size="sm" icon={Edit3}>编辑</ButtonLink>
+                        <Button size="sm" tone="danger" icon={Trash2} iconOnly ariaLabel={`删除训练预制：${preset.title}`} onClick={() => hidePreset(preset.id)} feedback={{ tone: "warning", title: "删除训练预制需要确认", detail: preset.title }} />
+                      </div>
+                    )}
+                  />
+                );
+              })}
+            </div>
+            {visiblePresets.length === 0 ? <div className={s.emptyInline}>当前分类或文件夹没有训练预制</div> : null}
           </div>
         </section>
       </div>
