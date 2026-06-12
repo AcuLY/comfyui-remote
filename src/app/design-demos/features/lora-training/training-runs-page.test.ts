@@ -35,6 +35,16 @@ test("failed training runs can be retried in local front-end state", () => {
   assert.match(pageSource, /已排队重试/, "retried rows should show queued-retry status");
 });
 
+test("failed training run rows use a structured failure block instead of single-line text", () => {
+  assert.match(pageSource, /TrainingRunFailureBlock/, "failed run rows should render a dedicated failure block");
+  assert.match(pageSource, /run\.errorMessage \?\?/, "failed run rows should derive a fallback error message");
+  assert.match(pageSource, /copyRunMessage/, "failed run rows should expose a local copy action for the error");
+  assert.doesNotMatch(pageSource, /className=\{s\.runError\}/, "failed run rows should not keep errors as a single inline text span");
+  assert.match(cssSource, /\.runRowFailed\b/, "failed run rows should have a dedicated grid layout");
+  assert.match(cssSource, /\.runSecondary\b/, "failed run rows should have a secondary failure area");
+  assert.match(cssSource, /\.runFailureToolbar\b/, "failed run rows should keep copy and retry actions in a compact toolbar");
+});
+
 test("training run delete actions remove runs locally instead of previewing a placeholder", () => {
   assert.match(pageSource, /hiddenRunIds/, "runs page should track locally removed runs");
   assert.match(pageSource, /hideRuns/, "runs page should define a shared local delete handler");

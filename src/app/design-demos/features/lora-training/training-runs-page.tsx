@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckSquare, ChevronDown, Clock3, RotateCcw, X } from "lucide-react";
+import { CheckSquare, ChevronDown, CircleAlert, Clock3, Copy, RotateCcw, X } from "lucide-react";
 
 import type { DemoData } from "../../data";
 import { cx, demoHref } from "../../routing";
@@ -59,6 +59,23 @@ function statusBadge(run: LoraTrainingRun) {
   if (run.status === "running") return <StatusBadge status="running" label="生成中" />;
   if (run.status === "queued") return <StatusBadge status="pending" label="排队中" />;
   return <StatusBadge status="failed" label="需处理" />;
+}
+
+function copyRunMessage(message: string) {
+  if (typeof navigator === "undefined" || !navigator.clipboard) return;
+  void navigator.clipboard.writeText(message).catch(() => undefined);
+}
+
+function TrainingRunFailureBlock({ message }: { message: string }) {
+  return (
+    <div className={s.runFailureBlock} role="status">
+      <div className={s.runFailureHeader}>
+        <CircleAlert className={s.icon} aria-hidden="true" />
+        <span>失败原因</span>
+      </div>
+      <p>{message}</p>
+    </div>
+  );
 }
 
 function CurrentRunningSurface({ runs }: { runs: LoraTrainingRun[] }) {
@@ -295,9 +312,10 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                           const selected = selectedIds.has(run.id);
                           const retried = retriedRunIds.has(run.id);
                           const previewImages = runPreviewImages(run, training.projects);
+                          const errorMessage = run.errorMessage ?? "模型服务返回空结果或连接超时";
 
                           return (
-                            <div className={cx(s.runRow, selected && s.runRowSelected)} data-training-run-id={run.id} key={run.id}>
+                            <div className={cx(s.runRow, run.status === "failed" && !retried && s.runRowFailed, selected && s.runRowSelected)} data-training-run-id={run.id} key={run.id}>
                               <Checkbox
                                 checked={selected}
                                 label={selected ? `取消选择任务：${run.title}` : `选择任务：${run.title}`}
@@ -318,7 +336,6 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                       <span>约 {run.progress}%</span>
                                     </span>
                                   ) : null}
-                                  {run.errorMessage ? <span className={s.runError}>{run.errorMessage}</span> : null}
                                 </span>
                                 {previewImages.length > 0 ? (
                                   <ImageListSmall
@@ -329,20 +346,39 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                   />
                                 ) : null}
                               </Link>
-                              <div className={s.rowActions}>
-                                {retried ? <StatusBadge status="pending" label="已排队重试" /> : statusBadge(run)}
-                                {run.status === "failed" ? (
-                                  retried ? null : (
-                                    <Button
-                                      icon={RotateCcw}
-                                      iconOnly
-                                      size="sm"
-                                      ariaLabel={`重试任务：${run.title}`}
-                                      onClick={() => retryRuns([run.id])}
-                                      feedback={{ title: "重试已排队", detail: run.title }}
-                                    />
-                                  )
+                              {run.status === "failed" ? (
+                                retried ? (
+                                  <div className={s.rowActions}>
+                                    <StatusBadge status="pending" label="已排队重试" />
+                                  </div>
                                 ) : (
+                                  <div className={s.runSecondary}>
+                                    <TrainingRunFailureBlock message={errorMessage} />
+                                    <div className={cx(s.rowActions, s.runFailureToolbar)}>
+                                      <Button
+                                        tone="subtle"
+                                        icon={Copy}
+                                        size="sm"
+                                        onClick={() => copyRunMessage(errorMessage)}
+                                        feedback={{ title: "报错已复制", detail: errorMessage }}
+                                      >
+                                        复制
+                                      </Button>
+                                      <Button
+                                        tone="subtle"
+                                        icon={RotateCcw}
+                                        size="sm"
+                                        onClick={() => retryRuns([run.id])}
+                                        feedback={{ title: "重试已排队", detail: run.title }}
+                                      >
+                                        重试
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )
+                              ) : (
+                                <div className={s.rowActions}>
+                                  {statusBadge(run)}
                                   <Button
                                     icon={X}
                                     iconOnly
@@ -352,8 +388,8 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                     onClick={() => hideRuns([run.id])}
                                     feedback={{ tone: "warning", title: "任务已从列表移除", detail: run.title }}
                                   />
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}

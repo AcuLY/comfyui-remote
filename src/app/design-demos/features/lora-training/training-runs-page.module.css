@@ -379,6 +379,29 @@
   box-shadow: 3px 0 0 var(--demo-green) inset;
 }
 
+.runRowFailed {
+  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-areas:
+    "check body"
+    ". secondary";
+  align-items: start;
+  gap: 9px 12px;
+  padding-block: 14px;
+}
+
+.runRowFailed > :first-child {
+  grid-area: check;
+  margin-top: 2px;
+}
+
+.runRowFailed > .runMain {
+  grid-area: body;
+}
+
+.runRowFailed > .runSecondary {
+  grid-area: secondary;
+}
+
 .runRow:last-child {
   border-bottom: 0;
 }
@@ -391,6 +414,15 @@
   .runRows .runRow {
     border-right: 1px solid var(--demo-border);
     border-bottom: 1px solid var(--demo-border);
+  }
+
+  .runRows .runRowFailed {
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-areas:
+      "check body"
+      ". secondary";
+    align-items: start;
+    padding-block: 15px;
   }
 
   .runRows .runRow:nth-child(2n) {
@@ -485,14 +517,60 @@
   font-size: 10px;
 }
 
-.runError {
-  display: block;
-  overflow: hidden;
+.runSecondary {
+  display: grid;
+  min-width: 0;
+  gap: 9px;
+  border: 1px solid color-mix(in srgb, var(--demo-red) 18%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--demo-red-soft) 30%, var(--demo-field-bg));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--demo-red) 10%, transparent);
+  padding: 10px;
+}
+
+.runFailureBlock {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: var(--demo-red);
+}
+
+.runFailureHeader {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--demo-red);
+  font-size: 10px;
+  font-weight: 680;
+  letter-spacing: 0.04em;
+}
+
+.runFailureHeader .icon {
+  width: 13px;
+  height: 13px;
+}
+
+.runFailureBlock p {
+  min-width: 0;
+  margin: 0;
   color: var(--demo-red);
   font-size: 11px;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.runFailureToolbar {
+  justify-content: flex-start;
+}
+
+.runFailureToolbar :where([data-demo-ui-button="true"]) {
+  width: auto;
+  min-width: 0;
+  height: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+  padding: 5px 9px;
 }
 
 .runThumbs {
@@ -597,6 +675,15 @@
     grid-template-columns: 28px minmax(0, 1fr) auto;
     align-items: center;
     gap: 9px;
+    padding: 12px;
+  }
+
+  .runRowFailed {
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-areas:
+      "check body"
+      ". secondary";
+    align-items: start;
     padding: 12px;
   }
 
