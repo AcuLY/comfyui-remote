@@ -29,6 +29,14 @@ test("training list surfaces expand to two columns when there is enough width", 
   assert.ok(hasResponsiveColumns(resourcesCss, "usageList"), "Preset/template usage lists should use responsive two-column rows");
 });
 
+test("training run list uses the same two-column breakpoint as the generation queue demo", () => {
+  assert.match(
+    runsCss,
+    /@container\s*\(min-width:\s*520px\)\s*\{[\s\S]*?\.runRows\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "Training run groups should expand at the queue-demo 520px container breakpoint",
+  );
+});
+
 test("sortable training resource lists use ancestor surfaces for container queries", () => {
   assert.match(
     resourcesCss,
