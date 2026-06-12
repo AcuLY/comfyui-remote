@@ -973,25 +973,27 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
           )}
         />
       ) : null}
-      <div className={s.trainingTemplateList} ref={listRef}>
-        <SortableList items={visibleTemplateIds} onReorder={handleReorderTemplates}>
-          {visibleTemplates.map((template) => (
-            <TrainingTemplateListItem
-              createProjectHref={createProjectFromTemplateHref(template)}
-              key={template.id}
-              onDelete={() => hideTemplate(template.id)}
-              onToggleSelected={() => toggleTemplateSelection(template.id)}
-              selected={selectedTemplateIds.has(template.id)}
-              template={template}
-            />
-          ))}
-        </SortableList>
-        {visibleTemplates.length === 0 ? (
-          <div className={s.emptyInline}>
-            <strong>暂无训练模板</strong>
-            <span>当前本地视图里的模板都已移除，可通过新建模板重新开始。</span>
-          </div>
-        ) : null}
+      <div className={s.trainingTemplateListSurface}>
+        <div className={s.trainingTemplateList} ref={listRef}>
+          <SortableList items={visibleTemplateIds} onReorder={handleReorderTemplates}>
+            {visibleTemplates.map((template) => (
+              <TrainingTemplateListItem
+                createProjectHref={createProjectFromTemplateHref(template)}
+                key={template.id}
+                onDelete={() => hideTemplate(template.id)}
+                onToggleSelected={() => toggleTemplateSelection(template.id)}
+                selected={selectedTemplateIds.has(template.id)}
+                template={template}
+              />
+            ))}
+          </SortableList>
+          {visibleTemplates.length === 0 ? (
+            <div className={s.emptyInline}>
+              <strong>暂无训练模板</strong>
+              <span>当前本地视图里的模板都已移除，可通过新建模板重新开始。</span>
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

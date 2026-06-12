@@ -83,9 +83,14 @@ test("training preset library uses the shared managed-library row model", () => 
   assert.match(cssSource, /\.trainingPresetItemList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "training preset rows should expand to two columns");
 });
 
-test("training preset folder and item lists share the responsive two-column layout", () => {
-  const responsiveListBlock = cssSource.match(/@media \(min-width: 900px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+test("training preset folder and item lists share the container-driven two-column layout", () => {
+  const responsiveListBlock = cssSource.match(/@container \(min-width: 700px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
 
+  assert.match(
+    cssSource,
+    /\.trainingPresetLibrarySurface\s*\{[\s\S]*?container-type:\s*inline-size/,
+    "training preset library should query the actual workspace width",
+  );
   assert.match(responsiveListBlock, /\.trainingPresetFolderGrid\b/, "training preset folders should also expand at the library breakpoint");
   assert.match(responsiveListBlock, /\.trainingPresetItemList\b/, "training preset items should expand at the same breakpoint");
   assert.match(
