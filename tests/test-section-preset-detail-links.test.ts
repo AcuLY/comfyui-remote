@@ -34,6 +34,22 @@ function presetDetailHrefLinkBlock(source: string) {
   return block;
 }
 
+function jsxConstantSource(source: string, name: string) {
+  const start = source.indexOf(`const ${name} = (`);
+  assert.notEqual(start, -1, `${name} should exist`);
+  const bodyStart = source.indexOf("(", start);
+  assert.notEqual(bodyStart, -1, `${name} should have JSX content`);
+
+  let depth = 0;
+  for (let index = bodyStart; index < source.length; index += 1) {
+    if (source[index] === "(") depth += 1;
+    if (source[index] === ")") depth -= 1;
+    if (depth === 0) return source.slice(start, index + 1);
+  }
+
+  assert.fail(`${name} JSX content should close`);
+}
+
 test("project section preset group member rows split card and member preset links in the same tab", () => {
   const source = readSource(projectSectionEditorFile);
 
@@ -63,6 +79,17 @@ test("project section preset group member rows split card and member preset link
     "ordinary preset rows should not keep the old detail jump button condition",
   );
   assert.doesNotMatch(source, /target=["']_blank["']/, "project section links should navigate in the same tab");
+});
+
+test("project section preset variant selector stays outside the card detail link", () => {
+  const source = readSource(projectSectionEditorFile);
+  const rowSummary = jsxConstantSource(source, "rowSummary");
+  const cardLink = (source.match(/<Link\b[\s\S]*?href=\{cardHref\}[\s\S]*?<\/Link>/) ?? [])[0];
+
+  assert.ok(cardLink, "project section preset card detail Link should exist");
+  assert.match(cardLink, /\{rowSummary\}/, "card detail link should render the non-interactive row summary");
+  assert.doesNotMatch(rowSummary, /<select\b/, "variant selector should not be part of the row summary rendered inside the card detail link");
+  assert.doesNotMatch(cardLink, /<select\b/, "variant selector should not be nested in the card detail link");
 });
 
 test("template section preset binding detail links still use the shared manager target in the same tab", () => {

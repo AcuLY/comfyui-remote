@@ -621,31 +621,30 @@ export function SectionEditor({
                       {row.variantName}
                     </span>
                   )}
-                  {/* Variant switcher – show only if preset has multiple variants */}
-                  {canSwitchVariant && (
-                    <div className="relative">
-                      <select
-                        value={binding.variantId ?? ""}
-                        onChange={(e) => {
-                          if (e.target.value && e.target.value !== binding.variantId) {
-                            handleSwitchVariant(binding.bindingId, e.target.value);
-                          }
-                        }}
-                        disabled={isPending}
-                        className="appearance-none rounded border border-white/10 bg-white/[0.04] py-0.5 pl-1.5 pr-5 text-[10px] text-zinc-300 outline-none focus:border-sky-500/30 disabled:opacity-50"
-                      >
-                        {binding.availableVariants.map((v) => (
-                          <option key={v.id} value={v.id} className="bg-zinc-900">{v.name}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-zinc-500" />
-                    </div>
-                  )}
                   <span className="text-[9px] text-zinc-500">
                     {row.blockCount} 块 · {row.loraCount} LoRA
                   </span>
                 </>
               );
+              const variantSwitcher = canSwitchVariant ? (
+                <div className="relative shrink-0">
+                  <select
+                    value={binding.variantId ?? ""}
+                    onChange={(e) => {
+                      if (e.target.value && e.target.value !== binding.variantId) {
+                        handleSwitchVariant(binding.bindingId, e.target.value);
+                      }
+                    }}
+                    disabled={isPending}
+                    className="appearance-none rounded border border-white/10 bg-white/[0.04] py-0.5 pl-1.5 pr-5 text-[10px] text-zinc-300 outline-none focus:border-sky-500/30 disabled:opacity-50"
+                  >
+                    {binding.availableVariants.map((v) => (
+                      <option key={v.id} value={v.id} className="bg-zinc-900">{v.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-1 top-1/2 size-2.5 -translate-y-1/2 text-zinc-500" />
+                </div>
+              ) : null;
 
               return (
                 <div
@@ -654,19 +653,22 @@ export function SectionEditor({
                     cardHref ? "transition hover:border-sky-500/20 hover:bg-white/[0.04]" : ""
                   }`}
                 >
-                  {cardHref ? (
-                    <Link
-                      href={cardHref}
-                      className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5"
-                      title={cardTitle}
-                    >
-                      {rowSummary}
-                    </Link>
-                  ) : (
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                      {rowSummary}
-                    </div>
-                  )}
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    {cardHref ? (
+                      <Link
+                        href={cardHref}
+                        className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5"
+                        title={cardTitle}
+                      >
+                        {rowSummary}
+                      </Link>
+                    ) : (
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        {rowSummary}
+                      </div>
+                    )}
+                    {variantSwitcher}
+                  </div>
                   <div className="flex shrink-0 items-center gap-0.5">
                     {memberPresetHref && (
                       <Link
