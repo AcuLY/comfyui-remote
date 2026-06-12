@@ -114,6 +114,41 @@
   line-height: 1.1;
 }
 
+.createdProjectDraft {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.createdProjectDraft div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  padding: 10px 12px;
+}
+
+.createdProjectDraft dt {
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-weight: 640;
+}
+
+.createdProjectDraft dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .bodyText {
   margin: 0;
   color: var(--demo-muted);
@@ -1078,6 +1113,7 @@
   }
 
   .readinessSummary,
+  .createdProjectDraft,
   .referenceImageGrid,
   .trainingResultGrid {
     grid-template-columns: 1fr;

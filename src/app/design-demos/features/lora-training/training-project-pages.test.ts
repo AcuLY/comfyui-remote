@@ -213,3 +213,21 @@ test("training project create page manages initial section seeds locally", () =>
   assert.match(formSource, /handleCopySeedSection\(section\)/, "copy button should call the seed copy handler");
   assert.match(formSource, /handleDeleteSeedSection\(section\.id\)/, "delete button should call the seed delete handler");
 });
+
+test("training project create page creates a local front-end draft instead of previewing a backend placeholder", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /createdProjectDraft/, "project creation should expose a local created draft summary");
+  assert.match(formSource, /setCreatedProjectDraft/, "project creation should update local state when created");
+  assert.match(formSource, /handleCreateProjectDraft/, "project creation should define a local create handler");
+  assert.match(formSource, /onClick=\{handleCreateProjectDraft\}/, "create button should call the local create handler");
+  assert.match(formSource, /createdProjectDraft \? "更新项目草稿" : "创建项目"/, "create action should visibly switch to updating the local draft");
+  assert.match(formSource, /创建结果/, "project creation should render a visible created-draft result panel");
+  assert.match(formSource, /sectionSeeds\.length/, "created draft should reflect the current local seed section count");
+  assert.doesNotMatch(formSource, /POST \/api\/training\/projects/, "project creation should not advertise missing backend wiring in the UI");
+});

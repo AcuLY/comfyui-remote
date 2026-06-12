@@ -476,6 +476,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   const training = useTraining(data);
   const selectedTemplate = training.templates[0];
   const baseModelOptions = data.models.filter((model) => model.modelType === "checkpoint").map((model) => model.name);
+  const projectDraftTitle = "新角色 LoRA 项目";
+  const selectedBaseModel = baseModelOptions[0] ?? "继承训练默认模型";
   const referenceSourceTree: ReferenceSourceGroup[] = [
     {
       id: "existing-training-projects",
@@ -516,6 +518,13 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   ].filter((group) => group.items.length > 0);
   const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
   const [sectionSeeds, setSectionSeeds] = useState(() => selectedTemplate?.sections ?? []);
+  const [createdProjectDraft, setCreatedProjectDraft] = useState<{
+    baseModel: string;
+    enabledSectionCount: number;
+    sectionCount: number;
+    templateTitle: string;
+    title: string;
+  } | null>(null);
   const activePreviewReference = previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
 
   function handleCopySeedSection(section: LoraTrainingTemplateSeedSection) {
@@ -536,6 +545,16 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     setSectionSeeds((current) => current.filter((section) => section.id !== sectionId));
   }
 
+  function handleCreateProjectDraft() {
+    setCreatedProjectDraft({
+      baseModel: selectedBaseModel,
+      enabledSectionCount: sectionSeeds.filter((section) => section.enabled).length,
+      sectionCount: sectionSeeds.length,
+      templateTitle: selectedTemplate?.title ?? "不使用模板",
+      title: projectDraftTitle,
+    });
+  }
+
   return (
     <div className={s.page}>
       <PageHeader
@@ -543,15 +562,24 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
         eyebrow="LoRA 训练"
         title="新建训练项目"
         subtitle="选择模板、填写角色资料，并创建初始小节。模板只作为 seed，创建后不会 live 回写。"
-        actions={<Button tone="primary" icon={Save} feedback={{ title: "训练项目已创建", detail: "后续接入 POST /api/training/projects" }}>创建项目</Button>}
+        actions={(
+          <Button
+            tone="primary"
+            icon={Save}
+            onClick={handleCreateProjectDraft}
+            feedback={{ title: createdProjectDraft ? "项目草稿已更新" : "训练项目草稿已创建", detail: projectDraftTitle }}
+          >
+            {createdProjectDraft ? "更新项目草稿" : "创建项目"}
+          </Button>
+        )}
       />
       <div className={s.projectCreateWorkspace}>
         <div className={s.projectCreateMain}>
           <Panel title="项目基础信息" subtitle="沿用项目表单骨架，但这里只写训练项目 seed 数据。">
             <div className={s.formStack}>
-              <Field label="项目名称" value="新角色 LoRA 项目" />
+              <Field label="项目名称" value={projectDraftTitle} />
               <FloatingSelect label="从模板创建" value={selectedTemplate?.title ?? "不使用模板"} options={["不使用模板", ...training.templates.map((template) => template.title)]} />
-              <FloatingSelect label="基础模型" value={baseModelOptions[0] ?? "继承训练默认模型"} options={["继承训练默认模型", ...baseModelOptions]} />
+              <FloatingSelect label="基础模型" value={selectedBaseModel} options={["继承训练默认模型", ...baseModelOptions]} />
               <Field multiline features={{ resize: true, clipboard: true }} label="角色使用提示词" value="角色触发词、服装和稳定身份描述。" />
               <Field multiline features={{ resize: true, clipboard: true }} label="角色细节描述" value="发型、眼睛、服装材质、常见构图和需要避免的变化。" />
             </div>
@@ -592,6 +620,16 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
               <Field label="训练步数草稿" value={2400} />
             </div>
           </Panel>
+          {createdProjectDraft ? (
+            <Panel title="创建结果" subtitle="页面内已生成训练项目草稿，可继续调整后更新。">
+              <dl className={s.createdProjectDraft}>
+                <div><dt>项目</dt><dd>{createdProjectDraft.title}</dd></div>
+                <div><dt>模板</dt><dd>{createdProjectDraft.templateTitle}</dd></div>
+                <div><dt>基础模型</dt><dd>{createdProjectDraft.baseModel}</dd></div>
+                <div><dt>初始小节</dt><dd>{createdProjectDraft.enabledSectionCount} / {createdProjectDraft.sectionCount} 启用</dd></div>
+              </dl>
+            </Panel>
+          ) : null}
         </aside>
       </div>
     </div>
