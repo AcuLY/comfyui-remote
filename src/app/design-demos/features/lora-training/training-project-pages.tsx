@@ -584,6 +584,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     },
   ].filter((group) => group.items.length > 0);
   const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<Set<string>>(new Set());
   const [sectionSeeds, setSectionSeeds] = useState(() => initialTemplate?.sections ?? []);
   const [trainingDefaults, setTrainingDefaults] = useState({
     autoFreezeDataset: true,
@@ -597,6 +598,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     detailPrompt: string;
     enabledSectionCount: number;
     perSectionImageCount: string;
+    selectedReferenceCount: number;
+    selectedReferenceTitles: string[];
     sectionCount: number;
     templateTitle: string;
     title: string;
@@ -604,6 +607,10 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     usagePrompt: string;
   } | null>(null);
   const activePreviewReference = previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
+  const selectedProjectReferences = referenceSourceTree
+    .flatMap((group) => group.items)
+    .filter((candidate) => selectedReferenceIds.has(candidate.id));
+  const selectedReferenceTitles = selectedProjectReferences.map((reference) => reference.title);
 
   function handleUpdateProjectForm(field: keyof typeof projectForm, value: string) {
     setProjectForm((current) => ({ ...current, [field]: value }));
@@ -639,6 +646,10 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     )));
   }
 
+  function handleAddProjectReference(candidate: ReferenceCandidate) {
+    setSelectedReferenceIds((current) => new Set([...current, candidate.id]));
+  }
+
   function handleCreateProjectDraft() {
     setCreatedProjectDraft({
       autoFreezeDataset: trainingDefaults.autoFreezeDataset,
@@ -648,6 +659,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
       detailPrompt: projectForm.detailPrompt,
       enabledSectionCount: sectionSeeds.filter((section) => section.enabled).length,
       perSectionImageCount: projectForm.perSectionImageCount,
+      selectedReferenceCount: selectedProjectReferences.length,
+      selectedReferenceTitles,
       sectionCount: sectionSeeds.length,
       templateTitle: projectForm.templateTitle,
       title: projectForm.title,
@@ -687,11 +700,13 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
           </Panel>
           <Panel title="参考资料" subtitle="先预览引用来源，再显式加入新项目资料。">
             <ReferencePicker
-              referenceSourceTree={referenceSourceTree}
-              previewReference={activePreviewReference}
-              onPreviewReference={setPreviewReference}
-            />
-          </Panel>
+                referenceSourceTree={referenceSourceTree}
+                previewReference={activePreviewReference}
+                onPreviewReference={setPreviewReference}
+                onAddReference={handleAddProjectReference}
+                selectedReferenceIds={selectedReferenceIds}
+              />
+            </Panel>
         </div>
         <aside className={s.projectCreateAside}>
           <Panel title="初始小节" subtitle="模板小节只是创建时 seed，创建后独立管理。">
@@ -738,12 +753,14 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
                 <div><dt>项目</dt><dd>{createdProjectDraft.title}</dd></div>
                 <div><dt>模板</dt><dd>{createdProjectDraft.templateTitle}</dd></div>
                 <div><dt>基础模型</dt><dd>{createdProjectDraft.baseModel}</dd></div>
+                <div><dt>参考资料</dt><dd>{createdProjectDraft.selectedReferenceCount} 个</dd></div>
                 <div><dt>初始小节</dt><dd>{createdProjectDraft.enabledSectionCount} / {createdProjectDraft.sectionCount} 启用</dd></div>
                 <div><dt>每小节图片</dt><dd>{createdProjectDraft.perSectionImageCount}</dd></div>
                 <div><dt>训练步数</dt><dd>{createdProjectDraft.trainingSteps}</dd></div>
                 <div><dt>Caption 策略</dt><dd>{createdProjectDraft.captionStrategy}</dd></div>
                 <div><dt>自动生成样本</dt><dd>{createdProjectDraft.autoGenerateSamples ? "开启" : "关闭"}</dd></div>
                 <div><dt>自动冻结数据集</dt><dd>{createdProjectDraft.autoFreezeDataset ? "开启" : "关闭"}</dd></div>
+                <div className={s.createdProjectDraftWide}><dt>已选资料</dt><dd>{createdProjectDraft.selectedReferenceTitles.join("、") || "未添加资料"}</dd></div>
                 <div className={s.createdProjectDraftWide}><dt>使用提示词</dt><dd>{createdProjectDraft.usagePrompt}</dd></div>
                 <div className={s.createdProjectDraftWide}><dt>角色细节</dt><dd>{createdProjectDraft.detailPrompt}</dd></div>
               </dl>

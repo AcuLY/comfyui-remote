@@ -351,6 +351,24 @@ test("training project create page creates a local front-end draft instead of pr
   assert.doesNotMatch(formSource, /POST \/api\/training\/projects/, "project creation should not advertise missing backend wiring in the UI");
 });
 
+test("training project create page carries selected references into the local draft", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /selectedReferenceIds/, "project creation should own selected reference state");
+  assert.match(formSource, /setSelectedReferenceIds/, "project creation should update selected references locally");
+  assert.match(formSource, /selectedProjectReferences/, "project creation should resolve selected reference objects");
+  assert.match(formSource, /selectedReferenceTitles/, "created draft should store selected reference titles");
+  assert.match(formSource, /selectedReferenceCount/, "created draft summary should expose selected reference count");
+  assert.match(formSource, /handleAddProjectReference/, "project creation should define a reference add handler");
+  assert.match(formSource, /onAddReference=\{handleAddProjectReference\}/, "reference picker add action should update project form state");
+  assert.match(formSource, /selectedReferenceIds=\{selectedReferenceIds\}/, "reference picker should receive selected ids from project form state");
+});
+
 test("training project create page training default switches feed into the local draft", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
