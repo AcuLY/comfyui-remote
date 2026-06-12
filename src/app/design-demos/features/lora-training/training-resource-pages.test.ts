@@ -28,3 +28,25 @@ test("training preset library uses the shared managed-library row model", () => 
   assert.match(cssSource, /\.trainingPresetLibrarySurface\b/, "training presets should have a dedicated library surface");
   assert.match(cssSource, /\.trainingPresetItemList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "training preset rows should expand to two columns");
 });
+
+test("training template form uses the shared template editor workspace model", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(rowStart, -1);
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+  const formWithRowSource = pageSource.slice(rowStart, sectionStart);
+
+  assert.match(formSource, /WorkbenchSurface/, "template form should use the shared workbench surface");
+  assert.match(formSource, /EditorBlock/, "template form should use editor blocks instead of generic panels");
+  assert.match(formSource, /OperationStateStrip/, "template form should expose save/sort operation state");
+  assert.match(formWithRowSource, /GripVertical/, "template section rows should expose drag handles");
+  assert.match(formWithRowSource, /Copy/, "template section rows should expose copy actions");
+  assert.match(formWithRowSource, /Trash2/, "template section rows should expose delete actions");
+  assert.doesNotMatch(formSource, /className=\{s\.usageRow\}/, "template form should not use generic usage rows for editable sections");
+  assert.match(cssSource, /\.trainingTemplateEditorSurface\b/, "template form should have a dedicated editor surface");
+  assert.match(cssSource, /\.trainingTemplateSectionList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "template sections should expand to two columns");
+});

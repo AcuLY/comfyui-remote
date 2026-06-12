@@ -6,6 +6,7 @@ import { ArrowDown, ArrowUp, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle,
 
 import type { DemoData } from "../../data";
 import { cx, demoHref } from "../../routing";
+import { OperationStateStrip } from "../../shared/feedback/operation-state-strip";
 import { Button, ButtonLink } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
 import { EmptyPage } from "../../shared/primitives/empty-page";
@@ -14,7 +15,7 @@ import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { Panel } from "../../shared/primitives/panel";
 import { StatusBadge } from "../../shared/primitives/status-badge";
-import { FolderBreadcrumb, FolderRow, SelectionBatchBar, UnitRowShell } from "../../shared/patterns";
+import { EditorBlock, FolderBreadcrumb, FolderRow, SelectionBatchBar, UnitRowShell, WorkbenchSurface } from "../../shared/patterns";
 import { buildLoraTrainingDemoData } from "./fixtures";
 import type { LoraTrainingPreset, LoraTrainingSectionBlock, LoraTrainingTemplate } from "./types";
 import s from "./training-resource-pages.module.css";
@@ -315,6 +316,41 @@ function templateStatus(template: LoraTrainingTemplate) {
   return template.status === "active" ? <StatusBadge status="ready" label="可用" /> : <StatusBadge status="archived" label="归档" />;
 }
 
+function TemplateEditorSectionRow({
+  index,
+  section,
+  templateId,
+}: {
+  index: number;
+  section: LoraTrainingTemplate["sections"][number];
+  templateId: string;
+}) {
+  const href = `/training/templates/${templateId}/sections/${index}`;
+
+  return (
+    <article className={s.trainingTemplateSectionRow}>
+      <Button className={s.trainingTemplateSectionHandle} icon={GripVertical} iconOnly tone="subtle" ariaLabel={`拖拽排序模板小节：${section.title}`} />
+      <Link className={s.trainingTemplateSectionMain} href={demoHref(href)}>
+        <span className={s.trainingTemplateSectionTitleLine}>
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          <strong>{section.title}</strong>
+        </span>
+        <p>{section.scenePreview}</p>
+        <div className={s.trainingTemplateSectionMeta}>
+          <span>{section.blockCount} 个场景块</span>
+          <span>{section.enabled ? "启用" : "停用"}</span>
+          <span>创建后独立</span>
+        </div>
+      </Link>
+      <div className={s.trainingTemplateSectionActions}>
+        <ButtonLink href={href} icon={Edit3}>编辑</ButtonLink>
+        <Button tone="subtle" icon={CopyPlus} feedback={{ title: "训练模板小节已复制", detail: section.title }}>复制</Button>
+        <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "删除训练模板小节需要确认", detail: section.title }}>删除</Button>
+      </div>
+    </article>
+  );
+}
+
 export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
   const training = buildLoraTrainingDemoData(data);
 
@@ -360,8 +396,12 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
 }
 
 export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data: DemoData; mode: "new" | "edit"; templateId?: string }) {
+  const training = buildLoraTrainingDemoData(data);
   const template = mode === "edit" ? findTemplate(data, templateId) : undefined;
+  const seedTemplate = template ?? training.templates[0];
   const title = mode === "new" ? "新建训练模板" : template?.title ?? "训练模板";
+  const templateEditorId = seedTemplate?.id ?? "new-template";
+  const templateSections = seedTemplate?.sections ?? [];
 
   return (
     <div className={s.page}>
@@ -372,26 +412,42 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
         subtitle="编辑 project-level guidance、section settings、preset/local blocks。"
         actions={<Button tone="primary" icon={Save} feedback={{ title: mode === "new" ? "训练模板已创建" : "训练模板已保存" }}>{mode === "new" ? "创建模板" : "保存模板"}</Button>}
       />
-      <div className={s.twoCol}>
-        <Panel title="模板信息">
-          <div className={s.stack}>
-            <Field label="名称" value={template?.title ?? "新角色 LoRA 模板"} />
-            <Field multiline features={{ resize: true, clipboard: true }} label="描述" value={template?.description ?? "用于新角色 LoRA 训练项目的起始模板。"} />
-            <Field multiline features={{ resize: true, clipboard: true }} label="图片提示词指引" value="每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。" />
-            <Field multiline features={{ resize: true, clipboard: true }} label="Caption 生成指引" value="先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。" />
-          </div>
-        </Panel>
-        <Panel title="小节配置" actions={<Button icon={Plus} feedback="小节草稿已添加">添加小节</Button>}>
-          <div className={s.usageList}>
-            {(template?.sections ?? buildLoraTrainingDemoData(data).templates[0]?.sections ?? []).map((section, index) => (
-              <Link className={s.usageRow} href={demoHref(`/training/templates/${template?.id ?? "new-template"}/sections/${index}`)} key={section.id}>
-                <strong>{section.title}</strong>
-                <span>{section.blockCount} 个场景块 · {section.scenePreview}</span>
-              </Link>
+      <WorkbenchSurface className={s.trainingTemplateEditorSurface}>
+        <EditorBlock
+          actions={<StatusBadge status={mode === "new" ? "queued" : "ready"} label={mode === "new" ? "草稿" : "已保存"} />}
+          className={s.trainingTemplateEditorBlock}
+          contentClassName={s.trainingTemplateFormGrid}
+          description="模板只作为创建训练项目时的 seed，创建后项目不会 live 回写模板。"
+          headerClassName={s.trainingTemplateEditorHeader}
+          title="模板信息"
+        >
+          <Field label="名称" value={seedTemplate?.title ?? "新角色 LoRA 模板"} />
+          <Field multiline features={{ resize: true, clipboard: true }} label="描述" value={seedTemplate?.description ?? "用于新角色 LoRA 训练项目的起始模板。"} />
+          <Field multiline features={{ resize: true, clipboard: true }} label="图片提示词指引" value="每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。" />
+          <Field multiline features={{ resize: true, clipboard: true }} label="Caption 生成指引" value="先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。" />
+        </EditorBlock>
+        <EditorBlock
+          actions={<Button icon={Plus} feedback="小节草稿已添加">添加小节</Button>}
+          className={s.trainingTemplateEditorBlock}
+          contentClassName={s.trainingTemplateSectionBlockContent}
+          description="排序、编辑、复制、删除；每个小节包含预制块与本地块。"
+          headerClassName={s.trainingTemplateEditorHeader}
+          title="小节配置"
+        >
+          <div className={s.trainingTemplateSectionList}>
+            {templateSections.map((section, index) => (
+              <TemplateEditorSectionRow index={index} key={section.id} section={section} templateId={templateEditorId} />
             ))}
           </div>
-        </Panel>
-      </div>
+          <OperationStateStrip
+            items={[
+              { label: "排序", value: "拖拽释放后保存", tone: "info" },
+              { label: "保存队列", value: mode === "new" ? "待创建" : "空", tone: mode === "new" ? "warning" : "success" },
+              { label: "校验", value: "通过", tone: "success" },
+            ]}
+          />
+        </EditorBlock>
+      </WorkbenchSurface>
     </div>
   );
 }

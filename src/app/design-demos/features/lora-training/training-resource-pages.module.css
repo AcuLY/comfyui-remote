@@ -380,6 +380,193 @@
   gap: 6px;
 }
 
+.trainingTemplateEditorSurface {
+  display: grid;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.trainingTemplateEditorBlock {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  padding: 12px;
+}
+
+.trainingTemplateEditorHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 9px;
+}
+
+.trainingTemplateEditorHeader > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.trainingTemplateEditorHeader strong {
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.trainingTemplateEditorHeader > div > span {
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.trainingTemplateFormGrid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trainingTemplateSectionBlockContent,
+.trainingTemplateSectionList,
+.trainingTemplateSectionMain {
+  display: grid;
+  min-width: 0;
+}
+
+.trainingTemplateSectionBlockContent {
+  container-type: inline-size;
+  gap: 10px;
+}
+
+.trainingTemplateSectionList {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+@container (min-width: 520px) {
+  .trainingTemplateSectionList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+.trainingTemplateSectionRow {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  padding: 9px;
+}
+
+.trainingTemplateSectionRow:hover {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+}
+
+.trainingTemplateSectionHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
+  width: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--demo-faint);
+  cursor: grab;
+  padding: 0;
+}
+
+.trainingTemplateSectionMain {
+  gap: 7px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.trainingTemplateSectionMain:hover,
+.trainingTemplateSectionMain:focus-visible {
+  color: var(--demo-green);
+  outline: none;
+}
+
+.trainingTemplateSectionTitleLine {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.trainingTemplateSectionTitleLine > span {
+  color: var(--demo-green);
+  font-size: 10px;
+  font-weight: 640;
+}
+
+.trainingTemplateSectionTitleLine strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingTemplateSectionMain p {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingTemplateSectionMeta,
+.trainingTemplateSectionActions {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trainingTemplateSectionMeta span {
+  display: inline-flex;
+  min-height: 22px;
+  align-items: center;
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  background: var(--demo-glass-soft);
+  color: var(--demo-muted);
+  font-size: 10px;
+  padding: 3px 7px;
+}
+
+.trainingTemplateSectionActions {
+  justify-content: flex-end;
+}
+
+@container (min-width: 520px) {
+  .trainingTemplateSectionRow {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .trainingTemplateSectionActions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+}
+
 .templateSceneBlockList,
 .templateResolvedPreview {
   display: grid;
@@ -469,7 +656,8 @@
   .templateRow,
   .resourceRow,
   .usageRow,
-  .sortRow {
+  .sortRow,
+  .trainingTemplateFormGrid {
     grid-template-columns: 1fr;
   }
 
@@ -478,6 +666,8 @@
   .templateRow span,
   .usageRow span,
   .sortRow span,
+  .trainingTemplateSectionMain p,
+  .trainingTemplateSectionTitleLine strong,
   .resourceRow strong,
   .templateRow strong,
   .usageRow strong,
@@ -491,6 +681,20 @@
 
   .templateSceneBlockCard {
     grid-template-columns: 1fr;
+  }
+
+  .trainingTemplateEditorHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .trainingTemplateSectionRow {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .trainingTemplateSectionActions {
+    grid-column: 2;
+    justify-content: flex-start;
   }
 
   .templateSceneBlockActions {
