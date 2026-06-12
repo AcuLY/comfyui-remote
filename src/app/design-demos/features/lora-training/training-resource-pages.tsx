@@ -889,6 +889,13 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     sectionId: section?.id ?? null,
   }));
   const [editingTemplateBlockId, setEditingTemplateBlockId] = useState<string | null>(null);
+  const [templateSectionDraft, setTemplateSectionDraft] = useState<{
+    blockCount: number;
+    firstBlock: string;
+    resolvedScene: string;
+    sectionTitle: string;
+    templateTitle: string;
+  } | null>(null);
   const sceneBlocks = sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
   if (!template || !section) return <EmptyPage title="没有模板小节数据" />;
 
@@ -941,6 +948,16 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     updateTemplateBlocks((current) => current.filter((block) => block.id !== blockId));
   }
 
+  function handleSaveTemplateSection() {
+    setTemplateSectionDraft({
+      blockCount: sceneBlocks.length,
+      firstBlock: sceneBlocks[0]?.title ?? "无场景块",
+      resolvedScene: resolvedTemplateScene || section.resolvedScene,
+      sectionTitle: section.title,
+      templateTitle: template.title,
+    });
+  }
+
   return (
     <div className={s.page}>
       <PageHeader
@@ -948,7 +965,16 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
         eyebrow="模板小节"
         title={`${template.title} / ${section.title}`}
         subtitle="模板小节与项目小节保持相同的场景块编辑心智。"
-        actions={<Button tone="primary" icon={Save} feedback={{ title: "模板小节已保存", detail: section.title }}>保存小节</Button>}
+        actions={(
+          <Button
+            tone="primary"
+            icon={Save}
+            onClick={handleSaveTemplateSection}
+            feedback={{ title: templateSectionDraft ? "模板小节保存草稿已更新" : "模板小节保存草稿已记录", detail: section.title }}
+          >
+            {templateSectionDraft ? "更新小节草稿" : "保存小节"}
+          </Button>
+        )}
       />
       <div className={s.twoCol}>
         <Panel title="运行参数">
@@ -999,6 +1025,16 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
           <Field readOnly multiline features={{ clipboard: true }} label="小节摘要" value={section.scenePreview} />
         </div>
       </Panel>
+      {templateSectionDraft ? (
+        <Panel title="模板小节保存草稿" subtitle="页面内记录当前小节、场景块和合成场景描述。">
+          <dl className={s.trainingTemplateSectionDraft}>
+            <div><dt>模板</dt><dd>{templateSectionDraft.templateTitle}</dd></div>
+            <div><dt>小节</dt><dd>{templateSectionDraft.sectionTitle}</dd></div>
+            <div><dt>场景块</dt><dd>{templateSectionDraft.blockCount} 个 · {templateSectionDraft.firstBlock}</dd></div>
+            <div className={s.trainingTemplateDraftWide}><dt>合成场景</dt><dd>{templateSectionDraft.resolvedScene}</dd></div>
+          </dl>
+        </Panel>
+      ) : null}
     </div>
   );
 }

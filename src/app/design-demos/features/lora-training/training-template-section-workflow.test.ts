@@ -88,12 +88,26 @@ test("training template section imports training presets into local scene blocks
   assert.doesNotMatch(templateSectionPage, /导入预制入口已预览/, "template preset import should not be a preview-only placeholder");
 });
 
+test("training template section saves a visible local section draft", () => {
+  const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
+
+  assert.match(templateSectionPage, /templateSectionDraft/, "template section should expose a saved local section draft");
+  assert.match(templateSectionPage, /setTemplateSectionDraft/, "template section save should update local draft state");
+  assert.match(templateSectionPage, /handleSaveTemplateSection/, "template section should define a local save handler");
+  assert.match(templateSectionPage, /onClick=\{handleSaveTemplateSection\}/, "save section action should call the local save handler");
+  assert.match(templateSectionPage, /sceneBlocks\.length/, "saved section draft should include the current scene block count");
+  assert.match(templateSectionPage, /resolvedTemplateScene/, "saved section draft should use the current resolved scene text");
+  assert.match(templateSectionPage, /模板小节保存草稿/, "template section should render a visible saved draft panel");
+  assert.doesNotMatch(templateSectionPage, /feedback=\{\{ title: "模板小节已保存"/, "template section save should not remain feedback-only");
+});
+
 test("training template section scene-block styles are responsive", () => {
   for (const className of [
     "templateSceneBlockList",
     "templateSceneBlockCard",
     "templateSceneBlockActions",
     "templateResolvedPreview",
+    "trainingTemplateSectionDraft",
   ]) {
     assert.match(cssSource, new RegExp(`\\.${className}\\b`), `${className} CSS should exist`);
   }
