@@ -88,6 +88,14 @@ test("generation compose uses an explicit reference source tree with preview the
   assert.match(sourceBetween("function ReferencePicker", "export function LoraTrainingProjectFormPage"), /添加引用/, "reference candidates should require an explicit add action");
 });
 
+test("reference picker records explicitly added references in local front-end state", () => {
+  const pickerSource = sourceBetween("function ReferencePicker", "export function LoraTrainingProjectFormPage");
+
+  assert.match(pickerSource, /selectedReferenceIds/, "reference picker should track added references locally");
+  assert.match(pickerSource, /handleAddReference/, "reference picker should expose an explicit add handler");
+  assert.match(pickerSource, /已添加引用/, "reference picker should render added references instead of only showing a toast");
+});
+
 test("training section workflow has responsive rail and compact action styles", () => {
   for (const className of [
     "trainingSectionWorkspace",

@@ -360,6 +360,17 @@ function ReferencePicker({
   previewReference: ReferenceCandidate | null;
   referenceSourceTree: ReferenceSourceGroup[];
 }) {
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<Set<string>>(new Set());
+  const selectedReferences = referenceSourceTree
+    .flatMap((group) => group.items)
+    .filter((candidate) => selectedReferenceIds.has(candidate.id));
+  const previewAlreadyAdded = previewReference ? selectedReferenceIds.has(previewReference.id) : false;
+
+  function handleAddReference() {
+    if (!previewReference) return;
+    setSelectedReferenceIds((current) => new Set([...current, previewReference.id]));
+  }
+
   return (
     <div className={s.referencePicker}>
       <div className={s.referenceSourceTree}>
@@ -398,10 +409,19 @@ function ReferencePicker({
         <Button
           icon={Plus}
           disabled={!previewReference}
+          onClick={handleAddReference}
           feedback={{ title: "引用已加入任务草稿", detail: previewReference?.title }}
         >
-          添加引用
+          {previewAlreadyAdded ? "已添加" : "添加引用"}
         </Button>
+        {selectedReferences.length ? (
+          <div className={s.selectedReferenceList} aria-label="已添加引用">
+            <strong>已添加引用</strong>
+            {selectedReferences.map((reference) => (
+              <span key={reference.id}>{reference.title}</span>
+            ))}
+          </div>
+        ) : null}
       </aside>
     </div>
   );
