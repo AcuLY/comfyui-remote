@@ -448,14 +448,19 @@ function SceneBlockCard({
 
 function ReferencePicker({
   onPreviewReference,
+  onAddReference,
   previewReference,
   referenceSourceTree,
+  selectedReferenceIds: controlledSelectedReferenceIds,
 }: {
+  onAddReference?: (candidate: ReferenceCandidate) => void;
   onPreviewReference: (candidate: ReferenceCandidate) => void;
   previewReference: ReferenceCandidate | null;
   referenceSourceTree: ReferenceSourceGroup[];
+  selectedReferenceIds?: Set<string>;
 }) {
-  const [selectedReferenceIds, setSelectedReferenceIds] = useState<Set<string>>(new Set());
+  const [localSelectedReferenceIds, setLocalSelectedReferenceIds] = useState<Set<string>>(new Set());
+  const selectedReferenceIds = controlledSelectedReferenceIds ?? localSelectedReferenceIds;
   const selectedReferences = referenceSourceTree
     .flatMap((group) => group.items)
     .filter((candidate) => selectedReferenceIds.has(candidate.id));
@@ -463,7 +468,11 @@ function ReferencePicker({
 
   function handleAddReference() {
     if (!previewReference) return;
-    setSelectedReferenceIds((current) => new Set([...current, previewReference.id]));
+    if (onAddReference) {
+      onAddReference(previewReference);
+      return;
+    }
+    setLocalSelectedReferenceIds((current) => new Set([...current, previewReference.id]));
   }
 
   return (
@@ -1317,6 +1326,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     },
   ] : [];
   const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
+  const [selectedReferenceIds, setSelectedReferenceIds] = useState<Set<string>>(new Set());
   const [generationFormState, setGenerationForm] = useState(() => ({
     projectId: project?.id ?? null,
     sectionId: section?.id ?? null,
@@ -1325,7 +1335,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
   }));
   const [generationTaskDraft, setGenerationTaskDraft] = useState<{
     finalInput: string;
-    referenceTitle: string;
+    selectedReferenceTitles: string[];
     sectionTitle: string;
     supplementalPrompt: string;
     taskType: string;
@@ -1342,7 +1352,19 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     taskType: "训练集图片生成",
   };
   const sectionTitle = activeSection.title;
-  const finalInputText = [activeProject.usagePrompt, activeSection.resolvedScene, generationForm.supplementalPrompt]
+  const selectedReferences = referenceSourceTree
+    .flatMap((group) => group.items)
+    .filter((candidate) => selectedReferenceIds.has(candidate.id));
+  const selectedReferenceTitles = selectedReferences.map((reference) => reference.title);
+  const selectedReferenceDetails = selectedReferences
+    .map((reference) => `- ${reference.title}: ${reference.detail}`)
+    .join("\n");
+  const finalInputText = [
+    activeProject.usagePrompt,
+    activeSection.resolvedScene,
+    selectedReferenceDetails ? `显式引用\n${selectedReferenceDetails}` : "",
+    generationForm.supplementalPrompt,
+  ]
     .map((part) => part.trim())
     .filter(Boolean)
     .join("\n");
@@ -1359,10 +1381,14 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     });
   }
 
+  function handleAddTaskReference(candidate: ReferenceCandidate) {
+    setSelectedReferenceIds((current) => new Set([...current, candidate.id]));
+  }
+
   function handleQueueGenerationTask() {
     setGenerationTaskDraft({
       finalInput: finalInputText,
-      referenceTitle: activePreviewReference?.title ?? "未选择引用",
+      selectedReferenceTitles,
       sectionTitle,
       supplementalPrompt: generationForm.supplementalPrompt,
       taskType: generationForm.taskType,
@@ -1393,6 +1419,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
             referenceSourceTree={referenceSourceTree}
             previewReference={activePreviewReference}
             onPreviewReference={setPreviewReference}
+            onAddReference={handleAddTaskReference}
+            selectedReferenceIds={selectedReferenceIds}
           />
         </Panel>
         <Panel title="任务内容">
@@ -1408,7 +1436,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
           <dl className={s.generationTaskDraft}>
             <div><dt>任务类型</dt><dd>{generationTaskDraft.taskType}</dd></div>
             <div><dt>小节</dt><dd>{generationTaskDraft.sectionTitle}</dd></div>
-            <div><dt>当前引用</dt><dd>{generationTaskDraft.referenceTitle}</dd></div>
+            <div><dt>已选引用</dt><dd>{generationTaskDraft.selectedReferenceTitles.join("、") || "未添加引用"}</dd></div>
             <div><dt>补充提示词</dt><dd>{generationTaskDraft.supplementalPrompt || "未填写"}</dd></div>
             <div><dt>最终输入</dt><dd>{generationTaskDraft.finalInput.split("\n")[0]}</dd></div>
           </dl>

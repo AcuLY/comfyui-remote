@@ -189,6 +189,22 @@ test("reference picker records explicitly added references in local front-end st
   assert.match(pickerSource, /已添加引用/, "reference picker should render added references instead of only showing a toast");
 });
 
+test("generation compose carries explicitly added references into the task draft", () => {
+  const composePage = sourceBetween(
+    "export function LoraTrainingGenerationComposePage",
+    "export function LoraTrainingProjectResultsPage",
+  );
+
+  assert.match(composePage, /selectedReferenceIds/, "compose page should own the selected reference state");
+  assert.match(composePage, /setSelectedReferenceIds/, "compose page should update selected references locally");
+  assert.match(composePage, /selectedReferences/, "compose page should resolve selected reference objects");
+  assert.match(composePage, /selectedReferenceTitles/, "task draft should store the selected reference titles");
+  assert.match(composePage, /selectedReferenceDetails/, "final input should include selected reference details");
+  assert.match(composePage, /onAddReference=\{handleAddTaskReference\}/, "reference picker add action should update compose state");
+  assert.match(composePage, /selectedReferenceIds=\{selectedReferenceIds\}/, "reference picker should receive selected ids from compose state");
+  assert.doesNotMatch(composePage, /referenceTitle:\s*activePreviewReference/, "task draft should not only save the currently previewed reference");
+});
+
 test("training section workflow has responsive rail and compact action styles", () => {
   for (const className of [
     "trainingSectionWorkspace",
