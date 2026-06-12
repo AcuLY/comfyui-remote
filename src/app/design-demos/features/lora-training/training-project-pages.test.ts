@@ -261,6 +261,25 @@ test("project-scoped run rows manage local delete and failed retry state", () =>
   assert.match(runRowsSource, /已排队重试/, "retried failed rows should show queued retry state");
 });
 
+test("project-scoped failed run rows use structured failure panels", () => {
+  const runRowsStart = pagesSource.indexOf("function RunRows");
+  const referenceSourceStart = pagesSource.indexOf("type ReferenceCandidate");
+  assert.notEqual(runRowsStart, -1);
+  assert.notEqual(referenceSourceStart, -1);
+
+  const runRowsSource = pagesSource.slice(runRowsStart, referenceSourceStart);
+
+  assert.match(pagesSource, /function ProjectRunFailureBlock/, "project scoped rows should render failed reasons through a dedicated block");
+  assert.match(runRowsSource, /projectRunRowFailed/, "failed project rows should get a dedicated layout class");
+  assert.match(runRowsSource, /projectRunSecondary/, "failed project rows should move error handling into a secondary panel");
+  assert.match(runRowsSource, /projectRunFailureToolbar/, "failed project rows should group copy and retry as lightweight failure actions");
+  assert.match(runRowsSource, /copyProjectRunMessage/, "failed project rows should let users copy the failure reason");
+  assert.doesNotMatch(runRowsSource, /run\.errorMessage \? <em className=\{s\.projectRunError\}/, "failed reasons should not stay inside the title text flow");
+  assert.match(cssSource, /\.projectRunRowFailed\b/, "failed project rows should have dedicated responsive layout CSS");
+  assert.match(cssSource, /\.projectRunSecondary\b/, "failed project rows should style the secondary failure panel");
+  assert.match(cssSource, /\.projectRunFailureBlock\b/, "failed project rows should style the failure reason separately");
+});
+
 test("training project create page is a full form workspace with training seed controls", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");

@@ -8,6 +8,7 @@ import {
   ArrowDown,
   ArrowUp,
   Check,
+  CircleAlert,
   Copy,
   CopyPlus,
   Edit3,
@@ -240,6 +241,23 @@ function projectRunStatusLabel(status: LoraTrainingTaskStatus) {
   return "失败";
 }
 
+function copyProjectRunMessage(message: string) {
+  if (typeof navigator === "undefined" || !navigator.clipboard) return;
+  void navigator.clipboard.writeText(message).catch(() => undefined);
+}
+
+function ProjectRunFailureBlock({ message }: { message: string }) {
+  return (
+    <div className={s.projectRunFailureBlock} role="status">
+      <div className={s.projectRunFailureHeader}>
+        <CircleAlert aria-hidden="true" />
+        <span>失败原因</span>
+      </div>
+      <p>{message}</p>
+    </div>
+  );
+}
+
 function RunRows({
   onHideRun,
   onRetryRun,
@@ -261,8 +279,10 @@ function RunRows({
         const type = run.kind === "generation" ? "generation" : "training";
         const previewImages = runPreviewImages(run, project);
         const retried = retriedRunIds.has(run.id);
+        const failed = run.status === "failed" && !retried;
+        const failureMessage = run.errorMessage ?? "任务失败，请打开详情查看日志。";
         return (
-          <article className={s.projectRunRow} key={run.id}>
+          <article className={cx(s.projectRunRow, failed && s.projectRunRowFailed)} key={run.id}>
             <Link className={s.projectRunMain} href={demoHref(`/training/runs/${type}/${run.id}`)}>
               <span className={s.projectRunText}>
                 <strong>{run.title}</strong>
@@ -270,7 +290,6 @@ function RunRows({
                 {run.outputLabel ? <em>{run.outputLabel}</em> : null}
                 {run.waitReason ? <em>{run.waitReason}</em> : null}
                 {retried ? <em>已排队重试</em> : null}
-                {run.errorMessage ? <em className={s.projectRunError}>{run.errorMessage}</em> : null}
               </span>
             </Link>
             {previewImages.length > 0 ? (
@@ -284,18 +303,26 @@ function RunRows({
             <span className={s.projectRunStatus}>
               <StatusBadge status={retried ? "pending" : run.status === "completed" ? "done" : run.status} label={retried ? "已排队重试" : projectRunStatusLabel(run.status)} />
             </span>
-            <span className={s.projectRunActions}>
-              {run.status === "failed" && !retried ? (
-                <Button icon={Play} onClick={() => onRetryRun?.(run.id)} feedback={{ title: "已排队重试", detail: run.title }}>重试</Button>
-              ) : null}
-              <Button tone="danger" icon={Trash2} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
-            </span>
+            {failed ? (
+              <div className={s.projectRunSecondary}>
+                <ProjectRunFailureBlock message={failureMessage} />
+                <div className={s.projectRunFailureToolbar}>
+                  <Button size="sm" tone="subtle" icon={Copy} onClick={() => copyProjectRunMessage(failureMessage)} feedback={{ title: "报错已复制", detail: failureMessage }}>复制</Button>
+                  <Button size="sm" tone="subtle" icon={Play} onClick={() => onRetryRun?.(run.id)} feedback={{ title: "已排队重试", detail: run.title }}>重试</Button>
+                  <Button size="sm" tone="danger" icon={Trash2} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+                </div>
+              </div>
+            ) : (
+              <span className={s.projectRunActions}>
+                <Button tone="danger" icon={Trash2} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+              </span>
+            )}
           </article>
         );
       })}
     </div>
   );
-}
+	}
 
 type ReferenceCandidate = {
   id: string;

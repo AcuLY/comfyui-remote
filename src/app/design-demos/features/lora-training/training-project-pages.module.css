@@ -363,6 +363,34 @@
   transform: translateY(-1px);
 }
 
+.projectRunRowFailed {
+  grid-template-areas:
+    "main status"
+    "thumbs thumbs"
+    "secondary secondary";
+  align-items: start;
+  border-color: color-mix(in srgb, var(--demo-red) 22%, var(--demo-border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--demo-red-soft) 34%, transparent), transparent 58%),
+    var(--demo-field-bg);
+}
+
+.projectRunRowFailed .projectRunMain {
+  grid-area: main;
+}
+
+.projectRunRowFailed .projectRunThumbs {
+  grid-area: thumbs;
+}
+
+.projectRunRowFailed .projectRunStatus {
+  grid-area: status;
+}
+
+.projectRunRowFailed .projectRunSecondary {
+  grid-area: secondary;
+}
+
 .projectRunMain {
   min-width: 0;
   color: inherit;
@@ -409,10 +437,6 @@
   line-height: 1.35;
 }
 
-.projectRunError {
-  color: var(--demo-red);
-}
-
 .projectRunThumbs {
   grid-column: 1 / -1;
   display: grid;
@@ -448,6 +472,65 @@
 .projectRunActions :where(button) {
   min-height: 30px;
   padding: 0 10px;
+}
+
+.projectRunSecondary {
+  display: grid;
+  min-width: 0;
+  gap: 9px;
+  border: 1px solid color-mix(in srgb, var(--demo-red) 18%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--demo-red-soft) 28%, var(--demo-field-bg));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--demo-red) 10%, transparent);
+  padding: 10px;
+}
+
+.projectRunFailureBlock {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: var(--demo-red);
+}
+
+.projectRunFailureHeader {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: color-mix(in srgb, var(--demo-red) 90%, var(--demo-text));
+  font-size: 10px;
+  font-weight: 680;
+  letter-spacing: 0.04em;
+}
+
+.projectRunFailureHeader svg {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+}
+
+.projectRunFailureBlock p {
+  min-width: 0;
+  margin: 0;
+  color: var(--demo-red);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.projectRunFailureToolbar {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--demo-red) 16%, transparent);
+  padding-top: 8px;
+}
+
+.projectRunFailureToolbar :where([data-demo-ui-button="true"]) {
+  min-height: 30px;
+  border-radius: 8px;
+  padding: 5px 9px;
 }
 
 .emptyInline {
@@ -1185,6 +1268,15 @@
     gap: 8px;
   }
 
+  .projectRunRowFailed {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "main"
+      "status"
+      "thumbs"
+      "secondary";
+  }
+
   .entityRow span,
   .entityRow strong,
   .projectRunText strong,
@@ -1200,11 +1292,19 @@
   }
 
   .projectRunActions {
-    justify-content: stretch;
+    justify-content: flex-start;
   }
 
   .projectRunActions :where(button) {
-    flex: 1;
+    flex: 0 0 auto;
+  }
+
+  .projectRunFailureToolbar {
+    justify-content: flex-start;
+  }
+
+  .projectRunFailureToolbar :where([data-demo-ui-button="true"]) {
+    flex: 0 0 auto;
   }
 
   .sectionActions {
