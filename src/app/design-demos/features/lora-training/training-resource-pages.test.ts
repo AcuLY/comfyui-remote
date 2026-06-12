@@ -193,3 +193,30 @@ test("training preset detail and sort rules reuse editor/sort shells without reg
   assert.match(cssSource, /\.trainingPresetSortGrid\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "training preset sort panels should expand to two columns");
   assert.doesNotMatch(sortSource, /正向 Prompt|反向 Prompt|LoRA 1|LoRA 2/, "training preset sort rules should not inherit regular preset dimensions");
 });
+
+test("training preset sort rules keep local order state and save a visible draft", () => {
+  const sortPanelStart = pageSource.indexOf("function TrainingPresetSortPanel");
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  const templatesStart = pageSource.indexOf("function templateStatus");
+  assert.notEqual(sortPanelStart, -1);
+  assert.notEqual(sortStart, -1);
+  assert.notEqual(templatesStart, -1);
+
+  const sortSource = pageSource.slice(sortStart, templatesStart);
+  const panelSource = pageSource.slice(sortPanelStart, templatesStart);
+
+  assert.match(sortSource, /orderedCategoryIds/, "category sort order should live in local state");
+  assert.match(sortSource, /setOrderedCategoryIds/, "category reorder should update local state");
+  assert.match(sortSource, /orderedPresetIds/, "preset sort order should live in local state");
+  assert.match(sortSource, /setOrderedPresetIds/, "preset reorder should update local state");
+  assert.match(sortSource, /sortRulesDraft/, "save all should expose a local sort draft");
+  assert.match(sortSource, /setSortRulesDraft/, "save all should update the visible sort draft");
+  assert.match(sortSource, /handleSaveSortRules/, "sort page should define a save-all handler");
+  assert.match(sortSource, /onClick=\{handleSaveSortRules\}/, "save-all action should call the local save handler");
+  assert.match(sortSource, /排序保存草稿/, "sort page should render the visible saved draft panel");
+  assert.match(panelSource, /SortableList/, "sort panels should use the shared sortable list wrapper");
+  assert.match(panelSource, /useDemoSortable/, "sort rows should expose sortable handles");
+  assert.match(panelSource, /onReorder/, "sort panels should receive a reorder callback");
+  assert.doesNotMatch(sortSource, /feedback="排序规则已保存"/, "save-all should not remain feedback-only");
+  assert.doesNotMatch(panelSource, /排序已保存/, "group save should not remain feedback-only");
+});

@@ -298,6 +298,7 @@
 }
 
 .trainingPresetDraft,
+.trainingPresetSortDraft,
 .trainingTemplateDraft {
   display: grid;
   min-width: 0;
@@ -307,6 +308,7 @@
 }
 
 .trainingPresetDraft div,
+.trainingPresetSortDraft div,
 .trainingTemplateDraft div {
   display: grid;
   min-width: 0;
@@ -318,6 +320,7 @@
 }
 
 .trainingPresetDraft dt,
+.trainingPresetSortDraft dt,
 .trainingTemplateDraft dt {
   color: var(--demo-faint);
   font-size: 10px;
@@ -325,6 +328,7 @@
 }
 
 .trainingPresetDraft dd,
+.trainingPresetSortDraft dd,
 .trainingTemplateDraft dd {
   min-width: 0;
   margin: 0;
@@ -833,6 +837,7 @@
   .usageRow,
   .sortRow,
   .trainingPresetDraft,
+  .trainingPresetSortDraft,
   .trainingTemplateDraft,
   .trainingPresetFormGrid,
   .trainingTemplateFormGrid {

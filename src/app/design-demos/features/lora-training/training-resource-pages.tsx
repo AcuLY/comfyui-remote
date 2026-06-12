@@ -15,6 +15,7 @@ import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { Panel } from "../../shared/primitives/panel";
 import { StatusBadge } from "../../shared/primitives/status-badge";
+import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
 import { EditorBlock, FolderBreadcrumb, FolderRow, SelectionBatchBar, SortableRowShell, UnitRowShell, WorkbenchSurface } from "../../shared/patterns";
 import { buildLoraTrainingDemoData } from "./fixtures";
 import type { LoraTrainingPreset, LoraTrainingSectionBlock, LoraTrainingTemplate } from "./types";
@@ -128,15 +129,32 @@ function createDraftTrainingPreset(training: ReturnType<typeof buildLoraTraining
   };
 }
 
+type TrainingPresetSortItem = { id: string; meta: string; title: string };
+
+function orderTrainingPresetSortItems(items: TrainingPresetSortItem[], orderedIds: string[]) {
+  const itemMap = Object.fromEntries(items.map((item) => [item.id, item]));
+  const orderedItems = orderedIds.map((id) => itemMap[id]).filter((item): item is TrainingPresetSortItem => Boolean(item));
+  const missingItems = items.filter((item) => !orderedIds.includes(item.id));
+  return [...orderedItems, ...missingItems];
+}
+
 function TrainingPresetSortPanel({
   items,
+  onReorder,
+  onSave,
+  orderedIds,
   subtitle,
   title,
 }: {
-  items: Array<{ id: string; meta: string; title: string }>;
+  items: TrainingPresetSortItem[];
+  onReorder: (ids: string[]) => void;
+  onSave: (scope: string, ids: string[], items: TrainingPresetSortItem[]) => void;
+  orderedIds: string[];
   subtitle: string;
   title: string;
 }) {
+  const orderedItems = orderTrainingPresetSortItems(items, orderedIds);
+
   return (
     <section className={s.trainingPresetSortPanel}>
       <div className={s.trainingPresetSortHeader}>
@@ -147,27 +165,38 @@ function TrainingPresetSortPanel({
         <StatusBadge status="ready" label="已保存" />
       </div>
       <div className={s.trainingPresetSortList}>
-        {items.map((item, index) => (
-          <SortableRowShell
-            className={s.trainingPresetSortRow}
-            contentClassName={s.trainingPresetSortRowContent}
-            handleClassName={s.grip}
-            index={index}
-            indexClassName={s.trainingPresetSortIndex}
-            key={item.id}
-          >
-            <div className={s.trainingPresetSortRowText}>
-              <strong>{item.title}</strong>
-              <em>{item.meta}</em>
-            </div>
-          </SortableRowShell>
-        ))}
+        <SortableList items={orderedItems.map((item) => item.id)} onReorder={onReorder}>
+          {orderedItems.map((item, index) => (
+            <TrainingPresetSortableSortRow item={item} index={index} key={item.id} />
+          ))}
+        </SortableList>
       </div>
       <div className={s.trainingPresetSortFooter}>
         <span>拖拽排序后保存</span>
-        <Button icon={Save} feedback={{ title: `${title} 排序已保存` }}>保存此组</Button>
+        <Button icon={Save} onClick={() => onSave(title, orderedIds, items)} feedback={{ title: `${title} 保存草稿已记录` }}>保存此组</Button>
       </div>
     </section>
+  );
+}
+
+function TrainingPresetSortableSortRow({ index, item }: { index: number; item: TrainingPresetSortItem }) {
+  const { ref, style, handleProps } = useDemoSortable(item.id);
+  return (
+    <div ref={ref} style={style}>
+      <SortableRowShell
+        className={s.trainingPresetSortRow}
+        contentClassName={s.trainingPresetSortRowContent}
+        handleClassName={s.grip}
+        handleProps={handleProps}
+        index={index}
+        indexClassName={s.trainingPresetSortIndex}
+      >
+        <div className={s.trainingPresetSortRowText}>
+          <strong>{item.title}</strong>
+          <em>{item.meta}</em>
+        </div>
+      </SortableRowShell>
+    </div>
   );
 }
 
@@ -517,6 +546,38 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
     title: preset.title,
     meta: `${preset.category} / ${preset.folder}`,
   }));
+  const [orderedCategoryIds, setOrderedCategoryIds] = useState(() => categoryItems.map((item) => item.id));
+  const [orderedPresetIds, setOrderedPresetIds] = useState(() => presetItems.map((item) => item.id));
+  const [sortRulesDraft, setSortRulesDraft] = useState<{
+    categoryCount: number;
+    firstCategory: string;
+    firstPreset: string;
+    presetCount: number;
+    scope: string;
+  } | null>(null);
+  const orderedCategoryItems = orderTrainingPresetSortItems(categoryItems, orderedCategoryIds);
+  const orderedPresetItems = orderTrainingPresetSortItems(presetItems, orderedPresetIds);
+
+  function handleSaveSortRules() {
+    setSortRulesDraft({
+      categoryCount: orderedCategoryIds.length,
+      firstCategory: orderedCategoryItems[0]?.title ?? "无",
+      firstPreset: orderedPresetItems[0]?.title ?? "无",
+      presetCount: orderedPresetIds.length,
+      scope: "全部排序",
+    });
+  }
+
+  function handleSaveSortGroup(scope: string, ids: string[], items: TrainingPresetSortItem[]) {
+    const orderedItems = orderTrainingPresetSortItems(items, ids);
+    setSortRulesDraft({
+      categoryCount: scope === "合成顺序" ? ids.length : orderedCategoryIds.length,
+      firstCategory: scope === "合成顺序" ? orderedItems[0]?.title ?? "无" : orderedCategoryItems[0]?.title ?? "无",
+      firstPreset: scope === "分类内顺序" ? orderedItems[0]?.title ?? "无" : orderedPresetItems[0]?.title ?? "无",
+      presetCount: scope === "分类内顺序" ? ids.length : orderedPresetIds.length,
+      scope,
+    });
+  }
 
   return (
     <div className={s.page}>
@@ -525,12 +586,50 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
         eyebrow="训练预制"
         title="排序规则"
         subtitle="管理合成顺序和分类内顺序；训练预制没有普通预设库的正反向维度。"
-        actions={<Button tone="primary" icon={Save} feedback="排序规则已保存">保存全部</Button>}
+        actions={(
+          <Button
+            tone="primary"
+            icon={Save}
+            onClick={handleSaveSortRules}
+            feedback={{ title: sortRulesDraft ? "排序保存草稿已更新" : "排序保存草稿已记录", detail: sortRulesDraft?.scope ?? "全部排序" }}
+          >
+            {sortRulesDraft ? "更新排序草稿" : "保存全部"}
+          </Button>
+        )}
       />
       <div className={s.trainingPresetSortGrid}>
-        <TrainingPresetSortPanel title="合成顺序" subtitle="决定训练小节导入预制块时的分类顺序。" items={categoryItems} />
-        <TrainingPresetSortPanel title="分类内顺序" subtitle="决定同分类下 scene description 的稳定排序。" items={presetItems} />
+        <TrainingPresetSortPanel
+          title="合成顺序"
+          subtitle="决定训练小节导入预制块时的分类顺序。"
+          items={categoryItems}
+          orderedIds={orderedCategoryIds}
+          onReorder={setOrderedCategoryIds}
+          onSave={handleSaveSortGroup}
+        />
+        <TrainingPresetSortPanel
+          title="分类内顺序"
+          subtitle="决定同分类下 scene description 的稳定排序。"
+          items={presetItems}
+          orderedIds={orderedPresetIds}
+          onReorder={setOrderedPresetIds}
+          onSave={handleSaveSortGroup}
+        />
       </div>
+      {sortRulesDraft ? (
+        <EditorBlock
+          actions={<StatusBadge status="ready" label={sortRulesDraft.scope} />}
+          className={s.trainingPresetSortPanel}
+          description="页面内记录当前排序结果；后端接入时按这两组 ordered ids 提交。"
+          headerClassName={s.trainingPresetSortHeader}
+          title="排序保存草稿"
+        >
+          <dl className={s.trainingPresetSortDraft}>
+            <div><dt>范围</dt><dd>{sortRulesDraft.scope}</dd></div>
+            <div><dt>合成顺序</dt><dd>{sortRulesDraft.categoryCount} 项 · {sortRulesDraft.firstCategory}</dd></div>
+            <div><dt>分类内顺序</dt><dd>{sortRulesDraft.presetCount} 项 · {sortRulesDraft.firstPreset}</dd></div>
+          </dl>
+        </EditorBlock>
+      ) : null}
     </div>
   );
 }
