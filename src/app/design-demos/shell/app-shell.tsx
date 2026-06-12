@@ -16,17 +16,30 @@ import { DemoFeedbackProvider } from "../shared/feedback";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
   DESIGN_DEMO_THEME_STORAGE_KEY,
-  MOBILE_NAV_LINKS,
-  NAV_LINKS,
+  WORK_MODE_CHANGE_EVENT,
+  WORK_MODE_STORAGE_KEY,
   applyDesignDemoTheme,
   applyDesignDemoSfwMode,
+  buildWorkModeNavLinks,
   cx,
   demoHref,
+  isDesignDemoWorkModeValue,
   isDemoThemeValue,
   isNavActive,
   isSfwEnabledValue,
+  resolveWorkModeForRoute,
 } from "../routing";
-import type { DemoTheme } from "../routing";
+import type { DemoTheme, DesignDemoWorkMode, NavLinkDef } from "../routing";
+
+function readStoredWorkMode(): DesignDemoWorkMode {
+  if (typeof window === "undefined") return "generation";
+  try {
+    const storedMode = window.localStorage.getItem(WORK_MODE_STORAGE_KEY);
+    return isDesignDemoWorkModeValue(storedMode) ? storedMode : "generation";
+  } catch {
+    return "generation";
+  }
+}
 
 function Sidebar({
   collapsed,
@@ -39,6 +52,7 @@ function Sidebar({
   onToggleTheme,
   sfwMode,
   onToggleSfwMode,
+  navLinks,
 }: {
   collapsed: boolean;
   data: DemoData;
@@ -50,19 +64,20 @@ function Sidebar({
   onToggleTheme: () => void;
   sfwMode: boolean;
   onToggleSfwMode: () => void;
+  navLinks: NavLinkDef[];
 }) {
   const isLightTheme = theme === "light";
   const isDarkTheme = !isLightTheme;
   const ThemeIcon = isDarkTheme ? Sun : Moon;
   const SfwIcon = sfwMode ? EyeOff : Eye;
   const grouped = useMemo(() => {
-    const map = new Map<string, typeof NAV_LINKS>();
-    for (const link of NAV_LINKS) {
+    const map = new Map<string, NavLinkDef[]>();
+    for (const link of navLinks) {
       if (!map.has(link.group)) map.set(link.group, []);
       map.get(link.group)!.push(link);
     }
     return [...map.entries()];
-  }, []);
+  }, [navLinks]);
 
   return (
     <aside className={cx(s.sidebar, collapsed && s.sidebarCollapsed, open && s.sidebarOpen)}>
@@ -141,17 +156,19 @@ function Sidebar({
 function MobileBottomNav({
   data,
   currentRoute,
+  links,
   moreOpen,
   onMore,
 }: {
   data: DemoData;
   currentRoute: string;
+  links: NavLinkDef[];
   moreOpen: boolean;
   onMore: () => void;
 }) {
   return (
     <nav className={s.mobileBottomNav} aria-label="移动端主导航">
-      {MOBILE_NAV_LINKS.map((link) => {
+      {links.map((link) => {
         const Icon = link.icon;
         const active = isNavActive(currentRoute, link.href, link.activePrefix);
         return (
@@ -294,6 +311,7 @@ export function DesignDemoShell({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState<DemoTheme>(initialTheme);
   const [sfwMode, setSfwMode] = useState(false);
+  const [storedWorkMode, setStoredWorkMode] = useState<DesignDemoWorkMode>("generation");
   const [routeHeaderCompact, setRouteHeaderCompact] = useState(false);
   const [routeHeaderHidden, setRouteHeaderHidden] = useState(false);
   const isLightTheme = theme === "light";
@@ -302,9 +320,11 @@ export function DesignDemoShell({
   const setRouteHeaderNode = useCallback((node: HTMLElement | null) => {
     routeHeaderRef.current = node;
   }, []);
+  const workMode = resolveWorkModeForRoute(currentRoute, storedWorkMode);
+  const navLinks = useMemo(() => buildWorkModeNavLinks(workMode), [workMode]);
   const activeNav = useMemo(
-    () => NAV_LINKS.find((link) => isNavActive(currentRoute, link.href, link.activePrefix)) ?? NAV_LINKS[0],
-    [currentRoute],
+    () => navLinks.find((link) => isNavActive(currentRoute, link.href, link.activePrefix)) ?? navLinks[0],
+    [currentRoute, navLinks],
   );
 
   useEffect(() => {
@@ -326,6 +346,7 @@ export function DesignDemoShell({
       setTheme(resolvedTheme);
       setRouteHeaderCompact(window.matchMedia("(max-width: 760px)").matches);
       setSfwMode(isSfwEnabledValue(window.localStorage.getItem(DESIGN_DEMO_SFW_STORAGE_KEY)));
+      setStoredWorkMode(readStoredWorkMode());
     });
 
     return () => {
@@ -333,6 +354,24 @@ export function DesignDemoShell({
       window.cancelAnimationFrame(frameId);
     };
   }, [initialTheme]);
+
+  useEffect(() => {
+    function syncStoredWorkMode() {
+      setStoredWorkMode(readStoredWorkMode());
+    }
+
+    function handleWorkModeChange(event: Event) {
+      const nextMode = (event as CustomEvent<{ mode?: string }>).detail?.mode ?? null;
+      setStoredWorkMode(isDesignDemoWorkModeValue(nextMode) ? nextMode : readStoredWorkMode());
+    }
+
+    window.addEventListener("storage", syncStoredWorkMode);
+    window.addEventListener(WORK_MODE_CHANGE_EVENT, handleWorkModeChange);
+    return () => {
+      window.removeEventListener("storage", syncStoredWorkMode);
+      window.removeEventListener(WORK_MODE_CHANGE_EVENT, handleWorkModeChange);
+    };
+  }, []);
 
   useEffect(() => {
     routeHeaderInsetRef.current = 0;
@@ -481,6 +520,7 @@ export function DesignDemoShell({
             onToggleTheme={toggleTheme}
             sfwMode={sfwMode}
             onToggleSfwMode={toggleSfwMode}
+            navLinks={navLinks}
           />
         ) : null}
         {menuOpen ? (
@@ -527,6 +567,7 @@ export function DesignDemoShell({
         <MobileBottomNav
           data={data}
           currentRoute={currentRoute}
+          links={navLinks}
           moreOpen={menuOpen}
           onMore={() => {
             setMenuOpen((open) => !open);

@@ -113,26 +113,91 @@ export const ROUTES: RouteDef[] = [
   { key: "login", pattern: "/login", title: "登录", group: "系统", icon: Lock },
 ];
 
-export const NAV_LINKS: NavLinkDef[] = [
-  { href: "/runs", label: "任务", group: "核心", icon: ClipboardList, count: (data) => data.runs.length },
-  { href: "/projects", label: "项目", group: "核心", icon: FolderTree, count: (data) => data.projects.length },
-  { href: "/training/runs", label: "训练运行", group: "LoRA 训练", icon: ClipboardList, count: (data) => buildLoraTrainingDemoData(data).runs.length, activePrefix: "/training/runs" },
-  { href: "/training/projects", label: "训练项目", group: "LoRA 训练", icon: FolderTree, count: (data) => buildLoraTrainingDemoData(data).projects.length, activePrefix: "/training/projects" },
-  { href: "/training/presets", label: "训练预制", group: "LoRA 训练", icon: Tags, count: (data) => buildLoraTrainingDemoData(data).presets.length, activePrefix: "/training/presets" },
-  { href: "/training/templates", label: "训练模板", group: "LoRA 训练", icon: FileText, count: (data) => buildLoraTrainingDemoData(data).templates.length, activePrefix: "/training/templates" },
-  { href: "/presets", label: "预设库", group: "资源", icon: Tags, count: (data) => data.metrics.presets },
-  { href: "/templates", label: "模板", group: "模板", icon: FileText, count: (data) => data.templates.length },
-  { href: "/models", label: "模型", group: "资源", icon: Database, count: (data) => data.models.length, activePrefix: ["/models", "/loras"] },
-  { href: "/settings", label: "设置", group: "设置", icon: Settings },
-  { href: "/login", label: "登录", group: "系统", icon: Lock },
+export type DesignDemoWorkMode = "generation" | "lora_training";
+
+export const WORK_MODE_STORAGE_KEY = "comfyui-manager:work-mode";
+export const WORK_MODE_CHANGE_EVENT = "comfyui-manager:work-mode-change";
+
+type ModeAwareLinkConfig = {
+  generation: Pick<NavLinkDef, "href" | "count">;
+  icon: RouteDef["icon"];
+  label: string;
+  lora_training: Pick<NavLinkDef, "href" | "activePrefix" | "count">;
+};
+
+const MODE_AWARE_RESOURCE_LINKS: ModeAwareLinkConfig[] = [
+  {
+    label: "运行",
+    icon: ClipboardList,
+    generation: { href: "/runs", count: (data) => data.runs.length },
+    lora_training: { href: "/training/runs", activePrefix: "/training/runs", count: (data) => buildLoraTrainingDemoData(data).runs.length },
+  },
+  {
+    label: "项目",
+    icon: FolderTree,
+    generation: { href: "/projects", count: (data) => data.projects.length },
+    lora_training: { href: "/training/projects", activePrefix: "/training/projects", count: (data) => buildLoraTrainingDemoData(data).projects.length },
+  },
+  {
+    label: "预制",
+    icon: Tags,
+    generation: { href: "/presets", count: (data) => data.metrics.presets },
+    lora_training: { href: "/training/presets", activePrefix: "/training/presets", count: (data) => buildLoraTrainingDemoData(data).presets.length },
+  },
+  {
+    label: "模板",
+    icon: FileText,
+    generation: { href: "/templates", count: (data) => data.templates.length },
+    lora_training: { href: "/training/templates", activePrefix: "/training/templates", count: (data) => buildLoraTrainingDemoData(data).templates.length },
+  },
 ];
 
-export const MOBILE_NAV_LINKS: NavLinkDef[] = [
-  { href: "/runs", label: "任务", group: "核心", icon: ClipboardList, count: (data) => data.runs.length },
-  { href: "/projects", label: "项目", group: "核心", icon: FolderTree, count: (data) => data.projects.length },
-  { href: "/training/runs", label: "训练运行", group: "LoRA 训练", icon: ClipboardList, count: (data) => buildLoraTrainingDemoData(data).runs.length, activePrefix: "/training/runs" },
-  { href: "/training/projects", label: "训练项目", group: "LoRA 训练", icon: FolderTree, count: (data) => buildLoraTrainingDemoData(data).projects.length, activePrefix: "/training/projects" },
-];
+const GENERATION_ROUTE_PREFIXES = ["/runs", "/projects", "/presets", "/templates"] as const;
+const LORA_TRAINING_ROUTE_PREFIXES = ["/training/runs", "/training/projects", "/training/presets", "/training/templates"] as const;
+
+export function isDesignDemoWorkModeValue(value: string | null): value is DesignDemoWorkMode {
+  return value === "generation" || value === "lora_training";
+}
+
+export function inferWorkModeFromRoute(route: string): DesignDemoWorkMode | null {
+  if (LORA_TRAINING_ROUTE_PREFIXES.some((prefix) => route === prefix || route.startsWith(`${prefix}/`))) {
+    return "lora_training";
+  }
+  if (GENERATION_ROUTE_PREFIXES.some((prefix) => route === prefix || route.startsWith(`${prefix}/`))) {
+    return "generation";
+  }
+  return null;
+}
+
+export function resolveWorkModeForRoute(route: string, storedMode: DesignDemoWorkMode): DesignDemoWorkMode {
+  return inferWorkModeFromRoute(route) ?? storedMode;
+}
+
+export function buildWorkModeNavLinks(workMode: DesignDemoWorkMode): NavLinkDef[] {
+  const resourceLinks = MODE_AWARE_RESOURCE_LINKS.map((link) => ({
+    ...link[workMode],
+    label: link.label,
+    group: "工作区",
+    icon: link.icon,
+  }));
+
+  return [
+    ...resourceLinks,
+    {
+      href: "/models",
+      label: "模型",
+      group: "资源",
+      icon: Database,
+      count: (data) => data.models.length,
+      activePrefix: ["/models", "/loras"],
+    },
+    { href: "/settings", label: "设置", group: "系统", icon: Settings, activePrefix: "/settings" },
+  ];
+}
+
+export const NAV_LINKS: NavLinkDef[] = buildWorkModeNavLinks("generation");
+
+export const MOBILE_NAV_LINKS: NavLinkDef[] = NAV_LINKS;
 
 export function demoHref(route: string) {
   const normalized = normalizeProductRoute(route);

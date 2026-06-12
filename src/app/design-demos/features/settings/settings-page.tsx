@@ -7,17 +7,19 @@ import { ArrowRight, FlaskConical, History, ImageIcon, Monitor } from "lucide-re
 import type { DemoData } from "../../data";
 import s from "./settings-page.shell.module.css";
 import { PageHeader } from "../../shared/primitives/page-header";
-import { demoHref } from "../../routing";
-
-type WorkMode = "generation" | "lora_training";
-
-const WORK_MODE_STORAGE_KEY = "comfyui-manager:work-mode";
+import {
+  WORK_MODE_CHANGE_EVENT,
+  WORK_MODE_STORAGE_KEY,
+  demoHref,
+  isDesignDemoWorkModeValue,
+} from "../../routing";
+import type { DesignDemoWorkMode } from "../../routing";
 
 const WORK_MODE_OPTIONS: Array<{
   description: string;
   icon: typeof ImageIcon;
   label: string;
-  value: WorkMode;
+  value: DesignDemoWorkMode;
 }> = [
   {
     description: "运行、项目、预制和模板入口解析到生图资源。",
@@ -33,7 +35,7 @@ const WORK_MODE_OPTIONS: Array<{
   },
 ];
 
-const MODE_ROUTE_ROWS: Record<WorkMode, Array<{ label: string; route: string }>> = {
+const MODE_ROUTE_ROWS: Record<DesignDemoWorkMode, Array<{ label: string; route: string }>> = {
   generation: [
     { label: "运行", route: "/runs" },
     { label: "项目", route: "/projects" },
@@ -48,28 +50,25 @@ const MODE_ROUTE_ROWS: Record<WorkMode, Array<{ label: string; route: string }>>
   ],
 };
 
-function isWorkMode(value: string | null): value is WorkMode {
-  return value === "generation" || value === "lora_training";
-}
-
-function readInitialWorkMode(): WorkMode {
+function readInitialWorkMode(): DesignDemoWorkMode {
   if (typeof window === "undefined") return "generation";
   try {
     const stored = window.localStorage.getItem(WORK_MODE_STORAGE_KEY);
-    return isWorkMode(stored) ? stored : "generation";
+    return isDesignDemoWorkModeValue(stored) ? stored : "generation";
   } catch {
     return "generation";
   }
 }
 
 export function SettingsPage({ data }: { data: DemoData }) {
-  const [workMode, setWorkMode] = useState<WorkMode>(readInitialWorkMode);
+  const [workMode, setWorkMode] = useState<DesignDemoWorkMode>(readInitialWorkMode);
   const modeRouteList = MODE_ROUTE_ROWS[workMode];
 
-  function selectWorkMode(nextMode: WorkMode) {
+  function selectWorkMode(nextMode: DesignDemoWorkMode) {
     setWorkMode(nextMode);
     try {
       window.localStorage.setItem(WORK_MODE_STORAGE_KEY, nextMode);
+      window.dispatchEvent(new CustomEvent(WORK_MODE_CHANGE_EVENT, { detail: { mode: nextMode } }));
     } catch {}
   }
 

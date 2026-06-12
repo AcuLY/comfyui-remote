@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { fallbackData } from "../data/fallback-data";
 import { buildHeaderSpecs, findHeaderSpecForRoute } from "./header-specs";
+import * as routeModule from "./routes";
 import { demoHref, matchRoute, MOBILE_NAV_LINKS, NAV_LINKS, ROUTES, sampleRouteInventory } from "./routes";
 
 test("LoRA training entry routes are registered in the demo router", () => {
@@ -67,25 +68,39 @@ test("LoRA training sample routes use LoRA training fixture ids", () => {
   assert.equal(samples.get("training-template-section"), "/training/templates/character-lora-base/sections/0");
 });
 
-test("LoRA training primary pages are discoverable from demo navigation", () => {
-  const trainingNav = NAV_LINKS.filter((link) => link.group === "LoRA 训练");
-  assert.deepEqual(trainingNav.map((link) => link.href), [
-    "/training/runs",
-    "/training/projects",
-    "/training/presets",
-    "/training/templates",
-  ]);
-  assert.deepEqual(trainingNav.map((link) => link.activePrefix), [
-    "/training/runs",
-    "/training/projects",
-    "/training/presets",
-    "/training/templates",
-  ]);
+test("work mode navigation keeps six stable resource entries and resolves LoRA routes by mode", () => {
+  const labels = ["运行", "项目", "预制", "模板", "模型", "设置"];
 
-  const mobileTrainingNav = MOBILE_NAV_LINKS.filter((link) => link.href.startsWith("/training/"));
-  assert.deepEqual(mobileTrainingNav.map((link) => link.href), [
+  assert.deepEqual(NAV_LINKS.map((link) => link.label), labels);
+  assert.deepEqual(MOBILE_NAV_LINKS.map((link) => link.label), labels);
+
+  const buildWorkModeNavLinks = (routeModule as Record<string, unknown>).buildWorkModeNavLinks;
+  assert.equal(typeof buildWorkModeNavLinks, "function", "mode-aware nav builder should be exported");
+
+  const generationLinks = (buildWorkModeNavLinks as (mode: "generation" | "lora_training") => typeof NAV_LINKS)("generation");
+  const trainingLinks = (buildWorkModeNavLinks as (mode: "generation" | "lora_training") => typeof NAV_LINKS)("lora_training");
+
+  assert.deepEqual(generationLinks.map((link) => link.href), [
+    "/runs",
+    "/projects",
+    "/presets",
+    "/templates",
+    "/models",
+    "/settings",
+  ]);
+  assert.deepEqual(trainingLinks.map((link) => link.href), [
     "/training/runs",
     "/training/projects",
+    "/training/presets",
+    "/training/templates",
+    "/models",
+    "/settings",
+  ]);
+  assert.deepEqual(trainingLinks.slice(0, 4).map((link) => link.activePrefix), [
+    "/training/runs",
+    "/training/projects",
+    "/training/presets",
+    "/training/templates",
   ]);
 });
 
