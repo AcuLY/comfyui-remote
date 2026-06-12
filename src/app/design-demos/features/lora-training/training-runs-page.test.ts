@@ -24,3 +24,13 @@ test("completed training generation rows prioritize recent output thumbnails", (
   assert.match(cssSource, /\.runThumbs\b/, "run rows should style thumbnail strips separately from text content");
   assert.match(cssSource, /data-demo-ui-image-thumb-small/, "thumbnail sizing should target shared small image thumbs");
 });
+
+test("failed training runs can be retried in local front-end state", () => {
+  assert.match(pageSource, /retriedRunIds/, "runs page should track retried failed runs locally");
+  assert.match(pageSource, /setRetriedRunIds/, "retry actions should update retried run state");
+  assert.match(pageSource, /retryRuns/, "runs page should define a shared retry handler");
+  assert.match(pageSource, /onClick=\{\(\) => retryRuns\(selectedIds\)\}/, "batch retry should call the local retry handler");
+  assert.match(pageSource, /onClick=\{\(\) => retryRuns\(\[run\.id\]\)\}/, "row retry should call the local retry handler");
+  assert.match(pageSource, /retried \? " · 已重试" : ""/, "retried rows should show inline retry state");
+  assert.match(pageSource, /已排队重试/, "retried rows should show queued-retry status");
+});

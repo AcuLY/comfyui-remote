@@ -118,6 +118,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
   const [status, setStatus] = useState<LoraTrainingTaskStatus>("completed");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [hiddenRunIds, setHiddenRunIds] = useState<Set<string>>(new Set());
+  const [retriedRunIds, setRetriedRunIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const runsForKind = training.runs.filter((run) => run.kind === kind && !hiddenRunIds.has(run.id));
   const runningRunsForKind = runsForKind.filter((run) => run.status === "running").slice(0, 2);
@@ -153,6 +154,12 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
   function hideRuns(runIds: Iterable<string>) {
     const ids = new Set(runIds);
     setHiddenRunIds((current) => new Set([...current, ...ids]));
+    setSelectedIds((current) => new Set([...current].filter((id) => !ids.has(id))));
+  }
+
+  function retryRuns(runIds: Iterable<string>) {
+    const ids = new Set(runIds);
+    setRetriedRunIds((current) => new Set([...current, ...ids]));
     setSelectedIds((current) => new Set([...current].filter((id) => !ids.has(id))));
   }
 
@@ -218,7 +225,8 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                   icon={RotateCcw}
                   tone="primary"
                   disabled={selectedVisibleCount === 0}
-                  feedback={{ title: "重试动作已预览", detail: `${selectedVisibleCount} 条任务` }}
+                  onClick={() => retryRuns(selectedIds)}
+                  feedback={{ title: "失败任务已加入重试队列", detail: `${selectedVisibleCount} 条任务` }}
                 >
                   重试所选
                 </Button>
@@ -285,6 +293,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                       <div className={s.runRows}>
                         {group.rows.map((run) => {
                           const selected = selectedIds.has(run.id);
+                          const retried = retriedRunIds.has(run.id);
                           const previewImages = runPreviewImages(run, training.projects);
 
                           return (
@@ -299,8 +308,8 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                               <Link className={cx(s.runMain, previewImages.length > 0 && s.runMainWithThumbs)} href={taskDetailHref(run)}>
                                 <span className={s.runText}>
                                   <strong>{run.title}</strong>
-                                  <span>{run.summary}</span>
-                                  <em>{run.timestamp}</em>
+                                  <span>{run.summary}{retried ? " · 已重试" : ""}</span>
+                                  <em>{retried ? "已加入重试队列" : run.timestamp}</em>
                                   {typeof run.progress === "number" ? (
                                     <span className={s.runProgress} aria-label={`约 ${run.progress}%`}>
                                       <span className={s.runProgressTrack} aria-hidden="true">
@@ -321,9 +330,18 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                 ) : null}
                               </Link>
                               <div className={s.rowActions}>
-                                {statusBadge(run)}
+                                {retried ? <StatusBadge status="pending" label="已排队重试" /> : statusBadge(run)}
                                 {run.status === "failed" ? (
-                                  <Button icon={RotateCcw} iconOnly size="sm" ariaLabel={`重试任务：${run.title}`} feedback={{ title: "重试动作已预览", detail: run.title }} />
+                                  retried ? null : (
+                                    <Button
+                                      icon={RotateCcw}
+                                      iconOnly
+                                      size="sm"
+                                      ariaLabel={`重试任务：${run.title}`}
+                                      onClick={() => retryRuns([run.id])}
+                                      feedback={{ title: "重试已排队", detail: run.title }}
+                                    />
+                                  )
                                 ) : (
                                   <Button
                                     icon={X}
