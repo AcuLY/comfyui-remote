@@ -16,6 +16,14 @@ test("training runs page keeps the generated-run workbench hierarchy", () => {
   assert.match(cssSource, /\.currentRunProgressTrack\b/, "current-running cards should use a compact progress bar");
 });
 
+test("training runs page keeps status counts only in status tabs", () => {
+  assert.match(pageSource, /items=\{STATUS_ITEMS\.map\(\(item\) => \(\{ \.\.\.item, count: countFor\(kind, item\.value\) \}\)\)\}/, "status tabs should own the status counts");
+  assert.doesNotMatch(pageSource, /modeSummary/, "runs page should not render a separate top status summary");
+  assert.doesNotMatch(pageSource, /metricCard/, "runs page should not duplicate status counts in metric cards");
+  assert.doesNotMatch(cssSource, /\.modeSummary\b/, "runs page styles should not keep the removed status summary surface");
+  assert.doesNotMatch(cssSource, /\.metricCard\b/, "runs page styles should not keep duplicate status metric cards");
+});
+
 test("completed training generation rows prioritize recent output thumbnails", () => {
   assert.match(pageSource, /ImageListSmall/, "completed generation rows should use the shared small thumbnail strip");
   assert.match(pageSource, /runPreviewImages/, "run rows should resolve preview images from project results or dataset samples");

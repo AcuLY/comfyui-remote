@@ -188,15 +188,6 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
         subtitle="集中处理训练集生成任务和 LoRA 训练任务。"
       />
 
-      <div className={s.modeSummary} aria-label="运行概览">
-        {STATUS_ITEMS.map((item) => (
-          <div className={s.metricCard} key={item.value}>
-            <strong>{countFor(kind, item.value)}</strong>
-            <span>{item.label}</span>
-          </div>
-        ))}
-      </div>
-
       <CurrentRunningSurface runs={runningRunsForKind} />
 
       <div className={s.runSurfaceStack}>
