@@ -977,9 +977,16 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     blocks: section?.blocks ?? [],
     sectionId: section?.id ?? null,
   }));
+  const [templateSectionFormState, setTemplateSectionForm] = useState(() => ({
+    enabledLabel: section?.enabled ? "启用" : "停用",
+    sectionId: section?.id ?? null,
+    templateId: template?.id ?? null,
+    title: section?.title ?? "",
+  }));
   const [editingTemplateBlockId, setEditingTemplateBlockId] = useState<string | null>(null);
   const [templateSectionDraft, setTemplateSectionDraft] = useState<{
     blockCount: number;
+    enabledLabel: string;
     firstBlock: string;
     resolvedScene: string;
     sectionTitle: string;
@@ -988,9 +995,28 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   const sceneBlocks = sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
   if (!template || !section) return <EmptyPage title="没有模板小节数据" />;
 
+  const activeTemplate = template;
   const activeSection = section;
+  const templateSectionForm = templateSectionFormState.templateId === activeTemplate.id && templateSectionFormState.sectionId === activeSection.id ? templateSectionFormState : {
+    enabledLabel: activeSection.enabled ? "启用" : "停用",
+    sectionId: activeSection.id,
+    templateId: activeTemplate.id,
+    title: activeSection.title,
+  };
   const importedPreset = training.presets[0];
   const resolvedTemplateScene = sceneBlocks.map((block) => block.text).join("\n\n");
+
+  function handleUpdateTemplateSectionForm(field: "enabledLabel" | "title", value: string) {
+    setTemplateSectionForm((current) => {
+      const active = current.templateId === activeTemplate.id && current.sectionId === activeSection.id ? current : templateSectionForm;
+      return {
+        ...active,
+        [field]: value,
+        sectionId: activeSection.id,
+        templateId: activeTemplate.id,
+      };
+    });
+  }
 
   function updateTemplateBlocks(updater: (current: LoraTrainingSectionBlock[]) => LoraTrainingSectionBlock[]) {
     setSceneBlocks((current) => ({
@@ -1040,26 +1066,27 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   function handleSaveTemplateSection() {
     setTemplateSectionDraft({
       blockCount: sceneBlocks.length,
+      enabledLabel: templateSectionForm.enabledLabel,
       firstBlock: sceneBlocks[0]?.title ?? "无场景块",
       resolvedScene: resolvedTemplateScene || section.resolvedScene,
-      sectionTitle: section.title,
-      templateTitle: template.title,
+      sectionTitle: templateSectionForm.title,
+      templateTitle: activeTemplate.title,
     });
   }
 
   return (
     <div className={s.page}>
       <PageHeader
-        back={{ href: `/training/templates/${template.id}/edit`, label: "返回模板" }}
+        back={{ href: `/training/templates/${activeTemplate.id}/edit`, label: "返回模板" }}
         eyebrow="模板小节"
-        title={`${template.title} / ${section.title}`}
+        title={`${activeTemplate.title} / ${templateSectionForm.title}`}
         subtitle="模板小节与项目小节保持相同的场景块编辑心智。"
         actions={(
           <Button
             tone="primary"
             icon={Save}
             onClick={handleSaveTemplateSection}
-            feedback={{ title: templateSectionDraft ? "模板小节保存草稿已更新" : "模板小节保存草稿已记录", detail: section.title }}
+            feedback={{ title: templateSectionDraft ? "模板小节保存草稿已更新" : "模板小节保存草稿已记录", detail: templateSectionForm.title }}
           >
             {templateSectionDraft ? "更新小节草稿" : "保存小节"}
           </Button>
@@ -1068,9 +1095,9 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
       <div className={s.twoCol}>
         <Panel title="运行参数">
           <div className={s.stack}>
-            <Field label="小节名" value={section.title} />
-            <FloatingSelect label="启用状态" value={section.enabled ? "启用" : "停用"} options={["启用", "停用"]} />
-            <Field label="场景块数量" value={`${sceneBlocks.length}`} />
+            <Field label="小节名" value={templateSectionForm.title} onChange={(value) => handleUpdateTemplateSectionForm("title", value)} />
+            <FloatingSelect label="启用状态" value={templateSectionForm.enabledLabel} options={["启用", "停用"]} onChange={(value) => handleUpdateTemplateSectionForm("enabledLabel", value)} />
+            <Field readOnly label="场景块数量" value={`${sceneBlocks.length}`} />
           </div>
         </Panel>
         <Panel
@@ -1087,7 +1114,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
               >
                 导入预制
               </Button>
-              <Button size="sm" icon={Plus} onClick={handleAddLocalTemplateBlock} feedback={{ title: "模板本地块已添加", detail: section.title }}>添加本地块</Button>
+              <Button size="sm" icon={Plus} onClick={handleAddLocalTemplateBlock} feedback={{ title: "模板本地块已添加", detail: templateSectionForm.title }}>添加本地块</Button>
             </>
           )}
         >
@@ -1119,6 +1146,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
           <dl className={s.trainingTemplateSectionDraft}>
             <div><dt>模板</dt><dd>{templateSectionDraft.templateTitle}</dd></div>
             <div><dt>小节</dt><dd>{templateSectionDraft.sectionTitle}</dd></div>
+            <div><dt>状态</dt><dd>{templateSectionDraft.enabledLabel}</dd></div>
             <div><dt>场景块</dt><dd>{templateSectionDraft.blockCount} 个 · {templateSectionDraft.firstBlock}</dd></div>
             <div className={s.trainingTemplateDraftWide}><dt>合成场景</dt><dd>{templateSectionDraft.resolvedScene}</dd></div>
           </dl>

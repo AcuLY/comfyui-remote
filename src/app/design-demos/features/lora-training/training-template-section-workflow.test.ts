@@ -101,6 +101,20 @@ test("training template section saves a visible local section draft", () => {
   assert.doesNotMatch(templateSectionPage, /feedback=\{\{ title: "模板小节已保存"/, "template section save should not remain feedback-only");
 });
 
+test("training template section saves editable basic fields into the local draft", () => {
+  const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
+
+  assert.match(templateSectionPage, /templateSectionForm/, "template section should track basic fields in local form state");
+  assert.match(templateSectionPage, /handleUpdateTemplateSectionForm/, "template section should expose a basic form update handler");
+  assert.match(templateSectionPage, /value=\{templateSectionForm\.title\}/, "section title should be controlled by local form state");
+  assert.match(templateSectionPage, /onChange=\{\(value\) => handleUpdateTemplateSectionForm\("title", value\)\}/, "section title edits should update local form state");
+  assert.match(templateSectionPage, /value=\{templateSectionForm\.enabledLabel\}/, "enabled status should be controlled by local form state");
+  assert.match(templateSectionPage, /onChange=\{\(value\) => handleUpdateTemplateSectionForm\("enabledLabel", value\)\}/, "enabled status changes should update local form state");
+  assert.match(templateSectionPage, /sectionTitle:\s*templateSectionForm\.title/, "saved draft should use the edited section title");
+  assert.match(templateSectionPage, /enabledLabel:\s*templateSectionForm\.enabledLabel/, "saved draft should use the edited enabled status");
+  assert.match(templateSectionPage, /templateSectionDraft\.enabledLabel/, "visible draft should render the saved enabled status");
+});
+
 test("training template section scene-block styles are responsive", () => {
   for (const className of [
     "templateSceneBlockList",
