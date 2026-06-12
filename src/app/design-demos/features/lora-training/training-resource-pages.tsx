@@ -316,9 +316,38 @@ function TrainingPresetLibraryItemRow({
   );
 }
 
+function TrainingPresetCategoryRailItem({
+  active,
+  category,
+  count,
+  onSelect,
+}: {
+  active: boolean;
+  category: string;
+  count: number;
+  onSelect: () => void;
+}) {
+  const { ref, style, handleProps } = useDemoSortable(category);
+
+  return (
+    <div ref={ref} style={style}>
+      <button
+        className={cx(active && s.railItemActive)}
+        type="button"
+        onClick={onSelect}
+      >
+        <GripVertical className={s.resourceRailDragHandle} aria-hidden="true" {...handleProps} />
+        <span>{category}</span>
+        <em>{count}</em>
+      </button>
+    </div>
+  );
+}
+
 export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
   const training = buildLoraTrainingDemoData(data);
   const categories = uniquePresetCategories(training.presets);
+  const [orderedPresetCategories, setOrderedPresetCategories] = useState(() => categories);
   const [activeCategory, setActiveCategory] = useState(categories[0] ?? "");
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
@@ -382,21 +411,21 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
       <div className={s.resourceLayout}>
         <aside className={s.resourceRail}>
           <strong>分类</strong>
-          {categories.map((category) => (
-            <button
-              className={cx(activeCategory === category && s.railItemActive)}
-              type="button"
-              key={category}
-              onClick={() => {
-                setActiveCategory(category);
-                setCurrentFolder(null);
-                setSelectedIds(new Set());
-              }}
-            >
-              <span>{category}</span>
-              <em>{training.presets.filter((preset) => preset.category === category && !hiddenPresetIds.has(preset.id)).length}</em>
-            </button>
-          ))}
+          <SortableList items={orderedPresetCategories} onReorder={setOrderedPresetCategories}>
+            {orderedPresetCategories.map((category) => (
+              <TrainingPresetCategoryRailItem
+                active={activeCategory === category}
+                category={category}
+                count={training.presets.filter((preset) => preset.category === category && !hiddenPresetIds.has(preset.id)).length}
+                key={category}
+                onSelect={() => {
+                  setActiveCategory(category);
+                  setCurrentFolder(null);
+                  setSelectedIds(new Set());
+                }}
+              />
+            ))}
+          </SortableList>
         </aside>
         <section className={s.resourceWorkspace}>
           <header className={s.trainingPresetWorkspaceHeader}>

@@ -57,6 +57,27 @@ test("training preset library drag handles reorder visible presets locally", () 
   assert.match(itemSource, /\{\.\.\.handleProps\}/, "training preset row drag handles should receive sortable handle props");
 });
 
+test("training preset category rail drag handles reorder categories locally", () => {
+  const categoryItemStart = pageSource.indexOf("function TrainingPresetCategoryRailItem");
+  const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  assert.notEqual(categoryItemStart, -1);
+  assert.notEqual(presetsStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const categoryItemSource = pageSource.slice(categoryItemStart, presetsStart);
+  const presetsSource = pageSource.slice(presetsStart, detailStart);
+
+  assert.match(presetsSource, /orderedPresetCategories/, "training preset category rail should keep local category order");
+  assert.match(presetsSource, /setOrderedPresetCategories/, "category rail reorder should update local state");
+  assert.match(presetsSource, /<SortableList items=\{orderedPresetCategories\} onReorder=\{setOrderedPresetCategories\}>/, "category rail should use the shared sortable wrapper");
+  assert.match(categoryItemSource, /useDemoSortable\(category\)/, "category rail items should attach sortable behavior to each category");
+  assert.match(categoryItemSource, /ref=\{ref\}/, "category rail items should apply sortable refs");
+  assert.match(categoryItemSource, /style=\{style\}/, "category rail items should apply sortable transforms");
+  assert.match(categoryItemSource, /\{\.\.\.handleProps\}/, "category drag handles should receive sortable handle props");
+  assert.match(cssSource, /\.resourceRailDragHandle\b/, "category rail should style a dedicated drag handle");
+});
+
 test("training preset new actions route into a real new-preset form", () => {
   const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");

@@ -39,7 +39,7 @@
 
 .resourceRail button {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
   min-width: 0;
   align-items: center;
   gap: 8px;
@@ -71,6 +71,19 @@
 .resourceRail em {
   font-style: normal;
   font-size: 10px;
+}
+
+.resourceRailDragHandle {
+  width: 13px;
+  height: 13px;
+  color: var(--demo-faint);
+  cursor: grab;
+}
+
+.resourceRail button:hover .resourceRailDragHandle,
+.resourceRail button:focus-visible .resourceRailDragHandle,
+.railItemActive .resourceRailDragHandle {
+  color: var(--demo-green);
 }
 
 .resourceWorkspace {
