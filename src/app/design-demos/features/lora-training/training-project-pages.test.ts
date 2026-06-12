@@ -318,6 +318,22 @@ test("training project create page is a full form workspace with training seed c
   assert.match(cssSource, /\.sectionSeedCard\b/, "initial section seed cards should have dedicated styling");
 });
 
+test("training project create reference candidates expand like managed list cards", () => {
+  const firstCandidateRule = cssSource.indexOf(".referenceCandidateList");
+  const responsiveCandidateRule = cssSource.indexOf(".referenceCandidateList", firstCandidateRule + 1);
+  assert.notEqual(firstCandidateRule, -1, "reference candidate list CSS should exist");
+  assert.notEqual(responsiveCandidateRule, -1, "reference candidate list should have a separate responsive rule");
+
+  const responsiveRegion = cssSource.slice(Math.max(0, responsiveCandidateRule - 120), cssSource.indexOf("}", responsiveCandidateRule) + 1);
+
+  assert.match(responsiveRegion, /@media \(min-width: 720px\)/, "reference candidates should expand at the training list breakpoint");
+  assert.match(
+    responsiveRegion,
+    /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "reference candidates should use the same two-column card grid when there is room",
+  );
+});
+
 test("training project create page manages initial section seeds locally", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");

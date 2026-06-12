@@ -1060,6 +1060,12 @@
   gap: 6px;
 }
 
+@media (min-width: 720px) {
+  .referenceCandidateList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .referenceCandidate {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
