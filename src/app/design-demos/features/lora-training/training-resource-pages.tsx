@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { ArrowDown, ArrowUp, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
@@ -640,6 +640,27 @@ function templateStatus(template: LoraTrainingTemplate) {
 
 type LoraTrainingTemplateSection = LoraTrainingTemplate["sections"][number];
 
+const TRAINING_TEMPLATE_SCROLL_KEY = "demo-training-templates-from";
+
+function readAndClearTrainingTemplateListAnchor() {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const value = sessionStorage.getItem(TRAINING_TEMPLATE_SCROLL_KEY);
+    if (!value) return undefined;
+    sessionStorage.removeItem(TRAINING_TEMPLATE_SCROLL_KEY);
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
+function rememberTrainingTemplateListAnchor(templateId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(TRAINING_TEMPLATE_SCROLL_KEY, templateId);
+  } catch {}
+}
+
 function TemplateEditorSectionRow({
   index,
   onCopy,
@@ -681,6 +702,20 @@ function TemplateEditorSectionRow({
 
 export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
   const training = buildLoraTrainingDemoData(data);
+  const listRef = useRef<HTMLDivElement>(null);
+  const [fromTemplateId] = useState(readAndClearTrainingTemplateListAnchor);
+  const [hiddenTemplateIds, setHiddenTemplateIds] = useState<Set<string>>(() => new Set());
+  const visibleTemplates = training.templates.filter((template) => !hiddenTemplateIds.has(template.id));
+
+  useLayoutEffect(() => {
+    if (!fromTemplateId) return;
+    const target = listRef.current?.querySelector(`[data-training-template-id="${fromTemplateId}"]`);
+    target?.scrollIntoView({ block: "center", behavior: "instant" });
+  }, [fromTemplateId]);
+
+  function hideTemplate(templateId: string) {
+    setHiddenTemplateIds((current) => new Set(current).add(templateId));
+  }
 
   return (
     <div className={s.page}>
@@ -695,29 +730,46 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
           </>
         )}
       />
-      <div className={s.resourceGrid}>
-        {training.templates.map((template) => (
-          <article className={s.templateRow} key={template.id}>
-            <div>
-              <Link href={demoHref(`/training/templates/${template.id}/edit`)}>
-                <strong>{template.title}</strong>
-              </Link>
-              <span>{template.description}</span>
-              <div className={s.templateSections}>
-                {template.sections.map((section, index) => (
-                  <Link href={demoHref(`/training/templates/${template.id}/sections/${index}`)} key={section.id}>
-                    {String(index + 1).padStart(2, "0")} · {section.title}
+      <div className={s.trainingTemplateList} ref={listRef}>
+        {visibleTemplates.map((template) => (
+          <article className={s.trainingTemplateListItem} key={template.id} data-training-template-id={template.id}>
+            <div className={s.trainingTemplateListMain}>
+              <div className={s.trainingTemplateListTitle}>
+                <Link href={demoHref(`/training/templates/${template.id}/edit`)} onClick={() => rememberTrainingTemplateListAnchor(template.id)}>
+                  <strong>{template.title}</strong>
+                </Link>
+                <span>{template.description}</span>
+              </div>
+              <div className={s.trainingTemplateSectionSummary}>
+                {template.sections.slice(0, 5).map((section, index) => (
+                  <Link
+                    href={demoHref(`/training/templates/${template.id}/sections/${index}`)}
+                    key={section.id}
+                    onClick={() => rememberTrainingTemplateListAnchor(template.id)}
+                  >
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    {section.title}
                   </Link>
                 ))}
+                {template.sections.length > 5 ? <em>+{template.sections.length - 5}</em> : null}
               </div>
             </div>
-            <div className={s.templateMeta}>
+            <div className={s.trainingTemplateListMeta}>
               {templateStatus(template)}
               <StatusBadge status="template" label={`${template.sectionCount} 小节`} />
-              <ButtonLink href={`/training/templates/${template.id}/edit`} icon={Edit3}>编辑</ButtonLink>
+              <div className={s.trainingTemplateListActions}>
+                <ButtonLink href={`/training/templates/${template.id}/edit`} icon={Edit3}>编辑</ButtonLink>
+                <Button tone="danger" icon={Trash2} onClick={() => hideTemplate(template.id)} feedback={{ tone: "warning", title: "训练模板已移除", detail: template.title }}>删除</Button>
+              </div>
             </div>
           </article>
         ))}
+        {visibleTemplates.length === 0 ? (
+          <div className={s.emptyInline}>
+            <strong>暂无训练模板</strong>
+            <span>当前本地视图里的模板都已移除，可通过新建模板重新开始。</span>
+          </div>
+        ) : null}
       </div>
     </div>
   );

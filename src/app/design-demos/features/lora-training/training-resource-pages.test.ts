@@ -171,6 +171,26 @@ test("training template form section actions update local front-end state", () =
   assert.match(rowSource, /onDelete\?\.\(section\.id\)/, "template section delete button should call the delete handler");
 });
 
+test("training template list follows the template-list surface with local delete state", () => {
+  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  assert.notEqual(templatesStart, -1);
+  assert.notEqual(formStart, -1);
+
+  const templatesSource = pageSource.slice(templatesStart, formStart);
+
+  assert.match(templatesSource, /hiddenTemplateIds/, "template list should keep locally hidden templates");
+  assert.match(templatesSource, /visibleTemplates/, "template list should render from local visible template state");
+  assert.match(templatesSource, /hideTemplate/, "template list should define a local delete handler");
+  assert.match(templatesSource, /onClick=\{\(\) => hideTemplate\(template\.id\)\}/, "delete action should remove a template locally");
+  assert.match(templatesSource, /template\.sections\.slice\(0,\s*5\)/, "template cards should keep section chips compact");
+  assert.match(templatesSource, /template\.sections\.length > 5/, "template cards should show overflow count for extra sections");
+  assert.doesNotMatch(templatesSource, /training\.templates\.map/, "template list should not render directly from immutable fixtures");
+  assert.match(cssSource, /\.trainingTemplateList\b[\s\S]*?container-type:\s*inline-size/, "template list should have a container-query surface");
+  assert.match(cssSource, /\.trainingTemplateList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "template list should expand to two columns when there is enough width");
+  assert.match(cssSource, /\.trainingTemplateListItem\b/, "template cards should use a dedicated list-item class");
+});
+
 test("training preset detail and sort rules reuse editor/sort shells without regular preset dimensions", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
   const sortPanelStart = pageSource.indexOf("function TrainingPresetSortPanel");
