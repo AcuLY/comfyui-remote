@@ -496,10 +496,18 @@ function ReferencePicker({
 
 export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   const training = useTraining(data);
-  const selectedTemplate = training.templates[0];
+  const initialTemplate = training.templates[0];
   const baseModelOptions = data.models.filter((model) => model.modelType === "checkpoint").map((model) => model.name);
-  const projectDraftTitle = "新角色 LoRA 项目";
-  const selectedBaseModel = baseModelOptions[0] ?? "继承训练默认模型";
+  const [projectForm, setProjectForm] = useState({
+    baseModel: baseModelOptions[0] ?? "继承训练默认模型",
+    captionStrategy: "先触发词后描述",
+    detailPrompt: "发型、眼睛、服装材质、常见构图和需要避免的变化。",
+    perSectionImageCount: "4",
+    templateTitle: initialTemplate?.title ?? "不使用模板",
+    title: "新角色 LoRA 项目",
+    trainingSteps: "2400",
+    usagePrompt: "角色触发词、服装和稳定身份描述。",
+  });
   const referenceSourceTree: ReferenceSourceGroup[] = [
     {
       id: "existing-training-projects",
@@ -539,7 +547,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     },
   ].filter((group) => group.items.length > 0);
   const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
-  const [sectionSeeds, setSectionSeeds] = useState(() => selectedTemplate?.sections ?? []);
+  const [sectionSeeds, setSectionSeeds] = useState(() => initialTemplate?.sections ?? []);
   const [trainingDefaults, setTrainingDefaults] = useState({
     autoFreezeDataset: true,
     autoGenerateSamples: true,
@@ -548,12 +556,27 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     autoFreezeDataset: boolean;
     autoGenerateSamples: boolean;
     baseModel: string;
+    captionStrategy: string;
+    detailPrompt: string;
     enabledSectionCount: number;
+    perSectionImageCount: string;
     sectionCount: number;
     templateTitle: string;
     title: string;
+    trainingSteps: string;
+    usagePrompt: string;
   } | null>(null);
   const activePreviewReference = previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
+
+  function handleUpdateProjectForm(field: keyof typeof projectForm, value: string) {
+    setProjectForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleSelectTemplate(templateTitle: string) {
+    handleUpdateProjectForm("templateTitle", templateTitle);
+    const template = training.templates.find((item) => item.title === templateTitle);
+    setSectionSeeds(template?.sections ?? []);
+  }
 
   function handleCopySeedSection(section: LoraTrainingTemplateSeedSection) {
     setSectionSeeds((current) => {
@@ -583,11 +606,16 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     setCreatedProjectDraft({
       autoFreezeDataset: trainingDefaults.autoFreezeDataset,
       autoGenerateSamples: trainingDefaults.autoGenerateSamples,
-      baseModel: selectedBaseModel,
+      baseModel: projectForm.baseModel,
+      captionStrategy: projectForm.captionStrategy,
+      detailPrompt: projectForm.detailPrompt,
       enabledSectionCount: sectionSeeds.filter((section) => section.enabled).length,
+      perSectionImageCount: projectForm.perSectionImageCount,
       sectionCount: sectionSeeds.length,
-      templateTitle: selectedTemplate?.title ?? "不使用模板",
-      title: projectDraftTitle,
+      templateTitle: projectForm.templateTitle,
+      title: projectForm.title,
+      trainingSteps: projectForm.trainingSteps,
+      usagePrompt: projectForm.usagePrompt,
     });
   }
 
@@ -603,7 +631,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
             tone="primary"
             icon={Save}
             onClick={handleCreateProjectDraft}
-            feedback={{ title: createdProjectDraft ? "项目草稿已更新" : "训练项目草稿已创建", detail: projectDraftTitle }}
+            feedback={{ title: createdProjectDraft ? "项目草稿已更新" : "训练项目草稿已创建", detail: projectForm.title }}
           >
             {createdProjectDraft ? "更新项目草稿" : "创建项目"}
           </Button>
@@ -613,11 +641,11 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
         <div className={s.projectCreateMain}>
           <Panel title="项目基础信息" subtitle="沿用项目表单骨架，但这里只写训练项目 seed 数据。">
             <div className={s.formStack}>
-              <Field label="项目名称" value={projectDraftTitle} />
-              <FloatingSelect label="从模板创建" value={selectedTemplate?.title ?? "不使用模板"} options={["不使用模板", ...training.templates.map((template) => template.title)]} />
-              <FloatingSelect label="基础模型" value={selectedBaseModel} options={["继承训练默认模型", ...baseModelOptions]} />
-              <Field multiline features={{ resize: true, clipboard: true }} label="角色使用提示词" value="角色触发词、服装和稳定身份描述。" />
-              <Field multiline features={{ resize: true, clipboard: true }} label="角色细节描述" value="发型、眼睛、服装材质、常见构图和需要避免的变化。" />
+              <Field label="项目名称" value={projectForm.title} onChange={(value) => handleUpdateProjectForm("title", value)} />
+              <FloatingSelect label="从模板创建" value={projectForm.templateTitle} options={["不使用模板", ...training.templates.map((template) => template.title)]} onChange={handleSelectTemplate} />
+              <FloatingSelect label="基础模型" value={projectForm.baseModel} options={["继承训练默认模型", ...baseModelOptions]} onChange={(value) => handleUpdateProjectForm("baseModel", value)} />
+              <Field multiline features={{ resize: true, clipboard: true }} label="角色使用提示词" value={projectForm.usagePrompt} onChange={(value) => handleUpdateProjectForm("usagePrompt", value)} />
+              <Field multiline features={{ resize: true, clipboard: true }} label="角色细节描述" value={projectForm.detailPrompt} onChange={(value) => handleUpdateProjectForm("detailPrompt", value)} />
             </div>
           </Panel>
           <Panel title="参考资料" subtitle="先预览引用来源，再显式加入新项目资料。">
@@ -662,9 +690,9 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
                 title="Caption 完成后自动冻结数据集"
                 subtitle="只冻结 kept 图片；后续编辑不会回写 revision。"
               />
-              <FloatingSelect label="caption 策略" value="先触发词后描述" options={["先触发词后描述", "只补全缺失 caption", "人工确认后写入"]} />
-              <Field label="每小节初始图片数" value={4} />
-              <Field label="训练步数草稿" value={2400} />
+              <FloatingSelect label="caption 策略" value={projectForm.captionStrategy} options={["先触发词后描述", "只补全缺失 caption", "人工确认后写入"]} onChange={(value) => handleUpdateProjectForm("captionStrategy", value)} />
+              <Field label="每小节初始图片数" value={projectForm.perSectionImageCount} onChange={(value) => handleUpdateProjectForm("perSectionImageCount", value)} />
+              <Field label="训练步数草稿" value={projectForm.trainingSteps} onChange={(value) => handleUpdateProjectForm("trainingSteps", value)} />
             </div>
           </Panel>
           {createdProjectDraft ? (
@@ -674,8 +702,13 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
                 <div><dt>模板</dt><dd>{createdProjectDraft.templateTitle}</dd></div>
                 <div><dt>基础模型</dt><dd>{createdProjectDraft.baseModel}</dd></div>
                 <div><dt>初始小节</dt><dd>{createdProjectDraft.enabledSectionCount} / {createdProjectDraft.sectionCount} 启用</dd></div>
+                <div><dt>每小节图片</dt><dd>{createdProjectDraft.perSectionImageCount}</dd></div>
+                <div><dt>训练步数</dt><dd>{createdProjectDraft.trainingSteps}</dd></div>
+                <div><dt>Caption 策略</dt><dd>{createdProjectDraft.captionStrategy}</dd></div>
                 <div><dt>自动生成样本</dt><dd>{createdProjectDraft.autoGenerateSamples ? "开启" : "关闭"}</dd></div>
                 <div><dt>自动冻结数据集</dt><dd>{createdProjectDraft.autoFreezeDataset ? "开启" : "关闭"}</dd></div>
+                <div className={s.createdProjectDraftWide}><dt>使用提示词</dt><dd>{createdProjectDraft.usagePrompt}</dd></div>
+                <div className={s.createdProjectDraftWide}><dt>角色细节</dt><dd>{createdProjectDraft.detailPrompt}</dd></div>
               </dl>
             </Panel>
           ) : null}

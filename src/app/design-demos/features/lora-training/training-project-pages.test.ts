@@ -333,3 +333,27 @@ test("training project create page training default switches feed into the local
   assert.match(formSource, /createdProjectDraft\.autoGenerateSamples/, "created draft summary should render the sample-generation value");
   assert.match(formSource, /createdProjectDraft\.autoFreezeDataset/, "created draft summary should render the dataset-freeze value");
 });
+
+test("training project create page saves editable form fields into the local draft", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /projectForm/, "project creation should track editable form fields in local state");
+  assert.match(formSource, /handleUpdateProjectForm/, "project creation should expose a form update handler");
+  assert.match(formSource, /handleSelectTemplate/, "template selection should update both form state and seed sections");
+  assert.match(formSource, /value=\{projectForm\.title\}/, "project title field should be controlled by local form state");
+  assert.match(formSource, /onChange=\{\(value\) => handleUpdateProjectForm\("title", value\)\}/, "project title edits should update form state");
+  assert.match(formSource, /value=\{projectForm\.baseModel\}/, "base model select should be controlled by local form state");
+  assert.match(formSource, /value=\{projectForm\.captionStrategy\}/, "caption strategy select should be controlled by local form state");
+  assert.match(formSource, /title:\s*projectForm\.title/, "created draft should save the edited title");
+  assert.match(formSource, /usagePrompt:\s*projectForm\.usagePrompt/, "created draft should save the edited usage prompt");
+  assert.match(formSource, /detailPrompt:\s*projectForm\.detailPrompt/, "created draft should save the edited detail prompt");
+  assert.match(formSource, /perSectionImageCount:\s*projectForm\.perSectionImageCount/, "created draft should save the edited per-section image count");
+  assert.match(formSource, /trainingSteps:\s*projectForm\.trainingSteps/, "created draft should save the edited training steps");
+  assert.match(formSource, /createdProjectDraft\.usagePrompt/, "created draft summary should render the saved usage prompt");
+  assert.match(formSource, /createdProjectDraft\.trainingSteps/, "created draft summary should render the saved training steps");
+});

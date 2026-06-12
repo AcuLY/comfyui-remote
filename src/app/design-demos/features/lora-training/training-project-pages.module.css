@@ -165,6 +165,14 @@
   white-space: nowrap;
 }
 
+.createdProjectDraft .createdProjectDraftWide {
+  grid-column: 1 / -1;
+}
+
+.createdProjectDraftWide dd {
+  white-space: normal;
+}
+
 .bodyText {
   margin: 0;
   color: var(--demo-muted);
