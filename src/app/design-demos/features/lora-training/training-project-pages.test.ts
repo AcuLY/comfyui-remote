@@ -330,6 +330,29 @@ test("training dataset revision rows respond to their own panel width", () => {
   );
 });
 
+test("training dataset revision manifest list expands from its panel width", () => {
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  const scopedRunsPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
+  assert.notEqual(revisionPageStart, -1);
+  assert.notEqual(scopedRunsPageStart, -1);
+
+  const revisionPageSource = pagesSource.slice(revisionPageStart, scopedRunsPageStart);
+  const manifestListRule = cssSource.match(/\.manifestList\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+
+  assert.match(revisionPageSource, /manifestListSurface/, "dataset revision manifest rows should be wrapped in a list surface container");
+  assert.match(
+    cssSource,
+    /\.manifestListSurface\s*\{[\s\S]*?container-type:\s*inline-size/,
+    "dataset revision manifest list should query its panel-width surface",
+  );
+  assert.match(
+    cssSource,
+    /@container\s*\(min-width:\s*520px\)\s*\{[\s\S]*?\.manifestList\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "dataset revision manifest list should expand at the shared managed-list breakpoint",
+  );
+  assert.doesNotMatch(manifestListRule, /container-type:\s*inline-size/, "manifest list should not query its own width directly");
+});
+
 test("training result cards keep thumbnail density and clamp captions", () => {
   assert.match(cssSource, /\.trainingResultGrid\b/, "training result grid CSS should exist");
   assert.match(cssSource, /\.trainingResultCard\b/, "training result cards should exist");

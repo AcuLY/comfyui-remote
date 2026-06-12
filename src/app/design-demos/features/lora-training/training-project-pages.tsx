@@ -1818,9 +1818,11 @@ export function LoraTrainingProjectDatasetRevisionPage({ data, projectId, revisi
         <TrainingResultGrid results={revisionResults} title={`${revision.version} 样本快照`} />
       </Panel>
       <Panel title="文件清单">
-        <ol className={s.manifestList}>
-          {revision.manifestRows.map((row) => <li key={row}>{row}</li>)}
-        </ol>
+        <div className={s.manifestListSurface}>
+          <ol className={s.manifestList}>
+            {revision.manifestRows.map((row) => <li key={row}>{row}</li>)}
+          </ol>
+        </div>
       </Panel>
     </div>
   );
