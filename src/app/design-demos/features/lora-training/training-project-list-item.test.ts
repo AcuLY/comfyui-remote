@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const itemSource = readFileSync(resolve(testDir, "training-project-list-item.tsx"), "utf8");
+const projectsPageSource = readFileSync(resolve(testDir, "training-projects-page.tsx"), "utf8");
 const projectsCss = readFileSync(resolve(testDir, "training-projects-page.module.css"), "utf8");
 
 test("training project card keeps the design-demo management controls first", () => {
@@ -60,4 +61,14 @@ test("training project compact mode has an explicit dense surface and hides seco
   assert.match(projectsCss, /\.projectSurfaceCompact\b/, "Compact project view should define the surface class used by the page");
   assert.match(projectsCss, /\.projectCardCompact[\s\S]*?\.projectRecentResults[\s\S]*?display:\s*none/, "Compact project cards should hide thumbnails");
   assert.match(projectsCss, /\.projectCardCompact[\s\S]*?\.projectMeta[\s\S]*?display:\s*none/, "Compact project cards should hide bottom meta");
+});
+
+test("training project list creates projects through the implemented form route", () => {
+  assert.match(projectsPageSource, /ButtonLink/, "Project toolbar should use a navigational button for new projects");
+  assert.match(projectsPageSource, /href="\/training\/projects\/new"/, "New project action should open the training project form");
+  assert.doesNotMatch(
+    projectsPageSource,
+    /新建训练项目入口已预览/,
+    "New project action should not stay as a feedback-only placeholder now that the form exists",
+  );
 });

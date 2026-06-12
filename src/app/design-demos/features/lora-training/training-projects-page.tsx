@@ -6,7 +6,7 @@ import { Archive, CheckSquare, Grid2X2, List, Plus, X } from "lucide-react";
 import type { DemoData } from "../../data";
 import { cx } from "../../routing";
 import { PageHeader } from "../../shared/primitives/page-header";
-import { Button } from "../../shared/primitives/button";
+import { Button, ButtonLink } from "../../shared/primitives/button";
 import { SegmentedControl } from "../../shared/primitives/segmented-control";
 import { SelectionBatchBar } from "../../shared/patterns";
 import { buildLoraTrainingDemoData } from "./fixtures";
@@ -107,9 +107,9 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
             <Button icon={CheckSquare} onClick={toggleVisibleProjects} disabled={visibleProjects.length === 0}>
               {allVisibleSelected ? "取消全选" : "全选"}
             </Button>
-            <Button icon={Plus} tone="primary" feedback={{ title: "新建训练项目入口已预览", detail: "后续接入训练项目创建表单" }}>
+            <ButtonLink href="/training/projects/new" icon={Plus} tone="primary">
               新建
-            </Button>
+            </ButtonLink>
           </div>
         </div>
 

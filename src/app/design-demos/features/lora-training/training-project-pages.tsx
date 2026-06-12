@@ -272,18 +272,20 @@ type ReferenceSourceGroup = {
 function TrainingSectionRail({
   activeSectionId,
   project,
+  sections = project.sections,
 }: {
   activeSectionId?: string;
   project: LoraTrainingProject;
+  sections?: LoraTrainingSection[];
 }) {
   return (
     <nav className={s.trainingSectionRail} aria-label="训练小节导航">
       <div className={s.trainingSectionRailHeader}>
         <strong>小节导航</strong>
-        <span>{project.sections.length} 小节</span>
+        <span>{sections.length} 小节</span>
       </div>
       <div className={s.trainingSectionRailList}>
-        {project.sections.map((section) => {
+        {sections.map((section) => {
           const resultCount = project.resultPool.filter((result) => result.sectionId === section.id).length;
           return (
             <Link
@@ -306,17 +308,19 @@ function TrainingSectionWorkspace({
   activeSectionId,
   children,
   project,
+  sections,
 }: {
   activeSectionId?: string;
   children: ReactNode;
   project: LoraTrainingProject;
+  sections?: LoraTrainingSection[];
 }) {
   return (
     <div className={s.trainingSectionWorkspace}>
       <div className={s.sectionScrollPane}>
         {children}
       </div>
-      <TrainingSectionRail activeSectionId={activeSectionId} project={project} />
+      <TrainingSectionRail activeSectionId={activeSectionId} project={project} sections={sections} />
     </div>
   );
 }
@@ -597,7 +601,19 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
   );
 }
 
-function SectionCard({ index, project, section }: { index: number; project: LoraTrainingProject; section: LoraTrainingSection }) {
+function SectionCard({
+  index,
+  onCopy,
+  onDelete,
+  project,
+  section,
+}: {
+  index: number;
+  onCopy?: (section: LoraTrainingSection) => void;
+  onDelete?: (sectionId: string) => void;
+  project: LoraTrainingProject;
+  section: LoraTrainingSection;
+}) {
   return (
     <article className={s.sectionCard}>
       <Button className={s.dragHandle} icon={GripVertical} iconOnly tone="subtle" ariaLabel={`拖拽排序小节：${section.title}`} />
@@ -609,8 +625,24 @@ function SectionCard({ index, project, section }: { index: number; project: Lora
           </Link>
           <div className={s.sectionHeaderActions}>
             <StatusBadge status={section.enabled ? "ready" : "draft"} label={section.enabled ? "启用" : "停用"} />
-            <Button icon={Copy} iconOnly size="sm" tone="subtle" ariaLabel={`复制小节：${section.title}`} feedback={{ title: "小节已复制", detail: section.title }} />
-            <Button icon={Trash2} iconOnly size="sm" tone="danger" ariaLabel={`删除小节：${section.title}`} feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.title }} />
+            <Button
+              icon={Copy}
+              iconOnly
+              size="sm"
+              tone="subtle"
+              ariaLabel={`复制小节：${section.title}`}
+              onClick={() => onCopy?.(section)}
+              feedback={{ title: "小节已复制", detail: section.title }}
+            />
+            <Button
+              icon={Trash2}
+              iconOnly
+              size="sm"
+              tone="danger"
+              ariaLabel={`删除小节：${section.title}`}
+              onClick={() => onDelete?.(section.id)}
+              feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.title }}
+            />
           </div>
         </div>
         <Link className={s.sectionImages} href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}>
@@ -627,14 +659,39 @@ function SectionCard({ index, project, section }: { index: number; project: Lora
 
 export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const project = findProject(data, projectId);
+  const [localSections, setLocalSections] = useState(() => project?.sections ?? []);
   if (!project) return <EmptyPage title="没有训练小节数据" />;
+  const sections = localSections;
+
+  function handleCopySection(section: LoraTrainingSection) {
+    const copy: LoraTrainingSection = {
+      ...section,
+      id: `${section.id}-copy-${Date.now()}`,
+      title: `${section.title} (副本)`,
+      updatedAt: "刚刚",
+    };
+    setLocalSections((current) => [...current, copy]);
+  }
+
+  function handleDeleteSection(sectionId: string) {
+    setLocalSections((current) => current.filter((section) => section.id !== sectionId));
+  }
 
   return (
     <div className={s.page}>
       <ProjectHeader active="sections" project={project} actions={<Button icon={Plus} tone="primary" feedback={{ title: "新建小节入口已预览" }}>新建小节</Button>} />
-      <TrainingSectionWorkspace activeSectionId={project.sections[0]?.id} project={project}>
+      <TrainingSectionWorkspace activeSectionId={sections[0]?.id} project={project} sections={sections}>
         <div className={s.sectionGrid}>
-          {project.sections.map((section, index) => <SectionCard index={index} key={section.id} project={project} section={section} />)}
+          {sections.map((section, index) => (
+            <SectionCard
+              index={index}
+              key={section.id}
+              onCopy={handleCopySection}
+              onDelete={handleDeleteSection}
+              project={project}
+              section={section}
+            />
+          ))}
         </div>
       </TrainingSectionWorkspace>
     </div>

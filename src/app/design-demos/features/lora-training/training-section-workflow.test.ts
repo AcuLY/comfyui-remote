@@ -31,6 +31,22 @@ test("training section list uses the same management shell as design-demo sectio
   assert.match(sectionCard, /generation-tasks\/new/, "section cards should expose an independent generation action");
 });
 
+test("training section list copy and delete actions update local front-end state", () => {
+  const sectionsPage = sourceBetween(
+    "export function LoraTrainingProjectSectionsPage",
+    "export function LoraTrainingProjectSectionDetailPage",
+  );
+  const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
+
+  assert.match(sectionsPage, /localSections/, "section list should keep a local editable section list");
+  assert.match(sectionsPage, /setLocalSections/, "section copy/delete should update local state without needing backend calls");
+  assert.match(sectionsPage, /handleCopySection/, "section list should define a copy action");
+  assert.match(sectionsPage, /handleDeleteSection/, "section list should define a delete action");
+  assert.match(sectionsPage, /sections=\{sections\}/, "section rail should follow the same local list as the cards");
+  assert.match(sectionCard, /onCopy\?\.\(section\)/, "copy button should call the section copy handler");
+  assert.match(sectionCard, /onDelete\?\.\(section\.id\)/, "delete button should call the section delete handler");
+});
+
 test("training section detail exposes full scene-block management controls", () => {
   const detailPage = sourceBetween(
     "export function LoraTrainingProjectSectionDetailPage",
