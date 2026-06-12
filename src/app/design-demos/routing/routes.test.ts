@@ -230,3 +230,22 @@ test("LoRA training project route headers use the matched project context", () =
   assert.equal(datasetRevision.title, "Azure Idol / 数据集 v4");
   assert.equal(datasetRevision.back?.href, "/training/projects/azure-idol/dataset");
 });
+
+test("LoRA training resource route headers use the matched preset and template context", () => {
+  const data = fallbackData(null);
+
+  const presetDetail = findHeaderSpecForRoute(data, "/training/presets/rainy-street");
+  assert.ok(presetDetail, "preset detail should resolve a header spec");
+  assert.equal(presetDetail.title, "雨后街角");
+  assert.equal(presetDetail.subtitle, "环境 / 城市 · 更新 15:48");
+
+  const templateEdit = findHeaderSpecForRoute(data, "/training/templates/portrait-soft/edit");
+  assert.ok(templateEdit, "template edit should resolve a header spec");
+  assert.equal(templateEdit.title, "柔和肖像模板");
+  assert.equal(templateEdit.subtitle, "偏轻量的人像模板，适合资料较完整的角色快速生成训练集。");
+
+  const templateSection = findHeaderSpecForRoute(data, "/training/templates/portrait-soft/sections/1");
+  assert.ok(templateSection, "template section should resolve a header spec");
+  assert.equal(templateSection.title, "柔和肖像模板 / 服装补充");
+  assert.equal(templateSection.back?.href, "/training/templates/portrait-soft/edit");
+});

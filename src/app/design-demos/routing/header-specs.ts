@@ -26,10 +26,12 @@ import type { DemoData, DemoSection } from "../data";
 import { buildLoraTrainingDemoData } from "../features/lora-training/fixtures";
 import type {
   LoraTrainingDatasetRevision,
+  LoraTrainingPreset,
   LoraTrainingProject,
   LoraTrainingRun,
   LoraTrainingSection,
   LoraTrainingTaskKind,
+  LoraTrainingTemplate,
 } from "../features/lora-training/types";
 import {
   findCategory,
@@ -958,6 +960,22 @@ function findLoraTrainingDatasetRevision(project: LoraTrainingProject, revisionI
   return project.datasetRevisions.find((revision) => revision.id === revisionId);
 }
 
+function findLoraTrainingPreset(data: DemoData, presetId: string | undefined) {
+  if (!presetId) return undefined;
+  return buildLoraTrainingDemoData(data).presets.find((preset) => preset.id === presetId);
+}
+
+function findLoraTrainingTemplate(data: DemoData, templateId: string | undefined) {
+  if (!templateId) return undefined;
+  return buildLoraTrainingDemoData(data).templates.find((template) => template.id === templateId);
+}
+
+function findLoraTrainingTemplateSection(template: LoraTrainingTemplate, sectionIndex: string | undefined) {
+  const index = Number(sectionIndex ?? "0");
+  const safeIndex = Number.isFinite(index) ? index : 0;
+  return template.sections[safeIndex] ?? template.sections[0];
+}
+
 function trainingProjectBaseHref(project: LoraTrainingProject) {
   return `/training/projects/${project.id}`;
 }
@@ -1081,6 +1099,55 @@ function loraTrainingRunDetailHeader(data: DemoData, spec: HeaderSpec, matched: 
   return spec;
 }
 
+function loraTrainingResourceHeader(data: DemoData, spec: HeaderSpec, matched: ReturnType<typeof matchRoute>) {
+  if (matched.key === "training-preset-detail") {
+    const preset = findLoraTrainingPreset(data, matched.params.presetId);
+    return preset ? loraTrainingPresetHeader(spec, preset) : spec;
+  }
+
+  if (matched.key === "training-template-edit") {
+    const template = findLoraTrainingTemplate(data, matched.params.templateId);
+    return template ? loraTrainingTemplateHeader(spec, template) : spec;
+  }
+
+  if (matched.key === "training-template-section") {
+    const template = findLoraTrainingTemplate(data, matched.params.templateId);
+    if (!template) return spec;
+    const sectionItem = findLoraTrainingTemplateSection(template, matched.params.sectionIndex);
+    return sectionItem ? loraTrainingTemplateSectionHeader(spec, template, sectionItem) : loraTrainingTemplateHeader(spec, template);
+  }
+
+  return spec;
+}
+
+function loraTrainingPresetHeader(spec: HeaderSpec, preset: LoraTrainingPreset) {
+  return {
+    ...spec,
+    subtitle: `${preset.category} / ${preset.folder} · 更新 ${preset.updatedAt}`,
+    title: preset.title,
+  };
+}
+
+function loraTrainingTemplateHeader(spec: HeaderSpec, template: LoraTrainingTemplate) {
+  return {
+    ...spec,
+    subtitle: template.description,
+    title: template.title,
+  };
+}
+
+function loraTrainingTemplateSectionHeader(
+  spec: HeaderSpec,
+  template: LoraTrainingTemplate,
+  sectionItem: LoraTrainingTemplate["sections"][number],
+) {
+  return {
+    ...spec,
+    back: { href: `/training/templates/${template.id}/edit`, label: "返回模板" },
+    title: `${template.title} / ${sectionItem.title}`,
+  };
+}
+
 export function findHeaderSpecForRoute(data: DemoData, currentRoute: string) {
   const specs = flattenHeaderSpecs(data);
   const matched = matchRoute(currentRoute);
@@ -1100,6 +1167,16 @@ export function findHeaderSpecForRoute(data: DemoData, currentRoute: string) {
     )
   ) {
     return loraTrainingProjectHeader(data, spec, matched);
+  }
+  if (
+    spec
+    && (
+      matched.key === "training-preset-detail"
+      || matched.key === "training-template-edit"
+      || matched.key === "training-template-section"
+    )
+  ) {
+    return loraTrainingResourceHeader(data, spec, matched);
   }
   if (!spec || matched.key !== "section-editor") return spec;
 
