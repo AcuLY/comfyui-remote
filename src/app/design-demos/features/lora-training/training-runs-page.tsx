@@ -182,11 +182,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
 
   return (
     <div className={s.page}>
-      <PageHeader
-        eyebrow="LoRA 训练"
-        title="运行"
-        subtitle="集中处理训练集生成任务和 LoRA 训练任务。"
-      />
+      <PageHeader title="运行" />
 
       <CurrentRunningSurface runs={runningRunsForKind} />
 

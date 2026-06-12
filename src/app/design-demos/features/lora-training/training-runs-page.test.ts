@@ -8,6 +8,19 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const pageSource = readFileSync(resolve(testDir, "training-runs-page.tsx"), "utf8");
 const cssSource = readFileSync(resolve(testDir, "training-runs-page.module.css"), "utf8");
 
+test("training runs page keeps the queue-demo compact header", () => {
+  const headerStart = pageSource.indexOf("<PageHeader");
+  const headerEnd = pageSource.indexOf("/>", headerStart);
+  assert.notEqual(headerStart, -1, "runs page should render a PageHeader");
+  assert.notEqual(headerEnd, -1, "runs page PageHeader should be a compact self-closing header");
+
+  const headerSource = pageSource.slice(headerStart, headerEnd);
+
+  assert.match(headerSource, /title="运行"/, "runs page title should stay compact");
+  assert.doesNotMatch(headerSource, /eyebrow=/, "runs page should not add a redundant LoRA Training eyebrow");
+  assert.doesNotMatch(headerSource, /subtitle=/, "runs page should not add explanatory header copy above the task tabs");
+});
+
 test("training runs page keeps the generated-run workbench hierarchy", () => {
   assert.match(pageSource, /currentRunSurface/, "runs page should expose a current-running progress surface");
   assert.match(pageSource, /runningRunsForKind/, "current-running surface should be derived from the active task kind");
