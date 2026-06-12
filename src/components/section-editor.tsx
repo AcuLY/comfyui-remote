@@ -592,6 +592,7 @@ export function SectionEditor({
               const binding = row.binding;
               const canSwitchVariant = !row.isPresetGroupMember && canSwitchSectionPresetVariant(binding);
               const cardHref = getSectionPresetRowCardHref(row, libraryV2);
+              const cardTitle = row.isPresetGroupMember ? "打开所属预制组" : "打开预制详情";
               const memberPresetHref = getSectionPresetMemberPresetHref(row, libraryV2);
               const rowSummary = (
                 <>
@@ -657,7 +658,7 @@ export function SectionEditor({
                     <Link
                       href={cardHref}
                       className="-mx-1 flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5"
-                      title="打开所属预制组"
+                      title={cardTitle}
                     >
                       {rowSummary}
                     </Link>

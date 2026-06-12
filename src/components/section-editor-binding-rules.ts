@@ -140,7 +140,12 @@ export function getSectionPresetRowCardHref<TBinding extends SectionPresetBindin
   row: Pick<SectionPresetBindingDisplayRow<TBinding>, "binding" | "isPresetGroupMember">,
   library?: SectionPresetBindingDisplayLibrary,
 ) {
-  if (!row.isPresetGroupMember || !row.binding.presetGroupId) return null;
+  if (row.isPresetGroupMember) {
+    if (!row.binding.presetGroupId) return null;
+    return getSectionPresetManagerHref(row.binding, library);
+  }
+
+  if (!row.binding.sourceId) return null;
   return getSectionPresetManagerHref(row.binding, library);
 }
 

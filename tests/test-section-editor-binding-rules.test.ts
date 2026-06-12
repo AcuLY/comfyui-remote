@@ -253,7 +253,7 @@ test("section preset group member rows split card and member-detail navigation",
   assert.equal(getSectionPresetMemberPresetHref(row, library), "/assets/presets/preset-person?category=person-cat&variant=variant-default&folder=preset-folder");
 });
 
-test("ordinary section preset rows do not expose a member-detail navigation target", () => {
+test("ordinary section preset rows keep card navigation to the preset detail page without a member-detail button", () => {
   const library = {
     categories: [
       {
@@ -291,7 +291,10 @@ test("ordinary section preset rows do not expose a member-detail navigation targ
   );
 
   assert.equal(row.isPresetGroupMember, false);
-  assert.equal(getSectionPresetRowCardHref(row, library), null);
+  assert.equal(
+    getSectionPresetRowCardHref(row, library),
+    "/assets/presets/preset-person?category=person-cat&variant=variant-default&folder=preset-folder",
+  );
   assert.equal(getSectionPresetMemberPresetHref(row, library), null);
 });
 
