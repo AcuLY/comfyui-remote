@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { ArrowDown, ArrowUp, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
@@ -53,6 +53,47 @@ function moveTemplateBlock(blocks: LoraTrainingSectionBlock[], index: number, di
 function presetUsageLabel(preset: LoraTrainingPreset) {
   const usageCount = preset.projectUsage.length + preset.templateUsage.length;
   return usageCount > 0 ? `${usageCount} 处引用` : "未引用";
+}
+
+function subscribeToUrlSearch(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("popstate", onStoreChange);
+  return () => window.removeEventListener("popstate", onStoreChange);
+}
+
+function getUrlSearchSnapshot() {
+  return typeof window === "undefined" ? "" : window.location.search;
+}
+
+function getServerUrlSearchSnapshot() {
+  return "";
+}
+
+function useUrlSearch() {
+  return useSyncExternalStore(subscribeToUrlSearch, getUrlSearchSnapshot, getServerUrlSearchSnapshot);
+}
+
+function readNewPresetHints(search: string) {
+  const searchParams = new URLSearchParams(search);
+  return {
+    category: searchParams.get("category") ?? "",
+    folder: searchParams.get("folder") ?? "",
+  };
+}
+
+function createDraftTrainingPreset(training: ReturnType<typeof buildLoraTrainingDemoData>, hints: { category: string; folder: string }): LoraTrainingPreset {
+  const source = training.presets[0];
+  return {
+    id: "new-training-preset",
+    title: "新训练预制",
+    category: hints.category || source?.category || "角色",
+    folder: hints.folder || source?.folder || "未归档",
+    status: "active",
+    updatedAt: "本地草稿",
+    sceneDescriptionText: "在这里补充可复用的 scene description，只描述训练小节需要导入的场景文本。",
+    projectUsage: [],
+    templateUsage: [],
+  };
 }
 
 function TrainingPresetSortPanel({
@@ -139,6 +180,7 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
   const folders = uniquePresetFolders(categoryPresets);
   const visiblePresets = categoryPresets.filter((preset) => !currentFolder || preset.folder === currentFolder);
   const selectedCount = selectedIds.size;
+  const newPresetInCategoryHref = `/training/presets/new?category=${encodeURIComponent(activeCategory)}${currentFolder ? `&folder=${encodeURIComponent(currentFolder)}` : ""}`;
 
   function togglePresetSelection(presetId: string, checked: boolean) {
     setSelectedIds((previous) => {
@@ -172,7 +214,7 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
         actions={(
           <>
             <ButtonLink href="/training/presets/sort-rules" icon={Shuffle}>排序规则</ButtonLink>
-            <Button icon={Plus} tone="primary" feedback={{ title: "新建训练预制入口已预览" }}>新建</Button>
+            <ButtonLink href="/training/presets/new" icon={Plus} tone="primary">新建</ButtonLink>
           </>
         )}
       />
@@ -201,7 +243,7 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
               <strong>{activeCategory || "训练预制"}</strong>
               <span>{categoryPresets.length} 个 scene description · 当前文件夹 {currentFolder ?? "全部"}</span>
             </div>
-            <Button size="sm" icon={Plus} feedback={{ title: "新建训练预制入口已预览", detail: activeCategory }}>新建到当前分类</Button>
+            <ButtonLink href={newPresetInCategoryHref} size="sm" icon={Plus}>新建到当前分类</ButtonLink>
           </header>
           <div className={s.trainingPresetContextBar}>
             <FolderBreadcrumb
@@ -288,23 +330,27 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
   );
 }
 
-export function LoraTrainingPresetDetailPage({ data, presetId }: { data: DemoData; presetId?: string }) {
-  const preset = findPreset(data, presetId);
+export function LoraTrainingPresetDetailPage({ data, mode = "edit", presetId }: { data: DemoData; mode?: "new" | "edit"; presetId?: string }) {
+  const training = buildLoraTrainingDemoData(data);
+  const urlSearch = useUrlSearch();
+  const newPresetHints = mode === "new" ? readNewPresetHints(urlSearch) : { category: "", folder: "" };
+  const preset = mode === "new" ? createDraftTrainingPreset(training, newPresetHints) : findPreset(data, presetId);
   if (!preset) return <EmptyPage title="没有训练预制数据" />;
   const usages = [...preset.projectUsage, ...preset.templateUsage];
+  const isNew = mode === "new";
 
   return (
     <div className={s.page}>
       <PageHeader
         back={{ href: "/training/presets", label: "返回训练预制" }}
         eyebrow="训练预制"
-        title={preset.title}
-        subtitle={`${preset.category} / ${preset.folder} · 更新 ${preset.updatedAt}`}
-        actions={<Button tone="primary" icon={Save} feedback={{ title: "训练预制已保存", detail: preset.title }}>保存</Button>}
+        title={isNew ? "新建训练预制" : preset.title}
+        subtitle={isNew ? `${preset.category} / ${preset.folder} · 本地草稿` : `${preset.category} / ${preset.folder} · 更新 ${preset.updatedAt}`}
+        actions={<Button tone="primary" icon={Save} feedback={{ title: isNew ? "训练预制已创建" : "训练预制已保存", detail: preset.title }}>{isNew ? "创建预制" : "保存"}</Button>}
       />
       <WorkbenchSurface className={s.trainingPresetEditorSurface}>
         <EditorBlock
-          actions={presetStatus(preset)}
+          actions={isNew ? <StatusBadge status="queued" label="草稿" /> : presetStatus(preset)}
           className={s.trainingPresetEditorBlock}
           contentClassName={s.trainingPresetFormGrid}
           description="训练预制只维护一段可复用 scene description。"
@@ -336,7 +382,7 @@ export function LoraTrainingPresetDetailPage({ data, presetId }: { data: DemoDat
           {usages.length === 0 ? <div className={s.emptyInline}>没有引用</div> : null}
           <OperationStateStrip
             items={[
-              { label: "保存", value: "本地草稿", tone: "info" },
+              { label: "保存", value: isNew ? "待创建" : "本地草稿", tone: isNew ? "warning" : "info" },
               { label: "删除影响", value: `${usages.length} 处`, tone: usages.length ? "warning" : "success" },
               { label: "校验", value: "通过", tone: "success" },
             ]}

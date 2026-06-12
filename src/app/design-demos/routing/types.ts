@@ -25,6 +25,7 @@ export type RouteKey =
   | "training-project-training-runs"
   | "training-project-generation-tasks"
   | "training-presets"
+  | "training-preset-new"
   | "training-preset-detail"
   | "training-preset-sort-rules"
   | "training-templates"

@@ -29,6 +29,26 @@ test("training preset library uses the shared managed-library row model", () => 
   assert.match(cssSource, /\.trainingPresetItemList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "training preset rows should expand to two columns");
 });
 
+test("training preset new actions route into a real new-preset form", () => {
+  const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  assert.notEqual(presetsStart, -1);
+  assert.notEqual(detailStart, -1);
+  assert.notEqual(sortStart, -1);
+
+  const presetsSource = pageSource.slice(presetsStart, detailStart);
+  const detailSource = pageSource.slice(detailStart, sortStart);
+
+  assert.match(presetsSource, /<ButtonLink href="\/training\/presets\/new" icon=\{Plus\} tone="primary">新建<\/ButtonLink>/, "global new action should navigate to the new training preset route");
+  assert.match(presetsSource, /newPresetInCategoryHref/, "category-scoped new action should preserve the active category");
+  assert.match(presetsSource, /href=\{newPresetInCategoryHref\}/, "category-scoped new action should be a link, not a feedback-only button");
+  assert.doesNotMatch(presetsSource, /新建训练预制入口已预览/, "new preset actions should not be fake preview feedback");
+  assert.match(detailSource, /mode === "new"/, "preset editor should expose a real new mode");
+  assert.match(detailSource, /草稿/, "new preset editor should show draft state");
+  assert.doesNotMatch(detailSource, /positivePrompt|negativePrompt|loraStages|variants/, "training preset editor must stay scene-description only in new mode");
+});
+
 test("training template form uses the shared template editor workspace model", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");

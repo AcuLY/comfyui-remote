@@ -83,6 +83,8 @@ function CurrentPage({ match, data }: { match: Match; data: DemoData }) {
       return <LoraTrainingProjectScopedRunsPage data={data} kind="generation" projectId={match.params.trainingProjectId} />;
     case "training-presets":
       return <LoraTrainingPresetsPage data={data} />;
+    case "training-preset-new":
+      return <LoraTrainingPresetDetailPage data={data} mode="new" />;
     case "training-preset-detail":
       return <LoraTrainingPresetDetailPage data={data} presetId={match.params.presetId} />;
     case "training-preset-sort-rules":

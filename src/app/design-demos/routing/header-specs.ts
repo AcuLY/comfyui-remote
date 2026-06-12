@@ -355,6 +355,17 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         status: "预制详情",
       },
       {
+        key: "training-preset-new",
+        route: currentRoute(routes, "training-preset-new"),
+        group: "LoRA 训练",
+        eyebrow: "训练预制",
+        title: "新建训练预制",
+        subtitle: "创建单段 scene description 训练预制，不进入普通预设 variants 结构。",
+        back: { href: "/training/presets", label: "返回训练预制" },
+        actions: [headerAction("创建预制", Save, "primary")],
+        status: "草稿",
+      },
+      {
         key: "training-preset-sort-rules",
         route: currentRoute(routes, "training-preset-sort-rules"),
         group: "LoRA 训练",

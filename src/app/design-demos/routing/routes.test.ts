@@ -28,6 +28,7 @@ test("LoRA training module registers the confirmed route tree", () => {
     ["/training/projects/project-1/training-runs", "training-project-training-runs"],
     ["/training/projects/project-1/generation-tasks", "training-project-generation-tasks"],
     ["/training/presets", "training-presets"],
+    ["/training/presets/new", "training-preset-new"],
     ["/training/presets/preset-1", "training-preset-detail"],
     ["/training/presets/sort-rules", "training-preset-sort-rules"],
     ["/training/templates", "training-templates"],

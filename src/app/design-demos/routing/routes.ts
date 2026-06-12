@@ -79,6 +79,7 @@ export const ROUTES: RouteDef[] = [
   { key: "training-project-detail", pattern: "/training/projects/:trainingProjectId", title: "训练项目详情", group: "LoRA 训练", icon: FolderTree },
   { key: "training-projects", pattern: "/training/projects", title: "训练项目", group: "LoRA 训练", icon: FolderTree },
   { key: "training-preset-sort-rules", pattern: "/training/presets/sort-rules", title: "训练预制排序", group: "LoRA 训练", icon: Shuffle },
+  { key: "training-preset-new", pattern: "/training/presets/new", title: "新建训练预制", group: "LoRA 训练", icon: Plus },
   { key: "training-preset-detail", pattern: "/training/presets/:presetId", title: "训练预制详情", group: "LoRA 训练", icon: Wand2 },
   { key: "training-presets", pattern: "/training/presets", title: "训练预制", group: "LoRA 训练", icon: Tags },
   { key: "training-template-new", pattern: "/training/templates/new", title: "新建训练模板", group: "LoRA 训练", icon: Plus },
