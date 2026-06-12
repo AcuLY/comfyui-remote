@@ -605,6 +605,11 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
   const recentRuns = training.runs.filter((run) => run.projectId === project.id).slice(0, 4);
   const recentResults = project.resultPool.filter((result) => result.reviewStatus === "kept").slice(0, 4);
   const latestRevision = project.datasetRevisions[0];
+  const saveAsTemplateHref = `/training/templates/new?${new URLSearchParams({
+    projectId: project.id,
+    sections: String(project.sections.length),
+    sourceProject: project.title,
+  }).toString()}`;
 
   return (
     <div className={s.page}>
@@ -614,7 +619,7 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
         actions={(
           <>
             <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Play} tone="primary">启动训练</ButtonLink>
-            <Button icon={CopyPlus} feedback={{ title: "保存为模板入口已预览", detail: project.title }}>保存为模板</Button>
+            <ButtonLink href={saveAsTemplateHref} icon={CopyPlus}>保存为模板</ButtonLink>
             <Button tone="danger" icon={Archive} feedback={{ tone: "warning", title: "归档项目需要确认", detail: project.title }}>归档</Button>
           </>
         )}

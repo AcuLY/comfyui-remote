@@ -45,6 +45,21 @@ test("training project overview keeps subresource bodies out of the overview pag
   assert.doesNotMatch(overviewSource, /<ImageGrid/, "overview should not inline full results/dataset grids");
 });
 
+test("training project overview saves as template through the real template form route", () => {
+  const overviewStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  assert.notEqual(overviewStart, -1);
+  assert.notEqual(profileStart, -1);
+
+  const overviewSource = pagesSource.slice(overviewStart, profileStart);
+
+  assert.match(overviewSource, /saveAsTemplateHref/, "overview should build a concrete save-as-template href");
+  assert.match(overviewSource, /<ButtonLink href=\{saveAsTemplateHref\} icon=\{CopyPlus\}>保存为模板<\/ButtonLink>/, "save-as-template should navigate to the template form");
+  assert.match(overviewSource, /sourceProject/, "save-as-template href should carry the source project");
+  assert.match(overviewSource, /sections:\s*String\(project\.sections\.length\)/, "save-as-template href should carry section count context");
+  assert.doesNotMatch(overviewSource, /保存为模板入口已预览/, "save-as-template should not remain a feedback-only placeholder");
+});
+
 test("training profile page renders reference image cards with kind, label, and note", () => {
   const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const sectionsStart = pagesSource.indexOf("function SectionCard");

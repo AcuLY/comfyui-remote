@@ -86,6 +86,23 @@ test("training template form uses the shared template editor workspace model", (
   assert.match(cssSource, /\.trainingTemplateSectionList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "template sections should expand to two columns");
 });
 
+test("training template new form carries source project context", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(pageSource, /type NewTemplateHints/, "template creation should define source-project hints");
+  assert.match(pageSource, /function readNewTemplateHints/, "template creation should read query hints");
+  assert.match(pageSource, /sourceProject:\s*searchParams\.get\("sourceProject"\)/, "template form should read source project title");
+  assert.match(pageSource, /sections:\s*searchParams\.get\("sections"\)/, "template form should read source section count");
+  assert.match(formSource, /newTemplateHints/, "template form should derive hints in new mode");
+  assert.match(formSource, /来源训练项目/, "new template form should show source project context");
+  assert.match(formSource, /newTemplateHints\.sourceProject/, "source project field should only appear when project context exists");
+});
+
 test("training template form section actions update local front-end state", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");

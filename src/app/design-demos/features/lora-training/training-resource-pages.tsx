@@ -83,6 +83,12 @@ type NewPresetHints = {
   sourceRun: string;
 };
 
+type NewTemplateHints = {
+  projectId: string;
+  sections: string;
+  sourceProject: string;
+};
+
 function readNewPresetHints(search: string) {
   const searchParams = new URLSearchParams(search);
   return {
@@ -91,6 +97,15 @@ function readNewPresetHints(search: string) {
     folder: searchParams.get("folder") ?? "",
     project: searchParams.get("project") ?? "",
     sourceRun: searchParams.get("sourceRun") ?? "",
+  };
+}
+
+function readNewTemplateHints(search: string): NewTemplateHints {
+  const searchParams = new URLSearchParams(search);
+  return {
+    projectId: searchParams.get("projectId") ?? "",
+    sections: searchParams.get("sections") ?? "",
+    sourceProject: searchParams.get("sourceProject") ?? "",
   };
 }
 
@@ -556,6 +571,8 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
 
 export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data: DemoData; mode: "new" | "edit"; templateId?: string }) {
   const training = buildLoraTrainingDemoData(data);
+  const urlSearch = useUrlSearch();
+  const newTemplateHints = mode === "new" ? readNewTemplateHints(urlSearch) : { projectId: "", sections: "", sourceProject: "" };
   const template = mode === "edit" ? findTemplate(data, templateId) : undefined;
   const seedTemplate = template ?? training.templates[0];
   const title = mode === "new" ? "新建训练模板" : template?.title ?? "训练模板";
@@ -620,8 +637,11 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
           headerClassName={s.trainingTemplateEditorHeader}
           title="模板信息"
         >
-          <Field label="名称" value={seedTemplate?.title ?? "新角色 LoRA 模板"} />
+          <Field label="名称" value={newTemplateHints.sourceProject ? `${newTemplateHints.sourceProject} 训练模板` : seedTemplate?.title ?? "新角色 LoRA 模板"} />
           <Field multiline features={{ resize: true, clipboard: true }} label="描述" value={seedTemplate?.description ?? "用于新角色 LoRA 训练项目的起始模板。"} />
+          {mode === "new" && newTemplateHints.sourceProject ? (
+            <Field readOnly label="来源训练项目" value={`${newTemplateHints.sourceProject}${newTemplateHints.sections ? ` · ${newTemplateHints.sections} 个小节` : ""}${newTemplateHints.projectId ? ` · ${newTemplateHints.projectId}` : ""}`} />
+          ) : null}
           <Field multiline features={{ resize: true, clipboard: true }} label="图片提示词指引" value="每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。" />
           <Field multiline features={{ resize: true, clipboard: true }} label="Caption 生成指引" value="先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。" />
         </EditorBlock>
