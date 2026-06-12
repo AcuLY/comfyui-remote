@@ -214,6 +214,131 @@
   justify-content: flex-end;
 }
 
+.trainingPresetEditorSurface {
+  display: grid;
+  gap: 10px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+
+.trainingPresetEditorBlock,
+.trainingPresetSortPanel {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  padding: 12px;
+}
+
+.trainingPresetEditorHeader,
+.trainingPresetSortHeader,
+.trainingPresetSortFooter {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trainingPresetEditorHeader,
+.trainingPresetSortHeader {
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 9px;
+}
+
+.trainingPresetSortFooter {
+  align-items: center;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 9px;
+}
+
+.trainingPresetEditorHeader > div,
+.trainingPresetSortHeader > div,
+.trainingPresetSortRowText {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.trainingPresetEditorHeader strong,
+.trainingPresetSortHeader strong,
+.trainingPresetSortRowText strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingPresetEditorHeader > div > span,
+.trainingPresetSortHeader > div > span,
+.trainingPresetSortRowText em,
+.trainingPresetSortFooter > span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingPresetFormGrid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trainingPresetUsageList,
+.trainingPresetSortList,
+.trainingPresetSortGrid {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.trainingPresetUsageRow {
+  background: var(--demo-field-bg);
+}
+
+.trainingPresetSortGrid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 700px) {
+  .trainingPresetSortGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+
+.trainingPresetSortRow {
+  grid-template-columns: 14px 26px minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.trainingPresetSortRowContent {
+  min-width: 0;
+}
+
+.trainingPresetSortIndex {
+  color: var(--demo-faint);
+  font-size: 10px;
+}
+
 .resourceGrid,
 .sortGrid {
   display: grid;
@@ -657,6 +782,7 @@
   .resourceRow,
   .usageRow,
   .sortRow,
+  .trainingPresetFormGrid,
   .trainingTemplateFormGrid {
     grid-template-columns: 1fr;
   }
@@ -668,6 +794,10 @@
   .sortRow span,
   .trainingTemplateSectionMain p,
   .trainingTemplateSectionTitleLine strong,
+  .trainingPresetSortHeader > div > span,
+  .trainingPresetSortFooter > span,
+  .trainingPresetSortRowText strong,
+  .trainingPresetSortRowText em,
   .resourceRow strong,
   .templateRow strong,
   .usageRow strong,
@@ -681,6 +811,19 @@
 
   .templateSceneBlockCard {
     grid-template-columns: 1fr;
+  }
+
+  .trainingPresetEditorHeader,
+  .trainingPresetSortHeader,
+  .trainingPresetSortFooter {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .trainingPresetSortRow {
+    grid-template-columns: 14px 22px minmax(0, 1fr);
+    gap: 6px;
+    padding: 7px;
   }
 
   .trainingTemplateEditorHeader {

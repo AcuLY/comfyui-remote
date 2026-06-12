@@ -50,3 +50,26 @@ test("training template form uses the shared template editor workspace model", (
   assert.match(cssSource, /\.trainingTemplateEditorSurface\b/, "template form should have a dedicated editor surface");
   assert.match(cssSource, /\.trainingTemplateSectionList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "template sections should expand to two columns");
 });
+
+test("training preset detail and sort rules reuse editor/sort shells without regular preset dimensions", () => {
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  const sortPanelStart = pageSource.indexOf("function TrainingPresetSortPanel");
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  const templatesStart = pageSource.indexOf("function templateStatus");
+  assert.notEqual(detailStart, -1);
+  assert.notEqual(sortPanelStart, -1);
+  assert.notEqual(sortStart, -1);
+  assert.notEqual(templatesStart, -1);
+
+  const detailSource = pageSource.slice(detailStart, sortStart);
+  const sortSource = pageSource.slice(sortStart, templatesStart);
+  const sortWithPanelSource = pageSource.slice(sortPanelStart, templatesStart);
+
+  assert.match(detailSource, /WorkbenchSurface/, "preset detail should use the shared editor surface");
+  assert.match(detailSource, /EditorBlock/, "preset detail should use editor blocks");
+  assert.match(detailSource, /OperationStateStrip/, "preset detail should expose save/delete state");
+  assert.doesNotMatch(detailSource, /positivePrompt|negativePrompt|loraStages|variants/, "training preset detail must stay scene-description only");
+  assert.match(sortWithPanelSource, /SortableRowShell/, "training preset sort rules should use the shared sortable row shell");
+  assert.match(cssSource, /\.trainingPresetSortGrid\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "training preset sort panels should expand to two columns");
+  assert.doesNotMatch(sortSource, /正向 Prompt|反向 Prompt|LoRA 1|LoRA 2/, "training preset sort rules should not inherit regular preset dimensions");
+});

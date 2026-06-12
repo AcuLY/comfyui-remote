@@ -15,7 +15,7 @@ import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { Panel } from "../../shared/primitives/panel";
 import { StatusBadge } from "../../shared/primitives/status-badge";
-import { EditorBlock, FolderBreadcrumb, FolderRow, SelectionBatchBar, UnitRowShell, WorkbenchSurface } from "../../shared/patterns";
+import { EditorBlock, FolderBreadcrumb, FolderRow, SelectionBatchBar, SortableRowShell, UnitRowShell, WorkbenchSurface } from "../../shared/patterns";
 import { buildLoraTrainingDemoData } from "./fixtures";
 import type { LoraTrainingPreset, LoraTrainingSectionBlock, LoraTrainingTemplate } from "./types";
 import s from "./training-resource-pages.module.css";
@@ -45,6 +45,49 @@ function uniquePresetFolders(presets: LoraTrainingPreset[]) {
 function presetUsageLabel(preset: LoraTrainingPreset) {
   const usageCount = preset.projectUsage.length + preset.templateUsage.length;
   return usageCount > 0 ? `${usageCount} 处引用` : "未引用";
+}
+
+function TrainingPresetSortPanel({
+  items,
+  subtitle,
+  title,
+}: {
+  items: Array<{ id: string; meta: string; title: string }>;
+  subtitle: string;
+  title: string;
+}) {
+  return (
+    <section className={s.trainingPresetSortPanel}>
+      <div className={s.trainingPresetSortHeader}>
+        <div>
+          <strong>{title}</strong>
+          <span>{subtitle}</span>
+        </div>
+        <StatusBadge status="ready" label="已保存" />
+      </div>
+      <div className={s.trainingPresetSortList}>
+        {items.map((item, index) => (
+          <SortableRowShell
+            className={s.trainingPresetSortRow}
+            contentClassName={s.trainingPresetSortRowContent}
+            handleClassName={s.grip}
+            index={index}
+            indexClassName={s.trainingPresetSortIndex}
+            key={item.id}
+          >
+            <div className={s.trainingPresetSortRowText}>
+              <strong>{item.title}</strong>
+              <em>{item.meta}</em>
+            </div>
+          </SortableRowShell>
+        ))}
+      </div>
+      <div className={s.trainingPresetSortFooter}>
+        <span>拖拽排序后保存</span>
+        <Button icon={Save} feedback={{ title: `${title} 排序已保存` }}>保存此组</Button>
+      </div>
+    </section>
+  );
 }
 
 function TemplateSceneBlockCard({
@@ -236,6 +279,7 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
 export function LoraTrainingPresetDetailPage({ data, presetId }: { data: DemoData; presetId?: string }) {
   const preset = findPreset(data, presetId);
   if (!preset) return <EmptyPage title="没有训练预制数据" />;
+  const usages = [...preset.projectUsage, ...preset.templateUsage];
 
   return (
     <div className={s.page}>
@@ -246,27 +290,47 @@ export function LoraTrainingPresetDetailPage({ data, presetId }: { data: DemoDat
         subtitle={`${preset.category} / ${preset.folder} · 更新 ${preset.updatedAt}`}
         actions={<Button tone="primary" icon={Save} feedback={{ title: "训练预制已保存", detail: preset.title }}>保存</Button>}
       />
-      <div className={s.twoCol}>
-        <Panel title="预制内容" subtitle="训练预制只维护 sceneDescriptionText。">
-          <div className={s.stack}>
-            <Field label="名称" value={preset.title} />
-            <FloatingSelect label="分类" value={preset.category} options={[preset.category, "光线", "环境", "构图"]} />
-            <FloatingSelect label="文件夹" value={preset.folder} options={[preset.folder, "舞台", "城市", "训练净图"]} />
-            <Field multiline features={{ resize: true, clipboard: true }} label="场景描述" value={preset.sceneDescriptionText} />
-          </div>
-        </Panel>
-        <Panel title="删除影响" subtitle="删除前需要展示项目侧和模板侧引用，确认后只移除 mutable refs。">
-          <div className={s.usageList}>
-            {[...preset.projectUsage, ...preset.templateUsage].map((usage) => (
-              <div className={s.usageRow} key={usage}>
-                <strong>{usage}</strong>
-                <span>引用当前 scene block</span>
-              </div>
-            ))}
-            {preset.projectUsage.length + preset.templateUsage.length === 0 ? <div className={s.emptyInline}>没有引用</div> : null}
-          </div>
-        </Panel>
-      </div>
+      <WorkbenchSurface className={s.trainingPresetEditorSurface}>
+        <EditorBlock
+          actions={presetStatus(preset)}
+          className={s.trainingPresetEditorBlock}
+          contentClassName={s.trainingPresetFormGrid}
+          description="训练预制只维护一段可复用 scene description。"
+          headerClassName={s.trainingPresetEditorHeader}
+          title="预制内容"
+        >
+          <Field label="名称" value={preset.title} />
+          <FloatingSelect label="分类" value={preset.category} options={[preset.category, "光线", "环境", "构图"]} />
+          <FloatingSelect label="文件夹" value={preset.folder} options={[preset.folder, "舞台", "城市", "训练净图"]} />
+          <Field multiline features={{ resize: true, clipboard: true }} label="场景描述" value={preset.sceneDescriptionText} />
+        </EditorBlock>
+        <EditorBlock
+          actions={<StatusBadge status={usages.length ? "pending" : "ready"} label={`${usages.length} 处引用`} />}
+          className={s.trainingPresetEditorBlock}
+          contentClassName={s.trainingPresetUsageList}
+          description="删除前展示项目侧和模板侧引用，确认后只移除 mutable refs。"
+          headerClassName={s.trainingPresetEditorHeader}
+          title="引用影响"
+        >
+          {usages.map((usage) => (
+            <UnitRowShell
+              className={s.trainingPresetUsageRow}
+              description="引用当前 scene block"
+              key={usage}
+              meta={<StatusBadge status="template" label={usage.startsWith("模板") ? "模板" : "项目"} />}
+              title={usage}
+            />
+          ))}
+          {usages.length === 0 ? <div className={s.emptyInline}>没有引用</div> : null}
+          <OperationStateStrip
+            items={[
+              { label: "保存", value: "本地草稿", tone: "info" },
+              { label: "删除影响", value: `${usages.length} 处`, tone: usages.length ? "warning" : "success" },
+              { label: "校验", value: "通过", tone: "success" },
+            ]}
+          />
+        </EditorBlock>
+      </WorkbenchSurface>
     </div>
   );
 }
@@ -274,6 +338,16 @@ export function LoraTrainingPresetDetailPage({ data, presetId }: { data: DemoDat
 export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
   const training = buildLoraTrainingDemoData(data);
   const categories = [...new Set(training.presets.map((preset) => preset.category))];
+  const categoryItems = categories.map((category) => ({
+    id: category,
+    title: category,
+    meta: `${training.presets.filter((preset) => preset.category === category).length} 个预制`,
+  }));
+  const presetItems = training.presets.map((preset) => ({
+    id: preset.id,
+    title: preset.title,
+    meta: `${preset.category} / ${preset.folder}`,
+  }));
 
   return (
     <div className={s.page}>
@@ -284,29 +358,9 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
         subtitle="管理合成顺序和分类内顺序；训练预制没有普通预设库的正反向维度。"
         actions={<Button tone="primary" icon={Save} feedback="排序规则已保存">保存全部</Button>}
       />
-      <div className={s.sortGrid}>
-        <Panel title="合成顺序">
-          <div className={s.usageList}>
-            {categories.map((category, index) => (
-              <div className={s.sortRow} key={category}>
-                <GripVertical className={s.grip} aria-hidden="true" />
-                <strong>{String(index + 1).padStart(2, "0")} · {category}</strong>
-                <span>{training.presets.filter((preset) => preset.category === category).length} 个预制</span>
-              </div>
-            ))}
-          </div>
-        </Panel>
-        <Panel title="分类内顺序">
-          <div className={s.usageList}>
-            {training.presets.map((preset, index) => (
-              <div className={s.sortRow} key={preset.id}>
-                <GripVertical className={s.grip} aria-hidden="true" />
-                <strong>{String(index + 1).padStart(2, "0")} · {preset.title}</strong>
-                <span>{preset.category} / {preset.folder}</span>
-              </div>
-            ))}
-          </div>
-        </Panel>
+      <div className={s.trainingPresetSortGrid}>
+        <TrainingPresetSortPanel title="合成顺序" subtitle="决定训练小节导入预制块时的分类顺序。" items={categoryItems} />
+        <TrainingPresetSortPanel title="分类内顺序" subtitle="决定同分类下 scene description 的稳定排序。" items={presetItems} />
       </div>
     </div>
   );
