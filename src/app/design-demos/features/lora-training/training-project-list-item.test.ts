@@ -84,3 +84,13 @@ test("training project list archives and restores selected projects locally", ()
   assert.match(projectsPageSource, /onClick=\{handleToggleSelectedProjectArchive\}/, "Batch archive button should call the local state handler");
   assert.match(projectsPageSource, /scope === "current" \? "归档" : "恢复"/, "Batch action label should match the active scope");
 });
+
+test("training project list deletes selected projects from local front-end state", () => {
+  assert.match(projectsPageSource, /hiddenProjectIds/, "Project list should track locally removed project ids");
+  assert.match(projectsPageSource, /setHiddenProjectIds/, "Project list delete actions should update hidden project state");
+  assert.match(projectsPageSource, /handleRemoveSelectedProjects/, "Project list should define a shared selected delete handler");
+  assert.match(projectsPageSource, /selectedVisibleIds/, "Batch delete should only remove selected projects visible in the active scope");
+  assert.match(projectsPageSource, /onClick=\{handleRemoveSelectedProjects\}/, "Batch delete button should call the local delete handler");
+  assert.match(projectsPageSource, /训练项目已从列表移除/, "Batch delete feedback should describe the local state change");
+  assert.doesNotMatch(projectsPageSource, /删除动作已预览/, "Project delete actions should not remain preview-only placeholders");
+});

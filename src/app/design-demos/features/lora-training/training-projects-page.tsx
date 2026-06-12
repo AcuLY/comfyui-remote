@@ -73,6 +73,12 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
     setSelectedIds(new Set());
   }
 
+  function handleRemoveSelectedProjects() {
+    const selectedVisibleIds = new Set(visibleProjects.filter((project) => selectedIds.has(project.id)).map((project) => project.id));
+    setHiddenProjectIds((current) => new Set([...current, ...selectedVisibleIds]));
+    setSelectedIds((current) => new Set([...current].filter((id) => !selectedVisibleIds.has(id))));
+  }
+
   return (
     <div className={s.page}>
       <PageHeader
@@ -127,21 +133,18 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
         {selectedVisibleCount > 0 ? (
           <SelectionBatchBar
             selectedCount={selectedVisibleCount}
-                subject="个训练项目"
-                onClear={() => setSelectedIds(new Set())}
-                actions={(
-                  <>
-                    <Button icon={Archive} onClick={handleToggleSelectedProjectArchive} feedback={{ title: scope === "current" ? "训练项目已归档" : "训练项目已恢复", detail: `${selectedVisibleCount} 个训练项目` }}>
-                      {scope === "current" ? "归档" : "恢复"}
-                    </Button>
+            subject="个训练项目"
+            onClear={() => setSelectedIds(new Set())}
+            actions={(
+              <>
+                <Button icon={Archive} onClick={handleToggleSelectedProjectArchive} feedback={{ title: scope === "current" ? "训练项目已归档" : "训练项目已恢复", detail: `${selectedVisibleCount} 个训练项目` }}>
+                  {scope === "current" ? "归档" : "恢复"}
+                </Button>
                 <Button
                   tone="danger"
                   icon={X}
-                  feedback={{ tone: "warning", title: "删除动作已预览", detail: `${selectedVisibleCount} 个训练项目` }}
-                  onClick={() => {
-                    setHiddenProjectIds((current) => new Set([...current, ...selectedIds]));
-                    setSelectedIds(new Set());
-                  }}
+                  feedback={{ tone: "warning", title: "训练项目已从列表移除", detail: `${selectedVisibleCount} 个训练项目` }}
+                  onClick={handleRemoveSelectedProjects}
                 >
                   删除
                 </Button>
