@@ -62,6 +62,17 @@ test("failed training run detail retry updates local queued-retry state", () => 
   assert.match(detailSource, /!isRetryQueued/, "retry button should hide once the run is queued for retry");
 });
 
+test("training sample lightbox copies captions through a real local action", () => {
+  assert.match(detailSource, /copiedCaption/, "run detail should track the copied caption locally");
+  assert.match(detailSource, /setCopiedCaption/, "copy action should update local copied-caption state");
+  assert.match(detailSource, /handleCopyActiveCaption/, "run detail should define an explicit copy-caption handler");
+  assert.match(detailSource, /navigator\.clipboard/, "copy-caption handler should use the browser Clipboard API when available");
+  assert.match(detailSource, /writeText\(caption\)/, "copy-caption handler should write the active caption text");
+  assert.match(detailSource, /onClick=\{handleCopyActiveCaption\}/, "copy caption button should call the local copy handler");
+  assert.match(detailSource, /copiedCaption\?\.sampleId === activeSample\.id/, "copy caption button should reflect the copied active sample");
+  assert.doesNotMatch(detailSource, /<Button\s+icon=\{Copy\}\s+feedback=\{\{ title: "caption 已复制"/, "copy caption should not remain feedback-only");
+});
+
 test("training dataset sample cards keep captions compact without shrinking thumbnails", () => {
   assert.match(detailCss, /\.trainingSampleGrid\b/, "training detail should define a sample thumbnail grid");
   assert.match(detailCss, /\.trainingSampleCard\b/, "training detail should define sample card styling");

@@ -62,6 +62,7 @@ export function LoraTrainingRunDetailPage({
   runId?: string;
 }) {
   const [activeSampleIndex, setActiveSampleIndex] = useState<number | null>(null);
+  const [copiedCaption, setCopiedCaption] = useState<{ caption: string; sampleId: string } | null>(null);
   const [retryQueued, setRetryQueued] = useState(false);
   const training = buildLoraTrainingDemoData(data);
   const run = findRun(data, kind, runId);
@@ -76,8 +77,18 @@ export function LoraTrainingRunDetailPage({
   const datasetHref = run.datasetRevisionId ? `${projectHref}/dataset/revisions/${run.datasetRevisionId}` : `${projectHref}/dataset`;
   const datasetSamples = isGeneration ? [] : run.datasetSamples ?? [];
   const activeSample = activeSampleIndex === null ? null : datasetSamples[activeSampleIndex] ?? null;
+  const isActiveCaptionCopied = activeSample ? copiedCaption?.sampleId === activeSample.id : false;
   const canCreatePreset = !isGeneration && Boolean(run.finalLoraArtifactId) && !run.presetCreatedAt;
   const logText = run.trainingLogLines?.length ? run.trainingLogLines.join("\n") : "尚未创建训练日志";
+
+  function handleCopyActiveCaption() {
+    if (!activeSample) return;
+    const caption = activeSample.caption;
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      void navigator.clipboard.writeText(caption).catch(() => undefined);
+    }
+    setCopiedCaption({ caption, sampleId: activeSample.id });
+  }
 
   return (
     <div className={s.page}>
@@ -223,9 +234,12 @@ export function LoraTrainingRunDetailPage({
           actions={(
             <Button
               icon={Copy}
-              feedback={{ title: "caption 已复制", detail: activeSample.caption }}
+              onClick={handleCopyActiveCaption}
+              pressed={isActiveCaptionCopied}
+              ariaLabel={`复制 caption：${activeSample.label}`}
+              feedback={{ title: isActiveCaptionCopied ? "caption 已再次复制" : "caption 已复制", detail: activeSample.caption }}
             >
-              复制 caption
+              {isActiveCaptionCopied ? "已复制 caption" : "复制 caption"}
             </Button>
           )}
         />
