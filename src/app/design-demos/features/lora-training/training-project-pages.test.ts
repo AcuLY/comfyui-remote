@@ -209,6 +209,23 @@ test("training dataset page opens a local training draft instead of only preview
   assert.doesNotMatch(datasetPageSource, /启动训练配置已打开/, "start training should not remain a toast-only placeholder");
 });
 
+test("training dataset readiness is a lightweight preparation summary, not a standalone metric grid", () => {
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(revisionPageStart, -1);
+
+  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+
+  assert.doesNotMatch(datasetPageSource, /<StatGrid/, "dataset page should not render the old full readiness metric grid");
+  assert.doesNotMatch(datasetPageSource, /title="Readiness"/, "dataset page should not keep a standalone Readiness panel");
+  assert.match(datasetPageSource, /title="训练准备"/, "dataset page should fold readiness into the training preparation area");
+  assert.match(datasetPageSource, /className=\{s\.readinessSummary\}/, "dataset readiness should use the compact summary row");
+  assert.match(datasetPageSource, /project\.keptCount/, "preparation summary should keep the kept image count visible");
+  assert.match(datasetPageSource, /project\.captionMissingCount/, "preparation summary should keep caption gaps visible");
+  assert.match(datasetPageSource, /project\.datasetVersion/, "preparation summary should keep the active dataset version visible");
+});
+
 test("training result cards keep thumbnail density and clamp captions", () => {
   assert.match(cssSource, /\.trainingResultGrid\b/, "training result grid CSS should exist");
   assert.match(cssSource, /\.trainingResultCard\b/, "training result cards should exist");

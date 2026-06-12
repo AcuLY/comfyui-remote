@@ -176,17 +176,6 @@ function ProjectHeader({
   );
 }
 
-function StatGrid({ project }: { project: LoraTrainingProject }) {
-  return (
-    <dl className={s.statGrid}>
-      <div><dt>资料</dt><dd>{project.readiness}</dd></div>
-      <div><dt>小节</dt><dd>{project.sectionCount} 个</dd></div>
-      <div><dt>结果池</dt><dd>{project.keptCount} 已保留</dd></div>
-      <div><dt>Caption</dt><dd>{project.captionMissingCount} 缺失</dd></div>
-    </dl>
-  );
-}
-
 function reviewStatusLabel(status: LoraTrainingImageResult["reviewStatus"]) {
   if (status === "kept") return "保留";
   if (status === "rejected") return "拒绝";
@@ -1649,8 +1638,13 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
         )}
       />
       <div className={s.twoCol}>
-        <Panel title="Readiness" subtitle="只有 kept 图片进入冻结版本，后续编辑不会回写已冻结 revision。">
-          <StatGrid project={project} />
+        <Panel title="训练准备" subtitle="只有 kept 图片进入冻结版本，后续编辑不会回写已冻结 revision。">
+          <div className={s.readinessSummary}>
+            <span><strong>{project.keptCount}</strong> kept 图片</span>
+            <span><strong>{project.captionMissingCount}</strong> 缺 caption</span>
+            <span><strong>{project.datasetVersion}</strong> 当前版本</span>
+          </div>
+          <p className={s.bodyText}>准备信息保持在训练入口附近，完整样本与冻结快照继续由下方草稿和版本列表承载。</p>
         </Panel>
         <Panel title="冻结版本">
           <div className={s.entityRows}>
