@@ -34,6 +34,7 @@ import { PageHeader } from "../../shared/primitives/page-header";
 import { Panel } from "../../shared/primitives/panel";
 import { SegmentedControl } from "../../shared/primitives/segmented-control";
 import { StatusBadge } from "../../shared/primitives/status-badge";
+import { SwitchRow } from "../../shared/primitives/switch-row";
 import { buildLoraTrainingDemoData } from "./fixtures";
 import type { LoraTrainingImageResult, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus } from "./types";
 import s from "./training-project-pages.module.css";
@@ -404,6 +405,48 @@ function ReferencePicker({
 
 export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   const training = useTraining(data);
+  const selectedTemplate = training.templates[0];
+  const baseModelOptions = data.models.filter((model) => model.modelType === "checkpoint").map((model) => model.name);
+  const referenceSourceTree: ReferenceSourceGroup[] = [
+    {
+      id: "existing-training-projects",
+      title: "已有训练项目",
+      description: "可复用资料",
+      items: training.projects.slice(0, 3).map((project) => ({
+        id: `project-${project.id}`,
+        title: project.title,
+        detail: project.profileSummary,
+        image: project.referenceImages[0]?.image,
+        meta: `${project.sectionCount} 小节`,
+      })),
+    },
+    {
+      id: "recent-training-results",
+      title: "结果池样本",
+      description: "最近 kept 图",
+      items: training.projects.flatMap((project) => project.resultPool.filter((result) => result.reviewStatus === "kept").slice(0, 2).map((result) => ({
+        id: `result-${result.id}`,
+        title: `${project.title} / ${result.sectionTitle}`,
+        detail: result.caption,
+        image: result.image,
+        meta: "kept",
+      }))).slice(0, 4),
+    },
+    {
+      id: "uploaded-images",
+      title: "上传图片",
+      description: "资料候选",
+      items: data.images.slice(0, 4).map((image) => ({
+        id: `image-${image.id}`,
+        title: image.label,
+        detail: "作为新训练项目的原始参考图，确认后加入角色资料。",
+        image,
+        meta: image.status,
+      })),
+    },
+  ].filter((group) => group.items.length > 0);
+  const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
+  const activePreviewReference = previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
 
   return (
     <div className={s.page}>
@@ -414,28 +457,54 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
         subtitle="选择模板、填写角色资料，并创建初始小节。模板只作为 seed，创建后不会 live 回写。"
         actions={<Button tone="primary" icon={Save} feedback={{ title: "训练项目已创建", detail: "后续接入 POST /api/training/projects" }}>创建项目</Button>}
       />
-      <div className={s.twoCol}>
-        <Panel title="项目基础信息">
-          <div className={s.formStack}>
-            <Field label="项目名称" value="新角色 LoRA 项目" />
-            <FloatingSelect label="从模板创建" value={training.templates[0]?.title ?? "不使用模板"} options={["不使用模板", ...training.templates.map((template) => template.title)]} />
-            <Field multiline features={{ resize: true, clipboard: true }} label="角色使用提示词" value="角色触发词、服装和稳定身份描述。" />
-            <Field multiline features={{ resize: true, clipboard: true }} label="角色细节描述" value="发型、眼睛、服装材质、常见构图和需要避免的变化。" />
-          </div>
-        </Panel>
-        <Panel title="初始小节">
-          <div className={s.entityRows}>
-            {training.templates[0]?.sections.map((section) => (
-              <div className={s.entityRow} key={section.id}>
-                <div>
-                  <strong>{section.title}</strong>
-                  <span>{section.blockCount} 个场景块 · {section.scenePreview}</span>
-                </div>
-                <StatusBadge status={section.enabled ? "ready" : "draft"} label={section.enabled ? "启用" : "停用"} />
-              </div>
-            ))}
-          </div>
-        </Panel>
+      <div className={s.projectCreateWorkspace}>
+        <div className={s.projectCreateMain}>
+          <Panel title="项目基础信息" subtitle="沿用项目表单骨架，但这里只写训练项目 seed 数据。">
+            <div className={s.formStack}>
+              <Field label="项目名称" value="新角色 LoRA 项目" />
+              <FloatingSelect label="从模板创建" value={selectedTemplate?.title ?? "不使用模板"} options={["不使用模板", ...training.templates.map((template) => template.title)]} />
+              <FloatingSelect label="基础模型" value={baseModelOptions[0] ?? "继承训练默认模型"} options={["继承训练默认模型", ...baseModelOptions]} />
+              <Field multiline features={{ resize: true, clipboard: true }} label="角色使用提示词" value="角色触发词、服装和稳定身份描述。" />
+              <Field multiline features={{ resize: true, clipboard: true }} label="角色细节描述" value="发型、眼睛、服装材质、常见构图和需要避免的变化。" />
+            </div>
+          </Panel>
+          <Panel title="参考资料" subtitle="先预览引用来源，再显式加入新项目资料。">
+            <ReferencePicker
+              referenceSourceTree={referenceSourceTree}
+              previewReference={activePreviewReference}
+              onPreviewReference={setPreviewReference}
+            />
+          </Panel>
+        </div>
+        <aside className={s.projectCreateAside}>
+          <Panel title="初始小节" subtitle="模板小节只是创建时 seed，创建后独立管理。">
+            <div className={s.sectionSeedList}>
+              {selectedTemplate?.sections.map((section, index) => (
+                <article className={s.sectionSeedCard} key={section.id}>
+                  <div className={s.sectionSeedHeader}>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    <strong>{section.title}</strong>
+                    <StatusBadge status={section.enabled ? "ready" : "draft"} label={section.enabled ? "启用" : "停用"} />
+                  </div>
+                  <p>{section.blockCount} 个场景块 · {section.scenePreview}</p>
+                  <div className={s.sectionSeedActions}>
+                    <Button size="sm" icon={Copy} feedback={{ title: "初始小节已复制", detail: section.title }}>复制</Button>
+                    <Button size="sm" tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "移除初始小节需要确认", detail: section.title }}>删除</Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </Panel>
+          <Panel title="数据集与训练默认" subtitle="创建后用于首批图片生成、caption 和训练任务草稿。">
+            <div className={s.formStack}>
+              <SwitchRow title="创建后自动生成首批训练样本" subtitle="使用每个启用小节创建一轮训练集图片任务。" />
+              <SwitchRow title="Caption 完成后自动冻结数据集" subtitle="只冻结 kept 图片；后续编辑不会回写 revision。" />
+              <FloatingSelect label="caption 策略" value="先触发词后描述" options={["先触发词后描述", "只补全缺失 caption", "人工确认后写入"]} />
+              <Field label="每小节初始图片数" value={4} />
+              <Field label="训练步数草稿" value={2400} />
+            </div>
+          </Panel>
+        </aside>
       </div>
     </div>
   );

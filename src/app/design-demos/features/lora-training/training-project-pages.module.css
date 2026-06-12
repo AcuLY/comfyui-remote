@@ -51,6 +51,22 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.projectCreateWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(320px, 0.82fr);
+  align-items: start;
+  gap: 12px;
+}
+
+.projectCreateMain,
+.projectCreateAside,
+.sectionSeedList {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 12px;
+}
+
 .twoCol {
   grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
   align-items: start;
@@ -142,6 +158,63 @@
   display: grid;
   min-width: 0;
   gap: 8px;
+}
+
+.sectionSeedCard {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background: var(--demo-field-bg);
+  padding: 10px;
+}
+
+.sectionSeedHeader {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.sectionSeedHeader > span {
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-weight: 640;
+}
+
+.sectionSeedHeader strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sectionSeedCard p {
+  min-width: 0;
+  margin: 0;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.sectionSeedActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 8px;
+}
+
+.sectionSeedActions :where([data-demo-ui-button="true"]) {
+  justify-content: center;
+  min-height: 32px;
+  border-radius: 8px;
 }
 
 @media (min-width: 720px) {
@@ -909,6 +982,7 @@
 
 @media (max-width: 980px) {
   .overviewGrid,
+  .projectCreateWorkspace,
   .twoCol,
   .referencePicker {
     grid-template-columns: 1fr;
@@ -969,6 +1043,7 @@
 
   .entityRow,
   .projectRunRow,
+  .sectionSeedHeader,
   .sectionActions {
     grid-template-columns: 1fr;
     align-items: start;
@@ -984,6 +1059,7 @@
   .projectRunText strong,
   .projectRunText span,
   .projectRunText em,
+  .sectionSeedHeader strong,
   .sectionActions > span {
     white-space: normal;
   }

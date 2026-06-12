@@ -95,3 +95,24 @@ test("project-scoped run rows use task cards with recent output thumbnails", () 
   assert.match(cssSource, /\.projectRunRows\b/, "project run rows should have dedicated list styling");
   assert.match(cssSource, /\.projectRunThumbs\b/, "project run rows should style thumbnail strips separately");
 });
+
+test("training project create page is a full form workspace with training seed controls", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /referenceSourceTree/, "project creation should offer explicit reference sources");
+  assert.match(formSource, /ReferencePicker/, "project creation should preview references before adding them");
+  assert.match(formSource, /previewReference/, "reference selection should be preview-first, not immediate write");
+  assert.match(formSource, /SwitchRow/, "project creation should expose default training/dataset toggles");
+  assert.match(formSource, /训练默认/, "project creation should include training defaults");
+  assert.match(formSource, /caption/, "project creation should include caption/dataset setup");
+  assert.match(formSource, /Copy/, "initial template sections should be manageable, including copy");
+  assert.match(formSource, /Trash2/, "initial template sections should be manageable, including delete");
+  assert.match(formSource, /data\.models/, "project creation should choose a base model/checkpoint from demo data");
+  assert.match(cssSource, /\.projectCreateWorkspace\b/, "project creation should have a dedicated workspace layout");
+  assert.match(cssSource, /\.sectionSeedCard\b/, "initial section seed cards should have dedicated styling");
+});
