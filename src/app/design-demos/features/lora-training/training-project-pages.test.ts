@@ -241,10 +241,30 @@ test("training result review actions update local front-end review state", () =>
   assert.match(resultsPageSource, /localResults/, "project result pool should render from local review state");
   assert.match(resultsPageSource, /setLocalResults/, "project result review actions should update local state");
   assert.match(resultsPageSource, /handleReviewResult/, "project results page should define a single-result review handler");
-  assert.match(resultsPageSource, /handleKeepVisibleResults/, "project results page should define a batch keep handler for visible results");
+  assert.match(resultsPageSource, /handleBatchReviewResults/, "project results page should define a selected batch review handler");
   assert.match(resultsPageSource, /onReviewStatusChange=\{handleReviewResult\}/, "project results grid should be wired to the review handler");
   assert.match(sectionDetailSource, /sectionResults/, "section detail results should render from local review state");
   assert.match(sectionDetailSource, /onReviewStatusChange=\{handleReviewSectionResult\}/, "section detail result grid should be wired to a review handler");
+});
+
+test("training result review supports explicit selected batch keep and reject actions", () => {
+  const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  assert.notEqual(resultsPageStart, -1);
+  assert.notEqual(datasetPageStart, -1);
+
+  const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
+
+  assert.match(resultsPageSource, /selectedResultIds/, "results page should track explicitly selected result ids");
+  assert.match(resultsPageSource, /toggleResultSelection/, "result cards should be selectable without opening the lightbox");
+  assert.match(resultsPageSource, /selectedVisibleResultIds/, "batch actions should only target selected ids visible in the active filter");
+  assert.match(resultsPageSource, /handleBatchReviewResults/, "results page should share one local batch review handler");
+  assert.match(resultsPageSource, /SelectionBatchBar/, "selected results should show the shared batch action bar");
+  assert.match(resultsPageSource, /onClick=\{\(\) => handleBatchReviewResults\("kept"\)\}/, "batch keep should update selected results locally");
+  assert.match(resultsPageSource, /onClick=\{\(\) => handleBatchReviewResults\("rejected"\)\}/, "batch reject should update selected results locally");
+  assert.match(resultsPageSource, /onToggleSelected=\{toggleResultSelection\}/, "result grid should receive the selection toggle handler");
+  assert.match(resultsPageSource, /selectedIds=\{selectedResultIds\}/, "result grid should receive selected result ids");
+  assert.doesNotMatch(resultsPageSource, /handleKeepVisibleResults/, "results page should not use implicit keep-visible as its only batch operation");
 });
 
 test("training dataset page opens a local training draft instead of only previewing the start action", () => {

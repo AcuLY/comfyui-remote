@@ -584,17 +584,48 @@
 
 .trainingResultCard {
   appearance: none;
-  cursor: zoom-in;
   text-align: left;
   transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
 .trainingResultCard:hover,
-.trainingResultCard:focus-visible {
+.trainingResultCard:focus-within {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-glass-hover);
   outline: none;
   transform: translateY(-1px);
+}
+
+.trainingResultCardSelected {
+  border-color: var(--demo-glass-accent-border);
+  background: color-mix(in srgb, var(--demo-green) 11%, var(--demo-field-bg));
+  box-shadow: 3px 0 0 var(--demo-green) inset;
+}
+
+.trainingResultCardControls {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trainingResultPreviewButton {
+  appearance: none;
+  display: grid;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: zoom-in;
+  padding: 0;
+  text-align: left;
+}
+
+.trainingResultPreviewButton:focus-visible {
+  border-radius: 10px;
+  outline: 3px solid color-mix(in srgb, var(--demo-green) 42%, transparent);
+  outline-offset: 3px;
 }
 
 .referenceImageCard :global([class*="imagePreviewFrame"]),

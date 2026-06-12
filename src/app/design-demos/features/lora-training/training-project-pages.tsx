@@ -28,6 +28,7 @@ import { ImageListSmall } from "../../shared/media/image-list-small";
 import { ImagePreviewFrame } from "../../shared/media/image-preview-frame";
 import { ImagePreviewLarge } from "../../shared/media/image-preview-large";
 import { Button, ButtonLink } from "../../shared/primitives/button";
+import { Checkbox } from "../../shared/primitives/checkbox";
 import { EmptyPage } from "../../shared/primitives/empty-page";
 import { Field } from "../../shared/primitives/field";
 import { FloatingSelect } from "../../shared/primitives/floating-select";
@@ -37,6 +38,7 @@ import { SegmentedControl } from "../../shared/primitives/segmented-control";
 import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { SwitchRow } from "../../shared/primitives/switch-row";
+import { SelectionBatchBar } from "../../shared/patterns";
 import { buildLoraTrainingDemoData } from "./fixtures";
 import type { LoraTrainingImageResult, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "./types";
 import s from "./training-project-pages.module.css";
@@ -196,11 +198,15 @@ function referenceKindLabel(kind: LoraTrainingReferenceImage["kind"]) {
 
 function TrainingResultGrid({
   onReviewStatusChange,
+  onToggleSelected,
   results,
+  selectedIds,
   title = "训练结果",
 }: {
   onReviewStatusChange?: (resultId: string, status: LoraTrainingImageResult["reviewStatus"]) => void;
+  onToggleSelected?: (resultId: string) => void;
   results: LoraTrainingImageResult[];
+  selectedIds?: Set<string>;
   title?: string;
 }) {
   const [activeResultIndex, setActiveResultIndex] = useState<number | null>(null);
@@ -211,22 +217,43 @@ function TrainingResultGrid({
   return (
     <>
       <div className={s.trainingResultGrid}>
-        {results.map((result, index) => (
-          <button
-            className={s.trainingResultCard}
-            data-review-status={result.reviewStatus}
-            key={result.id}
-            type="button"
-            onClick={() => setActiveResultIndex(index)}
-          >
-            <ImagePreviewFrame image={result.image} />
-            <span className={s.trainingResultMeta}>
-              <strong>{result.sourceLabel}</strong>
-              <StatusBadge status={reviewStatusTone(result.reviewStatus)} label={reviewStatusLabel(result.reviewStatus)} />
-            </span>
-            <p className={s.trainingResultCaption}>{result.caption}</p>
-          </button>
-        ))}
+        {results.map((result, index) => {
+          const selected = selectedIds?.has(result.id) ?? false;
+
+          return (
+            <article
+              className={cx(s.trainingResultCard, selected && s.trainingResultCardSelected)}
+              data-review-status={result.reviewStatus}
+              key={result.id}
+            >
+              {onToggleSelected ? (
+                <div className={s.trainingResultCardControls}>
+                  <Checkbox
+                    checked={selected}
+                    label={selected ? `取消选择训练结果：${result.sourceLabel}` : `选择训练结果：${result.sourceLabel}`}
+                    onCheckedChange={() => onToggleSelected(result.id)}
+                    stopPropagation
+                    variant="compact"
+                  />
+                  <StatusBadge status={reviewStatusTone(result.reviewStatus)} label={reviewStatusLabel(result.reviewStatus)} />
+                </div>
+              ) : null}
+              <button
+                aria-label={`打开训练结果：${result.sourceLabel}`}
+                className={s.trainingResultPreviewButton}
+                type="button"
+                onClick={() => setActiveResultIndex(index)}
+              >
+                <ImagePreviewFrame image={result.image} />
+              </button>
+              <span className={s.trainingResultMeta}>
+                <strong>{result.sourceLabel}</strong>
+                {onToggleSelected ? null : <StatusBadge status={reviewStatusTone(result.reviewStatus)} label={reviewStatusLabel(result.reviewStatus)} />}
+              </span>
+              <p className={s.trainingResultCaption}>{result.caption}</p>
+            </article>
+          );
+        })}
       </div>
       {activeResult ? (
         <ImagePreviewLarge
@@ -1572,6 +1599,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
 export function LoraTrainingProjectResultsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const project = findProject(data, projectId);
   const [filter, setFilter] = useState<TrainingResultFilter>("all");
+  const [selectedResultIds, setSelectedResultIds] = useState<Set<string>>(new Set());
   const [resultState, setLocalResults] = useState(() => ({
     projectId: project?.id ?? null,
     results: project?.resultPool ?? [],
@@ -1580,6 +1608,10 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
   if (!project) return <EmptyPage title="没有训练结果池数据" />;
   const activeProject = project;
   const results = filter === "all" ? localResults : localResults.filter((result) => result.reviewStatus === filter);
+  const visibleResultIds = new Set(results.map((result) => result.id));
+  const selectedVisibleResultIds = new Set([...selectedResultIds].filter((resultId) => visibleResultIds.has(resultId)));
+  const selectedVisibleCount = selectedVisibleResultIds.size;
+  const allVisibleResultsSelected = results.length > 0 && selectedVisibleCount === results.length;
 
   function updateLocalResults(updater: (current: LoraTrainingImageResult[]) => LoraTrainingImageResult[]) {
     setLocalResults((current) => ({
@@ -1592,18 +1624,48 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
     updateLocalResults((current) => current.map((result) =>
       result.id === resultId ? { ...result, reviewStatus } : result,
     ));
+    setSelectedResultIds((current) => {
+      const next = new Set(current);
+      next.delete(resultId);
+      return next;
+    });
   }
 
-  function handleKeepVisibleResults() {
-    const visibleIds = new Set(results.map((result) => result.id));
+  function toggleResultSelection(resultId: string) {
+    setSelectedResultIds((current) => {
+      const next = new Set(current);
+      if (next.has(resultId)) next.delete(resultId);
+      else next.add(resultId);
+      return next;
+    });
+  }
+
+  function toggleVisibleResultSelection() {
+    setSelectedResultIds((current) => {
+      if (allVisibleResultsSelected) {
+        const next = new Set(current);
+        results.forEach((result) => next.delete(result.id));
+        return next;
+      }
+      return new Set([...current, ...visibleResultIds]);
+    });
+  }
+
+  function handleBatchReviewResults(reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+    const selectedIds = new Set(selectedVisibleResultIds);
     updateLocalResults((current) => current.map((result) =>
-      visibleIds.has(result.id) ? { ...result, reviewStatus: "kept" } : result,
+      selectedIds.has(result.id) ? { ...result, reviewStatus } : result,
     ));
+    setSelectedResultIds((current) => new Set([...current].filter((resultId) => !selectedIds.has(resultId))));
   }
 
   return (
     <div className={s.page}>
-      <ProjectHeader active="results" project={project} actions={<Button icon={Check} tone="primary" onClick={handleKeepVisibleResults} feedback={{ title: "已保留当前筛选图片" }}>批量保留</Button>} />
+      <ProjectHeader
+        active="results"
+        project={project}
+        actions={<Button icon={Check} onClick={toggleVisibleResultSelection} disabled={results.length === 0}>{allVisibleResultsSelected ? "取消全选当前" : "全选当前"}</Button>}
+      />
       <Panel title="结果池" subtitle="待审、已保留和已拒绝的图片都在项目级结果池审查，说明文本摘要随图片一起处理。">
         <div className={s.stack}>
           <SegmentedControl
@@ -1613,7 +1675,30 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
             value={filter}
             onChange={setFilter}
           />
-          <TrainingResultGrid onReviewStatusChange={handleReviewResult} results={results} title="结果池" />
+          {selectedVisibleCount > 0 ? (
+            <SelectionBatchBar
+              selectedCount={selectedVisibleCount}
+              subject="张训练结果"
+              onClear={() => setSelectedResultIds(new Set())}
+              actions={(
+                <>
+                  <Button icon={Check} tone="primary" onClick={() => handleBatchReviewResults("kept")} feedback={{ title: "已保留所选图片", detail: `${selectedVisibleCount} 张训练结果` }}>
+                    批量保留
+                  </Button>
+                  <Button icon={Trash2} tone="danger" onClick={() => handleBatchReviewResults("rejected")} feedback={{ tone: "warning", title: "已拒绝所选图片", detail: `${selectedVisibleCount} 张训练结果` }}>
+                    批量拒绝
+                  </Button>
+                </>
+              )}
+            />
+          ) : null}
+          <TrainingResultGrid
+            onReviewStatusChange={handleReviewResult}
+            onToggleSelected={toggleResultSelection}
+            results={results}
+            selectedIds={selectedResultIds}
+            title="结果池"
+          />
         </div>
       </Panel>
     </div>
