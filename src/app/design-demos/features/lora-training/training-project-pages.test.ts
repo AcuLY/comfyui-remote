@@ -69,6 +69,36 @@ test("training results and dataset pages use caption-aware review grids instead 
   assert.match(pagesSource, /relatedTrainingRunIds/, "dataset revision pages should use related training ids");
 });
 
+test("training result review actions update local front-end review state", () => {
+  const gridStart = pagesSource.indexOf("function TrainingResultGrid");
+  const runRowsStart = pagesSource.indexOf("function runPreviewImages");
+  const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
+  const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
+  assert.notEqual(gridStart, -1);
+  assert.notEqual(runRowsStart, -1);
+  assert.notEqual(resultsPageStart, -1);
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(sectionDetailStart, -1);
+  assert.notEqual(composeStart, -1);
+
+  const gridSource = pagesSource.slice(gridStart, runRowsStart);
+  const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
+  const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
+
+  assert.match(gridSource, /onReviewStatusChange/, "training result grid should expose a review status change callback");
+  assert.match(gridSource, /onReviewStatusChange\?\.\(activeResult\.id, "kept"\)/, "keep action should mark the active result as kept");
+  assert.match(gridSource, /onReviewStatusChange\?\.\(activeResult\.id, "rejected"\)/, "reject action should mark the active result as rejected");
+  assert.match(resultsPageSource, /localResults/, "project result pool should render from local review state");
+  assert.match(resultsPageSource, /setLocalResults/, "project result review actions should update local state");
+  assert.match(resultsPageSource, /handleReviewResult/, "project results page should define a single-result review handler");
+  assert.match(resultsPageSource, /handleKeepVisibleResults/, "project results page should define a batch keep handler for visible results");
+  assert.match(resultsPageSource, /onReviewStatusChange=\{handleReviewResult\}/, "project results grid should be wired to the review handler");
+  assert.match(sectionDetailSource, /sectionResults/, "section detail results should render from local review state");
+  assert.match(sectionDetailSource, /onReviewStatusChange=\{handleReviewSectionResult\}/, "section detail result grid should be wired to a review handler");
+});
+
 test("training result cards keep thumbnail density and clamp captions", () => {
   assert.match(cssSource, /\.trainingResultGrid\b/, "training result grid CSS should exist");
   assert.match(cssSource, /\.trainingResultCard\b/, "training result cards should exist");

@@ -169,9 +169,11 @@ function referenceKindLabel(kind: LoraTrainingReferenceImage["kind"]) {
 }
 
 function TrainingResultGrid({
+  onReviewStatusChange,
   results,
   title = "训练结果",
 }: {
+  onReviewStatusChange?: (resultId: string, status: LoraTrainingImageResult["reviewStatus"]) => void;
   results: LoraTrainingImageResult[];
   title?: string;
 }) {
@@ -210,8 +212,8 @@ function TrainingResultGrid({
           onPrevious={() => setActiveResultIndex((current) => current === null ? 0 : (current + results.length - 1) % results.length)}
           actions={(
             <>
-              <Button icon={Check} feedback={{ title: "图片已加入保留队列", detail: activeResult.sourceLabel }}>保留</Button>
-              <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "图片已加入拒绝队列", detail: activeResult.sourceLabel }}>拒绝</Button>
+              <Button icon={Check} onClick={() => onReviewStatusChange?.(activeResult.id, "kept")} feedback={{ title: "图片已保留", detail: activeResult.sourceLabel }}>保留</Button>
+              <Button tone="danger" icon={Trash2} onClick={() => onReviewStatusChange?.(activeResult.id, "rejected")} feedback={{ tone: "warning", title: "图片已拒绝", detail: activeResult.sourceLabel }}>拒绝</Button>
             </>
           )}
         />
@@ -797,9 +799,16 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     blocks: section?.blocks ?? [],
     sectionId: section?.id ?? null,
   }));
+  const [sectionResultState, setSectionResults] = useState(() => ({
+    projectId: project?.id ?? null,
+    results: project?.resultPool ?? [],
+  }));
   const sceneBlocks = sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
+  const sectionResults = (sectionResultState.projectId === project?.id ? sectionResultState.results : project?.resultPool ?? [])
+    .filter((result) => result.sectionId === section?.id);
   if (!project || !section) return <EmptyPage title="没有训练小节详情" />;
 
+  const activeProject = project;
   const activeSection = section;
   const scenePreview = sceneBlocks.map((block) => block.text).join("\n\n");
 
@@ -828,6 +837,15 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
 
   function handleDeleteSceneBlock(blockId: string) {
     updateSceneBlocks((current) => current.filter((block) => block.id !== blockId));
+  }
+
+  function handleReviewSectionResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+    setSectionResults((current) => ({
+      projectId: activeProject.id,
+      results: (current.projectId === activeProject.id ? current.results : activeProject.resultPool).map((result) =>
+        result.id === resultId ? { ...result, reviewStatus } : result,
+      ),
+    }));
   }
 
   return (
@@ -871,7 +889,11 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
           </Panel>
         </div>
         <Panel title="小节结果">
-          <TrainingResultGrid results={project.resultPool.filter((result) => result.sectionId === section.id)} title={`${section.title} 结果`} />
+          <TrainingResultGrid
+            onReviewStatusChange={handleReviewSectionResult}
+            results={sectionResults}
+            title={`${section.title} 结果`}
+          />
         </Panel>
       </TrainingSectionWorkspace>
     </div>
@@ -962,22 +984,48 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
 export function LoraTrainingProjectResultsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const project = findProject(data, projectId);
   const [filter, setFilter] = useState<TrainingResultFilter>("all");
+  const [resultState, setLocalResults] = useState(() => ({
+    projectId: project?.id ?? null,
+    results: project?.resultPool ?? [],
+  }));
+  const localResults = resultState.projectId === project?.id ? resultState.results : project?.resultPool ?? [];
   if (!project) return <EmptyPage title="没有训练结果池数据" />;
-  const results = filter === "all" ? project.resultPool : project.resultPool.filter((result) => result.reviewStatus === filter);
+  const activeProject = project;
+  const results = filter === "all" ? localResults : localResults.filter((result) => result.reviewStatus === filter);
+
+  function updateLocalResults(updater: (current: LoraTrainingImageResult[]) => LoraTrainingImageResult[]) {
+    setLocalResults((current) => ({
+      projectId: activeProject.id,
+      results: updater(current.projectId === activeProject.id ? current.results : activeProject.resultPool),
+    }));
+  }
+
+  function handleReviewResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+    updateLocalResults((current) => current.map((result) =>
+      result.id === resultId ? { ...result, reviewStatus } : result,
+    ));
+  }
+
+  function handleKeepVisibleResults() {
+    const visibleIds = new Set(results.map((result) => result.id));
+    updateLocalResults((current) => current.map((result) =>
+      visibleIds.has(result.id) ? { ...result, reviewStatus: "kept" } : result,
+    ));
+  }
 
   return (
     <div className={s.page}>
-      <ProjectHeader active="results" project={project} actions={<Button icon={Check} tone="primary" feedback={{ title: "已保留所选图片" }}>批量保留</Button>} />
+      <ProjectHeader active="results" project={project} actions={<Button icon={Check} tone="primary" onClick={handleKeepVisibleResults} feedback={{ title: "已保留当前筛选图片" }}>批量保留</Button>} />
       <Panel title="结果池" subtitle="pending / kept / rejected 都在项目级结果池审查，caption 摘要随图片一起处理。">
         <div className={s.stack}>
           <SegmentedControl
             ariaLabel="筛选训练结果"
             role="tablist"
-            items={RESULT_FILTER_ITEMS.map((item) => ({ ...item, count: item.value === "all" ? project.resultPool.length : project.resultPool.filter((result) => result.reviewStatus === item.value).length }))}
+            items={RESULT_FILTER_ITEMS.map((item) => ({ ...item, count: item.value === "all" ? localResults.length : localResults.filter((result) => result.reviewStatus === item.value).length }))}
             value={filter}
             onChange={setFilter}
           />
-          <TrainingResultGrid results={results} title="结果池" />
+          <TrainingResultGrid onReviewStatusChange={handleReviewResult} results={results} title="结果池" />
         </div>
       </Panel>
     </div>
