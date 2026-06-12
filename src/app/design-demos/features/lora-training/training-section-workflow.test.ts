@@ -94,6 +94,20 @@ test("training section detail scene-block actions update local front-end state",
   assert.match(sceneBlockCard, /onDelete\?\.\(block\.id\)/, "delete button should call the delete handler");
 });
 
+test("training section detail imports training presets into local scene blocks", () => {
+  const detailPage = sourceBetween(
+    "export function LoraTrainingProjectSectionDetailPage",
+    "export function LoraTrainingGenerationComposePage",
+  );
+
+  assert.match(detailPage, /const training = buildLoraTrainingDemoData\(data\)/, "section detail should read available training presets");
+  assert.match(detailPage, /handleImportPresetBlock/, "section detail should define a preset import action");
+  assert.match(detailPage, /source:\s*"预制"/, "imported preset blocks should keep the preset source label");
+  assert.match(detailPage, /training\.presets\[0\]/, "demo import should copy a real preset fixture instead of showing a placeholder");
+  assert.match(detailPage, /onClick=\{handleImportPresetBlock\}/, "import button should call the preset import action");
+  assert.doesNotMatch(detailPage, /导入预制入口已预览/, "preset import should not be a preview-only placeholder");
+});
+
 test("generation compose uses an explicit reference source tree with preview then add", () => {
   const composePage = sourceBetween(
     "export function LoraTrainingGenerationComposePage",

@@ -66,6 +66,17 @@ test("training template section scene-block actions update local front-end state
   assert.match(blockCard, /onDelete\?\.\(block\.id\)/, "template delete button should call the delete handler");
 });
 
+test("training template section imports training presets into local scene blocks", () => {
+  const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
+
+  assert.match(templateSectionPage, /const training = buildLoraTrainingDemoData\(data\)/, "template section should read available training presets");
+  assert.match(templateSectionPage, /handleImportTemplatePresetBlock/, "template section should define a preset import action");
+  assert.match(templateSectionPage, /source:\s*"预制"/, "imported template blocks should keep the preset source label");
+  assert.match(templateSectionPage, /training\.presets\[0\]/, "demo import should copy a real preset fixture instead of showing a placeholder");
+  assert.match(templateSectionPage, /onClick=\{handleImportTemplatePresetBlock\}/, "template import button should call the preset import action");
+  assert.doesNotMatch(templateSectionPage, /导入预制入口已预览/, "template preset import should not be a preview-only placeholder");
+});
+
 test("training template section scene-block styles are responsive", () => {
   for (const className of [
     "templateSceneBlockList",

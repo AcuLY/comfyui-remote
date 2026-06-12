@@ -636,6 +636,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
 }
 
 export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex }: { data: DemoData; templateId?: string; sectionIndex?: string }) {
+  const training = buildLoraTrainingDemoData(data);
   const template = findTemplate(data, templateId);
   const index = Number(sectionIndex ?? "0");
   const section = template?.sections[Number.isFinite(index) ? index : 0] ?? template?.sections[0];
@@ -647,6 +648,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   if (!template || !section) return <EmptyPage title="没有模板小节数据" />;
 
   const activeSection = section;
+  const importedPreset = training.presets[0];
   const resolvedTemplateScene = sceneBlocks.map((block) => block.text).join("\n\n");
 
   function updateTemplateBlocks(updater: (current: LoraTrainingSectionBlock[]) => LoraTrainingSectionBlock[]) {
@@ -664,6 +666,19 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
         source: "本地",
         title: `模板补充块 ${current.length + 1}`,
         text: "补充模板导入后默认带入的场景描述。",
+      },
+    ]);
+  }
+
+  function handleImportTemplatePresetBlock() {
+    if (!importedPreset) return;
+    updateTemplateBlocks((current) => [
+      ...current,
+      {
+        id: `${activeSection.id}-template-preset-block-${importedPreset.id}-${current.length + 1}`,
+        source: "预制",
+        title: importedPreset.title,
+        text: importedPreset.sceneDescriptionText,
       },
     ]);
   }
@@ -698,7 +713,15 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
           subtitle="模板导入项目时会复制这些块；预制块保持引用，本地块复制文本。"
           actions={(
             <>
-              <Button size="sm" icon={CopyPlus} feedback={{ title: "导入预制入口已预览", detail: section.title }}>导入预制</Button>
+              <Button
+                size="sm"
+                icon={CopyPlus}
+                disabled={!importedPreset}
+                onClick={handleImportTemplatePresetBlock}
+                feedback={{ title: "预制已导入模板块", detail: importedPreset?.title ?? section.title }}
+              >
+                导入预制
+              </Button>
               <Button size="sm" icon={Plus} onClick={handleAddLocalTemplateBlock} feedback={{ title: "模板本地块已添加", detail: section.title }}>添加本地块</Button>
             </>
           )}

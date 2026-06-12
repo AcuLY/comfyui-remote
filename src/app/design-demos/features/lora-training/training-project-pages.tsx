@@ -793,7 +793,8 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
 }
 
 export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionId }: { data: DemoData; projectId?: string; sectionId?: string }) {
-  const project = findProject(data, projectId);
+  const training = buildLoraTrainingDemoData(data);
+  const project = training.projects.find((item) => item.id === projectId) ?? training.projects[0];
   const section = findSection(project, sectionId);
   const [sceneBlockState, setSceneBlocks] = useState(() => ({
     blocks: section?.blocks ?? [],
@@ -810,6 +811,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
 
   const activeProject = project;
   const activeSection = section;
+  const importedPreset = training.presets[0];
   const scenePreview = sceneBlocks.map((block) => block.text).join("\n\n");
 
   function updateSceneBlocks(updater: (current: LoraTrainingSectionBlock[]) => LoraTrainingSectionBlock[]) {
@@ -827,6 +829,19 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
         source: "本地",
         title: `本地补充块 ${current.length + 1}`,
         text: "补充这一小节的造型、动作或画面约束。",
+      },
+    ]);
+  }
+
+  function handleImportPresetBlock() {
+    if (!importedPreset) return;
+    updateSceneBlocks((current) => [
+      ...current,
+      {
+        id: `${activeSection.id}-preset-block-${importedPreset.id}-${current.length + 1}`,
+        source: "预制",
+        title: importedPreset.title,
+        text: importedPreset.sceneDescriptionText,
       },
     ]);
   }
@@ -863,7 +878,15 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
             subtitle="预制块和本地块按合成顺序生效，可单独编辑、排序或删除。"
             actions={(
               <>
-                <Button size="sm" icon={CopyPlus} feedback={{ title: "导入预制入口已预览", detail: section.title }}>导入预制</Button>
+                <Button
+                  size="sm"
+                  icon={CopyPlus}
+                  disabled={!importedPreset}
+                  onClick={handleImportPresetBlock}
+                  feedback={{ title: "预制已导入场景块", detail: importedPreset?.title ?? section.title }}
+                >
+                  导入预制
+                </Button>
                 <Button size="sm" icon={Plus} onClick={handleAddLocalSceneBlock} feedback={{ title: "本地块已添加", detail: section.title }}>添加本地块</Button>
               </>
             )}
