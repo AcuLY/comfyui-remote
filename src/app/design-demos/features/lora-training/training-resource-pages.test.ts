@@ -196,23 +196,51 @@ test("training template form section rows are actually sortable", () => {
 });
 
 test("training template list follows the template-list surface with local delete state", () => {
+  const itemStart = pageSource.indexOf("function TrainingTemplateListItem");
   const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  assert.notEqual(itemStart, -1);
   assert.notEqual(templatesStart, -1);
   assert.notEqual(formStart, -1);
 
   const templatesSource = pageSource.slice(templatesStart, formStart);
+  const templateListSource = pageSource.slice(itemStart, formStart);
 
   assert.match(templatesSource, /hiddenTemplateIds/, "template list should keep locally hidden templates");
   assert.match(templatesSource, /visibleTemplates/, "template list should render from local visible template state");
   assert.match(templatesSource, /hideTemplate/, "template list should define a local delete handler");
-  assert.match(templatesSource, /onClick=\{\(\) => hideTemplate\(template\.id\)\}/, "delete action should remove a template locally");
-  assert.match(templatesSource, /template\.sections\.slice\(0,\s*5\)/, "template cards should keep section chips compact");
-  assert.match(templatesSource, /template\.sections\.length > 5/, "template cards should show overflow count for extra sections");
+  assert.match(templateListSource, /onDelete=\{\(\) => hideTemplate\(template\.id\)\}/, "delete action should remove a template locally");
+  assert.match(templateListSource, /template\.sections\.slice\(0,\s*5\)/, "template cards should keep section chips compact");
+  assert.match(templateListSource, /template\.sections\.length > 5/, "template cards should show overflow count for extra sections");
   assert.doesNotMatch(templatesSource, /training\.templates\.map/, "template list should not render directly from immutable fixtures");
   assert.match(cssSource, /\.trainingTemplateList\b[\s\S]*?container-type:\s*inline-size/, "template list should have a container-query surface");
   assert.match(cssSource, /\.trainingTemplateList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "template list should expand to two columns when there is enough width");
   assert.match(cssSource, /\.trainingTemplateListItem\b/, "template cards should use a dedicated list-item class");
+});
+
+test("training template list exposes managed object controls and local ordering", () => {
+  const itemStart = pageSource.indexOf("function TrainingTemplateListItem");
+  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  assert.notEqual(itemStart, -1);
+  assert.notEqual(templatesStart, -1);
+  assert.notEqual(formStart, -1);
+
+  const itemSource = pageSource.slice(itemStart, templatesStart);
+  const templatesSource = pageSource.slice(templatesStart, formStart);
+
+  assert.match(templatesSource, /selectedTemplateIds/, "template list should keep selected template ids in local state");
+  assert.match(templatesSource, /orderedTemplateIds/, "template list should keep a local template order");
+  assert.match(templatesSource, /handleReorderTemplates/, "template list should define a reorder handler");
+  assert.match(templatesSource, /handleRemoveSelectedTemplates/, "template list should define a selected delete handler");
+  assert.match(templatesSource, /SelectionBatchBar/, "template list should expose batch actions after selection");
+  assert.match(templatesSource, /<SortableList items=\{visibleTemplateIds\} onReorder=\{handleReorderTemplates\}>/, "template list should use the shared sortable wrapper");
+  assert.match(itemSource, /Checkbox/, "template items should expose a leading selection control");
+  assert.match(itemSource, /trainingTemplateListHandle/, "template items should expose a leading drag handle");
+  assert.match(itemSource, /useDemoSortable\(template\.id\)/, "template items should attach sortable behavior to each row");
+  assert.match(itemSource, /ref=\{ref\}/, "template items should apply sortable refs");
+  assert.match(itemSource, /style=\{style\}/, "template items should apply sortable transforms");
+  assert.match(cssSource, /\.trainingTemplateListControls\b/, "template cards should have a dedicated leading control column");
 });
 
 test("training preset detail and sort rules reuse editor/sort shells without regular preset dimensions", () => {

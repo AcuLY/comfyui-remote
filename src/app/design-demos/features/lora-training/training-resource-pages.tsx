@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowDown, ArrowUp, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CheckSquare, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
 import { cx, demoHref } from "../../routing";
@@ -58,6 +58,13 @@ function orderTemplateSectionsByIds(sections: LoraTrainingTemplateSection[], ord
   const orderedSections = orderedIds.map((id) => sectionMap[id]).filter((section): section is LoraTrainingTemplateSection => Boolean(section));
   const missingSections = sections.filter((section) => !orderedIds.includes(section.id));
   return [...orderedSections, ...missingSections];
+}
+
+function orderTrainingTemplatesByIds(templates: LoraTrainingTemplate[], orderedIds: string[]) {
+  const templateMap = Object.fromEntries(templates.map((template) => [template.id, template]));
+  const orderedTemplates = orderedIds.map((id) => templateMap[id]).filter((template): template is LoraTrainingTemplate => Boolean(template));
+  const missingTemplates = templates.filter((template) => !orderedIds.includes(template.id));
+  return [...orderedTemplates, ...missingTemplates];
 }
 
 function presetUsageLabel(preset: LoraTrainingPreset) {
@@ -668,6 +675,73 @@ function rememberTrainingTemplateListAnchor(templateId: string) {
   } catch {}
 }
 
+function TrainingTemplateListItem({
+  onDelete,
+  onToggleSelected,
+  selected,
+  template,
+}: {
+  onDelete?: () => void;
+  onToggleSelected: () => void;
+  selected: boolean;
+  template: LoraTrainingTemplate;
+}) {
+  const { ref, style, handleProps } = useDemoSortable(template.id);
+
+  return (
+    <div ref={ref} style={style}>
+      <article className={cx(s.trainingTemplateListItem, selected && s.trainingTemplateListItemSelected)} data-training-template-id={template.id}>
+        <div className={s.trainingTemplateListControls}>
+          <Checkbox
+            checked={selected}
+            label={selected ? `取消选择训练模板：${template.title}` : `选择训练模板：${template.title}`}
+            onCheckedChange={() => onToggleSelected()}
+            stopPropagation
+            variant="compact"
+          />
+          <button
+            type="button"
+            className={s.trainingTemplateListHandle}
+            aria-label={`拖拽排序训练模板：${template.title}`}
+            {...handleProps}
+          >
+            <GripVertical aria-hidden="true" />
+          </button>
+        </div>
+        <div className={s.trainingTemplateListMain}>
+          <div className={s.trainingTemplateListTitle}>
+            <Link href={demoHref(`/training/templates/${template.id}/edit`)} onClick={() => rememberTrainingTemplateListAnchor(template.id)}>
+              <strong>{template.title}</strong>
+            </Link>
+            <span>{template.description}</span>
+          </div>
+          <div className={s.trainingTemplateSectionSummary}>
+            {template.sections.slice(0, 5).map((section, index) => (
+              <Link
+                href={demoHref(`/training/templates/${template.id}/sections/${index}`)}
+                key={section.id}
+                onClick={() => rememberTrainingTemplateListAnchor(template.id)}
+              >
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                {section.title}
+              </Link>
+            ))}
+            {template.sections.length > 5 ? <em>+{template.sections.length - 5}</em> : null}
+          </div>
+        </div>
+        <div className={s.trainingTemplateListMeta}>
+          {templateStatus(template)}
+          <StatusBadge status="template" label={`${template.sectionCount} 小节`} />
+          <div className={s.trainingTemplateListActions}>
+            <ButtonLink href={`/training/templates/${template.id}/edit`} icon={Edit3}>编辑</ButtonLink>
+            <Button tone="danger" icon={Trash2} onClick={onDelete} feedback={{ tone: "warning", title: "训练模板已移除", detail: template.title }}>删除</Button>
+          </div>
+        </div>
+      </article>
+    </div>
+  );
+}
+
 function TemplateEditorSectionRow({
   index,
   onCopy,
@@ -721,8 +795,14 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
   const training = buildLoraTrainingDemoData(data);
   const listRef = useRef<HTMLDivElement>(null);
   const [fromTemplateId] = useState(readAndClearTrainingTemplateListAnchor);
+  const [orderedTemplateIds, setOrderedTemplateIds] = useState(() => training.templates.reduce<string[]>((ids, template) => [...ids, template.id], []));
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(() => new Set());
   const [hiddenTemplateIds, setHiddenTemplateIds] = useState<Set<string>>(() => new Set());
-  const visibleTemplates = training.templates.filter((template) => !hiddenTemplateIds.has(template.id));
+  const orderedTemplates = orderTrainingTemplatesByIds(training.templates, orderedTemplateIds);
+  const visibleTemplates = orderedTemplates.filter((template) => !hiddenTemplateIds.has(template.id));
+  const visibleTemplateIds = visibleTemplates.map((template) => template.id);
+  const selectedVisibleCount = visibleTemplates.filter((template) => selectedTemplateIds.has(template.id)).length;
+  const allVisibleSelected = visibleTemplates.length > 0 && selectedVisibleCount === visibleTemplates.length;
 
   useLayoutEffect(() => {
     if (!fromTemplateId) return;
@@ -732,6 +812,45 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
 
   function hideTemplate(templateId: string) {
     setHiddenTemplateIds((current) => new Set(current).add(templateId));
+    setSelectedTemplateIds((current) => {
+      const next = new Set(current);
+      next.delete(templateId);
+      return next;
+    });
+  }
+
+  function toggleTemplateSelection(templateId: string) {
+    setSelectedTemplateIds((current) => {
+      const next = new Set(current);
+      if (next.has(templateId)) next.delete(templateId);
+      else next.add(templateId);
+      return next;
+    });
+  }
+
+  function toggleVisibleTemplates() {
+    setSelectedTemplateIds((current) => {
+      if (allVisibleSelected) {
+        const next = new Set(current);
+        visibleTemplates.forEach((template) => next.delete(template.id));
+        return next;
+      }
+      return new Set([...current, ...visibleTemplateIds]);
+    });
+  }
+
+  function handleRemoveSelectedTemplates() {
+    const selectedVisibleIds = new Set(visibleTemplates.filter((template) => selectedTemplateIds.has(template.id)).map((template) => template.id));
+    setHiddenTemplateIds((current) => new Set([...current, ...selectedVisibleIds]));
+    setSelectedTemplateIds((current) => new Set([...current].filter((id) => !selectedVisibleIds.has(id))));
+  }
+
+  function handleReorderTemplates(nextVisibleIds: string[]) {
+    const visibleTemplateIdSet = new Set(visibleTemplateIds);
+    const reorderedVisibleIds = [...nextVisibleIds];
+    setOrderedTemplateIds((current) =>
+      current.map((templateId) => visibleTemplateIdSet.has(templateId) ? reorderedVisibleIds.shift() ?? templateId : templateId),
+    );
   }
 
   return (
@@ -747,40 +866,40 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
           </>
         )}
       />
+      <div className={s.trainingTemplateListToolbar}>
+        <div>
+          <strong>模板列表</strong>
+          <span>{visibleTemplates.length} 个模板{selectedVisibleCount ? ` · 已选 ${selectedVisibleCount}` : ""}</span>
+        </div>
+        <Button icon={CheckSquare} onClick={toggleVisibleTemplates} disabled={visibleTemplates.length === 0}>
+          {allVisibleSelected ? "取消全选" : "全选"}
+        </Button>
+      </div>
+      {selectedVisibleCount > 0 ? (
+        <SelectionBatchBar
+          className={s.trainingTemplateBatchBar}
+          selectedCount={selectedVisibleCount}
+          subject="个训练模板"
+          onClear={() => setSelectedTemplateIds(new Set())}
+          actions={(
+            <Button tone="danger" icon={Trash2} onClick={handleRemoveSelectedTemplates} feedback={{ tone: "warning", title: "训练模板已从列表移除", detail: `${selectedVisibleCount} 个训练模板` }}>
+              删除所选
+            </Button>
+          )}
+        />
+      ) : null}
       <div className={s.trainingTemplateList} ref={listRef}>
-        {visibleTemplates.map((template) => (
-          <article className={s.trainingTemplateListItem} key={template.id} data-training-template-id={template.id}>
-            <div className={s.trainingTemplateListMain}>
-              <div className={s.trainingTemplateListTitle}>
-                <Link href={demoHref(`/training/templates/${template.id}/edit`)} onClick={() => rememberTrainingTemplateListAnchor(template.id)}>
-                  <strong>{template.title}</strong>
-                </Link>
-                <span>{template.description}</span>
-              </div>
-              <div className={s.trainingTemplateSectionSummary}>
-                {template.sections.slice(0, 5).map((section, index) => (
-                  <Link
-                    href={demoHref(`/training/templates/${template.id}/sections/${index}`)}
-                    key={section.id}
-                    onClick={() => rememberTrainingTemplateListAnchor(template.id)}
-                  >
-                    <span>{String(index + 1).padStart(2, "0")}</span>
-                    {section.title}
-                  </Link>
-                ))}
-                {template.sections.length > 5 ? <em>+{template.sections.length - 5}</em> : null}
-              </div>
-            </div>
-            <div className={s.trainingTemplateListMeta}>
-              {templateStatus(template)}
-              <StatusBadge status="template" label={`${template.sectionCount} 小节`} />
-              <div className={s.trainingTemplateListActions}>
-                <ButtonLink href={`/training/templates/${template.id}/edit`} icon={Edit3}>编辑</ButtonLink>
-                <Button tone="danger" icon={Trash2} onClick={() => hideTemplate(template.id)} feedback={{ tone: "warning", title: "训练模板已移除", detail: template.title }}>删除</Button>
-              </div>
-            </div>
-          </article>
-        ))}
+        <SortableList items={visibleTemplateIds} onReorder={handleReorderTemplates}>
+          {visibleTemplates.map((template) => (
+            <TrainingTemplateListItem
+              key={template.id}
+              onDelete={() => hideTemplate(template.id)}
+              onToggleSelected={() => toggleTemplateSelection(template.id)}
+              selected={selectedTemplateIds.has(template.id)}
+              template={template}
+            />
+          ))}
+        </SortableList>
         {visibleTemplates.length === 0 ? (
           <div className={s.emptyInline}>
             <strong>暂无训练模板</strong>

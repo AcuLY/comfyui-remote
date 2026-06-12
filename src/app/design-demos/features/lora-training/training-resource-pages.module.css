@@ -558,9 +558,51 @@
   gap: 6px;
 }
 
+.trainingTemplateListToolbar,
 .trainingTemplateList {
   display: grid;
   min-width: 0;
+}
+
+.trainingTemplateListToolbar {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  padding: 10px 12px;
+}
+
+.trainingTemplateListToolbar > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.trainingTemplateListToolbar strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingTemplateListToolbar span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingTemplateBatchBar {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-field-bg);
+}
+
+.trainingTemplateList {
   container-type: inline-size;
   grid-template-columns: minmax(0, 1fr);
   gap: 10px;
@@ -571,24 +613,74 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
   }
+
+  .trainingTemplateListItem {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .trainingTemplateListMeta {
+    grid-column: 2;
+    justify-items: start;
+  }
 }
 
 .trainingTemplateListItem {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, auto);
+  grid-template-columns: 28px minmax(0, 1fr) minmax(160px, auto);
   align-items: start;
-  gap: 12px;
+  gap: 10px;
   border: 1px solid var(--demo-glass-border);
   border-radius: var(--demo-radius);
   background: var(--demo-panel);
   padding: 12px;
 }
 
+.trainingTemplateListItemSelected {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-selected);
+  box-shadow: 3px 0 0 var(--demo-green) inset;
+}
+
 .trainingTemplateListItem:hover,
 .trainingTemplateListItem:focus-within {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-glass-hover);
+}
+
+.trainingTemplateListControls {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+}
+
+.trainingTemplateListHandle {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--demo-faint);
+  cursor: grab;
+  padding: 0;
+}
+
+.trainingTemplateListHandle:hover,
+.trainingTemplateListHandle:focus-visible {
+  border-color: var(--demo-border);
+  background: var(--demo-glass-soft);
+  color: var(--demo-green);
+  outline: none;
+}
+
+.trainingTemplateListHandle svg {
+  width: 14px;
+  height: 14px;
 }
 
 .trainingTemplateListMain,
@@ -994,6 +1086,7 @@
   .resourceRail,
   .resourceGrid,
   .sortGrid,
+  .trainingTemplateListToolbar,
   .trainingTemplateListItem,
   .templateRow,
   .resourceRow,
@@ -1034,6 +1127,14 @@
   .trainingTemplateListActions {
     justify-items: start;
     justify-content: flex-start;
+  }
+
+  .trainingTemplateListItem {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+
+  .trainingTemplateListMeta {
+    grid-column: 2;
   }
 
   .templateSceneBlockCard {
