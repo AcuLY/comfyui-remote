@@ -45,6 +45,7 @@ test("training section list copy and delete actions update local front-end state
   assert.match(sectionsPage, /sections=\{sections\}/, "section rail should follow the same local list as the cards");
   assert.match(sectionCard, /onCopy\?\.\(section\)/, "copy button should call the section copy handler");
   assert.match(sectionCard, /onDelete\?\.\(section\.id\)/, "delete button should call the section delete handler");
+  assert.doesNotMatch(sectionCard, /删除小节需要确认/, "delete feedback should describe the local section removal, not a confirmation placeholder");
 });
 
 test("training section list drag handles reorder the local section list", () => {

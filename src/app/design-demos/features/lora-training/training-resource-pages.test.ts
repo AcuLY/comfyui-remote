@@ -12,6 +12,12 @@ test("training resource pages keep backend wiring notes out of user-facing copy"
   assert.doesNotMatch(pageSource, /后端接入时/, "training resource UI should not expose backend integration notes");
 });
 
+test("training resource delete actions describe local removal instead of confirmation placeholders", () => {
+  assert.doesNotMatch(pageSource, /删除训练预制需要确认/, "single preset delete feedback should describe the local list removal");
+  assert.doesNotMatch(pageSource, /批量删除训练预制需要确认/, "batch preset delete feedback should describe the local list removal");
+  assert.doesNotMatch(pageSource, /删除训练模板小节需要确认/, "template section delete feedback should describe the local draft removal");
+});
+
 test("training preset library uses the shared managed-library row model", () => {
   const itemStart = pageSource.indexOf("function TrainingPresetLibraryItemRow");
   const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");

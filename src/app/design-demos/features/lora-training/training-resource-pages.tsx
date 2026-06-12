@@ -308,7 +308,7 @@ function TrainingPresetLibraryItemRow({
         actions={(
           <div className={s.trainingPresetActions}>
             <ButtonLink href={`/training/presets/${preset.id}`} size="sm" icon={Edit3}>编辑</ButtonLink>
-            <Button size="sm" tone="danger" icon={Trash2} iconOnly ariaLabel={`删除训练预制：${preset.title}`} onClick={onDelete} feedback={{ tone: "warning", title: "删除训练预制需要确认", detail: preset.title }} />
+            <Button size="sm" tone="danger" icon={Trash2} iconOnly ariaLabel={`删除训练预制：${preset.title}`} onClick={onDelete} feedback={{ tone: "warning", title: "训练预制已从列表移除", detail: preset.title }} />
           </div>
         )}
       />
@@ -451,7 +451,7 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
               subject="个训练预制"
               onClear={() => setSelectedIds(new Set())}
               actions={(
-                <Button size="sm" tone="danger" icon={Trash2} onClick={hideSelectedPresets} feedback={{ tone: "warning", title: "批量删除训练预制需要确认", detail: `${selectedCount} 项` }}>
+                <Button size="sm" tone="danger" icon={Trash2} onClick={hideSelectedPresets} feedback={{ tone: "warning", title: "训练预制已从列表移除", detail: `${selectedCount} 项` }}>
                   删除所选
                 </Button>
               )}
@@ -853,7 +853,7 @@ function TemplateEditorSectionRow({
         <div className={s.trainingTemplateSectionActions}>
           <ButtonLink href={href} icon={Edit3}>编辑</ButtonLink>
           <Button tone="subtle" icon={CopyPlus} onClick={() => onCopy?.(section)} feedback={{ title: "训练模板小节已复制", detail: section.title }}>复制</Button>
-          <Button tone="danger" icon={Trash2} onClick={() => onDelete?.(section.id)} feedback={{ tone: "warning", title: "删除训练模板小节需要确认", detail: section.title }}>删除</Button>
+          <Button tone="danger" icon={Trash2} onClick={() => onDelete?.(section.id)} feedback={{ tone: "warning", title: "训练模板小节已从草稿移除", detail: section.title }}>删除</Button>
         </div>
       </article>
     </div>

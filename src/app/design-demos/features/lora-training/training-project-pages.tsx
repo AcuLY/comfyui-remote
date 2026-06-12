@@ -1033,7 +1033,7 @@ function SectionCard({
                 tone="danger"
                 ariaLabel={`删除小节：${section.title}`}
                 onClick={() => onDelete?.(section.id)}
-                feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.title }}
+                feedback={{ tone: "warning", title: "小节已从项目草稿移除", detail: section.title }}
               />
             </div>
           </div>

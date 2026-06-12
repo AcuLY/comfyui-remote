@@ -109,7 +109,7 @@ export function TrainingProjectListItem({
                 ariaLabel={`删除训练项目：${project.title}`}
                 size="sm"
                 onClick={onDelete}
-                feedback={{ tone: "warning", title: "删除训练项目需要确认", detail: project.title }}
+                feedback={{ tone: "warning", title: "训练项目已从列表移除", detail: project.title }}
               />
             </div>
           </div>

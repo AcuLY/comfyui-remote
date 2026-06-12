@@ -92,6 +92,7 @@ test("training project list deletes selected projects from local front-end state
   assert.match(projectsPageSource, /selectedVisibleIds/, "Batch delete should only remove selected projects visible in the active scope");
   assert.match(projectsPageSource, /onClick=\{handleRemoveSelectedProjects\}/, "Batch delete button should call the local delete handler");
   assert.match(projectsPageSource, /训练项目已从列表移除/, "Batch delete feedback should describe the local state change");
+  assert.doesNotMatch(itemSource, /删除训练项目需要确认/, "Single project delete feedback should describe the local removal, not a confirmation placeholder");
   assert.doesNotMatch(projectsPageSource, /删除动作已预览/, "Project delete actions should not remain preview-only placeholders");
 });
 
