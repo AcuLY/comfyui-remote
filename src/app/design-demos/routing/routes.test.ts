@@ -96,6 +96,8 @@ test("work mode navigation keeps six stable resource entries and resolves LoRA r
     "/models",
     "/settings",
   ]);
+  assert.equal(matchRoute("/training/models").key, "not-found", "Models should remain a shared resource page, not a LoRA training module route");
+  assert.equal(trainingLinks[4]?.href, "/models", "Training mode should link to the shared models page when model access is shown");
   assert.deepEqual(trainingLinks.slice(0, 4).map((link) => link.activePrefix), [
     "/training/runs",
     "/training/projects",
