@@ -45,6 +45,34 @@ test("training project overview keeps subresource bodies out of the overview pag
   assert.doesNotMatch(overviewSource, /<ImageGrid/, "overview should not inline full results/dataset grids");
 });
 
+test("training project run rows respond to their own list surface width", () => {
+  const runRowsStart = pagesSource.indexOf("function RunRows");
+  const referenceStart = pagesSource.indexOf("type ReferenceCandidate");
+  assert.notEqual(runRowsStart, -1);
+  assert.notEqual(referenceStart, -1);
+
+  const runRowsSource = pagesSource.slice(runRowsStart, referenceStart);
+  const projectRunRowsRule = cssSource.match(/\.projectRunRows\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+
+  assert.match(runRowsSource, /projectRunRowsSurface/, "Project run rows should be wrapped in a list surface container");
+  assert.match(
+    cssSource,
+    /\.projectRunRowsSurface\s*\{[\s\S]*?container-type:\s*inline-size/,
+    "Project run rows should query a dedicated surface container",
+  );
+  assert.match(
+    cssSource,
+    /@container\s*\(min-width:\s*520px\)\s*\{[\s\S]*?\.projectRunRows\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "Project run rows should expand at the queue-demo 520px container breakpoint",
+  );
+  assert.doesNotMatch(projectRunRowsRule, /container-type:\s*inline-size/, "Project run rows should not query their own width directly");
+  assert.doesNotMatch(
+    cssSource,
+    /@media\s*\(min-width:\s*720px\)\s*\{\s*\.projectRunRows\s*\{/,
+    "Project run rows should not use viewport width to decide their column count",
+  );
+});
+
 test("training project pages keep backend wiring notes out of user-facing copy", () => {
   assert.doesNotMatch(pagesSource, /后端接入时/, "training project UI should not expose backend integration notes");
 });

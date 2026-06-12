@@ -339,13 +339,18 @@
   white-space: nowrap;
 }
 
+.projectRunRowsSurface {
+  min-width: 0;
+  container-type: inline-size;
+}
+
 .projectRunRows {
   display: grid;
   min-width: 0;
   gap: 8px;
 }
 
-@media (min-width: 720px) {
+@container (min-width: 520px) {
   .projectRunRows {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

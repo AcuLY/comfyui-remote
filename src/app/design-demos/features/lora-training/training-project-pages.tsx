@@ -297,55 +297,57 @@ function RunRows({
   if (runs.length === 0) return <div className={s.emptyInline}>没有任务记录</div>;
 
   return (
-    <div className={s.projectRunRows}>
-      {runs.map((run) => {
-        const type = run.kind === "generation" ? "generation" : "training";
-        const previewImages = runPreviewImages(run, project);
-        const retried = retriedRunIds.has(run.id);
-        const failed = run.status === "failed" && !retried;
-        const failureMessage = run.errorMessage ?? "任务失败，请打开详情查看日志。";
-        return (
-          <article className={cx(s.projectRunRow, failed && s.projectRunRowFailed)} key={run.id}>
-            <Link className={s.projectRunMain} href={demoHref(`/training/runs/${type}/${run.id}`)}>
-              <span className={s.projectRunText}>
-                <strong>{run.title}</strong>
-                <span>{run.summary} · {run.timestamp}</span>
-                {run.outputLabel ? <em>{run.outputLabel}</em> : null}
-                {run.waitReason ? <em>{run.waitReason}</em> : null}
-                {retried ? <em>已排队重试</em> : null}
+    <div className={s.projectRunRowsSurface}>
+      <div className={s.projectRunRows}>
+        {runs.map((run) => {
+          const type = run.kind === "generation" ? "generation" : "training";
+          const previewImages = runPreviewImages(run, project);
+          const retried = retriedRunIds.has(run.id);
+          const failed = run.status === "failed" && !retried;
+          const failureMessage = run.errorMessage ?? "任务失败，请打开详情查看日志。";
+          return (
+            <article className={cx(s.projectRunRow, failed && s.projectRunRowFailed)} key={run.id}>
+              <Link className={s.projectRunMain} href={demoHref(`/training/runs/${type}/${run.id}`)}>
+                <span className={s.projectRunText}>
+                  <strong>{run.title}</strong>
+                  <span>{run.summary} · {run.timestamp}</span>
+                  {run.outputLabel ? <em>{run.outputLabel}</em> : null}
+                  {run.waitReason ? <em>{run.waitReason}</em> : null}
+                  {retried ? <em>已排队重试</em> : null}
+                </span>
+              </Link>
+              {previewImages.length > 0 ? (
+                <ImageListSmall
+                  className={s.projectRunThumbs}
+                  images={previewImages}
+                  limit={previewImages.length}
+                  showCounts={run.kind === "generation"}
+                />
+              ) : null}
+              <span className={s.projectRunStatus}>
+                <StatusBadge status={retried ? "pending" : run.status === "completed" ? "done" : run.status} label={retried ? "已排队重试" : projectRunStatusLabel(run.status)} />
               </span>
-            </Link>
-            {previewImages.length > 0 ? (
-              <ImageListSmall
-                className={s.projectRunThumbs}
-                images={previewImages}
-                limit={previewImages.length}
-                showCounts={run.kind === "generation"}
-              />
-            ) : null}
-            <span className={s.projectRunStatus}>
-              <StatusBadge status={retried ? "pending" : run.status === "completed" ? "done" : run.status} label={retried ? "已排队重试" : projectRunStatusLabel(run.status)} />
-            </span>
-            {failed ? (
-              <div className={s.projectRunSecondary}>
-                <ProjectRunFailureBlock message={failureMessage} />
-                <div className={s.projectRunFailureToolbar}>
-                  <Button size="sm" tone="subtle" icon={Copy} onClick={() => copyProjectRunMessage(failureMessage)} feedback={{ title: "报错已复制", detail: failureMessage }}>复制</Button>
-                  <Button size="sm" tone="subtle" icon={Play} onClick={() => onRetryRun?.(run.id)} feedback={{ title: "已排队重试", detail: run.title }}>重试</Button>
-                  <Button size="sm" tone="danger" icon={Trash2} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+              {failed ? (
+                <div className={s.projectRunSecondary}>
+                  <ProjectRunFailureBlock message={failureMessage} />
+                  <div className={s.projectRunFailureToolbar}>
+                    <Button size="sm" tone="subtle" icon={Copy} onClick={() => copyProjectRunMessage(failureMessage)} feedback={{ title: "报错已复制", detail: failureMessage }}>复制</Button>
+                    <Button size="sm" tone="subtle" icon={Play} onClick={() => onRetryRun?.(run.id)} feedback={{ title: "已排队重试", detail: run.title }}>重试</Button>
+                    <Button size="sm" tone="danger" icon={Trash2} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <span className={s.projectRunActions}>
-                <Button tone="danger" icon={Trash2} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
-              </span>
-            )}
-          </article>
-        );
-      })}
+              ) : (
+                <span className={s.projectRunActions}>
+                  <Button tone="danger" icon={Trash2} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+                </span>
+              )}
+            </article>
+          );
+        })}
+      </div>
     </div>
   );
-	}
+}
 
 type ReferenceCandidate = {
   id: string;
