@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckSquare, ChevronDown, RotateCcw, X } from "lucide-react";
+import { CheckSquare, ChevronDown, Clock3, RotateCcw, X } from "lucide-react";
 
 import type { DemoData } from "../../data";
 import { cx, demoHref } from "../../routing";
+import { ImageListSmall } from "../../shared/media";
 import { Button } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
 import { PageHeader } from "../../shared/primitives/page-header";
@@ -36,11 +37,79 @@ function groupRunsByProject(runs: LoraTrainingRun[]) {
   return [...groups.values()];
 }
 
+function runPreviewImages(run: LoraTrainingRun, projects: ReturnType<typeof buildLoraTrainingDemoData>["projects"]) {
+  if (run.kind === "training") {
+    return (run.datasetSamples ?? []).map((sample) => sample.image).slice(0, 4);
+  }
+
+  if (!run.summary.startsWith("图片")) return [];
+  const project = projects.find((candidate) => candidate.id === run.projectId);
+  return (project?.resultPool ?? []).map((result) => result.image).slice(0, run.status === "completed" ? 4 : 3);
+}
+
+function progressLabel(run: LoraTrainingRun) {
+  const percent = Math.round(Math.max(0, Math.min(100, run.progress ?? 0)));
+  if (run.kind === "training") return `训练 ${percent}%`;
+  if (run.summary.startsWith("文本")) return `解析 ${percent}%`;
+  return `生成 ${percent}%`;
+}
+
 function statusBadge(run: LoraTrainingRun) {
   if (run.status === "completed") return <StatusBadge status="done" label={run.outputLabel ?? "已完成"} />;
   if (run.status === "running") return <StatusBadge status="running" label="生成中" />;
   if (run.status === "queued") return <StatusBadge status="pending" label="排队中" />;
   return <StatusBadge status="failed" label="需处理" />;
+}
+
+function CurrentRunningSurface({ runs }: { runs: LoraTrainingRun[] }) {
+  if (runs.length === 0) return null;
+
+  return (
+    <section className={s.currentRunSurface} aria-label="当前运行中">
+      <div className={s.currentRunHeader}>
+        <div>
+          <span>
+            <Clock3 className={s.icon} aria-hidden="true" />
+            当前运行中
+          </span>
+          <strong>{runs.length} 个任务</strong>
+        </div>
+      </div>
+      <div className={s.currentRunList}>
+        {runs.map((run) => {
+          const percent = Math.round(Math.max(0, Math.min(100, run.progress ?? 0)));
+          return (
+            <article className={s.currentRunItem} key={run.id}>
+              <div className={s.currentRunTitleBlock}>
+                <strong>{run.projectTitle} · {run.title}</strong>
+                <span>{run.summary} · {run.timestamp}</span>
+              </div>
+              <div className={s.currentRunProgressBlock}>
+                <div className={s.currentRunProgressTop}>
+                  <span>{progressLabel(run)}</span>
+                  <strong>{percent}%</strong>
+                </div>
+                <div
+                  className={s.currentRunProgressTrack}
+                  role="progressbar"
+                  aria-label={`${run.title} 进度`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={percent}
+                >
+                  <span className={s.currentRunProgressFill} style={{ width: `${percent}%` }} />
+                </div>
+                <div className={s.currentRunMeta}>
+                  <span>{run.provider ?? "本地任务"}</span>
+                  <span>{run.schedulerMessage ?? run.finalInput ?? "等待下一个检查点"}</span>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
@@ -51,6 +120,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
   const [hiddenRunIds, setHiddenRunIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const runsForKind = training.runs.filter((run) => run.kind === kind && !hiddenRunIds.has(run.id));
+  const runningRunsForKind = runsForKind.filter((run) => run.status === "running").slice(0, 2);
   const visibleRuns = runsForKind.filter((run) => run.status === status);
   const groups = groupRunsByProject(visibleRuns);
   const selectedVisibleCount = visibleRuns.filter((run) => selectedIds.has(run.id)).length;
@@ -102,6 +172,8 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
           </div>
         ))}
       </div>
+
+      <CurrentRunningSurface runs={runningRunsForKind} />
 
       <div className={s.runSurfaceStack}>
         <SegmentedControl
@@ -213,6 +285,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                       <div className={s.runRows}>
                         {group.rows.map((run) => {
                           const selected = selectedIds.has(run.id);
+                          const previewImages = runPreviewImages(run, training.projects);
 
                           return (
                             <div className={cx(s.runRow, selected && s.runRowSelected)} data-training-run-id={run.id} key={run.id}>
@@ -223,19 +296,29 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                 stopPropagation
                                 variant="compact"
                               />
-                              <Link className={s.runMain} href={taskDetailHref(run)}>
-                                <strong>{run.title}</strong>
-                                <span>{run.summary}</span>
-                                <em>{run.timestamp}</em>
-                                {typeof run.progress === "number" ? (
-                                  <span className={s.runProgress} aria-label={`约 ${run.progress}%`}>
-                                    <span className={s.runProgressTrack} aria-hidden="true">
-                                      <span className={s.runProgressFill} style={{ width: `${run.progress}%` }} />
+                              <Link className={cx(s.runMain, previewImages.length > 0 && s.runMainWithThumbs)} href={taskDetailHref(run)}>
+                                <span className={s.runText}>
+                                  <strong>{run.title}</strong>
+                                  <span>{run.summary}</span>
+                                  <em>{run.timestamp}</em>
+                                  {typeof run.progress === "number" ? (
+                                    <span className={s.runProgress} aria-label={`约 ${run.progress}%`}>
+                                      <span className={s.runProgressTrack} aria-hidden="true">
+                                        <span className={s.runProgressFill} style={{ width: `${run.progress}%` }} />
+                                      </span>
+                                      <span>约 {run.progress}%</span>
                                     </span>
-                                    <span>约 {run.progress}%</span>
-                                  </span>
+                                  ) : null}
+                                  {run.errorMessage ? <span className={s.runError}>{run.errorMessage}</span> : null}
+                                </span>
+                                {previewImages.length > 0 ? (
+                                  <ImageListSmall
+                                    className={s.runThumbs}
+                                    images={previewImages}
+                                    limit={previewImages.length}
+                                    showCounts={run.kind === "generation"}
+                                  />
                                 ) : null}
-                                {run.errorMessage ? <span className={s.runError}>{run.errorMessage}</span> : null}
                               </Link>
                               <div className={s.rowActions}>
                                 {statusBadge(run)}
