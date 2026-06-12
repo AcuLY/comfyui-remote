@@ -66,6 +66,7 @@ const RESULT_FILTER_ITEMS = [
 type TrainingResultFilter = (typeof RESULT_FILTER_ITEMS)[number]["value"];
 type LoraTrainingTemplateSeedSection = LoraTrainingTemplate["sections"][number];
 type SceneBlockPatch = Partial<Pick<LoraTrainingSectionBlock, "text" | "title">>;
+const DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT = "保持角色正面可训练，避免复杂遮挡和多人构图。";
 
 function useTraining(data: DemoData) {
   return buildLoraTrainingDemoData(data);
@@ -1289,25 +1290,55 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     },
   ] : [];
   const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
+  const [generationFormState, setGenerationForm] = useState(() => ({
+    projectId: project?.id ?? null,
+    sectionId: section?.id ?? null,
+    supplementalPrompt: DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT,
+    taskType: "训练集图片生成",
+  }));
   const [generationTaskDraft, setGenerationTaskDraft] = useState<{
     finalInput: string;
     referenceTitle: string;
     sectionTitle: string;
+    supplementalPrompt: string;
     taskType: string;
   } | null>(null);
   const activePreviewReference = previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
 
   if (!project || !section) return <EmptyPage title="没有生成任务上下文" />;
-  const taskType = "训练集图片生成";
-  const sectionTitle = section.title;
-  const finalInputText = `${project.usagePrompt}\n${section.resolvedScene}\n保持角色身份稳定，生成 1 张干净训练样本。`;
+  const activeProject = project;
+  const activeSection = section;
+  const generationForm = generationFormState.projectId === activeProject.id && generationFormState.sectionId === activeSection.id ? generationFormState : {
+    projectId: activeProject.id,
+    sectionId: activeSection.id,
+    supplementalPrompt: DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT,
+    taskType: "训练集图片生成",
+  };
+  const sectionTitle = activeSection.title;
+  const finalInputText = [activeProject.usagePrompt, activeSection.resolvedScene, generationForm.supplementalPrompt]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join("\n");
+
+  function handleUpdateGenerationForm(field: "supplementalPrompt" | "taskType", value: string) {
+    setGenerationForm((current) => {
+      const active = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current : generationForm;
+      return {
+        ...active,
+        [field]: value,
+        projectId: activeProject.id,
+        sectionId: activeSection.id,
+      };
+    });
+  }
 
   function handleQueueGenerationTask() {
     setGenerationTaskDraft({
       finalInput: finalInputText,
       referenceTitle: activePreviewReference?.title ?? "未选择引用",
       sectionTitle,
-      taskType,
+      supplementalPrompt: generationForm.supplementalPrompt,
+      taskType: generationForm.taskType,
     });
   }
 
@@ -1339,8 +1370,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
         </Panel>
         <Panel title="任务内容">
           <div className={s.formStack}>
-            <FloatingSelect label="任务类型" value={taskType} options={["训练集图片生成", "角色描述生成", "caption 补全"]} />
-            <Field multiline features={{ resize: true, clipboard: true }} label="补充提示词" value="保持角色正面可训练，避免复杂遮挡和多人构图。" />
+            <FloatingSelect label="任务类型" value={generationForm.taskType} options={["训练集图片生成", "角色描述生成", "caption 补全"]} onChange={(value) => handleUpdateGenerationForm("taskType", value)} />
+            <Field multiline features={{ resize: true, clipboard: true }} label="补充提示词" value={generationForm.supplementalPrompt} onChange={(value) => handleUpdateGenerationForm("supplementalPrompt", value)} />
             <Field readOnly multiline features={{ clipboard: true }} label="最终输入预览" value={finalInputText} />
           </div>
         </Panel>
@@ -1351,6 +1382,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
             <div><dt>任务类型</dt><dd>{generationTaskDraft.taskType}</dd></div>
             <div><dt>小节</dt><dd>{generationTaskDraft.sectionTitle}</dd></div>
             <div><dt>当前引用</dt><dd>{generationTaskDraft.referenceTitle}</dd></div>
+            <div><dt>补充提示词</dt><dd>{generationTaskDraft.supplementalPrompt || "未填写"}</dd></div>
             <div><dt>最终输入</dt><dd>{generationTaskDraft.finalInput.split("\n")[0]}</dd></div>
           </dl>
         </Panel>

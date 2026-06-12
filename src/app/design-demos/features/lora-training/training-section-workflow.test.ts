@@ -164,6 +164,23 @@ test("generation compose queues a local generation task draft instead of only sh
   assert.doesNotMatch(composePage, /生成任务已加入队列/, "run action should not remain a toast-only placeholder");
 });
 
+test("generation compose saves editable task fields into final input and draft", () => {
+  const composePage = sourceBetween(
+    "export function LoraTrainingGenerationComposePage",
+    "export function LoraTrainingProjectResultsPage",
+  );
+
+  assert.match(composePage, /generationForm/, "compose page should track editable task fields in local state");
+  assert.match(composePage, /handleUpdateGenerationForm/, "compose page should expose a local task form update handler");
+  assert.match(composePage, /value=\{generationForm\.taskType\}/, "task type select should be controlled by local form state");
+  assert.match(composePage, /onChange=\{\(value\) => handleUpdateGenerationForm\("taskType", value\)\}/, "task type changes should update local form state");
+  assert.match(composePage, /value=\{generationForm\.supplementalPrompt\}/, "supplemental prompt should be controlled by local form state");
+  assert.match(composePage, /onChange=\{\(value\) => handleUpdateGenerationForm\("supplementalPrompt", value\)\}/, "supplemental prompt changes should update local form state");
+  assert.match(composePage, /generationForm\.supplementalPrompt/, "final input preview should include the current supplemental prompt");
+  assert.match(composePage, /taskType:\s*generationForm\.taskType/, "task draft should save the edited task type");
+  assert.match(composePage, /supplementalPrompt:\s*generationForm\.supplementalPrompt/, "task draft should save the edited supplemental prompt");
+});
+
 test("reference picker records explicitly added references in local front-end state", () => {
   const pickerSource = sourceBetween("function ReferencePicker", "export function LoraTrainingProjectFormPage");
 
