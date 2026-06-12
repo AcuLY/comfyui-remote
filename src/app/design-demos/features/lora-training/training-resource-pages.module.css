@@ -297,6 +297,45 @@
   gap: 12px;
 }
 
+.trainingPresetDraft {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.trainingPresetDraft div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  padding: 10px 12px;
+}
+
+.trainingPresetDraft dt {
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-weight: 640;
+}
+
+.trainingPresetDraft dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trainingPresetDraftWide {
+  grid-column: 1 / -1;
+}
+
 .trainingPresetUsageList,
 .trainingPresetSortList,
 .trainingPresetSortGrid {
@@ -788,6 +827,7 @@
   .resourceRow,
   .usageRow,
   .sortRow,
+  .trainingPresetDraft,
   .trainingPresetFormGrid,
   .trainingTemplateFormGrid {
     grid-template-columns: 1fr;

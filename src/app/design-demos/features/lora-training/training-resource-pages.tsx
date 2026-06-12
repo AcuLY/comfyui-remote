@@ -389,17 +389,55 @@ export function LoraTrainingPresetDetailPage({ data, mode = "edit", presetId }: 
   const newPresetHints = mode === "new" ? readNewPresetHints(urlSearch) : { artifact: "", category: "", folder: "", project: "", sourceRun: "" };
   const preset = mode === "new" ? createDraftTrainingPreset(training, newPresetHints) : findPreset(data, presetId);
   if (!preset) return <EmptyPage title="没有训练预制数据" />;
+  return <LoraTrainingPresetDetailContent isNew={mode === "new"} newPresetHints={newPresetHints} preset={preset} />;
+}
+
+function LoraTrainingPresetDetailContent({
+  isNew,
+  newPresetHints,
+  preset,
+}: {
+  isNew: boolean;
+  newPresetHints: NewPresetHints;
+  preset: LoraTrainingPreset;
+}) {
   const usages = [...preset.projectUsage, ...preset.templateUsage];
-  const isNew = mode === "new";
+  const [presetForm, setPresetForm] = useState({
+    category: preset.category,
+    folder: preset.folder,
+    sceneDescriptionText: preset.sceneDescriptionText,
+    title: preset.title,
+  });
+  const [presetDraft, setPresetDraft] = useState<typeof presetForm & { usageCount: number } | null>(null);
+
+  function handleUpdatePresetForm(field: keyof typeof presetForm, value: string) {
+    setPresetForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleSavePreset() {
+    setPresetDraft({
+      ...presetForm,
+      usageCount: usages.length,
+    });
+  }
 
   return (
     <div className={s.page}>
       <PageHeader
         back={{ href: "/training/presets", label: "返回训练预制" }}
         eyebrow="训练预制"
-        title={isNew ? "新建训练预制" : preset.title}
-        subtitle={isNew ? `${preset.category} / ${preset.folder} · 本地草稿` : `${preset.category} / ${preset.folder} · 更新 ${preset.updatedAt}`}
-        actions={<Button tone="primary" icon={Save} feedback={{ title: isNew ? "训练预制已创建" : "训练预制已保存", detail: preset.title }}>{isNew ? "创建预制" : "保存"}</Button>}
+        title={isNew ? "新建训练预制" : presetForm.title}
+        subtitle={isNew ? `${presetForm.category} / ${presetForm.folder} · 本地草稿` : `${presetForm.category} / ${presetForm.folder} · 更新 ${preset.updatedAt}`}
+        actions={(
+          <Button
+            tone="primary"
+            icon={Save}
+            onClick={handleSavePreset}
+            feedback={{ title: presetDraft ? "预制保存草稿已更新" : "预制保存草稿已记录", detail: presetForm.title }}
+          >
+            {presetDraft ? "更新草稿" : isNew ? "创建预制" : "保存"}
+          </Button>
+        )}
       />
       <WorkbenchSurface className={s.trainingPresetEditorSurface}>
         <EditorBlock
@@ -410,13 +448,13 @@ export function LoraTrainingPresetDetailPage({ data, mode = "edit", presetId }: 
           headerClassName={s.trainingPresetEditorHeader}
           title="预制内容"
         >
-          <Field label="名称" value={preset.title} />
-          <FloatingSelect label="分类" value={preset.category} options={[preset.category, "光线", "环境", "构图"]} />
-          <FloatingSelect label="文件夹" value={preset.folder} options={[preset.folder, "舞台", "城市", "训练净图"]} />
+          <Field label="名称" value={presetForm.title} onChange={(value) => handleUpdatePresetForm("title", value)} />
+          <FloatingSelect label="分类" value={presetForm.category} options={[preset.category, "光线", "环境", "构图"]} onChange={(value) => handleUpdatePresetForm("category", value)} />
+          <FloatingSelect label="文件夹" value={presetForm.folder} options={[preset.folder, "舞台", "城市", "训练净图"]} onChange={(value) => handleUpdatePresetForm("folder", value)} />
           {isNew && newPresetHints.artifact ? (
             <Field readOnly label="来源训练产物" value={`${newPresetHints.project || "训练项目"} · ${newPresetHints.artifact}${newPresetHints.sourceRun ? ` · ${newPresetHints.sourceRun}` : ""}`} />
           ) : null}
-          <Field multiline features={{ resize: true, clipboard: true }} label="场景描述" value={preset.sceneDescriptionText} />
+          <Field multiline features={{ resize: true, clipboard: true }} label="场景描述" value={presetForm.sceneDescriptionText} onChange={(value) => handleUpdatePresetForm("sceneDescriptionText", value)} />
         </EditorBlock>
         <EditorBlock
           actions={<StatusBadge status={usages.length ? "pending" : "ready"} label={`${usages.length} 处引用`} />}
@@ -444,6 +482,23 @@ export function LoraTrainingPresetDetailPage({ data, mode = "edit", presetId }: 
             ]}
           />
         </EditorBlock>
+        {presetDraft ? (
+          <EditorBlock
+            actions={<StatusBadge status="ready" label={isNew ? "待创建" : "本地草稿"} />}
+            className={s.trainingPresetEditorBlock}
+            description="页面内记录当前 scene description 草稿，后端接入时按这一组字段提交。"
+            headerClassName={s.trainingPresetEditorHeader}
+            title="预制保存草稿"
+          >
+            <dl className={s.trainingPresetDraft}>
+              <div><dt>名称</dt><dd>{presetDraft.title}</dd></div>
+              <div><dt>分类</dt><dd>{presetDraft.category}</dd></div>
+              <div><dt>文件夹</dt><dd>{presetDraft.folder}</dd></div>
+              <div><dt>引用影响</dt><dd>{presetDraft.usageCount} 处</dd></div>
+              <div className={s.trainingPresetDraftWide}><dt>场景描述</dt><dd>{presetDraft.sceneDescriptionText}</dd></div>
+            </dl>
+          </EditorBlock>
+        ) : null}
       </WorkbenchSurface>
     </div>
   );

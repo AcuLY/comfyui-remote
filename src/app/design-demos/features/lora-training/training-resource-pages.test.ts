@@ -64,6 +64,30 @@ test("training preset new form carries source training artifact context", () => 
   assert.match(detailSource, /newPresetHints\.artifact/, "source artifact field should only appear when artifact context exists");
 });
 
+test("training preset detail saves a visible local preset draft instead of only showing feedback", () => {
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  assert.notEqual(detailStart, -1);
+  assert.notEqual(sortStart, -1);
+
+  const detailSource = pageSource.slice(detailStart, sortStart);
+
+  assert.match(detailSource, /presetForm/, "preset detail should keep editable form fields in local state");
+  assert.match(detailSource, /setPresetForm/, "preset field edits should update local form state");
+  assert.match(detailSource, /handleUpdatePresetForm/, "preset detail should define a shared field updater");
+  assert.match(detailSource, /value=\{presetForm\.title\}/, "preset name should render from local form state");
+  assert.match(detailSource, /onChange=\{\(value\) => handleUpdatePresetForm\("title", value\)\}/, "preset name should update local form state");
+  assert.match(detailSource, /presetDraft/, "preset detail should expose a local saved preset draft");
+  assert.match(detailSource, /setPresetDraft/, "preset save action should update local preset state");
+  assert.match(detailSource, /handleSavePreset/, "preset detail should define a save handler");
+  assert.match(detailSource, /onClick=\{handleSavePreset\}/, "preset save button should call the local save handler");
+  assert.match(detailSource, /预制保存草稿/, "preset detail should render a visible saved draft panel");
+  assert.match(detailSource, /preset\.sceneDescriptionText/, "saved draft should preserve the scene description");
+  assert.match(detailSource, /usages\.length/, "saved draft should include current usage impact");
+  assert.doesNotMatch(detailSource, /训练预制已创建/, "new preset save should not remain feedback-only");
+  assert.doesNotMatch(detailSource, /训练预制已保存/, "preset save should not remain feedback-only");
+});
+
 test("training template form uses the shared template editor workspace model", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");
