@@ -108,6 +108,20 @@ test("training section list can add a local draft section without backend calls"
   assert.match(sectionsPage, /onClick=\{handleAddSection\}/, "new section button should call the local add action");
 });
 
+test("training section list scans existing section ids for local copy and draft ids", () => {
+  const sectionsPage = sourceBetween(
+    "export function LoraTrainingProjectSectionsPage",
+    "export function LoraTrainingProjectSectionDetailPage",
+  );
+
+  assert.match(pagesSource, /function nextProjectSectionCopyNumber/, "section copy ids should use a shared ordinal helper");
+  assert.match(pagesSource, /function nextProjectSectionDraftNumber/, "new section draft ids should use a shared ordinal helper");
+  assert.match(sectionsPage, /nextProjectSectionCopyNumber\(localSections, section\.id\)/, "copy ids should scan existing copied section ids");
+  assert.match(sectionsPage, /nextProjectSectionDraftNumber\(current\)/, "new section ids should scan existing draft section ids");
+  assert.doesNotMatch(sectionsPage, /copyId = `\$\{section\.id\}-copy-\$\{Date\.now\(\)\}`/, "copy ids should not depend on Date.now");
+  assert.doesNotMatch(sectionsPage, /draftId = `new-section-\$\{Date\.now\(\)\}`/, "draft ids should not depend on Date.now");
+});
+
 test("training section detail exposes full scene-block management controls", () => {
   const detailPage = sourceBetween(
     "export function LoraTrainingProjectSectionDetailPage",

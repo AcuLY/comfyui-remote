@@ -125,6 +125,25 @@ function nextSeedSectionCopyNumber(sections: LoraTrainingTemplateSeedSection[], 
   return ordinals.length ? Math.max(...ordinals) + 1 : 1;
 }
 
+function nextProjectSectionCopyNumber(sections: LoraTrainingSection[], sourceId: string) {
+  const copyPrefix = `${sourceId}-copy-`;
+  const ordinals = sections
+    .map((section) => {
+      if (section.id === sourceId) return 0;
+      return section.id.startsWith(copyPrefix) ? Number(section.id.slice(copyPrefix.length)) : Number.NaN;
+    })
+    .filter((value) => Number.isFinite(value));
+  return ordinals.length ? Math.max(...ordinals) + 1 : 1;
+}
+
+function nextProjectSectionDraftNumber(sections: LoraTrainingSection[]) {
+  const draftPrefix = "new-section-";
+  const ordinals = sections
+    .map((section) => (section.id.startsWith(draftPrefix) ? Number(section.id.slice(draftPrefix.length)) : Number.NaN))
+    .filter((value) => Number.isFinite(value));
+  return ordinals.length ? Math.max(...ordinals) + 1 : 1;
+}
+
 function subscribeToUrlSearch(onStoreChange: () => void) {
   if (typeof window === "undefined") return () => {};
   window.addEventListener("popstate", onStoreChange);
@@ -1164,7 +1183,8 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
     .filter((section): section is LoraTrainingSection => Boolean(section));
 
   function handleCopySection(section: LoraTrainingSection) {
-    const copyId = `${section.id}-copy-${Date.now()}`;
+    const copyNumber = nextProjectSectionCopyNumber(localSections, section.id);
+    const copyId = `${section.id}-copy-${copyNumber}`;
     const copy: LoraTrainingSection = {
       ...section,
       id: copyId,
@@ -1201,9 +1221,10 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
   }
 
   function handleAddSection() {
-    const draftId = `new-section-${Date.now()}`;
     setLocalSections((current) => {
       const source = current[0];
+      const draftNumber = nextProjectSectionDraftNumber(current);
+      const draftId = `new-section-${draftNumber}`;
       const draftIndex = current.length + 1;
       const draft: LoraTrainingSection = source ? {
         ...source,
