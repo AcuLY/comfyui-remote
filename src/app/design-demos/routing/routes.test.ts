@@ -108,7 +108,7 @@ test("LoRA training dataset header uses training-prep product language", () => {
   const spec = findHeaderSpecForRoute(fallbackData(null), "/training/projects/vela-neon/dataset");
 
   assert.ok(spec, "dataset route should have a header spec");
-  assert.equal(spec.title, "数据集");
+  assert.equal(spec.title, "Vela Neon Jacket / 数据集");
   assert.match(spec.subtitle ?? "", /训练准备/);
   assert.doesNotMatch(spec.subtitle ?? "", /Readiness/i);
 });
@@ -214,6 +214,26 @@ test("LoRA training project route headers use the matched project context", () =
   assert.equal(sectionDetail.back?.href, "/training/projects/azure-idol/sections");
   assert.deepEqual(sectionDetail.actions?.map((action) => action.label), ["生成样本"]);
   assert.equal(sectionDetail.actions?.[0]?.href, "/training/projects/azure-idol/sections/stage-light/generation-tasks/new");
+
+  const profile = findHeaderSpecForRoute(data, "/training/projects/azure-idol/profile");
+  assert.ok(profile, "project profile should resolve a header spec");
+  assert.equal(profile.title, "Azure Idol / 角色资料");
+  assert.equal(profile.subtitle, "舞台偶像风格，蓝白服装和发饰是主要训练对象。");
+
+  const sections = findHeaderSpecForRoute(data, "/training/projects/azure-idol/sections");
+  assert.ok(sections, "project sections should resolve a header spec");
+  assert.equal(sections.title, "Azure Idol / 小节");
+  assert.equal(sections.back?.href, "/training/projects/azure-idol");
+
+  const results = findHeaderSpecForRoute(data, "/training/projects/azure-idol/results");
+  assert.ok(results, "project results should resolve a header spec");
+  assert.equal(results.title, "Azure Idol / 结果池");
+  assert.equal(results.back?.href, "/training/projects/azure-idol");
+
+  const dataset = findHeaderSpecForRoute(data, "/training/projects/azure-idol/dataset");
+  assert.ok(dataset, "project dataset should resolve a header spec");
+  assert.equal(dataset.title, "Azure Idol / 数据集");
+  assert.equal(dataset.back?.href, "/training/projects/azure-idol");
 
   const generationTasks = findHeaderSpecForRoute(data, "/training/projects/azure-idol/generation-tasks");
   assert.ok(generationTasks, "project generation tasks should resolve a header spec");

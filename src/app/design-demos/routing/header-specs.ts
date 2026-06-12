@@ -1001,6 +1001,15 @@ function projectHeaderBase(spec: HeaderSpec, project: LoraTrainingProject, title
   };
 }
 
+function projectSubresourceHeader(spec: HeaderSpec, project: LoraTrainingProject, label: string, subtitle?: string) {
+  const projectHref = trainingProjectBaseHref(project);
+  return {
+    ...projectHeaderBase(spec, project, `${project.title} / ${label}`),
+    back: { href: projectHref, label: "返回项目" },
+    subtitle: subtitle ?? spec.subtitle ?? project.profileSummary,
+  };
+}
+
 function sectionDetailHeader(spec: HeaderSpec, project: LoraTrainingProject, sectionItem: LoraTrainingSection) {
   const projectHref = trainingProjectBaseHref(project);
   return {
@@ -1036,6 +1045,22 @@ function loraTrainingProjectHeader(data: DemoData, spec: HeaderSpec, matched: Re
   if (matched.key === "training-project-section-detail") {
     const sectionItem = findLoraTrainingSection(project, matched.params.sectionId);
     return sectionItem ? sectionDetailHeader(spec, project, sectionItem) : projectHeaderBase(spec, project);
+  }
+
+  if (matched.key === "training-project-profile") {
+    return projectSubresourceHeader(spec, project, "角色资料", project.profileSummary);
+  }
+
+  if (matched.key === "training-project-sections") {
+    return projectSubresourceHeader(spec, project, "小节");
+  }
+
+  if (matched.key === "training-project-results") {
+    return projectSubresourceHeader(spec, project, "结果池");
+  }
+
+  if (matched.key === "training-project-dataset") {
+    return projectSubresourceHeader(spec, project, "数据集");
   }
 
   if (matched.key === "training-generation-compose") {
@@ -1159,8 +1184,12 @@ export function findHeaderSpecForRoute(data: DemoData, currentRoute: string) {
     spec
     && (
       matched.key === "training-project-detail"
+      || matched.key === "training-project-profile"
+      || matched.key === "training-project-sections"
       || matched.key === "training-project-section-detail"
       || matched.key === "training-generation-compose"
+      || matched.key === "training-project-results"
+      || matched.key === "training-project-dataset"
       || matched.key === "training-project-dataset-revision"
       || matched.key === "training-project-training-runs"
       || matched.key === "training-project-generation-tasks"
