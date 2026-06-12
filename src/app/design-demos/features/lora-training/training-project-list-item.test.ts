@@ -72,3 +72,15 @@ test("training project list creates projects through the implemented form route"
     "New project action should not stay as a feedback-only placeholder now that the form exists",
   );
 });
+
+test("training project list archives and restores selected projects locally", () => {
+  assert.match(projectsPageSource, /localProjects/, "Project scope tabs should render from local editable project state");
+  assert.match(projectsPageSource, /setLocalProjects/, "Archive and restore actions should update local project state");
+  assert.match(projectsPageSource, /handleToggleSelectedProjectArchive/, "Project list should define a selected archive/restore handler");
+  assert.match(projectsPageSource, /status:\s*scope === "current" \? "archived" : "ready"/, "Handler should move selected projects between current and archived scopes");
+  assert.match(projectsPageSource, /visibleProjects = localProjects/, "Visible project list should use local project state");
+  assert.match(projectsPageSource, /currentCount = localProjects/, "Current tab count should use local project state");
+  assert.match(projectsPageSource, /archivedCount = localProjects/, "Archived tab count should use local project state");
+  assert.match(projectsPageSource, /onClick=\{handleToggleSelectedProjectArchive\}/, "Batch archive button should call the local state handler");
+  assert.match(projectsPageSource, /scope === "current" \? "归档" : "恢复"/, "Batch action label should match the active scope");
+});

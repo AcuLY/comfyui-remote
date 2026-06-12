@@ -26,10 +26,11 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
   const [scope, setScope] = useState<ProjectScope>("current");
   const [viewMode, setViewMode] = useState<ProjectViewMode>("card");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [localProjects, setLocalProjects] = useState(training.projects);
   const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(new Set());
-  const visibleProjects = training.projects.filter((project) => scopeForProject(project) === scope && !hiddenProjectIds.has(project.id));
-  const currentCount = training.projects.filter((project) => scopeForProject(project) === "current" && !hiddenProjectIds.has(project.id)).length;
-  const archivedCount = training.projects.filter((project) => scopeForProject(project) === "archived" && !hiddenProjectIds.has(project.id)).length;
+  const visibleProjects = localProjects.filter((project) => scopeForProject(project) === scope && !hiddenProjectIds.has(project.id));
+  const currentCount = localProjects.filter((project) => scopeForProject(project) === "current" && !hiddenProjectIds.has(project.id)).length;
+  const archivedCount = localProjects.filter((project) => scopeForProject(project) === "archived" && !hiddenProjectIds.has(project.id)).length;
   const selectedVisibleCount = visibleProjects.filter((project) => selectedIds.has(project.id)).length;
   const allVisibleSelected = visibleProjects.length > 0 && selectedVisibleCount === visibleProjects.length;
 
@@ -60,6 +61,16 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
       next.delete(projectId);
       return next;
     });
+  }
+
+  function handleToggleSelectedProjectArchive() {
+    const selectedVisibleIds = new Set(visibleProjects.filter((project) => selectedIds.has(project.id)).map((project) => project.id));
+    setLocalProjects((current) => current.map((project) =>
+      selectedVisibleIds.has(project.id)
+        ? { ...project, status: scope === "current" ? "archived" : "ready" }
+        : project,
+    ));
+    setSelectedIds(new Set());
   }
 
   return (
@@ -116,13 +127,13 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
         {selectedVisibleCount > 0 ? (
           <SelectionBatchBar
             selectedCount={selectedVisibleCount}
-            subject="个训练项目"
-            onClear={() => setSelectedIds(new Set())}
-            actions={(
-              <>
-                <Button icon={Archive} feedback={{ title: "归档动作已预览", detail: `${selectedVisibleCount} 个训练项目` }}>
-                  归档
-                </Button>
+                subject="个训练项目"
+                onClear={() => setSelectedIds(new Set())}
+                actions={(
+                  <>
+                    <Button icon={Archive} onClick={handleToggleSelectedProjectArchive} feedback={{ title: scope === "current" ? "训练项目已归档" : "训练项目已恢复", detail: `${selectedVisibleCount} 个训练项目` }}>
+                      {scope === "current" ? "归档" : "恢复"}
+                    </Button>
                 <Button
                   tone="danger"
                   icon={X}
