@@ -145,8 +145,8 @@ function createDraftTrainingPreset(training: ReturnType<typeof buildLoraTraining
     status: "active",
     updatedAt: "本地草稿",
     sceneDescriptionText: hints.artifact
-      ? `从 ${hints.project || "训练项目"} 的训练产物 ${hints.artifact} 创建，补充后作为可复用 scene description 导入训练小节。`
-      : "在这里补充可复用的 scene description，只描述训练小节需要导入的场景文本。",
+      ? `从 ${hints.project || "训练项目"} 的训练产物 ${hints.artifact} 创建，补充后作为可复用场景描述导入训练小节。`
+      : "在这里补充可复用的场景描述，只描述训练小节需要导入的场景文本。",
     projectUsage: [],
     templateUsage: [],
   };
@@ -409,7 +409,7 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
       <PageHeader
         eyebrow="LoRA 训练"
         title="训练预制"
-        subtitle="训练预制只是一段 scene description，不包含普通预设库的 variants / positive / negative / LoRA 结构。"
+        subtitle="管理可复用的训练场景描述，导入小节时只带入场景文本。"
         actions={(
           <>
             <ButtonLink href="/training/presets/sort-rules" icon={Shuffle}>排序规则</ButtonLink>
@@ -440,7 +440,7 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
           <header className={s.trainingPresetWorkspaceHeader}>
             <div>
               <strong>{activeCategory || "训练预制"}</strong>
-              <span>{categoryPresets.length} 个 scene description · 当前文件夹 {currentFolder ?? "全部"}</span>
+              <span>{categoryPresets.length} 个场景描述 · 当前文件夹 {currentFolder ?? "全部"}</span>
             </div>
             <ButtonLink href={newPresetInCategoryHref} size="sm" icon={Plus}>新建到当前分类</ButtonLink>
           </header>
@@ -565,7 +565,7 @@ function LoraTrainingPresetDetailContent({
           actions={isNew ? <StatusBadge status="queued" label="草稿" /> : presetStatus(preset)}
           className={s.trainingPresetEditorBlock}
           contentClassName={s.trainingPresetFormGrid}
-          description="训练预制只维护一段可复用 scene description。"
+          description="训练预制只维护一段可复用场景描述。"
           headerClassName={s.trainingPresetEditorHeader}
           title="预制内容"
         >
@@ -581,14 +581,14 @@ function LoraTrainingPresetDetailContent({
           actions={<StatusBadge status={usages.length ? "pending" : "ready"} label={`${usages.length} 处引用`} />}
           className={s.trainingPresetEditorBlock}
           contentClassName={s.trainingPresetUsageList}
-          description="删除前展示项目侧和模板侧引用，确认后只移除 mutable refs。"
+          description="删除前展示项目侧和模板侧引用，确认后只移除当前预制关联。"
           headerClassName={s.trainingPresetEditorHeader}
           title="引用影响"
         >
           {usages.map((usage) => (
             <UnitRowShell
               className={s.trainingPresetUsageRow}
-              description="引用当前 scene block"
+              description="引用当前场景块"
               key={usage}
               meta={<StatusBadge status="template" label={usage.startsWith("模板") ? "模板" : "项目"} />}
               title={usage}
@@ -607,7 +607,7 @@ function LoraTrainingPresetDetailContent({
           <EditorBlock
             actions={<StatusBadge status="ready" label={isNew ? "待创建" : "本地草稿"} />}
             className={s.trainingPresetEditorBlock}
-            description="页面内记录当前 scene description 草稿，可继续调整分类、文件夹和引用影响。"
+            description="页面内记录当前场景描述草稿，可继续调整分类、文件夹和引用影响。"
             headerClassName={s.trainingPresetEditorHeader}
             title="预制保存草稿"
           >
@@ -700,7 +700,7 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
         />
         <TrainingPresetSortPanel
           title="分类内顺序"
-          subtitle="决定同分类下 scene description 的稳定排序。"
+          subtitle="决定同分类下训练场景描述的稳定排序。"
           items={presetItems}
           orderedIds={orderedPresetIds}
           onReorder={setOrderedPresetIds}
@@ -941,7 +941,7 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
       <PageHeader
         eyebrow="LoRA 训练"
         title="训练模板"
-        subtitle="模板是创建训练项目的一次性 seed；创建项目后不会 live 回写模板。"
+        subtitle="模板提供创建训练项目时的初始小节结构；项目创建后会独立编辑。"
         actions={(
           <>
             {projectTemplateSource ? (
@@ -1086,7 +1086,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
         back={{ href: "/training/templates", label: "返回训练模板" }}
         eyebrow="训练模板"
         title={title}
-        subtitle="编辑 project-level guidance、section settings、preset/local blocks。"
+        subtitle="编辑项目指引、小节设置、预制块和本地块。"
         actions={(
           <Button
             tone="primary"
@@ -1103,7 +1103,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
           actions={<StatusBadge status={mode === "new" ? "queued" : "ready"} label={mode === "new" ? "草稿" : "已保存"} />}
           className={s.trainingTemplateEditorBlock}
           contentClassName={s.trainingTemplateFormGrid}
-          description="模板只作为创建训练项目时的 seed，创建后项目不会 live 回写模板。"
+          description="模板只提供创建训练项目时的初始结构，创建后项目会独立编辑。"
           headerClassName={s.trainingTemplateEditorHeader}
           title="模板信息"
         >
@@ -1113,7 +1113,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
             <Field readOnly label="来源训练项目" value={`${newTemplateHints.sourceProject}${newTemplateHints.sections ? ` · ${newTemplateHints.sections} 个小节` : ""}${newTemplateHints.projectId ? ` · ${newTemplateHints.projectId}` : ""}`} />
           ) : null}
           <Field multiline features={{ resize: true, clipboard: true }} label="图片提示词指引" value={templateForm.imageGuidance} onChange={(value) => handleUpdateTemplateForm("imageGuidance", value)} />
-          <Field multiline features={{ resize: true, clipboard: true }} label="Caption 生成指引" value={templateForm.captionGuidance} onChange={(value) => handleUpdateTemplateForm("captionGuidance", value)} />
+          <Field multiline features={{ resize: true, clipboard: true }} label="说明文本生成指引" value={templateForm.captionGuidance} onChange={(value) => handleUpdateTemplateForm("captionGuidance", value)} />
         </EditorBlock>
         <EditorBlock
           actions={<Button icon={Plus} onClick={handleAddTemplateSection} feedback="小节草稿已添加">添加小节</Button>}
@@ -1164,7 +1164,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
               <div><dt>来源项目</dt><dd>{templateDraft.sourceProject || "无"}</dd></div>
               <div><dt>描述</dt><dd>{templateDraft.description}</dd></div>
               <div className={s.trainingTemplateDraftWide}><dt>图片提示词指引</dt><dd>{templateDraft.imageGuidance}</dd></div>
-              <div className={s.trainingTemplateDraftWide}><dt>Caption 指引</dt><dd>{templateDraft.captionGuidance}</dd></div>
+              <div className={s.trainingTemplateDraftWide}><dt>说明文本指引</dt><dd>{templateDraft.captionGuidance}</dd></div>
             </dl>
           </EditorBlock>
         ) : null}

@@ -18,6 +18,46 @@ test("training resource delete actions describe local removal instead of confirm
   assert.doesNotMatch(pageSource, /删除训练模板小节需要确认/, "template section delete feedback should describe the local draft removal");
 });
 
+test("training resource pages use product-facing copy instead of internal prompt schema terms", () => {
+  const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
+  const presetDetailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  const templatesStart = pageSource.indexOf("function templateStatus");
+  const templateFormStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const templateSectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+
+  assert.notEqual(presetsStart, -1);
+  assert.notEqual(presetDetailStart, -1);
+  assert.notEqual(sortStart, -1);
+  assert.notEqual(templatesStart, -1);
+  assert.notEqual(templateFormStart, -1);
+  assert.notEqual(templateSectionStart, -1);
+
+  const visibleResourceCopy = [
+    pageSource.slice(presetsStart, presetDetailStart),
+    pageSource.slice(presetDetailStart, sortStart),
+    pageSource.slice(sortStart, templatesStart),
+    pageSource.slice(templatesStart, templateFormStart),
+    pageSource.slice(templateFormStart, templateSectionStart),
+  ].join("\n");
+
+  [
+    /scene description/,
+    /scene block/,
+    /variants \/ positive \/ negative \/ LoRA 结构/,
+    /mutable refs/,
+    /一次性 seed/,
+    /live 回写/,
+    /project-level guidance/,
+    /section settings/,
+    /preset\/local blocks/,
+    /Caption 生成指引/,
+    /Caption 指引/,
+  ].forEach((pattern) => {
+    assert.doesNotMatch(visibleResourceCopy, pattern, `training resource pages should hide internal copy: ${pattern}`);
+  });
+});
+
 test("training preset library uses the shared managed-library row model", () => {
   const itemStart = pageSource.indexOf("function TrainingPresetLibraryItemRow");
   const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
