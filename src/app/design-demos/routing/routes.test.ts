@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { fallbackData } from "../data/fallback-data";
-import { findHeaderSpecForRoute } from "./header-specs";
+import { buildHeaderSpecs, findHeaderSpecForRoute } from "./header-specs";
 import { demoHref, matchRoute, MOBILE_NAV_LINKS, NAV_LINKS, ROUTES, sampleRouteInventory } from "./routes";
 
 test("LoRA training entry routes are registered in the demo router", () => {
@@ -96,4 +96,43 @@ test("LoRA training dataset header uses training-prep product language", () => {
   assert.equal(spec.title, "数据集");
   assert.match(spec.subtitle ?? "", /训练准备/);
   assert.doesNotMatch(spec.subtitle ?? "", /Readiness/i);
+});
+
+test("LoRA training header specs use product-facing copy instead of internal schema terms", () => {
+  const blockedTerms = [
+    /provenance/i,
+    /dataset revision/i,
+    /\bsource tree\b/i,
+    /\bkeep\/reject\b/i,
+    /\bkept\b/i,
+    /\bcaption\b/i,
+    /captionSnapshot/i,
+    /\bmanifest\b/i,
+    /\bscoped\b/i,
+    /\btraining run list\b/i,
+    /\bgeneration task list\b/i,
+    /\bscene description\b/i,
+    /\bvariants\b/i,
+    /sceneDescriptionText/i,
+    /Project-level/i,
+    /section settings/i,
+    /preset\/local blocks/i,
+    /\bComposer\b/i,
+    /\blightbox\b/i,
+    /\bSnapshot\b/i,
+    /\bseed\b/i,
+  ];
+  const trainingSpecs = buildHeaderSpecs(fallbackData(null))
+    .flatMap((group) => group.specs)
+    .filter((spec) => spec.group === "LoRA 训练");
+
+  assert.ok(trainingSpecs.length > 0, "LoRA training header specs should exist");
+
+  for (const spec of trainingSpecs) {
+    const copy = [spec.subtitle, spec.status].filter(Boolean).join(" ");
+
+    for (const term of blockedTerms) {
+      assert.doesNotMatch(copy, term, `${spec.key} should not expose ${term}`);
+    }
+  }
 });
