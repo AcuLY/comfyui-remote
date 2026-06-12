@@ -310,6 +310,22 @@ test("training template section copy inserts the duplicate directly after the so
   assert.doesNotMatch(formSource, /setOrderedTemplateSectionIds\(\(ids\) => \[\.\.\.ids, copy\.id\]\)/, "template section copy should not append to the end of the section order");
 });
 
+test("training template form scans existing section ids for local copy and draft ids", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(pageSource, /function nextTemplateSectionCopyNumber/, "template section copy ids should use a shared ordinal helper");
+  assert.match(pageSource, /function nextTemplateSectionDraftNumber/, "new template section draft ids should use a shared ordinal helper");
+  assert.match(formSource, /nextTemplateSectionCopyNumber\(localTemplateSections, section\.id\)/, "template copy ids should scan existing copied section ids");
+  assert.match(formSource, /nextTemplateSectionDraftNumber\(current\)/, "new template section ids should scan existing draft section ids");
+  assert.doesNotMatch(formSource, /id:\s*`\$\{section\.id\}-copy-\$\{Date\.now\(\)\}`/, "template copy ids should not depend on Date.now");
+  assert.doesNotMatch(formSource, /id:\s*`new-template-section-\$\{Date\.now\(\)\}`/, "new template section ids should not depend on Date.now");
+});
+
 test("training template form section rows are actually sortable", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");

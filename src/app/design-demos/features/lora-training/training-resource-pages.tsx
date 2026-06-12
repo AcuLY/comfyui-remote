@@ -60,6 +60,25 @@ function nextTemplateSceneBlockOrdinal(blocks: LoraTrainingSectionBlock[], prefi
   return ordinals.length ? Math.max(...ordinals) + 1 : 1;
 }
 
+function nextTemplateSectionCopyNumber(sections: LoraTrainingTemplateSection[], sourceId: string) {
+  const copyPrefix = `${sourceId}-copy-`;
+  const ordinals = sections
+    .map((section) => {
+      if (section.id === sourceId) return 0;
+      return section.id.startsWith(copyPrefix) ? Number(section.id.slice(copyPrefix.length)) : Number.NaN;
+    })
+    .filter((value) => Number.isFinite(value));
+  return ordinals.length ? Math.max(...ordinals) + 1 : 1;
+}
+
+function nextTemplateSectionDraftNumber(sections: LoraTrainingTemplateSection[]) {
+  const draftPrefix = "new-template-section-";
+  const ordinals = sections
+    .map((section) => (section.id.startsWith(draftPrefix) ? Number(section.id.slice(draftPrefix.length)) : Number.NaN))
+    .filter((value) => Number.isFinite(value));
+  return ordinals.length ? Math.max(...ordinals) + 1 : 1;
+}
+
 function orderTemplateSectionsByIds(sections: LoraTrainingTemplateSection[], orderedIds: string[]) {
   const sectionMap = Object.fromEntries(sections.map((section) => [section.id, section]));
   const orderedSections = orderedIds.map((id) => sectionMap[id]).filter((section): section is LoraTrainingTemplateSection => Boolean(section));
@@ -1041,15 +1060,17 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
 
   function createDraftTemplateSection(current: LoraTrainingTemplateSection[], titleSuffix: string): LoraTrainingTemplateSection {
     const source = current[0];
+    const draftNumber = nextTemplateSectionDraftNumber(current);
+    const draftId = `new-template-section-${draftNumber}`;
     const draftIndex = current.length + 1;
     return source ? {
       ...source,
-      id: `new-template-section-${Date.now()}`,
+      id: draftId,
       title: `新模板小节 ${draftIndex}${titleSuffix}`,
       enabled: true,
       scenePreview: "补充这个模板小节的训练场景摘要。",
     } : {
-      id: `new-template-section-${Date.now()}`,
+      id: draftId,
       title: `新模板小节 ${draftIndex}${titleSuffix}`,
       enabled: true,
       blockCount: 1,
@@ -1070,9 +1091,10 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   }
 
   function handleCopyTemplateSection(section: LoraTrainingTemplateSection) {
+    const copyNumber = nextTemplateSectionCopyNumber(localTemplateSections, section.id);
     const copy: LoraTrainingTemplateSection = {
       ...section,
-      id: `${section.id}-copy-${Date.now()}`,
+      id: `${section.id}-copy-${copyNumber}`,
       title: `${section.title} (副本)`,
     };
     setLocalTemplateSections((current) => {
