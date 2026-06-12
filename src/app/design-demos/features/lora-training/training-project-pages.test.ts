@@ -377,17 +377,24 @@ test("training project create page is a full form workspace with training seed c
 test("training project create reference candidates expand like managed list cards", () => {
   const firstCandidateRule = cssSource.indexOf(".referenceCandidateList");
   const responsiveCandidateRule = cssSource.indexOf(".referenceCandidateList", firstCandidateRule + 1);
+  const candidateListRule = cssSource.match(/\.referenceCandidateList\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
   assert.notEqual(firstCandidateRule, -1, "reference candidate list CSS should exist");
   assert.notEqual(responsiveCandidateRule, -1, "reference candidate list should have a separate responsive rule");
 
   const responsiveRegion = cssSource.slice(Math.max(0, responsiveCandidateRule - 120), cssSource.indexOf("}", responsiveCandidateRule) + 1);
 
-  assert.match(responsiveRegion, /@media \(min-width: 720px\)/, "reference candidates should expand at the training list breakpoint");
+  assert.match(
+    cssSource,
+    /\.referenceSourceGroup\s*\{[\s\S]*?container-type:\s*inline-size/,
+    "reference candidates should respond to each source group width",
+  );
+  assert.match(responsiveRegion, /@container \(min-width: 520px\)/, "reference candidates should expand at the managed-list container breakpoint");
   assert.match(
     responsiveRegion,
     /grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
     "reference candidates should use the same two-column card grid when there is room",
   );
+  assert.doesNotMatch(candidateListRule, /container-type:\s*inline-size/, "reference candidate list should not query its own width directly");
 });
 
 test("training project create page manages initial section seeds locally", () => {
