@@ -171,6 +171,26 @@ test("training template form section actions update local front-end state", () =
   assert.match(rowSource, /onDelete\?\.\(section\.id\)/, "template section delete button should call the delete handler");
 });
 
+test("training template form section rows are actually sortable", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(rowStart, -1);
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+  const rowSource = pageSource.slice(rowStart, formStart);
+
+  assert.match(formSource, /orderedTemplateSectionIds/, "template form should keep an explicit section sort order");
+  assert.match(formSource, /setOrderedTemplateSectionIds/, "template section reorder should update local order state");
+  assert.match(formSource, /handleReorderTemplateSections/, "template form should define a reorder handler");
+  assert.match(formSource, /<SortableList items=\{orderedTemplateSectionIds\} onReorder=\{handleReorderTemplateSections\}>/, "template sections should use the shared sortable wrapper");
+  assert.match(rowSource, /useDemoSortable\(section\.id\)/, "template section rows should attach sortable behavior to each row");
+  assert.match(rowSource, /handleProps/, "template section rows should pass drag handle props to the visible handle");
+  assert.match(rowSource, /ref=\{ref\}/, "template section rows should apply sortable refs");
+});
+
 test("training template list follows the template-list surface with local delete state", () => {
   const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");

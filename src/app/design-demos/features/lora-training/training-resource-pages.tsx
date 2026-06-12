@@ -53,6 +53,13 @@ function moveTemplateBlock(blocks: LoraTrainingSectionBlock[], index: number, di
   return nextBlocks;
 }
 
+function orderTemplateSectionsByIds(sections: LoraTrainingTemplateSection[], orderedIds: string[]) {
+  const sectionMap = Object.fromEntries(sections.map((section) => [section.id, section]));
+  const orderedSections = orderedIds.map((id) => sectionMap[id]).filter((section): section is LoraTrainingTemplateSection => Boolean(section));
+  const missingSections = sections.filter((section) => !orderedIds.includes(section.id));
+  return [...orderedSections, ...missingSections];
+}
+
 function presetUsageLabel(preset: LoraTrainingPreset) {
   const usageCount = preset.projectUsage.length + preset.templateUsage.length;
   return usageCount > 0 ? `${usageCount} 处引用` : "未引用";
@@ -675,28 +682,38 @@ function TemplateEditorSectionRow({
   templateId: string;
 }) {
   const href = `/training/templates/${templateId}/sections/${index}`;
+  const { ref, style, handleProps } = useDemoSortable(section.id);
 
   return (
-    <article className={s.trainingTemplateSectionRow}>
-      <Button className={s.trainingTemplateSectionHandle} icon={GripVertical} iconOnly tone="subtle" ariaLabel={`拖拽排序模板小节：${section.title}`} />
-      <Link className={s.trainingTemplateSectionMain} href={demoHref(href)}>
-        <span className={s.trainingTemplateSectionTitleLine}>
-          <span>{String(index + 1).padStart(2, "0")}</span>
-          <strong>{section.title}</strong>
-        </span>
-        <p>{section.scenePreview}</p>
-        <div className={s.trainingTemplateSectionMeta}>
-          <span>{section.blockCount} 个场景块</span>
-          <span>{section.enabled ? "启用" : "停用"}</span>
-          <span>创建后独立</span>
+    <div ref={ref} style={style}>
+      <article className={s.trainingTemplateSectionRow}>
+        <button
+          type="button"
+          className={s.trainingTemplateSectionHandle}
+          aria-label={`拖拽排序模板小节：${section.title}`}
+          {...handleProps}
+        >
+          <GripVertical aria-hidden="true" />
+        </button>
+        <Link className={s.trainingTemplateSectionMain} href={demoHref(href)}>
+          <span className={s.trainingTemplateSectionTitleLine}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <strong>{section.title}</strong>
+          </span>
+          <p>{section.scenePreview}</p>
+          <div className={s.trainingTemplateSectionMeta}>
+            <span>{section.blockCount} 个场景块</span>
+            <span>{section.enabled ? "启用" : "停用"}</span>
+            <span>创建后独立</span>
+          </div>
+        </Link>
+        <div className={s.trainingTemplateSectionActions}>
+          <ButtonLink href={href} icon={Edit3}>编辑</ButtonLink>
+          <Button tone="subtle" icon={CopyPlus} onClick={() => onCopy?.(section)} feedback={{ title: "训练模板小节已复制", detail: section.title }}>复制</Button>
+          <Button tone="danger" icon={Trash2} onClick={() => onDelete?.(section.id)} feedback={{ tone: "warning", title: "删除训练模板小节需要确认", detail: section.title }}>删除</Button>
         </div>
-      </Link>
-      <div className={s.trainingTemplateSectionActions}>
-        <ButtonLink href={href} icon={Edit3}>编辑</ButtonLink>
-        <Button tone="subtle" icon={CopyPlus} onClick={() => onCopy?.(section)} feedback={{ title: "训练模板小节已复制", detail: section.title }}>复制</Button>
-        <Button tone="danger" icon={Trash2} onClick={() => onDelete?.(section.id)} feedback={{ tone: "warning", title: "删除训练模板小节需要确认", detail: section.title }}>删除</Button>
-      </div>
-    </article>
+      </article>
+    </div>
   );
 }
 
@@ -784,7 +801,9 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   const title = mode === "new" ? "新建训练模板" : template?.title ?? "训练模板";
   const templateEditorId = seedTemplate?.id ?? "new-template";
   const [localTemplateSections, setLocalTemplateSections] = useState<LoraTrainingTemplateSection[]>(() => seedTemplate?.sections ?? []);
+  const [orderedTemplateSectionIds, setOrderedTemplateSectionIds] = useState(() => (seedTemplate?.sections ?? []).map((section) => section.id));
   const templateSections = localTemplateSections;
+  const templateSectionMap = Object.fromEntries(templateSections.map((section) => [section.id, section]));
   const [templateForm, setTemplateForm] = useState({
     captionGuidance: "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。",
     description: seedTemplate?.description ?? "用于新角色 LoRA 训练项目的起始模板。",
@@ -829,7 +848,11 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   }
 
   function handleAddTemplateSection() {
-    setLocalTemplateSections((current) => [...current, createDraftTemplateSection(current, "")]);
+    setLocalTemplateSections((current) => {
+      const draft = createDraftTemplateSection(current, "");
+      setOrderedTemplateSectionIds((ids) => [...ids, draft.id]);
+      return [...current, draft];
+    });
   }
 
   function handleCopyTemplateSection(section: LoraTrainingTemplateSection) {
@@ -839,10 +862,17 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
       title: `${section.title} (副本)`,
     };
     setLocalTemplateSections((current) => [...current, copy]);
+    setOrderedTemplateSectionIds((ids) => [...ids, copy.id]);
   }
 
   function handleDeleteTemplateSection(sectionId: string) {
     setLocalTemplateSections((current) => current.filter((section) => section.id !== sectionId));
+    setOrderedTemplateSectionIds((ids) => ids.filter((id) => id !== sectionId));
+  }
+
+  function handleReorderTemplateSections(nextIds: string[]) {
+    setOrderedTemplateSectionIds(nextIds);
+    setLocalTemplateSections((current) => orderTemplateSectionsByIds(current, nextIds));
   }
 
   return (
@@ -889,16 +919,23 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
           title="小节配置"
         >
           <div className={s.trainingTemplateSectionList}>
-            {templateSections.map((section, index) => (
-              <TemplateEditorSectionRow
-                index={index}
-                key={section.id}
-                onCopy={handleCopyTemplateSection}
-                onDelete={handleDeleteTemplateSection}
-                section={section}
-                templateId={templateEditorId}
-              />
-            ))}
+            <SortableList items={orderedTemplateSectionIds} onReorder={handleReorderTemplateSections}>
+              {orderedTemplateSectionIds.map((sectionId, index) => {
+                const section = templateSectionMap[sectionId];
+                if (!section) return null;
+
+                return (
+                  <TemplateEditorSectionRow
+                    index={index}
+                    key={section.id}
+                    onCopy={handleCopyTemplateSection}
+                    onDelete={handleDeleteTemplateSection}
+                    section={section}
+                    templateId={templateEditorId}
+                  />
+                );
+              })}
+            </SortableList>
           </div>
           <OperationStateStrip
             items={[

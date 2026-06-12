@@ -791,15 +791,34 @@
   background: var(--demo-glass-hover);
 }
 
-.trainingTemplateSectionHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
+.trainingTemplateSectionHandle {
+  display: inline-flex;
   width: 28px;
+  height: 28px;
   min-width: 28px;
   min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
   border-color: transparent;
   background: transparent;
   color: var(--demo-faint);
   cursor: grab;
   padding: 0;
+}
+
+.trainingTemplateSectionHandle:hover,
+.trainingTemplateSectionHandle:focus-visible {
+  border-color: var(--demo-border);
+  background: var(--demo-glass-soft);
+  color: var(--demo-green);
+  outline: none;
+}
+
+.trainingTemplateSectionHandle svg {
+  width: 14px;
+  height: 14px;
 }
 
 .trainingTemplateSectionMain {
