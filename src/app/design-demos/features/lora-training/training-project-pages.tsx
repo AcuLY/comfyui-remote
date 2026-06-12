@@ -854,7 +854,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
         </Panel>
       </div>
       {profileDraft ? (
-        <Panel title="资料保存草稿" subtitle="页面内已记录当前资料状态，后端接入时可直接提交这一组字段。">
+        <Panel title="资料保存草稿" subtitle="页面内已记录当前资料状态，可继续调整后再创建训练任务。">
           <dl className={s.profileDraft}>
             <div><dt>使用提示词</dt><dd>{profileDraft.usagePrompt}</dd></div>
             <div><dt>角色细节</dt><dd>{profileDraft.detailPrompt}</dd></div>

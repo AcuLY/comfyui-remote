@@ -45,6 +45,10 @@ test("training project overview keeps subresource bodies out of the overview pag
   assert.doesNotMatch(overviewSource, /<ImageGrid/, "overview should not inline full results/dataset grids");
 });
 
+test("training project pages keep backend wiring notes out of user-facing copy", () => {
+  assert.doesNotMatch(pagesSource, /后端接入时/, "training project UI should not expose backend integration notes");
+});
+
 test("training project overview saves as template through the real template form route", () => {
   const overviewStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
   const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");

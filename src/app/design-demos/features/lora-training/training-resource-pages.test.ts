@@ -8,6 +8,10 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const pageSource = readFileSync(resolve(testDir, "training-resource-pages.tsx"), "utf8");
 const cssSource = readFileSync(resolve(testDir, "training-resource-pages.module.css"), "utf8");
 
+test("training resource pages keep backend wiring notes out of user-facing copy", () => {
+  assert.doesNotMatch(pageSource, /后端接入时/, "training resource UI should not expose backend integration notes");
+});
+
 test("training preset library uses the shared managed-library row model", () => {
   const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");

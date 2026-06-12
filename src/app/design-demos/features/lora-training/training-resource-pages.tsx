@@ -522,7 +522,7 @@ function LoraTrainingPresetDetailContent({
           <EditorBlock
             actions={<StatusBadge status="ready" label={isNew ? "待创建" : "本地草稿"} />}
             className={s.trainingPresetEditorBlock}
-            description="页面内记录当前 scene description 草稿，后端接入时按这一组字段提交。"
+            description="页面内记录当前 scene description 草稿，可继续调整分类、文件夹和引用影响。"
             headerClassName={s.trainingPresetEditorHeader}
             title="预制保存草稿"
           >
@@ -626,7 +626,7 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
         <EditorBlock
           actions={<StatusBadge status="ready" label={sortRulesDraft.scope} />}
           className={s.trainingPresetSortPanel}
-          description="页面内记录当前排序结果；后端接入时按这两组 ordered ids 提交。"
+          description="页面内记录当前排序结果，可继续调整合成顺序和分类内顺序。"
           headerClassName={s.trainingPresetSortHeader}
           title="排序保存草稿"
         >
@@ -949,7 +949,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
           <EditorBlock
             actions={<StatusBadge status="ready" label={templateDraft.mode === "new" ? "待创建" : "本地草稿"} />}
             className={s.trainingTemplateEditorBlock}
-            description="页面内记录当前模板草稿；后端接入时按这组字段和小节列表提交。"
+            description="页面内记录当前模板草稿，可继续调整字段和小节列表。"
             headerClassName={s.trainingTemplateEditorHeader}
             title="模板保存草稿"
           >
