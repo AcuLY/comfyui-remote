@@ -634,6 +634,26 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   const templateEditorId = seedTemplate?.id ?? "new-template";
   const [localTemplateSections, setLocalTemplateSections] = useState<LoraTrainingTemplateSection[]>(() => seedTemplate?.sections ?? []);
   const templateSections = localTemplateSections;
+  const [templateForm, setTemplateForm] = useState({
+    captionGuidance: "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。",
+    description: seedTemplate?.description ?? "用于新角色 LoRA 训练项目的起始模板。",
+    imageGuidance: "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。",
+    title: newTemplateHints.sourceProject ? `${newTemplateHints.sourceProject} 训练模板` : seedTemplate?.title ?? "新角色 LoRA 模板",
+  });
+  const [templateDraft, setTemplateDraft] = useState<typeof templateForm & { mode: "new" | "edit"; sectionCount: number; sourceProject: string } | null>(null);
+
+  function handleUpdateTemplateForm(field: keyof typeof templateForm, value: string) {
+    setTemplateForm((current) => ({ ...current, [field]: value }));
+  }
+
+  function handleSaveTemplate() {
+    setTemplateDraft({
+      ...templateForm,
+      mode,
+      sectionCount: templateSections.length,
+      sourceProject: newTemplateHints.sourceProject,
+    });
+  }
 
   function createDraftTemplateSection(current: LoraTrainingTemplateSection[], titleSuffix: string): LoraTrainingTemplateSection {
     const source = current[0];
@@ -681,7 +701,16 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
         eyebrow="训练模板"
         title={title}
         subtitle="编辑 project-level guidance、section settings、preset/local blocks。"
-        actions={<Button tone="primary" icon={Save} feedback={{ title: mode === "new" ? "训练模板已创建" : "训练模板已保存" }}>{mode === "new" ? "创建模板" : "保存模板"}</Button>}
+        actions={(
+          <Button
+            tone="primary"
+            icon={Save}
+            onClick={handleSaveTemplate}
+            feedback={{ title: templateDraft ? "模板保存草稿已更新" : "模板保存草稿已记录", detail: templateForm.title }}
+          >
+            {templateDraft ? "更新草稿" : mode === "new" ? "创建模板" : "保存模板"}
+          </Button>
+        )}
       />
       <WorkbenchSurface className={s.trainingTemplateEditorSurface}>
         <EditorBlock
@@ -692,13 +721,13 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
           headerClassName={s.trainingTemplateEditorHeader}
           title="模板信息"
         >
-          <Field label="名称" value={newTemplateHints.sourceProject ? `${newTemplateHints.sourceProject} 训练模板` : seedTemplate?.title ?? "新角色 LoRA 模板"} />
-          <Field multiline features={{ resize: true, clipboard: true }} label="描述" value={seedTemplate?.description ?? "用于新角色 LoRA 训练项目的起始模板。"} />
+          <Field label="名称" value={templateForm.title} onChange={(value) => handleUpdateTemplateForm("title", value)} />
+          <Field multiline features={{ resize: true, clipboard: true }} label="描述" value={templateForm.description} onChange={(value) => handleUpdateTemplateForm("description", value)} />
           {mode === "new" && newTemplateHints.sourceProject ? (
             <Field readOnly label="来源训练项目" value={`${newTemplateHints.sourceProject}${newTemplateHints.sections ? ` · ${newTemplateHints.sections} 个小节` : ""}${newTemplateHints.projectId ? ` · ${newTemplateHints.projectId}` : ""}`} />
           ) : null}
-          <Field multiline features={{ resize: true, clipboard: true }} label="图片提示词指引" value="每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。" />
-          <Field multiline features={{ resize: true, clipboard: true }} label="Caption 生成指引" value="先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。" />
+          <Field multiline features={{ resize: true, clipboard: true }} label="图片提示词指引" value={templateForm.imageGuidance} onChange={(value) => handleUpdateTemplateForm("imageGuidance", value)} />
+          <Field multiline features={{ resize: true, clipboard: true }} label="Caption 生成指引" value={templateForm.captionGuidance} onChange={(value) => handleUpdateTemplateForm("captionGuidance", value)} />
         </EditorBlock>
         <EditorBlock
           actions={<Button icon={Plus} onClick={handleAddTemplateSection} feedback="小节草稿已添加">添加小节</Button>}
@@ -728,6 +757,24 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
             ]}
           />
         </EditorBlock>
+        {templateDraft ? (
+          <EditorBlock
+            actions={<StatusBadge status="ready" label={templateDraft.mode === "new" ? "待创建" : "本地草稿"} />}
+            className={s.trainingTemplateEditorBlock}
+            description="页面内记录当前模板草稿；后端接入时按这组字段和小节列表提交。"
+            headerClassName={s.trainingTemplateEditorHeader}
+            title="模板保存草稿"
+          >
+            <dl className={s.trainingTemplateDraft}>
+              <div><dt>名称</dt><dd>{templateDraft.title}</dd></div>
+              <div><dt>小节</dt><dd>{templateDraft.sectionCount} 个</dd></div>
+              <div><dt>来源项目</dt><dd>{templateDraft.sourceProject || "无"}</dd></div>
+              <div><dt>描述</dt><dd>{templateDraft.description}</dd></div>
+              <div className={s.trainingTemplateDraftWide}><dt>图片提示词指引</dt><dd>{templateDraft.imageGuidance}</dd></div>
+              <div className={s.trainingTemplateDraftWide}><dt>Caption 指引</dt><dd>{templateDraft.captionGuidance}</dd></div>
+            </dl>
+          </EditorBlock>
+        ) : null}
       </WorkbenchSurface>
     </div>
   );

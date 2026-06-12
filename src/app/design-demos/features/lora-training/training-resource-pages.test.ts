@@ -127,6 +127,29 @@ test("training template new form carries source project context", () => {
   assert.match(formSource, /newTemplateHints\.sourceProject/, "source project field should only appear when project context exists");
 });
 
+test("training template form saves a visible local template draft instead of only showing feedback", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(formSource, /templateForm/, "template form should keep editable template fields in local state");
+  assert.match(formSource, /setTemplateForm/, "template field edits should update local form state");
+  assert.match(formSource, /handleUpdateTemplateForm/, "template form should define a shared field updater");
+  assert.match(formSource, /value=\{templateForm\.title\}/, "template title should render from local form state");
+  assert.match(formSource, /onChange=\{\(value\) => handleUpdateTemplateForm\("title", value\)\}/, "template title should update local form state");
+  assert.match(formSource, /templateDraft/, "template form should expose a local saved template draft");
+  assert.match(formSource, /setTemplateDraft/, "template save action should update local template state");
+  assert.match(formSource, /handleSaveTemplate/, "template form should define a save handler");
+  assert.match(formSource, /onClick=\{handleSaveTemplate\}/, "template save button should call the local save handler");
+  assert.match(formSource, /模板保存草稿/, "template form should render a visible saved draft panel");
+  assert.match(formSource, /templateSections\.length/, "saved draft should include the current section count");
+  assert.doesNotMatch(formSource, /训练模板已创建/, "new template save should not remain feedback-only");
+  assert.doesNotMatch(formSource, /训练模板已保存/, "template save should not remain feedback-only");
+});
+
 test("training template form section actions update local front-end state", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");

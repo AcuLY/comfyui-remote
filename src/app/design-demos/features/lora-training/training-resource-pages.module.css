@@ -297,7 +297,8 @@
   gap: 12px;
 }
 
-.trainingPresetDraft {
+.trainingPresetDraft,
+.trainingTemplateDraft {
   display: grid;
   min-width: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -305,7 +306,8 @@
   margin: 0;
 }
 
-.trainingPresetDraft div {
+.trainingPresetDraft div,
+.trainingTemplateDraft div {
   display: grid;
   min-width: 0;
   gap: 3px;
@@ -315,13 +317,15 @@
   padding: 10px 12px;
 }
 
-.trainingPresetDraft dt {
+.trainingPresetDraft dt,
+.trainingTemplateDraft dt {
   color: var(--demo-faint);
   font-size: 10px;
   font-weight: 640;
 }
 
-.trainingPresetDraft dd {
+.trainingPresetDraft dd,
+.trainingTemplateDraft dd {
   min-width: 0;
   margin: 0;
   overflow: hidden;
@@ -332,7 +336,8 @@
   white-space: nowrap;
 }
 
-.trainingPresetDraftWide {
+.trainingPresetDraftWide,
+.trainingTemplateDraftWide {
   grid-column: 1 / -1;
 }
 
@@ -828,6 +833,7 @@
   .usageRow,
   .sortRow,
   .trainingPresetDraft,
+  .trainingTemplateDraft,
   .trainingPresetFormGrid,
   .trainingTemplateFormGrid {
     grid-template-columns: 1fr;
