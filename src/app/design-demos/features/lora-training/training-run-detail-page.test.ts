@@ -74,6 +74,23 @@ test("training sample lightbox copies captions through a real local action", () 
   assert.doesNotMatch(detailSource, /<Button\s+icon=\{Copy\}\s+feedback=\{\{ title: "caption 已复制"/, "copy caption should not remain feedback-only");
 });
 
+test("training run detail page uses product-facing copy instead of internal implementation terms", () => {
+  for (const term of [
+    /不拆 provenance/i,
+    /worker/i,
+    /<dt>provider<\/dt>/i,
+    /日志 artifact/i,
+    /final LoRA/i,
+    /\}\s*kept/,
+    /冻结 revision/i,
+    /caption 快照/i,
+    /复制 caption/i,
+    /caption 已/i,
+  ]) {
+    assert.doesNotMatch(detailSource, term, `training detail should not expose ${term}`);
+  }
+});
+
 test("training dataset sample cards keep captions compact without shrinking thumbnails", () => {
   assert.match(detailCss, /\.trainingSampleGrid\b/, "training detail should define a sample thumbnail grid");
   assert.match(detailCss, /\.trainingSampleCard\b/, "training detail should define sample card styling");

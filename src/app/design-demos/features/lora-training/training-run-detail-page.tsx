@@ -135,7 +135,7 @@ export function LoraTrainingRunDetailPage({
         <div>
           {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : runStatusBadge(run)}
           <strong>{run.provider ?? (isGeneration ? "生成服务" : "本地训练")}</strong>
-          <span>{isRetryQueued ? "已加入重试队列，等待 worker 重新调度。" : run.schedulerMessage ?? run.waitReason ?? run.errorMessage ?? run.outputLabel ?? "任务记录已同步"}</span>
+          <span>{isRetryQueued ? "已加入重试队列，等待训练服务重新调度。" : run.schedulerMessage ?? run.waitReason ?? run.errorMessage ?? run.outputLabel ?? "任务记录已同步"}</span>
         </div>
         <div className={s.progressBlock}>
           <span>{percent}%</span>
@@ -157,9 +157,9 @@ export function LoraTrainingRunDetailPage({
               {currentRetryDraft.queuedAt}
             </span>
           </div>
-          <p>失败记录已整理成本地重试草稿，可继续核对数据集版本、provider 和失败来源后提交到训练队列。</p>
+          <p>失败记录已整理成本地重试草稿，可继续核对数据集版本、执行服务和失败来源后提交到训练队列。</p>
           <dl className={s.retryDraftMeta}>
-            <div><dt>provider</dt><dd>{currentRetryDraft.provider}</dd></div>
+            <div><dt>执行服务</dt><dd>{currentRetryDraft.provider}</dd></div>
             <div><dt>来源状态</dt><dd>{currentRetryDraft.sourceStatus === "failed" ? "失败记录" : currentRetryDraft.sourceStatus}</dd></div>
             <div><dt>数据集版本</dt><dd>{currentRetryDraft.datasetVersion ?? "生成任务无数据集版本"}</dd></div>
           </dl>
@@ -169,7 +169,7 @@ export function LoraTrainingRunDetailPage({
       <div className={s.detailGrid}>
         <Panel
           title={isGeneration ? "最终输入" : "训练配置"}
-          subtitle={isGeneration ? "与生图运行详情一致，只展示最终请求输入，不拆 provenance。" : "训练任务只展示可复现所需配置和数据集版本。"}
+          subtitle={isGeneration ? "与生图运行详情一致，只展示最终请求输入，保留来源脉络。" : "训练任务只展示可复现所需配置和数据集版本。"}
         >
           <div className={s.stack}>
             <Field readOnly multiline features={{ clipboard: true }} label={isGeneration ? "最终请求" : "训练参数快照"} value={isGeneration ? run.finalInput ?? "未记录最终输入" : trainingConfigText(run)} />
@@ -193,13 +193,13 @@ export function LoraTrainingRunDetailPage({
           </div>
         </Panel>
 
-          <Panel
-            title={isGeneration ? "输出" : "训练产物"}
-            subtitle={isGeneration ? "文本任务直接展示应用结果，图片任务展示进入结果池的样本。" : "完成后产出 safetensors；未完成状态保留进度与日志入口。"}
-            actions={canCreatePreset ? <ButtonLink href={createTrainingPresetHref(run)} icon={ImagePlus} tone="primary">创建预制</ButtonLink> : null}
-          >
-            <div className={s.stack}>
-              {run.status === "failed" ? (
+        <Panel
+          title={isGeneration ? "输出" : "训练产物"}
+          subtitle={isGeneration ? "文本任务直接展示应用结果，图片任务展示进入结果池的样本。" : "完成后产出模型文件；未完成状态保留进度与日志入口。"}
+          actions={canCreatePreset ? <ButtonLink href={createTrainingPresetHref(run)} icon={ImagePlus} tone="primary">创建预制</ButtonLink> : null}
+        >
+          <div className={s.stack}>
+            {run.status === "failed" ? (
               <div className={s.callout} data-tone="danger">
                 <AlertTriangle aria-hidden="true" />
                 <span>{run.errorMessage}</span>
@@ -208,32 +208,32 @@ export function LoraTrainingRunDetailPage({
             {run.status === "queued" ? (
               <div className={s.callout}>
                 <Play aria-hidden="true" />
-                <span>{run.waitReason ?? "等待 worker 调度"}</span>
+                <span>{run.waitReason ?? "等待训练服务调度"}</span>
               </div>
-              ) : null}
-              {run.status === "completed" ? (
-                <div className={s.callout} data-tone="success">
-                  <CheckCircle2 aria-hidden="true" />
-                  <span>{run.outputText ?? run.artifactName ?? run.outputLabel ?? "任务已完成"}</span>
-                </div>
-              ) : null}
-              {!isGeneration ? (
-                <dl className={s.statGrid}>
-                  <div><dt>数据集</dt><dd>{project?.datasetVersion ?? "未记录"}</dd></div>
-                  <div><dt>图片</dt><dd>{project?.keptCount ?? 0} kept</dd></div>
-                  <div><dt>final LoRA</dt><dd>{run.finalLoraArtifactId ? run.artifactName ?? run.finalLoraArtifactId : "尚未生成 final LoRA"}</dd></div>
-                  <div><dt>预制</dt><dd>{canCreatePreset ? "可创建" : run.presetCreatedAt ? "已创建" : "等待 final LoRA"}</dd></div>
-                </dl>
-              ) : null}
-            </div>
-          </Panel>
+            ) : null}
+            {run.status === "completed" ? (
+              <div className={s.callout} data-tone="success">
+                <CheckCircle2 aria-hidden="true" />
+                <span>{run.outputText ?? run.artifactName ?? run.outputLabel ?? "任务已完成"}</span>
+              </div>
+            ) : null}
+            {!isGeneration ? (
+              <dl className={s.statGrid}>
+                <div><dt>数据集</dt><dd>{project?.datasetVersion ?? "未记录"}</dd></div>
+                <div><dt>图片</dt><dd>{project?.keptCount ?? 0} 张已保留</dd></div>
+                <div><dt>LoRA 文件</dt><dd>{run.finalLoraArtifactId ? run.artifactName ?? run.finalLoraArtifactId : "尚未生成 LoRA 文件"}</dd></div>
+                <div><dt>预制</dt><dd>{canCreatePreset ? "可创建" : run.presetCreatedAt ? "已创建" : "等待 LoRA 文件"}</dd></div>
+              </dl>
+            ) : null}
+          </div>
+        </Panel>
       </div>
 
       {!isGeneration ? (
         <div className={s.trainingEvidenceGrid}>
           <Panel
             title="训练集样本"
-            subtitle="冻结 revision 的缩略图与 caption 快照；点击后按审核图方式放大。"
+            subtitle="冻结数据集的缩略图与说明快照；点击后按审核图方式放大。"
           >
             {datasetSamples.length > 0 ? (
               <div className={s.trainingSampleGrid}>
@@ -255,13 +255,13 @@ export function LoraTrainingRunDetailPage({
                 ))}
               </div>
             ) : (
-              <div className={s.empty}>当前训练任务没有冻结样本快照</div>
+              <div className={s.empty}>当前训练任务没有冻结样本</div>
             )}
           </Panel>
 
           <Panel
             title="训练日志"
-            subtitle={run.trainingLogArtifactName ? `日志 artifact ${run.trainingLogArtifactName}` : "训练 worker 日志预览"}
+            subtitle={run.trainingLogArtifactName ? `日志文件 ${run.trainingLogArtifactName}` : "训练服务日志预览"}
           >
             <pre className={s.trainingLog}>{logText}</pre>
           </Panel>
@@ -281,10 +281,10 @@ export function LoraTrainingRunDetailPage({
               icon={Copy}
               onClick={handleCopyActiveCaption}
               pressed={isActiveCaptionCopied}
-              ariaLabel={`复制 caption：${activeSample.label}`}
-              feedback={{ title: isActiveCaptionCopied ? "caption 已再次复制" : "caption 已复制", detail: activeSample.caption }}
+              ariaLabel={`复制说明文本：${activeSample.label}`}
+              feedback={{ title: isActiveCaptionCopied ? "说明文本已再次复制" : "说明文本已复制", detail: activeSample.caption }}
             >
-              {isActiveCaptionCopied ? "已复制 caption" : "复制 caption"}
+              {isActiveCaptionCopied ? "已复制说明文本" : "复制说明文本"}
             </Button>
           )}
         />
