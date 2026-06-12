@@ -1994,24 +1994,68 @@ export function LoraTrainingProjectScopedRunsPage({
 }) {
   const training = useTraining(data);
   const project = findProject(data, projectId);
-  const [status, setStatus] = useState<LoraTrainingTaskStatus>("completed");
-  const [hiddenProjectRunIds, setHiddenProjectRunIds] = useState<Set<string>>(new Set());
-  const [retriedProjectRunIds, setRetriedProjectRunIds] = useState<Set<string>>(new Set());
+  const [projectRunInteractionState, setProjectRunInteractionState] = useState(() => ({
+    hiddenProjectRunIds: new Set<string>(),
+    kind,
+    projectId: project?.id ?? null,
+    retriedProjectRunIds: new Set<string>(),
+    status: "completed" as LoraTrainingTaskStatus,
+  }));
   if (!project) return <EmptyPage title="没有项目任务数据" />;
+  const projectRunInteraction = projectRunInteractionState.projectId === project.id && projectRunInteractionState.kind === kind ? projectRunInteractionState : {
+    hiddenProjectRunIds: new Set<string>(),
+    kind,
+    projectId: project.id,
+    retriedProjectRunIds: new Set<string>(),
+    status: "completed" as LoraTrainingTaskStatus,
+  };
+  const status = projectRunInteraction.status;
+  const hiddenProjectRunIds = projectRunInteraction.hiddenProjectRunIds;
+  const retriedProjectRunIds = projectRunInteraction.retriedProjectRunIds;
   const projectRuns = training.runs.filter((run) => run.projectId === project.id && run.kind === kind && !hiddenProjectRunIds.has(run.id));
   const visibleRuns = projectRuns.filter((run) => run.status === status);
 
+  function updateProjectRunInteraction(updater: (current: typeof projectRunInteraction) => typeof projectRunInteraction) {
+    setProjectRunInteractionState((current) => {
+      const active = current.projectId === project.id && current.kind === kind ? current : {
+        hiddenProjectRunIds: new Set<string>(),
+        kind,
+        projectId: project.id,
+        retriedProjectRunIds: new Set<string>(),
+        status: "completed" as LoraTrainingTaskStatus,
+      };
+      return {
+        ...updater(active),
+        kind,
+        projectId: project.id,
+      };
+    });
+  }
+
+  function handleProjectRunStatusChange(nextStatus: LoraTrainingTaskStatus) {
+    updateProjectRunInteraction((current) => ({
+      ...current,
+      status: nextStatus,
+    }));
+  }
+
   function handleHideProjectRun(runId: string) {
-    setHiddenProjectRunIds((current) => new Set([...current, runId]));
-    setRetriedProjectRunIds((current) => {
-      const next = new Set(current);
-      next.delete(runId);
-      return next;
+    updateProjectRunInteraction((current) => {
+      const retriedProjectRunIds = new Set(current.retriedProjectRunIds);
+      retriedProjectRunIds.delete(runId);
+      return {
+        ...current,
+        hiddenProjectRunIds: new Set([...current.hiddenProjectRunIds, runId]),
+        retriedProjectRunIds,
+      };
     });
   }
 
   function handleRetryProjectRun(runId: string) {
-    setRetriedProjectRunIds((current) => new Set([...current, runId]));
+    updateProjectRunInteraction((current) => ({
+      ...current,
+      retriedProjectRunIds: new Set([...current.retriedProjectRunIds, runId]),
+    }));
   }
 
   return (
@@ -2028,7 +2072,7 @@ export function LoraTrainingProjectScopedRunsPage({
         role="tablist"
         items={STATUS_ITEMS.map((item) => ({ ...item, count: projectRuns.filter((run) => run.status === item.value).length }))}
         value={status}
-        onChange={setStatus}
+        onChange={handleProjectRunStatusChange}
       />
       <Panel title={kind === "generation" ? "项目生成任务" : "项目训练任务"}>
         <RunRows

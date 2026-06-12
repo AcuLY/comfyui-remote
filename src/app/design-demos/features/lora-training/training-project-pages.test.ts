@@ -437,6 +437,23 @@ test("project-scoped run rows manage local delete and failed retry state", () =>
   assert.match(runRowsSource, /已排队重试/, "retried failed rows should show queued retry state");
 });
 
+test("project-scoped run page interactions stay scoped to project and task kind", () => {
+  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
+  assert.notEqual(scopedPageStart, -1);
+
+  const scopedPageSource = pagesSource.slice(scopedPageStart);
+
+  assert.match(scopedPageSource, /projectRunInteractionState/, "project task page interaction state should be stored with route context");
+  assert.match(scopedPageSource, /projectId:\s*project\?\.id \?\? null/, "project task interactions should remember the source project id");
+  assert.match(scopedPageSource, /\bkind,\s*\n\s*projectId:/, "project task interactions should remember the source task kind");
+  assert.match(scopedPageSource, /projectRunInteractionState\.projectId === project\.id && projectRunInteractionState\.kind === kind \? projectRunInteractionState :/, "project task interactions should fall back after project or kind changes");
+  assert.match(scopedPageSource, /hiddenProjectRunIds:\s*new Set<string>\(\)/, "a new project task context should start with no hidden runs");
+  assert.match(scopedPageSource, /retriedProjectRunIds:\s*new Set<string>\(\)/, "a new project task context should start with no retried runs");
+  assert.doesNotMatch(scopedPageSource, /const \[status, setStatus\] = useState<LoraTrainingTaskStatus>\("completed"\)/, "project task status should not be stored without route context");
+  assert.doesNotMatch(scopedPageSource, /const \[hiddenProjectRunIds, setHiddenProjectRunIds\] = useState<Set<string>>\(new Set\(\)\)/, "hidden project run ids should not be stored without route context");
+  assert.doesNotMatch(scopedPageSource, /const \[retriedProjectRunIds, setRetriedProjectRunIds\] = useState<Set<string>>\(new Set\(\)\)/, "retried project run ids should not be stored without route context");
+});
+
 test("project-scoped failed run rows use structured failure panels", () => {
   const runRowsStart = pagesSource.indexOf("function RunRows");
   const referenceSourceStart = pagesSource.indexOf("type ReferenceCandidate");
