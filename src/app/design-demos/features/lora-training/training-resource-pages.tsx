@@ -370,13 +370,19 @@ function templateStatus(template: LoraTrainingTemplate) {
   return template.status === "active" ? <StatusBadge status="ready" label="可用" /> : <StatusBadge status="archived" label="归档" />;
 }
 
+type LoraTrainingTemplateSection = LoraTrainingTemplate["sections"][number];
+
 function TemplateEditorSectionRow({
   index,
+  onCopy,
+  onDelete,
   section,
   templateId,
 }: {
   index: number;
-  section: LoraTrainingTemplate["sections"][number];
+  onCopy?: (section: LoraTrainingTemplateSection) => void;
+  onDelete?: (sectionId: string) => void;
+  section: LoraTrainingTemplateSection;
   templateId: string;
 }) {
   const href = `/training/templates/${templateId}/sections/${index}`;
@@ -398,8 +404,8 @@ function TemplateEditorSectionRow({
       </Link>
       <div className={s.trainingTemplateSectionActions}>
         <ButtonLink href={href} icon={Edit3}>编辑</ButtonLink>
-        <Button tone="subtle" icon={CopyPlus} feedback={{ title: "训练模板小节已复制", detail: section.title }}>复制</Button>
-        <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "删除训练模板小节需要确认", detail: section.title }}>删除</Button>
+        <Button tone="subtle" icon={CopyPlus} onClick={() => onCopy?.(section)} feedback={{ title: "训练模板小节已复制", detail: section.title }}>复制</Button>
+        <Button tone="danger" icon={Trash2} onClick={() => onDelete?.(section.id)} feedback={{ tone: "warning", title: "删除训练模板小节需要确认", detail: section.title }}>删除</Button>
       </div>
     </article>
   );
@@ -455,7 +461,47 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   const seedTemplate = template ?? training.templates[0];
   const title = mode === "new" ? "新建训练模板" : template?.title ?? "训练模板";
   const templateEditorId = seedTemplate?.id ?? "new-template";
-  const templateSections = seedTemplate?.sections ?? [];
+  const [localTemplateSections, setLocalTemplateSections] = useState<LoraTrainingTemplateSection[]>(() => seedTemplate?.sections ?? []);
+  const templateSections = localTemplateSections;
+
+  function createDraftTemplateSection(current: LoraTrainingTemplateSection[], titleSuffix: string): LoraTrainingTemplateSection {
+    const source = current[0];
+    const draftIndex = current.length + 1;
+    return source ? {
+      ...source,
+      id: `new-template-section-${Date.now()}`,
+      title: `新模板小节 ${draftIndex}${titleSuffix}`,
+      enabled: true,
+      scenePreview: "补充这个模板小节的训练场景摘要。",
+    } : {
+      id: `new-template-section-${Date.now()}`,
+      title: `新模板小节 ${draftIndex}${titleSuffix}`,
+      enabled: true,
+      blockCount: 1,
+      blocks: [
+        { id: "draft-template-block", source: "本地", title: "本地场景描述", text: "补充这个模板小节的训练场景描述。" },
+      ],
+      resolvedScene: "补充这个模板小节的训练场景描述。",
+      scenePreview: "补充这个模板小节的训练场景摘要。",
+    };
+  }
+
+  function handleAddTemplateSection() {
+    setLocalTemplateSections((current) => [...current, createDraftTemplateSection(current, "")]);
+  }
+
+  function handleCopyTemplateSection(section: LoraTrainingTemplateSection) {
+    const copy: LoraTrainingTemplateSection = {
+      ...section,
+      id: `${section.id}-copy-${Date.now()}`,
+      title: `${section.title} (副本)`,
+    };
+    setLocalTemplateSections((current) => [...current, copy]);
+  }
+
+  function handleDeleteTemplateSection(sectionId: string) {
+    setLocalTemplateSections((current) => current.filter((section) => section.id !== sectionId));
+  }
 
   return (
     <div className={s.page}>
@@ -481,7 +527,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
           <Field multiline features={{ resize: true, clipboard: true }} label="Caption 生成指引" value="先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。" />
         </EditorBlock>
         <EditorBlock
-          actions={<Button icon={Plus} feedback="小节草稿已添加">添加小节</Button>}
+          actions={<Button icon={Plus} onClick={handleAddTemplateSection} feedback="小节草稿已添加">添加小节</Button>}
           className={s.trainingTemplateEditorBlock}
           contentClassName={s.trainingTemplateSectionBlockContent}
           description="排序、编辑、复制、删除；每个小节包含预制块与本地块。"
@@ -490,7 +536,14 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
         >
           <div className={s.trainingTemplateSectionList}>
             {templateSections.map((section, index) => (
-              <TemplateEditorSectionRow index={index} key={section.id} section={section} templateId={templateEditorId} />
+              <TemplateEditorSectionRow
+                index={index}
+                key={section.id}
+                onCopy={handleCopyTemplateSection}
+                onDelete={handleDeleteTemplateSection}
+                section={section}
+                templateId={templateEditorId}
+              />
             ))}
           </div>
           <OperationStateStrip

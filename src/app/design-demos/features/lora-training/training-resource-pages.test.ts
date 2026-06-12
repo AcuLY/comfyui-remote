@@ -51,6 +51,27 @@ test("training template form uses the shared template editor workspace model", (
   assert.match(cssSource, /\.trainingTemplateSectionList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "template sections should expand to two columns");
 });
 
+test("training template form section actions update local front-end state", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(rowStart, -1);
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+  const rowSource = pageSource.slice(rowStart, formStart);
+
+  assert.match(formSource, /localTemplateSections/, "template form should keep local editable sections");
+  assert.match(formSource, /setLocalTemplateSections/, "template section actions should update local state");
+  assert.match(formSource, /handleAddTemplateSection/, "template form should define local add behavior");
+  assert.match(formSource, /handleCopyTemplateSection/, "template form should define local copy behavior");
+  assert.match(formSource, /handleDeleteTemplateSection/, "template form should define local delete behavior");
+  assert.match(formSource, /onClick=\{handleAddTemplateSection\}/, "add section action should be wired to local state");
+  assert.match(rowSource, /onCopy\?\.\(section\)/, "template section copy button should call the copy handler");
+  assert.match(rowSource, /onDelete\?\.\(section\.id\)/, "template section delete button should call the delete handler");
+});
+
 test("training preset detail and sort rules reuse editor/sort shells without regular preset dimensions", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
   const sortPanelStart = pageSource.indexOf("function TrainingPresetSortPanel");

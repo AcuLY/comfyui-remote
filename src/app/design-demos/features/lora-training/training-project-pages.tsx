@@ -677,9 +677,41 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
     setLocalSections((current) => current.filter((section) => section.id !== sectionId));
   }
 
+  function handleAddSection() {
+    setLocalSections((current) => {
+      const source = current[0];
+      const draftIndex = current.length + 1;
+      const draft: LoraTrainingSection = source ? {
+        ...source,
+        id: `new-section-${Date.now()}`,
+        title: `新小节 ${draftIndex}`,
+        updatedAt: "刚刚",
+        images: [],
+        resultStatus: "pending",
+      } : {
+        id: `new-section-${Date.now()}`,
+        title: `新小节 ${draftIndex}`,
+        enabled: true,
+        updatedAt: "刚刚",
+        blocks: [
+          { id: "draft-local-block", source: "本地", title: "本地场景描述", text: "补充这个小节的训练场景描述。" },
+        ],
+        resolvedScene: "补充这个小节的训练场景描述。",
+        imagePrompt: "生成干净、可训练的角色样本。",
+        images: [],
+        resultStatus: "pending",
+      };
+      return [...current, draft];
+    });
+  }
+
   return (
     <div className={s.page}>
-      <ProjectHeader active="sections" project={project} actions={<Button icon={Plus} tone="primary" feedback={{ title: "新建小节入口已预览" }}>新建小节</Button>} />
+      <ProjectHeader
+        active="sections"
+        project={project}
+        actions={<Button icon={Plus} tone="primary" onClick={handleAddSection} feedback={{ title: "小节草稿已添加", detail: `新小节 ${sections.length + 1}` }}>新建小节</Button>}
+      />
       <TrainingSectionWorkspace activeSectionId={sections[0]?.id} project={project} sections={sections}>
         <div className={s.sectionGrid}>
           {sections.map((section, index) => (

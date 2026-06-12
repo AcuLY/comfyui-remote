@@ -47,6 +47,17 @@ test("training section list copy and delete actions update local front-end state
   assert.match(sectionCard, /onDelete\?\.\(section\.id\)/, "delete button should call the section delete handler");
 });
 
+test("training section list can add a local draft section without backend calls", () => {
+  const sectionsPage = sourceBetween(
+    "export function LoraTrainingProjectSectionsPage",
+    "export function LoraTrainingProjectSectionDetailPage",
+  );
+
+  assert.match(sectionsPage, /handleAddSection/, "section list should define a local add action");
+  assert.match(sectionsPage, /新小节/, "local add action should create a readable draft section title");
+  assert.match(sectionsPage, /onClick=\{handleAddSection\}/, "new section button should call the local add action");
+});
+
 test("training section detail exposes full scene-block management controls", () => {
   const detailPage = sourceBetween(
     "export function LoraTrainingProjectSectionDetailPage",
