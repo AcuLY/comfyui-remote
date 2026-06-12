@@ -101,9 +101,8 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
   return (
     <div className={s.page}>
       <PageHeader
-        eyebrow="LoRA 训练"
-        title="训练项目"
-        subtitle={`${currentCount} 个当前项目 · ${archivedCount} 个已归档 · 最近结果按项目快速浏览`}
+        title="项目"
+        actions={<ButtonLink href="/training/projects/new" icon={Plus} tone="primary">新建</ButtonLink>}
       />
 
       <SegmentedControl
@@ -143,9 +142,6 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
             <Button icon={CheckSquare} onClick={toggleVisibleProjects} disabled={visibleProjects.length === 0}>
               {allVisibleSelected ? "取消全选" : "全选"}
             </Button>
-            <ButtonLink href="/training/projects/new" icon={Plus} tone="primary">
-              新建
-            </ButtonLink>
           </div>
         </div>
 

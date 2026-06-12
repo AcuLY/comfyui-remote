@@ -9,6 +9,25 @@ const itemSource = readFileSync(resolve(testDir, "training-project-list-item.tsx
 const projectsPageSource = readFileSync(resolve(testDir, "training-projects-page.tsx"), "utf8");
 const projectsCss = readFileSync(resolve(testDir, "training-projects-page.module.css"), "utf8");
 
+test("training project list keeps the project-demo header hierarchy", () => {
+  const headerStart = projectsPageSource.indexOf("<PageHeader");
+  const headerEnd = projectsPageSource.indexOf("/>", headerStart);
+  assert.notEqual(headerStart, -1, "Project list should render a PageHeader");
+  assert.notEqual(headerEnd, -1, "Project list PageHeader should stay compact");
+
+  const headerRegion = projectsPageSource.slice(headerStart, headerEnd);
+  const toolbarStart = projectsPageSource.indexOf("className={s.projectToolbar}");
+  const toolbarEnd = projectsPageSource.indexOf("</div>", projectsPageSource.indexOf("className={s.projectToolbarControls}"));
+  const toolbarRegion = projectsPageSource.slice(toolbarStart, toolbarEnd);
+
+  assert.match(headerRegion, /title="项目"/, "Project list title should match the shared navigation label");
+  assert.match(headerRegion, /actions=/, "Project list should keep its primary creation action in the page header");
+  assert.match(headerRegion, /href="\/training\/projects\/new"/, "Project header action should open the training project form");
+  assert.doesNotMatch(headerRegion, /eyebrow=/, "Project list should not add a redundant LoRA Training eyebrow");
+  assert.doesNotMatch(headerRegion, /subtitle=/, "Project list should not duplicate counts above the scope tabs");
+  assert.doesNotMatch(toolbarRegion, /\/training\/projects\/new/, "Project workspace toolbar should not duplicate the primary create action");
+});
+
 test("training project card keeps the design-demo management controls first", () => {
   const checkboxIndex = itemSource.indexOf("<Checkbox");
   const dragHandleIndex = itemSource.indexOf("projectDragHandle");
