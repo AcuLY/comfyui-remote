@@ -131,6 +131,22 @@ test("generation compose uses an explicit reference source tree with preview the
   assert.match(sourceBetween("function ReferencePicker", "export function LoraTrainingProjectFormPage"), /添加引用/, "reference candidates should require an explicit add action");
 });
 
+test("generation compose queues a local generation task draft instead of only showing a toast", () => {
+  const composePage = sourceBetween(
+    "export function LoraTrainingGenerationComposePage",
+    "export function LoraTrainingProjectResultsPage",
+  );
+
+  assert.match(composePage, /generationTaskDraft/, "compose page should expose a local generated task draft");
+  assert.match(composePage, /setGenerationTaskDraft/, "run action should update local generation task state");
+  assert.match(composePage, /handleQueueGenerationTask/, "compose page should define a queue handler");
+  assert.match(composePage, /onClick=\{handleQueueGenerationTask\}/, "run button should call the local queue handler");
+  assert.match(composePage, /生成任务草稿/, "compose page should render a visible task draft panel");
+  assert.match(composePage, /activePreviewReference/, "task draft should include the currently previewed reference context");
+  assert.match(composePage, /section\.resolvedScene/, "task draft should preserve the resolved section scene");
+  assert.doesNotMatch(composePage, /生成任务已加入队列/, "run action should not remain a toast-only placeholder");
+});
+
 test("reference picker records explicitly added references in local front-end state", () => {
   const pickerSource = sourceBetween("function ReferencePicker", "export function LoraTrainingProjectFormPage");
 

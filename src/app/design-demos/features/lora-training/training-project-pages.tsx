@@ -1097,9 +1097,27 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     },
   ] : [];
   const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
+  const [generationTaskDraft, setGenerationTaskDraft] = useState<{
+    finalInput: string;
+    referenceTitle: string;
+    sectionTitle: string;
+    taskType: string;
+  } | null>(null);
   const activePreviewReference = previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
 
   if (!project || !section) return <EmptyPage title="没有生成任务上下文" />;
+  const taskType = "训练集图片生成";
+  const sectionTitle = section.title;
+  const finalInputText = `${project.usagePrompt}\n${section.resolvedScene}\n保持角色身份稳定，生成 1 张干净训练样本。`;
+
+  function handleQueueGenerationTask() {
+    setGenerationTaskDraft({
+      finalInput: finalInputText,
+      referenceTitle: activePreviewReference?.title ?? "未选择引用",
+      sectionTitle,
+      taskType,
+    });
+  }
 
   return (
     <div className={s.page}>
@@ -1108,7 +1126,16 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
         project={project}
         title={`${section.title} / 新建生成任务`}
         subtitle="显式选择引用，补充提示词和图片附件，预览最终输入后再运行。"
-        actions={<Button tone="primary" icon={Play} feedback={{ title: "生成任务已加入队列", detail: section.title }}>运行生成</Button>}
+        actions={(
+          <Button
+            tone="primary"
+            icon={Play}
+            onClick={handleQueueGenerationTask}
+            feedback={{ title: generationTaskDraft ? "生成任务草稿已更新" : "生成任务草稿已排队", detail: section.title }}
+          >
+            {generationTaskDraft ? "更新任务草稿" : "运行生成"}
+          </Button>
+        )}
       />
       <div className={s.twoCol}>
         <Panel title="引用源">
@@ -1120,12 +1147,22 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
         </Panel>
         <Panel title="任务内容">
           <div className={s.formStack}>
-            <FloatingSelect label="任务类型" value="训练集图片生成" options={["训练集图片生成", "角色描述生成", "caption 补全"]} />
+            <FloatingSelect label="任务类型" value={taskType} options={["训练集图片生成", "角色描述生成", "caption 补全"]} />
             <Field multiline features={{ resize: true, clipboard: true }} label="补充提示词" value="保持角色正面可训练，避免复杂遮挡和多人构图。" />
-            <Field readOnly multiline features={{ clipboard: true }} label="最终输入预览" value={`${project.usagePrompt}\n${section.resolvedScene}\n保持角色身份稳定，生成 1 张干净训练样本。`} />
+            <Field readOnly multiline features={{ clipboard: true }} label="最终输入预览" value={finalInputText} />
           </div>
         </Panel>
       </div>
+      {generationTaskDraft ? (
+        <Panel title="生成任务草稿" subtitle="页面内已记录本次生成请求，可继续调整引用和最终输入后更新。">
+          <dl className={s.generationTaskDraft}>
+            <div><dt>任务类型</dt><dd>{generationTaskDraft.taskType}</dd></div>
+            <div><dt>小节</dt><dd>{generationTaskDraft.sectionTitle}</dd></div>
+            <div><dt>当前引用</dt><dd>{generationTaskDraft.referenceTitle}</dd></div>
+            <div><dt>最终输入</dt><dd>{generationTaskDraft.finalInput.split("\n")[0]}</dd></div>
+          </dl>
+        </Panel>
+      ) : null}
     </div>
   );
 }

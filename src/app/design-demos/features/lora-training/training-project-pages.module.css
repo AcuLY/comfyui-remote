@@ -115,6 +115,7 @@
 }
 
 .createdProjectDraft,
+.generationTaskDraft,
 .trainingDraft {
   display: grid;
   min-width: 0;
@@ -124,6 +125,7 @@
 }
 
 .createdProjectDraft div,
+.generationTaskDraft div,
 .trainingDraft div {
   display: grid;
   min-width: 0;
@@ -135,6 +137,7 @@
 }
 
 .createdProjectDraft dt,
+.generationTaskDraft dt,
 .trainingDraft dt {
   color: var(--demo-faint);
   font-size: 10px;
@@ -142,6 +145,7 @@
 }
 
 .createdProjectDraft dd,
+.generationTaskDraft dd,
 .trainingDraft dd {
   min-width: 0;
   margin: 0;
@@ -1118,6 +1122,7 @@
 
   .readinessSummary,
   .createdProjectDraft,
+  .generationTaskDraft,
   .trainingDraft,
   .referenceImageGrid,
   .trainingResultGrid {
