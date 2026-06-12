@@ -8,6 +8,7 @@ import { cx } from "../../routing";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { Button, ButtonLink } from "../../shared/primitives/button";
 import { SegmentedControl } from "../../shared/primitives/segmented-control";
+import { SortableList } from "../../shared/primitives/sortable";
 import { SelectionBatchBar } from "../../shared/patterns";
 import { buildLoraTrainingDemoData } from "./fixtures";
 import { TrainingProjectListItem } from "./training-project-list-item";
@@ -21,14 +22,24 @@ function scopeForProject(project: LoraTrainingProject): ProjectScope {
   return project.status === "archived" ? "archived" : "current";
 }
 
+function orderTrainingProjectsByIds(projects: LoraTrainingProject[], orderedIds: string[]) {
+  const projectMap = Object.fromEntries(projects.map((project) => [project.id, project]));
+  const orderedProjects = orderedIds.map((id) => projectMap[id]).filter((project): project is LoraTrainingProject => Boolean(project));
+  const missingProjects = projects.filter((project) => !orderedIds.includes(project.id));
+  return [...orderedProjects, ...missingProjects];
+}
+
 export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
   const training = buildLoraTrainingDemoData(data);
   const [scope, setScope] = useState<ProjectScope>("current");
   const [viewMode, setViewMode] = useState<ProjectViewMode>("card");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [localProjects, setLocalProjects] = useState(training.projects);
+  const [orderedProjectIds, setOrderedProjectIds] = useState(() => training.projects.map((project) => project.id));
   const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(new Set());
-  const visibleProjects = localProjects.filter((project) => scopeForProject(project) === scope && !hiddenProjectIds.has(project.id));
+  const orderedProjects = orderTrainingProjectsByIds(localProjects, orderedProjectIds);
+  const visibleProjects = orderedProjects.filter((project) => scopeForProject(project) === scope && !hiddenProjectIds.has(project.id));
+  const visibleProjectIds = visibleProjects.map((project) => project.id);
   const currentCount = localProjects.filter((project) => scopeForProject(project) === "current" && !hiddenProjectIds.has(project.id)).length;
   const archivedCount = localProjects.filter((project) => scopeForProject(project) === "archived" && !hiddenProjectIds.has(project.id)).length;
   const selectedVisibleCount = visibleProjects.filter((project) => selectedIds.has(project.id)).length;
@@ -52,6 +63,14 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
       }
       return new Set([...current, ...visibleProjects.map((project) => project.id)]);
     });
+  }
+
+  function handleReorderProjects(nextVisibleIds: string[]) {
+    const visibleProjectIdSet = new Set(visibleProjectIds);
+    const reorderedVisibleIds = [...nextVisibleIds];
+    setOrderedProjectIds((current) =>
+      current.map((projectId) => visibleProjectIdSet.has(projectId) ? reorderedVisibleIds.shift() ?? projectId : projectId),
+    );
   }
 
   function removeProject(projectId: string) {
@@ -156,17 +175,19 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
         <div className={cx(s.projectSurface, viewMode === "compact" && s.projectSurfaceCompact)}>
           {visibleProjects.length ? (
             <div className={s.projectGrid}>
-              {visibleProjects.map((project) => (
-                <div data-training-project-id={project.id} key={project.id}>
-                  <TrainingProjectListItem
-                    compact={viewMode === "compact"}
-                    onDelete={() => removeProject(project.id)}
-                    onToggleSelected={() => toggleProjectSelection(project.id)}
-                    project={project}
-                    selected={selectedIds.has(project.id)}
-                  />
-                </div>
-              ))}
+              <SortableList items={visibleProjectIds} onReorder={handleReorderProjects}>
+                {visibleProjects.map((project) => (
+                  <div data-training-project-id={project.id} key={project.id}>
+                    <TrainingProjectListItem
+                      compact={viewMode === "compact"}
+                      onDelete={() => removeProject(project.id)}
+                      onToggleSelected={() => toggleProjectSelection(project.id)}
+                      project={project}
+                      selected={selectedIds.has(project.id)}
+                    />
+                  </div>
+                ))}
+              </SortableList>
             </div>
           ) : (
             <div className={s.emptyState}>

@@ -78,7 +78,7 @@ test("training project list archives and restores selected projects locally", ()
   assert.match(projectsPageSource, /setLocalProjects/, "Archive and restore actions should update local project state");
   assert.match(projectsPageSource, /handleToggleSelectedProjectArchive/, "Project list should define a selected archive/restore handler");
   assert.match(projectsPageSource, /status:\s*scope === "current" \? "archived" : "ready"/, "Handler should move selected projects between current and archived scopes");
-  assert.match(projectsPageSource, /visibleProjects = localProjects/, "Visible project list should use local project state");
+  assert.match(projectsPageSource, /orderedProjects = orderTrainingProjectsByIds\(localProjects, orderedProjectIds\)/, "Visible project list should use sorted local project state");
   assert.match(projectsPageSource, /currentCount = localProjects/, "Current tab count should use local project state");
   assert.match(projectsPageSource, /archivedCount = localProjects/, "Archived tab count should use local project state");
   assert.match(projectsPageSource, /onClick=\{handleToggleSelectedProjectArchive\}/, "Batch archive button should call the local state handler");
@@ -93,4 +93,16 @@ test("training project list deletes selected projects from local front-end state
   assert.match(projectsPageSource, /onClick=\{handleRemoveSelectedProjects\}/, "Batch delete button should call the local delete handler");
   assert.match(projectsPageSource, /训练项目已从列表移除/, "Batch delete feedback should describe the local state change");
   assert.doesNotMatch(projectsPageSource, /删除动作已预览/, "Project delete actions should not remain preview-only placeholders");
+});
+
+test("training project drag handles are wired to a local sortable project order", () => {
+  assert.match(projectsPageSource, /orderedProjectIds/, "Project list should keep an explicit local project order");
+  assert.match(projectsPageSource, /setOrderedProjectIds/, "Project reorder should update local order state");
+  assert.match(projectsPageSource, /handleReorderProjects/, "Project list should define a reorder handler");
+  assert.match(projectsPageSource, /visibleProjectIds/, "Project list should derive sortable ids from the visible scope");
+  assert.match(projectsPageSource, /<SortableList items=\{visibleProjectIds\} onReorder=\{handleReorderProjects\}>/, "Visible project cards should be wrapped in the shared sortable list");
+  assert.match(itemSource, /useDemoSortable\(project\.id\)/, "Project item should attach sortable behavior to each card");
+  assert.match(itemSource, /handleProps/, "Project drag handle should receive sortable handle props");
+  assert.match(itemSource, /ref=\{ref\}/, "Project item should apply sortable refs");
+  assert.match(itemSource, /style=\{style\}/, "Project item should apply sortable transform styles");
 });

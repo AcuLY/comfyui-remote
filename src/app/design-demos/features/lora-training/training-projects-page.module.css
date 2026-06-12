@@ -157,7 +157,7 @@
   grid-row: 1;
 }
 
-.projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
+.projectDragHandle {
   display: inline-flex;
   width: var(--training-project-control-size);
   min-width: var(--training-project-control-size);
@@ -171,19 +171,25 @@
   background: transparent;
   color: var(--demo-faint);
   cursor: grab;
+  font: inherit;
   padding: 0;
 }
 
-.projectCardCompact .projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
+.projectCardCompact .projectDragHandle {
   grid-row: auto;
 }
 
-.projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:hover,
-.projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:focus-visible {
+.projectDragHandle:hover,
+.projectDragHandle:focus-visible {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-field-bg);
   color: var(--demo-green);
   outline: none;
+}
+
+.projectDragHandle svg {
+  width: 14px;
+  height: 14px;
 }
 
 .projectContent {

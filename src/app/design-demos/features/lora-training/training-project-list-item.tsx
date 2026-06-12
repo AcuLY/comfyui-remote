@@ -9,6 +9,7 @@ import { ImageListSmall } from "../../shared/media/image-list-small";
 import { Button } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
 import { StatusBadge } from "../../shared/primitives/status-badge";
+import { useDemoSortable } from "../../shared/primitives/sortable";
 import { UnitRowShell } from "../../shared/patterns";
 import type { LoraTrainingProject } from "./types";
 import s from "./training-projects-page.module.css";
@@ -69,54 +70,64 @@ export function TrainingProjectListItem({
 }) {
   const projectHref = demoHref(`/training/projects/${project.id}`);
   const sectionCountLabel = `${project.sectionCount} 小节`;
+  const { ref, style, handleProps } = useDemoSortable(project.id);
 
   return (
-    <TrainingProjectCardShell
-      compact={compact}
-      selected={selected}
-      leading={(
-        <>
-          <Checkbox
-            className={s.projectSelectCheckbox}
-            checked={selected}
-            label={selected ? `取消选择训练项目：${project.title}` : `选择训练项目：${project.title}`}
-            onCheckedChange={() => onToggleSelected()}
-          />
-          <Button className={s.projectDragHandle} tone="subtle" icon={GripVertical} iconOnly ariaLabel={`拖拽排序训练项目：${project.title}`} />
-        </>
-      )}
-      title={(
-        <div className={s.projectTitleRow}>
-          <Link className={s.projectTitleLink} href={projectHref}>
-            <strong>{project.title}</strong>
-            <span>{sectionCountLabel}</span>
-          </Link>
-          <div className={s.projectActions}>
-            <Button
-              tone="danger"
-              icon={Trash2}
-              iconOnly
-              ariaLabel={`删除训练项目：${project.title}`}
-              size="sm"
-              onClick={onDelete}
-              feedback={{ tone: "warning", title: "删除训练项目需要确认", detail: project.title }}
+    <div ref={ref} style={style}>
+      <TrainingProjectCardShell
+        compact={compact}
+        selected={selected}
+        leading={(
+          <>
+            <Checkbox
+              className={s.projectSelectCheckbox}
+              checked={selected}
+              label={selected ? `取消选择训练项目：${project.title}` : `选择训练项目：${project.title}`}
+              onCheckedChange={() => onToggleSelected()}
             />
+            <button
+              type="button"
+              className={s.projectDragHandle}
+              aria-label={`拖拽排序训练项目：${project.title}`}
+              {...handleProps}
+            >
+              <GripVertical aria-hidden="true" />
+            </button>
+          </>
+        )}
+        title={(
+          <div className={s.projectTitleRow}>
+            <Link className={s.projectTitleLink} href={projectHref}>
+              <strong>{project.title}</strong>
+              <span>{sectionCountLabel}</span>
+            </Link>
+            <div className={s.projectActions}>
+              <Button
+                tone="danger"
+                icon={Trash2}
+                iconOnly
+                ariaLabel={`删除训练项目：${project.title}`}
+                size="sm"
+                onClick={onDelete}
+                feedback={{ tone: "warning", title: "删除训练项目需要确认", detail: project.title }}
+              />
+            </div>
           </div>
-        </div>
-      )}
-      body={(
-        <>
-          <Link aria-label={`打开训练项目最近结果：${project.title}`} className={s.projectRecentResults} href={projectHref}>
-            <ImageListSmall className={s.recentResultImages} images={project.images} limit={project.images.length} />
-          </Link>
-          <div className={s.projectMeta}>
-            <span className={s.projectMetaText}>更新：{project.updatedAt}</span>
-            <span className={s.projectStatusGroup}>
-              <StatusBadge status={projectStatusTone(project.status)} label={projectStatusLabel(project.status)} />
-            </span>
-          </div>
-        </>
-      )}
-    />
+        )}
+        body={(
+          <>
+            <Link aria-label={`打开训练项目最近结果：${project.title}`} className={s.projectRecentResults} href={projectHref}>
+              <ImageListSmall className={s.recentResultImages} images={project.images} limit={project.images.length} />
+            </Link>
+            <div className={s.projectMeta}>
+              <span className={s.projectMetaText}>更新：{project.updatedAt}</span>
+              <span className={s.projectStatusGroup}>
+                <StatusBadge status={projectStatusTone(project.status)} label={projectStatusLabel(project.status)} />
+              </span>
+            </div>
+          </>
+        )}
+      />
+    </div>
   );
 }
