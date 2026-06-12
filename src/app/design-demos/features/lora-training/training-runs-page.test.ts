@@ -66,6 +66,23 @@ test("failed training run rows use a structured failure block instead of single-
   assert.match(cssSource, /\.runFailureToolbar\b/, "failed run rows should keep copy and retry actions in a compact toolbar");
 });
 
+test("failed training run toolbar keeps text buttons wider than row icon actions", () => {
+  const rowActionButtonIndex = cssSource.indexOf(".rowActions :where([data-demo-ui-button=\"true\"])");
+  const failureToolbarButtonIndex = cssSource.indexOf(".runFailureToolbar :where([data-demo-ui-button=\"true\"])");
+
+  assert.notEqual(rowActionButtonIndex, -1, "row action icon button styles should exist");
+  assert.notEqual(failureToolbarButtonIndex, -1, "failure toolbar button styles should exist");
+  assert.ok(
+    failureToolbarButtonIndex > rowActionButtonIndex,
+    "failure toolbar button styles must appear after row action icon styles so copy/retry stay text buttons",
+  );
+  assert.match(
+    cssSource.slice(failureToolbarButtonIndex, failureToolbarButtonIndex + 220),
+    /width:\s*auto;/,
+    "failure toolbar buttons should not inherit icon-only square width",
+  );
+});
+
 test("training run delete actions remove runs locally instead of previewing a placeholder", () => {
   assert.match(pageSource, /hiddenRunIds/, "runs page should track locally removed runs");
   assert.match(pageSource, /hideRuns/, "runs page should define a shared local delete handler");
