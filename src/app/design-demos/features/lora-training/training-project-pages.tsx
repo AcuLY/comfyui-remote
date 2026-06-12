@@ -655,7 +655,34 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
 
 export function LoraTrainingProjectProfilePage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const project = findProject(data, projectId);
+  const [referenceImageState, setLocalReferenceImages] = useState(() => ({
+    images: project?.referenceImages ?? [],
+    projectId: project?.id ?? null,
+  }));
   if (!project) return <EmptyPage title="没有角色资料数据" />;
+  const localReferenceImages = referenceImageState.projectId === project.id ? referenceImageState.images : project.referenceImages;
+
+  function handleUploadReferenceImage() {
+    setLocalReferenceImages((current) => {
+      const currentImages = current.projectId === project.id ? current.images : project.referenceImages;
+      const draftIndex = currentImages.length + 1;
+      const image = project.images[currentImages.length % project.images.length] ?? currentImages[0]?.image;
+      if (!image) return { images: currentImages, projectId: project.id };
+      return {
+        images: [
+          ...currentImages,
+          {
+            id: `${project.id}-uploaded-reference-${draftIndex}`,
+            image,
+            kind: "auxiliary",
+            label: `上传参考图 ${draftIndex}`,
+            note: "本地上传草稿，后续接入文件选择和后端存储。",
+          },
+        ],
+        projectId: project.id,
+      };
+    });
+  }
 
   return (
     <div className={s.page}>
@@ -671,7 +698,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
         <Panel title="参考图" subtitle="original / generated / auxiliary 都作为自由参考图管理，不做 fixed slots。">
           <div className={s.stack}>
             <div className={s.referenceImageGrid}>
-              {project.referenceImages.map((reference) => (
+              {localReferenceImages.map((reference) => (
                 <article className={s.referenceImageCard} key={reference.id}>
                   <ImagePreviewFrame image={reference.image} />
                   <div>
@@ -682,7 +709,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
                 </article>
               ))}
             </div>
-            <Button icon={ImagePlus} feedback={{ title: "上传参考图入口已预览", detail: project.title }}>上传参考图</Button>
+            <Button icon={ImagePlus} onClick={handleUploadReferenceImage} feedback={{ title: "参考图已加入本地草稿", detail: `${localReferenceImages.length + 1} 张参考图` }}>上传参考图</Button>
           </div>
         </Panel>
       </div>

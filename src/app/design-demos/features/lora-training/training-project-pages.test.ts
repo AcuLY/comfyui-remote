@@ -75,6 +75,23 @@ test("training profile page renders reference image cards with kind, label, and 
   assert.match(profileSource, /reference\.note/, "reference cards should show notes");
 });
 
+test("training profile page uploads reference images into local front-end state", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /localReferenceImages/, "profile should render references from local editable state");
+  assert.match(profileSource, /setLocalReferenceImages/, "profile upload action should update local state");
+  assert.match(profileSource, /handleUploadReferenceImage/, "profile should define a local upload simulation");
+  assert.match(profileSource, /kind:\s*"auxiliary"/, "uploaded demo references should enter as auxiliary references");
+  assert.match(profileSource, /localReferenceImages\.map/, "reference cards should render the local reference list");
+  assert.match(profileSource, /onClick=\{handleUploadReferenceImage\}/, "upload action should call the local upload handler");
+  assert.doesNotMatch(profileSource, /上传参考图入口已预览/, "reference upload should not remain a feedback-only placeholder");
+});
+
 test("training results and dataset pages use caption-aware review grids instead of bare image grids", () => {
   assert.match(pagesSource, /function TrainingResultGrid/, "project pages should define a caption-aware training result grid");
   assert.match(pagesSource, /ImagePreviewLarge/, "training result grid should use the shared lightbox");
