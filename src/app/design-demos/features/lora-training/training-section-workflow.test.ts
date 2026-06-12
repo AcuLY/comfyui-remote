@@ -76,6 +76,24 @@ test("training section detail exposes full scene-block management controls", () 
   assert.match(detailPage, /TrainingResultGrid/, "section results should use the same thumbnail/lightbox grid as result pool");
 });
 
+test("training section detail scene-block actions update local front-end state", () => {
+  const detailPage = sourceBetween(
+    "export function LoraTrainingProjectSectionDetailPage",
+    "export function LoraTrainingGenerationComposePage",
+  );
+  const sceneBlockCard = sourceBetween("function SceneBlockCard", "function ReferencePicker");
+
+  assert.match(detailPage, /sceneBlocks/, "section detail should render from a local editable block list");
+  assert.match(detailPage, /setSceneBlocks/, "section detail block actions should update local state");
+  assert.match(detailPage, /handleAddLocalSceneBlock/, "section detail should add a local draft block");
+  assert.match(detailPage, /handleMoveSceneBlock/, "section detail should reorder blocks locally");
+  assert.match(detailPage, /handleDeleteSceneBlock/, "section detail should delete blocks locally");
+  assert.match(detailPage, /sceneBlocks\.map/, "block list should render the local block state");
+  assert.match(sceneBlockCard, /onMove\?\.\(index, -1\)/, "move-up button should call the move handler");
+  assert.match(sceneBlockCard, /onMove\?\.\(index, 1\)/, "move-down button should call the move handler");
+  assert.match(sceneBlockCard, /onDelete\?\.\(block\.id\)/, "delete button should call the delete handler");
+});
+
 test("generation compose uses an explicit reference source tree with preview then add", () => {
   const composePage = sourceBetween(
     "export function LoraTrainingGenerationComposePage",

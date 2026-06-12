@@ -51,6 +51,21 @@ test("training template section page uses the project-section scene-block action
   assert.doesNotMatch(templateSectionPage, /添加 Block|scene block|local block/i, "template section copy should avoid raw schema phrasing");
 });
 
+test("training template section scene-block actions update local front-end state", () => {
+  const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
+  const blockCard = sourceBetween("function TemplateSceneBlockCard", "export function LoraTrainingPresetsPage");
+
+  assert.match(templateSectionPage, /sceneBlocks/, "template section should render from a local editable block list");
+  assert.match(templateSectionPage, /setSceneBlocks/, "template section block actions should update local state");
+  assert.match(templateSectionPage, /handleAddLocalTemplateBlock/, "template section should add a local draft block");
+  assert.match(templateSectionPage, /handleMoveTemplateBlock/, "template section should reorder blocks locally");
+  assert.match(templateSectionPage, /handleDeleteTemplateBlock/, "template section should delete blocks locally");
+  assert.match(templateSectionPage, /sceneBlocks\.map/, "template block list should render the local block state");
+  assert.match(blockCard, /onMove\?\.\(index, -1\)/, "template move-up button should call the move handler");
+  assert.match(blockCard, /onMove\?\.\(index, 1\)/, "template move-down button should call the move handler");
+  assert.match(blockCard, /onDelete\?\.\(block\.id\)/, "template delete button should call the delete handler");
+});
+
 test("training template section scene-block styles are responsive", () => {
   for (const className of [
     "templateSceneBlockList",

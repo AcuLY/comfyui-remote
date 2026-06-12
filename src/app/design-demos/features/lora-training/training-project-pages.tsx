@@ -78,6 +78,14 @@ function findSection(project: LoraTrainingProject | undefined, sectionId?: strin
   return project?.sections.find((section) => section.id === sectionId) ?? project?.sections[0];
 }
 
+function moveSceneBlock(blocks: LoraTrainingSectionBlock[], index: number, direction: -1 | 1) {
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= blocks.length) return blocks;
+  const nextBlocks = [...blocks];
+  [nextBlocks[index], nextBlocks[targetIndex]] = [nextBlocks[targetIndex], nextBlocks[index]];
+  return nextBlocks;
+}
+
 function ProjectNav({ active, project }: { active: (typeof PROJECT_TABS)[number]["key"]; project: LoraTrainingProject }) {
   return (
     <nav className={s.projectNav} aria-label="训练项目页面">
@@ -328,10 +336,14 @@ function TrainingSectionWorkspace({
 function SceneBlockCard({
   block,
   index,
+  onDelete,
+  onMove,
   total,
 }: {
   block: LoraTrainingSectionBlock;
   index: number;
+  onDelete?: (blockId: string) => void;
+  onMove?: (index: number, direction: -1 | 1) => void;
   total: number;
 }) {
   return (
@@ -343,9 +355,9 @@ function SceneBlockCard({
       </div>
       <div className={s.sceneBlockActions} aria-label={`${block.title} 操作`}>
         <Button size="sm" icon={Edit3} ariaLabel={`编辑场景块：${block.title}`} feedback={{ title: "编辑场景块入口已预览", detail: block.title }}>编辑</Button>
-        <Button size="sm" icon={ArrowUp} disabled={index === 0} ariaLabel={`上移场景块：${block.title}`} feedback={{ title: "排序动作已预览", detail: `上移 ${block.title}` }}>上移</Button>
-        <Button size="sm" icon={ArrowDown} disabled={index === total - 1} ariaLabel={`下移场景块：${block.title}`} feedback={{ title: "排序动作已预览", detail: `下移 ${block.title}` }}>下移</Button>
-        <Button size="sm" icon={Trash2} tone="danger" ariaLabel={`删除场景块：${block.title}`} feedback={{ tone: "warning", title: "删除场景块需要确认", detail: block.title }}>删除</Button>
+        <Button size="sm" icon={ArrowUp} disabled={index === 0} onClick={() => onMove?.(index, -1)} ariaLabel={`上移场景块：${block.title}`} feedback={{ title: "场景块已上移", detail: block.title }}>上移</Button>
+        <Button size="sm" icon={ArrowDown} disabled={index === total - 1} onClick={() => onMove?.(index, 1)} ariaLabel={`下移场景块：${block.title}`} feedback={{ title: "场景块已下移", detail: block.title }}>下移</Button>
+        <Button size="sm" icon={Trash2} tone="danger" onClick={() => onDelete?.(block.id)} ariaLabel={`删除场景块：${block.title}`} feedback={{ tone: "warning", title: "场景块已从草稿移除", detail: block.title }}>删除</Button>
       </div>
     </article>
   );
@@ -753,7 +765,42 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
 export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionId }: { data: DemoData; projectId?: string; sectionId?: string }) {
   const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
+  const [sceneBlockState, setSceneBlocks] = useState(() => ({
+    blocks: section?.blocks ?? [],
+    sectionId: section?.id ?? null,
+  }));
+  const sceneBlocks = sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
   if (!project || !section) return <EmptyPage title="没有训练小节详情" />;
+
+  const activeSection = section;
+  const scenePreview = sceneBlocks.map((block) => block.text).join("\n\n");
+
+  function updateSceneBlocks(updater: (current: LoraTrainingSectionBlock[]) => LoraTrainingSectionBlock[]) {
+    setSceneBlocks((current) => ({
+      blocks: updater(current.sectionId === activeSection.id ? current.blocks : activeSection.blocks),
+      sectionId: activeSection.id,
+    }));
+  }
+
+  function handleAddLocalSceneBlock() {
+    updateSceneBlocks((current) => [
+      ...current,
+      {
+        id: `${activeSection.id}-local-block-${current.length + 1}`,
+        source: "本地",
+        title: `本地补充块 ${current.length + 1}`,
+        text: "补充这一小节的造型、动作或画面约束。",
+      },
+    ]);
+  }
+
+  function handleMoveSceneBlock(index: number, direction: -1 | 1) {
+    updateSceneBlocks((current) => moveSceneBlock(current, index, direction));
+  }
+
+  function handleDeleteSceneBlock(blockId: string) {
+    updateSceneBlocks((current) => current.filter((block) => block.id !== blockId));
+  }
 
   return (
     <div className={s.page}>
@@ -771,19 +818,26 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
             actions={(
               <>
                 <Button size="sm" icon={CopyPlus} feedback={{ title: "导入预制入口已预览", detail: section.title }}>导入预制</Button>
-                <Button size="sm" icon={Plus} feedback={{ title: "添加本地块入口已预览", detail: section.title }}>添加本地块</Button>
+                <Button size="sm" icon={Plus} onClick={handleAddLocalSceneBlock} feedback={{ title: "本地块已添加", detail: section.title }}>添加本地块</Button>
               </>
             )}
           >
             <div className={s.sceneBlockList}>
-              {section.blocks.map((block, index) => (
-                <SceneBlockCard block={block} index={index} key={block.id} total={section.blocks.length} />
+              {sceneBlocks.map((block, index) => (
+                <SceneBlockCard
+                  block={block}
+                  index={index}
+                  key={block.id}
+                  onDelete={handleDeleteSceneBlock}
+                  onMove={handleMoveSceneBlock}
+                  total={sceneBlocks.length}
+                />
               ))}
             </div>
           </Panel>
           <Panel title="合成预览">
             <div className={s.formStack}>
-              <Field readOnly multiline features={{ clipboard: true }} label="合成场景描述" value={section.resolvedScene} />
+              <Field readOnly multiline features={{ clipboard: true }} label="合成场景描述" value={scenePreview || section.resolvedScene} />
               <Field readOnly multiline features={{ clipboard: true }} label="图片提示词" value={section.imagePrompt} />
             </div>
           </Panel>

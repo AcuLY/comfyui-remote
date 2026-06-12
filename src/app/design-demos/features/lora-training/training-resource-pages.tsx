@@ -42,6 +42,14 @@ function uniquePresetFolders(presets: LoraTrainingPreset[]) {
   return Array.from(new Set(presets.reduce<string[]>((items, preset) => [...items, preset.folder], [])));
 }
 
+function moveTemplateBlock(blocks: LoraTrainingSectionBlock[], index: number, direction: -1 | 1) {
+  const targetIndex = index + direction;
+  if (targetIndex < 0 || targetIndex >= blocks.length) return blocks;
+  const nextBlocks = [...blocks];
+  [nextBlocks[index], nextBlocks[targetIndex]] = [nextBlocks[targetIndex], nextBlocks[index]];
+  return nextBlocks;
+}
+
 function presetUsageLabel(preset: LoraTrainingPreset) {
   const usageCount = preset.projectUsage.length + preset.templateUsage.length;
   return usageCount > 0 ? `${usageCount} 处引用` : "未引用";
@@ -93,10 +101,14 @@ function TrainingPresetSortPanel({
 function TemplateSceneBlockCard({
   block,
   index,
+  onDelete,
+  onMove,
   total,
 }: {
   block: LoraTrainingSectionBlock;
   index: number;
+  onDelete?: (blockId: string) => void;
+  onMove?: (index: number, direction: -1 | 1) => void;
   total: number;
 }) {
   return (
@@ -108,9 +120,9 @@ function TemplateSceneBlockCard({
       </div>
       <div className={s.templateSceneBlockActions} aria-label={`${block.title} 操作`}>
         <Button size="sm" icon={Edit3} ariaLabel={`编辑模板场景块：${block.title}`} feedback={{ title: "编辑模板场景块入口已预览", detail: block.title }}>编辑</Button>
-        <Button size="sm" icon={ArrowUp} disabled={index === 0} ariaLabel={`上移模板场景块：${block.title}`} feedback={{ title: "模板块排序已预览", detail: `上移 ${block.title}` }}>上移</Button>
-        <Button size="sm" icon={ArrowDown} disabled={index === total - 1} ariaLabel={`下移模板场景块：${block.title}`} feedback={{ title: "模板块排序已预览", detail: `下移 ${block.title}` }}>下移</Button>
-        <Button size="sm" icon={Trash2} tone="danger" ariaLabel={`删除模板场景块：${block.title}`} feedback={{ tone: "warning", title: "删除模板场景块需要确认", detail: block.title }}>删除</Button>
+        <Button size="sm" icon={ArrowUp} disabled={index === 0} onClick={() => onMove?.(index, -1)} ariaLabel={`上移模板场景块：${block.title}`} feedback={{ title: "模板块已上移", detail: block.title }}>上移</Button>
+        <Button size="sm" icon={ArrowDown} disabled={index === total - 1} onClick={() => onMove?.(index, 1)} ariaLabel={`下移模板场景块：${block.title}`} feedback={{ title: "模板块已下移", detail: block.title }}>下移</Button>
+        <Button size="sm" icon={Trash2} tone="danger" onClick={() => onDelete?.(block.id)} ariaLabel={`删除模板场景块：${block.title}`} feedback={{ tone: "warning", title: "模板块已从草稿移除", detail: block.title }}>删除</Button>
       </div>
     </article>
   );
@@ -563,7 +575,42 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   const template = findTemplate(data, templateId);
   const index = Number(sectionIndex ?? "0");
   const section = template?.sections[Number.isFinite(index) ? index : 0] ?? template?.sections[0];
+  const [sceneBlockState, setSceneBlocks] = useState(() => ({
+    blocks: section?.blocks ?? [],
+    sectionId: section?.id ?? null,
+  }));
+  const sceneBlocks = sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
   if (!template || !section) return <EmptyPage title="没有模板小节数据" />;
+
+  const activeSection = section;
+  const resolvedTemplateScene = sceneBlocks.map((block) => block.text).join("\n\n");
+
+  function updateTemplateBlocks(updater: (current: LoraTrainingSectionBlock[]) => LoraTrainingSectionBlock[]) {
+    setSceneBlocks((current) => ({
+      blocks: updater(current.sectionId === activeSection.id ? current.blocks : activeSection.blocks),
+      sectionId: activeSection.id,
+    }));
+  }
+
+  function handleAddLocalTemplateBlock() {
+    updateTemplateBlocks((current) => [
+      ...current,
+      {
+        id: `${activeSection.id}-template-local-block-${current.length + 1}`,
+        source: "本地",
+        title: `模板补充块 ${current.length + 1}`,
+        text: "补充模板导入后默认带入的场景描述。",
+      },
+    ]);
+  }
+
+  function handleMoveTemplateBlock(index: number, direction: -1 | 1) {
+    updateTemplateBlocks((current) => moveTemplateBlock(current, index, direction));
+  }
+
+  function handleDeleteTemplateBlock(blockId: string) {
+    updateTemplateBlocks((current) => current.filter((block) => block.id !== blockId));
+  }
 
   return (
     <div className={s.page}>
@@ -579,7 +626,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
           <div className={s.stack}>
             <Field label="小节名" value={section.title} />
             <FloatingSelect label="启用状态" value={section.enabled ? "启用" : "停用"} options={["启用", "停用"]} />
-            <Field label="场景块数量" value={section.blockCount} />
+            <Field label="场景块数量" value={`${sceneBlocks.length}`} />
           </div>
         </Panel>
         <Panel
@@ -588,20 +635,27 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
           actions={(
             <>
               <Button size="sm" icon={CopyPlus} feedback={{ title: "导入预制入口已预览", detail: section.title }}>导入预制</Button>
-              <Button size="sm" icon={Plus} feedback={{ title: "添加本地块入口已预览", detail: section.title }}>添加本地块</Button>
+              <Button size="sm" icon={Plus} onClick={handleAddLocalTemplateBlock} feedback={{ title: "模板本地块已添加", detail: section.title }}>添加本地块</Button>
             </>
           )}
         >
           <div className={s.templateSceneBlockList}>
-            {section.blocks.map((block, blockIndex) => (
-              <TemplateSceneBlockCard block={block} index={blockIndex} key={block.id} total={section.blocks.length} />
+            {sceneBlocks.map((block, blockIndex) => (
+              <TemplateSceneBlockCard
+                block={block}
+                index={blockIndex}
+                key={block.id}
+                onDelete={handleDeleteTemplateBlock}
+                onMove={handleMoveTemplateBlock}
+                total={sceneBlocks.length}
+              />
             ))}
           </div>
         </Panel>
       </div>
       <Panel title="合成预览" subtitle="模板小节保存的是可读业务文案，导入项目后仍可继续改。">
         <div className={s.templateResolvedPreview}>
-          <Field readOnly multiline features={{ clipboard: true }} label="合成场景描述" value={section.resolvedScene} />
+          <Field readOnly multiline features={{ clipboard: true }} label="合成场景描述" value={resolvedTemplateScene || section.resolvedScene} />
           <Field readOnly multiline features={{ clipboard: true }} label="小节摘要" value={section.scenePreview} />
         </div>
       </Panel>
