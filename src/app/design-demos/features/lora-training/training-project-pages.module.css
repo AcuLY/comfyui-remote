@@ -692,6 +692,7 @@
 }
 
 .sectionScrollPane {
+  container-type: inline-size;
   display: grid;
   min-width: 0;
   max-height: var(--training-section-scroll-height);
@@ -814,7 +815,7 @@
   gap: 10px;
 }
 
-@media (min-width: 720px) {
+@container (min-width: 520px) {
   .sectionGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

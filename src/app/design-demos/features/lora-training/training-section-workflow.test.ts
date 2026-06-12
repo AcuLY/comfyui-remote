@@ -31,6 +31,27 @@ test("training section list uses the same management shell as design-demo sectio
   assert.match(sectionCard, /generation-tasks\/new/, "section cards should expose an independent generation action");
 });
 
+test("training section list uses the project-demo container-driven two-column layout", () => {
+  const sectionGridRule = cssSource.match(/\.sectionGrid\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
+
+  assert.match(
+    cssSource,
+    /\.sectionScrollPane\s*\{[\s\S]*?container-type:\s*inline-size/,
+    "section grid should respond to the scroll pane width",
+  );
+  assert.match(
+    cssSource,
+    /@container\s*\(min-width:\s*520px\)\s*\{[\s\S]*?\.sectionGrid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "section cards should expand at the project-demo 520px container breakpoint",
+  );
+  assert.doesNotMatch(sectionGridRule, /container-type:\s*inline-size/, "section grid should not query its own width directly");
+  assert.doesNotMatch(
+    cssSource,
+    /@media\s*\(min-width:\s*720px\)\s*\{\s*\.sectionGrid\s*\{/,
+    "section cards should not use viewport width to decide their column count",
+  );
+});
+
 test("training section list copy and delete actions update local front-end state", () => {
   const sectionsPage = sourceBetween(
     "export function LoraTrainingProjectSectionsPage",
