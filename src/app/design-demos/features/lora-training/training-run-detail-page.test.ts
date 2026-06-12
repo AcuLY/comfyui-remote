@@ -44,6 +44,15 @@ test("training detail page renders training samples, captions, log preview, and 
   assert.match(detailSource, /!run\.presetCreatedAt/, "preset creation should hide after a preset already exists");
 });
 
+test("failed training run detail retry updates local queued-retry state", () => {
+  assert.match(detailSource, /retryQueued/, "run detail should track local retry state");
+  assert.match(detailSource, /setRetryQueued/, "retry button should update local retry state");
+  assert.match(detailSource, /isRetryQueued/, "run detail should derive a queued-retry display state");
+  assert.match(detailSource, /onClick=\{\(\) => setRetryQueued\(true\)\}/, "retry action should set the queued state");
+  assert.match(detailSource, /已排队重试/, "retried detail should show queued-retry status");
+  assert.match(detailSource, /!isRetryQueued/, "retry button should hide once the run is queued for retry");
+});
+
 test("training dataset sample cards keep captions compact without shrinking thumbnails", () => {
   assert.match(detailCss, /\.trainingSampleGrid\b/, "training detail should define a sample thumbnail grid");
   assert.match(detailCss, /\.trainingSampleCard\b/, "training detail should define sample card styling");

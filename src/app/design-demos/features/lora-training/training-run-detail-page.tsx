@@ -51,6 +51,7 @@ export function LoraTrainingRunDetailPage({
   runId?: string;
 }) {
   const [activeSampleIndex, setActiveSampleIndex] = useState<number | null>(null);
+  const [retryQueued, setRetryQueued] = useState(false);
   const training = buildLoraTrainingDemoData(data);
   const run = findRun(data, kind, runId);
   const project = run ? training.projects.find((item) => item.id === run.projectId) : undefined;
@@ -59,6 +60,7 @@ export function LoraTrainingRunDetailPage({
   if (!run) return <EmptyPage title={kind === "generation" ? "没有生成任务数据" : "没有训练任务数据"} />;
 
   const isGeneration = run.kind === "generation";
+  const isRetryQueued = run.status === "failed" && retryQueued;
   const projectHref = `/training/projects/${run.projectId}`;
   const datasetHref = run.datasetRevisionId ? `${projectHref}/dataset/revisions/${run.datasetRevisionId}` : `${projectHref}/dataset`;
   const datasetSamples = isGeneration ? [] : run.datasetSamples ?? [];
@@ -74,19 +76,20 @@ export function LoraTrainingRunDetailPage({
         title={`${run.projectTitle} / ${run.title}`}
         subtitle={`${run.summary} · ${run.timestamp}`}
         actions={(
-          <>
-            <ButtonLink href={projectHref} icon={FileText}>项目详情</ButtonLink>
-            {!isGeneration ? <ButtonLink href={datasetHref} icon={History}>数据集版本</ButtonLink> : null}
-            {run.status === "failed" ? <Button tone="primary" icon={RotateCcw} feedback={{ title: "已加入重试队列", detail: run.title }}>重试</Button> : null}
+            <>
+              <ButtonLink href={projectHref} icon={FileText}>项目详情</ButtonLink>
+              {!isGeneration ? <ButtonLink href={datasetHref} icon={History}>数据集版本</ButtonLink> : null}
+            {run.status === "failed" && !isRetryQueued ? <Button tone="primary" icon={RotateCcw} onClick={() => setRetryQueued(true)} feedback={{ title: "已加入重试队列", detail: run.title }}>重试</Button> : null}
+            {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : null}
           </>
         )}
       />
 
       <section className={s.statusSurface} aria-label="任务状态">
         <div>
-          {runStatusBadge(run)}
+          {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : runStatusBadge(run)}
           <strong>{run.provider ?? (isGeneration ? "生成服务" : "本地训练")}</strong>
-          <span>{run.schedulerMessage ?? run.waitReason ?? run.errorMessage ?? run.outputLabel ?? "任务记录已同步"}</span>
+          <span>{isRetryQueued ? "已加入重试队列，等待 worker 重新调度。" : run.schedulerMessage ?? run.waitReason ?? run.errorMessage ?? run.outputLabel ?? "任务记录已同步"}</span>
         </div>
         <div className={s.progressBlock}>
           <span>{percent}%</span>
