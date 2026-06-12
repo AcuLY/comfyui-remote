@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Eye, EyeOff, Menu, Moon, MoreHorizontal, Sun } from "lucide-react";
+import { Eye, EyeOff, FlaskConical, ImageIcon, Menu, Moon, MoreHorizontal, Sun } from "lucide-react";
 
 import type { DemoData } from "../data";
 import s from "./app-shell.module.css";
@@ -157,15 +157,18 @@ function MobileBottomNav({
   data,
   currentRoute,
   links,
-  moreOpen,
-  onMore,
+  workMode,
 }: {
   data: DemoData;
   currentRoute: string;
   links: NavLinkDef[];
-  moreOpen: boolean;
-  onMore: () => void;
+  workMode: DesignDemoWorkMode;
 }) {
+  const isTrainingMode = workMode === "lora_training";
+  const ModeIcon = isTrainingMode ? FlaskConical : ImageIcon;
+  const modeText = isTrainingMode ? "LoRA 训练" : "生图模式";
+  const modeLabel = `当前模式：${modeText}`;
+
   return (
     <nav className={s.mobileBottomNav} aria-label="移动端主导航">
       {links.map((link) => {
@@ -183,16 +186,10 @@ function MobileBottomNav({
           </Link>
         );
       })}
-      <button
-        className={cx(s.mobileBottomItem, moreOpen && s.mobileBottomItemActive)}
-        type="button"
-        onClick={onMore}
-        aria-expanded={moreOpen}
-        aria-label="打开更多页面"
-      >
-        <MoreHorizontal className={s.iconMd} />
-        <span>更多</span>
-      </button>
+      <div className={s.mobileModeIndicator} aria-label={modeLabel} title={modeLabel}>
+        <ModeIcon className={s.iconMd} aria-hidden="true" />
+        <span>{modeText}</span>
+      </div>
     </nav>
   );
 }
@@ -520,7 +517,6 @@ export function DesignDemoShell({
             onToggleTheme={toggleTheme}
             sfwMode={sfwMode}
             onToggleSfwMode={toggleSfwMode}
-            navLinks={navLinks}
           />
         ) : null}
         {menuOpen ? (
@@ -548,6 +544,7 @@ export function DesignDemoShell({
             onToggleTheme={toggleTheme}
             sfwMode={sfwMode}
             onToggleSfwMode={toggleSfwMode}
+            navLinks={navLinks}
           />
           <div className={cx(s.contentFrame, hasRouteHeader && s.contentFrameWithRouteHeader)} ref={contentFrameRef}>
             {routeHeaderConfig ? (
@@ -568,12 +565,21 @@ export function DesignDemoShell({
           data={data}
           currentRoute={currentRoute}
           links={navLinks}
-          moreOpen={menuOpen}
-          onMore={() => {
+          workMode={workMode}
+        />
+        <button
+          className={cx(s.mobileNavDrawerButton, menuOpen && s.mobileNavDrawerButtonActive)}
+          type="button"
+          onClick={() => {
             setMenuOpen((open) => !open);
             setToolsOpen(false);
           }}
-        />
+          aria-expanded={menuOpen}
+          aria-label={menuOpen ? "关闭更多页面" : "打开更多页面"}
+          title={menuOpen ? "关闭更多页面" : "打开更多页面"}
+        >
+          <Menu className={s.iconMd} aria-hidden="true" />
+        </button>
       </DemoFeedbackProvider>
     </div>
   );

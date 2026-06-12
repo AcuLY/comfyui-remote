@@ -30,7 +30,7 @@ export function PageHeader({
   className,
 }: {
   back?: { href: string; label: string };
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;
@@ -42,7 +42,7 @@ export function PageHeader({
         {back ? (
           <PageHeaderBack href={back.href} label={back.label} />
         ) : null}
-        <span className={s.eyebrow}>{eyebrow}</span>
+        {eyebrow ? <span className={s.eyebrow}>{eyebrow}</span> : null}
         <h1 className={s.pageTitle}>{title}</h1>
         {subtitle ? <div className={s.pageSubtitle}>{subtitle}</div> : null}
       </div>

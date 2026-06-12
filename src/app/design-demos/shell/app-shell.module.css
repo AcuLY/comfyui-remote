@@ -159,7 +159,8 @@
 .routeHeader,
 .mobileTopbar,
 .mobileToolsMenu,
-.mobileBottomNav {
+.mobileBottomNav,
+.mobileNavDrawerButton {
   -webkit-backdrop-filter: var(--demo-glass-blur);
   backdrop-filter: var(--demo-glass-blur);
 }
@@ -882,6 +883,9 @@
 .mobileBottomNav {
   display: none;
 }
+.mobileNavDrawerButton {
+  display: none;
+}
 .routeHeader {
   position: absolute;
   inset-block-start: 0;
@@ -1507,7 +1511,7 @@
     left: 8px;
     z-index: 35;
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(6, minmax(0, 1fr)) minmax(52px, 0.9fr);
     gap: 5px;
     border: 1px solid var(--demo-border);
     border-radius: 8px;
@@ -1515,7 +1519,8 @@
     padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
   }
 
-  .mobileBottomItem {
+  .mobileBottomItem,
+  .mobileModeIndicator {
     position: relative;
     display: grid;
     min-width: 0;
@@ -1532,6 +1537,22 @@
     padding: 5px 6px;
     text-decoration: none;
     transition: 160ms ease;
+  }
+
+  .mobileModeIndicator {
+    border-color: rgba(147, 197, 253, 0.28);
+    background: color-mix(in srgb, var(--demo-sky-soft) 58%, transparent);
+    color: var(--demo-sky);
+    pointer-events: none;
+  }
+
+  .mobileModeIndicator span {
+    overflow: hidden;
+    max-width: 100%;
+    font-size: 10px;
+    line-height: 1.1;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .mobileBottomItem:hover,
@@ -1555,6 +1576,41 @@
     font-style: normal;
     line-height: 16px;
     text-align: center;
+  }
+
+  .mobileNavDrawerButton {
+    position: fixed;
+    right: 12px;
+    bottom: calc(66px + env(safe-area-inset-bottom));
+    z-index: 36;
+    display: inline-flex;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--demo-border);
+    border-radius: 999px;
+    background: var(--demo-mobile-nav-bg);
+    color: var(--demo-muted);
+    cursor: pointer;
+    transition:
+      background-color 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease,
+      transform 160ms ease;
+  }
+
+  .mobileNavDrawerButton:hover,
+  .mobileNavDrawerButton:focus-visible,
+  .mobileNavDrawerButtonActive {
+    border-color: rgba(0, 217, 146, 0.62);
+    background: var(--demo-panel);
+    color: var(--demo-green);
+    outline: none;
+  }
+
+  .mobileNavDrawerButton:active {
+    transform: translateY(1px);
   }
 }
 @media (max-width: 520px) {
