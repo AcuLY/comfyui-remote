@@ -236,7 +236,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                   tone="danger"
                   disabled={selectedVisibleCount === 0}
                   onClick={() => hideRuns(selectedIds)}
-                  feedback={{ tone: "warning", title: "删除动作已预览", detail: `${selectedVisibleCount} 条任务` }}
+                  feedback={{ tone: "warning", title: "任务已从列表移除", detail: `${selectedVisibleCount} 条任务` }}
                 >
                   删除所选
                 </Button>
@@ -350,7 +350,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                     tone="danger"
                                     ariaLabel={`删除任务：${run.title}`}
                                     onClick={() => hideRuns([run.id])}
-                                    feedback={{ tone: "warning", title: "删除动作已预览", detail: run.title }}
+                                    feedback={{ tone: "warning", title: "任务已从列表移除", detail: run.title }}
                                   />
                                 )}
                               </div>

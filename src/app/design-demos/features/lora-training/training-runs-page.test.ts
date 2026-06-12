@@ -34,3 +34,12 @@ test("failed training runs can be retried in local front-end state", () => {
   assert.match(pageSource, /retried \? " · 已重试" : ""/, "retried rows should show inline retry state");
   assert.match(pageSource, /已排队重试/, "retried rows should show queued-retry status");
 });
+
+test("training run delete actions remove runs locally instead of previewing a placeholder", () => {
+  assert.match(pageSource, /hiddenRunIds/, "runs page should track locally removed runs");
+  assert.match(pageSource, /hideRuns/, "runs page should define a shared local delete handler");
+  assert.match(pageSource, /onClick=\{\(\) => hideRuns\(selectedIds\)\}/, "batch delete should call the local delete handler");
+  assert.match(pageSource, /onClick=\{\(\) => hideRuns\(\[run\.id\]\)\}/, "row delete should call the local delete handler");
+  assert.match(pageSource, /任务已从列表移除/, "delete feedback should describe the local state change");
+  assert.doesNotMatch(pageSource, /删除动作已预览/, "delete actions should not remain preview-only placeholders");
+});
