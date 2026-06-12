@@ -1,0 +1,288 @@
+.page {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.resourceLayout {
+  display: grid;
+  grid-template-columns: minmax(190px, 240px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.resourceRail,
+.resourceWorkspace,
+.templateRow,
+.resourceRow,
+.usageRow,
+.sortRow {
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+}
+
+.resourceRail {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  padding: 10px;
+}
+
+.resourceRail > strong {
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 620;
+  padding: 0 2px 6px;
+}
+
+.resourceRail button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--demo-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 8px;
+  text-align: left;
+}
+
+.resourceRail button:hover,
+.resourceRail button:focus-visible,
+.railItemActive {
+  border-color: var(--demo-glass-accent-border) !important;
+  background: var(--demo-field-bg) !important;
+  color: var(--demo-green) !important;
+  outline: none;
+}
+
+.resourceRail span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resourceRail em {
+  font-style: normal;
+  font-size: 10px;
+}
+
+.resourceWorkspace {
+  display: grid;
+  min-width: 0;
+  padding: 12px;
+}
+
+.resourceGrid,
+.sortGrid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 700px) {
+  .resourceGrid,
+  .sortGrid,
+  .usageList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.resourceRow {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  min-width: 0;
+  align-items: start;
+  gap: 10px;
+  color: inherit;
+  padding: 12px;
+  text-decoration: none;
+}
+
+.resourceRow:hover,
+.resourceRow:focus-visible,
+.templateRow:hover,
+.templateRow:focus-within {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+  outline: none;
+}
+
+.grip {
+  width: 14px;
+  height: 14px;
+  color: var(--demo-faint);
+}
+
+.resourceRow div,
+.templateRow > div:first-child,
+.usageRow,
+.sortRow {
+  min-width: 0;
+}
+
+.resourceRow strong,
+.templateRow strong,
+.usageRow strong,
+.sortRow strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resourceRow span,
+.resourceRow p,
+.templateRow span,
+.usageRow span,
+.sortRow span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+}
+
+.resourceRow p {
+  margin: 5px 0 0;
+  white-space: nowrap;
+}
+
+.twoCol {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.stack,
+.usageList {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.usageRow,
+.sortRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  text-decoration: none;
+}
+
+.sortRow {
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+}
+
+.emptyInline {
+  border: 1px dashed var(--demo-border);
+  border-radius: 10px;
+  color: var(--demo-faint);
+  font-size: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.templateRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  align-items: start;
+  gap: 12px;
+  padding: 12px;
+}
+
+.templateRow a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.templateRow a:hover,
+.templateRow a:focus-visible {
+  color: var(--demo-green);
+  outline: none;
+}
+
+.templateSections {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.templateSections a {
+  display: inline-flex;
+  max-width: 220px;
+  min-height: 28px;
+  align-items: center;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  font-size: 10px;
+  padding: 5px 8px;
+}
+
+.templateMeta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+@media (max-width: 980px) {
+  .resourceLayout,
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+
+  .resourceRail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .resourceRail > strong {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 639px) {
+  .resourceRail,
+  .resourceGrid,
+  .sortGrid,
+  .templateRow,
+  .resourceRow,
+  .usageRow,
+  .sortRow {
+    grid-template-columns: 1fr;
+  }
+
+  .resourceRow span,
+  .resourceRow p,
+  .templateRow span,
+  .usageRow span,
+  .sortRow span,
+  .resourceRow strong,
+  .templateRow strong,
+  .usageRow strong,
+  .sortRow strong {
+    white-space: normal;
+  }
+
+  .templateMeta {
+    justify-content: flex-start;
+  }
+}

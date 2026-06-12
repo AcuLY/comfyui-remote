@@ -1,4 +1,5 @@
 import {
+  Activity,
   Archive,
   Boxes,
   ClipboardList,
@@ -28,6 +29,7 @@ import {
 
 import type { DemoData } from "../data/types";
 import { firstGroup, firstPreset, firstProject, firstRun, firstSection, firstTemplate } from "../data/selectors";
+import { buildLoraTrainingDemoData } from "../features/lora-training/fixtures";
 import { rawSectionId } from "../shared/media/image-status";
 import type { Match, NavLinkDef, RouteDef } from "./types";
 import { SHOWCASE_ROUTE_METADATA } from "./showcase-routes";
@@ -61,6 +63,28 @@ export const ROUTES: RouteDef[] = [
   { key: "root", pattern: "/", title: "任务", group: "核心", icon: Home },
   { key: "queue-review", pattern: "/runs/:runId", title: "审核宫格", group: "核心", icon: Grid3X3 },
   { key: "queue", pattern: "/runs", title: "任务", group: "核心", icon: ClipboardList },
+  { key: "training-generation-run-detail", pattern: "/training/runs/generation/:taskId", title: "生成任务详情", group: "LoRA 训练", icon: Wand2 },
+  { key: "training-training-run-detail", pattern: "/training/runs/training/:trainingRunId", title: "训练任务详情", group: "LoRA 训练", icon: Activity },
+  { key: "training-runs", pattern: "/training/runs", title: "训练运行", group: "LoRA 训练", icon: ClipboardList },
+  { key: "training-project-new", pattern: "/training/projects/new", title: "新建训练项目", group: "LoRA 训练", icon: Plus },
+  { key: "training-generation-compose", pattern: "/training/projects/:trainingProjectId/sections/:sectionId/generation-tasks/new", title: "新建生成任务", group: "LoRA 训练", icon: Wand2 },
+  { key: "training-project-dataset-revision", pattern: "/training/projects/:trainingProjectId/dataset/revisions/:revisionId", title: "数据集版本", group: "LoRA 训练", icon: Archive },
+  { key: "training-project-section-detail", pattern: "/training/projects/:trainingProjectId/sections/:sectionId", title: "训练小节详情", group: "LoRA 训练", icon: SlidersHorizontal },
+  { key: "training-project-profile", pattern: "/training/projects/:trainingProjectId/profile", title: "角色资料", group: "LoRA 训练", icon: FileText },
+  { key: "training-project-sections", pattern: "/training/projects/:trainingProjectId/sections", title: "训练小节", group: "LoRA 训练", icon: ListChecks },
+  { key: "training-project-results", pattern: "/training/projects/:trainingProjectId/results", title: "训练结果池", group: "LoRA 训练", icon: ImageIcon },
+  { key: "training-project-dataset", pattern: "/training/projects/:trainingProjectId/dataset", title: "训练数据集", group: "LoRA 训练", icon: Database },
+  { key: "training-project-training-runs", pattern: "/training/projects/:trainingProjectId/training-runs", title: "项目训练任务", group: "LoRA 训练", icon: Activity },
+  { key: "training-project-generation-tasks", pattern: "/training/projects/:trainingProjectId/generation-tasks", title: "项目生成任务", group: "LoRA 训练", icon: Wand2 },
+  { key: "training-project-detail", pattern: "/training/projects/:trainingProjectId", title: "训练项目详情", group: "LoRA 训练", icon: FolderTree },
+  { key: "training-projects", pattern: "/training/projects", title: "训练项目", group: "LoRA 训练", icon: FolderTree },
+  { key: "training-preset-sort-rules", pattern: "/training/presets/sort-rules", title: "训练预制排序", group: "LoRA 训练", icon: Shuffle },
+  { key: "training-preset-detail", pattern: "/training/presets/:presetId", title: "训练预制详情", group: "LoRA 训练", icon: Wand2 },
+  { key: "training-presets", pattern: "/training/presets", title: "训练预制", group: "LoRA 训练", icon: Tags },
+  { key: "training-template-new", pattern: "/training/templates/new", title: "新建训练模板", group: "LoRA 训练", icon: Plus },
+  { key: "training-template-section", pattern: "/training/templates/:templateId/sections/:sectionIndex", title: "训练模板小节", group: "LoRA 训练", icon: ListChecks },
+  { key: "training-template-edit", pattern: "/training/templates/:templateId/edit", title: "编辑训练模板", group: "LoRA 训练", icon: Edit3 },
+  { key: "training-templates", pattern: "/training/templates", title: "训练模板", group: "LoRA 训练", icon: FileText },
   { key: "project-new", pattern: "/projects/new", title: "新建项目", group: "项目", icon: Plus },
   { key: "project-edit", pattern: "/projects/:projectId/edit", title: "编辑项目", group: "项目", icon: Edit3 },
   { key: "project-results", pattern: "/projects/:projectId/results", title: "项目结果", group: "项目", icon: ImageIcon },
@@ -91,6 +115,10 @@ export const ROUTES: RouteDef[] = [
 export const NAV_LINKS: NavLinkDef[] = [
   { href: "/runs", label: "任务", group: "核心", icon: ClipboardList, count: (data) => data.runs.length },
   { href: "/projects", label: "项目", group: "核心", icon: FolderTree, count: (data) => data.projects.length },
+  { href: "/training/runs", label: "训练运行", group: "LoRA 训练", icon: ClipboardList, count: (data) => buildLoraTrainingDemoData(data).runs.length, activePrefix: "/training/runs" },
+  { href: "/training/projects", label: "训练项目", group: "LoRA 训练", icon: FolderTree, count: (data) => buildLoraTrainingDemoData(data).projects.length, activePrefix: "/training/projects" },
+  { href: "/training/presets", label: "训练预制", group: "LoRA 训练", icon: Tags, count: (data) => buildLoraTrainingDemoData(data).presets.length, activePrefix: "/training/presets" },
+  { href: "/training/templates", label: "训练模板", group: "LoRA 训练", icon: FileText, count: (data) => buildLoraTrainingDemoData(data).templates.length, activePrefix: "/training/templates" },
   { href: "/presets", label: "预设库", group: "资源", icon: Tags, count: (data) => data.metrics.presets },
   { href: "/templates", label: "模板", group: "模板", icon: FileText, count: (data) => data.templates.length },
   { href: "/models", label: "模型", group: "资源", icon: Database, count: (data) => data.models.length, activePrefix: ["/models", "/loras"] },
@@ -101,6 +129,8 @@ export const NAV_LINKS: NavLinkDef[] = [
 export const MOBILE_NAV_LINKS: NavLinkDef[] = [
   { href: "/runs", label: "任务", group: "核心", icon: ClipboardList, count: (data) => data.runs.length },
   { href: "/projects", label: "项目", group: "核心", icon: FolderTree, count: (data) => data.projects.length },
+  { href: "/training/runs", label: "训练运行", group: "LoRA 训练", icon: ClipboardList, count: (data) => buildLoraTrainingDemoData(data).runs.length, activePrefix: "/training/runs" },
+  { href: "/training/projects", label: "训练项目", group: "LoRA 训练", icon: FolderTree, count: (data) => buildLoraTrainingDemoData(data).projects.length, activePrefix: "/training/projects" },
 ];
 
 export function demoHref(route: string) {
@@ -165,16 +195,34 @@ export function sampleRouteInventory(data: DemoData) {
   const group = firstGroup(data);
   const template = firstTemplate(data);
   const sectionId = section ? rawSectionId(section) : "section-id";
+  const training = buildLoraTrainingDemoData(data);
+  const trainingProject = training.projects[0];
+  const trainingSection = trainingProject?.sections[0];
+  const trainingDatasetRevision = trainingProject?.datasetRevisions[0];
+  const trainingGenerationRun = training.runs.find((item) => item.kind === "generation");
+  const trainingTrainingRun = training.runs.find((item) => item.kind === "training");
+  const trainingPreset = training.presets[0];
+  const trainingTemplate = training.templates[0];
 
   return ROUTES.map((route) => {
     let sample = route.pattern;
-    sample = sample.replace(":runId", run?.id ?? "run-id");
-    sample = sample.replace(":projectId", project?.id ?? "project-id");
-    sample = sample.replace(":sectionId", sectionId);
-    sample = sample.replace(":categoryId", data.categories[0]?.id ?? "category-id");
-    sample = sample.replace(":presetId", preset?.id ?? "preset-id");
-    sample = sample.replace(":groupId", group?.id ?? "group-id");
-    sample = sample.replace(":templateId", template?.id ?? "template-id");
+    if (route.key.startsWith("training-")) {
+      sample = sample.replace(":taskId", trainingGenerationRun?.id ?? "training-task-id");
+      sample = sample.replace(":trainingRunId", trainingTrainingRun?.id ?? "training-run-id");
+      sample = sample.replace(":trainingProjectId", trainingProject?.id ?? "training-project-id");
+      sample = sample.replace(":revisionId", trainingDatasetRevision?.id ?? "revision-id");
+      sample = sample.replace(":sectionId", trainingSection?.id ?? "section-id");
+      sample = sample.replace(":presetId", trainingPreset?.id ?? "preset-id");
+      sample = sample.replace(":templateId", trainingTemplate?.id ?? "template-id");
+    } else {
+      sample = sample.replace(":runId", run?.id ?? "run-id");
+      sample = sample.replace(":projectId", project?.id ?? "project-id");
+      sample = sample.replace(":sectionId", sectionId);
+      sample = sample.replace(":categoryId", data.categories[0]?.id ?? "category-id");
+      sample = sample.replace(":presetId", preset?.id ?? "preset-id");
+      sample = sample.replace(":groupId", group?.id ?? "group-id");
+      sample = sample.replace(":templateId", template?.id ?? "template-id");
+    }
     sample = sample.replace(":sectionIndex", "0");
     return { ...route, sample };
   });

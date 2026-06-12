@@ -1,0 +1,52 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+
+const testDir = dirname(fileURLToPath(import.meta.url));
+const detailSource = readFileSync(resolve(testDir, "training-run-detail-page.tsx"), "utf8");
+const detailCss = readFileSync(resolve(testDir, "training-run-detail-page.module.css"), "utf8");
+const fixtureSource = readFileSync(resolve(testDir, "fixtures.ts"), "utf8");
+const typesSource = readFileSync(resolve(testDir, "types.ts"), "utf8");
+
+test("training run fixtures expose final artifact, config, logs, and frozen caption samples", () => {
+  for (const field of [
+    "finalLoraArtifactId",
+    "presetCreatedAt",
+    "trainingConfig",
+    "trainingLogLines",
+    "datasetSamples",
+    "caption",
+  ]) {
+    assert.match(typesSource, new RegExp(`\\b${field}\\b`), `LoraTrainingRun should expose ${field}`);
+  }
+
+  const completedRun = fixtureSource.slice(
+    fixtureSource.indexOf('id: "train-vela-v5"'),
+    fixtureSource.indexOf('id: "train-azure-v4"'),
+  );
+
+  assert.match(completedRun, /finalLoraArtifactId/, "completed training run should point at the saved final LoRA artifact");
+  assert.match(completedRun, /trainingConfig/, "completed training run should include a reproducible config snapshot");
+  assert.match(completedRun, /trainingLogLines/, "completed training run should include a training log preview");
+  assert.match(completedRun, /datasetSamples/, "completed training run should include frozen dataset samples");
+  assert.match(fixtureSource, /caption:/, "dataset samples should carry frozen caption snapshots");
+});
+
+test("training detail page renders training samples, captions, log preview, and narrow preset creation gate", () => {
+  assert.match(detailSource, /训练集样本/, "training detail should render a dataset sample panel");
+  assert.match(detailSource, /训练日志/, "training detail should render a training log panel");
+  assert.match(detailSource, /ImagePreviewLarge/, "training samples should open with the shared lightbox preview");
+  assert.match(detailSource, /activeSampleIndex/, "training detail should track the active sample for preview");
+  assert.match(detailSource, /sample\.caption/, "training sample cards should show caption snapshots");
+  assert.match(detailSource, /run\.finalLoraArtifactId/, "preset creation should depend on the final LoRA artifact");
+  assert.match(detailSource, /!run\.presetCreatedAt/, "preset creation should hide after a preset already exists");
+});
+
+test("training dataset sample cards keep captions compact without shrinking thumbnails", () => {
+  assert.match(detailCss, /\.trainingSampleGrid\b/, "training detail should define a sample thumbnail grid");
+  assert.match(detailCss, /\.trainingSampleCard\b/, "training detail should define sample card styling");
+  assert.match(detailCss, /\.sampleCaption\b/, "training detail should style sample captions separately");
+  assert.match(detailCss, /-webkit-line-clamp:\s*2/, "sample captions should default to a compact clipped summary");
+});

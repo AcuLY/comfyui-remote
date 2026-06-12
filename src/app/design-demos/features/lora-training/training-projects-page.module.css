@@ -1,0 +1,387 @@
+.page {
+  --training-list-panel-shadow: 0 1px 2px rgba(15, 23, 42, 0.045), 0 12px 30px rgba(15, 23, 42, 0.035);
+  --training-list-row-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --training-list-row-shadow-hover: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 18px rgba(15, 23, 42, 0.035);
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+:global([data-theme="dark"]) .page {
+  --training-list-panel-shadow: 0 1px 2px rgba(0, 0, 0, 0.22), 0 10px 24px rgba(0, 0, 0, 0.16);
+  --training-list-row-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --training-list-row-shadow-hover: 0 1px 2px rgba(0, 0, 0, 0.22), 0 8px 18px rgba(0, 0, 0, 0.14);
+}
+
+.projectWorkspace {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  box-shadow: var(--training-list-panel-shadow);
+  padding: 12px;
+}
+
+.projectToolbar {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 10px;
+}
+
+.projectToolbarMeta {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.projectToolbarMeta strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectToolbarMeta span {
+  color: var(--demo-muted);
+  font-size: 11px;
+}
+
+.projectToolbarControls {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.projectSurface {
+  container-type: inline-size;
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.projectSurfaceCompact {
+  gap: 6px;
+}
+
+.projectGrid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.projectSurfaceCompact .projectGrid {
+  gap: 6px;
+}
+
+@container (min-width: 720px) {
+  .projectGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.projectCard.projectCard {
+  --training-project-control-size: 28px;
+  --training-project-title-row-height: 36px;
+  position: relative;
+  align-items: stretch;
+  gap: 14px;
+  color: inherit;
+  padding: 14px;
+  text-decoration: none;
+  box-shadow: var(--training-list-row-shadow);
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.projectCardCompact.projectCardCompact {
+  --training-project-control-size: 30px;
+  --training-project-title-row-height: 36px;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-height: 52px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+}
+
+.projectCard:not(.projectCardSelected):hover {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-field-bg);
+  box-shadow: var(--training-list-row-shadow-hover);
+}
+
+.projectCard:not(.projectCardSelected):focus-within {
+  border-color: color-mix(in srgb, var(--demo-green) 22%, var(--demo-glass-border));
+  box-shadow: var(--training-list-row-shadow), 0 0 0 1px color-mix(in srgb, var(--demo-green) 12%, transparent) inset;
+  outline: none;
+}
+
+.projectCardSelected.projectCardSelected {
+  border-color: rgba(0, 217, 146, 0.34);
+  background: var(--demo-selected);
+  box-shadow: var(--training-list-row-shadow), 0 0 0 1px rgba(0, 217, 146, 0.1) inset;
+}
+
+.projectControls {
+  display: grid;
+  width: var(--training-project-control-size);
+  align-self: stretch;
+  align-items: center;
+  justify-items: center;
+  grid-template-rows: var(--training-project-title-row-height) minmax(0, 1fr);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.projectCardCompact .projectControls {
+  display: flex;
+  width: auto;
+  align-self: center;
+  gap: 6px;
+}
+
+.projectControls > * {
+  pointer-events: auto;
+}
+
+.projectSelectCheckbox {
+  grid-row: 1;
+}
+
+.projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
+  display: inline-flex;
+  width: var(--training-project-control-size);
+  min-width: var(--training-project-control-size);
+  height: var(--training-project-control-size);
+  min-height: var(--training-project-control-size);
+  align-items: center;
+  justify-content: center;
+  grid-row: 2;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--demo-faint);
+  cursor: grab;
+  padding: 0;
+}
+
+.projectCardCompact .projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
+  grid-row: auto;
+}
+
+.projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:hover,
+.projectDragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"]:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-field-bg);
+  color: var(--demo-green);
+  outline: none;
+}
+
+.projectContent {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 8px;
+}
+
+.projectCardCompact .projectContent {
+  align-content: center;
+  gap: 0;
+}
+
+.projectBody,
+.projectTitleSlot {
+  min-width: 0;
+}
+
+.projectTitleSlot {
+  width: 100%;
+  overflow: visible;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.projectTitleRow {
+  display: flex;
+  min-width: 0;
+  min-height: var(--training-project-title-row-height);
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 16px;
+}
+
+.projectTitleLink {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.projectTitleLink strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: inherit;
+  font-weight: 580;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectTitleLink span {
+  display: inline-block;
+  min-width: 0;
+  color: var(--demo-faint);
+  font-size: 11px;
+  font-weight: 520;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.projectTitleLink:focus-visible,
+.projectRecentResults:focus-visible {
+  outline: 3px solid rgba(0, 217, 146, 0.18);
+  outline-offset: 2px;
+}
+
+.projectActions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.projectActions :where([data-demo-ui-button="true"]) {
+  height: 36px;
+  min-height: 36px;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.projectRecentResults {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 7px;
+  border-block: 1px solid var(--demo-border);
+  color: inherit;
+  padding-block: 8px;
+  text-decoration: none;
+}
+
+.recentResultImages {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.projectCard :where([data-demo-ui-image-thumb-small="true"]) {
+  width: 80px;
+  min-width: 80px;
+}
+
+.projectMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.projectMetaText {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-faint);
+  font-size: 11px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectStatusGroup {
+  display: inline-flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.projectCardCompact .projectTitleLink {
+  flex-wrap: nowrap;
+}
+
+.projectCardCompact .projectTitleLink span,
+.projectCardCompact .projectRecentResults,
+.projectCardCompact .projectMeta,
+.projectCardCompact .projectBody {
+  display: none;
+}
+
+.emptyState {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  border: 1px dashed var(--demo-border);
+  border-radius: var(--demo-radius);
+  color: var(--demo-faint);
+  padding: 24px;
+  text-align: center;
+}
+
+.emptyState strong {
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.emptyState span {
+  max-width: 360px;
+  color: var(--demo-muted);
+  font-size: 11px;
+}
+
+@media (max-width: 720px) {
+  .projectToolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .projectToolbarControls {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 639px) {
+  .projectWorkspace {
+    padding: 10px;
+  }
+
+  .projectCard {
+    align-items: start;
+  }
+
+  .projectMeta {
+    align-items: center;
+    flex-direction: row;
+  }
+}

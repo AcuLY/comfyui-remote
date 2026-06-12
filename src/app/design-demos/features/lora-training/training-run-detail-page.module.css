@@ -1,0 +1,338 @@
+.page {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.statusSurface {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.42fr);
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  padding: 12px 14px;
+}
+
+.statusSurface > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.statusSurface strong {
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+}
+
+.statusSurface span {
+  min-width: 0;
+  color: var(--demo-muted);
+  font-size: 11px;
+}
+
+.progressBlock {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.progressBlock > span {
+  justify-self: end;
+  color: var(--demo-green);
+  font-family: var(--demo-font-mono);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.progressTrack {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--demo-field-bg);
+}
+
+.progressTrack i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--demo-green), var(--demo-pink));
+  transition: width 400ms ease;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.78fr);
+  gap: 12px;
+}
+
+.trainingEvidenceGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: 12px;
+}
+
+.stack {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+}
+
+.referenceStrip {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  padding: 10px;
+}
+
+.referenceStrip strong {
+  color: var(--demo-muted);
+  font-size: 11px;
+  font-weight: 620;
+}
+
+.configGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.configGrid div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  padding: 10px 12px;
+}
+
+.configGrid dt {
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-weight: 620;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.configGrid dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 620;
+  overflow-wrap: anywhere;
+}
+
+.configGrid span {
+  min-width: 0;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.trainingSampleGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.trainingSampleCard {
+  appearance: none;
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background: var(--demo-field-bg);
+  color: inherit;
+  cursor: pointer;
+  padding: 9px;
+  text-align: left;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.trainingSampleCard:hover,
+.trainingSampleCard:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.trainingSampleCard :global([class*="imagePreviewFrame"]) {
+  aspect-ratio: 4 / 5;
+  min-height: 0;
+}
+
+.sampleMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sampleMeta strong {
+  color: var(--demo-text);
+  font-family: var(--demo-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.sampleMeta em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-faint);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sampleCaption {
+  display: -webkit-box;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.trainingLog {
+  min-height: 212px;
+  max-height: 320px;
+  margin: 0;
+  overflow: auto;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-code-bg, var(--demo-field-bg));
+  color: var(--demo-text);
+  font-family: var(--demo-font-mono);
+  font-size: 11px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  padding: 12px;
+}
+
+.empty {
+  border: 1px dashed var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  font-size: 12px;
+  padding: 14px;
+}
+
+.callout {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  align-items: start;
+  gap: 9px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  padding: 11px 12px;
+}
+
+.callout[data-tone="success"] {
+  border-color: color-mix(in srgb, var(--demo-green) 30%, var(--demo-border));
+  background: color-mix(in srgb, var(--demo-green-soft) 60%, var(--demo-field-bg));
+}
+
+.callout[data-tone="danger"] {
+  border-color: color-mix(in srgb, var(--demo-red) 34%, var(--demo-border));
+  background: color-mix(in srgb, var(--demo-red-soft) 62%, var(--demo-field-bg));
+}
+
+.callout svg {
+  width: 16px;
+  height: 16px;
+  color: currentColor;
+}
+
+.callout span {
+  min-width: 0;
+  color: var(--demo-text);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.statGrid div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  padding: 10px 12px;
+}
+
+.statGrid dt {
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-weight: 620;
+}
+
+.statGrid dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 580;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .detailGrid,
+  .trainingEvidenceGrid,
+  .statusSurface {
+    grid-template-columns: 1fr;
+  }
+
+  .progressBlock > span {
+    justify-self: start;
+  }
+}
+
+@media (max-width: 639px) {
+  .statusSurface,
+  .referenceStrip,
+  .callout,
+  .configGrid div,
+  .trainingSampleCard,
+  .statGrid div {
+    padding: 10px;
+  }
+
+  .configGrid,
+  .trainingSampleGrid,
+  .statGrid {
+    grid-template-columns: 1fr;
+  }
+}
