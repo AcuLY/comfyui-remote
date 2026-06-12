@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Copy, FileText, History, ImagePlus, Play, RotateCcw } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, Copy, FileText, History, ImagePlus, Play, RotateCcw } from "lucide-react";
 
 import type { DemoData } from "../../data";
 import { ImagePreviewFrame } from "../../shared/media/image-preview-frame";
@@ -16,6 +16,16 @@ import { StatusBadge } from "../../shared/primitives/status-badge";
 import { buildLoraTrainingDemoData } from "./fixtures";
 import type { LoraTrainingRun, LoraTrainingTaskKind } from "./types";
 import s from "./training-run-detail-page.module.css";
+
+type RetryDraft = {
+  runId: string;
+  projectTitle: string;
+  title: string;
+  provider: string;
+  queuedAt: string;
+  sourceStatus: LoraTrainingRun["status"];
+  datasetVersion?: string;
+};
 
 function runStatusBadge(run: LoraTrainingRun) {
   if (run.status === "completed") return <StatusBadge status="done" label="已完成" />;
@@ -63,7 +73,7 @@ export function LoraTrainingRunDetailPage({
 }) {
   const [activeSampleIndex, setActiveSampleIndex] = useState<number | null>(null);
   const [copiedCaption, setCopiedCaption] = useState<{ caption: string; sampleId: string } | null>(null);
-  const [retryQueued, setRetryQueued] = useState(false);
+  const [retryDraft, setRetryDraft] = useState<RetryDraft | null>(null);
   const training = buildLoraTrainingDemoData(data);
   const run = findRun(data, kind, runId);
   const project = run ? training.projects.find((item) => item.id === run.projectId) : undefined;
@@ -72,7 +82,8 @@ export function LoraTrainingRunDetailPage({
   if (!run) return <EmptyPage title={kind === "generation" ? "没有生成任务数据" : "没有训练任务数据"} />;
 
   const isGeneration = run.kind === "generation";
-  const isRetryQueued = run.status === "failed" && retryQueued;
+  const currentRetryDraft = run.status === "failed" && retryDraft?.runId === run.id ? retryDraft : null;
+  const isRetryQueued = Boolean(currentRetryDraft);
   const projectHref = `/training/projects/${run.projectId}`;
   const datasetHref = run.datasetRevisionId ? `${projectHref}/dataset/revisions/${run.datasetRevisionId}` : `${projectHref}/dataset`;
   const datasetSamples = isGeneration ? [] : run.datasetSamples ?? [];
@@ -90,6 +101,19 @@ export function LoraTrainingRunDetailPage({
     setCopiedCaption({ caption, sampleId: activeSample.id });
   }
 
+  function handleQueueRetry() {
+    if (!run) return;
+    setRetryDraft({
+      runId: run.id,
+      projectTitle: run.projectTitle,
+      title: run.title,
+      provider: run.provider ?? (isGeneration ? "生成服务" : "本地训练"),
+      queuedAt: new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
+      sourceStatus: run.status,
+      datasetVersion: project?.datasetVersion,
+    });
+  }
+
   return (
     <div className={s.page}>
       <PageHeader
@@ -101,7 +125,7 @@ export function LoraTrainingRunDetailPage({
             <>
               <ButtonLink href={projectHref} icon={FileText}>项目详情</ButtonLink>
               {!isGeneration ? <ButtonLink href={datasetHref} icon={History}>数据集版本</ButtonLink> : null}
-            {run.status === "failed" && !isRetryQueued ? <Button tone="primary" icon={RotateCcw} onClick={() => setRetryQueued(true)} feedback={{ title: "已加入重试队列", detail: run.title }}>重试</Button> : null}
+            {run.status === "failed" && !isRetryQueued ? <Button tone="primary" icon={RotateCcw} onClick={handleQueueRetry} feedback={{ title: "已加入重试队列", detail: run.title }}>重试</Button> : null}
             {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : null}
           </>
         )}
@@ -120,6 +144,27 @@ export function LoraTrainingRunDetailPage({
           </div>
         </div>
       </section>
+
+      {currentRetryDraft ? (
+        <section className={s.retryDraftPanel} aria-label="重试队列草稿">
+          <div className={s.retryDraftTop}>
+            <div>
+              <StatusBadge status="pending" label="重试队列草稿" />
+              <strong>{currentRetryDraft.projectTitle} / {currentRetryDraft.title}</strong>
+            </div>
+            <span>
+              <Clock3 aria-hidden="true" />
+              {currentRetryDraft.queuedAt}
+            </span>
+          </div>
+          <p>失败记录已整理成本地重试草稿，可继续核对数据集版本、provider 和失败来源后提交到训练队列。</p>
+          <dl className={s.retryDraftMeta}>
+            <div><dt>provider</dt><dd>{currentRetryDraft.provider}</dd></div>
+            <div><dt>来源状态</dt><dd>{currentRetryDraft.sourceStatus === "failed" ? "失败记录" : currentRetryDraft.sourceStatus}</dd></div>
+            <div><dt>数据集版本</dt><dd>{currentRetryDraft.datasetVersion ?? "生成任务无数据集版本"}</dd></div>
+          </dl>
+        </section>
+      ) : null}
 
       <div className={s.detailGrid}>
         <Panel

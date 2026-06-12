@@ -53,12 +53,13 @@ test("completed training run creates presets through the real training preset fo
   assert.doesNotMatch(detailSource, /创建预制入口已预览/, "create preset action should not remain a preview-only placeholder");
 });
 
-test("failed training run detail retry updates local queued-retry state", () => {
-  assert.match(detailSource, /retryQueued/, "run detail should track local retry state");
-  assert.match(detailSource, /setRetryQueued/, "retry button should update local retry state");
-  assert.match(detailSource, /isRetryQueued/, "run detail should derive a queued-retry display state");
-  assert.match(detailSource, /onClick=\{\(\) => setRetryQueued\(true\)\}/, "retry action should set the queued state");
-  assert.match(detailSource, /已排队重试/, "retried detail should show queued-retry status");
+test("failed training run detail retry creates a visible local queued-retry draft", () => {
+  assert.match(detailSource, /retryDraft/, "run detail should track a structured local retry draft");
+  assert.match(detailSource, /setRetryDraft/, "retry button should update the local retry draft");
+  assert.match(detailSource, /handleQueueRetry/, "retry action should use an explicit handler");
+  assert.match(detailSource, /重试队列草稿/, "retried detail should render a visible queued-retry draft panel");
+  assert.match(detailSource, /queuedAt/, "retry draft should expose when the retry was queued");
+  assert.doesNotMatch(detailSource, /onClick=\{\(\) => setRetryQueued\(true\)\}/, "retry should not remain a boolean-only inline action");
   assert.match(detailSource, /!isRetryQueued/, "retry button should hide once the run is queued for retry");
 });
 

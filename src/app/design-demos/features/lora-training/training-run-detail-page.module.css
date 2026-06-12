@@ -65,6 +65,101 @@
   transition: width 400ms ease;
 }
 
+.retryDraftPanel {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--demo-green) 30%, var(--demo-border));
+  border-radius: var(--demo-radius);
+  background:
+    radial-gradient(circle at 14% 10%, color-mix(in srgb, var(--demo-green) 18%, transparent), transparent 34%),
+    var(--demo-panel);
+  padding: 13px 14px;
+}
+
+.retryDraftTop {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.retryDraftTop > div {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.retryDraftTop strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 680;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.retryDraftTop > span {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 5px;
+  color: var(--demo-muted);
+  font-family: var(--demo-font-mono);
+  font-size: 11px;
+}
+
+.retryDraftTop svg {
+  width: 14px;
+  height: 14px;
+}
+
+.retryDraftPanel p {
+  margin: 0;
+  color: var(--demo-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.retryDraftMeta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.retryDraftMeta div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  padding: 9px 10px;
+}
+
+.retryDraftMeta dt {
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.retryDraftMeta dd {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .detailGrid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.78fr);
@@ -324,15 +419,23 @@
   .statusSurface,
   .referenceStrip,
   .callout,
+  .retryDraftPanel,
   .configGrid div,
   .trainingSampleCard,
+  .retryDraftMeta div,
   .statGrid div {
     padding: 10px;
   }
 
   .configGrid,
   .trainingSampleGrid,
+  .retryDraftMeta,
   .statGrid {
     grid-template-columns: 1fr;
+  }
+
+  .retryDraftTop {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
