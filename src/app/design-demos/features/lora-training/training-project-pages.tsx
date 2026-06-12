@@ -114,6 +114,17 @@ function buildSeedSectionCopy(section: LoraTrainingTemplateSeedSection, copyNumb
   };
 }
 
+function nextSeedSectionCopyNumber(sections: LoraTrainingTemplateSeedSection[], sourceId: string) {
+  const copyPrefix = `${sourceId}-copy-`;
+  const ordinals = sections
+    .map((section) => {
+      if (section.id === sourceId) return 0;
+      return section.id.startsWith(copyPrefix) ? Number(section.id.slice(copyPrefix.length)) : Number.NaN;
+    })
+    .filter((value) => Number.isFinite(value));
+  return ordinals.length ? Math.max(...ordinals) + 1 : 1;
+}
+
 function subscribeToUrlSearch(onStoreChange: () => void) {
   if (typeof window === "undefined") return () => {};
   window.addEventListener("popstate", onStoreChange);
@@ -714,7 +725,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
 
   function handleCopySeedSection(section: LoraTrainingTemplateSeedSection) {
     setSectionSeeds((current) => {
-      const copyNumber = current.filter((item) => item.id === section.id || item.id.startsWith(`${section.id}-copy-`)).length;
+      const copyNumber = nextSeedSectionCopyNumber(current, section.id);
       const copy = buildSeedSectionCopy(section, copyNumber);
       const sourceIndex = current.findIndex((item) => item.id === section.id);
       if (sourceIndex === -1) return [...current, copy];

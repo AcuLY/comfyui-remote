@@ -485,6 +485,19 @@ test("training project create page manages initial section seeds locally", () =>
   assert.match(formSource, /handleDeleteSeedSection\(section\.id\)/, "delete button should call the seed delete handler");
 });
 
+test("training project create seed copies scan existing copy ids instead of counting current matches", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(pagesSource, /function nextSeedSectionCopyNumber/, "seed section copies should share an id ordinal helper");
+  assert.match(formSource, /nextSeedSectionCopyNumber\(current, section\.id\)/, "seed copy ids should scan existing copies for that source id");
+  assert.doesNotMatch(formSource, /current\.filter\(\(item\) => item\.id === section\.id \|\| item\.id\.startsWith\(`\$\{section\.id\}-copy-`\)\)\.length/, "copy ids should not be based on the current match count");
+});
+
 test("training project create page reads template context from project-create links", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
