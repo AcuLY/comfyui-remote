@@ -47,6 +47,21 @@ test("training section list copy and delete actions update local front-end state
   assert.match(sectionCard, /onDelete\?\.\(section\.id\)/, "delete button should call the section delete handler");
 });
 
+test("training section list drag handles reorder the local section list", () => {
+  const sectionsPage = sourceBetween(
+    "export function LoraTrainingProjectSectionsPage",
+    "export function LoraTrainingProjectSectionDetailPage",
+  );
+  const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
+
+  assert.match(sectionsPage, /orderedSectionIds/, "section list should keep local section ordering state");
+  assert.match(sectionsPage, /handleReorderSections/, "section list should define a local reorder handler");
+  assert.match(sectionsPage, /<SortableList items=\{orderedSectionIds\} onReorder=\{handleReorderSections\}>/, "section list should wrap cards in SortableList");
+  assert.match(sectionsPage, /orderedSectionIds\.map/, "section cards should render in the local drag order");
+  assert.match(sectionCard, /useDemoSortable\(section\.id\)/, "section card drag handle should be connected to sortable state");
+  assert.match(sectionCard, /\{\.\.\.handleProps\}/, "section card drag handle should receive sortable handle props");
+});
+
 test("training section list can add a local draft section without backend calls", () => {
   const sectionsPage = sourceBetween(
     "export function LoraTrainingProjectSectionsPage",

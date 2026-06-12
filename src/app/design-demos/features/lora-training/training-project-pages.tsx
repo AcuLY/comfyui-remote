@@ -34,6 +34,7 @@ import { FloatingSelect } from "../../shared/primitives/floating-select";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { Panel } from "../../shared/primitives/panel";
 import { SegmentedControl } from "../../shared/primitives/segmented-control";
+import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { SwitchRow } from "../../shared/primitives/switch-row";
 import { buildLoraTrainingDemoData } from "./fixtures";
@@ -995,82 +996,105 @@ function SectionCard({
   project: LoraTrainingProject;
   section: LoraTrainingSection;
 }) {
+  const { ref, style, handleProps } = useDemoSortable(section.id);
+
   return (
-    <article className={s.sectionCard}>
-      <Button className={s.dragHandle} icon={GripVertical} iconOnly tone="subtle" ariaLabel={`拖拽排序小节：${section.title}`} />
-      <div className={s.sectionCardMain}>
-        <div className={s.sectionCardHeader}>
-          <Link href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}>
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <strong>{section.title}</strong>
+    <div ref={ref} style={style}>
+      <article className={s.sectionCard}>
+        <button
+          type="button"
+          className={s.dragHandle}
+          aria-label={`拖拽排序小节：${section.title}`}
+          {...handleProps}
+        >
+          <GripVertical aria-hidden="true" />
+        </button>
+        <div className={s.sectionCardMain}>
+          <div className={s.sectionCardHeader}>
+            <Link href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}>
+              <span>{String(index + 1).padStart(2, "0")}</span>
+              <strong>{section.title}</strong>
+            </Link>
+            <div className={s.sectionHeaderActions}>
+              <StatusBadge status={section.enabled ? "ready" : "draft"} label={section.enabled ? "启用" : "停用"} />
+              <Button
+                icon={Copy}
+                iconOnly
+                size="sm"
+                tone="subtle"
+                ariaLabel={`复制小节：${section.title}`}
+                onClick={() => onCopy?.(section)}
+                feedback={{ title: "小节已复制", detail: section.title }}
+              />
+              <Button
+                icon={Trash2}
+                iconOnly
+                size="sm"
+                tone="danger"
+                ariaLabel={`删除小节：${section.title}`}
+                onClick={() => onDelete?.(section.id)}
+                feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.title }}
+              />
+            </div>
+          </div>
+          <Link className={s.sectionImages} href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}>
+            <ImageListSmall images={section.images} limit={4} showCounts wide />
           </Link>
-          <div className={s.sectionHeaderActions}>
-            <StatusBadge status={section.enabled ? "ready" : "draft"} label={section.enabled ? "启用" : "停用"} />
-            <Button
-              icon={Copy}
-              iconOnly
-              size="sm"
-              tone="subtle"
-              ariaLabel={`复制小节：${section.title}`}
-              onClick={() => onCopy?.(section)}
-              feedback={{ title: "小节已复制", detail: section.title }}
-            />
-            <Button
-              icon={Trash2}
-              iconOnly
-              size="sm"
-              tone="danger"
-              ariaLabel={`删除小节：${section.title}`}
-              onClick={() => onDelete?.(section.id)}
-              feedback={{ tone: "warning", title: "删除小节需要确认", detail: section.title }}
-            />
+          <div className={s.sectionActions}>
+            <span>更新 {section.updatedAt} · {section.blocks.length} 个场景块</span>
+            <ButtonLink href={`/training/projects/${project.id}/sections/${section.id}/generation-tasks/new`} icon={ImagePlus} size="sm">生成样本</ButtonLink>
           </div>
         </div>
-        <Link className={s.sectionImages} href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}>
-          <ImageListSmall images={section.images} limit={4} showCounts wide />
-        </Link>
-        <div className={s.sectionActions}>
-          <span>更新 {section.updatedAt} · {section.blocks.length} 个场景块</span>
-          <ButtonLink href={`/training/projects/${project.id}/sections/${section.id}/generation-tasks/new`} icon={ImagePlus} size="sm">生成样本</ButtonLink>
-        </div>
-      </div>
-    </article>
+      </article>
+    </div>
   );
 }
 
 export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const project = findProject(data, projectId);
   const [localSections, setLocalSections] = useState(() => project?.sections ?? []);
+  const [orderedSectionIds, setOrderedSectionIds] = useState(() => project?.sections.map((section) => section.id) ?? []);
   if (!project) return <EmptyPage title="没有训练小节数据" />;
-  const sections = localSections;
+  const sectionMap = new Map(localSections.map((section) => [section.id, section]));
+  const sections = orderedSectionIds
+    .map((sectionId) => sectionMap.get(sectionId))
+    .filter((section): section is LoraTrainingSection => Boolean(section));
 
   function handleCopySection(section: LoraTrainingSection) {
+    const copyId = `${section.id}-copy-${Date.now()}`;
     const copy: LoraTrainingSection = {
       ...section,
-      id: `${section.id}-copy-${Date.now()}`,
+      id: copyId,
       title: `${section.title} (副本)`,
       updatedAt: "刚刚",
     };
     setLocalSections((current) => [...current, copy]);
+    setOrderedSectionIds((current) => [...current, copyId]);
   }
 
   function handleDeleteSection(sectionId: string) {
     setLocalSections((current) => current.filter((section) => section.id !== sectionId));
+    setOrderedSectionIds((current) => current.filter((id) => id !== sectionId));
+  }
+
+  function handleReorderSections(nextSectionIds: string[]) {
+    setOrderedSectionIds(nextSectionIds);
   }
 
   function handleAddSection() {
+    const draftId = `new-section-${Date.now()}`;
     setLocalSections((current) => {
       const source = current[0];
       const draftIndex = current.length + 1;
       const draft: LoraTrainingSection = source ? {
         ...source,
-        id: `new-section-${Date.now()}`,
+        id: draftId,
         title: `新小节 ${draftIndex}`,
         updatedAt: "刚刚",
         images: [],
         resultStatus: "pending",
       } : {
-        id: `new-section-${Date.now()}`,
+        id: draftId,
         title: `新小节 ${draftIndex}`,
         enabled: true,
         updatedAt: "刚刚",
@@ -1084,6 +1108,7 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
       };
       return [...current, draft];
     });
+    setOrderedSectionIds((current) => [...current, draftId]);
   }
 
   return (
@@ -1095,16 +1120,23 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
       />
       <TrainingSectionWorkspace activeSectionId={sections[0]?.id} project={project} sections={sections}>
         <div className={s.sectionGrid}>
-          {sections.map((section, index) => (
-            <SectionCard
-              index={index}
-              key={section.id}
-              onCopy={handleCopySection}
-              onDelete={handleDeleteSection}
-              project={project}
-              section={section}
-            />
-          ))}
+          <SortableList items={orderedSectionIds} onReorder={handleReorderSections}>
+            {orderedSectionIds.map((sectionId, index) => {
+              const section = sectionMap.get(sectionId);
+              if (!section) return null;
+
+              return (
+                <SectionCard
+                  index={index}
+                  key={section.id}
+                  onCopy={handleCopySection}
+                  onDelete={handleDeleteSection}
+                  project={project}
+                  section={section}
+                />
+              );
+            })}
+          </SortableList>
         </div>
       </TrainingSectionWorkspace>
     </div>

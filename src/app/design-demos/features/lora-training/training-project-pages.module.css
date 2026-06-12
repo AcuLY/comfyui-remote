@@ -820,19 +820,37 @@
   background: var(--demo-glass-hover);
 }
 
-.dragHandle[data-demo-ui-button="true"][data-demo-ui-button-icon-only="true"] {
+.dragHandle {
   position: absolute;
+  display: inline-flex;
   top: 14px;
   left: 10px;
   width: 28px;
   min-width: 28px;
   height: 28px;
   min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
   border-color: transparent;
   background: transparent;
   color: var(--demo-faint);
   cursor: grab;
   padding: 0;
+}
+
+.dragHandle:hover,
+.dragHandle:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-field-bg);
+  color: var(--demo-green);
+  outline: none;
+}
+
+.dragHandle svg {
+  width: 15px;
+  height: 15px;
 }
 
 .sectionCardMain {
