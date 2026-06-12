@@ -49,6 +49,21 @@ test("training preset new actions route into a real new-preset form", () => {
   assert.doesNotMatch(detailSource, /positivePrompt|negativePrompt|loraStages|variants/, "training preset editor must stay scene-description only in new mode");
 });
 
+test("training preset new form carries source training artifact context", () => {
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  assert.notEqual(detailStart, -1);
+  assert.notEqual(sortStart, -1);
+
+  const detailSource = pageSource.slice(detailStart, sortStart);
+
+  assert.match(pageSource, /sourceRun:\s*searchParams\.get\("sourceRun"\)/, "new preset hints should read source training run id");
+  assert.match(pageSource, /artifact:\s*searchParams\.get\("artifact"\)/, "new preset hints should read source artifact name");
+  assert.match(pageSource, /project:\s*searchParams\.get\("project"\)/, "new preset hints should read source project title");
+  assert.match(detailSource, /来源训练产物/, "new preset form should show source artifact context");
+  assert.match(detailSource, /newPresetHints\.artifact/, "source artifact field should only appear when artifact context exists");
+});
+
 test("training template form uses the shared template editor workspace model", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");

@@ -41,6 +41,17 @@ function trainingConfigText(run: LoraTrainingRun) {
     .join("\n");
 }
 
+function createTrainingPresetHref(run: LoraTrainingRun) {
+  const params = new URLSearchParams({
+    category: "训练产物",
+    folder: "LoRA 产物",
+    sourceRun: run.id,
+    project: run.projectTitle,
+  });
+  params.set("artifact", run.artifactName ?? run.finalLoraArtifactId ?? "");
+  return `/training/presets/new?${params.toString()}`;
+}
+
 export function LoraTrainingRunDetailPage({
   data,
   kind,
@@ -129,7 +140,7 @@ export function LoraTrainingRunDetailPage({
           <Panel
             title={isGeneration ? "输出" : "训练产物"}
             subtitle={isGeneration ? "文本任务直接展示应用结果，图片任务展示进入结果池的样本。" : "完成后产出 safetensors；未完成状态保留进度与日志入口。"}
-            actions={canCreatePreset ? <Button icon={ImagePlus} tone="primary" feedback={{ title: "创建预制入口已预览", detail: run.artifactName }}>创建预制</Button> : null}
+            actions={canCreatePreset ? <ButtonLink href={createTrainingPresetHref(run)} icon={ImagePlus} tone="primary">创建预制</ButtonLink> : null}
           >
             <div className={s.stack}>
               {run.status === "failed" ? (

@@ -44,6 +44,15 @@ test("training detail page renders training samples, captions, log preview, and 
   assert.match(detailSource, /!run\.presetCreatedAt/, "preset creation should hide after a preset already exists");
 });
 
+test("completed training run creates presets through the real training preset form route", () => {
+  assert.match(detailSource, /function createTrainingPresetHref/, "run detail should build a concrete preset creation href");
+  assert.match(detailSource, /\/training\/presets\/new/, "preset creation should navigate to the new training preset route");
+  assert.match(detailSource, /sourceRun/, "preset creation should pass the source training run id");
+  assert.match(detailSource, /artifact/, "preset creation should pass the final LoRA artifact name");
+  assert.match(detailSource, /<ButtonLink href=\{createTrainingPresetHref\(run\)\} icon=\{ImagePlus\} tone="primary">创建预制<\/ButtonLink>/, "create preset action should be a link, not feedback-only UI");
+  assert.doesNotMatch(detailSource, /创建预制入口已预览/, "create preset action should not remain a preview-only placeholder");
+});
+
 test("failed training run detail retry updates local queued-retry state", () => {
   assert.match(detailSource, /retryQueued/, "run detail should track local retry state");
   assert.match(detailSource, /setRetryQueued/, "retry button should update local retry state");

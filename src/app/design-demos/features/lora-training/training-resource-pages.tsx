@@ -73,24 +73,39 @@ function useUrlSearch() {
   return useSyncExternalStore(subscribeToUrlSearch, getUrlSearchSnapshot, getServerUrlSearchSnapshot);
 }
 
+type NewPresetHints = {
+  artifact: string;
+  category: string;
+  folder: string;
+  project: string;
+  sourceRun: string;
+};
+
 function readNewPresetHints(search: string) {
   const searchParams = new URLSearchParams(search);
   return {
+    artifact: searchParams.get("artifact") ?? "",
     category: searchParams.get("category") ?? "",
     folder: searchParams.get("folder") ?? "",
+    project: searchParams.get("project") ?? "",
+    sourceRun: searchParams.get("sourceRun") ?? "",
   };
 }
 
-function createDraftTrainingPreset(training: ReturnType<typeof buildLoraTrainingDemoData>, hints: { category: string; folder: string }): LoraTrainingPreset {
+function createDraftTrainingPreset(training: ReturnType<typeof buildLoraTrainingDemoData>, hints: NewPresetHints): LoraTrainingPreset {
   const source = training.presets[0];
+  const artifactTitle = hints.artifact.replace(/\.safetensors$/i, "");
+  const sourceLabel = hints.project || artifactTitle;
   return {
     id: "new-training-preset",
-    title: "新训练预制",
+    title: sourceLabel ? `${sourceLabel} 训练预制` : "新训练预制",
     category: hints.category || source?.category || "角色",
     folder: hints.folder || source?.folder || "未归档",
     status: "active",
     updatedAt: "本地草稿",
-    sceneDescriptionText: "在这里补充可复用的 scene description，只描述训练小节需要导入的场景文本。",
+    sceneDescriptionText: hints.artifact
+      ? `从 ${hints.project || "训练项目"} 的训练产物 ${hints.artifact} 创建，补充后作为可复用 scene description 导入训练小节。`
+      : "在这里补充可复用的 scene description，只描述训练小节需要导入的场景文本。",
     projectUsage: [],
     templateUsage: [],
   };
@@ -333,7 +348,7 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
 export function LoraTrainingPresetDetailPage({ data, mode = "edit", presetId }: { data: DemoData; mode?: "new" | "edit"; presetId?: string }) {
   const training = buildLoraTrainingDemoData(data);
   const urlSearch = useUrlSearch();
-  const newPresetHints = mode === "new" ? readNewPresetHints(urlSearch) : { category: "", folder: "" };
+  const newPresetHints = mode === "new" ? readNewPresetHints(urlSearch) : { artifact: "", category: "", folder: "", project: "", sourceRun: "" };
   const preset = mode === "new" ? createDraftTrainingPreset(training, newPresetHints) : findPreset(data, presetId);
   if (!preset) return <EmptyPage title="没有训练预制数据" />;
   const usages = [...preset.projectUsage, ...preset.templateUsage];
@@ -360,6 +375,9 @@ export function LoraTrainingPresetDetailPage({ data, mode = "edit", presetId }: 
           <Field label="名称" value={preset.title} />
           <FloatingSelect label="分类" value={preset.category} options={[preset.category, "光线", "环境", "构图"]} />
           <FloatingSelect label="文件夹" value={preset.folder} options={[preset.folder, "舞台", "城市", "训练净图"]} />
+          {isNew && newPresetHints.artifact ? (
+            <Field readOnly label="来源训练产物" value={`${newPresetHints.project || "训练项目"} · ${newPresetHints.artifact}${newPresetHints.sourceRun ? ` · ${newPresetHints.sourceRun}` : ""}`} />
+          ) : null}
           <Field multiline features={{ resize: true, clipboard: true }} label="场景描述" value={preset.sceneDescriptionText} />
         </EditorBlock>
         <EditorBlock
