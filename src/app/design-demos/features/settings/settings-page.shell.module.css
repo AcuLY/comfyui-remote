@@ -14,6 +14,126 @@
   display: grid;
   gap: 14px;
 }
+
+.workModePanel {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-bg);
+  box-shadow: var(--demo-glass-shadow);
+  padding: 12px;
+}
+
+.workModeHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--demo-border);
+  padding-bottom: 10px;
+}
+
+.workModeHeader > div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.workModeHeader strong,
+.workModeCard strong,
+.modeRouteList strong {
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.workModeHeader span,
+.workModeCard small {
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.workModeHeader em {
+  flex: 0 0 auto;
+  border: 1px solid var(--demo-glass-accent-border);
+  border-radius: 999px;
+  background: var(--demo-green-soft);
+  color: var(--demo-green);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 620;
+  padding: 5px 8px;
+}
+
+.workModeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.workModeCard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  min-width: 0;
+  align-items: start;
+  gap: 10px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 10px;
+  text-align: left;
+}
+
+.workModeCard:hover,
+.workModeCard:focus-visible,
+.workModeCard[data-active="true"] {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+  outline: none;
+}
+
+.workModeCard[data-active="true"] > svg {
+  color: var(--demo-green);
+}
+
+.workModeCard span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.modeRouteList {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.modeRouteList span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  border: 1px solid var(--demo-border);
+  border-radius: 9px;
+  background: var(--demo-field-bg);
+  padding: 8px;
+}
+
+.modeRouteList code {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-family: var(--demo-font-mono);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .settingsLinkList {
   display: grid;
   gap: 0;
@@ -123,6 +243,16 @@
   }
 }
 @media (max-width: 639px) {
+
+  .workModeHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .workModeGrid,
+  .modeRouteList {
+    grid-template-columns: 1fr;
+  }
 
   .settingsLinkRow {
     min-height: 54px;
