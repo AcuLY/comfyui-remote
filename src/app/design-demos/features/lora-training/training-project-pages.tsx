@@ -19,8 +19,9 @@ import {
 
 import type { DemoData } from "../../data";
 import { cx, demoHref } from "../../routing";
-import { ImageGrid } from "../../shared/media/image-grid";
 import { ImageListSmall } from "../../shared/media/image-list-small";
+import { ImagePreviewFrame } from "../../shared/media/image-preview-frame";
+import { ImagePreviewLarge } from "../../shared/media/image-preview-large";
 import { Button, ButtonLink } from "../../shared/primitives/button";
 import { EmptyPage } from "../../shared/primitives/empty-page";
 import { Field } from "../../shared/primitives/field";
@@ -30,7 +31,7 @@ import { Panel } from "../../shared/primitives/panel";
 import { SegmentedControl } from "../../shared/primitives/segmented-control";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { buildLoraTrainingDemoData } from "./fixtures";
-import type { LoraTrainingProject, LoraTrainingRun, LoraTrainingSection, LoraTrainingTaskKind, LoraTrainingTaskStatus } from "./types";
+import type { LoraTrainingImageResult, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingTaskKind, LoraTrainingTaskStatus } from "./types";
 import s from "./training-project-pages.module.css";
 
 const PROJECT_TABS = [
@@ -49,6 +50,15 @@ const STATUS_ITEMS: Array<{ value: LoraTrainingTaskStatus; label: string }> = [
   { value: "queued", label: "排队" },
   { value: "failed", label: "失败" },
 ];
+
+const RESULT_FILTER_ITEMS = [
+  { value: "all", label: "全部" },
+  { value: "pending", label: "待审" },
+  { value: "kept", label: "保留" },
+  { value: "rejected", label: "拒绝" },
+] as const;
+
+type TrainingResultFilter = (typeof RESULT_FILTER_ITEMS)[number]["value"];
 
 function useTraining(data: DemoData) {
   return buildLoraTrainingDemoData(data);
@@ -118,6 +128,76 @@ function StatGrid({ project }: { project: LoraTrainingProject }) {
   );
 }
 
+function reviewStatusLabel(status: LoraTrainingImageResult["reviewStatus"]) {
+  if (status === "kept") return "保留";
+  if (status === "rejected") return "拒绝";
+  return "待审";
+}
+
+function reviewStatusTone(status: LoraTrainingImageResult["reviewStatus"]) {
+  if (status === "kept") return "kept";
+  if (status === "rejected") return "failed";
+  return "pending";
+}
+
+function referenceKindLabel(kind: LoraTrainingReferenceImage["kind"]) {
+  if (kind === "original") return "原始";
+  if (kind === "generated") return "生成";
+  return "辅助";
+}
+
+function TrainingResultGrid({
+  results,
+  title = "训练结果",
+}: {
+  results: LoraTrainingImageResult[];
+  title?: string;
+}) {
+  const [activeResultIndex, setActiveResultIndex] = useState<number | null>(null);
+  const activeResult = activeResultIndex === null ? null : results[activeResultIndex] ?? null;
+
+  if (results.length === 0) return <div className={s.emptyInline}>没有训练结果图片</div>;
+
+  return (
+    <>
+      <div className={s.trainingResultGrid}>
+        {results.map((result, index) => (
+          <button
+            className={s.trainingResultCard}
+            data-review-status={result.reviewStatus}
+            key={result.id}
+            type="button"
+            onClick={() => setActiveResultIndex(index)}
+          >
+            <ImagePreviewFrame image={result.image} />
+            <span className={s.trainingResultMeta}>
+              <strong>{result.sourceLabel}</strong>
+              <StatusBadge status={reviewStatusTone(result.reviewStatus)} label={reviewStatusLabel(result.reviewStatus)} />
+            </span>
+            <p className={s.trainingResultCaption}>{result.caption}</p>
+          </button>
+        ))}
+      </div>
+      {activeResult ? (
+        <ImagePreviewLarge
+          image={activeResult.image}
+          title={`${title} / ${activeResult.sectionTitle}`}
+          meta={activeResult.caption}
+          onClose={() => setActiveResultIndex(null)}
+          onNext={() => setActiveResultIndex((current) => current === null ? 0 : (current + 1) % results.length)}
+          onPrevious={() => setActiveResultIndex((current) => current === null ? 0 : (current + results.length - 1) % results.length)}
+          actions={(
+            <>
+              <Button icon={Check} feedback={{ title: "图片已加入保留队列", detail: activeResult.sourceLabel }}>保留</Button>
+              <Button tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "图片已加入拒绝队列", detail: activeResult.sourceLabel }}>拒绝</Button>
+            </>
+          )}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function RunRows({ runs }: { runs: LoraTrainingRun[] }) {
   if (runs.length === 0) return <div className={s.emptyInline}>没有任务记录</div>;
 
@@ -183,6 +263,8 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
   const project = findProject(data, projectId);
   if (!project) return <EmptyPage title="没有训练项目数据" />;
   const recentRuns = training.runs.filter((run) => run.projectId === project.id).slice(0, 4);
+  const recentResults = project.resultPool.filter((result) => result.reviewStatus === "kept").slice(0, 4);
+  const latestRevision = project.datasetRevisions[0];
 
   return (
     <div className={s.page}>
@@ -198,28 +280,28 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
         )}
       />
       <div className={s.overviewGrid}>
-        <Panel title="项目摘要" subtitle="只展示训练项目最需要先判断的 readiness 和最近产出。">
-          <div className={s.stack}>
-            <div className={s.heroStrip}>
-              <ImageListSmall images={project.images} limit={project.images.length} showCounts />
-            </div>
-            <StatGrid project={project} />
-          </div>
-        </Panel>
         <Panel title="角色资料">
           <div className={s.stack}>
             <p className={s.bodyText}>{project.profileSummary}</p>
+            <div className={s.heroStrip}>
+              <ImageListSmall images={project.referenceImages.map((reference) => reference.image)} limit={project.referenceImages.length} />
+            </div>
             <ButtonLink href={`/training/projects/${project.id}/profile`} icon={FileText}>编辑资料</ButtonLink>
           </div>
+        </Panel>
+        <Panel title="训练入口" subtitle="总览只放启动判断，完整 readiness 和 revision 在数据集页处理。">
+          <div className={s.readinessSummary}>
+            <span><strong>{project.keptCount}</strong> kept</span>
+            <span><strong>{project.captionMissingCount}</strong> 缺 caption</span>
+            <span><strong>{latestRevision?.version ?? project.datasetVersion}</strong> 当前版本</span>
+          </div>
+          <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Layers} tone="primary">打开数据集工作台</ButtonLink>
         </Panel>
         <Panel title="最近任务">
           <RunRows runs={recentRuns} />
         </Panel>
-        <Panel title="数据集与训练">
-          <div className={s.stack}>
-            <StatGrid project={project} />
-            <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Layers} tone="primary">前往数据集</ButtonLink>
-          </div>
+        <Panel title="最近产物" subtitle="只展示最近保留结果，完整审查在结果池。">
+          <TrainingResultGrid results={recentResults} title="最近产物" />
         </Panel>
       </div>
     </div>
@@ -243,7 +325,18 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
         </Panel>
         <Panel title="参考图" subtitle="original / generated / auxiliary 都作为自由参考图管理，不做 fixed slots。">
           <div className={s.stack}>
-            <ImageGrid images={project.images.slice(0, 6)} selectable />
+            <div className={s.referenceImageGrid}>
+              {project.referenceImages.map((reference) => (
+                <article className={s.referenceImageCard} key={reference.id}>
+                  <ImagePreviewFrame image={reference.image} />
+                  <div>
+                    <span>{referenceKindLabel(reference.kind)}</span>
+                    <strong>{reference.label}</strong>
+                    <p>{reference.note}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
             <Button icon={ImagePlus} feedback={{ title: "上传参考图入口已预览", detail: project.title }}>上传参考图</Button>
           </div>
         </Panel>
@@ -325,7 +418,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
         </Panel>
       </div>
       <Panel title="小节结果">
-        <ImageGrid images={section.images} selectable />
+        <TrainingResultGrid results={project.resultPool.filter((result) => result.sectionId === section.id)} title={`${section.title} 结果`} />
       </Panel>
     </div>
   );
@@ -367,14 +460,24 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
 
 export function LoraTrainingProjectResultsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const project = findProject(data, projectId);
+  const [filter, setFilter] = useState<TrainingResultFilter>("all");
   if (!project) return <EmptyPage title="没有训练结果池数据" />;
-  const images = project.sections.flatMap((section) => section.images);
+  const results = filter === "all" ? project.resultPool : project.resultPool.filter((result) => result.reviewStatus === filter);
 
   return (
     <div className={s.page}>
       <ProjectHeader active="results" project={project} actions={<Button icon={Check} tone="primary" feedback={{ title: "已保留所选图片" }}>批量保留</Button>} />
       <Panel title="结果池" subtitle="pending / kept / rejected 都在项目级结果池审查，caption 摘要随图片一起处理。">
-        <ImageGrid images={images} selectable />
+        <div className={s.stack}>
+          <SegmentedControl
+            ariaLabel="筛选训练结果"
+            role="tablist"
+            items={RESULT_FILTER_ITEMS.map((item) => ({ ...item, count: item.value === "all" ? project.resultPool.length : project.resultPool.filter((result) => result.reviewStatus === item.value).length }))}
+            value={filter}
+            onChange={setFilter}
+          />
+          <TrainingResultGrid results={results} title="结果池" />
+        </div>
       </Panel>
     </div>
   );
@@ -406,16 +509,27 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
         </Panel>
       </div>
       <Panel title="Kept 草稿">
-        <ImageGrid images={project.images} selectable />
+        <TrainingResultGrid results={project.resultPool.filter((result) => result.reviewStatus === "kept")} title="Kept 草稿" />
       </Panel>
     </div>
   );
 }
 
 export function LoraTrainingProjectDatasetRevisionPage({ data, projectId, revisionId }: { data: DemoData; projectId?: string; revisionId?: string }) {
+  const training = useTraining(data);
   const project = findProject(data, projectId);
   const revision = project?.datasetRevisions.find((item) => item.id === revisionId) ?? project?.datasetRevisions[0];
   if (!project || !revision) return <EmptyPage title="没有冻结版本数据" />;
+  const revisionResults = revision.samples.map((sample) => ({
+    id: sample.id,
+    sectionId: sample.sectionTitle,
+    sectionTitle: sample.sectionTitle,
+    image: sample.image,
+    reviewStatus: "kept" as const,
+    caption: sample.captionSnapshot,
+    sourceLabel: `${sample.label} · ${sample.filePathSnapshot}`,
+  }));
+  const relatedRuns = training.runs.filter((run) => revision.relatedTrainingRunIds.includes(run.id) || run.datasetRevisionId === revision.id);
 
   return (
     <div className={s.page}>
@@ -430,11 +544,16 @@ export function LoraTrainingProjectDatasetRevisionPage({ data, projectId, revisi
           </dl>
         </Panel>
         <Panel title="关联训练">
-          <RunRows runs={buildLoraTrainingDemoData(data).runs.filter((run) => run.datasetRevisionId === revision.id)} />
+          <RunRows runs={relatedRuns} />
         </Panel>
       </div>
       <Panel title="Snapshot 样本与 caption">
-        <ImageGrid images={project.images.slice(0, 8)} selectable />
+        <TrainingResultGrid results={revisionResults} title={`${revision.version} snapshot`} />
+      </Panel>
+      <Panel title="Manifest 清单">
+        <ol className={s.manifestList}>
+          {revision.manifestRows.map((row) => <li key={row}>{row}</li>)}
+        </ol>
       </Panel>
     </div>
   );

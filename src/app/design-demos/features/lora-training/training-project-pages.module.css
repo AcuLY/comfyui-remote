@@ -72,6 +72,32 @@
   padding: 10px;
 }
 
+.readinessSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.readinessSummary span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  font-size: 11px;
+  padding: 10px 12px;
+}
+
+.readinessSummary strong {
+  color: var(--demo-text);
+  font-size: 16px;
+  font-weight: 680;
+  line-height: 1.1;
+}
+
 .bodyText {
   margin: 0;
   color: var(--demo-muted);
@@ -178,6 +204,130 @@
   font-size: 12px;
   padding: 18px;
   text-align: center;
+}
+
+.referenceImageGrid,
+.trainingResultGrid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 10px;
+}
+
+.referenceImageCard,
+.trainingResultCard {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background: var(--demo-field-bg);
+  color: inherit;
+  padding: 9px;
+}
+
+.trainingResultCard {
+  appearance: none;
+  cursor: zoom-in;
+  text-align: left;
+  transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.trainingResultCard:hover,
+.trainingResultCard:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.referenceImageCard :global([class*="imagePreviewFrame"]),
+.trainingResultCard :global([class*="imagePreviewFrame"]) {
+  aspect-ratio: 4 / 5;
+  min-height: 0;
+  border-radius: 8px;
+  background: var(--demo-panel);
+}
+
+.referenceImageCard > div:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.referenceImageCard span {
+  width: fit-content;
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  background: var(--demo-glass-soft);
+  color: var(--demo-green);
+  font-size: 10px;
+  font-weight: 640;
+  padding: 2px 7px;
+}
+
+.referenceImageCard strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.referenceImageCard p,
+.trainingResultCaption {
+  display: -webkit-box;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.trainingResultMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.trainingResultMeta strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.manifestList {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.manifestList li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--demo-border);
+  border-radius: 9px;
+  background: var(--demo-field-bg);
+  color: var(--demo-muted);
+  font-family: var(--demo-font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 9px 10px;
 }
 
 .sectionGrid {
@@ -312,6 +462,12 @@
   }
 
   .statGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .readinessSummary,
+  .referenceImageGrid,
+  .trainingResultGrid {
     grid-template-columns: 1fr;
   }
 

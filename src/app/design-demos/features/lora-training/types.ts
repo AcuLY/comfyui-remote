@@ -3,6 +3,33 @@ import type { DemoImage } from "../../data";
 export type LoraTrainingProjectStatus = "ready" | "training" | "draft" | "archived";
 export type LoraTrainingReviewStatus = "pending" | "kept" | "rejected";
 
+export type LoraTrainingReferenceImage = {
+  id: string;
+  kind: "original" | "generated" | "auxiliary";
+  label: string;
+  note: string;
+  image: DemoImage;
+};
+
+export type LoraTrainingImageResult = {
+  id: string;
+  sectionId: string;
+  sectionTitle: string;
+  image: DemoImage;
+  reviewStatus: LoraTrainingReviewStatus;
+  caption: string;
+  sourceLabel: string;
+};
+
+export type LoraTrainingDatasetRevisionItem = {
+  id: string;
+  label: string;
+  sectionTitle: string;
+  image: DemoImage;
+  captionSnapshot: string;
+  filePathSnapshot: string;
+};
+
 export type LoraTrainingProject = {
   id: string;
   title: string;
@@ -19,6 +46,8 @@ export type LoraTrainingProject = {
   keptCount: number;
   captionMissingCount: number;
   images: DemoImage[];
+  referenceImages: LoraTrainingReferenceImage[];
+  resultPool: LoraTrainingImageResult[];
   sections: LoraTrainingSection[];
   datasetRevisions: LoraTrainingDatasetRevision[];
 };
@@ -95,6 +124,9 @@ export type LoraTrainingDatasetRevision = {
   itemCount: number;
   captionMissingCount: number;
   manifestName: string;
+  samples: LoraTrainingDatasetRevisionItem[];
+  manifestRows: string[];
+  relatedTrainingRunIds: string[];
 };
 
 export type LoraTrainingPreset = {

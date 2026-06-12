@@ -3,8 +3,10 @@ import type {
   LoraTrainingDatasetRevision,
   LoraTrainingDatasetSample,
   LoraTrainingDemoData,
+  LoraTrainingImageResult,
   LoraTrainingPreset,
   LoraTrainingProject,
+  LoraTrainingReferenceImage,
   LoraTrainingRun,
   LoraTrainingSection,
   LoraTrainingTemplate,
@@ -85,7 +87,83 @@ function buildSections(images: DemoImage[], start: number): LoraTrainingSection[
   ];
 }
 
-function buildDatasetRevisions(latest: string, itemCount: number, captionMissingCount: number): LoraTrainingDatasetRevision[] {
+function resultStatusFromIndex(index: number) {
+  if (index % 7 === 0) return "rejected";
+  if (index % 3 === 0) return "pending";
+  return "kept";
+}
+
+function demoStatusFromReview(status: "pending" | "kept" | "rejected") {
+  return status === "rejected" ? "trashed" : status;
+}
+
+function buildReferenceImages(images: DemoImage[], start: number, prefix: string): LoraTrainingReferenceImage[] {
+  const picked = pickImages(images, start, 3);
+  const kinds: LoraTrainingReferenceImage["kind"][] = ["original", "generated", "auxiliary"];
+  const labels = ["主参考图", "生成参考图", "补充参考图"];
+  const notes = [
+    "确认角色身份、发型和默认服装，不锁定构图。",
+    "来自训练集生成任务，用于补充光线和服装边缘细节。",
+    "辅助说明材质、袖口标签和背面轮廓。",
+  ];
+
+  return picked.map((image, index) => ({
+    id: `${prefix}-reference-${index + 1}`,
+    kind: kinds[index] ?? "auxiliary",
+    label: labels[index] ?? "参考图",
+    note: notes[index] ?? "自由参考图，可编辑 label 和 note。",
+    image,
+  }));
+}
+
+function buildImageResults(images: DemoImage[], start: number, prefix: string): LoraTrainingImageResult[] {
+  const picked = pickImages(images, start, 12);
+  const sections = [
+    { id: "stage-light", title: "舞台灯光", scene: "stage portrait, cyan rim light, glossy teal cropped jacket" },
+    { id: "street-night", title: "街角夜景", scene: "night street, wet pavement, teal jacket reflection" },
+    { id: "studio-white", title: "白底棚拍", scene: "clean studio portrait, opaque background, no text, no watermark" },
+  ];
+
+  return picked.map((image, index) => {
+    const section = sections[index % sections.length];
+    const reviewStatus = resultStatusFromIndex(index);
+    return {
+      id: `${prefix}-result-${index + 1}`,
+      sectionId: section.id,
+      sectionTitle: section.title,
+      image: { ...image, status: demoStatusFromReview(reviewStatus) },
+      reviewStatus,
+      caption: `${prefix.replaceAll("-", "_")}, ${section.scene}, clean silhouette, training caption snapshot ${String(index + 1).padStart(3, "0")}`,
+      sourceLabel: `${section.title} · run ${String(index + 1).padStart(2, "0")}`,
+    };
+  });
+}
+
+function buildRevisionItems(images: DemoImage[], start: number, prefix: string): LoraTrainingDatasetRevision["samples"] {
+  return buildImageResults(images, start, prefix)
+    .filter((result) => result.reviewStatus === "kept")
+    .slice(0, 6)
+    .map((result, index) => ({
+      id: `${prefix}-revision-item-${index + 1}`,
+      label: String(index + 1).padStart(3, "0"),
+      sectionTitle: result.sectionTitle,
+      image: result.image,
+      captionSnapshot: result.caption,
+      filePathSnapshot: `datasets/${prefix}/${String(index + 1).padStart(3, "0")}.png`,
+    }));
+}
+
+function buildDatasetRevisions(
+  latest: string,
+  itemCount: number,
+  captionMissingCount: number,
+  images: DemoImage[],
+  start: number,
+  prefix: string,
+  relatedTrainingRunIds: string[] = [],
+): LoraTrainingDatasetRevision[] {
+  const currentSamples = buildRevisionItems(images, start, `${prefix}-${latest}`);
+  const previousSamples = buildRevisionItems(images, start + 6, `${prefix}-v4`);
   return [
     {
       id: `${latest}-current`,
@@ -95,6 +173,9 @@ function buildDatasetRevisions(latest: string, itemCount: number, captionMissing
       itemCount,
       captionMissingCount,
       manifestName: `dataset_${latest}.jsonl`,
+      samples: currentSamples,
+      manifestRows: currentSamples.slice(0, 4).map((sample) => `${sample.filePathSnapshot} | ${sample.captionSnapshot}`),
+      relatedTrainingRunIds,
     },
     {
       id: `${latest}-previous`,
@@ -104,6 +185,9 @@ function buildDatasetRevisions(latest: string, itemCount: number, captionMissing
       itemCount: Math.max(itemCount - 6, 12),
       captionMissingCount: 0,
       manifestName: "dataset_v4.jsonl",
+      samples: previousSamples,
+      manifestRows: previousSamples.slice(0, 4).map((sample) => `${sample.filePathSnapshot} | ${sample.captionSnapshot}`),
+      relatedTrainingRunIds: [],
     },
   ];
 }
@@ -168,8 +252,10 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       keptCount: 42,
       captionMissingCount: 0,
       images: pickImages(images, 0, 8),
+      referenceImages: buildReferenceImages(images, 0, "vela-neon"),
+      resultPool: buildImageResults(images, 0, "vela-neon"),
       sections: buildSections(images, 0),
-      datasetRevisions: buildDatasetRevisions("v5", 42, 0),
+      datasetRevisions: buildDatasetRevisions("v5", 42, 0, images, 0, "vela-neon", ["train-vela-v5"]),
     },
     {
       id: "azure-idol",
@@ -187,8 +273,10 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       keptCount: 33,
       captionMissingCount: 3,
       images: pickImages(images, 4, 7),
+      referenceImages: buildReferenceImages(images, 4, "azure-idol"),
+      resultPool: buildImageResults(images, 4, "azure-idol"),
       sections: buildSections(images, 4),
-      datasetRevisions: buildDatasetRevisions("v4", 33, 3),
+      datasetRevisions: buildDatasetRevisions("v4", 33, 3, images, 4, "azure-idol", ["train-azure-v4"]),
     },
     {
       id: "noir-runner",
@@ -206,8 +294,10 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       keptCount: 18,
       captionMissingCount: 8,
       images: pickImages(images, 8, 6),
+      referenceImages: buildReferenceImages(images, 8, "noir-runner"),
+      resultPool: buildImageResults(images, 8, "noir-runner"),
       sections: buildSections(images, 8),
-      datasetRevisions: buildDatasetRevisions("草稿", 18, 8),
+      datasetRevisions: buildDatasetRevisions("草稿", 18, 8, images, 8, "noir-runner", ["train-noir-failed"]),
     },
     {
       id: "mika-soft",
@@ -225,8 +315,10 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       keptCount: 51,
       captionMissingCount: 0,
       images: pickImages(images, 12, 8),
+      referenceImages: buildReferenceImages(images, 12, "mika-soft"),
+      resultPool: buildImageResults(images, 12, "mika-soft"),
       sections: buildSections(images, 12),
-      datasetRevisions: buildDatasetRevisions("v3", 51, 0),
+      datasetRevisions: buildDatasetRevisions("v3", 51, 0, images, 12, "mika-soft", ["train-mika-v3"]),
     },
     {
       id: "luna-editorial",
@@ -244,8 +336,10 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       keptCount: 24,
       captionMissingCount: 0,
       images: pickImages(images, 16, 6),
+      referenceImages: buildReferenceImages(images, 16, "luna-editorial"),
+      resultPool: buildImageResults(images, 16, "luna-editorial"),
       sections: buildSections(images, 16),
-      datasetRevisions: buildDatasetRevisions("v2", 24, 0),
+      datasetRevisions: buildDatasetRevisions("v2", 24, 0, images, 16, "luna-editorial"),
     },
   ];
 
