@@ -111,6 +111,24 @@ test("training profile page uploads reference images into local front-end state"
   assert.doesNotMatch(profileSource, /后续接入文件选择和后端存储/, "reference upload should not expose backend wiring gaps in the UI");
 });
 
+test("training profile page saves a visible local profile draft instead of only showing feedback", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /profileDraft/, "profile page should expose a local saved profile draft");
+  assert.match(profileSource, /setProfileDraft/, "save action should update local profile state");
+  assert.match(profileSource, /handleSaveProfile/, "profile page should define a save handler");
+  assert.match(profileSource, /onClick=\{handleSaveProfile\}/, "save button should call the local save handler");
+  assert.match(profileSource, /资料保存草稿/, "profile page should render the visible saved draft panel");
+  assert.match(profileSource, /localReferenceImages\.length/, "saved draft should include the current reference image count");
+  assert.match(profileSource, /project\.usagePrompt/, "saved draft should preserve the current usage prompt");
+  assert.doesNotMatch(profileSource, /feedback="角色资料已保存"/, "profile save should not remain a feedback-only placeholder");
+});
+
 test("training results and dataset pages use caption-aware review grids instead of bare image grids", () => {
   assert.match(pagesSource, /function TrainingResultGrid/, "project pages should define a caption-aware training result grid");
   assert.match(pagesSource, /ImagePreviewLarge/, "training result grid should use the shared lightbox");

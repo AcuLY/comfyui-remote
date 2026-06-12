@@ -722,8 +722,23 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
     images: project?.referenceImages ?? [],
     projectId: project?.id ?? null,
   }));
+  const [profileDraft, setProfileDraft] = useState<{
+    detailPrompt: string;
+    profileSummary: string;
+    referenceImageCount: number;
+    usagePrompt: string;
+  } | null>(null);
   if (!project) return <EmptyPage title="没有角色资料数据" />;
   const localReferenceImages = referenceImageState.projectId === project.id ? referenceImageState.images : project.referenceImages;
+
+  function handleSaveProfile() {
+    setProfileDraft({
+      detailPrompt: project.detailPrompt,
+      profileSummary: project.profileSummary,
+      referenceImageCount: localReferenceImages.length,
+      usagePrompt: project.usagePrompt,
+    });
+  }
 
   function handleUploadReferenceImage() {
     setLocalReferenceImages((current) => {
@@ -749,7 +764,20 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
 
   return (
     <div className={s.page}>
-      <ProjectHeader active="profile" project={project} actions={<Button tone="primary" icon={Save} feedback="角色资料已保存">保存资料</Button>} />
+      <ProjectHeader
+        active="profile"
+        project={project}
+        actions={(
+          <Button
+            tone="primary"
+            icon={Save}
+            onClick={handleSaveProfile}
+            feedback={{ title: profileDraft ? "资料保存草稿已更新" : "资料保存草稿已记录", detail: project.title }}
+          >
+            {profileDraft ? "更新资料草稿" : "保存资料"}
+          </Button>
+        )}
+      />
       <div className={s.twoCol}>
         <Panel title="角色文本">
           <div className={s.formStack}>
@@ -776,6 +804,16 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
           </div>
         </Panel>
       </div>
+      {profileDraft ? (
+        <Panel title="资料保存草稿" subtitle="页面内已记录当前资料状态，后端接入时可直接提交这一组字段。">
+          <dl className={s.profileDraft}>
+            <div><dt>使用提示词</dt><dd>{profileDraft.usagePrompt}</dd></div>
+            <div><dt>角色细节</dt><dd>{profileDraft.detailPrompt}</dd></div>
+            <div><dt>资料备注</dt><dd>{profileDraft.profileSummary}</dd></div>
+            <div><dt>参考图</dt><dd>{profileDraft.referenceImageCount} 张</dd></div>
+          </dl>
+        </Panel>
+      ) : null}
     </div>
   );
 }
