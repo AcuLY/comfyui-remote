@@ -41,6 +41,7 @@ export function BatchSizeQuickFill({
           <button
             key={val}
             type="button"
+            data-batch-size={val}
             disabled={disabled}
             onClick={() => onSelect(val)}
             className={`${sizeClasses} border transition disabled:cursor-not-allowed disabled:opacity-50 ${

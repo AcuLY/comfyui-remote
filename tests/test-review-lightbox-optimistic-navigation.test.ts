@@ -7,6 +7,10 @@ import {
   reconcileReviewImagesWithOptimisticReviews,
   type OptimisticReviewState,
 } from "../src/lib/review-lightbox-state";
+import {
+  buildTrashUndoEntry,
+  restoreTrashUndoEntry,
+} from "../src/lib/review-undo-state";
 import type { ReviewImage } from "../src/lib/types";
 
 function sourceSlice(source: string, startNeedle: string, endNeedle: string) {
@@ -123,6 +127,185 @@ test("section results lightbox navigates optimistically before awaiting review a
     "setAllImages((prev) => prev.filter((image) => image.id !== imageId))",
     "submitReviewMutation(action, [imageId])",
     "section results trash should remove/advance the lightbox before submitting the background mutation",
+  );
+});
+
+test("queue review page shortcuts mirror results where matching queue actions exist", () => {
+  const gridSource = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
+  const pageSource = readFileSync("src/app/queue/[runId]/page.tsx", "utf8");
+  const sectionRunButtonSource = readFileSync(
+    "src/app/projects/[projectId]/project-detail-actions.tsx",
+    "utf8",
+  );
+  const batchQuickFillSource = readFileSync("src/components/batch-size-quick-fill.tsx", "utf8");
+  const pageShortcuts = sourceSlice(
+    gridSource,
+    "  // Page-level shortcuts (lightbox closed)",
+    "  const pendingImages =",
+  );
+
+  assert.match(
+    pageShortcuts,
+    /event\.key === "a" \|\| event\.key === "A"/,
+    "queue page should support A for the matching section editor jump",
+  );
+  assert.match(
+    pageShortcuts,
+    /document\.querySelector<HTMLAnchorElement>\('\[data-nav-editor\]'\)/,
+    "queue A shortcut should use the same data-nav-editor contract as results",
+  );
+  assert.match(
+    pageSource,
+    /data-nav-editor/,
+    "queue section jump link should expose the editor shortcut target",
+  );
+  assert.match(
+    pageShortcuts,
+    /"12345"\.includes\(event\.key\)/,
+    "queue page should support 1-5 batch-size shortcuts for rerun controls",
+  );
+  assert.match(
+    pageShortcuts,
+    /data-batch-size="\$\{bs\}"/,
+    "queue batch-size shortcuts should click a stable batch-size control",
+  );
+  assert.match(
+    batchQuickFillSource,
+    /data-batch-size=\{val\}/,
+    "quick batch buttons should expose stable batch-size attributes",
+  );
+  assert.match(
+    pageShortcuts,
+    /event\.key === "n" \|\| event\.key === "N"/,
+    "queue page should support N for the matching rerun action",
+  );
+  assert.match(
+    pageShortcuts,
+    /document\.querySelector<HTMLButtonElement>\('\[data-queue-run-section\]'\)/,
+    "queue N shortcut should click the rerun button",
+  );
+  assert.match(
+    sectionRunButtonSource,
+    /data-queue-run-section/,
+    "section rerun button should expose the queue shortcut target",
+  );
+  assert.match(
+    pageShortcuts,
+    /event\.key === "x" \|\| event\.key === "X"/,
+    "queue page should support X for the matching current-run delete action",
+  );
+  assert.match(
+    pageShortcuts,
+    /trashCurrentRunImages\(\)/,
+    "queue X shortcut should delete the current queue group's visible images",
+  );
+  assert.match(
+    pageShortcuts,
+    /key === "z" \|\| key === "Z"/,
+    "queue page should support plain Z undo like results",
+  );
+  assert.match(
+    pageShortcuts,
+    /handleUndoTrash\(\)/,
+    "queue Z shortcut should invoke the trash undo stack",
+  );
+});
+
+test("queue trash undo stack restores batch deletes in order and supports consecutive undo", () => {
+  const images = [
+    image("image-a"),
+    image("image-b"),
+    image("image-c"),
+    image("image-d"),
+  ];
+  const firstEntry = buildTrashUndoEntry(images, ["image-b", "image-c"]);
+  const afterFirstDelete = images.filter((item) => item.id !== "image-b" && item.id !== "image-c");
+  const secondEntry = buildTrashUndoEntry(afterFirstDelete, ["image-d"]);
+  assert.ok(firstEntry);
+  assert.ok(secondEntry);
+
+  const afterSecondDelete = afterFirstDelete.filter((item) => item.id !== "image-d");
+  const undoSecond = restoreTrashUndoEntry(afterSecondDelete, secondEntry);
+  const undoFirst = restoreTrashUndoEntry(undoSecond, firstEntry);
+
+  assert.deepEqual(
+    undoSecond.map((item) => item.id),
+    ["image-a", "image-d"],
+  );
+  assert.deepEqual(
+    undoFirst.map((item) => item.id),
+    ["image-a", "image-b", "image-c", "image-d"],
+  );
+  assert.deepEqual(
+    undoFirst.map((item) => item.status),
+    ["pending", "pending", "pending", "pending"],
+  );
+});
+
+test("queue review grid records batch trash actions and exposes lightbox undo", () => {
+  const gridSource = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
+  const lightboxSource = readFileSync("src/app/queue/[runId]/image-lightbox.tsx", "utf8");
+  const handleTrash = sourceSlice(
+    gridSource,
+    "  function handleTrash()",
+    "  /** Handle the remaining pending images",
+  );
+  const undoHandler = sourceSlice(
+    gridSource,
+    "  const handleUndoTrash = useCallback",
+    "  function handleKeep()",
+  );
+
+  assert.match(
+    gridSource,
+    /const \[trashUndoStack, setTrashUndoStack\]/,
+    "queue review grid should keep a stack, not a single last trashed id",
+  );
+  assert.match(
+    handleTrash,
+    /const undoEntry = buildTrashUndoEntry\(reviewImages, ids\)/,
+    "batch delete should snapshot all deleted images before removing them locally",
+  );
+  assertBefore(
+    handleTrash,
+    "await trashImages(ids)",
+    "setTrashUndoStack((prev) => undoEntry ? [...prev, undoEntry] : prev)",
+    "batch delete should only push undo after the trash API succeeds",
+  );
+  assert.match(
+    undoHandler,
+    /trashUndoStack\[trashUndoStack\.length - 1\]/,
+    "undo should restore the most recent trash entry",
+  );
+  assert.match(
+    undoHandler,
+    /setTrashUndoStack\(\(prev\) => prev\.slice\(0, -1\)\)/,
+    "undo should pop only one entry so consecutive Z presses restore earlier batches",
+  );
+  assert.match(
+    undoHandler,
+    /\/api\/images\/\$\{encodeURIComponent\(id\)\}\/restore/,
+    "undo should restore each deleted image through the restore API",
+  );
+  assert.match(
+    undoHandler,
+    /restoreTrashUndoEntry\(prev, undoEntry\)/,
+    "undo should restore deleted images back into the local queue grid",
+  );
+  assert.match(
+    lightboxSource,
+    /onUndo\?: \(\) => void/,
+    "queue lightbox should accept an undo handler",
+  );
+  assert.match(
+    lightboxSource,
+    /key === "z" \|\| key === "Z"/,
+    "queue lightbox should bind plain Z undo",
+  );
+  assert.match(
+    gridSource,
+    /onUndo=\{handleUndoTrash\}/,
+    "queue review grid should wire the undo stack into the lightbox",
   );
 });
 

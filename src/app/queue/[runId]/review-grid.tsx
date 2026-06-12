@@ -12,6 +12,11 @@ import {
   LIGHTBOX_PRELOAD_AHEAD,
   reconcileReviewImagesWithOptimisticReviews,
 } from "@/lib/review-lightbox-state";
+import {
+  buildTrashUndoEntry,
+  restoreTrashUndoEntry,
+  type TrashUndoEntry,
+} from "@/lib/review-undo-state";
 import type { ReviewImage } from "@/lib/types";
 import { ImageLightbox } from "./image-lightbox";
 
@@ -37,10 +42,12 @@ export function ReviewGrid({
   const [pendingReviewActions, setPendingReviewActions] = useState<Map<string, LastAction>>(new Map());
   const [togglingMarker, setTogglingMarker] = useState<MarkerField | null>(null);
   const [loadedLightboxImageIds, setLoadedLightboxImageIds] = useState<Set<string>>(new Set());
+  const [trashUndoStack, setTrashUndoStack] = useState<TrashUndoEntry<ReviewImage>[]>([]);
   const optimisticReviewsRef = useRef<Map<string, LastAction>>(new Map());
   const pendingReviewIdsRef = useRef<Set<string>>(new Set());
   const preloadedUrlsRef = useRef<Set<string>>(new Set());
   const preloadImagesRef = useRef<HTMLImageElement[]>([]);
+  const isUndoingTrashRef = useRef(false);
 
   const navigateDocument = useCallback((href: string) => {
     window.location.assign(href);
@@ -106,27 +113,148 @@ export function ReviewGrid({
     }
   }, [lightboxIndex, loadedLightboxImageIds, markLightboxImageLoaded, reviewImages]);
 
+  const handleUndoTrash = useCallback(async () => {
+    if (isUndoingTrashRef.current) return;
+    const undoEntry = trashUndoStack[trashUndoStack.length - 1];
+    if (!undoEntry) {
+      toast.error("没有可撤销的删除");
+      return;
+    }
+
+    const imageIds = undoEntry.items.map((item) => item.image.id);
+    isUndoingTrashRef.current = true;
+    try {
+      await Promise.all(
+        imageIds.map(async (id) => {
+          const response = await fetch(`/api/images/${encodeURIComponent(id)}/restore`, {
+            method: "POST",
+          });
+          const result = (await response.json().catch(() => null)) as {
+            ok?: boolean;
+            error?: { message?: string };
+          } | null;
+          if (!response.ok || result?.ok === false) {
+            throw new Error(result?.error?.message ?? "撤销失败");
+          }
+        }),
+      );
+
+      for (const imageId of imageIds) {
+        optimisticReviewsRef.current.delete(imageId);
+        pendingReviewIdsRef.current.delete(imageId);
+      }
+      setPendingReviewActions((prev) => {
+        const next = new Map(prev);
+        for (const imageId of imageIds) next.delete(imageId);
+        return next;
+      });
+      setReviewImages((prev) => restoreTrashUndoEntry(prev, undoEntry));
+      setSelected((prev) => {
+        const idSet = new Set(imageIds);
+        return new Set([...prev].filter((id) => !idSet.has(id)));
+      });
+      setTrashUndoStack((prev) => prev.slice(0, -1));
+      toast.success(`已撤销删除 ${imageIds.length} 张图片`);
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "撤销失败");
+    } finally {
+      isUndoingTrashRef.current = false;
+    }
+  }, [router, trashUndoStack]);
+
+  const trashCurrentRunImages = useCallback(() => {
+    if (isPending) return;
+    const ids = reviewImages
+      .filter((image) => image.status !== "trashed")
+      .map((image) => image.id);
+    if (ids.length === 0) return;
+
+    const undoEntry = buildTrashUndoEntry(reviewImages, ids);
+    const idSet = new Set(ids);
+    startTransition(async () => {
+      try {
+        await trashImages(ids);
+        setTrashUndoStack((prev) => undoEntry ? [...prev, undoEntry] : prev);
+        setReviewImages((prev) => prev.filter((image) => !idSet.has(image.id)));
+        setSelected((prev) => new Set([...prev].filter((id) => !idSet.has(id))));
+        setLastAction("trash");
+        router.refresh();
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "删除失败");
+      }
+    });
+  }, [isPending, reviewImages, router, startTransition]);
+
   // Page-level shortcuts (lightbox closed)
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (lightboxIndex !== null) return; // lightbox handles its own keys
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+      const key = event.key;
       // S / ArrowLeft: prev group
-      if (event.key === "s" || event.key === "S" || event.key === "ArrowLeft") {
+      if (key === "s" || key === "S" || key === "ArrowLeft") {
+        event.preventDefault();
         if (prevRunId) navigateDocument(`/queue/${prevRunId}`);
+        return;
       }
       // F / ArrowRight: next group
-      if (event.key === "f" || event.key === "F" || event.key === "ArrowRight") {
+      if (key === "f" || key === "F" || key === "ArrowRight") {
+        event.preventDefault();
         if (nextRunId) navigateDocument(`/queue/${nextRunId}`);
+        return;
+      }
+      // A: jump to section editor
+      if (event.key === "a" || event.key === "A") {
+        event.preventDefault();
+        const editorLink = document.querySelector<HTMLAnchorElement>('[data-nav-editor]');
+        if (editorLink) editorLink.click();
+        return;
+      }
+      // 1-5: set rerun batch size
+      if ("12345".includes(event.key)) {
+        event.preventDefault();
+        const bsMap: Record<string, number> = { "1": 1, "2": 2, "3": 4, "4": 8, "5": 16 };
+        const bs = bsMap[event.key];
+        if (bs !== undefined) {
+          const batchButton = document.querySelector<HTMLButtonElement>(`[data-batch-size="${bs}"]`);
+          if (batchButton) {
+            batchButton.click();
+            toast.dismiss("batch-size");
+            toast(`Batch size: ${bs}`, { id: "batch-size", duration: 2000 });
+          }
+        }
+        return;
+      }
+      // N: rerun current section
+      if (event.key === "n" || event.key === "N") {
+        event.preventDefault();
+        const runButton = document.querySelector<HTMLButtonElement>('[data-queue-run-section]');
+        if (runButton) runButton.click();
+        return;
       }
       // I / D: open lightbox
-      if (event.key === "i" || event.key === "I" || event.key === "d" || event.key === "D") {
+      if (key === "i" || key === "I" || key === "d" || key === "D") {
+        event.preventDefault();
         if (reviewImages.length > 0) setLightboxIndex(0);
+        return;
+      }
+      // Z: undo last trash batch
+      if ((key === "z" || key === "Z") && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        handleUndoTrash();
+        return;
+      }
+      // X: trash current queue group
+      if (event.key === "x" || event.key === "X") {
+        if (event.repeat) return;
+        event.preventDefault();
+        trashCurrentRunImages();
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [lightboxIndex, navigateDocument, prevRunId, nextRunId, reviewImages.length]);
+  }, [handleUndoTrash, lightboxIndex, navigateDocument, prevRunId, nextRunId, reviewImages.length, trashCurrentRunImages]);
 
   const pendingImages = reviewImages.filter((img) => img.status === "pending");
   const selectedCount = selected.size;
@@ -224,9 +352,11 @@ export function ReviewGrid({
   function handleTrash() {
     const ids = [...selected];
     if (ids.length === 0) return;
+    const undoEntry = buildTrashUndoEntry(reviewImages, ids);
     startTransition(async () => {
       try {
         await trashImages(ids);
+        setTrashUndoStack((prev) => undoEntry ? [...prev, undoEntry] : prev);
         removeImages(ids);
         removeSelectedIds(ids);
         setLastAction("trash");
@@ -371,6 +501,7 @@ export function ReviewGrid({
       const previousLastAction = lastAction;
       const previousOptimisticAction = optimisticReviewsRef.current.get(imageId);
       const wasSelected = selected.has(imageId);
+      const undoEntry = action === "trash" ? buildTrashUndoEntry(reviewImages, [imageId]) : null;
       optimisticReviewsRef.current.set(imageId, action);
       addPendingReviewAction(imageId, action);
 
@@ -394,6 +525,11 @@ export function ReviewGrid({
       setLastAction(action);
 
       void submitReviewMutation(action, [imageId])
+        .then(() => {
+          if (action === "trash") {
+            setTrashUndoStack((prev) => undoEntry ? [...prev, undoEntry] : prev);
+          }
+        })
         .catch((error) => {
           if (previousOptimisticAction) {
             optimisticReviewsRef.current.set(imageId, previousOptimisticAction);
@@ -421,7 +557,7 @@ export function ReviewGrid({
         })
         .finally(() => removePendingReviewAction(imageId));
     },
-    [lastAction, lightboxImage, lightboxIndex, reviewImages.length, selected, togglingMarker],
+    [lastAction, lightboxImage, lightboxIndex, reviewImages, selected, togglingMarker],
   );
 
   return (
@@ -534,6 +670,7 @@ export function ReviewGrid({
         onPrev={goPrev}
         onNext={goNext}
         onReview={reviewLightboxImage}
+        onUndo={handleUndoTrash}
         onToggleMarker={toggleLightboxMarker}
       />
 

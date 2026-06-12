@@ -116,6 +116,7 @@ export function SectionRunButton({
         </div>
       )}
       <button
+        data-queue-run-section
         disabled={isPending || (!showBatchOverride && !canSaveBatchSize)}
         onClick={handleRun}
         className="inline-flex items-center justify-center rounded-md border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-sky-300 transition hover:bg-sky-500/20 disabled:opacity-50"

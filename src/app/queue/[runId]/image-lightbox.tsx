@@ -27,6 +27,7 @@ export function ImageLightbox({
   onPrev,
   onNext,
   onReview,
+  onUndo,
   onToggleMarker,
   onImageLoaded,
   preloadedImageIds,
@@ -41,6 +42,7 @@ export function ImageLightbox({
   onPrev: () => void;
   onNext: () => void;
   onReview: (action: ReviewAction) => void;
+  onUndo?: () => void;
   onToggleMarker: (field: MarkerField) => void;
   onImageLoaded?: (imageId: string) => void;
   preloadedImageIds?: ReadonlySet<string>;
@@ -85,6 +87,8 @@ export function ImageLightbox({
       if (key === ";" || key === "t" || key === "T") { event.preventDefault(); onToggleMarker("featured2"); return; }
       // Cover (封面): '
       if (key === "'") { event.preventDefault(); onToggleMarker("cover"); return; }
+      // Undo: Z (plain, no modifier)
+      if ((key === "z" || key === "Z") && !event.ctrlKey && !event.metaKey) { event.preventDefault(); onUndo?.(); return; }
     };
 
     document.addEventListener("keydown", handleKeyDown);
@@ -98,6 +102,7 @@ export function ImageLightbox({
     onNext,
     onPrev,
     onReview,
+    onUndo,
     onToggleMarker,
     visible,
   ]);

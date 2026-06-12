@@ -187,6 +187,7 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
           {group.projectId && group.projectSectionId && (
             <HardNavigationLink
               href={`/projects/${group.projectId}/sections/${group.projectSectionId}`}
+              data-nav-editor
               className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300"
             >
               <ExternalLink className="size-3.5" /> 跳转小节
