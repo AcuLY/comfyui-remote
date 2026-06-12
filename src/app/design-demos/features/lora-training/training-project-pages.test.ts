@@ -318,6 +318,23 @@ test("training project create page manages initial section seeds locally", () =>
   assert.match(formSource, /handleDeleteSeedSection\(section\.id\)/, "delete button should call the seed delete handler");
 });
 
+test("training project create page reads template context from project-create links", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(pagesSource, /type NewProjectTemplateHints/, "project creation should define template-link hints");
+  assert.match(pagesSource, /function readNewProjectTemplateHints/, "project creation should read template context query params");
+  assert.match(pagesSource, /templateId:\s*searchParams\.get\("templateId"\)/, "project creation should read the source template id");
+  assert.match(formSource, /newProjectTemplateHints/, "project form should derive template hints");
+  assert.match(formSource, /sourceTemplate/, "project form should resolve the hinted source template");
+  assert.match(formSource, /来源训练模板/, "project form should show the source template context when present");
+  assert.match(formSource, /sourceTemplate\?\.sections/, "initial section seeds should come from the source template");
+});
+
 test("training project create page toggles initial section enabled state locally", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");

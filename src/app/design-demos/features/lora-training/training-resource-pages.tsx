@@ -124,6 +124,15 @@ function readNewTemplateHints(search: string): NewTemplateHints {
   };
 }
 
+function createProjectFromTemplateHref(template: LoraTrainingTemplate) {
+  const searchParams = new URLSearchParams({
+    sections: String(template.sections.length),
+    template: template.title,
+    templateId: template.id,
+  });
+  return `/training/projects/new?${searchParams.toString()}`;
+}
+
 function createDraftTrainingPreset(training: ReturnType<typeof buildLoraTrainingDemoData>, hints: NewPresetHints): LoraTrainingPreset {
   const source = training.presets[0];
   const artifactTitle = hints.artifact.replace(/\.safetensors$/i, "");
@@ -745,11 +754,13 @@ function rememberTrainingTemplateListAnchor(templateId: string) {
 }
 
 function TrainingTemplateListItem({
+  createProjectHref,
   onDelete,
   onToggleSelected,
   selected,
   template,
 }: {
+  createProjectHref: string;
   onDelete?: () => void;
   onToggleSelected: () => void;
   selected: boolean;
@@ -802,6 +813,7 @@ function TrainingTemplateListItem({
           {templateStatus(template)}
           <StatusBadge status="template" label={`${template.sectionCount} 小节`} />
           <div className={s.trainingTemplateListActions}>
+            <ButtonLink href={createProjectHref} icon={CopyPlus}>创建项目</ButtonLink>
             <ButtonLink href={`/training/templates/${template.id}/edit`} icon={Edit3}>编辑</ButtonLink>
             <Button tone="danger" icon={Trash2} onClick={onDelete} feedback={{ tone: "warning", title: "训练模板已移除", detail: template.title }}>删除</Button>
           </div>
@@ -872,6 +884,8 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
   const visibleTemplateIds = visibleTemplates.map((template) => template.id);
   const selectedVisibleCount = visibleTemplates.filter((template) => selectedTemplateIds.has(template.id)).length;
   const allVisibleSelected = visibleTemplates.length > 0 && selectedVisibleCount === visibleTemplates.length;
+  const selectedVisibleTemplate = visibleTemplates.find((template) => selectedTemplateIds.has(template.id));
+  const projectTemplateSource = selectedVisibleTemplate ?? visibleTemplates[0];
 
   useLayoutEffect(() => {
     if (!fromTemplateId) return;
@@ -930,7 +944,9 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
         subtitle="模板是创建训练项目的一次性 seed；创建项目后不会 live 回写模板。"
         actions={(
           <>
-            <ButtonLink href="/training/projects/new" icon={CopyPlus}>从模板创建项目</ButtonLink>
+            {projectTemplateSource ? (
+              <ButtonLink href={createProjectFromTemplateHref(projectTemplateSource)} icon={CopyPlus}>从模板创建项目</ButtonLink>
+            ) : null}
             <ButtonLink href="/training/templates/new" tone="primary" icon={Plus}>新建模板</ButtonLink>
           </>
         )}
@@ -961,6 +977,7 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
         <SortableList items={visibleTemplateIds} onReorder={handleReorderTemplates}>
           {visibleTemplates.map((template) => (
             <TrainingTemplateListItem
+              createProjectHref={createProjectFromTemplateHref(template)}
               key={template.id}
               onDelete={() => hideTemplate(template.id)}
               onToggleSelected={() => toggleTemplateSelection(template.id)}

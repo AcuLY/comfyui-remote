@@ -182,6 +182,21 @@ test("training template new form carries source project context", () => {
   assert.match(formSource, /newTemplateHints\.sourceProject/, "source project field should only appear when project context exists");
 });
 
+test("training template list creates projects with selected template context", () => {
+  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  assert.notEqual(templatesStart, -1);
+  assert.notEqual(formStart, -1);
+
+  const templatesSource = pageSource.slice(templatesStart, formStart);
+
+  assert.match(pageSource, /function createProjectFromTemplateHref/, "template list should build a concrete project-create href");
+  assert.match(templatesSource, /createProjectFromTemplateHref\(template\)/, "template row create actions should carry the row template context");
+  assert.match(pageSource, /templateId:\s*template\.id/, "project-create href should include the template id");
+  assert.match(pageSource, /sections:\s*String\(template\.sections\.length\)/, "project-create href should include the template section count");
+  assert.doesNotMatch(templatesSource, /<ButtonLink href="\/training\/projects\/new" icon=\{CopyPlus\}>从模板创建项目<\/ButtonLink>/, "template create-project action should not navigate to a blank project form");
+});
+
 test("training template form saves a visible local template draft instead of only showing feedback", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import {
   Archive,
   ArrowDown,
@@ -70,6 +70,12 @@ type LoraTrainingTemplateSeedSection = LoraTrainingTemplate["sections"][number];
 type SceneBlockPatch = Partial<Pick<LoraTrainingSectionBlock, "text" | "title">>;
 const DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT = "保持角色正面可训练，避免复杂遮挡和多人构图。";
 
+type NewProjectTemplateHints = {
+  sections: string;
+  templateId: string;
+  templateTitle: string;
+};
+
 function useTraining(data: DemoData) {
   return buildLoraTrainingDemoData(data);
 }
@@ -96,6 +102,33 @@ function buildSeedSectionCopy(section: LoraTrainingTemplateSeedSection, copyNumb
     ...section,
     id: `${section.id}-copy-${copyNumber}`,
     title: `${section.title} 副本 ${copyNumber}`,
+  };
+}
+
+function subscribeToUrlSearch(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("popstate", onStoreChange);
+  return () => window.removeEventListener("popstate", onStoreChange);
+}
+
+function getUrlSearchSnapshot() {
+  return typeof window === "undefined" ? "" : window.location.search;
+}
+
+function getServerUrlSearchSnapshot() {
+  return "";
+}
+
+function useUrlSearch() {
+  return useSyncExternalStore(subscribeToUrlSearch, getUrlSearchSnapshot, getServerUrlSearchSnapshot);
+}
+
+function readNewProjectTemplateHints(search: string): NewProjectTemplateHints {
+  const searchParams = new URLSearchParams(search);
+  return {
+    sections: searchParams.get("sections") ?? "",
+    templateId: searchParams.get("templateId") ?? "",
+    templateTitle: searchParams.get("template") ?? "",
   };
 }
 
@@ -534,18 +567,30 @@ function ReferencePicker({
 
 export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   const training = useTraining(data);
-  const initialTemplate = training.templates[0];
+  const urlSearch = useUrlSearch();
+  const newProjectTemplateHints = readNewProjectTemplateHints(urlSearch);
+  const sourceTemplate = training.templates.find((template) => template.id === newProjectTemplateHints.templateId)
+    ?? training.templates.find((template) => template.title === newProjectTemplateHints.templateTitle);
+  const initialTemplate = sourceTemplate ?? training.templates[0];
+  const initialSectionSeeds = sourceTemplate?.sections ?? initialTemplate?.sections ?? [];
+  const projectTemplateContextId = initialTemplate?.id ?? "no-template";
   const baseModelOptions = data.models.filter((model) => model.modelType === "checkpoint").map((model) => model.name);
-  const [projectForm, setProjectForm] = useState({
+  const [projectFormState, setProjectFormState] = useState({
     baseModel: baseModelOptions[0] ?? "继承训练默认模型",
     captionStrategy: "先触发词后描述",
     detailPrompt: "发型、眼睛、服装材质、常见构图和需要避免的变化。",
     perSectionImageCount: "4",
+    templateContextId: projectTemplateContextId,
     templateTitle: initialTemplate?.title ?? "不使用模板",
     title: "新角色 LoRA 项目",
     trainingSteps: "2400",
     usagePrompt: "角色触发词、服装和稳定身份描述。",
   });
+  const projectForm = projectFormState.templateContextId === projectTemplateContextId ? projectFormState : {
+    ...projectFormState,
+    templateContextId: projectTemplateContextId,
+    templateTitle: initialTemplate?.title ?? "不使用模板",
+  };
   const referenceSourceTree: ReferenceSourceGroup[] = [
     {
       id: "existing-training-projects",
@@ -586,7 +631,11 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   ].filter((group) => group.items.length > 0);
   const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
   const [selectedReferenceIds, setSelectedReferenceIds] = useState<Set<string>>(new Set());
-  const [sectionSeeds, setSectionSeeds] = useState(() => initialTemplate?.sections ?? []);
+  const [sectionSeedState, setSectionSeedState] = useState(() => ({
+    sections: initialSectionSeeds,
+    templateContextId: projectTemplateContextId,
+  }));
+  const sectionSeeds = sectionSeedState.templateContextId === projectTemplateContextId ? sectionSeedState.sections : initialSectionSeeds;
   const [trainingDefaults, setTrainingDefaults] = useState({
     autoFreezeDataset: true,
     autoGenerateSamples: true,
@@ -612,6 +661,21 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     .flatMap((group) => group.items)
     .filter((candidate) => selectedReferenceIds.has(candidate.id));
   const selectedReferenceTitles = selectedProjectReferences.map((reference) => reference.title);
+
+  function setProjectForm(updater: (current: typeof projectForm) => typeof projectForm) {
+    setProjectFormState((current) => updater(current.templateContextId === projectTemplateContextId ? current : projectForm));
+  }
+
+  function setSectionSeeds(nextValue: LoraTrainingTemplateSeedSection[] | ((current: LoraTrainingTemplateSeedSection[]) => LoraTrainingTemplateSeedSection[])) {
+    setSectionSeedState((current) => {
+      const currentSections = current.templateContextId === projectTemplateContextId ? current.sections : sectionSeeds;
+      const nextSections = typeof nextValue === "function" ? nextValue(currentSections) : nextValue;
+      return {
+        sections: nextSections,
+        templateContextId: projectTemplateContextId,
+      };
+    });
+  }
 
   function handleUpdateProjectForm(field: keyof typeof projectForm, value: string) {
     setProjectForm((current) => ({ ...current, [field]: value }));
@@ -694,6 +758,9 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
             <div className={s.formStack}>
               <Field label="项目名称" value={projectForm.title} onChange={(value) => handleUpdateProjectForm("title", value)} />
               <FloatingSelect label="从模板创建" value={projectForm.templateTitle} options={["不使用模板", ...training.templates.map((template) => template.title)]} onChange={handleSelectTemplate} />
+              {sourceTemplate ? (
+                <Field readOnly label="来源训练模板" value={`${sourceTemplate.title}${newProjectTemplateHints.sections ? ` · ${newProjectTemplateHints.sections} 个小节` : ""}${newProjectTemplateHints.templateId ? ` · ${newProjectTemplateHints.templateId}` : ""}`} />
+              ) : null}
               <FloatingSelect label="基础模型" value={projectForm.baseModel} options={["继承训练默认模型", ...baseModelOptions]} onChange={(value) => handleUpdateProjectForm("baseModel", value)} />
               <Field multiline features={{ resize: true, clipboard: true }} label="角色使用提示词" value={projectForm.usagePrompt} onChange={(value) => handleUpdateProjectForm("usagePrompt", value)} />
               <Field multiline features={{ resize: true, clipboard: true }} label="角色细节描述" value={projectForm.detailPrompt} onChange={(value) => handleUpdateProjectForm("detailPrompt", value)} />
