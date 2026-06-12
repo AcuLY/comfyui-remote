@@ -30,3 +30,16 @@ test("settings navigation icons are decorative and hidden from assistive tech", 
     "settings row arrow icons should be decorative",
   );
 });
+
+test("settings links avoid implicit transition-all motion", () => {
+  assert.doesNotMatch(
+    cssSource,
+    /transition:\s*150ms\s+ease\s*;/,
+    "settings link transitions should name the animated properties",
+  );
+  assert.match(
+    cssSource,
+    /transition:\s*background-color\s+150ms\s+ease,\s*border-color\s+150ms\s+ease,\s*color\s+150ms\s+ease\s*;/,
+    "settings link transitions should stay explicit",
+  );
+});
