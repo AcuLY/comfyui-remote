@@ -244,6 +244,73 @@
   gap: 6px;
 }
 
+.templateSceneBlockList,
+.templateResolvedPreview {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.templateSceneBlockCard {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 10px;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background: var(--demo-field-bg);
+  padding: 10px;
+}
+
+.templateSceneBlockBody {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.templateSceneBlockBody > span {
+  width: fit-content;
+  border: 1px solid var(--demo-border);
+  border-radius: 999px;
+  background: var(--demo-glass-soft);
+  color: var(--demo-green);
+  font-size: 10px;
+  font-weight: 640;
+  padding: 2px 7px;
+}
+
+.templateSceneBlockBody strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.templateSceneBlockBody p {
+  min-width: 0;
+  margin: 0;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.templateSceneBlockActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(76px, auto));
+  gap: 6px;
+}
+
+.templateSceneBlockActions :where([data-demo-ui-button="true"]) {
+  min-height: 32px;
+  border-radius: 8px;
+  padding-inline: 8px;
+}
+
 @media (max-width: 980px) {
   .resourceLayout,
   .twoCol {
@@ -284,5 +351,18 @@
 
   .templateMeta {
     justify-content: flex-start;
+  }
+
+  .templateSceneBlockCard {
+    grid-template-columns: 1fr;
+  }
+
+  .templateSceneBlockActions {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .templateSceneBlockActions :where([data-demo-ui-button="true"]) {
+    width: 100%;
   }
 }

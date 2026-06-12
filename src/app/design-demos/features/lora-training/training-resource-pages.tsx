@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle } from "lucide-react";
+import { ArrowDown, ArrowUp, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
 import { cx, demoHref } from "../../routing";
@@ -13,7 +13,7 @@ import { PageHeader } from "../../shared/primitives/page-header";
 import { Panel } from "../../shared/primitives/panel";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { buildLoraTrainingDemoData } from "./fixtures";
-import type { LoraTrainingPreset, LoraTrainingTemplate } from "./types";
+import type { LoraTrainingPreset, LoraTrainingSectionBlock, LoraTrainingTemplate } from "./types";
 import s from "./training-resource-pages.module.css";
 
 function presetStatus(preset: LoraTrainingPreset) {
@@ -28,6 +28,32 @@ function findPreset(data: DemoData, presetId?: string) {
 function findTemplate(data: DemoData, templateId?: string) {
   const training = buildLoraTrainingDemoData(data);
   return training.templates.find((template) => template.id === templateId) ?? training.templates[0];
+}
+
+function TemplateSceneBlockCard({
+  block,
+  index,
+  total,
+}: {
+  block: LoraTrainingSectionBlock;
+  index: number;
+  total: number;
+}) {
+  return (
+    <article className={s.templateSceneBlockCard}>
+      <div className={s.templateSceneBlockBody}>
+        <span>{block.source === "预制" ? "预制块" : "本地块"}</span>
+        <strong>{block.title}</strong>
+        <p>{block.text}</p>
+      </div>
+      <div className={s.templateSceneBlockActions} aria-label={`${block.title} 操作`}>
+        <Button size="sm" icon={Edit3} ariaLabel={`编辑模板场景块：${block.title}`} feedback={{ title: "编辑模板场景块入口已预览", detail: block.title }}>编辑</Button>
+        <Button size="sm" icon={ArrowUp} disabled={index === 0} ariaLabel={`上移模板场景块：${block.title}`} feedback={{ title: "模板块排序已预览", detail: `上移 ${block.title}` }}>上移</Button>
+        <Button size="sm" icon={ArrowDown} disabled={index === total - 1} ariaLabel={`下移模板场景块：${block.title}`} feedback={{ title: "模板块排序已预览", detail: `下移 ${block.title}` }}>下移</Button>
+        <Button size="sm" icon={Trash2} tone="danger" ariaLabel={`删除模板场景块：${block.title}`} feedback={{ tone: "warning", title: "删除模板场景块需要确认", detail: block.title }}>删除</Button>
+      </div>
+    </article>
+  );
 }
 
 export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
@@ -264,16 +290,29 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
             <Field label="场景块数量" value={section.blockCount} />
           </div>
         </Panel>
-        <Panel title="场景块">
-          <div className={s.usageList}>
-            <div className={s.usageRow}>
-              <strong>{section.scenePreview}</strong>
-              <span>预制 block 保留 live binding；local block 复制文本。</span>
-            </div>
-            <Button icon={Plus} feedback="场景块已添加">添加 Block</Button>
+        <Panel
+          title="场景块"
+          subtitle="模板导入项目时会复制这些块；预制块保持引用，本地块复制文本。"
+          actions={(
+            <>
+              <Button size="sm" icon={CopyPlus} feedback={{ title: "导入预制入口已预览", detail: section.title }}>导入预制</Button>
+              <Button size="sm" icon={Plus} feedback={{ title: "添加本地块入口已预览", detail: section.title }}>添加本地块</Button>
+            </>
+          )}
+        >
+          <div className={s.templateSceneBlockList}>
+            {section.blocks.map((block, blockIndex) => (
+              <TemplateSceneBlockCard block={block} index={blockIndex} key={block.id} total={section.blocks.length} />
+            ))}
           </div>
         </Panel>
       </div>
+      <Panel title="合成预览" subtitle="模板小节保存的是可读业务文案，导入项目后仍可继续改。">
+        <div className={s.templateResolvedPreview}>
+          <Field readOnly multiline features={{ clipboard: true }} label="合成场景描述" value={section.resolvedScene} />
+          <Field readOnly multiline features={{ clipboard: true }} label="小节摘要" value={section.scenePreview} />
+        </div>
+      </Panel>
     </div>
   );
 }

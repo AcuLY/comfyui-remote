@@ -153,6 +153,8 @@ export type LoraTrainingTemplate = {
     title: string;
     enabled: boolean;
     blockCount: number;
+    blocks: LoraTrainingSectionBlock[];
+    resolvedScene: string;
     scenePreview: string;
   }>;
 };

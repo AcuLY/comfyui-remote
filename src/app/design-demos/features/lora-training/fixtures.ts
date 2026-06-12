@@ -586,9 +586,72 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       description: "用于新角色 LoRA 训练项目的默认模板，包含舞台、街景和白底净图。",
       sectionCount: 6,
       sections: [
-        { id: "stage", title: "舞台肖像", enabled: true, blockCount: 2, scenePreview: "青色轮廓光 + 角色服装细节" },
-        { id: "street", title: "街角夜景", enabled: true, blockCount: 3, scenePreview: "雨后街角 + 霓虹反射" },
-        { id: "studio", title: "白底棚拍", enabled: true, blockCount: 1, scenePreview: "白底柔光训练净图" },
+        {
+          id: "stage",
+          title: "舞台肖像",
+          enabled: true,
+          blockCount: 2,
+          scenePreview: "青色轮廓光 + 角色服装细节",
+          resolvedScene: "冷色舞台灯光，青色轮廓光，角色服装细节清楚，背景保留少量霓虹反射。",
+          blocks: [
+            {
+              id: "template-stage-rim",
+              source: "预制",
+              title: "青色轮廓光",
+              text: "冷色舞台灯光，侧后方有清晰青色轮廓光，背景暗部保留少量霓虹反射。",
+            },
+            {
+              id: "template-stage-outfit",
+              source: "本地",
+              title: "角色服装细节",
+              text: "保留角色默认服装、袖口和肩颈细节，不引入复杂遮挡。",
+            },
+          ],
+        },
+        {
+          id: "street",
+          title: "街角夜景",
+          enabled: true,
+          blockCount: 3,
+          scenePreview: "雨后街角 + 霓虹反射",
+          resolvedScene: "雨后街角夜景，湿润地面带霓虹反射，角色站在街灯旁，构图保持可训练。",
+          blocks: [
+            {
+              id: "template-street-rain",
+              source: "预制",
+              title: "雨后街角",
+              text: "雨后街角，地面有霓虹反射，背景轻微虚化但仍可辨认街道层次。",
+            },
+            {
+              id: "template-street-pose",
+              source: "本地",
+              title: "正面可训练角度",
+              text: "角色保持正面或轻微侧身，脸部和服装主体不被遮挡。",
+            },
+            {
+              id: "template-street-clean",
+              source: "本地",
+              title: "背景控制",
+              text: "避免多人、文字招牌和大面积前景遮挡。",
+            },
+          ],
+        },
+        {
+          id: "studio",
+          title: "白底棚拍",
+          enabled: true,
+          blockCount: 1,
+          scenePreview: "白底柔光训练净图",
+          resolvedScene: "白底棚拍，柔光，全身或半身干净构图，用于数据集稳定样本。",
+          blocks: [
+            {
+              id: "template-studio-clean",
+              source: "预制",
+              title: "训练净图",
+              text: "白底棚拍，少量柔光，移除复杂背景，优先保证角色全身服装和发型稳定。",
+            },
+          ],
+        },
       ],
     },
     {
@@ -599,8 +662,50 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       description: "偏轻量的人像模板，适合资料较完整的角色快速生成训练集。",
       sectionCount: 4,
       sections: [
-        { id: "closeup", title: "半身特写", enabled: true, blockCount: 2, scenePreview: "柔光半身、脸部细节" },
-        { id: "outfit", title: "服装补充", enabled: true, blockCount: 2, scenePreview: "全身服装和材质" },
+        {
+          id: "closeup",
+          title: "半身特写",
+          enabled: true,
+          blockCount: 2,
+          scenePreview: "柔光半身、脸部细节",
+          resolvedScene: "柔光半身肖像，脸部细节清楚，背景简洁且不干扰角色身份。",
+          blocks: [
+            {
+              id: "template-closeup-light",
+              source: "预制",
+              title: "柔光半身",
+              text: "柔和主光，浅景深，半身构图，脸部和发型轮廓清楚。",
+            },
+            {
+              id: "template-closeup-identity",
+              source: "本地",
+              title: "身份稳定",
+              text: "优先保持角色五官、发型和默认配色稳定。",
+            },
+          ],
+        },
+        {
+          id: "outfit",
+          title: "服装补充",
+          enabled: true,
+          blockCount: 2,
+          scenePreview: "全身服装和材质",
+          resolvedScene: "全身服装补充，展示材质、袖口和轮廓，背景保持简单。",
+          blocks: [
+            {
+              id: "template-outfit-full",
+              source: "预制",
+              title: "全身服装",
+              text: "全身或七分身构图，服装轮廓完整，材质纹理清晰。",
+            },
+            {
+              id: "template-outfit-material",
+              source: "本地",
+              title: "材质补充",
+              text: "补充袖口、衣摆和配饰，避免复杂道具抢占主体。",
+            },
+          ],
+        },
       ],
     },
   ];
