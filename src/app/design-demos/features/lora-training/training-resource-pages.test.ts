@@ -299,6 +299,21 @@ test("training template form section actions update local front-end state", () =
   assert.match(rowSource, /onDelete\?\.\(section\.id\)/, "template section delete button should call the delete handler");
 });
 
+test("training template section copy inserts the duplicate directly after the source section", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(formSource, /const sourceIndex = current\.findIndex\(\(item\) => item\.id === section\.id\)/, "template section copy should find the source section position");
+  assert.match(formSource, /\.\.\.current\.slice\(0, sourceIndex \+ 1\),\s*copy,\s*\.\.\.current\.slice\(sourceIndex \+ 1\)/, "local template section copy should stay adjacent to the source");
+  assert.match(formSource, /const sourceIndex = ids\.indexOf\(section\.id\)/, "template section copy should find the source id in visible order");
+  assert.match(formSource, /\.\.\.ids\.slice\(0, sourceIndex \+ 1\),\s*copy\.id,\s*\.\.\.ids\.slice\(sourceIndex \+ 1\)/, "visible template section order should insert the copy after the source");
+  assert.doesNotMatch(formSource, /setOrderedTemplateSectionIds\(\(ids\) => \[\.\.\.ids, copy\.id\]\)/, "template section copy should not append to the end of the section order");
+});
+
 test("training template form section rows are actually sortable", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");

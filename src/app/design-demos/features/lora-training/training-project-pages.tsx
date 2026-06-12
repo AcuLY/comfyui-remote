@@ -1124,8 +1124,24 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
       title: `${section.title} (副本)`,
       updatedAt: "刚刚",
     };
-    setLocalSections((current) => [...current, copy]);
-    setOrderedSectionIds((current) => [...current, copyId]);
+    setLocalSections((current) => {
+      const sourceIndex = current.findIndex((item) => item.id === section.id);
+      if (sourceIndex === -1) return [...current, copy];
+      return [
+        ...current.slice(0, sourceIndex + 1),
+        copy,
+        ...current.slice(sourceIndex + 1),
+      ];
+    });
+    setOrderedSectionIds((current) => {
+      const sourceIndex = current.indexOf(section.id);
+      if (sourceIndex === -1) return [...current, copyId];
+      return [
+        ...current.slice(0, sourceIndex + 1),
+        copyId,
+        ...current.slice(sourceIndex + 1),
+      ];
+    });
   }
 
   function handleDeleteSection(sectionId: string) {

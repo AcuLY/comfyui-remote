@@ -1068,8 +1068,24 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
       id: `${section.id}-copy-${Date.now()}`,
       title: `${section.title} (副本)`,
     };
-    setLocalTemplateSections((current) => [...current, copy]);
-    setOrderedTemplateSectionIds((ids) => [...ids, copy.id]);
+    setLocalTemplateSections((current) => {
+      const sourceIndex = current.findIndex((item) => item.id === section.id);
+      if (sourceIndex === -1) return [...current, copy];
+      return [
+        ...current.slice(0, sourceIndex + 1),
+        copy,
+        ...current.slice(sourceIndex + 1),
+      ];
+    });
+    setOrderedTemplateSectionIds((ids) => {
+      const sourceIndex = ids.indexOf(section.id);
+      if (sourceIndex === -1) return [...ids, copy.id];
+      return [
+        ...ids.slice(0, sourceIndex + 1),
+        copy.id,
+        ...ids.slice(sourceIndex + 1),
+      ];
+    });
   }
 
   function handleDeleteTemplateSection(sectionId: string) {

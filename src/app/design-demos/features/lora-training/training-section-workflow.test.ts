@@ -63,6 +63,19 @@ test("training section list drag handles reorder the local section list", () => 
   assert.match(sectionCard, /\{\.\.\.handleProps\}/, "section card drag handle should receive sortable handle props");
 });
 
+test("training section copy inserts the duplicate directly after the source section", () => {
+  const sectionsPage = sourceBetween(
+    "export function LoraTrainingProjectSectionsPage",
+    "export function LoraTrainingProjectSectionDetailPage",
+  );
+
+  assert.match(sectionsPage, /const sourceIndex = current\.findIndex\(\(item\) => item\.id === section\.id\)/, "copy should find the source section position");
+  assert.match(sectionsPage, /\.\.\.current\.slice\(0, sourceIndex \+ 1\),\s*copy,\s*\.\.\.current\.slice\(sourceIndex \+ 1\)/, "local section copy should stay adjacent to the source");
+  assert.match(sectionsPage, /const sourceIndex = current\.indexOf\(section\.id\)/, "copy should find the source id position in the visible order");
+  assert.match(sectionsPage, /\.\.\.current\.slice\(0, sourceIndex \+ 1\),\s*copyId,\s*\.\.\.current\.slice\(sourceIndex \+ 1\)/, "visible section order should insert the copy after the source");
+  assert.doesNotMatch(sectionsPage, /setOrderedSectionIds\(\(current\) => \[\.\.\.current, copyId\]\)/, "copy should not append to the end of the section order");
+});
+
 test("training section list can add a local draft section without backend calls", () => {
   const sectionsPage = sourceBetween(
     "export function LoraTrainingProjectSectionsPage",
