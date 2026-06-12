@@ -1705,8 +1705,11 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
 
 export function LoraTrainingProjectResultsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const project = findProject(data, projectId);
-  const [filter, setFilter] = useState<TrainingResultFilter>("all");
-  const [selectedResultIds, setSelectedResultIds] = useState<Set<string>>(new Set());
+  const [resultInteractionState, setResultInteractionState] = useState(() => ({
+    filter: "all" as TrainingResultFilter,
+    projectId: project?.id ?? null,
+    selectedResultIds: new Set<string>(),
+  }));
   const [resultState, setLocalResults] = useState(() => ({
     projectId: project?.id ?? null,
     results: project?.resultPool ?? [],
@@ -1714,6 +1717,13 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
   const localResults = resultState.projectId === project?.id ? resultState.results : project?.resultPool ?? [];
   if (!project) return <EmptyPage title="没有训练结果池数据" />;
   const activeProject = project;
+  const resultInteraction = resultInteractionState.projectId === activeProject.id ? resultInteractionState : {
+    filter: "all" as TrainingResultFilter,
+    projectId: activeProject.id,
+    selectedResultIds: new Set<string>(),
+  };
+  const filter = resultInteraction.filter;
+  const selectedResultIds = resultInteraction.selectedResultIds;
   const results = filter === "all" ? localResults : localResults.filter((result) => result.reviewStatus === filter);
   const visibleResultIds = new Set(results.map((result) => result.id));
   const selectedVisibleResultIds = new Set([...selectedResultIds].filter((resultId) => visibleResultIds.has(resultId)));
@@ -1727,11 +1737,39 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
     }));
   }
 
+  function updateResultInteraction(updater: (current: typeof resultInteraction) => typeof resultInteraction) {
+    setResultInteractionState((current) => {
+      const active = current.projectId === activeProject.id ? current : {
+        filter: "all" as TrainingResultFilter,
+        projectId: activeProject.id,
+        selectedResultIds: new Set<string>(),
+      };
+      return {
+        ...updater(active),
+        projectId: activeProject.id,
+      };
+    });
+  }
+
+  function updateResultSelection(updater: (current: Set<string>) => Set<string>) {
+    updateResultInteraction((current) => ({
+      ...current,
+      selectedResultIds: updater(current.selectedResultIds),
+    }));
+  }
+
+  function handleResultFilterChange(nextFilter: TrainingResultFilter) {
+    updateResultInteraction((current) => ({
+      ...current,
+      filter: nextFilter,
+    }));
+  }
+
   function handleReviewResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
     updateLocalResults((current) => current.map((result) =>
       result.id === resultId ? { ...result, reviewStatus } : result,
     ));
-    setSelectedResultIds((current) => {
+    updateResultSelection((current) => {
       const next = new Set(current);
       next.delete(resultId);
       return next;
@@ -1739,7 +1777,7 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
   }
 
   function toggleResultSelection(resultId: string) {
-    setSelectedResultIds((current) => {
+    updateResultSelection((current) => {
       const next = new Set(current);
       if (next.has(resultId)) next.delete(resultId);
       else next.add(resultId);
@@ -1748,7 +1786,7 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
   }
 
   function toggleVisibleResultSelection() {
-    setSelectedResultIds((current) => {
+    updateResultSelection((current) => {
       if (allVisibleResultsSelected) {
         const next = new Set(current);
         results.forEach((result) => next.delete(result.id));
@@ -1763,7 +1801,7 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
     updateLocalResults((current) => current.map((result) =>
       selectedIds.has(result.id) ? { ...result, reviewStatus } : result,
     ));
-    setSelectedResultIds((current) => new Set([...current].filter((resultId) => !selectedIds.has(resultId))));
+    updateResultSelection((current) => new Set([...current].filter((resultId) => !selectedIds.has(resultId))));
   }
 
   return (
@@ -1780,13 +1818,13 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
             role="tablist"
             items={RESULT_FILTER_ITEMS.map((item) => ({ ...item, count: item.value === "all" ? localResults.length : localResults.filter((result) => result.reviewStatus === item.value).length }))}
             value={filter}
-            onChange={setFilter}
+            onChange={handleResultFilterChange}
           />
           {selectedVisibleCount > 0 ? (
             <SelectionBatchBar
               selectedCount={selectedVisibleCount}
               subject="张训练结果"
-              onClear={() => setSelectedResultIds(new Set())}
+              onClear={() => updateResultSelection(() => new Set())}
               actions={(
                 <>
                   <Button icon={Check} tone="primary" onClick={() => handleBatchReviewResults("kept")} feedback={{ title: "已保留所选图片", detail: `${selectedVisibleCount} 张训练结果` }}>
@@ -1814,20 +1852,30 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
 
 export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const project = findProject(data, projectId);
-  const [trainingDraft, setTrainingDraft] = useState<{
-    captionMissingCount: number;
-    keptCount: number;
-    stepCount: number;
-    version: string;
-  } | null>(null);
+  const [trainingDraftState, setTrainingDraft] = useState<{
+    draft: {
+      captionMissingCount: number;
+      keptCount: number;
+      stepCount: number;
+      version: string;
+    } | null;
+    projectId: string | null;
+  }>(() => ({
+    draft: null,
+    projectId: project?.id ?? null,
+  }));
   if (!project) return <EmptyPage title="没有训练数据集数据" />;
+  const trainingDraft = trainingDraftState.projectId === project.id ? trainingDraftState.draft : null;
 
   function handleOpenTrainingDraft() {
     setTrainingDraft({
-      captionMissingCount: project.captionMissingCount,
-      keptCount: project.keptCount,
-      stepCount: 2400,
-      version: project.datasetVersion,
+      draft: {
+        captionMissingCount: project.captionMissingCount,
+        keptCount: project.keptCount,
+        stepCount: 2400,
+        version: project.datasetVersion,
+      },
+      projectId: project.id,
     });
   }
 

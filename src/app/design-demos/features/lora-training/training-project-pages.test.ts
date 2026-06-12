@@ -267,6 +267,23 @@ test("training result review supports explicit selected batch keep and reject ac
   assert.doesNotMatch(resultsPageSource, /handleKeepVisibleResults/, "results page should not use implicit keep-visible as its only batch operation");
 });
 
+test("training result filters and selections stay scoped to the active project", () => {
+  const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  assert.notEqual(resultsPageStart, -1);
+  assert.notEqual(datasetPageStart, -1);
+
+  const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
+
+  assert.match(resultsPageSource, /resultInteractionState/, "result page interaction state should be stored with project context");
+  assert.match(resultsPageSource, /projectId:\s*project\?\.id \?\? null/, "result page interaction state should remember the source project id");
+  assert.match(resultsPageSource, /resultInteractionState\.projectId === activeProject\.id \? resultInteractionState :/, "result interactions should fall back after project changes");
+  assert.match(resultsPageSource, /selectedResultIds:\s*new Set<string>\(\)/, "a new project should start with no selected results");
+  assert.match(resultsPageSource, /onChange=\{handleResultFilterChange\}/, "filter changes should update the project-scoped interaction state");
+  assert.doesNotMatch(resultsPageSource, /const \[filter, setFilter\] = useState<TrainingResultFilter>\("all"\)/, "result filter should not be stored without project context");
+  assert.doesNotMatch(resultsPageSource, /const \[selectedResultIds, setSelectedResultIds\] = useState<Set<string>>\(new Set\(\)\)/, "selected result ids should not be stored without project context");
+});
+
 test("training dataset page opens a local training draft instead of only previewing the start action", () => {
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
   const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
@@ -283,6 +300,21 @@ test("training dataset page opens a local training draft instead of only preview
   assert.match(datasetPageSource, /project\.datasetVersion/, "training draft should carry the active dataset version");
   assert.match(datasetPageSource, /project\.keptCount/, "training draft should carry kept image count");
   assert.doesNotMatch(datasetPageSource, /启动训练配置已打开/, "start training should not remain a toast-only placeholder");
+});
+
+test("training dataset draft stays scoped to the active project", () => {
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(revisionPageStart, -1);
+
+  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+
+  assert.match(datasetPageSource, /trainingDraftState/, "dataset draft state should be stored with project context");
+  assert.match(datasetPageSource, /projectId:\s*project\?\.id \?\? null/, "dataset draft state should remember the source project id");
+  assert.match(datasetPageSource, /trainingDraftState\.projectId === project\.id \? trainingDraftState\.draft : null/, "dataset draft should reset after project changes");
+  assert.match(datasetPageSource, /draft:\s*null/, "a new project should not inherit another project's draft");
+  assert.doesNotMatch(datasetPageSource, /const \[trainingDraft, setTrainingDraft\] = useState</, "training draft should not be stored without project context");
 });
 
 test("training dataset readiness is a lightweight preparation summary, not a standalone metric grid", () => {
