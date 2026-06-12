@@ -66,14 +66,15 @@ test("training project card meta stays light like the existing project demo", ()
   assert.doesNotMatch(metaRegion, /datasetVersion|imageCount|caption|readiness/i, "Meta should not stack dataset summaries");
 });
 
-test("training project card body uses thumbnails without inline result-count summaries", () => {
+test("training project card body reuses the project-demo thumbnail stats", () => {
   const bodyStart = itemSource.indexOf("body={(");
   assert.notEqual(bodyStart, -1, "Project card should define an explicit body region");
 
   const bodyRegion = itemSource.slice(bodyStart, itemSource.indexOf("className={s.projectMeta}", bodyStart));
 
   assert.match(bodyRegion, /ImageListSmall/, "Body should use the recent-result thumbnail strip");
-  assert.doesNotMatch(bodyRegion, /showCounts/, "Thumbnail strip should not reintroduce business summary counts");
+  assert.match(bodyRegion, /showCounts/, "Thumbnail strip should expose the same lightweight image stats as the project demo");
+  assert.doesNotMatch(bodyRegion, /datasetVersion|caption|readiness|latest/i, "Body should not reintroduce bespoke dataset summaries");
 });
 
 test("training project compact mode has an explicit dense surface and hides secondary content", () => {

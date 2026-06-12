@@ -117,7 +117,7 @@ export function TrainingProjectListItem({
         body={(
           <>
             <Link aria-label={`打开训练项目最近结果：${project.title}`} className={s.projectRecentResults} href={projectHref}>
-              <ImageListSmall className={s.recentResultImages} images={project.images} limit={project.images.length} />
+              <ImageListSmall className={s.recentResultImages} images={project.images} limit={project.images.length} showCounts />
             </Link>
             <div className={s.projectMeta}>
               <span className={s.projectMetaText}>更新：{project.updatedAt}</span>
