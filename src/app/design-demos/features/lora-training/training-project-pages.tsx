@@ -540,7 +540,13 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   ].filter((group) => group.items.length > 0);
   const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
   const [sectionSeeds, setSectionSeeds] = useState(() => selectedTemplate?.sections ?? []);
+  const [trainingDefaults, setTrainingDefaults] = useState({
+    autoFreezeDataset: true,
+    autoGenerateSamples: true,
+  });
   const [createdProjectDraft, setCreatedProjectDraft] = useState<{
+    autoFreezeDataset: boolean;
+    autoGenerateSamples: boolean;
     baseModel: string;
     enabledSectionCount: number;
     sectionCount: number;
@@ -569,6 +575,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
 
   function handleCreateProjectDraft() {
     setCreatedProjectDraft({
+      autoFreezeDataset: trainingDefaults.autoFreezeDataset,
+      autoGenerateSamples: trainingDefaults.autoGenerateSamples,
       baseModel: selectedBaseModel,
       enabledSectionCount: sectionSeeds.filter((section) => section.enabled).length,
       sectionCount: sectionSeeds.length,
@@ -635,8 +643,18 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
           </Panel>
           <Panel title="数据集与训练默认" subtitle="创建后用于首批图片生成、caption 和训练任务草稿。">
             <div className={s.formStack}>
-              <SwitchRow title="创建后自动生成首批训练样本" subtitle="使用每个启用小节创建一轮训练集图片任务。" />
-              <SwitchRow title="Caption 完成后自动冻结数据集" subtitle="只冻结 kept 图片；后续编辑不会回写 revision。" />
+              <SwitchRow
+                checked={trainingDefaults.autoGenerateSamples}
+                onCheckedChange={(checked) => setTrainingDefaults((current) => ({ ...current, autoGenerateSamples: checked }))}
+                title="创建后自动生成首批训练样本"
+                subtitle="使用每个启用小节创建一轮训练集图片任务。"
+              />
+              <SwitchRow
+                checked={trainingDefaults.autoFreezeDataset}
+                onCheckedChange={(checked) => setTrainingDefaults((current) => ({ ...current, autoFreezeDataset: checked }))}
+                title="Caption 完成后自动冻结数据集"
+                subtitle="只冻结 kept 图片；后续编辑不会回写 revision。"
+              />
               <FloatingSelect label="caption 策略" value="先触发词后描述" options={["先触发词后描述", "只补全缺失 caption", "人工确认后写入"]} />
               <Field label="每小节初始图片数" value={4} />
               <Field label="训练步数草稿" value={2400} />
@@ -649,6 +667,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
                 <div><dt>模板</dt><dd>{createdProjectDraft.templateTitle}</dd></div>
                 <div><dt>基础模型</dt><dd>{createdProjectDraft.baseModel}</dd></div>
                 <div><dt>初始小节</dt><dd>{createdProjectDraft.enabledSectionCount} / {createdProjectDraft.sectionCount} 启用</dd></div>
+                <div><dt>自动生成样本</dt><dd>{createdProjectDraft.autoGenerateSamples ? "开启" : "关闭"}</dd></div>
+                <div><dt>自动冻结数据集</dt><dd>{createdProjectDraft.autoFreezeDataset ? "开启" : "关闭"}</dd></div>
               </dl>
             </Panel>
           ) : null}

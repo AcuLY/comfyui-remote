@@ -293,3 +293,24 @@ test("training project create page creates a local front-end draft instead of pr
   assert.match(formSource, /sectionSeeds\.length/, "created draft should reflect the current local seed section count");
   assert.doesNotMatch(formSource, /POST \/api\/training\/projects/, "project creation should not advertise missing backend wiring in the UI");
 });
+
+test("training project create page training default switches feed into the local draft", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /trainingDefaults/, "project creation should track training defaults locally");
+  assert.match(formSource, /setTrainingDefaults/, "training default switches should update local state");
+  assert.match(formSource, /autoGenerateSamples/, "project creation should track the initial sample-generation default");
+  assert.match(formSource, /autoFreezeDataset/, "project creation should track the dataset-freeze default");
+  assert.match(formSource, /checked=\{trainingDefaults\.autoGenerateSamples\}/, "sample-generation switch should be controlled by local state");
+  assert.match(formSource, /checked=\{trainingDefaults\.autoFreezeDataset\}/, "dataset-freeze switch should be controlled by local state");
+  assert.match(formSource, /onCheckedChange=\{\(checked\) => setTrainingDefaults/, "switch changes should update training default state");
+  assert.match(formSource, /自动生成样本/, "created draft should expose the sample-generation default");
+  assert.match(formSource, /自动冻结数据集/, "created draft should expose the dataset-freeze default");
+  assert.match(formSource, /createdProjectDraft\.autoGenerateSamples/, "created draft summary should render the sample-generation value");
+  assert.match(formSource, /createdProjectDraft\.autoFreezeDataset/, "created draft summary should render the dataset-freeze value");
+});
