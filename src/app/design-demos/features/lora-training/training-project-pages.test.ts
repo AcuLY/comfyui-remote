@@ -60,6 +60,24 @@ test("training project overview saves as template through the real template form
   assert.doesNotMatch(overviewSource, /保存为模板入口已预览/, "save-as-template should not remain a feedback-only placeholder");
 });
 
+test("training project overview archives and restores the project locally", () => {
+  const overviewStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  assert.notEqual(overviewStart, -1);
+  assert.notEqual(profileStart, -1);
+
+  const overviewSource = pagesSource.slice(overviewStart, profileStart);
+
+  assert.match(overviewSource, /projectArchiveState/, "overview should keep local archive state for the current project");
+  assert.match(overviewSource, /setProjectArchiveState/, "archive action should update local state");
+  assert.match(overviewSource, /handleToggleProjectArchive/, "overview should define an archive/restore handler");
+  assert.match(overviewSource, /activeProject/, "overview should pass the locally updated project into shared header/navigation");
+  assert.match(overviewSource, /project=\{activeProject\}/, "ProjectHeader should receive the local archived status");
+  assert.match(overviewSource, /onClick=\{handleToggleProjectArchive\}/, "archive button should call the local archive handler");
+  assert.match(overviewSource, /isProjectArchived \? "恢复" : "归档"/, "archive action should visibly toggle between archive and restore");
+  assert.doesNotMatch(overviewSource, /归档项目需要确认/, "archive action should not stay as a confirmation-only placeholder");
+});
+
 test("training profile page renders reference image cards with kind, label, and note", () => {
   const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const sectionsStart = pagesSource.indexOf("function SectionCard");

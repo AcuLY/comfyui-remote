@@ -601,7 +601,17 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
 export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const training = useTraining(data);
   const project = findProject(data, projectId);
+  const [projectArchiveState, setProjectArchiveState] = useState(() => ({
+    archived: project?.status === "archived",
+    projectId: project?.id ?? null,
+  }));
   if (!project) return <EmptyPage title="没有训练项目数据" />;
+  const isProjectArchived = projectArchiveState.projectId === project.id ? projectArchiveState.archived : project.status === "archived";
+  const activeProject: LoraTrainingProject = isProjectArchived
+    ? { ...project, status: "archived" }
+    : project.status === "archived"
+      ? { ...project, status: "ready" }
+      : project;
   const recentRuns = training.runs.filter((run) => run.projectId === project.id).slice(0, 4);
   const recentResults = project.resultPool.filter((result) => result.reviewStatus === "kept").slice(0, 4);
   const latestRevision = project.datasetRevisions[0];
@@ -611,16 +621,31 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
     sourceProject: project.title,
   }).toString()}`;
 
+  function handleToggleProjectArchive() {
+    setProjectArchiveState((current) => {
+      const currentArchived = current.projectId === project.id ? current.archived : project.status === "archived";
+      return { archived: !currentArchived, projectId: project.id };
+    });
+  }
+
   return (
     <div className={s.page}>
       <ProjectHeader
         active="overview"
-        project={project}
+        project={activeProject}
+        subtitle={isProjectArchived ? `${project.profileSummary} · 已归档` : project.profileSummary}
         actions={(
           <>
             <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Play} tone="primary">启动训练</ButtonLink>
             <ButtonLink href={saveAsTemplateHref} icon={CopyPlus}>保存为模板</ButtonLink>
-            <Button tone="danger" icon={Archive} feedback={{ tone: "warning", title: "归档项目需要确认", detail: project.title }}>归档</Button>
+            <Button
+              tone={isProjectArchived ? "subtle" : "danger"}
+              icon={Archive}
+              onClick={handleToggleProjectArchive}
+              feedback={{ tone: isProjectArchived ? "success" : "warning", title: isProjectArchived ? "训练项目已恢复" : "训练项目已归档", detail: project.title }}
+            >
+              {isProjectArchived ? "恢复" : "归档"}
+            </Button>
           </>
         )}
       />
