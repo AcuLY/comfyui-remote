@@ -117,6 +117,8 @@ test("LoRA training header specs use product-facing copy instead of internal sch
     /Project-level/i,
     /section settings/i,
     /preset\/local blocks/i,
+    /普通预设/,
+    /多变体结构/,
     /\bComposer\b/i,
     /\blightbox\b/i,
     /\bSnapshot\b/i,
