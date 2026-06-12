@@ -116,3 +116,20 @@ test("training project create page is a full form workspace with training seed c
   assert.match(cssSource, /\.projectCreateWorkspace\b/, "project creation should have a dedicated workspace layout");
   assert.match(cssSource, /\.sectionSeedCard\b/, "initial section seed cards should have dedicated styling");
 });
+
+test("training project create page manages initial section seeds locally", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /sectionSeeds/, "initial section seeds should render from local state");
+  assert.match(formSource, /setSectionSeeds/, "copy/delete seed actions should update local state");
+  assert.match(formSource, /handleCopySeedSection/, "initial section seeds should expose a copy handler");
+  assert.match(formSource, /handleDeleteSeedSection/, "initial section seeds should expose a delete handler");
+  assert.match(formSource, /sectionSeeds\.map/, "seed cards should render the local seed list");
+  assert.match(formSource, /handleCopySeedSection\(section\)/, "copy button should call the seed copy handler");
+  assert.match(formSource, /handleDeleteSeedSection\(section\.id\)/, "delete button should call the seed delete handler");
+});

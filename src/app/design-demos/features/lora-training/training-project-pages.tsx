@@ -36,7 +36,7 @@ import { SegmentedControl } from "../../shared/primitives/segmented-control";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { SwitchRow } from "../../shared/primitives/switch-row";
 import { buildLoraTrainingDemoData } from "./fixtures";
-import type { LoraTrainingImageResult, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus } from "./types";
+import type { LoraTrainingImageResult, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "./types";
 import s from "./training-project-pages.module.css";
 
 const PROJECT_TABS = [
@@ -64,6 +64,7 @@ const RESULT_FILTER_ITEMS = [
 ] as const;
 
 type TrainingResultFilter = (typeof RESULT_FILTER_ITEMS)[number]["value"];
+type LoraTrainingTemplateSeedSection = LoraTrainingTemplate["sections"][number];
 
 function useTraining(data: DemoData) {
   return buildLoraTrainingDemoData(data);
@@ -84,6 +85,14 @@ function moveSceneBlock(blocks: LoraTrainingSectionBlock[], index: number, direc
   const nextBlocks = [...blocks];
   [nextBlocks[index], nextBlocks[targetIndex]] = [nextBlocks[targetIndex], nextBlocks[index]];
   return nextBlocks;
+}
+
+function buildSeedSectionCopy(section: LoraTrainingTemplateSeedSection, copyNumber: number): LoraTrainingTemplateSeedSection {
+  return {
+    ...section,
+    id: `${section.id}-copy-${copyNumber}`,
+    title: `${section.title} 副本 ${copyNumber}`,
+  };
 }
 
 function ProjectNav({ active, project }: { active: (typeof PROJECT_TABS)[number]["key"]; project: LoraTrainingProject }) {
@@ -482,7 +491,26 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     },
   ].filter((group) => group.items.length > 0);
   const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
+  const [sectionSeeds, setSectionSeeds] = useState(() => selectedTemplate?.sections ?? []);
   const activePreviewReference = previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
+
+  function handleCopySeedSection(section: LoraTrainingTemplateSeedSection) {
+    setSectionSeeds((current) => {
+      const copyNumber = current.filter((item) => item.id === section.id || item.id.startsWith(`${section.id}-copy-`)).length;
+      const copy = buildSeedSectionCopy(section, copyNumber);
+      const sourceIndex = current.findIndex((item) => item.id === section.id);
+      if (sourceIndex === -1) return [...current, copy];
+      return [
+        ...current.slice(0, sourceIndex + 1),
+        copy,
+        ...current.slice(sourceIndex + 1),
+      ];
+    });
+  }
+
+  function handleDeleteSeedSection(sectionId: string) {
+    setSectionSeeds((current) => current.filter((section) => section.id !== sectionId));
+  }
 
   return (
     <div className={s.page}>
@@ -515,7 +543,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
         <aside className={s.projectCreateAside}>
           <Panel title="初始小节" subtitle="模板小节只是创建时 seed，创建后独立管理。">
             <div className={s.sectionSeedList}>
-              {selectedTemplate?.sections.map((section, index) => (
+              {sectionSeeds.map((section, index) => (
                 <article className={s.sectionSeedCard} key={section.id}>
                   <div className={s.sectionSeedHeader}>
                     <span>{String(index + 1).padStart(2, "0")}</span>
@@ -524,8 +552,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
                   </div>
                   <p>{section.blockCount} 个场景块 · {section.scenePreview}</p>
                   <div className={s.sectionSeedActions}>
-                    <Button size="sm" icon={Copy} feedback={{ title: "初始小节已复制", detail: section.title }}>复制</Button>
-                    <Button size="sm" tone="danger" icon={Trash2} feedback={{ tone: "warning", title: "移除初始小节需要确认", detail: section.title }}>删除</Button>
+                    <Button size="sm" icon={Copy} onClick={() => handleCopySeedSection(section)} feedback={{ title: "初始小节已复制", detail: section.title }}>复制</Button>
+                    <Button size="sm" tone="danger" icon={Trash2} onClick={() => handleDeleteSeedSection(section.id)} feedback={{ tone: "warning", title: "初始小节已移除", detail: section.title }}>删除</Button>
                   </div>
                 </article>
               ))}
