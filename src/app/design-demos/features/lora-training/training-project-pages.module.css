@@ -344,16 +344,27 @@
   background: var(--demo-field-bg);
   color: inherit;
   padding: 10px 12px;
-  text-decoration: none;
   transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
 .projectRunRow:hover,
-.projectRunRow:focus-visible {
+.projectRunRow:focus-within {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-glass-hover);
   outline: none;
   transform: translateY(-1px);
+}
+
+.projectRunMain {
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.projectRunMain:focus-visible {
+  border-radius: 8px;
+  outline: 2px solid var(--demo-focus-ring);
+  outline-offset: 3px;
 }
 
 .projectRunText {
@@ -415,6 +426,20 @@
 .projectRunStatus {
   display: inline-flex;
   justify-self: end;
+}
+
+.projectRunActions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 8px;
+}
+
+.projectRunActions :where(button) {
+  min-height: 30px;
+  padding: 0 10px;
 }
 
 .emptyInline {
@@ -1164,6 +1189,14 @@
 
   .projectRunStatus {
     justify-self: start;
+  }
+
+  .projectRunActions {
+    justify-content: stretch;
+  }
+
+  .projectRunActions :where(button) {
+    flex: 1;
   }
 
   .sectionActions {

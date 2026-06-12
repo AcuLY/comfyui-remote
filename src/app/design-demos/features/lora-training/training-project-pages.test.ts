@@ -213,6 +213,31 @@ test("project-scoped run rows use task cards with recent output thumbnails", () 
   assert.match(cssSource, /\.projectRunThumbs\b/, "project run rows should style thumbnail strips separately");
 });
 
+test("project-scoped run rows manage local delete and failed retry state", () => {
+  const runRowsStart = pagesSource.indexOf("function RunRows");
+  const referenceSourceStart = pagesSource.indexOf("type ReferenceCandidate");
+  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
+  assert.notEqual(runRowsStart, -1);
+  assert.notEqual(referenceSourceStart, -1);
+  assert.notEqual(scopedPageStart, -1);
+
+  const runRowsSource = pagesSource.slice(runRowsStart, referenceSourceStart);
+  const scopedPageSource = pagesSource.slice(scopedPageStart);
+
+  assert.match(scopedPageSource, /hiddenProjectRunIds/, "project task page should track locally removed run ids");
+  assert.match(scopedPageSource, /retriedProjectRunIds/, "project task page should track locally retried failed run ids");
+  assert.match(scopedPageSource, /handleHideProjectRun/, "project task page should define a local delete handler");
+  assert.match(scopedPageSource, /handleRetryProjectRun/, "project task page should define a local retry handler");
+  assert.match(scopedPageSource, /!hiddenProjectRunIds\.has\(run\.id\)/, "visible project runs should exclude locally removed runs");
+  assert.match(scopedPageSource, /onHideRun=\{handleHideProjectRun\}/, "project task rows should receive the delete handler");
+  assert.match(scopedPageSource, /onRetryRun=\{handleRetryProjectRun\}/, "failed project task rows should receive the retry handler");
+  assert.match(scopedPageSource, /retriedRunIds=\{retriedProjectRunIds\}/, "project task rows should receive retry state");
+  assert.match(runRowsSource, /onHideRun\?\.\(run\.id\)/, "row delete button should remove the run locally");
+  assert.match(runRowsSource, /onRetryRun\?\.\(run\.id\)/, "row retry button should queue a failed run locally");
+  assert.match(runRowsSource, /retriedRunIds\.has\(run\.id\)/, "rows should derive retry state per run");
+  assert.match(runRowsSource, /已排队重试/, "retried failed rows should show queued retry state");
+});
+
 test("training project create page is a full form workspace with training seed controls", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");

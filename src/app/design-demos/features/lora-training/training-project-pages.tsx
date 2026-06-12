@@ -239,7 +239,19 @@ function projectRunStatusLabel(status: LoraTrainingTaskStatus) {
   return "失败";
 }
 
-function RunRows({ project, runs }: { project: LoraTrainingProject; runs: LoraTrainingRun[] }) {
+function RunRows({
+  onHideRun,
+  onRetryRun,
+  project,
+  retriedRunIds = new Set<string>(),
+  runs,
+}: {
+  onHideRun?: (runId: string) => void;
+  onRetryRun?: (runId: string) => void;
+  project: LoraTrainingProject;
+  retriedRunIds?: Set<string>;
+  runs: LoraTrainingRun[];
+}) {
   if (runs.length === 0) return <div className={s.emptyInline}>没有任务记录</div>;
 
   return (
@@ -247,15 +259,19 @@ function RunRows({ project, runs }: { project: LoraTrainingProject; runs: LoraTr
       {runs.map((run) => {
         const type = run.kind === "generation" ? "generation" : "training";
         const previewImages = runPreviewImages(run, project);
+        const retried = retriedRunIds.has(run.id);
         return (
-          <Link className={s.projectRunRow} href={demoHref(`/training/runs/${type}/${run.id}`)} key={run.id}>
-            <span className={s.projectRunText}>
-              <strong>{run.title}</strong>
-              <span>{run.summary} · {run.timestamp}</span>
-              {run.outputLabel ? <em>{run.outputLabel}</em> : null}
-              {run.waitReason ? <em>{run.waitReason}</em> : null}
-              {run.errorMessage ? <em className={s.projectRunError}>{run.errorMessage}</em> : null}
-            </span>
+          <article className={s.projectRunRow} key={run.id}>
+            <Link className={s.projectRunMain} href={demoHref(`/training/runs/${type}/${run.id}`)}>
+              <span className={s.projectRunText}>
+                <strong>{run.title}</strong>
+                <span>{run.summary} · {run.timestamp}</span>
+                {run.outputLabel ? <em>{run.outputLabel}</em> : null}
+                {run.waitReason ? <em>{run.waitReason}</em> : null}
+                {retried ? <em>已排队重试</em> : null}
+                {run.errorMessage ? <em className={s.projectRunError}>{run.errorMessage}</em> : null}
+              </span>
+            </Link>
             {previewImages.length > 0 ? (
               <ImageListSmall
                 className={s.projectRunThumbs}
@@ -265,9 +281,15 @@ function RunRows({ project, runs }: { project: LoraTrainingProject; runs: LoraTr
               />
             ) : null}
             <span className={s.projectRunStatus}>
-              <StatusBadge status={run.status === "completed" ? "done" : run.status} label={projectRunStatusLabel(run.status)} />
+              <StatusBadge status={retried ? "pending" : run.status === "completed" ? "done" : run.status} label={retried ? "已排队重试" : projectRunStatusLabel(run.status)} />
             </span>
-          </Link>
+            <span className={s.projectRunActions}>
+              {run.status === "failed" && !retried ? (
+                <Button icon={Play} onClick={() => onRetryRun?.(run.id)} feedback={{ title: "已排队重试", detail: run.title }}>重试</Button>
+              ) : null}
+              <Button tone="danger" icon={Trash2} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+            </span>
+          </article>
         );
       })}
     </div>
@@ -1426,9 +1448,24 @@ export function LoraTrainingProjectScopedRunsPage({
   const training = useTraining(data);
   const project = findProject(data, projectId);
   const [status, setStatus] = useState<LoraTrainingTaskStatus>("completed");
+  const [hiddenProjectRunIds, setHiddenProjectRunIds] = useState<Set<string>>(new Set());
+  const [retriedProjectRunIds, setRetriedProjectRunIds] = useState<Set<string>>(new Set());
   if (!project) return <EmptyPage title="没有项目任务数据" />;
-  const projectRuns = training.runs.filter((run) => run.projectId === project.id && run.kind === kind);
+  const projectRuns = training.runs.filter((run) => run.projectId === project.id && run.kind === kind && !hiddenProjectRunIds.has(run.id));
   const visibleRuns = projectRuns.filter((run) => run.status === status);
+
+  function handleHideProjectRun(runId: string) {
+    setHiddenProjectRunIds((current) => new Set([...current, runId]));
+    setRetriedProjectRunIds((current) => {
+      const next = new Set(current);
+      next.delete(runId);
+      return next;
+    });
+  }
+
+  function handleRetryProjectRun(runId: string) {
+    setRetriedProjectRunIds((current) => new Set([...current, runId]));
+  }
 
   return (
     <div className={s.page}>
@@ -1447,7 +1484,13 @@ export function LoraTrainingProjectScopedRunsPage({
         onChange={setStatus}
       />
       <Panel title={kind === "generation" ? "项目生成任务" : "项目训练任务"}>
-        <RunRows project={project} runs={visibleRuns} />
+        <RunRows
+          onHideRun={handleHideProjectRun}
+          onRetryRun={handleRetryProjectRun}
+          project={project}
+          retriedRunIds={retriedProjectRunIds}
+          runs={visibleRuns}
+        />
       </Panel>
     </div>
   );
