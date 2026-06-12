@@ -804,6 +804,12 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
     images: project?.referenceImages ?? [],
     projectId: project?.id ?? null,
   }));
+  const [profileFormState, setProfileForm] = useState(() => ({
+    detailPrompt: project?.detailPrompt ?? "",
+    profileSummary: project?.profileSummary ?? "",
+    projectId: project?.id ?? null,
+    usagePrompt: project?.usagePrompt ?? "",
+  }));
   const [profileDraft, setProfileDraft] = useState<{
     detailPrompt: string;
     profileSummary: string;
@@ -812,13 +818,35 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
   } | null>(null);
   if (!project) return <EmptyPage title="没有角色资料数据" />;
   const localReferenceImages = referenceImageState.projectId === project.id ? referenceImageState.images : project.referenceImages;
+  const profileForm = profileFormState.projectId === project.id ? profileFormState : {
+    detailPrompt: project.detailPrompt,
+    profileSummary: project.profileSummary,
+    projectId: project.id,
+    usagePrompt: project.usagePrompt,
+  };
 
   function handleSaveProfile() {
     setProfileDraft({
-      detailPrompt: project.detailPrompt,
-      profileSummary: project.profileSummary,
+      detailPrompt: profileForm.detailPrompt,
+      profileSummary: profileForm.profileSummary,
       referenceImageCount: localReferenceImages.length,
-      usagePrompt: project.usagePrompt,
+      usagePrompt: profileForm.usagePrompt,
+    });
+  }
+
+  function handleUpdateProfileForm(field: "detailPrompt" | "profileSummary" | "usagePrompt", value: string) {
+    setProfileForm((current) => {
+      const active = current.projectId === project.id ? current : {
+        detailPrompt: project.detailPrompt,
+        profileSummary: project.profileSummary,
+        projectId: project.id,
+        usagePrompt: project.usagePrompt,
+      };
+      return {
+        ...active,
+        [field]: value,
+        projectId: project.id,
+      };
     });
   }
 
@@ -863,9 +891,9 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
       <div className={s.twoCol}>
         <Panel title="角色文本">
           <div className={s.formStack}>
-            <Field multiline features={{ resize: true, clipboard: true }} label="LoRA 使用提示词" value={project.usagePrompt} />
-            <Field multiline features={{ resize: true, clipboard: true }} label="角色细节描述" value={project.detailPrompt} />
-            <Field multiline features={{ resize: true, clipboard: true }} label="资料备注" value={project.profileSummary} />
+            <Field multiline features={{ resize: true, clipboard: true }} label="LoRA 使用提示词" value={profileForm.usagePrompt} onChange={(value) => handleUpdateProfileForm("usagePrompt", value)} />
+            <Field multiline features={{ resize: true, clipboard: true }} label="角色细节描述" value={profileForm.detailPrompt} onChange={(value) => handleUpdateProfileForm("detailPrompt", value)} />
+            <Field multiline features={{ resize: true, clipboard: true }} label="资料备注" value={profileForm.profileSummary} onChange={(value) => handleUpdateProfileForm("profileSummary", value)} />
           </div>
         </Panel>
         <Panel title="参考图" subtitle="original / generated / auxiliary 都作为自由参考图管理，不做 fixed slots。">

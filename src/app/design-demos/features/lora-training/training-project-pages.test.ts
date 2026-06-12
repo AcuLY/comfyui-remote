@@ -133,6 +133,25 @@ test("training profile page saves a visible local profile draft instead of only 
   assert.doesNotMatch(profileSource, /feedback="角色资料已保存"/, "profile save should not remain a feedback-only placeholder");
 });
 
+test("training profile page saves editable profile fields into the local draft", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /profileForm/, "profile page should track editable profile fields in local state");
+  assert.match(profileSource, /handleUpdateProfileForm/, "profile page should expose a form update handler");
+  assert.match(profileSource, /value=\{profileForm\.usagePrompt\}/, "usage prompt field should be controlled by local form state");
+  assert.match(profileSource, /onChange=\{\(value\) => handleUpdateProfileForm\("usagePrompt", value\)\}/, "usage prompt edits should update form state");
+  assert.match(profileSource, /value=\{profileForm\.detailPrompt\}/, "detail prompt field should be controlled by local form state");
+  assert.match(profileSource, /value=\{profileForm\.profileSummary\}/, "profile summary field should be controlled by local form state");
+  assert.match(profileSource, /usagePrompt:\s*profileForm\.usagePrompt/, "profile draft should save the edited usage prompt");
+  assert.match(profileSource, /detailPrompt:\s*profileForm\.detailPrompt/, "profile draft should save the edited detail prompt");
+  assert.match(profileSource, /profileSummary:\s*profileForm\.profileSummary/, "profile draft should save the edited profile summary");
+});
+
 test("training results and dataset pages use caption-aware review grids instead of bare image grids", () => {
   assert.match(pagesSource, /function TrainingResultGrid/, "project pages should define a caption-aware training result grid");
   assert.match(pagesSource, /ImagePreviewLarge/, "training result grid should use the shared lightbox");
