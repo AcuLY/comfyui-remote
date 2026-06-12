@@ -17,3 +17,16 @@ test("settings page exposes the generation versus LoRA training work mode switch
   assert.match(cssSource, /\.workModePanel\b/, "settings should style work mode as its own panel");
   assert.match(cssSource, /\.workModeGrid\b/, "settings should style mode choices as responsive cards");
 });
+
+test("settings navigation icons are decorative and hidden from assistive tech", () => {
+  assert.match(
+    source,
+    /<item\.icon className=\{s\.iconMd\} aria-hidden="true" \/>/,
+    "settings row leading icons should not duplicate link text",
+  );
+  assert.match(
+    source,
+    /<ArrowRight className=\{s\.iconMd\} aria-hidden="true" \/>/,
+    "settings row arrow icons should be decorative",
+  );
+});

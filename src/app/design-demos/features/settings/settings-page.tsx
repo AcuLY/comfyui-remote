@@ -130,14 +130,14 @@ export function SettingsPage({ data }: { data: DemoData }) {
         ].map((item) => (
           <Link className={s.settingsLinkRow} href={demoHref(item.href)} key={item.href}>
             <div className={s.settingsLinkMain}>
-              <item.icon className={s.iconMd} />
+              <item.icon className={s.iconMd} aria-hidden="true" />
               <div className={s.settingsLinkText}>
                 <strong>{item.title}</strong>
                 <span>{item.meta}</span>
               </div>
             </div>
             <div className={s.settingsLinkArrow}>
-              <ArrowRight className={s.iconMd} />
+              <ArrowRight className={s.iconMd} aria-hidden="true" />
             </div>
           </Link>
         ))}
