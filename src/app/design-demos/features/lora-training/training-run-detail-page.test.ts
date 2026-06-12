@@ -91,6 +91,23 @@ test("training run detail page uses product-facing copy instead of internal impl
   }
 });
 
+test("training run fixtures keep rendered sample and config copy product-facing", () => {
+  for (const term of [
+    /training caption snapshot/i,
+    /RTX worker/i,
+    /label:\s*"Base"/,
+    /label:\s*"Network"/,
+    /label:\s*"Runner"/,
+    /kept 图片/i,
+    /本地训练 worker/i,
+    /final LoRA/i,
+    /manifest 缺失/i,
+    /缺失 caption/i,
+  ]) {
+    assert.doesNotMatch(fixtureSource, term, `training fixtures should not render ${term}`);
+  }
+});
+
 test("training dataset sample cards keep captions compact without shrinking thumbnails", () => {
   assert.match(detailCss, /\.trainingSampleGrid\b/, "training detail should define a sample thumbnail grid");
   assert.match(detailCss, /\.trainingSampleCard\b/, "training detail should define sample card styling");
