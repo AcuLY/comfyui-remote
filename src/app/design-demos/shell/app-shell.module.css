@@ -601,6 +601,19 @@
 .mainWithRouteHeader > :global(div) > :global([data-demo-page-header]:first-child) {
   display: none;
 }
+.mainWithRouteHeader > :global(div) > :global([data-demo-page-header][data-demo-page-header-has-actions="true"]:first-child) {
+  display: flex;
+  justify-content: flex-end;
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.mainWithRouteHeader > :global(div) > :global([data-demo-page-header][data-demo-page-header-has-actions="true"]:first-child [data-demo-page-header-title-block]) {
+  display: none;
+}
+.mainWithRouteHeader > :global(div) > :global([data-demo-page-header][data-demo-page-header-has-actions="true"]:first-child [data-demo-page-header-actions]) {
+  width: 100%;
+  justify-content: flex-end;
+}
 .pageHeader > .toolbar {
   align-self: end;
   justify-content: flex-end;

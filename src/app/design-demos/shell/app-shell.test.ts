@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 const testDir = dirname(fileURLToPath(import.meta.url));
 const shellSource = readFileSync(resolve(testDir, "app-shell.tsx"), "utf8");
 const cssSource = readFileSync(resolve(testDir, "app-shell.module.css"), "utf8");
+const pageHeaderSource = readFileSync(resolve(testDir, "../shared/primitives/page-header/index.tsx"), "utf8");
 
 function sourceRegion(source: string, startMarker: string, endMarker: string) {
   const start = source.indexOf(startMarker);
@@ -39,4 +40,37 @@ test("mobile bottom navigation shows work mode as passive status instead of a Mo
 test("mobile drawer access remains separate from the bottom navigation resources", () => {
   assert.match(shellSource, /mobileNavDrawerButton/, "mobile drawer should remain available outside resource navigation");
   assert.match(cssSource, /\.mobileNavDrawerButton\b/, "separate mobile drawer button should be styled explicitly");
+});
+
+test("route header keeps page-local actions visible without duplicating the local title block", () => {
+  assert.match(
+    pageHeaderSource,
+    /data-demo-page-header-has-actions=\{actions \? "true" : undefined\}/,
+    "PageHeader should mark whether it carries page-local actions",
+  );
+  assert.match(
+    pageHeaderSource,
+    /data-demo-page-header-title-block/,
+    "PageHeader should expose the title block for route-header suppression",
+  );
+  assert.match(
+    pageHeaderSource,
+    /data-demo-page-header-actions/,
+    "PageHeader should expose the action toolbar for route-header preservation",
+  );
+  assert.match(
+    cssSource,
+    /\[data-demo-page-header\]\[data-demo-page-header-has-actions="true"\]:first-child[\s\S]*?display:\s*flex/,
+    "Route-header pages should keep the first PageHeader visible as an action-only strip when it has actions",
+  );
+  assert.match(
+    cssSource,
+    /\[data-demo-page-header-title-block\][\s\S]*?display:\s*none/,
+    "The local PageHeader title copy should stay hidden under the fixed route header",
+  );
+  assert.match(
+    cssSource,
+    /\[data-demo-page-header-actions\][\s\S]*?justify-content:\s*flex-end/,
+    "Preserved local PageHeader actions should align as a compact page toolbar",
+  );
 });
