@@ -294,13 +294,28 @@ test("generation compose carries explicitly added references into the task draft
   );
 
   assert.match(composePage, /selectedReferenceIds/, "compose page should own the selected reference state");
-  assert.match(composePage, /setSelectedReferenceIds/, "compose page should update selected references locally");
+  assert.match(composePage, /setReferenceSelectionState/, "compose page should update selected references locally");
   assert.match(composePage, /selectedReferences/, "compose page should resolve selected reference objects");
   assert.match(composePage, /selectedReferenceTitles/, "task draft should store the selected reference titles");
   assert.match(composePage, /selectedReferenceDetails/, "final input should include selected reference details");
   assert.match(composePage, /onAddReference=\{handleAddTaskReference\}/, "reference picker add action should update compose state");
   assert.match(composePage, /selectedReferenceIds=\{selectedReferenceIds\}/, "reference picker should receive selected ids from compose state");
   assert.doesNotMatch(composePage, /referenceTitle:\s*activePreviewReference/, "task draft should not only save the currently previewed reference");
+});
+
+test("generation compose keeps reference selection scoped to the active project section", () => {
+  const composePage = sourceBetween(
+    "export function LoraTrainingGenerationComposePage",
+    "export function LoraTrainingProjectResultsPage",
+  );
+
+  assert.match(composePage, /referenceSelectionState/, "compose reference selection should be stored with route context");
+  assert.match(composePage, /projectId:\s*project\?\.id \?\? null/, "reference selection should remember the source project id");
+  assert.match(composePage, /sectionId:\s*section\?\.id \?\? null/, "reference selection should remember the source section id");
+  assert.match(composePage, /referenceSelectionState\.projectId === activeProject\.id && referenceSelectionState\.sectionId === activeSection\.id/, "reference selection should fall back after project or section changes");
+  assert.match(composePage, /selectedReferenceIds:\s*new Set<string>\(\)/, "a new project section should start with an empty explicit reference selection");
+  assert.doesNotMatch(composePage, /const \[previewReference, setPreviewReference\] = useState<ReferenceCandidate \| null>/, "preview state should not be stored without route context");
+  assert.doesNotMatch(composePage, /const \[selectedReferenceIds, setSelectedReferenceIds\] = useState<Set<string>>\(new Set\(\)\)/, "selected references should not be stored without route context");
 });
 
 test("training section workflow has responsive rail and compact action styles", () => {

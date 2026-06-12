@@ -1551,8 +1551,12 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
       })),
     },
   ] : [];
-  const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
-  const [selectedReferenceIds, setSelectedReferenceIds] = useState<Set<string>>(new Set());
+  const [referenceSelectionState, setReferenceSelectionState] = useState(() => ({
+    previewReference: referenceSourceTree[0]?.items[0] ?? null,
+    projectId: project?.id ?? null,
+    sectionId: section?.id ?? null,
+    selectedReferenceIds: new Set<string>(),
+  }));
   const [generationFormState, setGenerationForm] = useState(() => ({
     projectId: project?.id ?? null,
     sectionId: section?.id ?? null,
@@ -1566,11 +1570,18 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     supplementalPrompt: string;
     taskType: string;
   } | null>(null);
-  const activePreviewReference = previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
 
   if (!project || !section) return <EmptyPage title="没有生成任务上下文" />;
   const activeProject = project;
   const activeSection = section;
+  const referenceSelection = referenceSelectionState.projectId === activeProject.id && referenceSelectionState.sectionId === activeSection.id ? referenceSelectionState : {
+    previewReference: referenceSourceTree[0]?.items[0] ?? null,
+    projectId: activeProject.id,
+    sectionId: activeSection.id,
+    selectedReferenceIds: new Set<string>(),
+  };
+  const activePreviewReference = referenceSelection.previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
+  const selectedReferenceIds = referenceSelection.selectedReferenceIds;
   const generationForm = generationFormState.projectId === activeProject.id && generationFormState.sectionId === activeSection.id ? generationFormState : {
     projectId: activeProject.id,
     sectionId: activeSection.id,
@@ -1607,8 +1618,28 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     });
   }
 
+  function handlePreviewTaskReference(candidate: ReferenceCandidate) {
+    setReferenceSelectionState((current) => {
+      const selectedReferenceIds = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.selectedReferenceIds : new Set<string>();
+      return {
+        previewReference: candidate,
+        projectId: activeProject.id,
+        sectionId: activeSection.id,
+        selectedReferenceIds,
+      };
+    });
+  }
+
   function handleAddTaskReference(candidate: ReferenceCandidate) {
-    setSelectedReferenceIds((current) => new Set([...current, candidate.id]));
+    setReferenceSelectionState((current) => {
+      const selectedReferenceIds = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.selectedReferenceIds : new Set<string>();
+      return {
+        previewReference: candidate,
+        projectId: activeProject.id,
+        sectionId: activeSection.id,
+        selectedReferenceIds: new Set([...selectedReferenceIds, candidate.id]),
+      };
+    });
   }
 
   function handleQueueGenerationTask() {
@@ -1644,7 +1675,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
           <ReferencePicker
             referenceSourceTree={referenceSourceTree}
             previewReference={activePreviewReference}
-            onPreviewReference={setPreviewReference}
+            onPreviewReference={handlePreviewTaskReference}
             onAddReference={handleAddTaskReference}
             selectedReferenceIds={selectedReferenceIds}
           />
