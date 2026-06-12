@@ -49,6 +49,34 @@ test("training project pages keep backend wiring notes out of user-facing copy",
   assert.doesNotMatch(pagesSource, /后端接入时/, "training project UI should not expose backend integration notes");
 });
 
+test("training project pages use product-facing dataset and template copy", () => {
+  for (const term of [
+    /最近 kept 图/,
+    /meta:\s*"kept"/,
+    /模板只作为 seed/,
+    /live 回写/,
+    /seed 数据/,
+    /创建时 seed/,
+    /Caption 完成/,
+    /caption 策略/,
+    /缺 caption/,
+    /readiness 和 revision/,
+    /已冻结 revision/,
+    /pending \/ kept \/ rejected/,
+    /caption 摘要/,
+    /kept 图片/,
+    /Kept 图片/,
+    /title="Kept 草稿"/,
+    /title="Snapshot 样本与 caption"/,
+    /title="Manifest 清单"/,
+    /<dt>Manifest<\/dt>/,
+    /snapshot`\}/,
+    /caption 补全/,
+  ]) {
+    assert.doesNotMatch(pagesSource, term, `training project pages should not expose ${term}`);
+  }
+});
+
 test("training project overview saves as template through the real template form route", () => {
   const overviewStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
   const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");

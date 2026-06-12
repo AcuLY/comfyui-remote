@@ -596,13 +596,13 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     {
       id: "recent-training-results",
       title: "结果池样本",
-      description: "最近 kept 图",
+      description: "最近已保留图",
       items: training.projects.flatMap((project) => project.resultPool.filter((result) => result.reviewStatus === "kept").slice(0, 2).map((result) => ({
         id: `result-${result.id}`,
         title: `${project.title} / ${result.sectionTitle}`,
         detail: result.caption,
         image: result.image,
-        meta: "kept",
+        meta: "已保留",
       }))).slice(0, 4),
     },
     {
@@ -729,7 +729,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
         back={{ href: "/training/projects", label: "返回训练项目" }}
         eyebrow="LoRA 训练"
         title="新建训练项目"
-        subtitle="选择模板、填写角色资料，并创建初始小节。模板只作为 seed，创建后不会 live 回写。"
+        subtitle="选择模板、填写角色资料，并创建初始小节。模板只作为创建时初始配置，创建后不会自动回写。"
         actions={(
           <Button
             tone="primary"
@@ -743,7 +743,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
       />
       <div className={s.projectCreateWorkspace}>
         <div className={s.projectCreateMain}>
-          <Panel title="项目基础信息" subtitle="沿用项目表单骨架，但这里只写训练项目 seed 数据。">
+          <Panel title="项目基础信息" subtitle="沿用项目表单骨架，这里记录训练项目的初始配置。">
             <div className={s.formStack}>
               <Field label="项目名称" value={projectForm.title} onChange={(value) => handleUpdateProjectForm("title", value)} />
               <FloatingSelect label="从模板创建" value={projectForm.templateTitle} options={["不使用模板", ...training.templates.map((template) => template.title)]} onChange={handleSelectTemplate} />
@@ -766,7 +766,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
             </Panel>
         </div>
         <aside className={s.projectCreateAside}>
-          <Panel title="初始小节" subtitle="模板小节只是创建时 seed，创建后独立管理。">
+          <Panel title="初始小节" subtitle="模板小节只作为创建时初始小节，创建后独立管理。">
             <div className={s.sectionSeedList}>
               {sectionSeeds.map((section, index) => (
                 <article className={s.sectionSeedCard} key={section.id}>
@@ -785,7 +785,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
               ))}
             </div>
           </Panel>
-          <Panel title="数据集与训练默认" subtitle="创建后用于首批图片生成、caption 和训练任务草稿。">
+          <Panel title="数据集与训练默认" subtitle="创建后用于首批图片生成、说明文本和训练任务草稿。">
             <div className={s.formStack}>
               <SwitchRow
                 checked={trainingDefaults.autoGenerateSamples}
@@ -796,10 +796,10 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
               <SwitchRow
                 checked={trainingDefaults.autoFreezeDataset}
                 onCheckedChange={(checked) => setTrainingDefaults((current) => ({ ...current, autoFreezeDataset: checked }))}
-                title="Caption 完成后自动冻结数据集"
-                subtitle="只冻结 kept 图片；后续编辑不会回写 revision。"
+                title="说明文本完成后自动冻结数据集"
+                subtitle="只冻结已保留图片；后续编辑不会回写冻结版本。"
               />
-              <FloatingSelect label="caption 策略" value={projectForm.captionStrategy} options={["先触发词后描述", "只补全缺失 caption", "人工确认后写入"]} onChange={(value) => handleUpdateProjectForm("captionStrategy", value)} />
+              <FloatingSelect label="说明文本策略" value={projectForm.captionStrategy} options={["先触发词后描述", "只补全缺失说明文本", "人工确认后写入"]} onChange={(value) => handleUpdateProjectForm("captionStrategy", value)} />
               <Field label="每小节初始图片数" value={projectForm.perSectionImageCount} onChange={(value) => handleUpdateProjectForm("perSectionImageCount", value)} />
               <Field label="训练步数草稿" value={projectForm.trainingSteps} onChange={(value) => handleUpdateProjectForm("trainingSteps", value)} />
             </div>
@@ -814,7 +814,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
                 <div><dt>初始小节</dt><dd>{createdProjectDraft.enabledSectionCount} / {createdProjectDraft.sectionCount} 启用</dd></div>
                 <div><dt>每小节图片</dt><dd>{createdProjectDraft.perSectionImageCount}</dd></div>
                 <div><dt>训练步数</dt><dd>{createdProjectDraft.trainingSteps}</dd></div>
-                <div><dt>Caption 策略</dt><dd>{createdProjectDraft.captionStrategy}</dd></div>
+                <div><dt>说明文本策略</dt><dd>{createdProjectDraft.captionStrategy}</dd></div>
                 <div><dt>自动生成样本</dt><dd>{createdProjectDraft.autoGenerateSamples ? "开启" : "关闭"}</dd></div>
                 <div><dt>自动冻结数据集</dt><dd>{createdProjectDraft.autoFreezeDataset ? "开启" : "关闭"}</dd></div>
                 <div className={s.createdProjectDraftWide}><dt>已选资料</dt><dd>{createdProjectDraft.selectedReferenceTitles.join("、") || "未添加资料"}</dd></div>
@@ -890,10 +890,10 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
             <ButtonLink href={`/training/projects/${project.id}/profile`} icon={FileText}>编辑资料</ButtonLink>
           </div>
         </Panel>
-        <Panel title="训练入口" subtitle="总览只放启动判断，完整 readiness 和 revision 在数据集页处理。">
+        <Panel title="训练入口" subtitle="总览只放启动判断，完整训练准备和冻结版本在数据集页处理。">
           <div className={s.readinessSummary}>
-            <span><strong>{project.keptCount}</strong> kept</span>
-            <span><strong>{project.captionMissingCount}</strong> 缺 caption</span>
+            <span><strong>{project.keptCount}</strong> 已保留</span>
+            <span><strong>{project.captionMissingCount}</strong> 缺说明文本</span>
             <span><strong>{latestRevision?.version ?? project.datasetVersion}</strong> 当前版本</span>
           </div>
           <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Layers} tone="primary">打开数据集工作台</ButtonLink>
@@ -1530,7 +1530,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
         </Panel>
         <Panel title="任务内容">
           <div className={s.formStack}>
-            <FloatingSelect label="任务类型" value={generationForm.taskType} options={["训练集图片生成", "角色描述生成", "caption 补全"]} onChange={(value) => handleUpdateGenerationForm("taskType", value)} />
+            <FloatingSelect label="任务类型" value={generationForm.taskType} options={["训练集图片生成", "角色描述生成", "说明文本补全"]} onChange={(value) => handleUpdateGenerationForm("taskType", value)} />
             <Field multiline features={{ resize: true, clipboard: true }} label="补充提示词" value={generationForm.supplementalPrompt} onChange={(value) => handleUpdateGenerationForm("supplementalPrompt", value)} />
             <Field readOnly multiline features={{ clipboard: true }} label="最终输入预览" value={finalInputText} />
           </div>
@@ -1586,7 +1586,7 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
   return (
     <div className={s.page}>
       <ProjectHeader active="results" project={project} actions={<Button icon={Check} tone="primary" onClick={handleKeepVisibleResults} feedback={{ title: "已保留当前筛选图片" }}>批量保留</Button>} />
-      <Panel title="结果池" subtitle="pending / kept / rejected 都在项目级结果池审查，caption 摘要随图片一起处理。">
+      <Panel title="结果池" subtitle="待审、已保留和已拒绝的图片都在项目级结果池审查，说明文本摘要随图片一起处理。">
         <div className={s.stack}>
           <SegmentedControl
             ariaLabel="筛选训练结果"
@@ -1638,10 +1638,10 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
         )}
       />
       <div className={s.twoCol}>
-        <Panel title="训练准备" subtitle="只有 kept 图片进入冻结版本，后续编辑不会回写已冻结 revision。">
+        <Panel title="训练准备" subtitle="只有已保留图片进入冻结版本，后续编辑不会回写已冻结版本。">
           <div className={s.readinessSummary}>
-            <span><strong>{project.keptCount}</strong> kept 图片</span>
-            <span><strong>{project.captionMissingCount}</strong> 缺 caption</span>
+            <span><strong>{project.keptCount}</strong> 已保留图片</span>
+            <span><strong>{project.captionMissingCount}</strong> 缺说明文本</span>
             <span><strong>{project.datasetVersion}</strong> 当前版本</span>
           </div>
           <p className={s.bodyText}>准备信息保持在训练入口附近，完整样本与冻结快照继续由下方草稿和版本列表承载。</p>
@@ -1652,7 +1652,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
               <Link className={s.entityRow} href={demoHref(`/training/projects/${project.id}/dataset/revisions/${revision.id}`)} key={revision.id}>
                 <div>
                   <strong>{revision.version}</strong>
-                  <span>{revision.itemCount} 张 · 缺 caption {revision.captionMissingCount} · {revision.manifestName}</span>
+                  <span>{revision.itemCount} 张 · 缺说明文本 {revision.captionMissingCount} · {revision.manifestName}</span>
                 </div>
                 <StatusBadge status={revision.status} label={revision.status === "ready" ? "可训练" : revision.status === "draft" ? "草稿" : "训练中"} />
               </Link>
@@ -1664,14 +1664,14 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
         <Panel title="训练配置草稿" subtitle="基于当前数据集版本生成，可继续调整结果池和数据集后更新。">
           <dl className={s.trainingDraft}>
             <div><dt>数据集版本</dt><dd>{trainingDraft.version}</dd></div>
-            <div><dt>Kept 图片</dt><dd>{trainingDraft.keptCount} 张</dd></div>
-            <div><dt>缺 caption</dt><dd>{trainingDraft.captionMissingCount}</dd></div>
+            <div><dt>已保留图片</dt><dd>{trainingDraft.keptCount} 张</dd></div>
+            <div><dt>缺说明文本</dt><dd>{trainingDraft.captionMissingCount}</dd></div>
             <div><dt>训练步数</dt><dd>{trainingDraft.stepCount}</dd></div>
           </dl>
         </Panel>
       ) : null}
-      <Panel title="Kept 草稿">
-        <TrainingResultGrid results={project.resultPool.filter((result) => result.reviewStatus === "kept")} title="Kept 草稿" />
+      <Panel title="已保留草稿">
+        <TrainingResultGrid results={project.resultPool.filter((result) => result.reviewStatus === "kept")} title="已保留草稿" />
       </Panel>
     </div>
   );
@@ -1701,18 +1701,18 @@ export function LoraTrainingProjectDatasetRevisionPage({ data, projectId, revisi
           <dl className={s.statGrid}>
             <div><dt>状态</dt><dd>{revision.status}</dd></div>
             <div><dt>图片</dt><dd>{revision.itemCount} 张</dd></div>
-            <div><dt>缺 caption</dt><dd>{revision.captionMissingCount}</dd></div>
-            <div><dt>Manifest</dt><dd>{revision.manifestName}</dd></div>
+            <div><dt>缺说明文本</dt><dd>{revision.captionMissingCount}</dd></div>
+            <div><dt>文件清单</dt><dd>{revision.manifestName}</dd></div>
           </dl>
         </Panel>
         <Panel title="关联训练">
           <RunRows project={project} runs={relatedRuns} />
         </Panel>
       </div>
-      <Panel title="Snapshot 样本与 caption">
-        <TrainingResultGrid results={revisionResults} title={`${revision.version} snapshot`} />
+      <Panel title="样本快照与说明文本">
+        <TrainingResultGrid results={revisionResults} title={`${revision.version} 样本快照`} />
       </Panel>
-      <Panel title="Manifest 清单">
+      <Panel title="文件清单">
         <ol className={s.manifestList}>
           {revision.manifestRows.map((row) => <li key={row}>{row}</li>)}
         </ol>
