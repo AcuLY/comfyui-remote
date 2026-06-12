@@ -51,6 +51,7 @@ test("training resource pages use product-facing copy instead of internal prompt
     /project-level guidance/,
     /section settings/,
     /preset\/local blocks/,
+    /普通预设/,
     /Caption 生成指引/,
     /Caption 指引/,
   ].forEach((pattern) => {

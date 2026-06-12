@@ -677,7 +677,7 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
         back={{ href: "/training/presets", label: "返回训练预制" }}
         eyebrow="训练预制"
         title="排序规则"
-        subtitle="管理合成顺序和分类内顺序；训练预制没有普通预设库的正反向维度。"
+        subtitle="管理合成顺序和分类内顺序，保证导入小节时顺序稳定。"
         actions={(
           <Button
             tone="primary"
