@@ -40,7 +40,7 @@ test("training template section page uses the project-section scene-block action
   const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
   const blockCard = sourceBetween("function TemplateSceneBlockCard", "export function LoraTrainingPresetsPage");
 
-  for (const label of ["导入预制", "添加本地块"]) {
+  for (const label of ["选择预制", "导入所选", "添加本地块"]) {
     assert.match(templateSectionPage, new RegExp(label), `template section should include ${label}`);
   }
   for (const label of ["编辑", "上移", "下移", "删除"]) {
@@ -82,9 +82,13 @@ test("training template section imports training presets into local scene blocks
 
   assert.match(templateSectionPage, /const training = buildLoraTrainingDemoData\(data\)/, "template section should read available training presets");
   assert.match(templateSectionPage, /handleImportTemplatePresetBlock/, "template section should define a preset import action");
+  assert.match(templateSectionPage, /templatePresetImportOpen/, "template preset import should open a visible candidate picker");
+  assert.match(templateSectionPage, /selectedTemplatePresetId/, "template preset import should track the selected preset");
+  assert.match(templateSectionPage, /selectedTemplatePreset/, "template preset import should import the selected preset, not an implicit default");
+  assert.match(templateSectionPage, /training\.presets\.map/, "template preset import should render selectable training preset candidates");
   assert.match(templateSectionPage, /source:\s*"预制"/, "imported template blocks should keep the preset source label");
-  assert.match(templateSectionPage, /training\.presets\[0\]/, "demo import should copy a real preset fixture instead of showing a placeholder");
-  assert.match(templateSectionPage, /onClick=\{handleImportTemplatePresetBlock\}/, "template import button should call the preset import action");
+  assert.doesNotMatch(templateSectionPage, /training\.presets\[0\]/, "template preset import should not silently copy the first fixture");
+  assert.match(templateSectionPage, /handleImportTemplatePresetBlock\(selectedTemplatePreset\)/, "template import button should pass the selected preset to the import action");
   assert.doesNotMatch(templateSectionPage, /导入预制入口已预览/, "template preset import should not be a preview-only placeholder");
 });
 
@@ -93,9 +97,9 @@ test("training template section generates block ids from existing ids instead of
 
   assert.match(resourceSource, /function nextTemplateSceneBlockOrdinal/, "template block id generation should use a shared ordinal helper");
   assert.match(templateSectionPage, /nextTemplateSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-template-local-block-`\)/, "local template block ids should scan existing local ids");
-  assert.match(templateSectionPage, /nextTemplateSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-template-preset-block-\$\{importedPreset\.id\}-`\)/, "imported template block ids should scan existing imported ids");
+  assert.match(templateSectionPage, /nextTemplateSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-template-preset-block-\$\{preset\.id\}-`\)/, "imported template block ids should scan existing imported ids");
   assert.doesNotMatch(templateSectionPage, /id:\s*`\$\{activeSection\.id\}-template-local-block-\$\{current\.length \+ 1\}`/, "local template block ids should not reuse ids after deleting earlier blocks");
-  assert.doesNotMatch(templateSectionPage, /id:\s*`\$\{activeSection\.id\}-template-preset-block-\$\{importedPreset\.id\}-\$\{current\.length \+ 1\}`/, "imported template block ids should not reuse ids after deleting earlier blocks");
+  assert.doesNotMatch(templateSectionPage, /id:\s*`\$\{activeSection\.id\}-template-preset-block-\$\{preset\.id\}-\$\{current\.length \+ 1\}`/, "imported template block ids should not reuse ids after deleting earlier blocks");
 });
 
 test("training template section saves a visible local section draft", () => {

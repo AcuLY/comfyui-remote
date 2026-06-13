@@ -1016,6 +1016,130 @@
   }
 }
 
+.templatePresetImportPanel {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 1px solid color-mix(in srgb, var(--demo-green) 24%, var(--demo-border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--demo-green) 7%, var(--demo-field-bg));
+  padding: 10px;
+}
+
+.templatePresetImportHeader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.templatePresetImportHeader strong,
+.templatePresetImportHeader span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.templatePresetImportHeader strong {
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.templatePresetImportHeader span {
+  color: var(--demo-muted);
+  font-size: 11px;
+}
+
+.templatePresetImportGrid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.templatePresetImportItem {
+  appearance: none;
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-panel-2);
+  color: inherit;
+  cursor: pointer;
+  padding: 9px;
+  text-align: left;
+  transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.templatePresetImportItem:hover,
+.templatePresetImportItem:focus-visible {
+  border-color: color-mix(in srgb, var(--demo-green) 34%, var(--demo-border));
+  background: var(--demo-glass-hover);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.templatePresetImportItemSelected {
+  border-color: color-mix(in srgb, var(--demo-green) 72%, var(--demo-border));
+  background: color-mix(in srgb, var(--demo-green) 13%, var(--demo-panel-2));
+  box-shadow: 3px 0 0 var(--demo-green) inset;
+}
+
+.templatePresetImportItemTop {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.templatePresetImportItemTop strong,
+.templatePresetImportItemTop em,
+.templatePresetImportItem p {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.templatePresetImportItemTop strong {
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 680;
+  white-space: nowrap;
+}
+
+.templatePresetImportItemTop em {
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.templatePresetImportStatus {
+  width: fit-content;
+  border: 1px solid color-mix(in srgb, var(--demo-green) 34%, var(--demo-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--demo-green) 10%, transparent);
+  color: var(--demo-green);
+  font-size: 10px;
+  font-weight: 680;
+  line-height: 1;
+  padding: 4px 7px;
+}
+
+.templatePresetImportItem p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .templateSceneBlockList,
 .templateResolvedPreview {
   display: grid;

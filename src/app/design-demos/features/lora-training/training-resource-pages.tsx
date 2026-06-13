@@ -1362,6 +1362,8 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     sectionId: section?.id ?? null,
     templateId: template?.id ?? null,
   }));
+  const [templatePresetImportOpen, setTemplatePresetImportOpen] = useState(false);
+  const [selectedTemplatePresetId, setSelectedTemplatePresetId] = useState<string | null>(null);
   const [templateSectionDraft, setTemplateSectionDraft] = useState<{
     blockCount: number;
     enabledLabel: string;
@@ -1385,7 +1387,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     templateId: activeTemplate.id,
     title: activeSection.title,
   };
-  const importedPreset = training.presets[0];
+  const selectedTemplatePreset = training.presets.find((preset) => preset.id === selectedTemplatePresetId) ?? null;
   const resolvedTemplateScene = sceneBlocks.map((block) => block.text).join("\n\n");
 
   function setEditingTemplateBlockId(blockId: string | null) {
@@ -1431,21 +1433,22 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     });
   }
 
-  function handleImportTemplatePresetBlock() {
-    if (!importedPreset) return;
+  function handleImportTemplatePresetBlock(preset: LoraTrainingPreset | null) {
+    if (!preset) return;
     updateTemplateBlocks((current) => {
-      const prefix = `${activeSection.id}-template-preset-block-${importedPreset.id}-`;
-      const ordinal = nextTemplateSceneBlockOrdinal(current, `${activeSection.id}-template-preset-block-${importedPreset.id}-`);
+      const prefix = `${activeSection.id}-template-preset-block-${preset.id}-`;
+      const ordinal = nextTemplateSceneBlockOrdinal(current, `${activeSection.id}-template-preset-block-${preset.id}-`);
       return [
         ...current,
         {
           id: `${prefix}${ordinal}`,
           source: "预制",
-          title: importedPreset.title,
-          text: importedPreset.sceneDescriptionText,
+          title: preset.title,
+          text: preset.sceneDescriptionText,
         },
       ];
     });
+    setTemplatePresetImportOpen(false);
   }
 
   function handleMoveTemplateBlock(index: number, direction: -1 | 1) {
@@ -1508,16 +1511,53 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
               <Button
                 size="sm"
                 icon={CopyPlus}
-                disabled={!importedPreset}
-                onClick={handleImportTemplatePresetBlock}
-                feedback={{ title: "预制已导入模板块", detail: importedPreset?.title ?? section.title }}
+                onClick={() => setTemplatePresetImportOpen(!templatePresetImportOpen)}
+                feedback={{ title: templatePresetImportOpen ? "模板预制选择已收起" : "模板预制选择已打开", detail: templateSectionForm.title }}
               >
-                导入预制
+                {templatePresetImportOpen ? "收起预制" : "选择预制"}
+              </Button>
+              <Button
+                size="sm"
+                icon={CheckSquare}
+                disabled={!selectedTemplatePreset}
+                onClick={() => handleImportTemplatePresetBlock(selectedTemplatePreset)}
+                feedback={{ title: "预制已导入模板块", detail: selectedTemplatePreset?.title ?? section.title }}
+              >
+                导入所选
               </Button>
               <Button size="sm" icon={Plus} onClick={handleAddLocalTemplateBlock} feedback={{ title: "模板本地块已添加", detail: templateSectionForm.title }}>添加本地块</Button>
             </>
           )}
         >
+          {templatePresetImportOpen ? (
+            <div className={s.templatePresetImportPanel} aria-label="模板预制候选">
+              <div className={s.templatePresetImportHeader}>
+                <strong>选择要导入模板的小节预制</strong>
+                <span>{selectedTemplatePreset ? `已选择 ${selectedTemplatePreset.title}` : "先选择一个预制，再导入为模板块"}</span>
+              </div>
+              <div className={s.templatePresetImportGrid}>
+                {training.presets.map((preset) => {
+                  const isSelected = selectedTemplatePresetId === preset.id;
+                  return (
+                    <button
+                      type="button"
+                      aria-pressed={isSelected}
+                      className={cx(s.templatePresetImportItem, isSelected && s.templatePresetImportItemSelected)}
+                      key={preset.id}
+                      onClick={() => setSelectedTemplatePresetId(preset.id)}
+                    >
+                      <span className={s.templatePresetImportItemTop}>
+                        <strong>{preset.title}</strong>
+                        <em>{preset.category} / {preset.folder}</em>
+                      </span>
+                      <span className={s.templatePresetImportStatus}>{preset.status === "active" ? "启用" : "停用"}</span>
+                      <p>{preset.sceneDescriptionText}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
           <div className={s.templateSceneBlockList}>
             {sceneBlocks.map((block, blockIndex) => (
               <TemplateSceneBlockCard
