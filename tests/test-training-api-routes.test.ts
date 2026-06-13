@@ -198,3 +198,42 @@ test("training write routes exist under /api/training and fail through HTTP cont
   assert.ok(cancelResponse.status >= 400);
   assert.equal(payloads[6].ok, false);
 });
+
+test("training asset and review routes exist under /api/training and return JSON error contracts", async () => {
+  const characterImagesRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const reviewImageRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
+  const patchImageRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
+
+  const missingProjectParams = { params: Promise.resolve({ projectId: "missing-project" }) };
+  const missingImageParams = { params: Promise.resolve({ imageId: "missing-image" }) };
+  const missingResultParams = { params: Promise.resolve({ imageResultId: "missing-result" }) };
+
+  const [listResponse, uploadResponse, addToResultsResponse, reviewResponse, patchResponse] = await Promise.all([
+    characterImagesRoute.GET(new Request("http://localhost/api/training/projects/missing-project/character-images"), missingProjectParams),
+    characterImagesRoute.POST(new Request("http://localhost/api/training/projects/missing-project/character-images", { method: "POST" }), missingProjectParams),
+    addToResultsRoute.POST(new Request("http://localhost/api/training/character-images/missing-image/add-to-results", { method: "POST", body: "{}" }), missingImageParams),
+    reviewImageRoute.POST(new Request("http://localhost/api/training/image-results/missing-result/review", { method: "POST", body: JSON.stringify({ reviewStatus: "kept" }) }), missingResultParams),
+    patchImageRoute.PATCH(new Request("http://localhost/api/training/image-results/missing-result", { method: "PATCH", body: JSON.stringify({ captionDraft: "updated caption" }) }), missingResultParams),
+  ]);
+
+  const payloads = await Promise.all([
+    listResponse.json(),
+    uploadResponse.json(),
+    addToResultsResponse.json(),
+    reviewResponse.json(),
+    patchResponse.json(),
+  ]);
+
+  for (const [response, payload] of [
+    [listResponse, payloads[0]],
+    [uploadResponse, payloads[1]],
+    [addToResultsResponse, payloads[2]],
+    [reviewResponse, payloads[3]],
+    [patchResponse, payloads[4]],
+  ] as const) {
+    assert.ok(response.status >= 400);
+    assert.equal(payload.ok, false);
+    assert.equal(typeof payload.error.message, "string");
+  }
+});
