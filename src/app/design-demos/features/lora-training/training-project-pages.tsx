@@ -1063,8 +1063,12 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
         subtitle={isProjectArchived ? `${project.profileSummary} · 已归档` : project.profileSummary}
         actions={(
           <>
-            <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Play} tone="primary">启动训练</ButtonLink>
-            <ButtonLink href={saveAsTemplateHref} icon={CopyPlus}>保存为模板</ButtonLink>
+            <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Play} tone="primary" ariaLabel={`启动训练项目：${project.title}`}>
+              启动训练
+            </ButtonLink>
+            <ButtonLink href={saveAsTemplateHref} icon={CopyPlus} ariaLabel={`保存训练项目为模板：${project.title}`}>
+              保存为模板
+            </ButtonLink>
             <Button
               tone={isProjectArchived ? "subtle" : "danger"}
               icon={Archive}
@@ -1083,7 +1087,9 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
             <div className={s.heroStrip}>
               <ImageListSmall images={project.referenceImages.map((reference) => reference.image)} limit={project.referenceImages.length} />
             </div>
-            <ButtonLink href={`/training/projects/${project.id}/profile`} icon={FileText}>编辑资料</ButtonLink>
+            <ButtonLink href={`/training/projects/${project.id}/profile`} icon={FileText} ariaLabel={`编辑训练项目资料：${project.title}`}>
+              编辑资料
+            </ButtonLink>
           </div>
         </Panel>
         <Panel title="训练入口" subtitle="总览只放启动判断，完整训练准备和冻结版本在数据集页处理。">
@@ -1092,7 +1098,9 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
             <span><strong>{project.captionMissingCount}</strong> 缺说明文本</span>
             <span><strong>{latestRevision?.version ?? project.datasetVersion}</strong> 当前版本</span>
           </div>
-          <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Layers} tone="primary">打开数据集工作台</ButtonLink>
+          <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Layers} tone="primary" ariaLabel={`打开训练项目数据集工作台：${project.title}`}>
+            打开数据集工作台
+          </ButtonLink>
         </Panel>
         <Panel title="最近任务">
           <RunRows project={project} runs={recentRuns} />
@@ -2357,7 +2365,20 @@ export function LoraTrainingProjectScopedRunsPage({
         active={kind === "generation" ? "generation" : "training"}
         project={project}
         title={`${project.title} / ${kind === "generation" ? "生成任务" : "训练任务"}`}
-        actions={kind === "generation" ? <ButtonLink href={`/training/projects/${project.id}/sections/${project.sections[0]?.id ?? "stage-light"}/generation-tasks/new`} icon={Plus} tone="primary">新建生成任务</ButtonLink> : <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Play} tone="primary">启动训练</ButtonLink>}
+        actions={kind === "generation" ? (
+          <ButtonLink
+            href={`/training/projects/${project.id}/sections/${project.sections[0]?.id ?? "stage-light"}/generation-tasks/new`}
+            icon={Plus}
+            tone="primary"
+            ariaLabel={`新建项目生成任务：${project.title}`}
+          >
+            新建生成任务
+          </ButtonLink>
+        ) : (
+          <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Play} tone="primary" ariaLabel={`启动项目训练：${project.title}`}>
+            启动训练
+          </ButtonLink>
+        )}
       />
       <SegmentedControl
         ariaLabel="切换任务状态"
