@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { cancelProjectTasksForCleanup } from "@/server/services/project-deletion-service";
 import { cleanupProjectExportDirectory } from "@/server/services/project-file-cleanup-service";
+import { isPathInsideDirectory, resolveDataPath, resolveProjectPath } from "@/server/services/runtime-data-path";
 
 const log = createLogger({ module: "project-archive-service" });
 
@@ -43,9 +44,9 @@ export async function archiveProject(projectId: string): Promise<ArchiveProjectR
     return { success: false, message: `Project status is ${project.status}`, cancelledRuns: 0, cancelledCensoringTasks: 0, deletedManagedDir: false, deletedExportDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
   }
 
-  const exportDir = resolve(process.cwd(), "data", "export", project.title);
-  const exportBase = resolve(process.cwd(), "data", "export") + sep;
-  if (!exportDir.startsWith(exportBase)) {
+  const exportBase = resolveDataPath("export");
+  const exportDir = resolve(exportBase, project.title);
+  if (!isPathInsideDirectory(exportDir, exportBase)) {
     return { success: false, message: "Invalid project title for filesystem path", cancelledRuns: 0, cancelledCensoringTasks: 0, deletedManagedDir: false, deletedExportDir: false, deletedTrashFiles: 0, deletedComfyDirs: 0 };
   }
   try {
@@ -68,11 +69,11 @@ export async function archiveProject(projectId: string): Promise<ArchiveProjectR
 
     for (const image of trashedImages) {
       if (image.trashRecord && image.trashRecord.trashPath) {
-        const trashFilePath = resolve(process.cwd(), image.trashRecord.trashPath);
+        const trashFilePath = resolveProjectPath(image.trashRecord.trashPath);
 
         // Safety check: only delete files under project data directories
-        const dataBase = resolve(process.cwd(), "data") + sep;
-        if (!trashFilePath.startsWith(dataBase)) {
+        const dataBase = resolveDataPath();
+        if (!isPathInsideDirectory(trashFilePath, dataBase)) {
           log.warn("Skipping trash file outside data directory", { path: trashFilePath });
           continue;
         }
@@ -96,7 +97,7 @@ export async function archiveProject(projectId: string): Promise<ArchiveProjectR
 
   // 4. Delete managed image directory
   let deletedManagedDir = false;
-  const managedImageDir = resolve(process.cwd(), "data", "images", project.slug);
+  const managedImageDir = resolveDataPath("images", project.slug);
   try {
     await rm(managedImageDir, { recursive: true, force: true });
     deletedManagedDir = true;

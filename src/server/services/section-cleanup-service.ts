@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
+import { resolveDataPath, withTrailingSeparator } from "@/server/services/runtime-data-path";
 
 const log = createLogger({ module: "section-cleanup" });
 
@@ -27,9 +28,10 @@ export async function cleanupProjectSectionFiles(
   let deletedComfyDirs = 0;
 
   // 1. Delete managed images directory
-  const managedProjectDir = resolve(process.cwd(), "data", "images", projectSlug);
-  const managedBase = resolve(process.cwd(), "data", "images") + sep;
-  if (managedProjectDir.startsWith(managedBase)) {
+  const managedBase = resolveDataPath("images");
+  const managedProjectDir = resolve(managedBase, projectSlug);
+  const safeManagedPrefix = withTrailingSeparator(managedBase);
+  if (managedProjectDir.startsWith(safeManagedPrefix)) {
     try {
       await rm(managedProjectDir, { recursive: true, force: true });
       deletedManagedDir = true;

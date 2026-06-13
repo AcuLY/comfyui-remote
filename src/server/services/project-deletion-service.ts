@@ -1,5 +1,4 @@
 import { rm } from "node:fs/promises";
-import { resolve, sep } from "node:path";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
@@ -16,6 +15,7 @@ import {
 } from "@/server/services/comfyui-service";
 import { cleanupProjectSectionFiles } from "@/server/services/section-cleanup-service";
 import { cleanupProjectExportDirectory } from "@/server/services/project-file-cleanup-service";
+import { isPathInsideDirectory, resolveDataPath, resolveProjectPath } from "@/server/services/runtime-data-path";
 
 const log = createLogger({ module: "project-deletion" });
 
@@ -326,14 +326,14 @@ async function cleanupProjectTrashFiles(
 
   const trashRecordIds: string[] = [];
   let deletedTrashFiles = 0;
-  const dataBase = resolve(process.cwd(), "data") + sep;
+  const dataBase = resolveDataPath();
 
   for (const image of trashedImages) {
     if (!image.trashRecord) continue;
 
     if (image.trashRecord.trashPath) {
-      const trashFilePath = resolve(process.cwd(), image.trashRecord.trashPath);
-      if (trashFilePath.startsWith(dataBase)) {
+      const trashFilePath = resolveProjectPath(image.trashRecord.trashPath);
+      if (isPathInsideDirectory(trashFilePath, dataBase)) {
         try {
           await deps.removeTrashFile(trashFilePath);
           deletedTrashFiles++;

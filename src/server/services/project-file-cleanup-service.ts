@@ -1,6 +1,7 @@
 import { rm } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 import { createLogger } from "@/lib/logger";
+import { resolveDataPath } from "@/server/services/runtime-data-path";
 
 const log = createLogger({ module: "project-file-cleanup" });
 
@@ -11,9 +12,9 @@ export type CleanupProjectExportDirectoryResult = {
 
 export function resolveProjectExportDirectory(
   projectTitle: string,
-  cwd = process.cwd(),
+  cwd?: string,
 ): string | null {
-  const exportBase = resolve(cwd, "data", "export");
+  const exportBase = cwd ? resolve(cwd, "data", "export") : resolveDataPath("export");
   const exportDir = resolve(exportBase, projectTitle);
   if (!exportDir.startsWith(exportBase + sep)) {
     return null;
@@ -23,7 +24,7 @@ export function resolveProjectExportDirectory(
 
 export async function cleanupProjectExportDirectory(
   projectTitle: string,
-  cwd = process.cwd(),
+  cwd?: string,
 ): Promise<CleanupProjectExportDirectoryResult> {
   const exportDir = resolveProjectExportDirectory(projectTitle, cwd);
   if (!exportDir) {

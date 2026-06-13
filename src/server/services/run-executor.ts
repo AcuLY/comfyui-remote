@@ -31,8 +31,8 @@ import {
   removeManagedRunOutput,
   type PersistedRunOutput,
 } from "@/server/services/image-result-service";
+import { resolveProjectPath } from "@/server/services/runtime-data-path";
 import { rm } from "node:fs/promises";
-import { resolve } from "node:path";
 import { audit } from "@/server/services/audit-service";
 import { buildComfyPromptDraft } from "@/server/worker/payload-builder";
 import {
@@ -517,7 +517,7 @@ export async function pollRunCompletion(runId: string): Promise<void> {
 
       try {
         if (persistedOutput?.outputDir) {
-          const absoluteDir = resolve(process.cwd(), persistedOutput.outputDir);
+          const absoluteDir = resolveProjectPath(persistedOutput.outputDir);
           await rm(absoluteDir, { recursive: true, force: true });
         } else {
           await removeManagedRunOutput(run);

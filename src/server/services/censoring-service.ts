@@ -1,12 +1,13 @@
 import { access, mkdir, rename, unlink, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import { dirname, resolve } from "node:path";
+import { dirname } from "node:path";
 
 import sharp from "sharp";
 
 import { createLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { runAutoCensorMosaicBatch } from "@/server/services/auto-censor-runner";
+import { resolveProjectPath } from "@/server/services/runtime-data-path";
 
 const log = createLogger({ module: "censoring" });
 const THUMBNAIL_WIDTH = 300;
@@ -105,12 +106,12 @@ async function persistCensoredImage(
     imageResult.filePath,
   );
 
-  const jpegBuffer = await sharp(resolve(process.cwd(), sourceImagePath))
+  const jpegBuffer = await sharp(resolveProjectPath(sourceImagePath))
     .rotate()
     .jpeg({ quality: 90 })
     .toBuffer();
 
-  const censoredAbsPath = resolve(process.cwd(), censoredFilePath);
+  const censoredAbsPath = resolveProjectPath(censoredFilePath);
   await mkdir(dirname(censoredAbsPath), { recursive: true });
   await atomicWriteFile(censoredAbsPath, jpegBuffer);
 
@@ -119,7 +120,7 @@ async function persistCensoredImage(
     .jpeg({ quality: 80 })
     .toBuffer();
 
-  const censoredThumbAbsPath = resolve(process.cwd(), censoredThumbPath);
+  const censoredThumbAbsPath = resolveProjectPath(censoredThumbPath);
   await mkdir(dirname(censoredThumbAbsPath), { recursive: true });
   await atomicWriteFile(censoredThumbAbsPath, thumbBuffer);
 
@@ -204,7 +205,7 @@ async function prepareCensorTask(
     });
   }
 
-  const sourceAbsPath = resolve(process.cwd(), imageResult.filePath);
+  const sourceAbsPath = resolveProjectPath(imageResult.filePath);
   try {
     await access(sourceAbsPath);
   } catch (error) {
@@ -215,7 +216,7 @@ async function prepareCensorTask(
   }
 
   const tempOutputPath = `data/images/.tmp/auto-censor-${imageResult.id}-${randomUUID()}.png`;
-  await mkdir(dirname(resolve(process.cwd(), tempOutputPath)), { recursive: true });
+  await mkdir(dirname(resolveProjectPath(tempOutputPath)), { recursive: true });
 
   return {
     imageResult,
@@ -302,7 +303,7 @@ export async function processCensorTasksBatch(
   } finally {
     await Promise.all(
       preparedTasks.map(({ task }) => (
-        unlink(resolve(process.cwd(), task.tempOutputPath)).catch(() => {})
+        unlink(resolveProjectPath(task.tempOutputPath)).catch(() => {})
       )),
     );
   }
@@ -364,7 +365,7 @@ export async function persistManualCensoredImage(
   }
 
   const manualCensoredImagePath = `data/images/.tmp/manual-censor-${imageResult.id}-${randomUUID()}.jpg`;
-  const manualCensoredImageAbsPath = resolve(process.cwd(), manualCensoredImagePath);
+  const manualCensoredImageAbsPath = resolveProjectPath(manualCensoredImagePath);
   await mkdir(dirname(manualCensoredImageAbsPath), { recursive: true });
   await writeFile(manualCensoredImageAbsPath, manualCensoredImage);
 

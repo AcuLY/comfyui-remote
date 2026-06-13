@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
-import { join, posix, resolve } from "node:path";
+import { join, posix } from "node:path";
 
 import sharp from "sharp";
 
 import { env } from "@/lib/env";
 import { ComfyPromptOutputImage } from "@/server/services/comfyui-service";
+import { resolveDataPath } from "@/server/services/runtime-data-path";
 import { WorkerRunSnapshot } from "@/server/worker/types";
 
 export type PersistedRunOutputImage = {
@@ -119,7 +120,7 @@ function resolveManagedRunOutputPaths(run: WorkerRunSnapshot): ManagedRunOutputP
   const sectionSegment = sanitizePathSegment(run.section.slug, run.section.id);
   const runIdSegment = sanitizePathSegment(run.runId, "run");
   const runSegment = `run-${String(run.runIndex).padStart(2, "0")}-${runIdSegment}`;
-  const absoluteRunDir = resolve(process.cwd(), "data", "images", projectSegment, sectionSegment, runSegment);
+  const absoluteRunDir = resolveDataPath("images", projectSegment, sectionSegment, runSegment);
   const absoluteOutputDir = join(absoluteRunDir, "raw");
   const absoluteThumbDir = join(absoluteRunDir, "thumb");
 

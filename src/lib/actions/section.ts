@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { resolve } from "node:path";
 import { rm } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
 import { cleanupProjectSectionFiles } from "@/server/services/section-cleanup-service";
+import { isPathInsideDirectory, resolveDataPath, resolveProjectPath } from "@/server/services/runtime-data-path";
 import { createBindingId } from "./_helpers";
 import { importPresetGroupToSection, importPresetToSection } from "./prompt-block";
 import { switchBindingVariant } from "./prompt-block";
@@ -555,9 +555,9 @@ export async function clearAllSections(projectId: string): Promise<ClearAllSecti
   for (const image of trashedImages) {
     if (image.trashRecord) {
       if (image.trashRecord.trashPath) {
-        const dataBase = resolve(process.cwd(), "data");
-        const trashFilePath = resolve(process.cwd(), image.trashRecord.trashPath);
-        if (trashFilePath.startsWith(dataBase)) {
+        const dataBase = resolveDataPath();
+        const trashFilePath = resolveProjectPath(image.trashRecord.trashPath);
+        if (isPathInsideDirectory(trashFilePath, dataBase)) {
           try {
             await rm(trashFilePath, { force: true });
           } catch {

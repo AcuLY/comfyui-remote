@@ -4,8 +4,9 @@ import { join, resolve, sep } from "node:path";
 import archiver from "archiver";
 import sharp from "sharp";
 import { prisma } from "@/lib/prisma";
+import { resolveDataPath, resolveProjectPath } from "@/server/services/runtime-data-path";
 
-const EXPORT_ROOT = resolve(process.cwd(), "data", "export");
+const EXPORT_ROOT = resolveDataPath("export");
 
 export type ExportProjectImagesResult = {
   success: boolean;
@@ -87,7 +88,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
     return { success: false, message: "封面图片不存在或已被删除，请重新选择封面" };
   }
 
-  const coverSourcePath = resolve(/* turbopackIgnore: true */ process.cwd(), coverImage.filePath);
+  const coverSourcePath = resolveProjectPath(coverImage.filePath);
   try {
     await access(coverSourcePath);
   } catch {
@@ -136,7 +137,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   }
 
   if (coverImage.censoredFilePath) {
-    const censoredCoverSource = resolve(process.cwd(), coverImage.censoredFilePath);
+    const censoredCoverSource = resolveProjectPath(coverImage.censoredFilePath);
     try {
       await access(censoredCoverSource);
       await sharp(censoredCoverSource).jpeg({ quality: 90 }).toFile(join(exportDir, "cover_censored.jpg"));
@@ -152,7 +153,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   let previewIndex = 1;
 
   for (const image of allKept) {
-    const sourcePath = resolve(/* turbopackIgnore: true */ process.cwd(), image.filePath);
+    const sourcePath = resolveProjectPath(image.filePath);
     const jpgName = formatExportImageFileName(exportName, globalIndex, totalImageCount);
     const jpgPath = join(tempJpgDir, jpgName);
 
@@ -167,7 +168,7 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
 
     // Censored versions
     if (image.censoredFilePath) {
-      const censoredSourcePath = resolve(process.cwd(), image.censoredFilePath);
+      const censoredSourcePath = resolveProjectPath(image.censoredFilePath);
       try {
         await access(censoredSourcePath);
 

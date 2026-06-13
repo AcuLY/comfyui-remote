@@ -54,6 +54,18 @@ const nextConfig: NextConfig = {
       "./check-template.js",
       "./next.config.ts",
     ],
+    "/**/*": [
+      "./.next/**/*",
+      "./data/**/*",
+      "./logs/**/*",
+      "./prisma/data/**/*",
+      "./*.log",
+      "./server*.log",
+      "./debug-*",
+      "./tmp-debug.js",
+      "./check-template.js",
+      "./next.config.ts",
+    ],
   },
 };
 

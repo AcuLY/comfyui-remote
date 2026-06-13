@@ -1,5 +1,6 @@
 import { mkdir, rename, rm, stat } from "node:fs/promises";
-import { basename, dirname, posix, resolve } from "node:path";
+import { basename, dirname, posix } from "node:path";
+import { resolveDataPath } from "@/server/services/runtime-data-path";
 
 export type ManagedImageMoveStatus = "missing" | "moved" | "skipped";
 export type ManagedImageDeleteStatus = "deleted" | "missing";
@@ -60,8 +61,8 @@ function resolveManagedImagePath(relativePath: string) {
   const managedImageSubpath = getManagedImageSubpath(relativePath);
 
   return managedImageSubpath
-    ? resolve(process.cwd(), "data", "images", managedImageSubpath)
-    : resolve(process.cwd(), "data", "images");
+    ? resolveDataPath("images", managedImageSubpath)
+    : resolveDataPath("images");
 }
 
 async function pathExists(absolutePath: string) {
