@@ -78,13 +78,18 @@ test("training run fixtures expose final artifact, config, logs, and frozen capt
 });
 
 test("training detail page renders training samples, captions, log preview, and narrow preset creation gate", () => {
+  const presetGateMatch = detailSource.match(/const canCreatePreset = [^;]+;/);
+  assert.ok(presetGateMatch, "training detail should define a narrow preset creation gate");
+  const presetGateSource = presetGateMatch[0];
+
   assert.match(detailSource, /训练集样本/, "training detail should render a dataset sample panel");
   assert.match(detailSource, /训练日志/, "training detail should render a training log panel");
   assert.match(detailSource, /ImagePreviewLarge/, "training samples should open with the shared lightbox preview");
   assert.match(detailSource, /activeSampleState/, "training detail should track the active sample for preview");
   assert.match(detailSource, /sample\.caption/, "training sample cards should show caption snapshots");
-  assert.match(detailSource, /currentRun\.finalLoraArtifactId/, "preset creation should depend on the final LoRA artifact");
-  assert.match(detailSource, /!currentRun\.presetCreatedAt/, "preset creation should hide after a preset already exists");
+  assert.match(presetGateSource, /currentRun\.status === "completed"/, "preset creation should only be available after completed training runs");
+  assert.match(presetGateSource, /currentRun\.finalLoraArtifactId/, "preset creation should depend on the final LoRA artifact");
+  assert.match(presetGateSource, /!currentRun\.presetCreatedAt/, "preset creation should hide after a preset already exists");
 });
 
 test("completed image generation detail renders result thumbnails with review actions", () => {

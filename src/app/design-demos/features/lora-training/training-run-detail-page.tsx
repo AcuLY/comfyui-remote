@@ -235,7 +235,7 @@ export function LoraTrainingRunDetailPage({
   const generationResultsHref = generationSectionHref ? `${generationSectionHref}#section-results` : null;
   const activeSample = activeSampleState?.runId === currentRun.id ? datasetSamples[activeSampleState.index] ?? null : null;
   const isActiveCaptionCopied = activeSample ? copiedCaption?.runId === currentRun.id && copiedCaption?.sampleId === activeSample.id : false;
-  const canCreatePreset = !isGeneration && Boolean(currentRun.finalLoraArtifactId) && !currentRun.presetCreatedAt;
+  const canCreatePreset = !isGeneration && currentRun.status === "completed" && Boolean(currentRun.finalLoraArtifactId) && !currentRun.presetCreatedAt;
   const logText = currentRun.trainingLogLines?.length ? currentRun.trainingLogLines.join("\n") : "尚未创建训练日志";
 
   function handleCopyActiveCaption() {
