@@ -305,8 +305,6 @@ test("training preset detail saves a visible local preset draft instead of only 
   assert.match(detailSource, /预制保存草稿/, "preset detail should render a visible saved draft panel");
   assert.match(detailSource, /preset\.sceneDescriptionText/, "saved draft should preserve the scene description");
   assert.match(detailSource, /usages\.length/, "saved draft should include current usage impact");
-  assert.doesNotMatch(detailSource, /训练预制已创建/, "new preset save should not remain feedback-only");
-  assert.doesNotMatch(detailSource, /训练预制已保存/, "preset save should not remain feedback-only");
 });
 
 test("training preset detail state stays scoped to the active preset context", () => {
@@ -326,6 +324,22 @@ test("training preset detail state stays scoped to the active preset context", (
   assert.match(detailSource, /newPresetHints\.artifact/, "new preset context should include the source artifact hint");
   assert.doesNotMatch(detailSource, /const \[presetForm, setPresetForm\] = useState\(/, "preset form should not be stored without preset context");
   assert.doesNotMatch(detailSource, /const \[presetDraft, setPresetDraft\] = useState/, "preset draft should not be stored without preset context");
+});
+
+test("training preset detail saves through the formal HTTP API on production routes", () => {
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  assert.notEqual(detailStart, -1);
+  assert.notEqual(sortStart, -1);
+
+  const detailSource = pageSource.slice(detailStart, sortStart);
+
+  assert.match(detailSource, /usePathname/, "preset detail should detect whether it is running under production \\/training routes");
+  assert.match(detailSource, /fetch\(isNew \? "\/api\/training\/presets" : `\/api\/training\/presets\/\$\{preset\.id\}`/, "preset detail should save through the formal training preset API");
+  assert.match(detailSource, /method:\s*isNew \? "POST" : "PATCH"/, "preset detail should choose POST or PATCH based on create vs edit mode");
+  assert.match(detailSource, /sceneDescriptionText:\s*presetForm\.sceneDescriptionText/, "preset save should submit the current scene description text");
+  assert.match(detailSource, /router\.push\(`\/training\/presets\/\$\{payload\.data\.id\}`\)/, "new presets should navigate to the created training preset route");
+  assert.match(detailSource, /pushToast/, "preset detail should surface API success or failure through shared feedback");
 });
 
 test("training template form uses the shared template editor workspace model", () => {

@@ -35,6 +35,7 @@ export type ProjectFormOptions = {
 
 export async function getProjectFormOptions(): Promise<ProjectFormOptions> {
   const categories = await prisma.presetCategory.findMany({
+    where: { type: "preset" },
     orderBy: { sortOrder: "asc" },
     include: {
       presets: {

@@ -61,21 +61,21 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
 
   const presets = await prisma.preset.findMany({
     where: {
+      category: { type: "preset" },
       ...(filters.includeInactive ? {} : { isActive: true }),
       ...(name ? { name } : {}),
       ...(slug ? { slug } : {}),
       ...(categoryId ? { categoryId } : {}),
-      ...(category
-        ? {
-            category: {
-              OR: [
-                { id: category },
-                { name: { contains: category } },
-                { slug: { contains: category } },
-              ],
-            },
-          }
-        : {}),
+      ...(category ? {
+        category: {
+          type: "preset",
+          OR: [
+            { id: category },
+            { name: { contains: category } },
+            { slug: { contains: category } },
+          ],
+        },
+      } : {}),
     },
     orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }],
     include: {
@@ -134,6 +134,7 @@ export async function getPresetById(presetId: string, includeInactive = false) {
   const preset = await prisma.preset.findFirst({
     where: {
       id: presetId,
+      category: { type: "preset" },
       ...(includeInactive ? {} : { isActive: true }),
     },
     include: {

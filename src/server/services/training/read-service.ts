@@ -9,6 +9,10 @@ import {
   getCharacterLoraWorkerQueueStatus,
   mapCharacterLoraPhase3Error,
 } from "@/server/services/character-lora-training/phase3-service";
+import {
+  getTrainingSceneDescriptionPreset,
+  listTrainingSceneDescriptionPresets,
+} from "@/server/services/training/preset-service";
 
 export class TrainingReadServiceError extends Error {
   details?: unknown;
@@ -80,8 +84,11 @@ export async function getTrainingRun(runId: string, kind?: LoraTrainingTaskKind)
 }
 
 export async function listTrainingPresets() {
-  const snapshot = await loadTrainingSnapshot();
-  return snapshot.presets;
+  return listTrainingSceneDescriptionPresets();
+}
+
+export async function getTrainingPreset(presetId: string) {
+  return getTrainingSceneDescriptionPreset(presetId);
 }
 
 export async function listTrainingTemplates() {

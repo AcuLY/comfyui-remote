@@ -158,6 +158,73 @@ test("GET /api/training/presets and /api/training/templates expose training reso
   assert.ok(templatesPayload.data.some((template: { sections: Array<{ title: string }> }) => template.sections.some((section) => section.title.length > 0)));
 });
 
+test("training preset routes create, update, read, and delete presets through /api/training", async () => {
+  const presetsRoute = await import("../src/app/api/training/presets/route");
+  const presetDetailRoute = await import("../src/app/api/training/presets/[presetId]/route");
+  const presetName = `测试训练预制 ${Date.now()}`;
+
+  const createResponse = await presetsRoute.POST(
+    new Request("http://localhost/api/training/presets", {
+      method: "POST",
+      body: JSON.stringify({
+        title: presetName,
+        category: "测试分类",
+        folder: "测试文件夹",
+        sceneDescriptionText: "测试训练场景描述文本。",
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+
+  assert.equal(createResponse.status, 200);
+  assert.equal(createPayload.ok, true);
+  assert.equal(typeof createPayload.data.id, "string");
+  assert.equal(createPayload.data.title, presetName);
+  assert.equal(createPayload.data.sceneDescriptionText, "测试训练场景描述文本。");
+
+  const presetId = createPayload.data.id as string;
+  const detailParams = { params: Promise.resolve({ presetId }) };
+
+  const updateResponse = await presetDetailRoute.PATCH(
+    new Request(`http://localhost/api/training/presets/${presetId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: `${presetName} 已更新`,
+        category: "测试分类",
+        folder: "测试文件夹",
+        sceneDescriptionText: "更新后的训练场景描述文本。",
+      }),
+    }),
+    detailParams,
+  );
+  const updatePayload = await updateResponse.json();
+
+  assert.equal(updateResponse.status, 200);
+  assert.equal(updatePayload.ok, true);
+  assert.equal(updatePayload.data.title, `${presetName} 已更新`);
+  assert.equal(updatePayload.data.sceneDescriptionText, "更新后的训练场景描述文本。");
+
+  const getResponse = await presetDetailRoute.GET(
+    new Request(`http://localhost/api/training/presets/${presetId}`),
+    detailParams,
+  );
+  const getPayload = await getResponse.json();
+
+  assert.equal(getResponse.status, 200);
+  assert.equal(getPayload.ok, true);
+  assert.equal(getPayload.data.id, presetId);
+  assert.equal(getPayload.data.title, `${presetName} 已更新`);
+
+  const deleteResponse = await presetDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/presets/${presetId}`, { method: "DELETE" }),
+    detailParams,
+  );
+  const deletePayload = await deleteResponse.json();
+
+  assert.equal(deleteResponse.status, 200);
+  assert.equal(deletePayload.ok, true);
+});
+
 test("GET /api/training/scheduler/status exposes a training scheduler snapshot", async () => {
   const { GET } = await import("../src/app/api/training/scheduler/status/route");
 
@@ -176,6 +243,8 @@ test("training write routes exist under /api/training and fail through HTTP cont
   const updateProjectRoute = await import("../src/app/api/training/projects/[projectId]/route");
   const archiveProjectRoute = await import("../src/app/api/training/projects/[projectId]/archive/route");
   const restoreProjectRoute = await import("../src/app/api/training/projects/[projectId]/restore/route");
+  const createTrainingPresetRoute = await import("../src/app/api/training/presets/route");
+  const updateTrainingPresetRoute = await import("../src/app/api/training/presets/[presetId]/route");
   const createTrainingTemplateRoute = await import("../src/app/api/training/templates/route");
   const updateTrainingTemplateRoute = await import("../src/app/api/training/templates/[templateId]/route");
   const updateTrainingTemplateSectionRoute = await import("../src/app/api/training/templates/[templateId]/sections/[sectionId]/route");
@@ -187,14 +256,17 @@ test("training write routes exist under /api/training and fail through HTTP cont
   const missingProjectParams = { params: Promise.resolve({ projectId: "missing-project" }) };
   const missingSectionParams = { params: Promise.resolve({ sectionId: "missing-section" }) };
   const missingRunParams = { params: Promise.resolve({ trainingRunId: "missing-run" }) };
+  const missingPresetParams = { params: Promise.resolve({ presetId: "missing-preset" }) };
   const missingTemplateParams = { params: Promise.resolve({ templateId: "missing-template" }) };
   const missingTemplateSectionParams = { params: Promise.resolve({ templateId: "missing-template", sectionId: "missing-section" }) };
 
-  const [createResponse, updateResponse, archiveResponse, restoreResponse, createTemplateResponse, updateTemplateResponse, updateTemplateSectionResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
+  const [createResponse, updateResponse, archiveResponse, restoreResponse, createPresetResponse, updatePresetResponse, createTemplateResponse, updateTemplateResponse, updateTemplateSectionResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
     createProjectRoute.POST(new Request("http://localhost/api/training/projects", { method: "POST", body: "{}" })),
     updateProjectRoute.PATCH(new Request("http://localhost/api/training/projects/missing-project", { method: "PATCH", body: "{}" }), missingProjectParams),
     archiveProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/archive", { method: "POST" }), missingProjectParams),
     restoreProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/restore", { method: "POST" }), missingProjectParams),
+    createTrainingPresetRoute.POST(new Request("http://localhost/api/training/presets", { method: "POST", body: "{}" })),
+    updateTrainingPresetRoute.PATCH(new Request("http://localhost/api/training/presets/missing-preset", { method: "PATCH", body: "{}" }), missingPresetParams),
     createTrainingTemplateRoute.POST(new Request("http://localhost/api/training/templates", { method: "POST", body: "{}" })),
     updateTrainingTemplateRoute.PATCH(new Request("http://localhost/api/training/templates/missing-template", { method: "PATCH", body: "{}" }), missingTemplateParams),
     updateTrainingTemplateSectionRoute.PATCH(new Request("http://localhost/api/training/templates/missing-template/sections/missing-section", { method: "PATCH", body: "{}" }), missingTemplateSectionParams),
@@ -209,6 +281,8 @@ test("training write routes exist under /api/training and fail through HTTP cont
     updateResponse.json(),
     archiveResponse.json(),
     restoreResponse.json(),
+    createPresetResponse.json(),
+    updatePresetResponse.json(),
     createTemplateResponse.json(),
     updateTemplateResponse.json(),
     updateTemplateSectionResponse.json(),
@@ -226,20 +300,24 @@ test("training write routes exist under /api/training and fail through HTTP cont
   assert.equal(payloads[2].ok, false);
   assert.ok(restoreResponse.status >= 400);
   assert.equal(payloads[3].ok, false);
-  assert.ok(createTemplateResponse.status >= 400);
+  assert.ok(createPresetResponse.status >= 400);
   assert.equal(payloads[4].ok, false);
-  assert.ok(updateTemplateResponse.status >= 400);
+  assert.ok(updatePresetResponse.status >= 400);
   assert.equal(payloads[5].ok, false);
-  assert.ok(updateTemplateSectionResponse.status >= 400);
+  assert.ok(createTemplateResponse.status >= 400);
   assert.equal(payloads[6].ok, false);
-  assert.ok(freezeResponse.status >= 400);
+  assert.ok(updateTemplateResponse.status >= 400);
   assert.equal(payloads[7].ok, false);
-  assert.ok(enqueueTrainingResponse.status >= 400);
+  assert.ok(updateTemplateSectionResponse.status >= 400);
   assert.equal(payloads[8].ok, false);
-  assert.ok(enqueueSectionResponse.status >= 400);
+  assert.ok(freezeResponse.status >= 400);
   assert.equal(payloads[9].ok, false);
-  assert.ok(cancelResponse.status >= 400);
+  assert.ok(enqueueTrainingResponse.status >= 400);
   assert.equal(payloads[10].ok, false);
+  assert.ok(enqueueSectionResponse.status >= 400);
+  assert.equal(payloads[11].ok, false);
+  assert.ok(cancelResponse.status >= 400);
+  assert.equal(payloads[12].ok, false);
 });
 
 test("training asset and review routes exist under /api/training and return JSON error contracts", async () => {

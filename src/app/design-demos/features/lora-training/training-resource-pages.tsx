@@ -580,6 +580,9 @@ function LoraTrainingPresetDetailContent({
   newPresetHints: NewPresetHints;
   preset: LoraTrainingPreset;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { pushToast } = useDemoFeedback();
   const usages = [...preset.projectUsage, ...preset.templateUsage];
   const presetFormContextId = [
     isNew ? "new" : preset.id,
@@ -605,8 +608,10 @@ function LoraTrainingPresetDetailContent({
     contextId: presetFormContextId,
     draft: null,
   }));
+  const [isSavingPreset, setIsSavingPreset] = useState(false);
   const presetForm = presetFormState.contextId === presetFormContextId ? presetFormState.form : initialPresetForm;
   const presetDraft = presetDraftState.contextId === presetFormContextId ? presetDraftState.draft : null;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   function setPresetForm(updater: (current: typeof initialPresetForm) => typeof initialPresetForm) {
     setPresetFormState((current) => ({
@@ -626,11 +631,63 @@ function LoraTrainingPresetDetailContent({
     setPresetForm((current) => ({ ...current, [field]: value }));
   }
 
-  function handleSavePreset() {
-    setPresetDraft({
+  async function handleSavePreset() {
+    const nextDraft = {
       ...presetForm,
       usageCount: usages.length,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setPresetDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: presetDraft ? "预制保存草稿已更新" : "预制保存草稿已记录",
+        detail: presetForm.title,
+      });
+      return;
+    }
+
+    if (isSavingPreset) return;
+
+    setIsSavingPreset(true);
+    try {
+      const response = await fetch(isNew ? "/api/training/presets" : `/api/training/presets/${preset.id}`, {
+        method: isNew ? "POST" : "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: presetForm.title,
+          category: presetForm.category,
+          folder: presetForm.folder,
+          sceneDescriptionText: presetForm.sceneDescriptionText,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: isNew ? "训练预制创建失败" : "训练预制保存失败",
+          detail: payload?.error?.message ?? "训练预制保存请求失败",
+        });
+        return;
+      }
+
+      setPresetDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: isNew ? "训练预制已创建" : "训练预制已保存",
+        detail: presetForm.title,
+      });
+      router.push(`/training/presets/${payload.data.id}`);
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: isNew ? "训练预制创建失败" : "训练预制保存失败",
+        detail: error instanceof Error ? error.message : "训练预制保存请求失败",
+      });
+    } finally {
+      setIsSavingPreset(false);
+    }
   }
 
   return (
@@ -644,8 +701,8 @@ function LoraTrainingPresetDetailContent({
           <Button
             tone="primary"
             icon={Save}
+            pending={isSavingPreset}
             onClick={handleSavePreset}
-            feedback={{ title: presetDraft ? "预制保存草稿已更新" : "预制保存草稿已记录", detail: presetForm.title }}
           >
             {presetDraft ? "更新草稿" : isNew ? "创建预制" : "保存"}
           </Button>

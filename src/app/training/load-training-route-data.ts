@@ -31,6 +31,7 @@ import {
 import { listCharacterLoraJobSections } from "@/server/services/character-lora-training/section-template-service";
 import { listCharacterLoraSourceImages } from "@/server/services/character-lora-training/source-image-service";
 import { listCharacterLoraTrainingRuns } from "@/server/services/character-lora-training/training-service";
+import { listTrainingSceneDescriptionPresets } from "@/server/services/training/preset-service";
 
 type ImageStatus = DemoImage["status"];
 
@@ -243,7 +244,10 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
   if (!jobs.jobs.length) return null;
 
   const baseTraining = buildLoraTrainingDemoData(baseData);
-  const realTemplates = await listCharacterLoraTrainingTemplates();
+  const [realTemplates, realPresets] = await Promise.all([
+    listCharacterLoraTrainingTemplates(),
+    listTrainingSceneDescriptionPresets(),
+  ]);
 
   const projects = await Promise.all(jobs.jobs.map(async (job) => {
     const [overview, sourceImages, promptCardVersions, sections, candidateImages, revisions, trainingRuns] = await Promise.all([
@@ -414,7 +418,7 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
   return {
     projects,
     runs: runsByProject.flat().sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))),
-    presets: baseTraining.presets,
+    presets: realPresets.length ? realPresets : baseTraining.presets,
     templates: templates.length ? templates : baseTraining.templates,
   };
 }
