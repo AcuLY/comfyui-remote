@@ -1300,7 +1300,11 @@ function SectionCard({
               />
             </div>
           </div>
-          <Link className={s.sectionImages} href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}>
+          <Link
+            aria-label={`打开第 ${index + 1} 个训练小节最近结果：${section.title}`}
+            className={s.sectionImages}
+            href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}
+          >
             <ImageListSmall images={section.images} limit={4} showCounts wide />
           </Link>
           <div className={s.sectionActions}>

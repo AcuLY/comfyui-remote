@@ -140,6 +140,16 @@ test("training section generation actions name the target section", () => {
   );
 });
 
+test("training section thumbnail links name the section results they open", () => {
+  const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
+
+  assert.match(
+    sectionCard,
+    /aria-label=\{`打开第 \$\{index \+ 1\} 个训练小节最近结果：\$\{section\.title\}`\}/,
+    "section thumbnail link should follow the project-demo image-link accessible-name pattern",
+  );
+});
+
 test("training section list scans existing section ids for local copy and draft ids", () => {
   const sectionsPage = sourceBetween(
     "export function LoraTrainingProjectSectionsPage",
