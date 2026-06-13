@@ -200,37 +200,49 @@ test("training write routes exist under /api/training and fail through HTTP cont
 });
 
 test("training asset and review routes exist under /api/training and return JSON error contracts", async () => {
+  const profileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");
   const characterImagesRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
   const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
   const reviewImageRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
   const patchImageRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
+  const imageCaptionRoute = await import("../src/app/api/training/image-results/[imageResultId]/caption/route");
+  const bulkCaptionsRoute = await import("../src/app/api/training/projects/[projectId]/captions/generate/route");
 
   const missingProjectParams = { params: Promise.resolve({ projectId: "missing-project" }) };
   const missingImageParams = { params: Promise.resolve({ imageId: "missing-image" }) };
   const missingResultParams = { params: Promise.resolve({ imageResultId: "missing-result" }) };
 
-  const [listResponse, uploadResponse, addToResultsResponse, reviewResponse, patchResponse] = await Promise.all([
+  const [profileResponse, listResponse, uploadResponse, addToResultsResponse, reviewResponse, patchResponse, imageCaptionResponse, bulkCaptionsResponse] = await Promise.all([
+    profileRoute.GET(new Request("http://localhost/api/training/projects/missing-project/profile"), missingProjectParams),
     characterImagesRoute.GET(new Request("http://localhost/api/training/projects/missing-project/character-images"), missingProjectParams),
     characterImagesRoute.POST(new Request("http://localhost/api/training/projects/missing-project/character-images", { method: "POST" }), missingProjectParams),
     addToResultsRoute.POST(new Request("http://localhost/api/training/character-images/missing-image/add-to-results", { method: "POST", body: "{}" }), missingImageParams),
     reviewImageRoute.POST(new Request("http://localhost/api/training/image-results/missing-result/review", { method: "POST", body: JSON.stringify({ reviewStatus: "kept" }) }), missingResultParams),
     patchImageRoute.PATCH(new Request("http://localhost/api/training/image-results/missing-result", { method: "PATCH", body: JSON.stringify({ captionDraft: "updated caption" }) }), missingResultParams),
+    imageCaptionRoute.POST(new Request("http://localhost/api/training/image-results/missing-result/caption", { method: "POST", body: JSON.stringify({ captionDraft: "updated caption" }) }), missingResultParams),
+    bulkCaptionsRoute.POST(new Request("http://localhost/api/training/projects/missing-project/captions/generate", { method: "POST", body: JSON.stringify({ captions: [{ imageId: "missing-result", captionDraft: "updated caption" }] }) }), missingProjectParams),
   ]);
 
   const payloads = await Promise.all([
+    profileResponse.json(),
     listResponse.json(),
     uploadResponse.json(),
     addToResultsResponse.json(),
     reviewResponse.json(),
     patchResponse.json(),
+    imageCaptionResponse.json(),
+    bulkCaptionsResponse.json(),
   ]);
 
   for (const [response, payload] of [
-    [listResponse, payloads[0]],
-    [uploadResponse, payloads[1]],
-    [addToResultsResponse, payloads[2]],
-    [reviewResponse, payloads[3]],
-    [patchResponse, payloads[4]],
+    [profileResponse, payloads[0]],
+    [listResponse, payloads[1]],
+    [uploadResponse, payloads[2]],
+    [addToResultsResponse, payloads[3]],
+    [reviewResponse, payloads[4]],
+    [patchResponse, payloads[5]],
+    [imageCaptionResponse, payloads[6]],
+    [bulkCaptionsResponse, payloads[7]],
   ] as const) {
     assert.ok(response.status >= 400);
     assert.equal(payload.ok, false);
