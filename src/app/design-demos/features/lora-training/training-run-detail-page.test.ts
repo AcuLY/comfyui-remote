@@ -53,7 +53,7 @@ test("training detail page renders training samples, captions, log preview, and 
   assert.match(detailSource, /训练集样本/, "training detail should render a dataset sample panel");
   assert.match(detailSource, /训练日志/, "training detail should render a training log panel");
   assert.match(detailSource, /ImagePreviewLarge/, "training samples should open with the shared lightbox preview");
-  assert.match(detailSource, /activeSampleIndex/, "training detail should track the active sample for preview");
+  assert.match(detailSource, /activeSampleState/, "training detail should track the active sample for preview");
   assert.match(detailSource, /sample\.caption/, "training sample cards should show caption snapshots");
   assert.match(detailSource, /run\.finalLoraArtifactId/, "preset creation should depend on the final LoRA artifact");
   assert.match(detailSource, /!run\.presetCreatedAt/, "preset creation should hide after a preset already exists");
@@ -87,6 +87,31 @@ test("training sample lightbox copies captions through a real local action", () 
   assert.match(detailSource, /onClick=\{handleCopyActiveCaption\}/, "copy caption button should call the local copy handler");
   assert.match(detailSource, /copiedCaption\?\.sampleId === activeSample\.id/, "copy caption button should reflect the copied active sample");
   assert.doesNotMatch(detailSource, /<Button\s+icon=\{Copy\}\s+feedback=\{\{ title: "caption 已复制"/, "copy caption should not remain feedback-only");
+});
+
+test("training sample lightbox state stays scoped to the active run", () => {
+  assert.match(detailSource, /type ActiveSampleState/, "run detail should type the active sample with run context");
+  assert.match(detailSource, /runId:\s*string;/, "active sample and copied-caption state should store the source run id");
+  assert.match(
+    detailSource,
+    /activeSampleState\?\.runId === run\.id \? datasetSamples\[activeSampleState\.index\] \?\? null : null/,
+    "active sample lookup should only reuse the index for the same run",
+  );
+  assert.match(
+    detailSource,
+    /onClick=\{\(\) => setActiveSampleState\(\{ index, runId: run\.id \}\)\}/,
+    "sample cards should store the current run id when opening the lightbox",
+  );
+  assert.match(
+    detailSource,
+    /copiedCaption\?\.runId === run\.id && copiedCaption\?\.sampleId === activeSample\.id/,
+    "copied-caption state should only mark captions copied for the same run",
+  );
+  assert.doesNotMatch(
+    detailSource,
+    /const activeSample = activeSampleIndex === null \? null : datasetSamples\[activeSampleIndex\] \?\? null/,
+    "a bare sample index should not leak the lightbox across run detail pages",
+  );
 });
 
 test("training run detail page uses product-facing copy instead of internal implementation terms", () => {

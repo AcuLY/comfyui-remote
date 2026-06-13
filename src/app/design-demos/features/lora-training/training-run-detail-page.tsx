@@ -27,6 +27,17 @@ type RetryDraft = {
   datasetVersion?: string;
 };
 
+type ActiveSampleState = {
+  index: number;
+  runId: string;
+};
+
+type CopiedCaptionState = {
+  caption: string;
+  runId: string;
+  sampleId: string;
+};
+
 function runStatusBadge(run: LoraTrainingRun) {
   if (run.status === "completed") return <StatusBadge status="done" label="已完成" />;
   if (run.status === "running") return <StatusBadge status="running" label="进行中" />;
@@ -71,8 +82,8 @@ export function LoraTrainingRunDetailPage({
   kind: LoraTrainingTaskKind;
   runId?: string;
 }) {
-  const [activeSampleIndex, setActiveSampleIndex] = useState<number | null>(null);
-  const [copiedCaption, setCopiedCaption] = useState<{ caption: string; sampleId: string } | null>(null);
+  const [activeSampleState, setActiveSampleState] = useState<ActiveSampleState | null>(null);
+  const [copiedCaption, setCopiedCaption] = useState<CopiedCaptionState | null>(null);
   const [retryDraft, setRetryDraft] = useState<RetryDraft | null>(null);
   const training = buildLoraTrainingDemoData(data);
   const run = findRun(data, kind, runId);
@@ -87,8 +98,8 @@ export function LoraTrainingRunDetailPage({
   const projectHref = `/training/projects/${run.projectId}`;
   const datasetHref = run.datasetRevisionId ? `${projectHref}/dataset/revisions/${run.datasetRevisionId}` : `${projectHref}/dataset`;
   const datasetSamples = isGeneration ? [] : run.datasetSamples ?? [];
-  const activeSample = activeSampleIndex === null ? null : datasetSamples[activeSampleIndex] ?? null;
-  const isActiveCaptionCopied = activeSample ? copiedCaption?.sampleId === activeSample.id : false;
+  const activeSample = activeSampleState?.runId === run.id ? datasetSamples[activeSampleState.index] ?? null : null;
+  const isActiveCaptionCopied = activeSample ? copiedCaption?.runId === run.id && copiedCaption?.sampleId === activeSample.id : false;
   const canCreatePreset = !isGeneration && Boolean(run.finalLoraArtifactId) && !run.presetCreatedAt;
   const logText = run.trainingLogLines?.length ? run.trainingLogLines.join("\n") : "尚未创建训练日志";
 
@@ -98,7 +109,14 @@ export function LoraTrainingRunDetailPage({
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       void navigator.clipboard.writeText(caption).catch(() => undefined);
     }
-    setCopiedCaption({ caption, sampleId: activeSample.id });
+    setCopiedCaption({ caption, runId: run.id, sampleId: activeSample.id });
+  }
+
+  function setActiveSampleOffset(offset: -1 | 1) {
+    setActiveSampleState((current) => {
+      const index = current?.runId === run.id ? current.index : 0;
+      return { index: (index + datasetSamples.length + offset) % datasetSamples.length, runId: run.id };
+    });
   }
 
   function handleQueueRetry() {
@@ -241,7 +259,7 @@ export function LoraTrainingRunDetailPage({
                     data-status={sample.status}
                     key={sample.id}
                     type="button"
-                    onClick={() => setActiveSampleIndex(index)}
+                    onClick={() => setActiveSampleState({ index, runId: run.id })}
                   >
                     <ImagePreviewFrame image={sample.image} />
                     <span className={s.sampleMeta}>
@@ -271,9 +289,9 @@ export function LoraTrainingRunDetailPage({
           image={activeSample.image}
           title={`${activeSample.label} · ${activeSample.sectionTitle}`}
           meta={activeSample.caption}
-          onClose={() => setActiveSampleIndex(null)}
-          onNext={() => setActiveSampleIndex((current) => current === null ? 0 : (current + 1) % datasetSamples.length)}
-          onPrevious={() => setActiveSampleIndex((current) => current === null ? 0 : (current + datasetSamples.length - 1) % datasetSamples.length)}
+          onClose={() => setActiveSampleState(null)}
+          onNext={() => setActiveSampleOffset(1)}
+          onPrevious={() => setActiveSampleOffset(-1)}
           actions={(
             <Button
               icon={Copy}
