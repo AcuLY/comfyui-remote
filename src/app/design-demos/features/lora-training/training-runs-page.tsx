@@ -1,11 +1,13 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckSquare, ChevronDown, CircleAlert, Clock3, Copy, RotateCcw, X } from "lucide-react";
 
 import type { DemoData } from "../../data";
 import { cx, useRouteHref } from "../../routing";
+import { useDemoFeedback } from "../../shared/feedback/context";
 import { ImageListSmall } from "../../shared/media";
 import { Button } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
@@ -24,6 +26,10 @@ const STATUS_ITEMS: Array<{ value: LoraTrainingTaskStatus; label: string }> = [
 ];
 
 const ERROR_CLAMP_LINES = 3;
+
+function isProductionTrainingPath(pathname: string | null | undefined) {
+  return pathname === "/training" || pathname?.startsWith("/training/") === true;
+}
 
 function taskDetailHref(run: LoraTrainingRun, hrefForRoute: (route: string) => string) {
   const type = run.kind === "generation" ? "generation" : "training";
@@ -208,6 +214,8 @@ function CurrentRunningSurface({ runs }: { runs: LoraTrainingRun[] }) {
 }
 
 export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const hrefForRoute = useRouteHref();
   const training = buildLoraTrainingDemoData(data);
   const [kind, setKind] = useState<LoraTrainingTaskKind>("generation");
@@ -216,12 +224,14 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
   const [hiddenRunIds, setHiddenRunIds] = useState<Set<string>>(new Set());
   const [retriedRunIds, setRetriedRunIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isRetryingRuns, setIsRetryingRuns] = useState(false);
   const runsForKind = training.runs.filter((run) => run.kind === kind && !hiddenRunIds.has(run.id));
   const runningRunsForKind = runsForKind.filter((run) => run.status === "running").slice(0, 2);
   const visibleRuns = runsForKind.filter((run) => run.status === status);
   const groups = groupRunsByProject(visibleRuns);
   const selectedVisibleCount = visibleRuns.filter((run) => selectedIds.has(run.id)).length;
   const allVisibleSelected = visibleRuns.length > 0 && selectedVisibleCount === visibleRuns.length;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   function countFor(nextKind: LoraTrainingTaskKind, nextStatus: LoraTrainingTaskStatus) {
     return training.runs.filter((run) => run.kind === nextKind && run.status === nextStatus && !hiddenRunIds.has(run.id)).length;
@@ -253,10 +263,101 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
     setSelectedIds((current) => new Set([...current].filter((id) => !ids.has(id))));
   }
 
-  function retryRuns(runIds: Iterable<string>) {
+  async function retryRuns(runIds: Iterable<string>) {
     const ids = new Set(runIds);
-    setRetriedRunIds((current) => new Set([...current, ...ids]));
-    setSelectedIds((current) => new Set([...current].filter((id) => !ids.has(id))));
+    const runs = runsForKind.filter((run) => ids.has(run.id));
+
+    const applyLocalRetriedRuns = (appliedIds: Set<string>) => {
+      setRetriedRunIds((current) => new Set([...current, ...appliedIds]));
+      setSelectedIds((current) => new Set([...current].filter((id) => !appliedIds.has(id))));
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalRetriedRuns(ids);
+      pushToast({
+        tone: "success",
+        title: runs.length === 1 ? "重试已排队" : "失败任务已加入重试队列",
+        detail: runs.length === 1 ? (runs[0]?.title ?? "任务") : `${runs.length} 条任务`,
+      });
+      return;
+    }
+
+    if (isRetryingRuns || runs.length === 0) return;
+
+    setIsRetryingRuns(true);
+    try {
+      const responses = await Promise.all(
+        runs.map(async (run) => {
+          if (run.kind === "generation") {
+            if (!run.sectionId) {
+              throw new Error(`生成任务 ${run.title} 缺少小节上下文，无法重试。`);
+            }
+            const response = await fetch(`/api/training/sections/${run.sectionId}/runs`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                parentRunId: run.id,
+              }),
+            });
+            const payload = await response.json().catch(() => null);
+            return { payload, response, run };
+          }
+
+          if (!run.datasetRevisionId) {
+            throw new Error(`训练任务 ${run.title} 缺少数据集版本，无法重试。`);
+          }
+          const response = await fetch(`/api/training/projects/${run.projectId}/training-runs`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              revisionId: run.datasetRevisionId,
+              config: {
+                overrides: {
+                  ordinary: {
+                    targetSteps: run.targetSteps,
+                  },
+                },
+              },
+            }),
+          });
+          const payload = await response.json().catch(() => null);
+          return { payload, response, run };
+        }),
+      );
+
+      const completedIds = new Set(
+        responses
+          .filter(({ payload, response }) => response.ok && payload?.ok)
+          .map(({ run }) => run.id),
+      );
+      if (completedIds.size > 0) {
+        applyLocalRetriedRuns(completedIds);
+      }
+
+      const failedResponse = responses.find(({ payload, response }) => !response.ok || !payload?.ok);
+      if (failedResponse) {
+        pushToast({
+          tone: "error",
+          title: "重试失败",
+          detail: failedResponse.payload?.error?.message ?? "重试请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "success",
+        title: completedIds.size === 1 ? "重试已排队" : "失败任务已加入重试队列",
+        detail: completedIds.size === 1 ? (runs[0]?.title ?? "任务") : `${completedIds.size} 条任务`,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "重试失败",
+        detail: error instanceof Error ? error.message : "重试请求失败",
+      });
+    } finally {
+      setIsRetryingRuns(false);
+    }
   }
 
   return (
@@ -304,15 +405,15 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                 {allVisibleSelected ? "取消全选" : "全选"}
               </Button>
               {status === "failed" ? (
-                <Button
-                  icon={RotateCcw}
-                  tone="primary"
-                  disabled={selectedVisibleCount === 0}
-                  onClick={() => retryRuns(selectedIds)}
-                  feedback={{ title: "失败任务已加入重试队列", detail: `${selectedVisibleCount} 条任务` }}
-                >
-                  重试所选
-                </Button>
+                    <Button
+                      icon={RotateCcw}
+                      tone="primary"
+                      pending={isRetryingRuns}
+                      disabled={selectedVisibleCount === 0}
+                      onClick={() => retryRuns(selectedIds)}
+                    >
+                      重试所选
+                    </Button>
               ) : (
                 <Button
                   icon={X}
@@ -431,16 +532,16 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                       >
                                         复制
                                       </Button>
-                                      <Button
-                                        tone="subtle"
-                                        icon={RotateCcw}
-                                        size="sm"
-                                        ariaLabel={`重试任务：${run.title}`}
-                                        onClick={() => retryRuns([run.id])}
-                                        feedback={{ title: "重试已排队", detail: run.title }}
-                                      >
-                                        重试
-                                      </Button>
+                                          <Button
+                                            tone="subtle"
+                                            icon={RotateCcw}
+                                            size="sm"
+                                            pending={isRetryingRuns}
+                                            ariaLabel={`重试任务：${run.title}`}
+                                            onClick={() => retryRuns([run.id])}
+                                          >
+                                            重试
+                                          </Button>
                                     </div>
                                   </div>
                                 )
