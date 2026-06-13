@@ -39,3 +39,18 @@ test("preview frames expose meaningful alt text and intrinsic dimensions", () =>
   assert.match(imgTag, /width=\{image\.width/, "preview images should forward image width metadata");
   assert.match(imgTag, /height=\{image\.height/, "preview images should forward image height metadata");
 });
+
+test("medium list expand chevrons are decorative", () => {
+  const listSource = sourceFor("image-list-medium/index.tsx");
+
+  assert.match(
+    listSource,
+    /<ChevronUp className=\{s\.icon\} aria-hidden="true" \/>/,
+    "expanded-state chevron should be hidden from assistive tech because the button text carries the state",
+  );
+  assert.match(
+    listSource,
+    /<ChevronDown className=\{s\.icon\} aria-hidden="true" \/>/,
+    "collapsed-state chevron should be hidden from assistive tech because the button text carries the action",
+  );
+});
