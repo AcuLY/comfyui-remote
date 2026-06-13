@@ -113,10 +113,6 @@ export function SettingsPage({ data }: { data: DemoData }) {
             </span>
           ))}
           <span>
-            <strong>模型</strong>
-            <code>/models</code>
-          </span>
-          <span>
             <strong>设置</strong>
             <code>/settings</code>
           </span>

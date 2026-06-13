@@ -68,7 +68,7 @@ test("LoRA training sample routes use LoRA training fixture ids", () => {
   assert.equal(samples.get("training-template-section"), "/training/templates/character-lora-base/sections/0");
 });
 
-test("work mode navigation keeps six stable resource entries and resolves LoRA routes by mode", () => {
+test("work mode navigation keeps shared models out of the LoRA training workspace", () => {
   const labels = ["运行", "项目", "预制", "模板", "模型", "设置"];
 
   assert.deepEqual(NAV_LINKS.map((link) => link.label), labels);
@@ -93,11 +93,10 @@ test("work mode navigation keeps six stable resource entries and resolves LoRA r
     "/training/projects",
     "/training/presets",
     "/training/templates",
-    "/models",
     "/settings",
   ]);
   assert.equal(matchRoute("/training/models").key, "not-found", "Models should remain a shared resource page, not a LoRA training module route");
-  assert.equal(trainingLinks[4]?.href, "/models", "Training mode should link to the shared models page when model access is shown");
+  assert.equal(trainingLinks.some((link) => link.href === "/models"), false, "Training mode should not include models in its primary workspace nav");
   assert.deepEqual(trainingLinks.slice(0, 4).map((link) => link.activePrefix), [
     "/training/runs",
     "/training/projects",

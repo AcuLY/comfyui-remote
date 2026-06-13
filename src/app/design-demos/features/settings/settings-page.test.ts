@@ -21,6 +21,19 @@ test("settings page exposes the generation versus LoRA training work mode switch
   assert.match(cssSource, /\.workModeGrid\b/, "settings should style mode choices as responsive cards");
 });
 
+test("LoRA training work mode explanation does not list shared models as a training entry", () => {
+  const trainingRowsStart = source.indexOf("lora_training: [");
+  const readInitialStart = source.indexOf("function readInitialWorkMode");
+  assert.notEqual(trainingRowsStart, -1, "settings page should define LoRA training route rows");
+  assert.notEqual(readInitialStart, -1, "settings page should define route rows before the initial mode reader");
+
+  const trainingRowsSource = source.slice(trainingRowsStart, readInitialStart);
+  assert.match(trainingRowsSource, /\/training\/runs/, "LoRA training mode should list training runs");
+  assert.match(trainingRowsSource, /\/training\/projects/, "LoRA training mode should list training projects");
+  assert.doesNotMatch(trainingRowsSource, /模型|\/models/, "LoRA training route explanation should not list shared model management");
+  assert.doesNotMatch(source, /<strong>模型<\/strong>\s*<code>\/models<\/code>/, "settings route list should not append models to every work mode");
+});
+
 test("settings navigation icons are decorative and hidden from assistive tech", () => {
   assert.match(
     source,
