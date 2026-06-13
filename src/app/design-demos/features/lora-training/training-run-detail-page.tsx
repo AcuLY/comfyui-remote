@@ -112,6 +112,19 @@ function createTrainingPresetHref(run: LoraTrainingRun) {
   return `/training/presets/new?${params.toString()}`;
 }
 
+function trainingArtifactLabel(run: LoraTrainingRun) {
+  if (run.finalLoraArtifactId) return run.artifactName ?? run.finalLoraArtifactId;
+  if (run.status === "failed") return "未生成模型文件";
+  return "尚未生成模型文件";
+}
+
+function trainingPresetStatusLabel(run: LoraTrainingRun, canCreatePreset: boolean) {
+  if (canCreatePreset) return "可创建";
+  if (run.presetCreatedAt) return "已创建";
+  if (run.status === "failed") return "不可创建";
+  return "等待模型文件";
+}
+
 async function copyTextWithFallback(text: string) {
   try {
     if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
@@ -380,8 +393,8 @@ export function LoraTrainingRunDetailPage({
               <dl className={s.statGrid}>
                 <div><dt>数据集</dt><dd>{project?.datasetVersion ?? "未记录"}</dd></div>
                 <div><dt>图片</dt><dd>{project?.keptCount ?? 0} 张已保留</dd></div>
-                <div><dt>LoRA 文件</dt><dd>{currentRun.finalLoraArtifactId ? currentRun.artifactName ?? currentRun.finalLoraArtifactId : "尚未生成 LoRA 文件"}</dd></div>
-                <div><dt>预制</dt><dd>{canCreatePreset ? "可创建" : currentRun.presetCreatedAt ? "已创建" : "等待 LoRA 文件"}</dd></div>
+                <div><dt>LoRA 文件</dt><dd>{trainingArtifactLabel(currentRun)}</dd></div>
+                <div><dt>预制</dt><dd>{trainingPresetStatusLabel(currentRun, canCreatePreset)}</dd></div>
               </dl>
             ) : null}
           </div>

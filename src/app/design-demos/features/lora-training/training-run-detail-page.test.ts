@@ -92,6 +92,28 @@ test("training detail page renders training samples, captions, log preview, and 
   assert.match(presetGateSource, /!currentRun\.presetCreatedAt/, "preset creation should hide after a preset already exists");
 });
 
+test("training detail distinguishes missing artifacts by run lifecycle", () => {
+  const artifactHelperStart = detailSource.indexOf("function trainingArtifactLabel");
+  const presetHelperStart = detailSource.indexOf("function trainingPresetStatusLabel");
+  const outputGridStart = detailSource.indexOf("function GenerationOutputGrid");
+  assert.notEqual(artifactHelperStart, -1, "training detail should define an artifact label helper");
+  assert.notEqual(presetHelperStart, -1, "training detail should define a preset status helper");
+  assert.notEqual(outputGridStart, -1);
+
+  const helperSource = detailSource.slice(artifactHelperStart, outputGridStart);
+  const detailPageSource = detailSource.slice(detailSource.indexOf("export function LoraTrainingRunDetailPage"));
+
+  assert.match(helperSource, /run\.status === "failed"/, "artifact copy should branch on failed runs");
+  assert.match(helperSource, /未生成模型文件/, "failed runs should say the model file was not generated");
+  assert.match(helperSource, /尚未生成模型文件/, "queued or running runs should say the model file is not generated yet");
+  assert.match(helperSource, /不可创建/, "failed runs without artifacts should not imply preset creation is waiting");
+  assert.match(helperSource, /等待模型文件/, "queued or running runs should keep a waiting-for-model preset state");
+  assert.match(detailPageSource, /trainingArtifactLabel\(currentRun\)/, "artifact stat should use the lifecycle-aware helper");
+  assert.match(detailPageSource, /trainingPresetStatusLabel\(currentRun, canCreatePreset\)/, "preset stat should use the lifecycle-aware helper");
+  assert.doesNotMatch(detailPageSource, /等待 LoRA 文件/, "training detail should not use one generic missing-artifact preset state");
+  assert.doesNotMatch(detailPageSource, /尚未生成 LoRA 文件/, "training detail should not use one generic missing-artifact model state");
+});
+
 test("completed image generation detail renders result thumbnails with review actions", () => {
   assert.match(typesSource, /outputResultIds\?:\s*string\[\]/, "generation runs should identify their concrete output results");
   assert.match(fixtureSource, /outputResultIds:\s*\["vela-neon-result-1"\]/, "completed image generation fixture should point at the result-pool output");
