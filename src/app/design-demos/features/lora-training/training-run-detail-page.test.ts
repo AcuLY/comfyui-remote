@@ -73,6 +73,16 @@ test("completed image generation detail renders result thumbnails with review ac
   assert.match(detailCss, /\.generationOutputCaption\b/, "generation output captions should be compact text below thumbnails");
 });
 
+test("image generation detail header links back to its training section and section results", () => {
+  assert.match(detailSource, /generationOutputSection/, "generation detail should derive the output section context from result-pool data");
+  assert.match(detailSource, /generationSectionHref/, "generation detail should build a direct section href");
+  assert.match(detailSource, /generationResultsHref/, "generation detail should build a direct section results href");
+  assert.match(detailSource, /\/sections\/\$\{generationOutputSection\.sectionId\}/, "section href should point to the concrete training section");
+  assert.match(detailSource, /\/sections\/\$\{generationOutputSection\.sectionId\}\/results/, "results href should point to the concrete section result view");
+  assert.match(detailSource, />跳转小节<\/ButtonLink>/, "generation detail should expose the same section jump as generation run review pages");
+  assert.match(detailSource, />查看结果<\/ButtonLink>/, "generation detail should expose the result surface linked from the output");
+});
+
 test("completed training run creates presets through the real training preset form route", () => {
   assert.match(detailSource, /function createTrainingPresetHref/, "run detail should build a concrete preset creation href");
   assert.match(detailSource, /\/training\/presets\/new/, "preset creation should navigate to the new training preset route");

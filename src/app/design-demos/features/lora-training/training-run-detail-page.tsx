@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Check, CheckCircle2, Clock3, Copy, FileText, History, ImagePlus, Play, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Clock3, Copy, ExternalLink, FileText, History, ImageIcon, ImagePlus, Play, RotateCcw, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
 import { ImagePreviewFrame } from "../../shared/media/image-preview-frame";
@@ -219,6 +219,9 @@ export function LoraTrainingRunDetailPage({
   const datasetHref = currentRun.datasetRevisionId ? `${projectHref}/dataset/revisions/${currentRun.datasetRevisionId}` : `${projectHref}/dataset`;
   const datasetSamples = isGeneration ? [] : currentRun.datasetSamples ?? [];
   const generationOutputResults = generationResultsForRun(currentRun, project, resultReviewState);
+  const generationOutputSection = isGeneration ? generationOutputResults[0] ?? null : null;
+  const generationSectionHref = generationOutputSection ? `${projectHref}/sections/${generationOutputSection.sectionId}` : null;
+  const generationResultsHref = generationOutputSection ? `${projectHref}/sections/${generationOutputSection.sectionId}/results` : null;
   const activeSample = activeSampleState?.runId === currentRun.id ? datasetSamples[activeSampleState.index] ?? null : null;
   const isActiveCaptionCopied = activeSample ? copiedCaption?.runId === currentRun.id && copiedCaption?.sampleId === activeSample.id : false;
   const canCreatePreset = !isGeneration && Boolean(currentRun.finalLoraArtifactId) && !currentRun.presetCreatedAt;
@@ -261,6 +264,8 @@ export function LoraTrainingRunDetailPage({
         title={`${currentRun.projectTitle} / ${currentRun.title}`}
         actions={(
             <>
+              {generationSectionHref ? <ButtonLink href={generationSectionHref} icon={ExternalLink}>跳转小节</ButtonLink> : null}
+              {generationResultsHref ? <ButtonLink href={generationResultsHref} icon={ImageIcon}>查看结果</ButtonLink> : null}
               <ButtonLink href={projectHref} icon={FileText}>项目详情</ButtonLink>
               {!isGeneration ? <ButtonLink href={datasetHref} icon={History}>数据集版本</ButtonLink> : null}
             {currentRun.status === "failed" && !isRetryQueued ? <Button tone="primary" icon={RotateCcw} onClick={handleQueueRetry} feedback={{ title: "已加入重试队列", detail: currentRun.title }}>重试</Button> : null}
