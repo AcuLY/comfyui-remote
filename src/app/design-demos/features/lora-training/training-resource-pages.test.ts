@@ -550,6 +550,20 @@ test("training template form scans existing section ids for local copy and draft
   assert.doesNotMatch(formSource, /id:\s*`new-template-section-\$\{Date\.now\(\)\}`/, "new template section ids should not depend on Date.now");
 });
 
+test("training template section page saves through the formal HTTP API on production routes", () => {
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(sectionStart, -1);
+
+  const sectionSource = pageSource.slice(sectionStart);
+
+  assert.match(sectionSource, /usePathname/, "template section page should detect whether it is running under production \\/training routes");
+  assert.match(sectionSource, /fetch\(`\/api\/training\/templates\/\$\{activeTemplate\.id\}\/sections\/\$\{activeSection\.id\}`/, "template section page should call the formal training template section API");
+  assert.match(sectionSource, /method:\s*"PATCH"/, "template section page should save through PATCH");
+  assert.match(sectionSource, /enabled:/, "template section page should send the enabled state through the HTTP request");
+  assert.match(sectionSource, /blocks:/, "template section page should send the editable scene blocks through the HTTP request");
+  assert.match(sectionSource, /pushToast/, "template section page should surface API success or failure through the shared feedback system");
+});
+
 test("training template form section rows are actually sortable", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");

@@ -1434,6 +1434,8 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
 }
 
 export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex }: { data: DemoData; templateId?: string; sectionIndex?: string }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
   const template = findTemplate(data, templateId);
   const index = Number(sectionIndex);
@@ -1457,10 +1459,12 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   const [templatePresetImportOpen, setTemplatePresetImportOpen] = useState(false);
   const [selectedTemplatePresetId, setSelectedTemplatePresetId] = useState<string | null>(null);
   const [templateSectionDraftsByKey, setTemplateSectionDraftsByKey] = useState<Record<string, TemplateSectionDraftState>>({});
+  const [isSavingTemplateSection, setIsSavingTemplateSection] = useState(false);
   if (!template || !section) return <EmptyPage title="没有模板小节数据" />;
 
   const activeTemplate = template;
   const activeSection = section;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const templateSectionStateKey = buildTemplateSectionStateKey(activeTemplate.id, activeSection.id);
   const sceneBlocks = templateSectionSceneBlocksByKey[templateSectionStateKey] ?? activeSection.blocks;
   const visibleTemplateSectionDraft = templateSectionDraftsByKey[templateSectionStateKey] ?? null;
@@ -1543,20 +1547,75 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     updateTemplateBlocks((current) => current.filter((block) => block.id !== blockId));
   }
 
-  function handleSaveTemplateSection() {
-    setTemplateSectionDraftsByKey((current) => ({
-      ...current,
-      [templateSectionStateKey]: {
-        blockCount: sceneBlocks.length,
-        enabledLabel: templateSectionForm.enabledLabel,
-        firstBlock: sceneBlocks[0]?.title ?? "无场景块",
-        resolvedScene: resolvedTemplateScene || section.resolvedScene,
-        sectionId: activeSection.id,
-        sectionTitle: templateSectionForm.title,
-        templateId: activeTemplate.id,
-        templateTitle: activeTemplate.title,
-      },
-    }));
+  async function handleSaveTemplateSection() {
+    const nextDraft = {
+      blockCount: sceneBlocks.length,
+      enabledLabel: templateSectionForm.enabledLabel,
+      firstBlock: sceneBlocks[0]?.title ?? "无场景块",
+      resolvedScene: resolvedTemplateScene || section.resolvedScene,
+      sectionId: activeSection.id,
+      sectionTitle: templateSectionForm.title,
+      templateId: activeTemplate.id,
+      templateTitle: activeTemplate.title,
+    };
+
+    if (!isProductionTrainingRoute) {
+      setTemplateSectionDraftsByKey((current) => ({
+        ...current,
+        [templateSectionStateKey]: nextDraft,
+      }));
+      pushToast({
+        tone: "success",
+        title: visibleTemplateSectionDraft ? "模板小节保存草稿已更新" : "模板小节保存草稿已记录",
+        detail: templateSectionForm.title,
+      });
+      return;
+    }
+
+    if (isSavingTemplateSection) return;
+
+    setIsSavingTemplateSection(true);
+    try {
+      const response = await fetch(`/api/training/templates/${activeTemplate.id}/sections/${activeSection.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: templateSectionForm.title,
+          enabled: templateSectionForm.enabledLabel === "启用",
+          blocks: sceneBlocks,
+          resolvedScene: resolvedTemplateScene || section.resolvedScene,
+          scenePreview: resolvedTemplateScene || section.scenePreview,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "模板小节保存失败",
+          detail: payload?.error?.message ?? "模板小节保存请求失败",
+        });
+        return;
+      }
+
+      setTemplateSectionDraftsByKey((current) => ({
+        ...current,
+        [templateSectionStateKey]: nextDraft,
+      }));
+      pushToast({
+        tone: "success",
+        title: "模板小节已保存",
+        detail: templateSectionForm.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "模板小节保存失败",
+        detail: error instanceof Error ? error.message : "模板小节保存请求失败",
+      });
+    } finally {
+      setIsSavingTemplateSection(false);
+    }
   }
 
   return (
@@ -1570,8 +1629,8 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
           <Button
             tone="primary"
             icon={Save}
+            pending={isSavingTemplateSection}
             onClick={handleSaveTemplateSection}
-            feedback={{ title: visibleTemplateSectionDraft ? "模板小节保存草稿已更新" : "模板小节保存草稿已记录", detail: templateSectionForm.title }}
           >
             {visibleTemplateSectionDraft ? "更新小节草稿" : "保存小节"}
           </Button>
