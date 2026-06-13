@@ -58,9 +58,9 @@ function reviewStatusTone(status: LoraTrainingReviewStatus) {
 }
 
 function findRun(data: DemoData, kind: LoraTrainingTaskKind, runId: string | undefined) {
+  if (!runId) return undefined;
   const training = buildLoraTrainingDemoData(data);
-  return training.runs.find((run) => run.kind === kind && run.id === runId)
-    ?? training.runs.find((run) => run.kind === kind);
+  return training.runs.find((run) => run.kind === kind && run.id === runId);
 }
 
 function progressPercent(run: LoraTrainingRun) {

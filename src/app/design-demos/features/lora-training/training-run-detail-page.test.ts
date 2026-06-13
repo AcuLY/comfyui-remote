@@ -25,6 +25,18 @@ test("training run detail keeps the compact detail header", () => {
   assert.doesNotMatch(headerSource, /subtitle=/, "detail header should keep summary and timestamp inside the page body");
 });
 
+test("training run detail route helper does not replace invalid ids with first fixtures", () => {
+  const helperStart = detailSource.indexOf("function findRun");
+  const helperEnd = detailSource.indexOf("function progressPercent", helperStart);
+  assert.notEqual(helperStart, -1, "run detail should define a route helper");
+  assert.notEqual(helperEnd, -1, "run detail helper should end before progress helper");
+
+  const helperSource = detailSource.slice(helperStart, helperEnd);
+  assert.match(helperSource, /if \(!runId\) return undefined;/, "missing run ids should render the empty state");
+  assert.doesNotMatch(helperSource, /\?\?\s*training\.runs\.find\(\(run\) => run\.kind === kind\)/, "invalid run ids should not silently render the first run of the same kind");
+  assert.match(detailSource, /if \(!run\) return <EmptyPage title=\{kind === "generation" \? "没有生成任务数据" : "没有训练任务数据"\} \/>;/, "invalid run ids should reach the explicit empty state");
+});
+
 test("training run fixtures expose final artifact, config, logs, and frozen caption samples", () => {
   for (const field of [
     "finalLoraArtifactId",
