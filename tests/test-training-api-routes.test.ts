@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-test("GET /api/training/projects lists training projects", async () => {
+async function listProjects() {
   const { GET } = await import("../src/app/api/training/projects/route");
-
   const response = await GET(new Request("http://localhost/api/training/projects"));
   const payload = await response.json();
 
@@ -11,21 +10,29 @@ test("GET /api/training/projects lists training projects", async () => {
   assert.equal(payload.ok, true);
   assert.ok(Array.isArray(payload.data));
   assert.ok(payload.data.length > 0);
-  assert.equal(payload.data[0]?.id, "vela-neon");
+
+  return payload.data as Array<{ id: string }>;
+}
+
+test("GET /api/training/projects lists training projects", async () => {
+  const projects = await listProjects();
+  assert.equal(typeof projects[0]?.id, "string");
 });
 
 test("GET /api/training/projects/:projectId returns one project detail", async () => {
   const { GET } = await import("../src/app/api/training/projects/[projectId]/route");
+  const projects = await listProjects();
+  const projectId = projects[0].id;
 
   const response = await GET(
-    new Request("http://localhost/api/training/projects/vela-neon"),
-    { params: Promise.resolve({ projectId: "vela-neon" }) },
+    new Request(`http://localhost/api/training/projects/${projectId}`),
+    { params: Promise.resolve({ projectId }) },
   );
   const payload = await response.json();
 
   assert.equal(response.status, 200);
   assert.equal(payload.ok, true);
-  assert.equal(payload.data.id, "vela-neon");
+  assert.equal(payload.data.id, projectId);
   assert.ok(Array.isArray(payload.data.sections));
   assert.ok(payload.data.sections.length > 0);
 });
@@ -36,14 +43,16 @@ test("GET project-scoped training resources expose sections, results, dataset re
   const revisionsRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
   const trainingRunsRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
   const generationTasksRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
+  const projects = await listProjects();
+  const projectId = projects[0].id;
 
-  const params = { params: Promise.resolve({ projectId: "vela-neon" }) };
+  const params = { params: Promise.resolve({ projectId }) };
   const [sectionsResponse, resultsResponse, revisionsResponse, trainingRunsResponse, generationTasksResponse] = await Promise.all([
-    sectionsRoute.GET(new Request("http://localhost/api/training/projects/vela-neon/sections"), params),
-    resultsRoute.GET(new Request("http://localhost/api/training/projects/vela-neon/image-results"), params),
-    revisionsRoute.GET(new Request("http://localhost/api/training/projects/vela-neon/dataset-revisions"), params),
-    trainingRunsRoute.GET(new Request("http://localhost/api/training/projects/vela-neon/training-runs"), params),
-    generationTasksRoute.GET(new Request("http://localhost/api/training/projects/vela-neon/generation-tasks"), params),
+    sectionsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/sections`), params),
+    resultsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/image-results`), params),
+    revisionsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/dataset-revisions`), params),
+    trainingRunsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/training-runs`), params),
+    generationTasksRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/generation-tasks`), params),
   ]);
 
   const [sectionsPayload, resultsPayload, revisionsPayload, trainingRunsPayload, generationTasksPayload] = await Promise.all([
@@ -66,8 +75,8 @@ test("GET project-scoped training resources expose sections, results, dataset re
   assert.ok(resultsPayload.data.length > 0);
   assert.ok(Array.isArray(revisionsPayload.data));
   assert.ok(revisionsPayload.data.length > 0);
-  assert.ok(trainingRunsPayload.data.every((run: { kind: string; projectId: string }) => run.kind === "training" && run.projectId === "vela-neon"));
-  assert.ok(generationTasksPayload.data.every((run: { kind: string; projectId: string }) => run.kind === "generation" && run.projectId === "vela-neon"));
+  assert.ok(trainingRunsPayload.data.every((run: { kind: string; projectId: string }) => run.kind === "training" && run.projectId === projectId));
+  assert.ok(generationTasksPayload.data.every((run: { kind: string; projectId: string }) => run.kind === "generation" && run.projectId === projectId));
 });
 
 test("GET /api/training/runs filters the global training workspace by kind and status", async () => {
@@ -84,32 +93,40 @@ test("GET /api/training/runs filters the global training workspace by kind and s
 });
 
 test("GET /api/training/training-runs/:trainingRunId returns training run detail", async () => {
+  const runsRoute = await import("../src/app/api/training/runs/route");
   const { GET } = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
+  const runsResponse = await runsRoute.GET(new Request("http://localhost/api/training/runs?kind=training"));
+  const runsPayload = await runsResponse.json();
+  const trainingRunId = runsPayload.data[0].id;
 
   const response = await GET(
-    new Request("http://localhost/api/training/training-runs/train-vela-v5"),
-    { params: Promise.resolve({ trainingRunId: "train-vela-v5" }) },
+    new Request(`http://localhost/api/training/training-runs/${trainingRunId}`),
+    { params: Promise.resolve({ trainingRunId }) },
   );
   const payload = await response.json();
 
   assert.equal(response.status, 200);
   assert.equal(payload.ok, true);
-  assert.equal(payload.data.id, "train-vela-v5");
+  assert.equal(payload.data.id, trainingRunId);
   assert.equal(payload.data.kind, "training");
 });
 
 test("GET /api/training/generation-tasks/:taskId returns generation task detail", async () => {
+  const runsRoute = await import("../src/app/api/training/runs/route");
   const { GET } = await import("../src/app/api/training/generation-tasks/[taskId]/route");
+  const runsResponse = await runsRoute.GET(new Request("http://localhost/api/training/runs?kind=generation"));
+  const runsPayload = await runsResponse.json();
+  const taskId = runsPayload.data[0].id;
 
   const response = await GET(
-    new Request("http://localhost/api/training/generation-tasks/gen-vela-dataset"),
-    { params: Promise.resolve({ taskId: "gen-vela-dataset" }) },
+    new Request(`http://localhost/api/training/generation-tasks/${taskId}`),
+    { params: Promise.resolve({ taskId }) },
   );
   const payload = await response.json();
 
   assert.equal(response.status, 200);
   assert.equal(payload.ok, true);
-  assert.equal(payload.data.id, "gen-vela-dataset");
+  assert.equal(payload.data.id, taskId);
   assert.equal(payload.data.kind, "generation");
 });
 

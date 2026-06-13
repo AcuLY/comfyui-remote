@@ -8,6 +8,7 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const trainingPageSource = readFileSync(resolve(testDir, "../src/app/training/[[...route]]/page.tsx"), "utf8");
 const trainingRouteDataPath = resolve(testDir, "../src/app/training/load-training-route-data.ts");
 const trainingRouteDataSource = existsSync(trainingRouteDataPath) ? readFileSync(trainingRouteDataPath, "utf8") : "";
+const trainingReadServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/read-service.ts"), "utf8");
 const trainingDataSource = readFileSync(resolve(testDir, "../src/app/design-demos/data/lora-training.ts"), "utf8");
 
 test("production training routes use a dedicated loader instead of the generic design-demo loader", () => {
@@ -51,5 +52,18 @@ test("buildLoraTrainingDemoData prefers an injected production training payload 
     trainingDataSource,
     /data\.loraTraining/,
     "training demo builder should support a production-projected training payload override",
+  );
+});
+
+test("training read APIs share the same production training route data projection", () => {
+  assert.match(
+    trainingReadServiceSource,
+    /loadTrainingRouteData/,
+    "training read service should consume the same production training route loader as the /training pages",
+  );
+  assert.doesNotMatch(
+    trainingReadServiceSource,
+    /loadDesignDemoData/,
+    "training read service should not keep a private fallback to the generic demo loader",
   );
 });

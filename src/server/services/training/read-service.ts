@@ -4,7 +4,7 @@ import type {
   LoraTrainingTaskKind,
   LoraTrainingTaskStatus,
 } from "@/app/design-demos/data/lora-training-types";
-import { loadDesignDemoData } from "@/app/design-demos/data/load-demo-data";
+import { loadTrainingRouteData } from "@/app/training/load-training-route-data";
 import {
   getCharacterLoraWorkerQueueStatus,
   mapCharacterLoraPhase3Error,
@@ -23,7 +23,7 @@ export class TrainingReadServiceError extends Error {
 }
 
 async function loadTrainingSnapshot() {
-  const demoData = await loadDesignDemoData();
+  const demoData = await loadTrainingRouteData();
   return buildLoraTrainingDemoData(demoData);
 }
 
