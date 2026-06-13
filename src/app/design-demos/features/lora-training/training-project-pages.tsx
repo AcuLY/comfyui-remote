@@ -1618,7 +1618,9 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
   }));
   const [generationTaskDraft, setGenerationTaskDraft] = useState<{
     finalInput: string;
+    projectId: string;
     selectedReferenceTitles: string[];
+    sectionId: string;
     sectionTitle: string;
     supplementalPrompt: string;
     taskType: string;
@@ -1641,6 +1643,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     supplementalPrompt: DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT,
     taskType: "训练集图片生成",
   };
+  const visibleGenerationTaskDraft = generationTaskDraft?.projectId === activeProject.id && generationTaskDraft.sectionId === activeSection.id ? generationTaskDraft : null;
   const sectionTitle = activeSection.title;
   const selectedReferences = referenceSourceTree
     .flatMap((group) => group.items)
@@ -1698,7 +1701,9 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
   function handleQueueGenerationTask() {
     setGenerationTaskDraft({
       finalInput: finalInputText,
+      projectId: activeProject.id,
       selectedReferenceTitles,
+      sectionId: activeSection.id,
       sectionTitle,
       supplementalPrompt: generationForm.supplementalPrompt,
       taskType: generationForm.taskType,
@@ -1717,9 +1722,9 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
             tone="primary"
             icon={Play}
             onClick={handleQueueGenerationTask}
-            feedback={{ title: generationTaskDraft ? "生成任务草稿已更新" : "生成任务草稿已排队", detail: section.title }}
+            feedback={{ title: visibleGenerationTaskDraft ? "生成任务草稿已更新" : "生成任务草稿已排队", detail: section.title }}
           >
-            {generationTaskDraft ? "更新任务草稿" : "运行生成"}
+            {visibleGenerationTaskDraft ? "更新任务草稿" : "运行生成"}
           </Button>
         )}
       />
@@ -1741,14 +1746,14 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
           </div>
         </Panel>
       </div>
-      {generationTaskDraft ? (
+      {visibleGenerationTaskDraft ? (
         <Panel title="生成任务草稿" subtitle="页面内已记录本次生成请求，可继续调整引用和最终输入后更新。">
           <dl className={s.generationTaskDraft}>
-            <div><dt>任务类型</dt><dd>{generationTaskDraft.taskType}</dd></div>
-            <div><dt>小节</dt><dd>{generationTaskDraft.sectionTitle}</dd></div>
-            <div><dt>已选引用</dt><dd>{generationTaskDraft.selectedReferenceTitles.join("、") || "未添加引用"}</dd></div>
-            <div><dt>补充提示词</dt><dd>{generationTaskDraft.supplementalPrompt || "未填写"}</dd></div>
-            <div><dt>最终输入</dt><dd>{generationTaskDraft.finalInput.split("\n")[0]}</dd></div>
+            <div><dt>任务类型</dt><dd>{visibleGenerationTaskDraft.taskType}</dd></div>
+            <div><dt>小节</dt><dd>{visibleGenerationTaskDraft.sectionTitle}</dd></div>
+            <div><dt>已选引用</dt><dd>{visibleGenerationTaskDraft.selectedReferenceTitles.join("、") || "未添加引用"}</dd></div>
+            <div><dt>补充提示词</dt><dd>{visibleGenerationTaskDraft.supplementalPrompt || "未填写"}</dd></div>
+            <div><dt>最终输入</dt><dd>{visibleGenerationTaskDraft.finalInput.split("\n")[0]}</dd></div>
           </dl>
         </Panel>
       ) : null}

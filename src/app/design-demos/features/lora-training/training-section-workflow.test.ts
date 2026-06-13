@@ -307,6 +307,21 @@ test("generation compose saves editable task fields into final input and draft",
   assert.match(composePage, /supplementalPrompt:\s*generationForm\.supplementalPrompt/, "task draft should save the edited supplemental prompt");
 });
 
+test("generation compose task draft stays scoped to the active project section", () => {
+  const composePage = sourceBetween(
+    "export function LoraTrainingGenerationComposePage",
+    "export function LoraTrainingProjectResultsPage",
+  );
+
+  assert.match(composePage, /projectId:\s*string;/, "generation task draft should remember its project");
+  assert.match(composePage, /sectionId:\s*string;/, "generation task draft should remember its section");
+  assert.match(composePage, /visibleGenerationTaskDraft/, "compose page should derive a route-scoped visible draft");
+  assert.match(composePage, /generationTaskDraft\?\.projectId === activeProject\.id && generationTaskDraft\.sectionId === activeSection\.id \? generationTaskDraft : null/, "draft display should be gated by the active project and section");
+  assert.match(composePage, /projectId:\s*activeProject\.id/, "queue action should store the active project id");
+  assert.match(composePage, /sectionId:\s*activeSection\.id/, "queue action should store the active section id");
+  assert.doesNotMatch(composePage, /\{generationTaskDraft \? \(/, "compose page should not render a stale draft from another project section");
+});
+
 test("reference picker records explicitly added references in local front-end state", () => {
   const pickerSource = sourceBetween("function ReferencePicker", "export function LoraTrainingProjectFormPage");
 
