@@ -354,6 +354,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       summary: "图片 · 小节 舞台灯光",
       timestamp: "完成于 15:20",
       outputLabel: "输出 1 张图片",
+      inputImages: pickImages(images, 0, 2),
       outputResultIds: ["vela-neon-result-1"],
       provider: "gpt-image-2",
       finalInput: "项目 Vela Neon Jacket，引用角色资料和小节「舞台灯光」，生成 1 张干净可训练图片。",
@@ -384,6 +385,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       timestamp: "开始于 15:42",
       progress: 48,
       provider: "gpt-image-2",
+      inputImages: pickImages(images, 1, 2),
       finalInput: "雨后街角夜景，霓虹反射，角色站在街灯旁，保持正面可训练角度。",
     },
     {
@@ -410,6 +412,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       timestamp: "创建于 15:44",
       provider: "gpt-image-2",
       waitReason: "等待当前生成任务完成",
+      inputImages: pickImages(images, 8, 1),
       finalInput: "雨夜背光、黑色跑者外套、干净角色轮廓。",
     },
     {
@@ -423,6 +426,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       timestamp: "创建于 15:45",
       provider: "gpt-image-2",
       waitReason: "生成队列排队中",
+      inputImages: pickImages(images, 0, 1),
       finalInput: "白底棚拍、柔光、角色服装细节清楚。",
     },
     {
@@ -436,6 +440,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       timestamp: "失败于 13:12",
       errorMessage: "远端生成服务返回空输出，可以重试或调整引用图。",
       provider: "gpt-image-2",
+      inputImages: pickImages(images, 4, 1),
       finalInput: "根据 Azure Idol 的发饰参考生成局部细节图。",
     },
     {

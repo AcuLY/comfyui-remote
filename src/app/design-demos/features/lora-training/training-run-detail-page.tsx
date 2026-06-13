@@ -218,6 +218,7 @@ export function LoraTrainingRunDetailPage({
   const projectHref = `/training/projects/${currentRun.projectId}`;
   const datasetHref = currentRun.datasetRevisionId ? `${projectHref}/dataset/revisions/${currentRun.datasetRevisionId}` : `${projectHref}/dataset`;
   const datasetSamples = isGeneration ? [] : currentRun.datasetSamples ?? [];
+  const inputImages = isGeneration ? currentRun.inputImages ?? [] : [];
   const generationOutputResults = generationResultsForRun(currentRun, project, resultReviewState);
   const generationOutputSection = isGeneration ? generationOutputResults[0] ?? null : null;
   const generationSectionHref = generationOutputSection ? `${projectHref}/sections/${generationOutputSection.sectionId}` : null;
@@ -327,10 +328,10 @@ export function LoraTrainingRunDetailPage({
                 ))}
               </dl>
             ) : null}
-            {isGeneration && project ? (
-              <div className={s.referenceStrip}>
-                <strong>关联项目参考</strong>
-                <ImageListSmall images={project.images} limit={4} showCounts />
+            {isGeneration && inputImages.length > 0 ? (
+              <div className={s.inputAttachmentStrip}>
+                <strong>最终输入附件</strong>
+                <ImageListSmall images={inputImages} limit={4} showCounts />
               </div>
             ) : null}
           </div>

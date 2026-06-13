@@ -83,6 +83,15 @@ test("image generation detail header links back to its training section and sect
   assert.match(detailSource, />查看结果<\/ButtonLink>/, "generation detail should expose the result surface linked from the output");
 });
 
+test("image generation detail renders task input attachments instead of project reference images", () => {
+  assert.match(typesSource, /inputImages\?:\s*DemoImage\[\]/, "generation runs should expose the final input image attachments");
+  assert.match(fixtureSource, /inputImages:\s*pickImages\(images,\s*0,\s*2\)/, "completed image generation fixture should carry concrete task input images");
+  assert.match(detailSource, /currentRun\.inputImages/, "generation detail should read attachments from the run itself");
+  assert.match(detailSource, /最终输入附件/, "generation detail should label input images as final request attachments");
+  assert.doesNotMatch(detailSource, /project\.images/, "generation detail should not use broad project images as task input attachments");
+  assert.doesNotMatch(detailSource, /关联项目参考/, "generation detail should not describe task inputs as project reference provenance");
+});
+
 test("completed training run creates presets through the real training preset form route", () => {
   assert.match(detailSource, /function createTrainingPresetHref/, "run detail should build a concrete preset creation href");
   assert.match(detailSource, /\/training\/presets\/new/, "preset creation should navigate to the new training preset route");

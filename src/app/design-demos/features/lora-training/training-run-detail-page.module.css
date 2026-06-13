@@ -178,7 +178,7 @@
   gap: 12px;
 }
 
-.referenceStrip {
+.inputAttachmentStrip {
   display: grid;
   min-width: 0;
   gap: 8px;
@@ -188,7 +188,7 @@
   padding: 10px;
 }
 
-.referenceStrip strong {
+.inputAttachmentStrip strong {
   color: var(--demo-muted);
   font-size: 11px;
   font-weight: 620;
@@ -503,7 +503,7 @@
 
 @media (max-width: 639px) {
   .statusSurface,
-  .referenceStrip,
+  .inputAttachmentStrip,
   .callout,
   .retryDraftPanel,
   .configGrid div,
