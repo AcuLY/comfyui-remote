@@ -73,7 +73,9 @@ test("training project card body reuses the project-demo thumbnail stats", () =>
   const bodyRegion = itemSource.slice(bodyStart, itemSource.indexOf("className={s.projectMeta}", bodyStart));
 
   assert.match(bodyRegion, /ImageListSmall/, "Body should use the recent-result thumbnail strip");
+  assert.match(itemSource, /project\.resultPool/, "Recent-result thumbnails should come from the training project result pool");
   assert.match(bodyRegion, /showCounts/, "Thumbnail strip should expose the same lightweight image stats as the project demo");
+  assert.doesNotMatch(bodyRegion, /images=\{project\.images\}/, "Project profile/reference images should not be used as recent-result thumbnails");
   assert.doesNotMatch(bodyRegion, /datasetVersion|caption|readiness|latest/i, "Body should not reintroduce bespoke dataset summaries");
 });
 

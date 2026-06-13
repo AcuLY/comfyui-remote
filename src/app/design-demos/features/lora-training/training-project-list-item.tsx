@@ -70,6 +70,7 @@ export function TrainingProjectListItem({
 }) {
   const projectHref = demoHref(`/training/projects/${project.id}`);
   const sectionCountLabel = `${project.sectionCount} 小节`;
+  const recentResultImages = project.resultPool.map((result) => result.image);
   const { ref, style, handleProps } = useDemoSortable(project.id);
 
   return (
@@ -117,7 +118,7 @@ export function TrainingProjectListItem({
         body={(
           <>
             <Link aria-label={`打开训练项目最近结果：${project.title}`} className={s.projectRecentResults} href={projectHref}>
-              <ImageListSmall className={s.recentResultImages} images={project.images} limit={project.images.length} showCounts />
+              <ImageListSmall className={s.recentResultImages} images={recentResultImages} limit={recentResultImages.length} showCounts />
             </Link>
             <div className={s.projectMeta}>
               <span className={s.projectMetaText}>更新：{project.updatedAt}</span>
