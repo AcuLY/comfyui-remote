@@ -1028,11 +1028,38 @@ function datasetRevisionHeader(spec: HeaderSpec, project: LoraTrainingProject, r
   };
 }
 
+function projectMissingNestedHeader(spec: HeaderSpec, project: LoraTrainingProject, label: string, back: HeaderSpec["back"]) {
+  return {
+    ...projectHeaderBase(spec, project, `${project.title} / ${label}`),
+    actions: undefined,
+    back,
+    meta: undefined,
+  };
+}
+
 function missingLoraTrainingProjectHeader(spec: HeaderSpec) {
   return {
     ...spec,
     actions: undefined,
     back: { href: "/training/projects", label: "返回训练项目" },
+    meta: undefined,
+  };
+}
+
+function missingLoraTrainingRunHeader(spec: HeaderSpec) {
+  return {
+    ...spec,
+    actions: undefined,
+    back: { href: "/training/runs", label: "返回运行" },
+    meta: undefined,
+  };
+}
+
+function missingLoraTrainingTemplateSectionHeader(spec: HeaderSpec) {
+  return {
+    ...spec,
+    actions: undefined,
+    back: { href: "/training/templates", label: "返回训练模板" },
     meta: undefined,
   };
 }
@@ -1054,7 +1081,9 @@ function loraTrainingProjectHeader(data: DemoData, spec: HeaderSpec, matched: Re
 
   if (matched.key === "training-project-section-detail") {
     const sectionItem = findLoraTrainingSection(project, matched.params.sectionId);
-    return sectionItem ? sectionDetailHeader(spec, project, sectionItem) : projectHeaderBase(spec, project);
+    return sectionItem
+      ? sectionDetailHeader(spec, project, sectionItem)
+      : projectMissingNestedHeader(spec, project, "小节详情", { href: `${projectHref}/sections`, label: "返回小节" });
   }
 
   if (matched.key === "training-project-profile") {
@@ -1075,7 +1104,9 @@ function loraTrainingProjectHeader(data: DemoData, spec: HeaderSpec, matched: Re
 
   if (matched.key === "training-generation-compose") {
     const sectionItem = findLoraTrainingSection(project, matched.params.sectionId);
-    if (!sectionItem) return projectHeaderBase(spec, project);
+    if (!sectionItem) {
+      return projectMissingNestedHeader(spec, project, "新建生成任务", { href: `${projectHref}/sections`, label: "返回小节" });
+    }
     return {
       ...projectHeaderBase(spec, project, `${sectionItem.title} / 新建生成任务`),
       back: { href: `${projectHref}/sections/${sectionItem.id}`, label: "返回小节" },
@@ -1085,7 +1116,9 @@ function loraTrainingProjectHeader(data: DemoData, spec: HeaderSpec, matched: Re
 
   if (matched.key === "training-project-dataset-revision") {
     const revision = findLoraTrainingDatasetRevision(project, matched.params.revisionId);
-    return revision ? datasetRevisionHeader(spec, project, revision) : projectHeaderBase(spec, project);
+    return revision
+      ? datasetRevisionHeader(spec, project, revision)
+      : projectMissingNestedHeader(spec, project, "数据集版本", { href: `${projectHref}/dataset`, label: "返回数据集" });
   }
 
   if (matched.key === "training-project-training-runs") {
@@ -1109,7 +1142,7 @@ function loraTrainingProjectHeader(data: DemoData, spec: HeaderSpec, matched: Re
 function loraTrainingRunDetailHeader(data: DemoData, spec: HeaderSpec, matched: ReturnType<typeof matchRoute>) {
   if (matched.key === "training-generation-run-detail") {
     const run = findLoraTrainingRun(data, "generation", matched.params.taskId);
-    if (!run) return spec;
+    if (!run) return missingLoraTrainingRunHeader(spec);
     return {
       ...spec,
       actions: [headerAction("项目详情", ExternalLink, "default", trainingProjectHref(run))],
@@ -1119,7 +1152,7 @@ function loraTrainingRunDetailHeader(data: DemoData, spec: HeaderSpec, matched: 
 
   if (matched.key === "training-training-run-detail") {
     const run = findLoraTrainingRun(data, "training", matched.params.trainingRunId);
-    if (!run) return spec;
+    if (!run) return missingLoraTrainingRunHeader(spec);
     const actions = [headerAction("数据集版本", History, "default", trainingDatasetHref(run))];
     if (canCreateTrainingPreset(run)) {
       actions.push(headerAction("创建预制", Plus, "primary", trainingPresetHref(run)));
@@ -1147,7 +1180,7 @@ function loraTrainingResourceHeader(data: DemoData, spec: HeaderSpec, matched: R
 
   if (matched.key === "training-template-section") {
     const template = findLoraTrainingTemplate(data, matched.params.templateId);
-    if (!template) return spec;
+    if (!template) return missingLoraTrainingTemplateSectionHeader(spec);
     const sectionItem = findLoraTrainingTemplateSection(template, matched.params.sectionIndex);
     return sectionItem ? loraTrainingTemplateSectionHeader(spec, template, sectionItem) : loraTrainingTemplateSectionFallbackHeader(spec, template);
   }

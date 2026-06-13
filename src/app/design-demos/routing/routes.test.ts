@@ -203,6 +203,42 @@ test("LoRA training run route headers use the matched run context", () => {
   assert.equal(lunaGeneration.actions?.[0]?.href, "/training/projects/luna-editorial");
 });
 
+test("LoRA training headers do not keep sample actions or backs for invalid nested ids", () => {
+  const data = fallbackData(null);
+
+  const missingGenerationRun = findHeaderSpecForRoute(data, "/training/runs/generation/missing-task");
+  assert.ok(missingGenerationRun, "invalid generation run should still resolve a generic header spec");
+  assert.equal(missingGenerationRun.title, "生成任务详情");
+  assert.equal(missingGenerationRun.back?.href, "/training/runs");
+  assert.equal(missingGenerationRun.actions, undefined);
+
+  const missingTrainingRun = findHeaderSpecForRoute(data, "/training/runs/training/missing-run");
+  assert.ok(missingTrainingRun, "invalid training run should still resolve a generic header spec");
+  assert.equal(missingTrainingRun.title, "训练任务详情");
+  assert.equal(missingTrainingRun.back?.href, "/training/runs");
+  assert.equal(missingTrainingRun.actions, undefined);
+
+  const missingProjectSection = findHeaderSpecForRoute(data, "/training/projects/azure-idol/sections/missing-section");
+  assert.ok(missingProjectSection, "invalid project section should still resolve a project header");
+  assert.equal(missingProjectSection.title, "Azure Idol / 小节详情");
+  assert.equal(missingProjectSection.back?.href, "/training/projects/azure-idol/sections");
+  assert.equal(missingProjectSection.actions, undefined);
+  assert.notEqual(missingProjectSection.actions?.[0]?.href, "/training/projects/vela-neon/sections/stage-light/generation-tasks/new");
+
+  const missingDatasetRevision = findHeaderSpecForRoute(data, "/training/projects/azure-idol/dataset/revisions/missing-revision");
+  assert.ok(missingDatasetRevision, "invalid dataset revision should still resolve a project header");
+  assert.equal(missingDatasetRevision.title, "Azure Idol / 数据集版本");
+  assert.equal(missingDatasetRevision.back?.href, "/training/projects/azure-idol/dataset");
+  assert.equal(missingDatasetRevision.actions, undefined);
+
+  const missingTemplateSection = findHeaderSpecForRoute(data, "/training/templates/missing-template/sections/0");
+  assert.ok(missingTemplateSection, "invalid template section route should still resolve a generic header spec");
+  assert.equal(missingTemplateSection.title, "模板小节");
+  assert.equal(missingTemplateSection.back?.href, "/training/templates");
+  assert.equal(missingTemplateSection.actions, undefined);
+  assert.notEqual(missingTemplateSection.back?.href, "/training/templates/character-lora-base/edit");
+});
+
 test("LoRA training project route headers use the matched project context", () => {
   const data = fallbackData(null);
 
