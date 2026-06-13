@@ -1,9 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
 import { listTrainingProjects, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
-  createCharacterLoraTrainingProject,
-  mapCharacterLoraTrainingJobError,
-} from "@/server/services/character-lora-training/job-service";
+  createManagedTrainingProject,
+  mapTrainingProjectError,
+} from "@/server/services/training/project-service";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +30,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const data = await createCharacterLoraTrainingProject(body);
+    const data = await createManagedTrainingProject(body);
     return ok(data, { status: 201 });
   } catch (error) {
-    const mapped = mapCharacterLoraTrainingJobError(error);
+    const mapped = mapTrainingProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

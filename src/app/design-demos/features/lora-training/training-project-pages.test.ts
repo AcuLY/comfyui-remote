@@ -957,8 +957,13 @@ test("training project create page posts through the formal HTTP API on producti
   assert.match(formSource, /usePathname/, "project creation should detect whether it is running under production \\/training routes");
   assert.match(formSource, /fetch\("\/api\/training\/projects"/, "production project creation should call the formal training projects API");
   assert.match(formSource, /method:\s*"POST"/, "production project creation should create projects through POST");
+  assert.match(formSource, /title:\s*projectForm\.title\.trim\(\)/, "production project creation should submit the product title");
+  assert.match(formSource, /templateId:\s*sourceTemplate\.id/, "production project creation should submit the selected template id in product payload");
   assert.match(formSource, /trainingTemplateId:\s*sourceTemplate\.id/, "production project creation should pass the selected training template id");
   assert.match(formSource, /checkpointRelativePath/, "production project creation should send a checkpoint path instead of a demo-only model label");
+  assert.match(formSource, /selectedReferenceIds:\s*\[\.\.\.selectedReferenceIds\]/, "production project creation should submit explicitly selected reference ids");
+  assert.match(formSource, /sections:\s*sectionSeeds/, "production project creation should submit the current seed sections");
+  assert.match(formSource, /trainingDefaults:\s*\{/, "production project creation should submit dataset and sample defaults");
   assert.match(formSource, /router\.push\(`/, "production project creation should navigate to the created training project");
   assert.match(formSource, /pushToast/, "production project creation should surface API success or failure through the shared feedback system");
 });

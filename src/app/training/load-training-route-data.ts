@@ -31,6 +31,7 @@ import { listCharacterLoraSourceImages } from "@/server/services/character-lora-
 import { listCharacterLoraTrainingRuns } from "@/server/services/character-lora-training/training-service";
 import { listTrainingSceneDescriptionPresets } from "@/server/services/training/preset-service";
 import { listManagedTrainingTemplates } from "@/server/services/training/template-service";
+import { listManagedTrainingProjects } from "@/server/services/training/project-service";
 import {
   listTrainingProjectSectionCollections,
   listTrainingProjectSectionOverrides,
@@ -266,7 +267,15 @@ function applyTrainingProjectSectionOverrides(
 
 async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTrainingDemoData | null> {
   const jobs = await listCharacterLoraTrainingJobs({ page: 1, pageSize: 20 });
-  if (!jobs.jobs.length) return null;
+  const managedProjects = await listManagedTrainingProjects().catch(() => []);
+  if (!jobs.jobs.length) {
+    return managedProjects.length
+      ? {
+        ...buildLoraTrainingDemoData(baseData),
+        projects: managedProjects,
+      }
+      : null;
+  }
 
   const baseTraining = buildLoraTrainingDemoData(baseData);
   const [managedTemplates, realPresets, sectionCollections, sectionOverrides] = await Promise.all([
@@ -415,8 +424,13 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
     return [...generationRuns, ...mappedTrainingRuns];
   }));
 
+  const managedProjectIds = new Set(managedProjects.map((project) => project.id));
+
   return applyTrainingProjectSectionOverrides({
-    projects,
+    projects: [
+      ...managedProjects,
+      ...projects.filter((project) => !managedProjectIds.has(project.id)),
+    ],
     runs: runsByProject.flat().sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))),
     presets: realPresets.length ? realPresets : baseTraining.presets,
     templates: managedTemplates.length ? managedTemplates : baseTraining.templates,
@@ -430,13 +444,19 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
   try {
     const loraTraining = await mapRealTrainingProjects(baseData);
     if (!loraTraining) {
-      const [fallbackPresets, sectionCollections, sectionOverrides] = await Promise.all([
+      const [managedProjects, fallbackPresets, sectionCollections, sectionOverrides] = await Promise.all([
+        listManagedTrainingProjects().catch(() => []),
         listTrainingSceneDescriptionPresets().catch(() => baseTraining.presets),
         listTrainingProjectSectionCollections().catch(() => ({})),
         listTrainingProjectSectionOverrides().catch(() => ({})),
       ]);
+      const managedProjectIds = new Set(managedProjects.map((project) => project.id));
       const mergedTraining = applyTrainingProjectSectionOverrides({
         ...baseTraining,
+        projects: [
+          ...managedProjects,
+          ...baseTraining.projects.filter((project) => !managedProjectIds.has(project.id)),
+        ],
         presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
       }, sectionCollections, sectionOverrides);
       return {
@@ -459,13 +479,19 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
       },
     };
   } catch {
-    const [fallbackPresets, sectionCollections, sectionOverrides] = await Promise.all([
+    const [managedProjects, fallbackPresets, sectionCollections, sectionOverrides] = await Promise.all([
+      listManagedTrainingProjects().catch(() => []),
       listTrainingSceneDescriptionPresets().catch(() => baseTraining.presets),
       listTrainingProjectSectionCollections().catch(() => ({})),
       listTrainingProjectSectionOverrides().catch(() => ({})),
     ]);
+    const managedProjectIds = new Set(managedProjects.map((project) => project.id));
     const mergedTraining = applyTrainingProjectSectionOverrides({
       ...baseTraining,
+      projects: [
+        ...managedProjects,
+        ...baseTraining.projects.filter((project) => !managedProjectIds.has(project.id)),
+      ],
       presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
     }, sectionCollections, sectionOverrides);
     return {

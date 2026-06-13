@@ -11,7 +11,7 @@ async function listProjects() {
   assert.ok(Array.isArray(payload.data));
   assert.ok(payload.data.length > 0);
 
-  return payload.data as Array<{ id: string }>;
+  return payload.data as Array<{ id: string; sectionCount?: number; imageCount?: number }>;
 }
 
 test("GET /api/training/projects lists training projects", async () => {
@@ -44,7 +44,7 @@ test("GET project-scoped training resources expose sections, results, dataset re
   const trainingRunsRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
   const generationTasksRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
   const projects = await listProjects();
-  const projectId = projects[0].id;
+  const projectId = (projects.find((project) => (project.sectionCount ?? 0) > 0 && (project.imageCount ?? 0) > 0) ?? projects[0]).id;
 
   const params = { params: Promise.resolve({ projectId }) };
   const [sectionsResponse, resultsResponse, revisionsResponse, trainingRunsResponse, generationTasksResponse] = await Promise.all([
@@ -565,6 +565,74 @@ test("training template routes create, update, read, and delete templates throug
 
   assert.equal(deleteResponse.status, 200);
   assert.equal(deletePayload.ok, true);
+});
+
+test("training project route creates a project from the product payload through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const beforeResponse = await projectsRoute.GET(new Request("http://localhost/api/training/projects"));
+  const beforePayload = await beforeResponse.json();
+  const beforeIds = new Set((beforePayload.data as Array<{ id: string }>).map((project) => project.id));
+  const title = `测试训练项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_training_project_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        baseModel: "继承训练默认模型",
+        captionStrategy: "先触发词后描述",
+        usagePrompt: "测试角色触发词",
+        detailPrompt: "测试角色细节描述",
+        perSectionImageCount: "4",
+        trainingSteps: "2400",
+        selectedReferenceIds: [],
+        sections: [
+          {
+            id: "seed-1",
+            title: "新小节 1",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "block-1",
+                source: "本地",
+                title: "本地场景描述",
+                text: "测试场景描述",
+              },
+            ],
+            resolvedScene: "测试场景描述",
+            scenePreview: "测试场景描述",
+          },
+        ],
+        trainingDefaults: {
+          autoGenerateSamples: true,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  assert.equal(createPayload.data.title, title);
+  assert.equal(createPayload.data.sections.length, 1);
+  assert.equal(createPayload.data.sections[0].title, "新小节 1");
+
+  const afterResponse = await projectsRoute.GET(new Request("http://localhost/api/training/projects"));
+  const afterPayload = await afterResponse.json();
+  const afterProjects = afterPayload.data as Array<{ id: string; title: string }>;
+
+  assert.equal(afterResponse.status, 200);
+  assert.equal(afterPayload.ok, true);
+  assert.ok(afterProjects.some((project) => project.id === createPayload.data.id && project.title === title));
+  assert.ok(!beforeIds.has(createPayload.data.id));
 });
 
 test("GET /api/training/scheduler/status exposes a training scheduler snapshot", async () => {
