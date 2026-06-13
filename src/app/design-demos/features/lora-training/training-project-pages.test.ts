@@ -315,6 +315,32 @@ test("training result review actions update local front-end review state", () =>
   assert.match(sectionDetailSource, /onReviewStatusChange=\{handleReviewSectionResult\}/, "section detail result grid should be wired to a review handler");
 });
 
+test("training result review posts through the formal HTTP API on production routes", () => {
+  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
+  const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
+  const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  assert.notEqual(sectionDetailStart, -1);
+  assert.notEqual(composeStart, -1);
+  assert.notEqual(resultsPageStart, -1);
+  assert.notEqual(datasetPageStart, -1);
+
+  const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
+  const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
+
+  assert.match(sectionDetailSource, /usePathname/, "section detail review should detect whether it is running under production \\/training routes");
+  assert.match(sectionDetailSource, /fetch\(`\/api\/training\/image-results\/\$\{resultId\}\/review`/, "section detail review should call the formal training image review API");
+  assert.match(sectionDetailSource, /method:\s*"POST"/, "section detail review should post review decisions");
+  assert.match(sectionDetailSource, /reviewStatus === "kept" \? "keep" : "reject"|toTrainingImageReviewApiStatus\(reviewStatus\)/, "section detail review should map UI review states to the HTTP contract");
+  assert.match(sectionDetailSource, /pushToast/, "section detail review should surface API success or failure through the shared feedback system");
+
+  assert.match(resultsPageSource, /usePathname/, "project result review should detect whether it is running under production \\/training routes");
+  assert.match(resultsPageSource, /fetch\(`\/api\/training\/image-results\/\$\{resultId\}\/review`/, "project result review should call the formal training image review API");
+  assert.match(resultsPageSource, /reviewStatus === "kept" \? "keep" : "reject"|toTrainingImageReviewApiStatus\(reviewStatus\)/, "project result review should map UI review states to the HTTP contract");
+  assert.match(resultsPageSource, /handleBatchReviewResults/, "project result review should keep the shared batch review entrypoint");
+  assert.match(resultsPageSource, /pushToast/, "project result review should surface API success or failure through the shared feedback system");
+});
+
 test("training project repeated object actions include the acted-on object name", () => {
   const gridStart = pagesSource.indexOf("function TrainingResultGrid");
   const runRowsStart = pagesSource.indexOf("function runPreviewImages");

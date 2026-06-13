@@ -177,9 +177,23 @@ function readNewProjectTemplateHints(search: string): NewProjectTemplateHints {
   };
 }
 
+function isProductionTrainingPath(pathname: string | null | undefined) {
+  return pathname === "/training" || pathname?.startsWith("/training/") === true;
+}
+
 function buildTrainingProjectTriggerToken(title: string) {
   const normalized = title.trim().replace(/\s+/g, "_");
   return normalized || "training_project";
+}
+
+function toTrainingImageReviewApiStatus(reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+  if (reviewStatus === "kept") return "keep";
+  if (reviewStatus === "rejected") return "reject";
+  return "pending";
+}
+
+function reviewResultToastTitle(reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+  return reviewStatus === "kept" ? "图片已保留" : reviewStatus === "rejected" ? "图片已拒绝" : "图片已标记为待审核";
 }
 
 function ProjectNav({ active, project }: { active: (typeof PROJECT_TABS)[number]["key"]; project: LoraTrainingProject }) {
@@ -324,8 +338,8 @@ function TrainingResultGrid({
           onPrevious={activeResultIndex >= 0 ? () => moveActiveResult(-1) : undefined}
           actions={(
             <>
-              <Button icon={Check} ariaLabel={`保留训练结果：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange?.(activeResult.id, "kept")} feedback={{ title: "图片已保留", detail: activeResult.sourceLabel }}>保留</Button>
-              <Button tone="danger" icon={Trash2} ariaLabel={`拒绝训练结果：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange?.(activeResult.id, "rejected")} feedback={{ tone: "warning", title: "图片已拒绝", detail: activeResult.sourceLabel }}>拒绝</Button>
+              <Button icon={Check} ariaLabel={`保留训练结果：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange?.(activeResult.id, "kept")}>保留</Button>
+              <Button tone="danger" icon={Trash2} ariaLabel={`拒绝训练结果：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange?.(activeResult.id, "rejected")}>拒绝</Button>
             </>
           )}
         />
@@ -1598,6 +1612,8 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
 }
 
 export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionId }: { data: DemoData; projectId?: string; sectionId?: string }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
   const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
@@ -1615,6 +1631,8 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   const [presetImportOpen, setPresetImportOpen] = useState(false);
   const [selectedTrainingPresetId, setSelectedTrainingPresetId] = useState<string | null>(null);
   const [sectionDraftsByKey, setSectionDraftsByKey] = useState<Record<string, ProjectSectionDraftState>>({});
+  const [isReviewingSectionResult, setIsReviewingSectionResult] = useState(false);
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   if (!project || !section) return <EmptyPage title="没有训练小节详情" />;
 
   const activeProject = project;
@@ -1689,13 +1707,65 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     updateSceneBlocks((current) => current.filter((block) => block.id !== blockId));
   }
 
-  function handleReviewSectionResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
-    setSectionResultsByProjectKey((current) => ({
-      ...current,
-      [activeProject.id]: (current[activeProject.id] ?? activeProject.resultPool).map((result) =>
-        result.id === resultId ? { ...result, reviewStatus } : result,
-      ),
-    }));
+  async function handleReviewSectionResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+    const reviewedResult = sectionResults.find((result) => result.id === resultId);
+
+    const applyLocalReview = () => {
+      setSectionResultsByProjectKey((current) => ({
+        ...current,
+        [activeProject.id]: (current[activeProject.id] ?? activeProject.resultPool).map((result) =>
+          result.id === resultId ? { ...result, reviewStatus } : result,
+        ),
+      }));
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalReview();
+      pushToast({
+        tone: reviewStatus === "kept" ? "success" : "warning",
+        title: reviewResultToastTitle(reviewStatus),
+        detail: reviewedResult?.sourceLabel ?? activeSection.title,
+      });
+      return;
+    }
+
+    if (isReviewingSectionResult) return;
+
+    setIsReviewingSectionResult(true);
+    try {
+      const response = await fetch(`/api/training/image-results/${resultId}/review`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          reviewStatus: toTrainingImageReviewApiStatus(reviewStatus),
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "结果审核失败",
+          detail: payload?.error?.message ?? "训练结果审核请求失败",
+        });
+        return;
+      }
+
+      applyLocalReview();
+      pushToast({
+        tone: reviewStatus === "kept" ? "success" : "warning",
+        title: reviewResultToastTitle(reviewStatus),
+        detail: reviewedResult?.sourceLabel ?? activeSection.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "结果审核失败",
+        detail: error instanceof Error ? error.message : "训练结果审核请求失败",
+      });
+    } finally {
+      setIsReviewingSectionResult(false);
+    }
   }
 
   function handleSaveSection() {
@@ -2151,6 +2221,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
 }
 
 export function LoraTrainingProjectResultsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const project = findProject(data, projectId);
   const [resultInteractionState, setResultInteractionState] = useState(() => ({
     filter: "all" as TrainingResultFilter,
@@ -2161,6 +2233,8 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
     projectId: project?.id ?? null,
     results: project?.resultPool ?? [],
   }));
+  const [isReviewingResults, setIsReviewingResults] = useState(false);
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const localResults = resultState.projectId === project?.id ? resultState.results : project?.resultPool ?? [];
   if (!project) return <EmptyPage title="没有训练结果池数据" />;
   const activeProject = project;
@@ -2212,15 +2286,81 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
     }));
   }
 
-  function handleReviewResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+  function applyReviewedResults(reviewIds: Set<string>, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
     updateLocalResults((current) => current.map((result) =>
-      result.id === resultId ? { ...result, reviewStatus } : result,
+      reviewIds.has(result.id) ? { ...result, reviewStatus } : result,
     ));
-    updateResultSelection((current) => {
-      const next = new Set(current);
-      next.delete(resultId);
-      return next;
-    });
+    updateResultSelection((current) => new Set([...current].filter((resultId) => !reviewIds.has(resultId))));
+  }
+
+  async function persistReviewedResults(resultIds: string[], reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+    if (!resultIds.length) return;
+
+    const reviewedResults = localResults.filter((result) => resultIds.includes(result.id));
+    const reviewedResultTitles = reviewedResults.map((result) => result.sourceLabel);
+
+    if (!isProductionTrainingRoute) {
+      applyReviewedResults(new Set(resultIds), reviewStatus);
+      pushToast({
+        tone: reviewStatus === "kept" ? "success" : "warning",
+        title: reviewResultToastTitle(reviewStatus),
+        detail: resultIds.length === 1 ? (reviewedResultTitles[0] ?? activeProject.title) : `${resultIds.length} 张训练结果`,
+      });
+      return;
+    }
+
+    if (isReviewingResults) return;
+
+    setIsReviewingResults(true);
+    const completedIds = new Set<string>();
+    try {
+      for (const resultId of resultIds) {
+        const response = await fetch(`/api/training/image-results/${resultId}/review`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            reviewStatus: toTrainingImageReviewApiStatus(reviewStatus),
+          }),
+        });
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok || !payload?.ok) {
+          if (completedIds.size > 0) {
+            applyReviewedResults(completedIds, reviewStatus);
+          }
+          pushToast({
+            tone: "error",
+            title: "结果审核失败",
+            detail: payload?.error?.message ?? "训练结果审核请求失败",
+          });
+          return;
+        }
+
+        completedIds.add(resultId);
+      }
+
+      applyReviewedResults(completedIds, reviewStatus);
+      pushToast({
+        tone: reviewStatus === "kept" ? "success" : "warning",
+        title: reviewResultToastTitle(reviewStatus),
+        detail: completedIds.size === 1 ? (reviewedResultTitles[0] ?? activeProject.title) : `${completedIds.size} 张训练结果`,
+      });
+    } catch (error) {
+      if (completedIds.size > 0) {
+        applyReviewedResults(completedIds, reviewStatus);
+      }
+      pushToast({
+        tone: "error",
+        title: "结果审核失败",
+        detail: error instanceof Error ? error.message : "训练结果审核请求失败",
+      });
+    } finally {
+      setIsReviewingResults(false);
+    }
+  }
+
+  function handleReviewResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+    void persistReviewedResults([resultId], reviewStatus);
   }
 
   function toggleResultSelection(resultId: string) {
@@ -2244,11 +2384,7 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
   }
 
   function handleBatchReviewResults(reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
-    const selectedIds = new Set(selectedVisibleResultIds);
-    updateLocalResults((current) => current.map((result) =>
-      selectedIds.has(result.id) ? { ...result, reviewStatus } : result,
-    ));
-    updateResultSelection((current) => new Set([...current].filter((resultId) => !selectedIds.has(resultId))));
+    void persistReviewedResults([...selectedVisibleResultIds], reviewStatus);
   }
 
   return (
@@ -2274,10 +2410,10 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
               onClear={() => updateResultSelection(() => new Set())}
               actions={(
                 <>
-                  <Button icon={Check} tone="primary" onClick={() => handleBatchReviewResults("kept")} feedback={{ title: "已保留所选图片", detail: `${selectedVisibleCount} 张训练结果` }}>
+                  <Button icon={Check} tone="primary" onClick={() => handleBatchReviewResults("kept")}>
                     批量保留
                   </Button>
-                  <Button icon={Trash2} tone="danger" onClick={() => handleBatchReviewResults("rejected")} feedback={{ tone: "warning", title: "已拒绝所选图片", detail: `${selectedVisibleCount} 张训练结果` }}>
+                  <Button icon={Trash2} tone="danger" onClick={() => handleBatchReviewResults("rejected")}>
                     批量拒绝
                   </Button>
                 </>

@@ -128,6 +128,14 @@ test("completed image generation detail renders result thumbnails with review ac
   assert.match(detailCss, /\.generationOutputCaption\b/, "generation output captions should be compact text below thumbnails");
 });
 
+test("completed image generation detail reviews outputs through the formal HTTP API on production routes", () => {
+  assert.match(detailSource, /usePathname/, "generation output review should detect whether it is running under production \\/training routes");
+  assert.match(detailSource, /fetch\(`\/api\/training\/image-results\/\$\{resultId\}\/review`/, "generation output review should call the formal training image review API");
+  assert.match(detailSource, /method:\s*"POST"/, "generation output review should post review decisions");
+  assert.match(detailSource, /reviewStatus === "kept" \? "keep" : "reject"|toTrainingImageReviewApiStatus\(reviewStatus\)/, "generation output review should map UI review states to the HTTP contract");
+  assert.match(detailSource, /pushToast/, "generation output review should surface API success or failure through the shared feedback system");
+});
+
 test("image generation detail prioritizes output before final input", () => {
   const detailGridStart = detailSource.indexOf(`<div className={s.detailGrid}>`);
   const evidenceGridStart = detailSource.indexOf(`<div className={s.trainingEvidenceGrid}>`, detailGridStart);

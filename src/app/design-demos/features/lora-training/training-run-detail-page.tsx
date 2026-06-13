@@ -1,9 +1,11 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { AlertTriangle, Check, CheckCircle2, Clock3, Copy, ExternalLink, FileText, History, ImageIcon, ImagePlus, Play, RotateCcw, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
+import { useDemoFeedback } from "../../shared/feedback/context";
 import { ImagePreviewFrame } from "../../shared/media/image-preview-frame";
 import { ImagePreviewLarge } from "../../shared/media/image-preview-large";
 import { ImageListSmall } from "../../shared/media/image-list-small";
@@ -38,6 +40,10 @@ type CopiedCaptionState = {
   sampleId: string;
 };
 
+function isProductionTrainingPath(pathname: string | null | undefined) {
+  return pathname === "/training" || pathname?.startsWith("/training/") === true;
+}
+
 function runStatusBadge(run: LoraTrainingRun) {
   if (run.status === "completed") return <StatusBadge status="done" label="已完成" />;
   if (run.status === "running") return <StatusBadge status="running" label="进行中" />;
@@ -55,6 +61,14 @@ function reviewStatusTone(status: LoraTrainingReviewStatus) {
   if (status === "kept") return "ready";
   if (status === "rejected") return "failed";
   return "pending";
+}
+
+function toTrainingImageReviewApiStatus(reviewStatus: LoraTrainingReviewStatus) {
+  return reviewStatus === "kept" ? "keep" : reviewStatus === "rejected" ? "reject" : "pending";
+}
+
+function reviewResultToastTitle(reviewStatus: LoraTrainingReviewStatus) {
+  return reviewStatus === "kept" ? "图片已保留" : reviewStatus === "rejected" ? "图片已拒绝" : "图片已标记为待审核";
 }
 
 function findRun(data: DemoData, kind: LoraTrainingTaskKind, runId: string | undefined) {
@@ -199,10 +213,10 @@ function GenerationOutputGrid({
           onPrevious={activeResultIndex >= 0 ? () => moveActiveResult(-1) : undefined}
           actions={(
             <>
-              <Button icon={Check} ariaLabel={`保留生成输出：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange(activeResult.id, "kept")} feedback={{ title: "图片已保留", detail: activeResult.sourceLabel }}>
+              <Button icon={Check} ariaLabel={`保留生成输出：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange(activeResult.id, "kept")}>
                 保留
               </Button>
-              <Button tone="danger" icon={Trash2} ariaLabel={`拒绝生成输出：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange(activeResult.id, "rejected")} feedback={{ tone: "warning", title: "图片已拒绝", detail: activeResult.sourceLabel }}>
+              <Button tone="danger" icon={Trash2} ariaLabel={`拒绝生成输出：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange(activeResult.id, "rejected")}>
                 拒绝
               </Button>
             </>
@@ -222,11 +236,14 @@ export function LoraTrainingRunDetailPage({
   kind: LoraTrainingTaskKind;
   runId?: string;
 }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const [activeSampleState, setActiveSampleState] = useState<ActiveSampleState | null>(null);
   const [activeGenerationResultId, setActiveGenerationResultId] = useState<string | null>(null);
   const [copiedCaption, setCopiedCaption] = useState<CopiedCaptionState | null>(null);
   const [resultReviewState, setResultReviewState] = useState<Record<string, LoraTrainingReviewStatus>>({});
   const [retryDraft, setRetryDraft] = useState<RetryDraft | null>(null);
+  const [isReviewingGenerationOutput, setIsReviewingGenerationOutput] = useState(false);
   const training = buildLoraTrainingDemoData(data);
   const run = findRun(data, kind, runId);
   const project = run ? training.projects.find((item) => item.id === run.projectId) : undefined;
@@ -250,6 +267,7 @@ export function LoraTrainingRunDetailPage({
   const isActiveCaptionCopied = activeSample ? copiedCaption?.runId === currentRun.id && copiedCaption?.sampleId === activeSample.id : false;
   const canCreatePreset = !isGeneration && currentRun.status === "completed" && Boolean(currentRun.finalLoraArtifactId) && !currentRun.presetCreatedAt;
   const logText = currentRun.trainingLogLines?.length ? currentRun.trainingLogLines.join("\n") : "尚未创建训练日志";
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   function handleCopyActiveCaption() {
     if (!activeSample) return;
@@ -277,8 +295,60 @@ export function LoraTrainingRunDetailPage({
     });
   }
 
-  function handleReviewGenerationOutput(resultId: string, status: LoraTrainingReviewStatus) {
-    setResultReviewState((current) => ({ ...current, [resultId]: status }));
+  async function handleReviewGenerationOutput(resultId: string, reviewStatus: LoraTrainingReviewStatus) {
+    const reviewedResult = generationOutputResults.find((result) => result.id === resultId);
+
+    const applyLocalReview = () => {
+      setResultReviewState((current) => ({ ...current, [resultId]: reviewStatus }));
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalReview();
+      pushToast({
+        tone: reviewStatus === "kept" ? "success" : "warning",
+        title: reviewResultToastTitle(reviewStatus),
+        detail: reviewedResult?.sourceLabel ?? currentRun.title,
+      });
+      return;
+    }
+
+    if (isReviewingGenerationOutput) return;
+
+    setIsReviewingGenerationOutput(true);
+    try {
+      const response = await fetch(`/api/training/image-results/${resultId}/review`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          reviewStatus: toTrainingImageReviewApiStatus(reviewStatus),
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "结果审核失败",
+          detail: payload?.error?.message ?? "训练结果审核请求失败",
+        });
+        return;
+      }
+
+      applyLocalReview();
+      pushToast({
+        tone: reviewStatus === "kept" ? "success" : "warning",
+        title: reviewResultToastTitle(reviewStatus),
+        detail: reviewedResult?.sourceLabel ?? currentRun.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "结果审核失败",
+        detail: error instanceof Error ? error.message : "训练结果审核请求失败",
+      });
+    } finally {
+      setIsReviewingGenerationOutput(false);
+    }
   }
 
   return (
