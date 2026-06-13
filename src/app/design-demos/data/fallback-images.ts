@@ -4,6 +4,7 @@ import path from "node:path";
 import { toImageUrl } from "@/lib/image-url";
 
 import type { DemoImage } from "./types";
+import { isRenderableLocalImageFile } from "./local-image-files";
 
 export function fallbackImages(): DemoImage[] {
   const imageRoot = path.resolve(
@@ -26,13 +27,8 @@ export function fallbackImages(): DemoImage[] {
       if (entry.isDirectory()) {
         walk(fullPath);
       } else if (/\.(png|jpe?g|webp|gif)$/i.test(entry.name)) {
-        try {
-          const fileStat = fs.statSync(/* turbopackIgnore: true */ fullPath);
-          if (fileStat.isFile() && fileStat.size > 0) {
-            files.push(fullPath);
-          }
-        } catch {
-          // Ignore files that disappear during local preview scans.
+        if (isRenderableLocalImageFile(fullPath)) {
+          files.push(fullPath);
         }
       }
     }
