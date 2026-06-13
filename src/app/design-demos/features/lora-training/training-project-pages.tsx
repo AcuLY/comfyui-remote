@@ -640,7 +640,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   const initialSectionSeeds = sourceTemplate?.sections ?? initialTemplate?.sections ?? [];
   const projectTemplateContextId = initialTemplate?.id ?? "no-template";
   const baseModelOptions = data.models.filter((model) => model.modelType === "checkpoint").map((model) => model.name);
-  const [projectFormState, setProjectFormState] = useState({
+  const defaultProjectForm = {
     baseModel: baseModelOptions[0] ?? "继承训练默认模型",
     captionStrategy: "先触发词后描述",
     detailPrompt: "发型、眼睛、服装材质、常见构图和需要避免的变化。",
@@ -650,12 +650,9 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     title: "新角色 LoRA 项目",
     trainingSteps: "2400",
     usagePrompt: "角色触发词、服装和稳定身份描述。",
-  });
-  const projectForm = projectFormState.templateContextId === projectTemplateContextId ? projectFormState : {
-    ...projectFormState,
-    templateContextId: projectTemplateContextId,
-    templateTitle: initialTemplate?.title ?? "不使用模板",
   };
+  const [projectFormState, setProjectFormState] = useState(defaultProjectForm);
+  const projectForm = projectFormState.templateContextId === projectTemplateContextId ? projectFormState : defaultProjectForm;
   const referenceSourceTree: ReferenceSourceGroup[] = [
     {
       id: "existing-training-projects",
@@ -704,10 +701,13 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     templateContextId: projectTemplateContextId,
   }));
   const sectionSeeds = sectionSeedState.templateContextId === projectTemplateContextId ? sectionSeedState.sections : initialSectionSeeds;
-  const [trainingDefaults, setTrainingDefaults] = useState({
+  const defaultTrainingDefaults = {
     autoFreezeDataset: true,
     autoGenerateSamples: true,
-  });
+    templateContextId: projectTemplateContextId,
+  };
+  const [trainingDefaultsState, setTrainingDefaultsState] = useState(defaultTrainingDefaults);
+  const trainingDefaults = trainingDefaultsState.templateContextId === projectTemplateContextId ? trainingDefaultsState : defaultTrainingDefaults;
   type CreatedProjectDraft = {
     autoFreezeDataset: boolean;
     autoGenerateSamples: boolean;
@@ -746,6 +746,13 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
 
   function setProjectForm(updater: (current: typeof projectForm) => typeof projectForm) {
     setProjectFormState((current) => updater(current.templateContextId === projectTemplateContextId ? current : projectForm));
+  }
+
+  function setTrainingDefaults(updater: (current: typeof trainingDefaults) => typeof trainingDefaults) {
+    setTrainingDefaultsState((current) => ({
+      ...updater(current.templateContextId === projectTemplateContextId ? current : defaultTrainingDefaults),
+      templateContextId: projectTemplateContextId,
+    }));
   }
 
   function setSectionSeeds(nextValue: LoraTrainingTemplateSeedSection[] | ((current: LoraTrainingTemplateSeedSection[]) => LoraTrainingTemplateSeedSection[])) {

@@ -666,6 +666,24 @@ test("training project create reference and draft state stay scoped to the selec
   assert.doesNotMatch(formSource, /const \[createdProjectDraft, setCreatedProjectDraft\] = useState</, "created project draft should not be stored without template context");
 });
 
+test("training project create form fields and training defaults stay scoped to the selected template context", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /defaultProjectForm/, "project create form should have a per-template default form state");
+  assert.match(formSource, /projectFormState\.templateContextId === projectTemplateContextId \? projectFormState : defaultProjectForm/, "form fields should reset after template context changes");
+  assert.match(formSource, /trainingDefaultsState/, "training defaults should be stored with template context");
+  assert.match(formSource, /defaultTrainingDefaults/, "training defaults should have a per-template fallback");
+  assert.match(formSource, /trainingDefaultsState\.templateContextId === projectTemplateContextId \? trainingDefaultsState : defaultTrainingDefaults/, "training defaults should reset after template context changes");
+  assert.match(formSource, /templateContextId:\s*projectTemplateContextId/, "context-scoped state updates should store the active template context");
+  assert.doesNotMatch(formSource, /\.\.\.projectFormState,\s*templateContextId:\s*projectTemplateContextId,\s*templateTitle:/, "form fallback should not carry stale fields from another template context");
+  assert.doesNotMatch(formSource, /const \[trainingDefaults, setTrainingDefaults\] = useState\(\{/, "training defaults should not be stored without template context");
+});
+
 test("training project create page training default switches feed into the local draft", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
