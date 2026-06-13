@@ -324,7 +324,7 @@ function TrainingPresetLibraryItemRow({
         leading={(
           <Checkbox
             checked={selected}
-            label={`选择训练预制：${preset.title}`}
+            label={selected ? `取消选择训练预制：${preset.title}` : `选择训练预制：${preset.title}`}
             onCheckedChange={onToggleSelected}
             stopPropagation
             variant="compact"

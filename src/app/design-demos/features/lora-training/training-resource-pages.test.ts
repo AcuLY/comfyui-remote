@@ -117,6 +117,21 @@ test("training preset library drag handles reorder visible presets locally", () 
   assert.match(itemSource, /\{\.\.\.handleProps\}/, "training preset row drag handles should receive sortable handle props");
 });
 
+test("training preset selection labels reflect selected state like the managed library demo", () => {
+  const itemStart = pageSource.indexOf("function TrainingPresetLibraryItemRow");
+  const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
+  assert.notEqual(itemStart, -1);
+  assert.notEqual(presetsStart, -1);
+
+  const itemSource = pageSource.slice(itemStart, presetsStart);
+
+  assert.match(
+    itemSource,
+    /label=\{selected \? `取消选择训练预制：\$\{preset\.title\}` : `选择训练预制：\$\{preset\.title\}`\}/,
+    "training preset checkbox labels should expose both select and cancel-select states",
+  );
+});
+
 test("training preset category rail drag handles reorder categories locally", () => {
   const categoryItemStart = pageSource.indexOf("function TrainingPresetCategoryRailItem");
   const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
