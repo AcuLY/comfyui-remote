@@ -122,7 +122,43 @@ test("training template section saves editable basic fields into the local draft
   assert.match(templateSectionPage, /onChange=\{\(value\) => handleUpdateTemplateSectionForm\("enabledLabel", value\)\}/, "enabled status changes should update local form state");
   assert.match(templateSectionPage, /sectionTitle:\s*templateSectionForm\.title/, "saved draft should use the edited section title");
   assert.match(templateSectionPage, /enabledLabel:\s*templateSectionForm\.enabledLabel/, "saved draft should use the edited enabled status");
-  assert.match(templateSectionPage, /templateSectionDraft\.enabledLabel/, "visible draft should render the saved enabled status");
+  assert.match(templateSectionPage, /visibleTemplateSectionDraft\.enabledLabel/, "visible draft should render the saved enabled status");
+});
+
+test("training template section state stays scoped to the active template section", () => {
+  const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
+
+  assert.match(templateSectionPage, /templateId:\s*template\?\.id \?\? null/, "scene-block state should remember the parent template");
+  assert.match(
+    templateSectionPage,
+    /sceneBlockState\.templateId === template\?\.id && sceneBlockState\.sectionId === section\?\.id \? sceneBlockState\.blocks : section\?\.blocks \?\? \[\]/,
+    "scene blocks should only reuse local state for the same template and section",
+  );
+  assert.match(
+    templateSectionPage,
+    /current\.templateId === activeTemplate\.id && current\.sectionId === activeSection\.id \? current\.blocks : activeSection\.blocks/,
+    "scene-block updates should fall back to the active section when switching templates",
+  );
+  assert.match(templateSectionPage, /templateId:\s*string;/, "saved template section drafts should be typed with the parent template id");
+  assert.match(templateSectionPage, /sectionId:\s*string;/, "saved template section drafts should be typed with the active section id");
+  assert.match(templateSectionPage, /templateId:\s*activeTemplate\.id/, "scene-block updates and saved drafts should store the active template id");
+  assert.match(templateSectionPage, /sectionId:\s*activeSection\.id/, "scene-block updates and saved drafts should store the active section id");
+  assert.match(
+    templateSectionPage,
+    /templateSectionDraft\?\.templateId === activeTemplate\.id && templateSectionDraft\?\.sectionId === activeSection\.id \? templateSectionDraft : null/,
+    "saved template section drafts should only appear for the same template and section",
+  );
+  assert.match(templateSectionPage, /visibleTemplateSectionDraft/, "template section should render through a scoped visible draft");
+  assert.doesNotMatch(
+    templateSectionPage,
+    /const sceneBlocks = sceneBlockState\.sectionId === section\?\.id \? sceneBlockState\.blocks : section\?\.blocks \?\? \[\]/,
+    "section-only scene-block state should not leak between templates",
+  );
+  assert.doesNotMatch(
+    templateSectionPage,
+    /\{templateSectionDraft \? \(/,
+    "template section should not render an unscoped saved draft",
+  );
 });
 
 test("training template section scene-block styles are responsive", () => {

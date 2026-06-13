@@ -1299,6 +1299,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   const [sceneBlockState, setSceneBlocks] = useState(() => ({
     blocks: section?.blocks ?? [],
     sectionId: section?.id ?? null,
+    templateId: template?.id ?? null,
   }));
   const [templateSectionFormState, setTemplateSectionForm] = useState(() => ({
     enabledLabel: section?.enabled ? "启用" : "停用",
@@ -1312,14 +1313,17 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     enabledLabel: string;
     firstBlock: string;
     resolvedScene: string;
+    sectionId: string;
     sectionTitle: string;
+    templateId: string;
     templateTitle: string;
   } | null>(null);
-  const sceneBlocks = sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
+  const sceneBlocks = sceneBlockState.templateId === template?.id && sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
   if (!template || !section) return <EmptyPage title="没有模板小节数据" />;
 
   const activeTemplate = template;
   const activeSection = section;
+  const visibleTemplateSectionDraft = templateSectionDraft?.templateId === activeTemplate.id && templateSectionDraft?.sectionId === activeSection.id ? templateSectionDraft : null;
   const templateSectionForm = templateSectionFormState.templateId === activeTemplate.id && templateSectionFormState.sectionId === activeSection.id ? templateSectionFormState : {
     enabledLabel: activeSection.enabled ? "启用" : "停用",
     sectionId: activeSection.id,
@@ -1343,8 +1347,9 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
 
   function updateTemplateBlocks(updater: (current: LoraTrainingSectionBlock[]) => LoraTrainingSectionBlock[]) {
     setSceneBlocks((current) => ({
-      blocks: updater(current.sectionId === activeSection.id ? current.blocks : activeSection.blocks),
+      blocks: updater(current.templateId === activeTemplate.id && current.sectionId === activeSection.id ? current.blocks : activeSection.blocks),
       sectionId: activeSection.id,
+      templateId: activeTemplate.id,
     }));
   }
 
@@ -1399,7 +1404,9 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
       enabledLabel: templateSectionForm.enabledLabel,
       firstBlock: sceneBlocks[0]?.title ?? "无场景块",
       resolvedScene: resolvedTemplateScene || section.resolvedScene,
+      sectionId: activeSection.id,
       sectionTitle: templateSectionForm.title,
+      templateId: activeTemplate.id,
       templateTitle: activeTemplate.title,
     });
   }
@@ -1416,9 +1423,9 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
             tone="primary"
             icon={Save}
             onClick={handleSaveTemplateSection}
-            feedback={{ title: templateSectionDraft ? "模板小节保存草稿已更新" : "模板小节保存草稿已记录", detail: templateSectionForm.title }}
+            feedback={{ title: visibleTemplateSectionDraft ? "模板小节保存草稿已更新" : "模板小节保存草稿已记录", detail: templateSectionForm.title }}
           >
-            {templateSectionDraft ? "更新小节草稿" : "保存小节"}
+            {visibleTemplateSectionDraft ? "更新小节草稿" : "保存小节"}
           </Button>
         )}
       />
@@ -1471,14 +1478,14 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
           <Field readOnly multiline features={{ clipboard: true }} label="小节摘要" value={section.scenePreview} />
         </div>
       </Panel>
-      {templateSectionDraft ? (
+      {visibleTemplateSectionDraft ? (
         <Panel title="模板小节保存草稿" subtitle="页面内记录当前小节、场景块和合成场景描述。">
           <dl className={s.trainingTemplateSectionDraft}>
-            <div><dt>模板</dt><dd>{templateSectionDraft.templateTitle}</dd></div>
-            <div><dt>小节</dt><dd>{templateSectionDraft.sectionTitle}</dd></div>
-            <div><dt>状态</dt><dd>{templateSectionDraft.enabledLabel}</dd></div>
-            <div><dt>场景块</dt><dd>{templateSectionDraft.blockCount} 个 · {templateSectionDraft.firstBlock}</dd></div>
-            <div className={s.trainingTemplateDraftWide}><dt>合成场景</dt><dd>{templateSectionDraft.resolvedScene}</dd></div>
+            <div><dt>模板</dt><dd>{visibleTemplateSectionDraft.templateTitle}</dd></div>
+            <div><dt>小节</dt><dd>{visibleTemplateSectionDraft.sectionTitle}</dd></div>
+            <div><dt>状态</dt><dd>{visibleTemplateSectionDraft.enabledLabel}</dd></div>
+            <div><dt>场景块</dt><dd>{visibleTemplateSectionDraft.blockCount} 个 · {visibleTemplateSectionDraft.firstBlock}</dd></div>
+            <div className={s.trainingTemplateDraftWide}><dt>合成场景</dt><dd>{visibleTemplateSectionDraft.resolvedScene}</dd></div>
           </dl>
         </Panel>
       ) : null}
