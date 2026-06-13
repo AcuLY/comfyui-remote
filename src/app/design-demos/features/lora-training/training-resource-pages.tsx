@@ -19,7 +19,7 @@ import { StatusBadge } from "../../shared/primitives/status-badge";
 import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
 import { EditorBlock, FolderBreadcrumb, FolderRow, SelectionBatchBar, SortableRowShell, UnitRowShell, WorkbenchSurface } from "../../shared/patterns";
 import { buildLoraTrainingDemoData } from "./fixtures";
-import type { LoraTrainingPreset, LoraTrainingSectionBlock, LoraTrainingTemplate } from "./types";
+import type { LoraTrainingPreset, LoraTrainingProject, LoraTrainingSectionBlock, LoraTrainingTemplate } from "./types";
 import s from "./training-resource-pages.module.css";
 
 type TemplateSceneBlockPatch = Partial<Pick<LoraTrainingSectionBlock, "text" | "title">>;
@@ -92,6 +92,21 @@ function orderTrainingTemplatesByIds(templates: LoraTrainingTemplate[], orderedI
   const orderedTemplates = orderedIds.map((id) => templateMap[id]).filter((template): template is LoraTrainingTemplate => Boolean(template));
   const missingTemplates = templates.filter((template) => !orderedIds.includes(template.id));
   return [...orderedTemplates, ...missingTemplates];
+}
+
+function buildTemplateSectionsFromProject(project: LoraTrainingProject): LoraTrainingTemplateSection[] {
+  return project.sections.map((section) => ({
+    id: `project-${project.id}-${section.id}`,
+    title: section.title,
+    enabled: section.enabled,
+    blockCount: section.blocks.length,
+    blocks: section.blocks.map((block) => ({
+      ...block,
+      id: `project-${project.id}-${section.id}-${block.id}`,
+    })),
+    resolvedScene: section.resolvedScene,
+    scenePreview: section.resolvedScene || section.title,
+  }));
 }
 
 function presetUsageLabel(preset: LoraTrainingPreset) {
@@ -884,9 +899,9 @@ function TemplateEditorSectionRow({
   onCopy?: (section: LoraTrainingTemplateSection) => void;
   onDelete?: (sectionId: string) => void;
   section: LoraTrainingTemplateSection;
-  templateId: string;
+  templateId?: string;
 }) {
-  const href = `/training/templates/${templateId}/sections/${index}`;
+  const href = templateId ? `/training/templates/${templateId}/sections/${index}` : "/training/templates/new";
   const { ref, style, handleProps } = useDemoSortable(section.id);
 
   return (
@@ -1060,10 +1075,14 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   const urlSearch = useUrlSearch();
   const newTemplateHints = mode === "new" ? readNewTemplateHints(urlSearch) : { projectId: "", sections: "", sourceProject: "" };
   const template = mode === "edit" ? findTemplate(data, templateId) : undefined;
-  const seedTemplate = template ?? training.templates[0];
+  const sourceProject = mode === "new"
+    ? training.projects.find((project) => project.id === newTemplateHints.projectId)
+      ?? training.projects.find((project) => project.title === newTemplateHints.sourceProject)
+    : undefined;
+  const seedTemplate = template;
   const title = mode === "new" ? "新建训练模板" : template?.title ?? "训练模板";
   const templateEditorId = seedTemplate?.id ?? "new-template";
-  const templateSeedSections = seedTemplate?.sections ?? [];
+  const templateSeedSections = sourceProject ? buildTemplateSectionsFromProject(sourceProject) : seedTemplate?.sections ?? [];
   const templateSeedSectionIds = templateSeedSections.map((section) => section.id);
   const templateFormContextId = [
     mode,
@@ -1272,6 +1291,9 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
           title="小节配置"
         >
           <div className={s.trainingTemplateSectionList}>
+            {orderedTemplateSectionIds.length === 0 ? (
+              <div className={s.emptyInline}>没有初始小节。点击添加小节后，会在这里生成可调整的模板小节。</div>
+            ) : null}
             <SortableList items={orderedTemplateSectionIds} onReorder={handleReorderTemplateSections}>
               {orderedTemplateSectionIds.map((sectionId, index) => {
                 const section = templateSectionMap[sectionId];
@@ -1284,7 +1306,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
                     onCopy={handleCopyTemplateSection}
                     onDelete={handleDeleteTemplateSection}
                     section={section}
-                    templateId={templateEditorId}
+                    templateId={mode === "edit" ? templateEditorId : undefined}
                   />
                 );
               })}

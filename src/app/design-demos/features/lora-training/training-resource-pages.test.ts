@@ -330,6 +330,38 @@ test("training template new form carries source project context", () => {
   assert.match(formSource, /newTemplateHints\.sourceProject/, "source project field should only appear when project context exists");
 });
 
+test("training template direct creation does not silently apply the first template", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(formSource, /const sourceProject = mode === "new"/, "new template creation should resolve project context explicitly");
+  assert.match(formSource, /const seedTemplate = template;/, "direct template creation should start without an implicit template fixture");
+  assert.match(formSource, /const templateSeedSections = sourceProject \? buildTemplateSectionsFromProject\(sourceProject\) : seedTemplate\?\.sections \?\? \[\];/, "project-sourced templates should seed from the selected project while direct creation stays empty");
+  assert.match(formSource, /title:\s*newTemplateHints\.sourceProject \? `\$\{newTemplateHints\.sourceProject\} 训练模板` : seedTemplate\?\.title \?\? "新角色 LoRA 模板"/, "direct new template title should use a neutral draft title");
+  assert.match(formSource, /没有初始小节/, "empty template creation should explain that sections can be added explicitly");
+  assert.doesNotMatch(formSource, /const seedTemplate = template \?\? training\.templates\[0\];/, "direct new template creation should not silently reuse the first template");
+});
+
+test("training template new draft sections stay on the new-template route", () => {
+  const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(rowStart, -1);
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const rowSource = pageSource.slice(rowStart, formStart);
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(rowSource, /templateId\?: string;/, "template section rows should support unsaved template drafts");
+  assert.match(rowSource, /const href = templateId \? `\/training\/templates\/\$\{templateId\}\/sections\/\$\{index\}` : "\/training\/templates\/new";/, "unsaved template draft rows should stay on the new-template route");
+  assert.match(formSource, /templateId=\{mode === "edit" \? templateEditorId : undefined\}/, "new template rows should not receive a saved-template id");
+});
+
 test("training template new form keeps source project ids out of visible copy", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
