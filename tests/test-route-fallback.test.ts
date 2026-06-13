@@ -39,6 +39,12 @@ test("fallback skips API and static asset paths", () => {
   assert.equal(resolveRouteFallback("/missing.png"), null);
 });
 
+test("fallback leaves design demo routes to the demo router", () => {
+  assert.equal(resolveRouteFallback("/design-demos"), null);
+  assert.equal(resolveRouteFallback("/design-demos/settings"), null);
+  assert.equal(resolveRouteFallback("/design-demos/training/models"), null);
+});
+
 test("unknown top-level pages fall back to the app home route", () => {
   assert.equal(resolveRouteFallback("/does-not-exist"), "/queue");
   assert.equal(resolveRouteFallback("/"), null);
