@@ -222,6 +222,13 @@ test("failed run detail retries through the formal HTTP API on production routes
   assert.match(detailSource, /pushToast/, "retry flow should surface API success or failure through the shared feedback system");
 });
 
+test("queued or running training detail cancels through the formal HTTP API on production routes", () => {
+  assert.match(detailSource, /fetch\(`\/api\/training\/training-runs\/\$\{currentRun\.id\}\/cancel`/, "training detail should call the formal training cancel API");
+  assert.match(detailSource, /method:\s*"POST"/, "training detail should cancel runs through POST");
+  assert.match(detailSource, /requestedBy:/, "training detail should identify the request source when cancelling");
+  assert.match(detailSource, /pushToast/, "training detail should surface cancel API success or failure through the shared feedback system");
+});
+
 test("training sample lightbox copies captions through a real local action", () => {
   assert.match(detailSource, /copiedCaption/, "run detail should track the copied caption locally");
   assert.match(detailSource, /setCopiedCaption/, "copy action should update local copied-caption state");

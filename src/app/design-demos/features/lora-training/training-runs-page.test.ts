@@ -125,6 +125,15 @@ test("failed training runs retry through the formal HTTP API on production route
   assert.match(pageSource, /pushToast/, "runs page should surface retry API success or failure through the shared feedback system");
 });
 
+test("queued or running training rows cancel through the formal HTTP API on production routes", () => {
+  assert.match(pageSource, /fetch\(`\/api\/training\/training-runs\/\$\{run\.id\}\/cancel`/, "training rows should call the formal training cancel API");
+  assert.match(pageSource, /requestedBy:/, "training row cancel requests should identify the request source");
+  assert.match(pageSource, /cancelRuns/, "runs page should define a shared cancel handler");
+  assert.match(pageSource, /cancelledRunIds/, "runs page should track locally cancelled run ids");
+  assert.match(pageSource, /run\.kind === "training"/, "cancel actions should stay scoped to training runs");
+  assert.match(pageSource, /pushToast/, "runs page should surface cancel API success or failure through the shared feedback system");
+});
+
 test("failed training run rows use a structured failure block instead of single-line text", () => {
   assert.match(pageSource, /TrainingRunFailureBlock/, "failed run rows should render a dedicated failure block");
   assert.match(pageSource, /run\.errorMessage \?\?/, "failed run rows should derive a fallback error message");

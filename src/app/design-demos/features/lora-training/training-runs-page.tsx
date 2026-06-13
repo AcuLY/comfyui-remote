@@ -223,18 +223,21 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [hiddenRunIds, setHiddenRunIds] = useState<Set<string>>(new Set());
   const [retriedRunIds, setRetriedRunIds] = useState<Set<string>>(new Set());
+  const [cancelledRunIds, setCancelledRunIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isRetryingRuns, setIsRetryingRuns] = useState(false);
+  const [isCancellingRuns, setIsCancellingRuns] = useState(false);
+  const effectiveRunStatus = (run: LoraTrainingRun) => (cancelledRunIds.has(run.id) ? "failed" : run.status);
   const runsForKind = training.runs.filter((run) => run.kind === kind && !hiddenRunIds.has(run.id));
-  const runningRunsForKind = runsForKind.filter((run) => run.status === "running").slice(0, 2);
-  const visibleRuns = runsForKind.filter((run) => run.status === status);
+  const runningRunsForKind = runsForKind.filter((run) => effectiveRunStatus(run) === "running").slice(0, 2);
+  const visibleRuns = runsForKind.filter((run) => effectiveRunStatus(run) === status);
   const groups = groupRunsByProject(visibleRuns);
   const selectedVisibleCount = visibleRuns.filter((run) => selectedIds.has(run.id)).length;
   const allVisibleSelected = visibleRuns.length > 0 && selectedVisibleCount === visibleRuns.length;
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   function countFor(nextKind: LoraTrainingTaskKind, nextStatus: LoraTrainingTaskStatus) {
-    return training.runs.filter((run) => run.kind === nextKind && run.status === nextStatus && !hiddenRunIds.has(run.id)).length;
+    return training.runs.filter((run) => run.kind === nextKind && effectiveRunStatus(run) === nextStatus && !hiddenRunIds.has(run.id)).length;
   }
 
   function toggleRun(runId: string) {
@@ -360,6 +363,79 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
     }
   }
 
+  async function cancelRuns(runIds: Iterable<string>) {
+    const ids = new Set(runIds);
+    const runs = runsForKind.filter((run) => ids.has(run.id) && run.kind === "training");
+
+    const applyLocalCancelledRuns = (appliedIds: Set<string>) => {
+      setCancelledRunIds((current) => new Set([...current, ...appliedIds]));
+      setSelectedIds((current) => new Set([...current].filter((id) => !appliedIds.has(id))));
+    };
+
+    if (!isProductionTrainingRoute) {
+      const localCancelledIds = new Set(runs.map((run) => run.id));
+      applyLocalCancelledRuns(localCancelledIds);
+      pushToast({
+        tone: "warning",
+        title: runs.length === 1 ? "训练任务已取消" : "训练任务已取消",
+        detail: runs.length === 1 ? (runs[0]?.title ?? "任务") : `${runs.length} 条任务`,
+      });
+      return;
+    }
+
+    if (isCancellingRuns || runs.length === 0) return;
+
+    setIsCancellingRuns(true);
+    try {
+      const responses = await Promise.all(
+        runs.map(async (run) => {
+          const response = await fetch(`/api/training/training-runs/${run.id}/cancel`, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              requestedBy: "training_runs_page",
+            }),
+          });
+          const payload = await response.json().catch(() => null);
+          return { payload, response, run };
+        }),
+      );
+
+      const completedIds = new Set(
+        responses
+          .filter(({ payload, response }) => response.ok && payload?.ok)
+          .map(({ run }) => run.id),
+      );
+      if (completedIds.size > 0) {
+        applyLocalCancelledRuns(completedIds);
+      }
+
+      const failedResponse = responses.find(({ payload, response }) => !response.ok || !payload?.ok);
+      if (failedResponse) {
+        pushToast({
+          tone: "error",
+          title: "取消失败",
+          detail: failedResponse.payload?.error?.message ?? "训练任务取消请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "warning",
+        title: completedIds.size === 1 ? "训练任务已取消" : "训练任务已取消",
+        detail: completedIds.size === 1 ? (runs[0]?.title ?? "任务") : `${completedIds.size} 条任务`,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "取消失败",
+        detail: error instanceof Error ? error.message : "训练任务取消请求失败",
+      });
+    } finally {
+      setIsCancellingRuns(false);
+    }
+  }
+
   return (
     <div className={s.page}>
       <PageHeader title="运行" />
@@ -404,19 +480,29 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
               <Button icon={CheckSquare} onClick={toggleVisibleRuns} disabled={visibleRuns.length === 0}>
                 {allVisibleSelected ? "取消全选" : "全选"}
               </Button>
-              {status === "failed" ? (
+                  {status === "failed" ? (
+                        <Button
+                          icon={RotateCcw}
+                          tone="primary"
+                          pending={isRetryingRuns}
+                          disabled={selectedVisibleCount === 0}
+                          onClick={() => retryRuns(selectedIds)}
+                        >
+                          重试所选
+                        </Button>
+                  ) : kind === "training" && (status === "queued" || status === "running") ? (
                     <Button
-                      icon={RotateCcw}
-                      tone="primary"
-                      pending={isRetryingRuns}
+                      icon={X}
+                      tone="danger"
+                      pending={isCancellingRuns}
                       disabled={selectedVisibleCount === 0}
-                      onClick={() => retryRuns(selectedIds)}
+                      onClick={() => cancelRuns(selectedIds)}
                     >
-                      重试所选
+                      取消所选
                     </Button>
-              ) : (
-                <Button
-                  icon={X}
+                  ) : (
+                    <Button
+                      icon={X}
                   tone="danger"
                   disabled={selectedVisibleCount === 0}
                   onClick={() => hideRuns(selectedIds)}
@@ -475,29 +561,30 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                     </div>
                     {collapsed ? null : (
                       <div className={s.runRows}>
-                        {group.rows.map((run) => {
-                          const selected = selectedIds.has(run.id);
-                          const retried = retriedRunIds.has(run.id);
-                          const previewImages = runPreviewImages(run, training.projects);
-                          const errorMessage = run.errorMessage ?? "模型服务返回空结果或连接超时";
+                            {group.rows.map((run) => {
+                              const selected = selectedIds.has(run.id);
+                              const retried = retriedRunIds.has(run.id);
+                              const cancelled = cancelledRunIds.has(run.id);
+                              const previewImages = runPreviewImages(run, training.projects);
+                              const errorMessage = run.errorMessage ?? "模型服务返回空结果或连接超时";
 
-                          return (
-                            <div className={cx(s.runRow, run.status === "failed" && !retried && s.runRowFailed, selected && s.runRowSelected)} data-training-run-id={run.id} key={run.id}>
-                              <Checkbox
-                                checked={selected}
-                                label={selected ? `取消选择任务：${run.title}` : `选择任务：${run.title}`}
+                              return (
+                                <div className={cx(s.runRow, effectiveRunStatus(run) === "failed" && !retried && s.runRowFailed, selected && s.runRowSelected)} data-training-run-id={run.id} key={run.id}>
+                                  <Checkbox
+                                    checked={selected}
+                                    label={selected ? `取消选择任务：${run.title}` : `选择任务：${run.title}`}
                                 onCheckedChange={() => toggleRun(run.id)}
                                 stopPropagation
                                 variant="compact"
-                              />
-                              <Link className={cx(s.runMain, previewImages.length > 0 && s.runMainWithThumbs)} href={taskDetailHref(run, hrefForRoute)}>
-                                <span className={s.runText}>
-                                  <strong>{run.title}</strong>
-                                  <span>{run.summary}{retried ? " · 已重试" : ""}</span>
-                                  <em>{retried ? "已加入重试队列" : run.timestamp}</em>
-                                  {typeof run.progress === "number" ? (
-                                    <span className={s.runProgress} aria-label={`约 ${run.progress}%`}>
-                                      <span className={s.runProgressTrack} aria-hidden="true">
+                                  />
+                                  <Link className={cx(s.runMain, previewImages.length > 0 && s.runMainWithThumbs)} href={taskDetailHref(run, hrefForRoute)}>
+                                    <span className={s.runText}>
+                                      <strong>{run.title}</strong>
+                                      <span>{run.summary}{retried ? " · 已重试" : ""}{cancelled ? " · 已取消" : ""}</span>
+                                      <em>{retried ? "已加入重试队列" : cancelled ? "已取消" : run.timestamp}</em>
+                                      {typeof run.progress === "number" ? (
+                                        <span className={s.runProgress} aria-label={`约 ${run.progress}%`}>
+                                          <span className={s.runProgressTrack} aria-hidden="true">
                                         <span className={s.runProgressFill} style={{ width: `${run.progress}%` }} />
                                       </span>
                                       <span>约 {run.progress}%</span>
@@ -513,14 +600,18 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                   />
                                 ) : null}
                               </Link>
-                              {run.status === "failed" ? (
-                                retried ? (
-                                  <div className={s.rowActions}>
-                                    <StatusBadge status="pending" label="已排队重试" />
-                                  </div>
-                                ) : (
-                                  <div className={s.runSecondary}>
-                                    <TrainingRunFailureBlock message={errorMessage} />
+                                  {effectiveRunStatus(run) === "failed" ? (
+                                    retried ? (
+                                      <div className={s.rowActions}>
+                                        <StatusBadge status="pending" label="已排队重试" />
+                                      </div>
+                                    ) : cancelled ? (
+                                      <div className={s.rowActions}>
+                                        <StatusBadge status="failed" label="已取消" />
+                                      </div>
+                                    ) : (
+                                      <div className={s.runSecondary}>
+                                        <TrainingRunFailureBlock message={errorMessage} />
                                     <div className={cx(s.rowActions, s.runFailureToolbar)}>
                                       <Button
                                         tone="subtle"
@@ -545,20 +636,33 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                     </div>
                                   </div>
                                 )
-                              ) : (
-                                <div className={s.rowActions}>
-                                  {statusBadge(run)}
-                                  <Button
-                                    icon={X}
-                                    iconOnly
-                                    size="sm"
-                                    tone="danger"
-                                    ariaLabel={`删除任务：${run.title}`}
-                                    onClick={() => hideRuns([run.id])}
-                                    feedback={{ tone: "warning", title: "任务已从列表移除", detail: run.title }}
-                                  />
-                                </div>
-                              )}
+                                  ) : (
+                                    <div className={s.rowActions}>
+                                      {statusBadge(run)}
+                                      {kind === "training" && (status === "queued" || status === "running") ? (
+                                        <Button
+                                          icon={X}
+                                          size="sm"
+                                          tone="danger"
+                                          pending={isCancellingRuns}
+                                          ariaLabel={`取消训练任务：${run.title}`}
+                                          onClick={() => cancelRuns([run.id])}
+                                        >
+                                          取消
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          icon={X}
+                                          iconOnly
+                                          size="sm"
+                                          tone="danger"
+                                          ariaLabel={`删除任务：${run.title}`}
+                                          onClick={() => hideRuns([run.id])}
+                                          feedback={{ tone: "warning", title: "任务已从列表移除", detail: run.title }}
+                                        />
+                                      )}
+                                    </div>
+                                  )}
                             </div>
                           );
                         })}
