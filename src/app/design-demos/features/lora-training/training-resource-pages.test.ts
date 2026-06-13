@@ -458,8 +458,12 @@ test("training template list follows the template-list surface with local delete
   assert.match(templateListSource, /template\.sections\.slice\(0,\s*5\)/, "template cards should keep section chips compact");
   assert.match(templateListSource, /template\.sections\.length > 5/, "template cards should show overflow count for extra sections");
   assert.doesNotMatch(templatesSource, /training\.templates\.map/, "template list should not render directly from immutable fixtures");
-  assert.match(cssSource, /\.trainingTemplateList\b[\s\S]*?container-type:\s*inline-size/, "template list should have a container-query surface");
-  assert.match(cssSource, /\.trainingTemplateList\b[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/, "template list should expand to two columns when there is enough width");
+  assert.match(cssSource, /\.trainingTemplateListSurface\b[\s\S]*?container-type:\s*inline-size/, "template list should have a container-query surface");
+  assert.match(
+    cssSource,
+    /@container\s*\(min-width:\s*720px\)\s*\{[\s\S]*?\.trainingTemplateList\s*\{[\s\S]*?repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "template list should wait for desktop workspace width before expanding to two columns",
+  );
   assert.match(cssSource, /\.trainingTemplateListItem\b/, "template cards should use a dedicated list-item class");
 });
 

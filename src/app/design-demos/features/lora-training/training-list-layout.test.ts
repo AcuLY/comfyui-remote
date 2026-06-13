@@ -105,8 +105,8 @@ test("sortable training resource lists use ancestor surfaces for container queri
   );
   assert.match(
     resourcesCss,
-    /@container\s*\(min-width:\s*520px\)\s*\{[\s\S]*?\.trainingTemplateList\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
-    "Training template cards should expand from the surface container",
+    /@container\s*\(min-width:\s*720px\)\s*\{[\s\S]*?\.trainingTemplateList\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "Training template cards should wait for desktop workspace width before splitting",
   );
   assert.doesNotMatch(
     cssRule(resourcesCss, "trainingTemplateList"),
