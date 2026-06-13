@@ -945,10 +945,10 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
   const orderedTemplates = orderTrainingTemplatesByIds(training.templates, orderedTemplateIds);
   const visibleTemplates = orderedTemplates.filter((template) => !hiddenTemplateIds.has(template.id));
   const visibleTemplateIds = visibleTemplates.map((template) => template.id);
-  const selectedVisibleCount = visibleTemplates.filter((template) => selectedTemplateIds.has(template.id)).length;
+  const selectedVisibleTemplates = visibleTemplates.filter((template) => selectedTemplateIds.has(template.id));
+  const selectedVisibleCount = selectedVisibleTemplates.length;
   const allVisibleSelected = visibleTemplates.length > 0 && selectedVisibleCount === visibleTemplates.length;
-  const selectedVisibleTemplate = visibleTemplates.find((template) => selectedTemplateIds.has(template.id));
-  const projectTemplateSource = selectedVisibleTemplate ?? visibleTemplates[0];
+  const projectTemplateSource = selectedVisibleTemplates.length === 1 ? selectedVisibleTemplates[0] : null;
 
   useLayoutEffect(() => {
     if (!fromTemplateId) return;

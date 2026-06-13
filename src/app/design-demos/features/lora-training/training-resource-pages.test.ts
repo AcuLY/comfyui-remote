@@ -406,9 +406,11 @@ test("training template list creates projects with selected template context", (
 
   assert.match(pageSource, /function createProjectFromTemplateHref/, "template list should build a concrete project-create href");
   assert.match(templatesSource, /createProjectFromTemplateHref\(template\)/, "template row create actions should carry the row template context");
+  assert.match(templatesSource, /selectedVisibleTemplates\.length === 1 \? selectedVisibleTemplates\[0\] : null/, "top-level template create action should require one explicit selected template");
   assert.match(templatesSource, /ariaLabel=\{`从训练模板创建项目：\$\{projectTemplateSource\.title\}`\}/, "template-source create action should name the selected template");
   assert.match(pageSource, /templateId:\s*template\.id/, "project-create href should include the template id");
   assert.match(pageSource, /sections:\s*String\(template\.sections\.length\)/, "project-create href should include the template section count");
+  assert.doesNotMatch(templatesSource, /visibleTemplates\[0\]/, "template create-project action should not silently use the first visible template");
   assert.doesNotMatch(templatesSource, /<ButtonLink href="\/training\/projects\/new" icon=\{CopyPlus\}>从模板创建项目<\/ButtonLink>/, "template create-project action should not navigate to a blank project form");
 });
 
