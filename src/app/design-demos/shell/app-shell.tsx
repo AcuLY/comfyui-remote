@@ -170,7 +170,7 @@ function MobileBottomNav({
   const modeLabel = `当前模式：${modeText}`;
 
   return (
-    <nav className={s.mobileBottomNav} aria-label="移动端主导航">
+    <nav className={s.mobileBottomNav} data-work-mode={workMode} aria-label="移动端主导航">
       {links.map((link) => {
         const Icon = link.icon;
         const active = isNavActive(currentRoute, link.href, link.activePrefix);

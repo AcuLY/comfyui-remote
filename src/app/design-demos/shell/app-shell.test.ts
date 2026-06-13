@@ -17,11 +17,23 @@ function sourceRegion(source: string, startMarker: string, endMarker: string) {
   return source.slice(start, end);
 }
 
-test("mobile bottom navigation fits six resource entries plus the right-edge mode indicator", () => {
+test("mobile bottom navigation fits each work mode resource count plus the right-edge mode indicator", () => {
+  const mobileNavSource = sourceRegion(shellSource, "function MobileBottomNav", "function MobileTopbar");
+
+  assert.match(
+    mobileNavSource,
+    /data-work-mode=\{workMode\}/,
+    "mobile bottom nav should expose the active work mode for mode-specific column counts",
+  );
   assert.match(
     cssSource,
     /\.mobileBottomNav\s*\{[\s\S]*?grid-template-columns:\s*repeat\(6,\s*minmax\(0,\s*1fr\)\)\s+minmax\(52px,\s*0\.9fr\)/,
-    "mobile bottom nav should reserve six resource columns plus a compact right-edge mode indicator",
+    "generation mode should reserve six resource columns plus a compact right-edge mode indicator",
+  );
+  assert.match(
+    cssSource,
+    /\.mobileBottomNav\[data-work-mode="lora_training"\]\s*\{[\s\S]*?grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)\s+minmax\(52px,\s*0\.9fr\)/,
+    "LoRA training mode should reserve five resource columns plus the mode indicator instead of leaving an empty sixth column",
   );
 });
 

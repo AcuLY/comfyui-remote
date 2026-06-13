@@ -1532,6 +1532,10 @@
     padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
   }
 
+  .mobileBottomNav[data-work-mode="lora_training"] {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(52px, 0.9fr);
+  }
+
   .mobileBottomItem,
   .mobileModeIndicator {
     position: relative;
