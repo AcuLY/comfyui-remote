@@ -19,7 +19,7 @@ test("training run detail keeps the compact detail header", () => {
   const headerSource = detailSource.slice(headerStart, headerEnd);
 
   assert.match(headerSource, /back=\{\{ href: "\/training\/runs", label: "返回运行" \}\}/, "detail header should keep the back link");
-  assert.match(headerSource, /title=\{`\$\{run\.projectTitle\} \/ \$\{run\.title\}`\}/, "detail header should use the task object title");
+  assert.match(headerSource, /title=\{`\$\{currentRun\.projectTitle\} \/ \$\{currentRun\.title\}`\}/, "detail header should use the task object title");
   assert.match(headerSource, /actions=/, "detail header should keep direct object actions");
   assert.doesNotMatch(headerSource, /eyebrow=/, "detail header should not duplicate the task kind above the title");
   assert.doesNotMatch(headerSource, /subtitle=/, "detail header should keep summary and timestamp inside the page body");
@@ -55,8 +55,8 @@ test("training detail page renders training samples, captions, log preview, and 
   assert.match(detailSource, /ImagePreviewLarge/, "training samples should open with the shared lightbox preview");
   assert.match(detailSource, /activeSampleState/, "training detail should track the active sample for preview");
   assert.match(detailSource, /sample\.caption/, "training sample cards should show caption snapshots");
-  assert.match(detailSource, /run\.finalLoraArtifactId/, "preset creation should depend on the final LoRA artifact");
-  assert.match(detailSource, /!run\.presetCreatedAt/, "preset creation should hide after a preset already exists");
+  assert.match(detailSource, /currentRun\.finalLoraArtifactId/, "preset creation should depend on the final LoRA artifact");
+  assert.match(detailSource, /!currentRun\.presetCreatedAt/, "preset creation should hide after a preset already exists");
 });
 
 test("completed training run creates presets through the real training preset form route", () => {
@@ -64,7 +64,7 @@ test("completed training run creates presets through the real training preset fo
   assert.match(detailSource, /\/training\/presets\/new/, "preset creation should navigate to the new training preset route");
   assert.match(detailSource, /sourceRun/, "preset creation should pass the source training run id");
   assert.match(detailSource, /artifact/, "preset creation should pass the final LoRA artifact name");
-  assert.match(detailSource, /<ButtonLink href=\{createTrainingPresetHref\(run\)\} icon=\{ImagePlus\} tone="primary">创建预制<\/ButtonLink>/, "create preset action should be a link, not feedback-only UI");
+  assert.match(detailSource, /<ButtonLink href=\{createTrainingPresetHref\(currentRun\)\} icon=\{ImagePlus\} tone="primary">创建预制<\/ButtonLink>/, "create preset action should be a link, not feedback-only UI");
   assert.doesNotMatch(detailSource, /创建预制入口已预览/, "create preset action should not remain a preview-only placeholder");
 });
 
@@ -94,17 +94,17 @@ test("training sample lightbox state stays scoped to the active run", () => {
   assert.match(detailSource, /runId:\s*string;/, "active sample and copied-caption state should store the source run id");
   assert.match(
     detailSource,
-    /activeSampleState\?\.runId === run\.id \? datasetSamples\[activeSampleState\.index\] \?\? null : null/,
+    /activeSampleState\?\.runId === currentRun\.id \? datasetSamples\[activeSampleState\.index\] \?\? null : null/,
     "active sample lookup should only reuse the index for the same run",
   );
   assert.match(
     detailSource,
-    /onClick=\{\(\) => setActiveSampleState\(\{ index, runId: run\.id \}\)\}/,
+    /onClick=\{\(\) => setActiveSampleState\(\{ index, runId: currentRun\.id \}\)\}/,
     "sample cards should store the current run id when opening the lightbox",
   );
   assert.match(
     detailSource,
-    /copiedCaption\?\.runId === run\.id && copiedCaption\?\.sampleId === activeSample\.id/,
+    /copiedCaption\?\.runId === currentRun\.id && copiedCaption\?\.sampleId === activeSample\.id/,
     "copied-caption state should only mark captions copied for the same run",
   );
   assert.doesNotMatch(

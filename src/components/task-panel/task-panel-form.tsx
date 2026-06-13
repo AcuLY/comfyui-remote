@@ -13,7 +13,7 @@ import {
   rerunCanonicalAction,
   enqueueSectionRunAction,
   draftPromptCardAction,
-} from "@/app/character-lora-training/[jobId]/workflow-actions";
+} from "./task-panel-actions";
 import { useTaskPanel } from "./task-panel-provider";
 
 // ---------------------------------------------------------------------------

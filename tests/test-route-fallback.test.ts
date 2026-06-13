@@ -30,10 +30,7 @@ test("template section routes prefer the template editor before the template lis
 test("unknown child routes fall back by walking route parents", () => {
   assert.equal(resolveRouteFallback("/settings/monitor/details"), "/settings/monitor");
   assert.equal(resolveRouteFallback("/assets/presets/sort-rules/extra"), "/assets/presets/sort-rules");
-  assert.equal(
-    resolveRouteFallback("/character-lora-training/job-1/sections/section-1/extra"),
-    "/character-lora-training/job-1/sections/section-1",
-  );
+  assert.equal(resolveRouteFallback("/unknown-feature/child"), "/queue");
 });
 
 test("fallback skips API and static asset paths", () => {

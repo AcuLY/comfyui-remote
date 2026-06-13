@@ -92,16 +92,17 @@ export function LoraTrainingRunDetailPage({
 
   if (!run) return <EmptyPage title={kind === "generation" ? "没有生成任务数据" : "没有训练任务数据"} />;
 
-  const isGeneration = run.kind === "generation";
-  const currentRetryDraft = run.status === "failed" && retryDraft?.runId === run.id ? retryDraft : null;
+  const currentRun = run;
+  const isGeneration = currentRun.kind === "generation";
+  const currentRetryDraft = currentRun.status === "failed" && retryDraft?.runId === currentRun.id ? retryDraft : null;
   const isRetryQueued = Boolean(currentRetryDraft);
-  const projectHref = `/training/projects/${run.projectId}`;
-  const datasetHref = run.datasetRevisionId ? `${projectHref}/dataset/revisions/${run.datasetRevisionId}` : `${projectHref}/dataset`;
-  const datasetSamples = isGeneration ? [] : run.datasetSamples ?? [];
-  const activeSample = activeSampleState?.runId === run.id ? datasetSamples[activeSampleState.index] ?? null : null;
-  const isActiveCaptionCopied = activeSample ? copiedCaption?.runId === run.id && copiedCaption?.sampleId === activeSample.id : false;
-  const canCreatePreset = !isGeneration && Boolean(run.finalLoraArtifactId) && !run.presetCreatedAt;
-  const logText = run.trainingLogLines?.length ? run.trainingLogLines.join("\n") : "尚未创建训练日志";
+  const projectHref = `/training/projects/${currentRun.projectId}`;
+  const datasetHref = currentRun.datasetRevisionId ? `${projectHref}/dataset/revisions/${currentRun.datasetRevisionId}` : `${projectHref}/dataset`;
+  const datasetSamples = isGeneration ? [] : currentRun.datasetSamples ?? [];
+  const activeSample = activeSampleState?.runId === currentRun.id ? datasetSamples[activeSampleState.index] ?? null : null;
+  const isActiveCaptionCopied = activeSample ? copiedCaption?.runId === currentRun.id && copiedCaption?.sampleId === activeSample.id : false;
+  const canCreatePreset = !isGeneration && Boolean(currentRun.finalLoraArtifactId) && !currentRun.presetCreatedAt;
+  const logText = currentRun.trainingLogLines?.length ? currentRun.trainingLogLines.join("\n") : "尚未创建训练日志";
 
   function handleCopyActiveCaption() {
     if (!activeSample) return;
@@ -109,25 +110,24 @@ export function LoraTrainingRunDetailPage({
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       void navigator.clipboard.writeText(caption).catch(() => undefined);
     }
-    setCopiedCaption({ caption, runId: run.id, sampleId: activeSample.id });
+    setCopiedCaption({ caption, runId: currentRun.id, sampleId: activeSample.id });
   }
 
   function setActiveSampleOffset(offset: -1 | 1) {
     setActiveSampleState((current) => {
-      const index = current?.runId === run.id ? current.index : 0;
-      return { index: (index + datasetSamples.length + offset) % datasetSamples.length, runId: run.id };
+      const index = current?.runId === currentRun.id ? current.index : 0;
+      return { index: (index + datasetSamples.length + offset) % datasetSamples.length, runId: currentRun.id };
     });
   }
 
   function handleQueueRetry() {
-    if (!run) return;
     setRetryDraft({
-      runId: run.id,
-      projectTitle: run.projectTitle,
-      title: run.title,
-      provider: run.provider ?? (isGeneration ? "生成服务" : "本地训练"),
+      runId: currentRun.id,
+      projectTitle: currentRun.projectTitle,
+      title: currentRun.title,
+      provider: currentRun.provider ?? (isGeneration ? "生成服务" : "本地训练"),
       queuedAt: new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
-      sourceStatus: run.status,
+      sourceStatus: currentRun.status,
       datasetVersion: project?.datasetVersion,
     });
   }
@@ -136,12 +136,12 @@ export function LoraTrainingRunDetailPage({
     <div className={s.page}>
       <PageHeader
         back={{ href: "/training/runs", label: "返回运行" }}
-        title={`${run.projectTitle} / ${run.title}`}
+        title={`${currentRun.projectTitle} / ${currentRun.title}`}
         actions={(
             <>
               <ButtonLink href={projectHref} icon={FileText}>项目详情</ButtonLink>
               {!isGeneration ? <ButtonLink href={datasetHref} icon={History}>数据集版本</ButtonLink> : null}
-            {run.status === "failed" && !isRetryQueued ? <Button tone="primary" icon={RotateCcw} onClick={handleQueueRetry} feedback={{ title: "已加入重试队列", detail: run.title }}>重试</Button> : null}
+            {currentRun.status === "failed" && !isRetryQueued ? <Button tone="primary" icon={RotateCcw} onClick={handleQueueRetry} feedback={{ title: "已加入重试队列", detail: currentRun.title }}>重试</Button> : null}
             {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : null}
           </>
         )}
@@ -149,9 +149,9 @@ export function LoraTrainingRunDetailPage({
 
       <section className={s.statusSurface} aria-label="任务状态">
         <div>
-          {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : runStatusBadge(run)}
-          <strong>{run.provider ?? (isGeneration ? "生成服务" : "本地训练")}</strong>
-          <span>{isRetryQueued ? "已加入重试队列，等待训练服务重新调度。" : run.schedulerMessage ?? run.waitReason ?? run.errorMessage ?? run.outputLabel ?? "任务记录已同步"}</span>
+          {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : runStatusBadge(currentRun)}
+          <strong>{currentRun.provider ?? (isGeneration ? "生成服务" : "本地训练")}</strong>
+          <span>{isRetryQueued ? "已加入重试队列，等待训练服务重新调度。" : currentRun.schedulerMessage ?? currentRun.waitReason ?? currentRun.errorMessage ?? currentRun.outputLabel ?? "任务记录已同步"}</span>
         </div>
         <div className={s.progressBlock}>
           <span>{percent}%</span>
@@ -188,10 +188,10 @@ export function LoraTrainingRunDetailPage({
           subtitle={isGeneration ? "与生图运行详情一致，只展示最终请求输入，保留来源脉络。" : "训练任务只展示可复现所需配置和数据集版本。"}
         >
           <div className={s.stack}>
-            <Field readOnly multiline features={{ clipboard: true }} label={isGeneration ? "最终请求" : "训练参数快照"} value={isGeneration ? run.finalInput ?? "未记录最终输入" : trainingConfigText(run)} />
-            {!isGeneration && run.trainingConfig?.length ? (
+            <Field readOnly multiline features={{ clipboard: true }} label={isGeneration ? "最终请求" : "训练参数快照"} value={isGeneration ? currentRun.finalInput ?? "未记录最终输入" : trainingConfigText(currentRun)} />
+            {!isGeneration && currentRun.trainingConfig?.length ? (
               <dl className={s.configGrid}>
-                {run.trainingConfig.map((row) => (
+                {currentRun.trainingConfig.map((row) => (
                   <div key={row.label}>
                     <dt>{row.label}</dt>
                     <dd>{row.value}</dd>
@@ -212,33 +212,33 @@ export function LoraTrainingRunDetailPage({
         <Panel
           title={isGeneration ? "输出" : "训练产物"}
           subtitle={isGeneration ? "文本任务直接展示应用结果，图片任务展示进入结果池的样本。" : "完成后产出模型文件；未完成状态保留进度与日志入口。"}
-          actions={canCreatePreset ? <ButtonLink href={createTrainingPresetHref(run)} icon={ImagePlus} tone="primary">创建预制</ButtonLink> : null}
+          actions={canCreatePreset ? <ButtonLink href={createTrainingPresetHref(currentRun)} icon={ImagePlus} tone="primary">创建预制</ButtonLink> : null}
         >
           <div className={s.stack}>
-            {run.status === "failed" ? (
+            {currentRun.status === "failed" ? (
               <div className={s.callout} data-tone="danger">
                 <AlertTriangle aria-hidden="true" />
-                <span>{run.errorMessage}</span>
+                <span>{currentRun.errorMessage}</span>
               </div>
             ) : null}
-            {run.status === "queued" ? (
+            {currentRun.status === "queued" ? (
               <div className={s.callout}>
                 <Play aria-hidden="true" />
-                <span>{run.waitReason ?? "等待训练服务调度"}</span>
+                <span>{currentRun.waitReason ?? "等待训练服务调度"}</span>
               </div>
             ) : null}
-            {run.status === "completed" ? (
+            {currentRun.status === "completed" ? (
               <div className={s.callout} data-tone="success">
                 <CheckCircle2 aria-hidden="true" />
-                <span>{run.outputText ?? run.artifactName ?? run.outputLabel ?? "任务已完成"}</span>
+                <span>{currentRun.outputText ?? currentRun.artifactName ?? currentRun.outputLabel ?? "任务已完成"}</span>
               </div>
             ) : null}
             {!isGeneration ? (
               <dl className={s.statGrid}>
                 <div><dt>数据集</dt><dd>{project?.datasetVersion ?? "未记录"}</dd></div>
                 <div><dt>图片</dt><dd>{project?.keptCount ?? 0} 张已保留</dd></div>
-                <div><dt>LoRA 文件</dt><dd>{run.finalLoraArtifactId ? run.artifactName ?? run.finalLoraArtifactId : "尚未生成 LoRA 文件"}</dd></div>
-                <div><dt>预制</dt><dd>{canCreatePreset ? "可创建" : run.presetCreatedAt ? "已创建" : "等待 LoRA 文件"}</dd></div>
+                <div><dt>LoRA 文件</dt><dd>{currentRun.finalLoraArtifactId ? currentRun.artifactName ?? currentRun.finalLoraArtifactId : "尚未生成 LoRA 文件"}</dd></div>
+                <div><dt>预制</dt><dd>{canCreatePreset ? "可创建" : currentRun.presetCreatedAt ? "已创建" : "等待 LoRA 文件"}</dd></div>
               </dl>
             ) : null}
           </div>
@@ -259,7 +259,7 @@ export function LoraTrainingRunDetailPage({
                     data-status={sample.status}
                     key={sample.id}
                     type="button"
-                    onClick={() => setActiveSampleState({ index, runId: run.id })}
+                    onClick={() => setActiveSampleState({ index, runId: currentRun.id })}
                   >
                     <ImagePreviewFrame image={sample.image} />
                     <span className={s.sampleMeta}>
@@ -277,7 +277,7 @@ export function LoraTrainingRunDetailPage({
 
           <Panel
             title="训练日志"
-            subtitle={run.trainingLogArtifactName ? `日志文件 ${run.trainingLogArtifactName}` : "训练服务日志预览"}
+            subtitle={currentRun.trainingLogArtifactName ? `日志文件 ${currentRun.trainingLogArtifactName}` : "训练服务日志预览"}
           >
             <pre className={s.trainingLog}>{logText}</pre>
           </Panel>
