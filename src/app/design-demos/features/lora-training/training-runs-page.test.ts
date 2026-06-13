@@ -47,6 +47,19 @@ test("training current-running cards adapt from their own surface width", () => 
   );
 });
 
+test("training current-running cards keep real space between mobile rows", () => {
+  const listBlockStart = cssSource.indexOf(".currentRunList {");
+  const listBlockEnd = cssSource.indexOf("}", listBlockStart);
+  const listBlock = cssSource.slice(listBlockStart, listBlockEnd);
+
+  assert.notEqual(listBlockStart, -1, "current-running list styles should exist");
+  assert.match(
+    listBlock,
+    /gap:\s*(?:8|9|10|11|12)px;/,
+    "current-running task cards should have an actual list gap so mobile rows do not visually merge",
+  );
+});
+
 test("training runs page keeps status counts only in status tabs", () => {
   assert.match(pageSource, /items=\{STATUS_ITEMS\.map\(\(item\) => \(\{ \.\.\.item, count: countFor\(kind, item\.value\) \}\)\)\}/, "status tabs should own the status counts");
   assert.doesNotMatch(pageSource, /modeSummary/, "runs page should not render a separate top status summary");

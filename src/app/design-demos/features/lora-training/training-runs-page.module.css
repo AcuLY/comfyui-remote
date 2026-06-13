@@ -70,6 +70,8 @@
 .currentRunList {
   display: grid;
   min-width: 0;
+  gap: 10px;
+  padding: 10px;
 }
 
 .currentRunItem {
@@ -78,30 +80,16 @@
   align-items: center;
   gap: 16px;
   min-width: 0;
-  border-bottom: 1px solid var(--demo-border);
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--demo-field-bg) 46%, transparent);
   padding: 13px 14px 14px;
-}
-
-.currentRunItem:last-child {
-  border-bottom: 0;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--demo-text) 5%, transparent) inset;
 }
 
 @container (min-width: 720px) {
   .currentRunList {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .currentRunItem {
-    border-right: 1px solid var(--demo-border);
-  }
-
-  .currentRunItem:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .currentRunItem:last-child,
-  .currentRunItem:nth-last-child(2):nth-child(odd) {
-    border-bottom: 0;
   }
 }
 
