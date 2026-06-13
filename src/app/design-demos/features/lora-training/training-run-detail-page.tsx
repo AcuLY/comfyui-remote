@@ -63,6 +63,16 @@ function findRun(data: DemoData, kind: LoraTrainingTaskKind, runId: string | und
   return training.runs.find((run) => run.kind === kind && run.id === runId);
 }
 
+function trainingRunDetailTitle(run: LoraTrainingRun, project: LoraTrainingProject | undefined) {
+  if (run.kind === "training") {
+    const revision = project?.datasetRevisions.find((item) => item.id === run.datasetRevisionId);
+    const datasetVersion = revision?.version ?? project?.datasetVersion ?? run.datasetRevisionId ?? "未记录";
+    return `${run.projectTitle} / 数据集 ${datasetVersion}`;
+  }
+
+  return `${run.projectTitle} / ${run.title}`;
+}
+
 function progressPercent(run: LoraTrainingRun) {
   return Math.round(Math.max(0, Math.min(100, run.progress ?? (run.status === "completed" ? 100 : 0))));
 }
@@ -262,7 +272,7 @@ export function LoraTrainingRunDetailPage({
     <div className={s.page}>
       <PageHeader
         back={{ href: "/training/runs", label: "返回运行" }}
-        title={`${currentRun.projectTitle} / ${currentRun.title}`}
+        title={trainingRunDetailTitle(currentRun, project)}
         actions={(
             <>
               {generationSectionHref ? (

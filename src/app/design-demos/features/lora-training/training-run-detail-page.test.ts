@@ -10,7 +10,7 @@ const detailCss = readFileSync(resolve(testDir, "training-run-detail-page.module
 const fixtureSource = readFileSync(resolve(testDir, "../../data/lora-training.ts"), "utf8");
 const typesSource = readFileSync(resolve(testDir, "../../data/lora-training-types.ts"), "utf8");
 
-test("training run detail keeps the compact detail header", () => {
+test("training run detail keeps the compact detail header with dataset-version training titles", () => {
   const headerStart = detailSource.indexOf("<PageHeader");
   const headerEnd = detailSource.indexOf("/>", headerStart);
   assert.notEqual(headerStart, -1, "training run detail should render a PageHeader");
@@ -19,10 +19,26 @@ test("training run detail keeps the compact detail header", () => {
   const headerSource = detailSource.slice(headerStart, headerEnd);
 
   assert.match(headerSource, /back=\{\{ href: "\/training\/runs", label: "返回运行" \}\}/, "detail header should keep the back link");
-  assert.match(headerSource, /title=\{`\$\{currentRun\.projectTitle\} \/ \$\{currentRun\.title\}`\}/, "detail header should use the task object title");
+  assert.match(headerSource, /title=\{trainingRunDetailTitle\(currentRun, project\)\}/, "detail header should use the product-facing run detail title helper");
   assert.match(headerSource, /actions=/, "detail header should keep direct object actions");
   assert.doesNotMatch(headerSource, /eyebrow=/, "detail header should not duplicate the task kind above the title");
   assert.doesNotMatch(headerSource, /subtitle=/, "detail header should keep summary and timestamp inside the page body");
+  assert.doesNotMatch(headerSource, /title=\{`\$\{currentRun\.projectTitle\} \/ \$\{currentRun\.title\}`\}/, "training detail should not expose the internal training task title as the page title");
+});
+
+test("training run detail title uses dataset version for training runs and task title for generation runs", () => {
+  const helperStart = detailSource.indexOf("function trainingRunDetailTitle");
+  const helperEnd = detailSource.indexOf("function progressPercent", helperStart);
+  assert.notEqual(helperStart, -1, "run detail should define a product-facing title helper");
+  assert.notEqual(helperEnd, -1, "title helper should live before progress helper");
+
+  const helperSource = detailSource.slice(helperStart, helperEnd);
+
+  assert.match(helperSource, /run\.kind === "training"/, "training runs should receive dataset-version titles");
+  assert.match(helperSource, /project\?\.datasetRevisions\.find/, "training title should prefer the matched dataset revision version");
+  assert.match(helperSource, /project\?\.datasetVersion/, "training title should fall back to the project dataset version");
+  assert.match(helperSource, /return `\$\{run\.projectTitle\} \/ 数据集 \$\{datasetVersion\}`;/, "training titles should use compact dataset-version copy");
+  assert.match(helperSource, /return `\$\{run\.projectTitle\} \/ \$\{run\.title\}`;/, "generation titles should keep the concrete task title");
 });
 
 test("training run detail route helper does not replace invalid ids with first fixtures", () => {

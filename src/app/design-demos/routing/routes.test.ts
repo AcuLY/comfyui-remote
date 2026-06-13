@@ -180,7 +180,7 @@ test("LoRA training run route headers use the matched run context", () => {
 
   const completedTraining = findHeaderSpecForRoute(data, "/training/runs/training/train-vela-v5");
   assert.ok(completedTraining, "completed training run should resolve a header spec");
-  assert.equal(completedTraining.title, "Vela Neon Jacket / LoRA 训练 v5");
+  assert.equal(completedTraining.title, "Vela Neon Jacket / 数据集 v5");
   assert.deepEqual(completedTraining.actions?.map((action) => action.label), ["数据集版本", "创建预制"]);
   assert.equal(completedTraining.actions?.[0]?.href, "/training/projects/vela-neon/dataset/revisions/v5-current");
   assert.match(completedTraining.actions?.[1]?.href ?? "", /\/training\/presets\/new\?/);
@@ -189,11 +189,13 @@ test("LoRA training run route headers use the matched run context", () => {
 
   const runningTraining = findHeaderSpecForRoute(data, "/training/runs/training/train-azure-v4");
   assert.ok(runningTraining, "running training run should resolve a header spec");
+  assert.equal(runningTraining.title, "Azure Idol / 数据集 v4");
   assert.deepEqual(runningTraining.actions?.map((action) => action.label), ["数据集版本"]);
   assert.equal(runningTraining.actions?.[0]?.href, "/training/projects/azure-idol/dataset/revisions/v4-current");
 
   const failedTraining = findHeaderSpecForRoute(data, "/training/runs/training/train-noir-failed");
   assert.ok(failedTraining, "failed training run should resolve a header spec");
+  assert.equal(failedTraining.title, "Noir Runner / 数据集 草稿");
   assert.deepEqual(failedTraining.actions?.map((action) => action.label), ["数据集版本"]);
 
   const lunaGeneration = findHeaderSpecForRoute(data, "/training/runs/generation/gen-luna-profile");

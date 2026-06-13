@@ -912,7 +912,13 @@ function sectionHeaderMeta(section: DemoSection | undefined) {
   ];
 }
 
-function trainingRunTitle(run: LoraTrainingRun) {
+function trainingRunTitle(run: LoraTrainingRun, project?: LoraTrainingProject) {
+  if (run.kind === "training") {
+    const revision = project?.datasetRevisions.find((item) => item.id === run.datasetRevisionId);
+    const datasetVersion = revision?.version ?? project?.datasetVersion ?? run.datasetRevisionId ?? "未记录";
+    return `${run.projectTitle} / 数据集 ${datasetVersion}`;
+  }
+
   return `${run.projectTitle} / ${run.title}`;
 }
 
@@ -1153,6 +1159,7 @@ function loraTrainingRunDetailHeader(data: DemoData, spec: HeaderSpec, matched: 
   if (matched.key === "training-training-run-detail") {
     const run = findLoraTrainingRun(data, "training", matched.params.trainingRunId);
     if (!run) return missingLoraTrainingRunHeader(spec);
+    const project = findLoraTrainingProject(data, run.projectId);
     const actions = [headerAction("数据集版本", History, "default", trainingDatasetHref(run))];
     if (canCreateTrainingPreset(run)) {
       actions.push(headerAction("创建预制", Plus, "primary", trainingPresetHref(run)));
@@ -1160,7 +1167,7 @@ function loraTrainingRunDetailHeader(data: DemoData, spec: HeaderSpec, matched: 
     return {
       ...spec,
       actions,
-      title: trainingRunTitle(run),
+      title: trainingRunTitle(run, project),
     };
   }
 
