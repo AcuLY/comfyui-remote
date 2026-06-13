@@ -78,9 +78,11 @@ test("image generation detail header links back to its training section and sect
   assert.match(detailSource, /generationSectionHref/, "generation detail should build a direct section href");
   assert.match(detailSource, /generationResultsHref/, "generation detail should build a direct section results href");
   assert.match(detailSource, /\/sections\/\$\{generationOutputSection\.sectionId\}/, "section href should point to the concrete training section");
-  assert.match(detailSource, /\/sections\/\$\{generationOutputSection\.sectionId\}\/results/, "results href should point to the concrete section result view");
+  assert.match(detailSource, /`\$\{generationSectionHref\}#section-results`/, "results href should point to the result anchor inside the concrete training section");
+  assert.doesNotMatch(detailSource, /\/sections\/\$\{generationOutputSection\.sectionId\}\/results/, "section results should not link to a removed independent route");
   assert.match(detailSource, />跳转小节<\/ButtonLink>/, "generation detail should expose the same section jump as generation run review pages");
   assert.match(detailSource, />查看结果<\/ButtonLink>/, "generation detail should expose the result surface linked from the output");
+  assert.match(readFileSync(resolve(testDir, "training-project-pages.tsx"), "utf8"), /id="section-results"/, "section detail should expose a stable result anchor");
 });
 
 test("image generation detail renders task input attachments instead of project reference images", () => {

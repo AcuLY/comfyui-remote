@@ -222,7 +222,7 @@ export function LoraTrainingRunDetailPage({
   const generationOutputResults = generationResultsForRun(currentRun, project, resultReviewState);
   const generationOutputSection = isGeneration ? generationOutputResults[0] ?? null : null;
   const generationSectionHref = generationOutputSection ? `${projectHref}/sections/${generationOutputSection.sectionId}` : null;
-  const generationResultsHref = generationOutputSection ? `${projectHref}/sections/${generationOutputSection.sectionId}/results` : null;
+  const generationResultsHref = generationSectionHref ? `${generationSectionHref}#section-results` : null;
   const activeSample = activeSampleState?.runId === currentRun.id ? datasetSamples[activeSampleState.index] ?? null : null;
   const isActiveCaptionCopied = activeSample ? copiedCaption?.runId === currentRun.id && copiedCaption?.sampleId === activeSample.id : false;
   const canCreatePreset = !isGeneration && Boolean(currentRun.finalLoraArtifactId) && !currentRun.presetCreatedAt;

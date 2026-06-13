@@ -1642,13 +1642,15 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
             </dl>
           </Panel>
         ) : null}
-        <Panel title="小节结果">
-          <TrainingResultGrid
-            onReviewStatusChange={handleReviewSectionResult}
-            results={sectionResults}
-            title={`${section.title} 结果`}
-          />
-        </Panel>
+        <div id="section-results">
+          <Panel title="小节结果">
+            <TrainingResultGrid
+              onReviewStatusChange={handleReviewSectionResult}
+              results={sectionResults}
+              title={`${section.title} 结果`}
+            />
+          </Panel>
+        </div>
       </TrainingSectionWorkspace>
     </div>
   );
