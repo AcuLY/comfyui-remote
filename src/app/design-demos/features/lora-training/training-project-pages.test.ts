@@ -506,6 +506,26 @@ test("project-scoped failed run rows use structured failure panels", () => {
   assert.match(cssSource, /\.projectRunFailureBlock\b/, "failed project rows should style the failure reason separately");
 });
 
+test("project-scoped failed run errors inherit the generated-run clamp and copy fallback", () => {
+  const runRowsStart = pagesSource.indexOf("function RunRows");
+  const referenceSourceStart = pagesSource.indexOf("type ReferenceCandidate");
+  assert.notEqual(runRowsStart, -1);
+  assert.notEqual(referenceSourceStart, -1);
+
+  const runRowsSource = pagesSource.slice(runRowsStart, referenceSourceStart);
+
+  assert.match(pagesSource, /const PROJECT_RUN_ERROR_CLAMP_LINES = 3;/, "project scoped failed run errors should share the generated-run clamp depth");
+  assert.match(pagesSource, /useRef<HTMLParagraphElement>/, "project scoped failure block should measure the rendered paragraph");
+  assert.match(pagesSource, /setOverflows\(node\.scrollHeight > node\.clientHeight \+ 2\)/, "project scoped failure block should detect clamped overflow");
+  assert.match(pagesSource, /!expanded && s\.projectRunFailureTextClamped/, "project scoped failed run text should stay clamped until expanded");
+  assert.match(runRowsSource, /copyProjectRunMessage/, "project scoped failed run rows should expose the copy action");
+  assert.match(pagesSource, /document\.createElement\("textarea"\)/, "project scoped copy action should create a hidden textarea fallback");
+  assert.match(pagesSource, /document\.execCommand\("copy"\)/, "project scoped copy action should use the selection API fallback");
+  assert.match(cssSource, /\.projectRunFailureTextClamped\b/, "project scoped failed run errors should have a dedicated clamped text style");
+  assert.match(cssSource, /-webkit-line-clamp:\s*var\(--error-clamp-lines,\s*3\)/, "project scoped failed run errors should clamp to the shared line count variable");
+  assert.match(cssSource, /\.clipboardTextarea\b/, "project scoped copy fallback should keep the temporary textarea invisible");
+});
+
 test("training project create page is a full form workspace with training seed controls", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");

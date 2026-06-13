@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useState, useSyncExternalStore } from "react";
+import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 import {
   Archive,
   ArrowDown,
@@ -71,6 +71,7 @@ type TrainingResultFilter = (typeof RESULT_FILTER_ITEMS)[number]["value"];
 type LoraTrainingTemplateSeedSection = LoraTrainingTemplate["sections"][number];
 type SceneBlockPatch = Partial<Pick<LoraTrainingSectionBlock, "text" | "title">>;
 const DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT = "保持角色正面可训练，避免复杂遮挡和多人构图。";
+const PROJECT_RUN_ERROR_CLAMP_LINES = 3;
 
 type NewProjectTemplateHints = {
   sections: string;
@@ -338,21 +339,79 @@ function projectRunStatusLabel(status: LoraTrainingTaskStatus) {
   return "失败";
 }
 
-function copyProjectRunMessage(message: string) {
-  if (typeof navigator === "undefined" || !navigator.clipboard) return;
-  void navigator.clipboard.writeText(message).catch(() => undefined);
-}
-
 function ProjectRunFailureBlock({ message }: { message: string }) {
+  const textRef = useRef<HTMLParagraphElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+
+  const measureOverflow = useCallback((node: HTMLParagraphElement | null) => {
+    textRef.current = node;
+    if (!node) return;
+    requestAnimationFrame(() => {
+      setOverflows(node.scrollHeight > node.clientHeight + 2);
+    });
+  }, []);
+
   return (
     <div className={s.projectRunFailureBlock} role="status">
       <div className={s.projectRunFailureHeader}>
         <CircleAlert aria-hidden="true" />
         <span>失败原因</span>
+        {overflows && !expanded ? (
+          <button
+            type="button"
+            className={s.projectRunFailureToggle}
+            onClick={(event) => {
+              event.stopPropagation();
+              setExpanded(true);
+            }}
+          >
+            展开
+          </button>
+        ) : null}
+        {expanded ? (
+          <button
+            type="button"
+            className={s.projectRunFailureToggle}
+            onClick={(event) => {
+              event.stopPropagation();
+              setExpanded(false);
+            }}
+          >
+            收起
+          </button>
+        ) : null}
       </div>
-      <p>{message}</p>
+      <p
+        ref={measureOverflow}
+        className={cx(s.projectRunFailureText, !expanded && s.projectRunFailureTextClamped)}
+        style={{ ["--error-clamp-lines" as string]: PROJECT_RUN_ERROR_CLAMP_LINES }}
+      >
+        {message}
+      </p>
     </div>
   );
+}
+
+async function copyProjectRunMessage(message: string) {
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(message);
+      return;
+    }
+  } catch {
+    // Fall back to the selection API below when clipboard permissions are unavailable.
+  }
+
+  if (typeof document === "undefined") return;
+  const textarea = document.createElement("textarea");
+  textarea.value = message;
+  textarea.setAttribute("readonly", "");
+  textarea.className = s.clipboardTextarea;
+  document.body.append(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
 }
 
 function RunRows({
