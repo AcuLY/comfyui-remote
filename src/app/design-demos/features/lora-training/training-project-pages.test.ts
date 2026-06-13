@@ -97,6 +97,19 @@ test("training project route helpers do not replace invalid route ids with first
   assert.doesNotMatch(sectionDetailSource, /training\.projects\.find\(\(item\) => item\.id === projectId\) \?\? training\.projects\[0\]/, "section detail should use the route helper instead of its own first-project fallback");
 });
 
+test("training dataset revision detail does not replace invalid revision ids with first fixtures", () => {
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  const scopedRunsStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
+  assert.notEqual(revisionPageStart, -1);
+  assert.notEqual(scopedRunsStart, -1);
+
+  const revisionPageSource = pagesSource.slice(revisionPageStart, scopedRunsStart);
+
+  assert.match(revisionPageSource, /const revision = project\?\.datasetRevisions\.find\(\(item\) => item\.id === revisionId\);/, "dataset revision detail should resolve the explicit route revision");
+  assert.doesNotMatch(revisionPageSource, /\?\?\s*project\?\.datasetRevisions\[0\]/, "invalid revision ids should not silently render the first dataset revision");
+  assert.match(revisionPageSource, /if \(!project \|\| !revision\) return <EmptyPage title="没有冻结版本数据" \/>;/, "invalid revision ids should reach the explicit empty state");
+});
+
 test("training project query hints use Next search params instead of a manual location store", () => {
   assert.match(pagesSource, /import \{ useSearchParams \} from "next\/navigation";/, "project pages should subscribe to Next-managed query changes");
   assert.match(pagesSource, /const searchParams = useSearchParams\(\)/, "project pages should read current query params through Next navigation state");

@@ -2272,7 +2272,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
 export function LoraTrainingProjectDatasetRevisionPage({ data, projectId, revisionId }: { data: DemoData; projectId?: string; revisionId?: string }) {
   const training = useTraining(data);
   const project = findProject(data, projectId);
-  const revision = project?.datasetRevisions.find((item) => item.id === revisionId) ?? project?.datasetRevisions[0];
+  const revision = project?.datasetRevisions.find((item) => item.id === revisionId);
   if (!project || !revision) return <EmptyPage title="没有冻结版本数据" />;
   const revisionResults = revision.samples.map((sample) => ({
     id: sample.id,
