@@ -1286,7 +1286,6 @@ function SectionCard({
               <strong>{section.title}</strong>
             </Link>
             <div className={s.sectionHeaderActions}>
-              <StatusBadge status={section.enabled ? "ready" : "draft"} label={section.enabled ? "启用" : "停用"} />
               <Button
                 icon={Copy}
                 iconOnly
@@ -1307,20 +1306,20 @@ function SectionCard({
               />
             </div>
           </div>
-          <Link
-            aria-label={`打开第 ${index + 1} 个训练小节最近结果：${section.title}`}
-            className={s.sectionImages}
-            href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}
-          >
-            <ImageListSmall images={section.images} limit={4} showCounts wide />
-          </Link>
-          <div className={s.sectionActions}>
-            <span>更新 {section.updatedAt} · {section.blocks.length} 个场景块</span>
-            <ButtonLink
-              href={`/training/projects/${project.id}/sections/${section.id}/generation-tasks/new`}
-              icon={ImagePlus}
-              size="sm"
-              ariaLabel={`生成小节样本：${section.title}`}
+            <Link
+              aria-label={`打开第 ${index + 1} 个训练小节最近结果：${section.title}`}
+              className={s.sectionImages}
+              href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}
+            >
+              <ImageListSmall images={section.images} limit={4} showCounts wide />
+            </Link>
+            <div className={s.sectionActions}>
+              <span>更新 {section.updatedAt} · {section.blocks.length} 个场景块 · {section.enabled ? "已启用" : "已停用"}</span>
+              <ButtonLink
+                href={`/training/projects/${project.id}/sections/${section.id}/generation-tasks/new`}
+                icon={ImagePlus}
+                size="sm"
+                ariaLabel={`生成小节样本：${section.title}`}
             >
               生成样本
             </ButtonLink>

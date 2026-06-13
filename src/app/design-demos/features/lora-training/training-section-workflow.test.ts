@@ -140,6 +140,21 @@ test("training section generation actions name the target section", () => {
   );
 });
 
+test("training section cards keep enabled state as lightweight meta instead of a header badge", () => {
+  const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
+
+  assert.doesNotMatch(
+    sectionCard,
+    /<StatusBadge/,
+    "training section cards should not keep a heavy status capsule in the header",
+  );
+  assert.match(
+    sectionCard,
+    /section\.enabled \? "已启用" : "已停用"/,
+    "training section cards should keep enabled state in lightweight meta text",
+  );
+});
+
 test("training section thumbnail links name the section results they open", () => {
   const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
 
