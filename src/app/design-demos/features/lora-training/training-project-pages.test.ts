@@ -807,6 +807,24 @@ test("training project create page creates a local front-end draft instead of pr
   assert.doesNotMatch(formSource, /POST \/api\/training\/projects/, "project creation should not advertise missing backend wiring in the UI");
 });
 
+test("training project create page posts through the formal HTTP API on production routes", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /useRouter/, "project creation should be able to navigate to the created training project on production routes");
+  assert.match(formSource, /usePathname/, "project creation should detect whether it is running under production \\/training routes");
+  assert.match(formSource, /fetch\("\/api\/training\/projects"/, "production project creation should call the formal training projects API");
+  assert.match(formSource, /method:\s*"POST"/, "production project creation should create projects through POST");
+  assert.match(formSource, /trainingTemplateId:\s*sourceTemplate\.id/, "production project creation should pass the selected training template id");
+  assert.match(formSource, /checkpointRelativePath/, "production project creation should send a checkpoint path instead of a demo-only model label");
+  assert.match(formSource, /router\.push\(`/, "production project creation should navigate to the created training project");
+  assert.match(formSource, /pushToast/, "production project creation should surface API success or failure through the shared feedback system");
+});
+
 test("training project create page carries selected references into the local draft", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");

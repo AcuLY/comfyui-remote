@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -175,6 +175,11 @@ function readNewProjectTemplateHints(search: string): NewProjectTemplateHints {
     templateId: searchParams.get("templateId") ?? "",
     templateTitle: searchParams.get("template") ?? "",
   };
+}
+
+function buildTrainingProjectTriggerToken(title: string) {
+  const normalized = title.trim().replace(/\s+/g, "_");
+  return normalized || "training_project";
 }
 
 function ProjectNav({ active, project }: { active: (typeof PROJECT_TABS)[number]["key"]; project: LoraTrainingProject }) {
@@ -706,6 +711,9 @@ function ReferencePicker({
 }
 
 export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { pushToast } = useDemoFeedback();
   const training = useTraining(data);
   const urlSearch = useUrlSearch();
   const newProjectTemplateHints = readNewProjectTemplateHints(urlSearch);
@@ -818,6 +826,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     .flatMap((group) => group.items)
     .filter((candidate) => selectedReferenceIds.has(candidate.id));
   const selectedReferenceTitles = selectedProjectReferences.map((reference) => reference.title);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const isProductionTrainingRoute = pathname === "/training" || pathname.startsWith("/training/");
 
   function setProjectForm(updater: (current: typeof projectForm) => typeof projectForm) {
     setProjectFormState((current) => updater(current.templateContextId === projectTemplateContextId ? current : projectForm));
@@ -908,8 +918,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     setSelectedReferenceIds((current) => new Set([...current, candidate.id]));
   }
 
-  function handleCreateProjectDraft() {
-    setCreatedProjectDraft({
+  async function handleCreateProjectDraft() {
+    const nextDraft = {
       autoFreezeDataset: trainingDefaults.autoFreezeDataset,
       autoGenerateSamples: trainingDefaults.autoGenerateSamples,
       baseModel: projectForm.baseModel,
@@ -924,7 +934,82 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
       title: projectForm.title,
       trainingSteps: projectForm.trainingSteps,
       usagePrompt: projectForm.usagePrompt,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setCreatedProjectDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: createdProjectDraft ? "项目草稿已更新" : "训练项目草稿已创建",
+        detail: projectForm.title,
+      });
+      return;
+    }
+
+    if (!sourceTemplate) {
+      pushToast({
+        tone: "error",
+        title: "训练项目创建失败",
+        detail: "请选择一个训练模板后再创建项目。",
+      });
+      return;
+    }
+
+    const checkpointAsset = data.models.find((model) => (
+      model.modelType === "checkpoint"
+      && (projectForm.baseModel === "继承训练默认模型" || model.name === projectForm.baseModel)
+    ));
+
+    if (!checkpointAsset) {
+      pushToast({
+        tone: "error",
+        title: "训练项目创建失败",
+        detail: "没有可用的 checkpoint 路径，请先选择基础模型。",
+      });
+      return;
+    }
+
+    if (isCreatingProject) return;
+
+    setIsCreatingProject(true);
+    try {
+      const response = await fetch("/api/training/projects", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          characterName: projectForm.title.trim(),
+          projectName: projectForm.title.trim(),
+          triggerToken: buildTrainingProjectTriggerToken(projectForm.title),
+          checkpointRelativePath: checkpointAsset.relativePath,
+          trainingTemplateId: sourceTemplate.id,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "训练项目创建失败",
+          detail: payload?.error?.message ?? "训练项目创建请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "success",
+        title: "训练项目已创建",
+        detail: projectForm.title,
+      });
+      router.push(`/training/projects/${payload.data.id}`);
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "训练项目创建失败",
+        detail: error instanceof Error ? error.message : "训练项目创建请求失败",
+      });
+    } finally {
+      setIsCreatingProject(false);
+    }
   }
 
   return (
@@ -938,8 +1023,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
           <Button
             tone="primary"
             icon={Save}
+            pending={isCreatingProject}
             onClick={handleCreateProjectDraft}
-            feedback={{ title: createdProjectDraft ? "项目草稿已更新" : "训练项目草稿已创建", detail: projectForm.title }}
           >
             {createdProjectDraft ? "更新项目草稿" : "创建项目"}
           </Button>
