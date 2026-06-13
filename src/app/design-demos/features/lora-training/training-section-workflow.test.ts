@@ -121,6 +121,25 @@ test("training section list can add a local draft section without backend calls"
   assert.match(sectionsPage, /onClick=\{handleAddSection\}/, "new section button should call the local add action");
 });
 
+test("training section generation actions name the target section", () => {
+  const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
+  const detailPage = sourceBetween(
+    "export function LoraTrainingProjectSectionDetailPage",
+    "export function LoraTrainingGenerationComposePage",
+  );
+
+  assert.match(
+    sectionCard,
+    /ariaLabel=\{`生成小节样本：\$\{section\.title\}`\}/,
+    "section card generation action should name the section",
+  );
+  assert.match(
+    detailPage,
+    /ariaLabel=\{`生成小节样本：\$\{section\.title\}`\}/,
+    "section detail generation action should name the section",
+  );
+});
+
 test("training section list scans existing section ids for local copy and draft ids", () => {
   const sectionsPage = sourceBetween(
     "export function LoraTrainingProjectSectionsPage",

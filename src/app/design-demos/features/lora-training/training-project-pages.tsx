@@ -1297,7 +1297,14 @@ function SectionCard({
           </Link>
           <div className={s.sectionActions}>
             <span>更新 {section.updatedAt} · {section.blocks.length} 个场景块</span>
-            <ButtonLink href={`/training/projects/${project.id}/sections/${section.id}/generation-tasks/new`} icon={ImagePlus} size="sm">生成样本</ButtonLink>
+            <ButtonLink
+              href={`/training/projects/${project.id}/sections/${section.id}/generation-tasks/new`}
+              icon={ImagePlus}
+              size="sm"
+              ariaLabel={`生成小节样本：${section.title}`}
+            >
+              生成样本
+            </ButtonLink>
           </div>
         </div>
       </article>
@@ -1584,7 +1591,14 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
             >
               {visibleSectionDraft ? "更新小节草稿" : "保存小节"}
             </Button>
-            <ButtonLink href={`/training/projects/${project.id}/sections/${section.id}/generation-tasks/new`} icon={ImagePlus} tone="primary">生成样本</ButtonLink>
+            <ButtonLink
+              href={`/training/projects/${project.id}/sections/${section.id}/generation-tasks/new`}
+              icon={ImagePlus}
+              tone="primary"
+              ariaLabel={`生成小节样本：${section.title}`}
+            >
+              生成样本
+            </ButtonLink>
           </>
         )}
       />
