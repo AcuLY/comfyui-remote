@@ -20,7 +20,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CheckSquare, ChevronRight, Copy, GripVertical, Repeat2, Square, X } from "lucide-react";
+import { CheckSquare, ChevronRight, Copy, GripVertical, Pencil, Repeat2, Square, X } from "lucide-react";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import type {
   FolderItem,
@@ -56,6 +56,7 @@ export function SortableGroupCard({
   onRefresh,
   onGroupDeleted,
   onMoveToFolder,
+  onEdit,
   onCopy,
   isPending,
   startTransition,
@@ -71,6 +72,7 @@ export function SortableGroupCard({
   onRefresh: () => void;
   onGroupDeleted: () => void;
   onMoveToFolder: (folderId: string | null) => void;
+  onEdit: () => void;
   onCopy?: () => void;
   isPending: boolean;
   startTransition: React.TransitionStartFunction;
@@ -198,6 +200,15 @@ export function SortableGroupCard({
           </div>
         </Link>
         <div className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+            className="shrink-0 rounded p-1 text-zinc-600 transition hover:bg-sky-500/10 hover:text-sky-400"
+            title="编辑预制组"
+            aria-label={`编辑预制组：${group.name}`}
+          >
+            <Pencil className="size-3.5" />
+          </button>
           <MoveToFolderButton
             currentFolderId={group.folderId}
             folders={folders}

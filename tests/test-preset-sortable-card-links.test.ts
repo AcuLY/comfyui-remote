@@ -38,6 +38,25 @@ test("sortable preset and group cards keep drag buttons outside detail links", (
   assertLinkBlocksExcludeControls("src/app/assets/presets/sortable-group-card.tsx", "SortableGroupCard");
 });
 
+test("sortable group cards expose an edit action for existing groups", () => {
+  const groupCardSource = readSource("src/app/assets/presets/sortable-group-card.tsx");
+  const groupCardBody = functionSource(groupCardSource, "SortableGroupCard");
+  const groupListSource = readSource("src/app/assets/presets/group-list.tsx");
+
+  assert.match(groupCardSource, /Pencil/, "group card should import the edit icon");
+  assert.match(groupCardBody, /onEdit/, "group card should accept an edit callback");
+  assert.match(
+    groupCardBody,
+    /title="编辑预制组"[\s\S]*<Pencil/,
+    "existing group cards should render a clear edit button before the inline editor",
+  );
+  assert.match(
+    groupListSource,
+    /onEdit=\{\(\) => setEditingGroupId\(editingGroupId === group\.id \? null : group\.id\)\}/,
+    "group list should toggle the inline editor for the clicked group",
+  );
+});
+
 test("creating a preset navigates to the new preset detail route", () => {
   const body = functionSource(readSource("src/app/assets/presets/preset-manager.tsx"), "PresetList");
 

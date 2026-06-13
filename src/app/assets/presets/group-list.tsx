@@ -396,6 +396,7 @@ export function GroupList({
                   }
                 });
               }}
+              onEdit={() => setEditingGroupId(editingGroupId === group.id ? null : group.id)}
               onCopy={() => {
                 startTransition(async () => {
                   try {
