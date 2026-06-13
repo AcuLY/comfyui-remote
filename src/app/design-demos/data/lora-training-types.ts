@@ -150,6 +150,8 @@ export type LoraTrainingTemplate = {
   status: "active" | "archived";
   updatedAt: string;
   description: string;
+  imageGuidance: string;
+  captionGuidance: string;
   sectionCount: number;
   sections: Array<{
     id: string;

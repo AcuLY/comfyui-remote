@@ -108,6 +108,12 @@ function buildReferenceImages(sourceImages: Awaited<ReturnType<typeof listCharac
     .filter((image): image is LoraTrainingReferenceImage => Boolean(image));
 }
 
+function readTemplateGuidance(value: unknown, key: string, fallback: string) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return fallback;
+  const candidate = (value as Record<string, unknown>)[key];
+  return typeof candidate === "string" && candidate.trim().length > 0 ? candidate : fallback;
+}
+
 function buildResultPool(input: {
   candidateImages: Awaited<ReturnType<typeof listCharacterLoraCandidateImages>>;
   sectionNames: Map<string, string>;
@@ -382,6 +388,8 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
         status: template.isActive ? "active" : "archived",
         updatedAt: formatUpdatedAt(template.updatedAt),
         description: template.description ?? "",
+        imageGuidance: readTemplateGuidance(snapshot.trainingDefaults, "imageGuidance", "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。"),
+        captionGuidance: readTemplateGuidance(snapshot.promptCardDefaults, "captionGuidance", "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。"),
         sectionCount: snapshot.sectionTemplates.length,
         sections: snapshot.sectionTemplates.map((section) => ({
           id: section.id,

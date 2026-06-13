@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, CheckSquare, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
 import { cx, useRouteHref } from "../../routing";
+import { useDemoFeedback } from "../../shared/feedback/context";
 import { OperationStateStrip } from "../../shared/feedback/operation-state-strip";
 import { Button, ButtonLink } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
@@ -139,6 +140,10 @@ function presetUsageLabel(preset: LoraTrainingPreset) {
 function useUrlSearch() {
   const searchParams = useSearchParams();
   return searchParams.toString();
+}
+
+function isProductionTrainingPath(pathname: string | null | undefined) {
+  return pathname === "/training" || pathname?.startsWith("/training/") === true;
 }
 
 type NewPresetHints = {
@@ -1094,6 +1099,9 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
 }
 
 export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data: DemoData; mode: "new" | "edit"; templateId?: string }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
   const urlSearch = useUrlSearch();
   const newTemplateHints = mode === "new" ? readNewTemplateHints(urlSearch) : { projectId: "", sections: "", sourceProject: "" };
@@ -1116,9 +1124,9 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
     newTemplateHints.sections,
   ].join(":");
   const initialTemplateForm = {
-    captionGuidance: "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。",
+    captionGuidance: seedTemplate?.captionGuidance ?? "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。",
     description: seedTemplate?.description ?? "用于新角色 LoRA 训练项目的起始模板。",
-    imageGuidance: "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。",
+    imageGuidance: seedTemplate?.imageGuidance ?? "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。",
     title: newTemplateHints.sourceProject ? `${newTemplateHints.sourceProject} 训练模板` : seedTemplate?.title ?? "新角色 LoRA 模板",
   };
   const [templateSectionState, setTemplateSectionState] = useState(() => ({
@@ -1137,11 +1145,13 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
     contextId: templateFormContextId,
     draft: null,
   }));
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const templateSections = templateSectionState.contextId === templateFormContextId ? templateSectionState.sections : templateSeedSections;
   const orderedTemplateSectionIds = templateSectionState.contextId === templateFormContextId ? templateSectionState.orderedIds : templateSeedSectionIds;
   const templateForm = templateFormState.contextId === templateFormContextId ? templateFormState.form : initialTemplateForm;
   const templateDraft = templateDraftState.contextId === templateFormContextId ? templateDraftState.draft : null;
   const templateSectionMap = Object.fromEntries(templateSections.map((section) => [section.id, section]));
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   function activeTemplateSectionState(current: typeof templateSectionState) {
     return current.contextId === templateFormContextId ? current : {
@@ -1194,13 +1204,68 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
     setTemplateForm((current) => ({ ...current, [field]: value }));
   }
 
-  function handleSaveTemplate() {
-    setTemplateDraft({
+  async function handleSaveTemplate() {
+    const nextDraft = {
       ...templateForm,
       mode,
       sectionCount: templateSections.length,
       sourceProject: newTemplateHints.sourceProject,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setTemplateDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: templateDraft ? "模板保存草稿已更新" : "模板保存草稿已记录",
+        detail: templateForm.title,
+      });
+      return;
+    }
+
+    if (isSavingTemplate) return;
+
+    setIsSavingTemplate(true);
+    try {
+      const response = await fetch(mode === "new" ? "/api/training/templates" : `/api/training/templates/${template?.id}`, {
+        method: mode === "new" ? "POST" : "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: templateForm.title,
+          description: templateForm.description,
+          imageGuidance: templateForm.imageGuidance,
+          captionGuidance: templateForm.captionGuidance,
+          sections: orderedTemplateSectionIds
+            .map((sectionId) => templateSectionMap[sectionId])
+            .filter((section): section is LoraTrainingTemplate["sections"][number] => Boolean(section)),
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: mode === "new" ? "训练模板创建失败" : "训练模板保存失败",
+          detail: payload?.error?.message ?? "训练模板保存请求失败",
+        });
+        return;
+      }
+
+      setTemplateDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: mode === "new" ? "训练模板已创建" : "训练模板已保存",
+        detail: templateForm.title,
+      });
+      router.push(`/training/templates/${payload.data.id}/edit`);
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: mode === "new" ? "训练模板创建失败" : "训练模板保存失败",
+        detail: error instanceof Error ? error.message : "训练模板保存请求失败",
+      });
+    } finally {
+      setIsSavingTemplate(false);
+    }
   }
 
   function createDraftTemplateSection(current: LoraTrainingTemplateSection[], titleSuffix: string): LoraTrainingTemplateSection {
@@ -1283,8 +1348,8 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
           <Button
             tone="primary"
             icon={Save}
+            pending={isSavingTemplate}
             onClick={handleSaveTemplate}
-            feedback={{ title: templateDraft ? "模板保存草稿已更新" : "模板保存草稿已记录", detail: templateForm.title }}
           >
             {templateDraft ? "更新草稿" : mode === "new" ? "创建模板" : "保存模板"}
           </Button>

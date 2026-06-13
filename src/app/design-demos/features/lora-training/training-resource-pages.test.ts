@@ -35,7 +35,7 @@ test("training resource route helpers do not replace invalid route ids with firs
 });
 
 test("training resource query hints use Next search params instead of a manual location store", () => {
-  assert.match(pageSource, /import \{ useSearchParams \} from "next\/navigation";/, "resource pages should subscribe to Next-managed query changes");
+  assert.match(pageSource, /import \{[^}]*useSearchParams[^}]*\} from "next\/navigation";/, "resource pages should subscribe to Next-managed query changes");
   assert.match(pageSource, /const searchParams = useSearchParams\(\)/, "resource pages should read current query params through Next navigation state");
   assert.match(pageSource, /searchParams\.toString\(\)/, "resource pages should pass the live query string into hint parsers");
   assert.doesNotMatch(pageSource, /useSyncExternalStore/, "resource query hints should not depend on a manual window.location.search store");
@@ -455,8 +455,26 @@ test("training template form saves a visible local template draft instead of onl
   assert.match(formSource, /onClick=\{handleSaveTemplate\}/, "template save button should call the local save handler");
   assert.match(formSource, /模板保存草稿/, "template form should render a visible saved draft panel");
   assert.match(formSource, /templateSections\.length/, "saved draft should include the current section count");
-  assert.doesNotMatch(formSource, /训练模板已创建/, "new template save should not remain feedback-only");
-  assert.doesNotMatch(formSource, /训练模板已保存/, "template save should not remain feedback-only");
+  assert.doesNotMatch(formSource, /feedback=\{\{ title: "训练模板已创建"/, "new template save should not remain feedback-only");
+  assert.doesNotMatch(formSource, /feedback=\{\{ title: "训练模板已保存"/, "template save should not remain feedback-only");
+});
+
+test("training template form saves through the formal HTTP API on production routes", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(formSource, /usePathname/, "template form should detect whether it is running under production \\/training routes");
+  assert.match(formSource, /useRouter/, "template form should be able to navigate to the saved training template on production routes");
+  assert.match(formSource, /fetch\(mode === "new" \? "\/api\/training\/templates" : `\/api\/training\/templates\/\$\{template\??\.id\}`/, "template form should call the formal training template API");
+  assert.match(formSource, /method:\s*mode === "new" \? "POST" : "PATCH"/, "template form should create or update through the matching HTTP method");
+  assert.match(formSource, /imageGuidance:/, "template form should send image guidance through the HTTP request");
+  assert.match(formSource, /captionGuidance:/, "template form should send caption guidance through the HTTP request");
+  assert.match(formSource, /sections:/, "template form should send the editable section list through the HTTP request");
+  assert.match(formSource, /pushToast/, "template form should surface API success or failure through the shared feedback system");
 });
 
 test("training template form state stays scoped to the active template context", () => {

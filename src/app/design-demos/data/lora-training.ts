@@ -601,6 +601,8 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       status: "active",
       updatedAt: "16:04",
       description: "用于新角色 LoRA 训练项目的默认模板，包含舞台、街景和白底净图。",
+      imageGuidance: "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。",
+      captionGuidance: "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。",
       sectionCount: 6,
       sections: [
         {
@@ -677,6 +679,8 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       status: "active",
       updatedAt: "15:44",
       description: "偏轻量的人像模板，适合资料较完整的角色快速生成训练集。",
+      imageGuidance: "以半身和特写为主，优先保证脸部、发型和上身服装细节稳定。",
+      captionGuidance: "先写角色触发词，再补充脸部特征、镜头距离和背景控制。",
       sectionCount: 4,
       sections: [
         {
