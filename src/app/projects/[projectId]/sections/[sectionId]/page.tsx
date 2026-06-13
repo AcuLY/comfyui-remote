@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import { ArrowLeft, ImageIcon, Download } from "lucide-react";
+import { ArrowLeft, ImageIcon } from "lucide-react";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
+import { WorkflowDownloadMenu } from "@/components/workflow-download-menu";
 import { prisma } from "@/lib/prisma";
 import { buildFolderScopedItemOrder, hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { toImageUrl } from "@/lib/image-url";
@@ -360,13 +361,12 @@ export default async function SectionEditPage({
                   <ImageIcon className="size-3" /> 查看全部
                 </HardNavigationLink>
               )}
-              <a
-                href={`/api/projects/${projectId}/section-workflow/${sectionId}`}
-                download
-                className="inline-flex items-center gap-1 rounded-lg border border-sky-500/20 bg-sky-500/[0.08] px-2 py-1 text-xs text-sky-200 transition hover:bg-sky-500/15 hover:text-sky-100"
-              >
-                <Download className="size-3" /> 下载 workflow
-              </a>
+              <WorkflowDownloadMenu
+                originalHref={`/api/projects/${projectId}/section-workflow/${sectionId}`}
+                debugHref={`/api/projects/${projectId}/section-workflow/${sectionId}`}
+                label="下载 workflow"
+                buttonClassName="rounded-lg border border-sky-500/20 bg-sky-500/[0.08] px-2 py-1 text-xs text-sky-200 transition hover:bg-sky-500/15 hover:text-sky-100"
+              />
             </div>
           </div>
           {latestResultImages.length > 0 ? (

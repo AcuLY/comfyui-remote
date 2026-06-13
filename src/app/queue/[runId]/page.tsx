@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
-import { ArrowLeft, ChevronLeft, ChevronRight, Download, ExternalLink, Images } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, ExternalLink, Images } from "lucide-react";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
+import { WorkflowDownloadMenu } from "@/components/workflow-download-menu";
 import { SectionCard } from "@/components/section-card";
 import { getReviewGroup, getReviewGroupIds } from "@/lib/server-data";
 import { ReviewGrid } from "./review-grid";
@@ -201,13 +202,11 @@ export default async function ReviewGroupPage({ params }: { params: Promise<{ ru
               <Images className="size-3.5" /> 查看结果
             </HardNavigationLink>
           )}
-          <a
-            href={`/api/runs/${runId}/workflow`}
-            download
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300"
-          >
-            <Download className="size-4" /> 下载工作流
-          </a>
+          <WorkflowDownloadMenu
+            originalHref={`/api/runs/${runId}/workflow`}
+            debugHref={`/api/runs/${runId}/workflow`}
+            buttonClassName="rounded-full border border-white/10 px-3 py-2 text-xs text-zinc-300"
+          />
         </div>
       </div>
 
