@@ -1136,13 +1136,18 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
 }
 
 export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoData; projectId?: string }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { pushToast } = useDemoFeedback();
   const training = useTraining(data);
   const project = findProject(data, projectId);
   const [projectArchiveState, setProjectArchiveState] = useState(() => ({
     archived: project?.status === "archived",
     projectId: project?.id ?? null,
   }));
+  const [isUpdatingProjectArchive, setIsUpdatingProjectArchive] = useState(false);
   if (!project) return <EmptyPage title="没有训练项目数据" />;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const isProjectArchived = projectArchiveState.projectId === project.id ? projectArchiveState.archived : project.status === "archived";
   const activeProject: LoraTrainingProject = isProjectArchived
     ? { ...project, status: "archived" }
@@ -1153,11 +1158,61 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
   const recentResults = project.resultPool.filter((result) => result.reviewStatus === "kept").slice(0, 4);
   const latestRevision = project.datasetRevisions[0];
 
-  function handleToggleProjectArchive() {
-    setProjectArchiveState((current) => {
-      const currentArchived = current.projectId === project.id ? current.archived : project.status === "archived";
-      return { archived: !currentArchived, projectId: project.id };
-    });
+  async function handleToggleProjectArchive() {
+    const currentArchived = projectArchiveState.projectId === project.id ? projectArchiveState.archived : project.status === "archived";
+    const nextArchived = !currentArchived;
+
+    const applyLocalArchiveState = () => {
+      setProjectArchiveState({
+        archived: nextArchived,
+        projectId: project.id,
+      });
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalArchiveState();
+      pushToast({
+        tone: nextArchived ? "warning" : "success",
+        title: nextArchived ? "训练项目已归档" : "训练项目已恢复",
+        detail: project.title,
+      });
+      return;
+    }
+
+    if (isUpdatingProjectArchive) return;
+
+    setIsUpdatingProjectArchive(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/${currentArchived ? "restore" : "archive"}`, {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: currentArchived ? "恢复失败" : "归档失败",
+          detail: payload?.error?.message ?? "训练项目状态更新请求失败",
+        });
+        return;
+      }
+
+      applyLocalArchiveState();
+      pushToast({
+        tone: nextArchived ? "warning" : "success",
+        title: nextArchived ? "训练项目已归档" : "训练项目已恢复",
+        detail: project.title,
+      });
+      router.refresh();
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: currentArchived ? "恢复失败" : "归档失败",
+        detail: error instanceof Error ? error.message : "训练项目状态更新请求失败",
+      });
+    } finally {
+      setIsUpdatingProjectArchive(false);
+    }
   }
 
   return (
@@ -1170,8 +1225,8 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
           <Button
             tone={isProjectArchived ? "subtle" : "danger"}
             icon={Archive}
+            pending={isUpdatingProjectArchive}
             onClick={handleToggleProjectArchive}
-            feedback={{ tone: isProjectArchived ? "success" : "warning", title: isProjectArchived ? "训练项目已恢复" : "训练项目已归档", detail: project.title }}
           >
             {isProjectArchived ? "恢复" : "归档"}
           </Button>

@@ -177,6 +177,20 @@ test("training project overview archives and restores the project locally", () =
   assert.doesNotMatch(overviewSource, /归档项目需要确认/, "archive action should not stay as a confirmation-only placeholder");
 });
 
+test("training project overview archives and restores through the formal HTTP API on production routes", () => {
+  const overviewStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  assert.notEqual(overviewStart, -1);
+  assert.notEqual(profileStart, -1);
+
+  const overviewSource = pagesSource.slice(overviewStart, profileStart);
+
+  assert.match(overviewSource, /usePathname/, "project overview should detect whether it is running under production \\/training routes");
+  assert.match(overviewSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/\$\{currentArchived \? "restore" : "archive"\}`/, "project overview should call the formal archive or restore API");
+  assert.match(overviewSource, /method:\s*"POST"/, "project overview should archive and restore through POST");
+  assert.match(overviewSource, /pushToast/, "project overview should surface API success or failure through the shared feedback system");
+});
+
 test("training profile page renders reference image cards with kind, label, and note", () => {
   const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const sectionsStart = pagesSource.indexOf("function SectionCard");

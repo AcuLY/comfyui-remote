@@ -115,6 +115,14 @@ test("training project list archives and restores selected projects locally", ()
   assert.match(projectsPageSource, /scope === "current" \? "归档" : "恢复"/, "Batch action label should match the active scope");
 });
 
+test("training project list archives and restores selected projects through the formal HTTP API on production routes", () => {
+  assert.match(projectsPageSource, /usePathname/, "Project list should detect whether it is running under production \\/training routes");
+  assert.match(projectsPageSource, /fetch\(`\/api\/training\/projects\/\$\{projectId\}\/\$\{scope === "current" \? "archive" : "restore"\}`/, "Batch archive and restore should call the formal project archive API");
+  assert.match(projectsPageSource, /method:\s*"POST"/, "Batch archive and restore should use POST");
+  assert.match(projectsPageSource, /Promise\.all/, "Batch archive and restore should persist all selected projects before updating local state");
+  assert.match(projectsPageSource, /pushToast/, "Project list should surface batch archive API success or failure through the shared feedback system");
+});
+
 test("training project list deletes selected projects from local front-end state", () => {
   assert.match(projectsPageSource, /hiddenProjectIds/, "Project list should track locally removed project ids");
   assert.match(projectsPageSource, /setHiddenProjectIds/, "Project list delete actions should update hidden project state");
