@@ -1,0 +1,21 @@
+import { fail, ok } from "@/lib/api-response";
+import {
+  archiveCharacterLoraTrainingJob,
+  mapCharacterLoraTrainingJobError,
+} from "@/server/services/character-lora-training/job-service";
+
+export const dynamic = "force-dynamic";
+
+export async function POST(
+  _request: Request,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
+  try {
+    const { projectId } = await params;
+    const data = await archiveCharacterLoraTrainingJob(projectId);
+    return ok(data);
+  } catch (error) {
+    const mapped = mapCharacterLoraTrainingJobError(error);
+    return fail(mapped.message, mapped.status, mapped.details);
+  }
+}

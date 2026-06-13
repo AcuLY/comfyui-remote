@@ -1,5 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
 import { getTrainingProject, mapTrainingReadError } from "@/server/services/training/read-service";
+import {
+  freezeCharacterLoraDataset,
+  mapCharacterLoraPhase3Error,
+} from "@/server/services/character-lora-training/phase3-service";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +17,29 @@ export async function GET(
     return ok(project.datasetRevisions);
   } catch (error) {
     const mapped = mapTrainingReadError(error);
+    return fail(mapped.message, mapped.status, mapped.details);
+  }
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ projectId: string }> },
+) {
+  let body: unknown = {};
+
+  try {
+    const rawBody = await request.text();
+    body = rawBody.trim() ? JSON.parse(rawBody) : {};
+  } catch {
+    return fail("Invalid JSON body", 400);
+  }
+
+  try {
+    const { projectId } = await params;
+    const data = await freezeCharacterLoraDataset(projectId, body);
+    return ok(data, { status: 201 });
+  } catch (error) {
+    const mapped = mapCharacterLoraPhase3Error(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

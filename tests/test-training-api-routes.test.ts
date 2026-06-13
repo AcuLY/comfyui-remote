@@ -149,3 +149,52 @@ test("GET /api/training/scheduler/status exposes a training scheduler snapshot",
   assert.equal(typeof payload.data.summary.projectCount, "number");
   assert.equal(typeof payload.data.summary.runCount, "number");
 });
+
+test("training write routes exist under /api/training and fail through HTTP contracts instead of missing handlers", async () => {
+  const createProjectRoute = await import("../src/app/api/training/projects/route");
+  const updateProjectRoute = await import("../src/app/api/training/projects/[projectId]/route");
+  const archiveProjectRoute = await import("../src/app/api/training/projects/[projectId]/archive/route");
+  const freezeDatasetRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
+  const enqueueTrainingRunRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
+  const enqueueSectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
+  const cancelTrainingRunRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/cancel/route");
+
+  const missingProjectParams = { params: Promise.resolve({ projectId: "missing-project" }) };
+  const missingSectionParams = { params: Promise.resolve({ sectionId: "missing-section" }) };
+  const missingRunParams = { params: Promise.resolve({ trainingRunId: "missing-run" }) };
+
+  const [createResponse, updateResponse, archiveResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
+    createProjectRoute.POST(new Request("http://localhost/api/training/projects", { method: "POST", body: "{}" })),
+    updateProjectRoute.PATCH(new Request("http://localhost/api/training/projects/missing-project", { method: "PATCH", body: "{}" }), missingProjectParams),
+    archiveProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/archive", { method: "POST" }), missingProjectParams),
+    freezeDatasetRoute.POST(new Request("http://localhost/api/training/projects/missing-project/dataset-revisions", { method: "POST", body: "{}" }), missingProjectParams),
+    enqueueTrainingRunRoute.POST(new Request("http://localhost/api/training/projects/missing-project/training-runs", { method: "POST", body: "{}" }), missingProjectParams),
+    enqueueSectionRunRoute.POST(new Request("http://localhost/api/training/sections/missing-section/runs", { method: "POST", body: "{}" }), missingSectionParams),
+    cancelTrainingRunRoute.POST(new Request("http://localhost/api/training/training-runs/missing-run/cancel", { method: "POST", body: "{}" }), missingRunParams),
+  ]);
+
+  const payloads = await Promise.all([
+    createResponse.json(),
+    updateResponse.json(),
+    archiveResponse.json(),
+    freezeResponse.json(),
+    enqueueTrainingResponse.json(),
+    enqueueSectionResponse.json(),
+    cancelResponse.json(),
+  ]);
+
+  assert.equal(createResponse.status, 400);
+  assert.equal(payloads[0].ok, false);
+  assert.ok(updateResponse.status >= 400);
+  assert.equal(payloads[1].ok, false);
+  assert.ok(archiveResponse.status >= 400);
+  assert.equal(payloads[2].ok, false);
+  assert.ok(freezeResponse.status >= 400);
+  assert.equal(payloads[3].ok, false);
+  assert.ok(enqueueTrainingResponse.status >= 400);
+  assert.equal(payloads[4].ok, false);
+  assert.ok(enqueueSectionResponse.status >= 400);
+  assert.equal(payloads[5].ok, false);
+  assert.ok(cancelResponse.status >= 400);
+  assert.equal(payloads[6].ok, false);
+});
