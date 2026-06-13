@@ -313,7 +313,7 @@ export function LoraTrainingRunDetailPage({
       <div className={s.detailGrid}>
         <Panel
           title={isGeneration ? "最终输入" : "训练配置"}
-          subtitle={isGeneration ? "与生图运行详情一致，只展示最终请求输入，保留来源脉络。" : "训练任务只展示可复现所需配置和数据集版本。"}
+          subtitle={isGeneration ? "与生图运行详情一致，只展示本次任务提交给生成服务的最终请求。" : "训练任务只展示可复现所需配置和数据集版本。"}
         >
           <div className={s.stack}>
             <Field readOnly multiline features={{ clipboard: true }} label={isGeneration ? "最终请求" : "训练参数快照"} value={isGeneration ? currentRun.finalInput ?? "未记录最终输入" : trainingConfigText(currentRun)} />

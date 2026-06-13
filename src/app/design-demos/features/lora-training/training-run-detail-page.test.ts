@@ -167,6 +167,7 @@ test("training run detail page uses product-facing copy instead of internal impl
     /caption 快照/i,
     /复制 caption/i,
     /caption 已/i,
+    /来源脉络/,
   ]) {
     assert.doesNotMatch(detailSource, term, `training detail should not expose ${term}`);
   }
@@ -184,6 +185,8 @@ test("training run fixtures keep rendered sample and config copy product-facing"
     /final LoRA/i,
     /manifest 缺失/i,
     /缺失 caption/i,
+    /provenance/i,
+    /不拆解/,
   ]) {
     assert.doesNotMatch(fixtureSource, term, `training fixtures should not render ${term}`);
   }

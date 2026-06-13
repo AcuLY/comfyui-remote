@@ -371,7 +371,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       timestamp: "完成于 14:47",
       outputLabel: "已写入角色资料",
       provider: "Qwen2.5-VL",
-      finalInput: "根据 Luna Editorial 的参考图生成角色描述，不拆解 provenance，只保留最终输入。",
+      finalInput: "根据 Luna Editorial 的参考图生成一段可写入角色资料的外观描述。",
       outputText: "银白短发、冷调蓝眼，穿着黑色高领与月白色风衣，整体是克制、清冷的杂志编辑风。",
     },
     {
