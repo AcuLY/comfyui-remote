@@ -233,6 +233,10 @@ const defaultTrainingConfig = [
 ];
 
 export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData {
+  if (data.loraTraining) {
+    return data.loraTraining;
+  }
+
   const images = imagePool(data);
 
   const projects: LoraTrainingProject[] = [

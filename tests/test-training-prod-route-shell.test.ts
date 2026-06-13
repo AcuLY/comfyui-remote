@@ -81,8 +81,8 @@ test("design-demo shell links can be retargeted away from /design-demos", () => 
 test("training routes render a production shell without the /design-demos prefix", () => {
   assert.match(
     trainingRoutePageSource,
-    /loadDesignDemoData/,
-    "training route entry should reuse the existing training data loader for the first production cutover",
+    /loadTrainingRouteData/,
+    "training route entry should use the dedicated production training data loader",
   );
   assert.match(
     trainingRoutePageSource,
