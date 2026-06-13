@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -43,6 +43,7 @@ import { SelectionBatchBar } from "../../shared/patterns";
 import { buildLoraTrainingDemoData } from "./fixtures";
 import type { LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "./types";
 import s from "./training-project-pages.module.css";
+import { useDemoFeedback } from "../../shared/feedback/context";
 
 const PROJECT_TABS = [
   { key: "overview", label: "总览", path: "" },
@@ -1111,6 +1112,8 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
 }
 
 export function LoraTrainingProjectProfilePage({ data, projectId }: { data: DemoData; projectId?: string }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const project = findProject(data, projectId);
   const [referenceImageState, setLocalReferenceImages] = useState(() => ({
     images: project?.referenceImages ?? [],
@@ -1129,6 +1132,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
     referenceImageCount: number;
     usagePrompt: string;
   } | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   if (!project) return <EmptyPage title="没有角色资料数据" />;
   const localReferenceImages = referenceImageState.projectId === project.id ? referenceImageState.images : project.referenceImages;
   const profileForm = profileFormState.projectId === project.id ? profileFormState : {
@@ -1138,15 +1142,61 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
     usagePrompt: project.usagePrompt,
   };
   const visibleProfileDraft = profileDraft?.projectId === project.id ? profileDraft : null;
+  const isProductionTrainingRoute = pathname === "/training" || pathname.startsWith("/training/");
 
-  function handleSaveProfile() {
-    setProfileDraft({
+  async function handleSaveProfile() {
+    const nextDraft = {
       detailPrompt: profileForm.detailPrompt,
       profileSummary: profileForm.profileSummary,
       projectId: project.id,
       referenceImageCount: localReferenceImages.length,
       usagePrompt: profileForm.usagePrompt,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setProfileDraft(nextDraft);
+      pushToast({ tone: "success", title: visibleProfileDraft ? "资料保存草稿已更新" : "资料保存草稿已记录", detail: project.title });
+      return;
+    }
+
+    if (isSavingProfile) return;
+
+    setIsSavingProfile(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/profile`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          loraUsagePrompt: profileForm.usagePrompt,
+          characterDetailPrompt: profileForm.detailPrompt,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "资料保存失败",
+          detail: payload?.error?.message ?? "训练资料保存请求失败",
+        });
+        return;
+      }
+
+      setProfileDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: visibleProfileDraft ? "资料已更新" : "资料已保存",
+        detail: project.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "资料保存失败",
+        detail: error instanceof Error ? error.message : "训练资料保存请求失败",
+      });
+    } finally {
+      setIsSavingProfile(false);
+    }
   }
 
   function handleUpdateProfileForm(field: "detailPrompt" | "profileSummary" | "usagePrompt", value: string) {
@@ -1196,10 +1246,10 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
           <Button
             tone="primary"
             icon={Save}
+            pending={isSavingProfile}
             onClick={handleSaveProfile}
-            feedback={{ title: visibleProfileDraft ? "资料保存草稿已更新" : "资料保存草稿已记录", detail: project.title }}
           >
-            {visibleProfileDraft ? "更新资料草稿" : "保存资料"}
+            {visibleProfileDraft ? "更新资料" : "保存资料"}
           </Button>
         )}
       />

@@ -111,7 +111,7 @@ test("training dataset revision detail does not replace invalid revision ids wit
 });
 
 test("training project query hints use Next search params instead of a manual location store", () => {
-  assert.match(pagesSource, /import \{ useSearchParams \} from "next\/navigation";/, "project pages should subscribe to Next-managed query changes");
+  assert.match(pagesSource, /import \{[^}]*useSearchParams[^}]*\} from "next\/navigation";/, "project pages should subscribe to Next-managed query changes");
   assert.match(pagesSource, /const searchParams = useSearchParams\(\)/, "project pages should read current query params through Next navigation state");
   assert.match(pagesSource, /searchParams\.toString\(\)/, "project pages should pass the live query string into hint parsers");
   assert.doesNotMatch(pagesSource, /useSyncExternalStore/, "project query hints should not depend on a manual window.location.search store");
@@ -226,6 +226,20 @@ test("training profile page saves a visible local profile draft instead of only 
   assert.match(profileSource, /localReferenceImages\.length/, "saved draft should include the current reference image count");
   assert.match(profileSource, /project\.usagePrompt/, "saved draft should preserve the current usage prompt");
   assert.doesNotMatch(profileSource, /feedback="角色资料已保存"/, "profile save should not remain a feedback-only placeholder");
+});
+
+test("training profile page saves through the formal HTTP API on production routes", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /usePathname/, "profile page should detect whether it is running under production /training routes");
+  assert.match(profileSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/profile`/, "production profile save should call the formal training profile API");
+  assert.match(profileSource, /method:\s*"PATCH"/, "production profile save should update profile data through PATCH");
+  assert.match(profileSource, /pushToast/, "production profile save should surface API success or failure through the shared feedback system");
 });
 
 test("training profile page saves editable profile fields into the local draft", () => {

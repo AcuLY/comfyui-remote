@@ -151,7 +151,11 @@ test("GET /api/training/presets and /api/training/templates expose training reso
   assert.equal(templatesResponse.status, 200);
   assert.equal(templatesPayload.ok, true);
   assert.ok(Array.isArray(templatesPayload.data));
-  assert.ok(templatesPayload.data.some((template: { id: string }) => template.id === "portrait-soft"));
+  assert.ok(templatesPayload.data.length > 0);
+  assert.equal(typeof templatesPayload.data[0]?.id, "string");
+  assert.equal(typeof templatesPayload.data[0]?.title, "string");
+  assert.ok(templatesPayload.data.some((template: { sectionCount: number }) => template.sectionCount >= 1));
+  assert.ok(templatesPayload.data.some((template: { sections: Array<{ title: string }> }) => template.sections.some((section) => section.title.length > 0)));
 });
 
 test("GET /api/training/scheduler/status exposes a training scheduler snapshot", async () => {

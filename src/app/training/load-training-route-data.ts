@@ -21,6 +21,10 @@ import {
   listCharacterLoraTrainingJobs,
 } from "@/server/services/character-lora-training/job-service";
 import {
+  getCharacterLoraTrainingTemplateSnapshot,
+  listCharacterLoraTrainingTemplates,
+} from "@/server/services/character-lora-training/section-template-service";
+import {
   listCharacterLoraCandidateImages,
   listCharacterLoraDatasetRevisions,
 } from "@/server/services/character-lora-training/phase3-service";
@@ -232,6 +236,7 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
   if (!jobs.jobs.length) return null;
 
   const baseTraining = buildLoraTrainingDemoData(baseData);
+  const realTemplates = await listCharacterLoraTrainingTemplates();
 
   const projects = await Promise.all(jobs.jobs.map(async (job) => {
     const [overview, sourceImages, promptCardVersions, sections, candidateImages, revisions, trainingRuns] = await Promise.all([
@@ -367,11 +372,41 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
     return [...generationRuns, ...mappedTrainingRuns];
   }));
 
+  const templates = await Promise.all(
+    realTemplates.map(async (template) => {
+      const snapshot = await getCharacterLoraTrainingTemplateSnapshot({ id: template.id });
+      return {
+        id: template.id,
+        title: template.name,
+        status: template.isActive ? "active" : "archived",
+        updatedAt: formatUpdatedAt(template.updatedAt),
+        description: template.description ?? "",
+        sectionCount: snapshot.sectionTemplates.length,
+        sections: snapshot.sectionTemplates.map((section) => ({
+          id: section.id,
+          title: section.name,
+          enabled: section.isActive,
+          blockCount: 1,
+          blocks: [
+            {
+              id: `${section.id}-prompt-template`,
+              source: "本地" as const,
+              title: section.angleTag || "模板提示词",
+              text: section.promptTemplate || section.description || section.name,
+            },
+          ],
+          resolvedScene: section.description || section.promptTemplate || section.name,
+          scenePreview: section.description || section.name,
+        })),
+      };
+    }),
+  );
+
   return {
     projects,
     runs: runsByProject.flat().sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))),
     presets: baseTraining.presets,
-    templates: baseTraining.templates,
+    templates: templates.length ? templates : baseTraining.templates,
   };
 }
 
