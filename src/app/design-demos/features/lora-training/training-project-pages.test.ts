@@ -335,20 +335,19 @@ test("training project repeated object actions include the acted-on object name"
   assert.match(projectDetailSource, /ariaLabel=\{`保存训练项目为模板：\$\{project\.title\}`\}/, "save-template action should name the project");
   assert.match(projectDetailSource, /ariaLabel=\{`编辑训练项目资料：\$\{project\.title\}`\}/, "edit-profile action should name the project");
   assert.match(projectDetailSource, /ariaLabel=\{`打开训练项目数据集工作台：\$\{project\.title\}`\}/, "dataset workspace action should name the project");
-  assert.match(scopedPageSource, /ariaLabel=\{`新建项目生成任务：\$\{project\.title\}`\}/, "project generation action should name the project");
-  assert.match(scopedPageSource, /ariaLabel=\{`启动项目训练：\$\{project\.title\}`\}/, "project training action should name the project");
+  assert.doesNotMatch(scopedPageSource, /ariaLabel=\{`新建项目生成任务：\$\{project\.title\}`\}/, "project generation action should not be duplicated inside the page header");
+  assert.doesNotMatch(scopedPageSource, /ariaLabel=\{`启动项目训练：\$\{project\.title\}`\}/, "project training action should not be duplicated inside the page header");
 });
 
-test("project-scoped generation actions use an explicit enabled section entry", () => {
+test("project-scoped run pages leave the primary-action target selection to route headers", () => {
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
   assert.notEqual(scopedPageStart, -1);
 
   const scopedPageSource = pagesSource.slice(scopedPageStart);
 
-  assert.match(scopedPageSource, /generationEntrySectionId/, "project generation actions should derive a named section entry id");
-  assert.match(scopedPageSource, /project\.sections\.find\(\(section\) => section\.enabled\)/, "project generation actions should prefer enabled sections");
-  assert.match(scopedPageSource, /generationEntrySectionId \?\? "stage-light"/, "project generation actions should keep a safe fallback id");
-  assert.doesNotMatch(scopedPageSource, /project\.sections\[0\]\?\.id/, "project generation actions should not silently target the first section");
+  assert.doesNotMatch(scopedPageSource, /generationEntrySectionId/, "scoped task pages should not compute a duplicate route-header target");
+  assert.doesNotMatch(scopedPageSource, /project\.sections\.find\(\(section\) => section\.enabled\)/, "scoped task pages should leave enabled-section targeting to route headers");
+  assert.doesNotMatch(scopedPageSource, /"stage-light"/, "scoped task pages should not keep a duplicate fallback section id");
 });
 
 test("training result lightbox tracks the active image by result id", () => {
@@ -574,6 +573,29 @@ test("project-scoped run page interactions stay scoped to project and task kind"
   assert.doesNotMatch(scopedPageSource, /const \[status, setStatus\] = useState<LoraTrainingTaskStatus>\("completed"\)/, "project task status should not be stored without route context");
   assert.doesNotMatch(scopedPageSource, /const \[hiddenProjectRunIds, setHiddenProjectRunIds\] = useState<Set<string>>\(new Set\(\)\)/, "hidden project run ids should not be stored without route context");
   assert.doesNotMatch(scopedPageSource, /const \[retriedProjectRunIds, setRetriedProjectRunIds\] = useState<Set<string>>\(new Set\(\)\)/, "retried project run ids should not be stored without route context");
+});
+
+test("project-scoped run pages rely on route headers for the primary action", () => {
+  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
+  assert.notEqual(scopedPageStart, -1);
+
+  const scopedPageSource = pagesSource.slice(scopedPageStart);
+
+  assert.doesNotMatch(
+    scopedPageSource,
+    /actions=\{kind === "generation"/,
+    "scoped task pages should not duplicate the route-header primary action inside ProjectHeader",
+  );
+  assert.doesNotMatch(
+    scopedPageSource,
+    /ariaLabel=\{`新建项目生成任务：\$\{project\.title\}`\}/,
+    "project generation task pages should not render a second in-page create action",
+  );
+  assert.doesNotMatch(
+    scopedPageSource,
+    /ariaLabel=\{`启动项目训练：\$\{project\.title\}`\}/,
+    "project training task pages should not render a second in-page training action",
+  );
 });
 
 test("project-scoped failed run rows use structured failure panels", () => {

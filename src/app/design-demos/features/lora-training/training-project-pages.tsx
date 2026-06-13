@@ -2345,7 +2345,6 @@ export function LoraTrainingProjectScopedRunsPage({
   const retriedProjectRunIds = projectRunInteraction.retriedProjectRunIds;
   const projectRuns = training.runs.filter((run) => run.projectId === project.id && run.kind === kind && !hiddenProjectRunIds.has(run.id));
   const visibleRuns = projectRuns.filter((run) => run.status === status);
-  const generationEntrySectionId = (project.sections.find((section) => section.enabled) ?? project.sections[0])?.id;
 
   function updateProjectRunInteraction(updater: (current: typeof projectRunInteraction) => typeof projectRunInteraction) {
     setProjectRunInteractionState((current) => {
@@ -2396,20 +2395,6 @@ export function LoraTrainingProjectScopedRunsPage({
         active={kind === "generation" ? "generation" : "training"}
         project={project}
         title={`${project.title} / ${kind === "generation" ? "生成任务" : "训练任务"}`}
-        actions={kind === "generation" ? (
-          <ButtonLink
-            href={`/training/projects/${project.id}/sections/${generationEntrySectionId ?? "stage-light"}/generation-tasks/new`}
-            icon={Plus}
-            tone="primary"
-            ariaLabel={`新建项目生成任务：${project.title}`}
-          >
-            新建生成任务
-          </ButtonLink>
-        ) : (
-          <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Play} tone="primary" ariaLabel={`启动项目训练：${project.title}`}>
-            启动训练
-          </ButtonLink>
-        )}
       />
       <SegmentedControl
         ariaLabel="切换任务状态"
