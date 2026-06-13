@@ -66,6 +66,24 @@ test("failed training run rows use a structured failure block instead of single-
   assert.match(cssSource, /\.runFailureToolbar\b/, "failed run rows should keep copy and retry actions in a compact toolbar");
 });
 
+test("failed training run errors clamp long text with an expand affordance", () => {
+  assert.match(pageSource, /const ERROR_CLAMP_LINES = 3;/, "failed error copy should use the same compact clamp depth as the generated-run demo");
+  assert.match(pageSource, /useRef<HTMLParagraphElement>/, "failure block should measure the rendered paragraph");
+  assert.match(pageSource, /setOverflows\(node\.scrollHeight > node\.clientHeight \+ 2\)/, "failure block should detect whether the clamped text overflows");
+  assert.match(pageSource, /!expanded && s\.runFailureTextClamped/, "failure text should stay clamped until expanded");
+  assert.match(pageSource, /展开/, "overflowing failure text should expose an expand control");
+  assert.match(pageSource, /收起/, "expanded failure text should expose a collapse control");
+  assert.match(cssSource, /\.runFailureTextClamped\b/, "failed run errors should have a dedicated clamped text style");
+  assert.match(cssSource, /-webkit-line-clamp:\s*var\(--error-clamp-lines,\s*3\)/, "failed run errors should clamp to the shared line count variable");
+});
+
+test("failed training run copy action falls back when clipboard permissions are unavailable", () => {
+  assert.match(pageSource, /document\.createElement\("textarea"\)/, "copy action should create a hidden textarea fallback");
+  assert.match(pageSource, /document\.execCommand\("copy"\)/, "copy action should use the selection API fallback");
+  assert.match(pageSource, /\.remove\(\)/, "copy fallback should remove its temporary textarea");
+  assert.match(cssSource, /\.clipboardTextarea\b/, "copy fallback should keep the temporary textarea invisible");
+});
+
 test("failed training run toolbar keeps text buttons wider than row icon actions", () => {
   const rowActionButtonIndex = cssSource.indexOf(".rowActions :where([data-demo-ui-button=\"true\"])");
   const failureToolbarButtonIndex = cssSource.indexOf(".runFailureToolbar :where([data-demo-ui-button=\"true\"])");

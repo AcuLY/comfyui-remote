@@ -499,19 +499,26 @@
 .runFailureBlock {
   display: grid;
   min-width: 0;
+  max-width: 100%;
   gap: 5px;
   color: var(--demo-red);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .runFailureHeader {
   display: inline-flex;
   min-width: 0;
+  width: 100%;
   align-items: center;
   gap: 6px;
-  color: var(--demo-red);
+  color: color-mix(in srgb, var(--demo-red) 86%, var(--demo-text));
   font-size: 10px;
-  font-weight: 680;
+  font-weight: 650;
   letter-spacing: 0.04em;
+  line-height: 1.2;
 }
 
 .runFailureHeader .icon {
@@ -519,13 +526,41 @@
   height: 13px;
 }
 
-.runFailureBlock p {
+.runFailureToggle {
+  all: unset;
+  margin-left: auto;
+  color: color-mix(in srgb, var(--demo-red) 72%, var(--demo-text));
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 580;
+  line-height: 1;
+  opacity: 0.82;
+  transition: opacity 120ms ease;
+}
+
+.runFailureToggle:hover,
+.runFailureToggle:focus-visible {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.runFailureText {
   min-width: 0;
   margin: 0;
-  color: var(--demo-red);
-  font-size: 11px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
+  overflow: visible;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.runFailureTextClamped {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--error-clamp-lines, 3);
+  text-overflow: ellipsis;
 }
 
 .runThumbs {
@@ -582,6 +617,16 @@
   color: var(--demo-muted);
   text-align: center;
   padding: 32px 24px;
+}
+
+.clipboardTextarea {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 @media (max-width: 720px) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckSquare, ChevronDown, CircleAlert, Clock3, Copy, RotateCcw, X } from "lucide-react";
 
@@ -22,6 +22,8 @@ const STATUS_ITEMS: Array<{ value: LoraTrainingTaskStatus; label: string }> = [
   { value: "queued", label: "排队" },
   { value: "failed", label: "失败 / 取消" },
 ];
+
+const ERROR_CLAMP_LINES = 3;
 
 function taskDetailHref(run: LoraTrainingRun) {
   const type = run.kind === "generation" ? "generation" : "training";
@@ -61,21 +63,79 @@ function statusBadge(run: LoraTrainingRun) {
   return <StatusBadge status="failed" label="需处理" />;
 }
 
-function copyRunMessage(message: string) {
-  if (typeof navigator === "undefined" || !navigator.clipboard) return;
-  void navigator.clipboard.writeText(message).catch(() => undefined);
-}
-
 function TrainingRunFailureBlock({ message }: { message: string }) {
+  const textRef = useRef<HTMLParagraphElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+
+  const measureOverflow = useCallback((node: HTMLParagraphElement | null) => {
+    textRef.current = node;
+    if (!node) return;
+    requestAnimationFrame(() => {
+      setOverflows(node.scrollHeight > node.clientHeight + 2);
+    });
+  }, []);
+
   return (
     <div className={s.runFailureBlock} role="status">
       <div className={s.runFailureHeader}>
         <CircleAlert className={s.icon} aria-hidden="true" />
         <span>失败原因</span>
+        {overflows && !expanded ? (
+          <button
+            type="button"
+            className={s.runFailureToggle}
+            onClick={(event) => {
+              event.stopPropagation();
+              setExpanded(true);
+            }}
+          >
+            展开
+          </button>
+        ) : null}
+        {expanded ? (
+          <button
+            type="button"
+            className={s.runFailureToggle}
+            onClick={(event) => {
+              event.stopPropagation();
+              setExpanded(false);
+            }}
+          >
+            收起
+          </button>
+        ) : null}
       </div>
-      <p>{message}</p>
+      <p
+        ref={measureOverflow}
+        className={cx(s.runFailureText, !expanded && s.runFailureTextClamped)}
+        style={{ ["--error-clamp-lines" as string]: ERROR_CLAMP_LINES }}
+      >
+        {message}
+      </p>
     </div>
   );
+}
+
+async function copyRunMessage(message: string) {
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(message);
+      return;
+    }
+  } catch {
+    // Fall back to the selection API below when clipboard permissions are unavailable.
+  }
+
+  if (typeof document === "undefined") return;
+  const textarea = document.createElement("textarea");
+  textarea.value = message;
+  textarea.setAttribute("readonly", "");
+  textarea.className = s.clipboardTextarea;
+  document.body.append(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
 }
 
 function CurrentRunningSurface({ runs }: { runs: LoraTrainingRun[] }) {
