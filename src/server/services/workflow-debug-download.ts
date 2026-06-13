@@ -112,6 +112,18 @@ function convertSaveImageNodes(workflow: JsonRecord) {
   }
 }
 
+function addPromptBlockSpacing(workflow: JsonRecord) {
+  for (const rawNode of Object.values(workflow)) {
+    const node = asNode(rawNode);
+    const inputs = asNode(node?.inputs);
+    if (typeof inputs?.text !== "string") {
+      continue;
+    }
+
+    inputs.text = inputs.text.replaceAll(" BREAK ", " BREAK\n\n");
+  }
+}
+
 function addKSampler1PreviewBranch(workflow: JsonRecord) {
   const kSamplerNodeId = findKSampler1NodeId(workflow);
   if (!kSamplerNodeId) {
@@ -153,6 +165,7 @@ export function buildDebugWorkflowPrompt(workflow: Record<string, unknown>): Rec
   const debugWorkflow = cloneJsonRecord(workflow);
 
   convertSaveImageNodes(debugWorkflow);
+  addPromptBlockSpacing(debugWorkflow);
   addKSampler1PreviewBranch(debugWorkflow);
 
   return debugWorkflow;

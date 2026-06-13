@@ -57,3 +57,22 @@ test("debug workflow adds a KSampler1 preview branch", () => {
 
   assert.deepEqual(debug["410"].inputs?.samples, ["427", 0], "final output decode should keep reading KSampler2");
 });
+
+test("debug workflow adds blank lines after prompt block BREAK separators", () => {
+  const workflow = loadStandardWorkflow();
+  workflow["511"].inputs = { text: "character prompt BREAK pose prompt BREAK scene prompt" };
+  workflow["513"].inputs = { text: "bad anatomy BREAK watermark" };
+
+  const debug = buildDebugWorkflowPrompt(workflow) as WorkflowPrompt;
+
+  assert.equal(
+    debug["511"].inputs?.text,
+    "character prompt BREAK\n\npose prompt BREAK\n\nscene prompt",
+  );
+  assert.equal(debug["513"].inputs?.text, "bad anatomy BREAK\n\nwatermark");
+  assert.equal(
+    workflow["511"].inputs?.text,
+    "character prompt BREAK pose prompt BREAK scene prompt",
+    "original workflow should remain unchanged",
+  );
+});
