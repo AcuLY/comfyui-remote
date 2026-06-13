@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { fallbackData } from "../data/fallback-data";
 import { buildHeaderSpecs, findHeaderSpecForRoute } from "./header-specs";
 import * as routeModule from "./routes";
 import { demoHref, matchRoute, MOBILE_NAV_LINKS, NAV_LINKS, ROUTES, sampleRouteInventory } from "./routes";
+
+const testDir = dirname(fileURLToPath(import.meta.url));
+const headerSpecsSource = readFileSync(resolve(testDir, "header-specs.ts"), "utf8");
 
 test("LoRA training entry routes are registered in the demo router", () => {
   assert.equal(matchRoute("/training/runs").key, "training-runs");
@@ -250,6 +256,25 @@ test("LoRA training project route headers use the matched project context", () =
   assert.ok(datasetRevision, "dataset revision should resolve a header spec");
   assert.equal(datasetRevision.title, "Azure Idol / 数据集 v4");
   assert.equal(datasetRevision.back?.href, "/training/projects/azure-idol/dataset");
+});
+
+test("LoRA training project generation header action selects an enabled section entry", () => {
+  const helperStart = headerSpecsSource.indexOf("function trainingProjectGenerationEntrySectionId");
+  const helperEnd = headerSpecsSource.indexOf("function projectHeaderBase", helperStart);
+  const projectHeaderStart = headerSpecsSource.indexOf("function loraTrainingProjectHeader");
+  const runHeaderStart = headerSpecsSource.indexOf("function loraTrainingRunDetailHeader");
+  assert.notEqual(helperStart, -1, "header specs should define a named generation entry section helper");
+  assert.notEqual(helperEnd, -1);
+  assert.notEqual(projectHeaderStart, -1);
+  assert.notEqual(runHeaderStart, -1);
+
+  const helperSource = headerSpecsSource.slice(helperStart, helperEnd);
+  const projectHeaderSource = headerSpecsSource.slice(projectHeaderStart, runHeaderStart);
+
+  assert.match(helperSource, /project\.sections\.find\(\(section\) => section\.enabled\)/, "header generation actions should prefer enabled sections");
+  assert.match(helperSource, /\?\? project\.sections\[0\]/, "header generation actions should fall back to a concrete section before the placeholder id");
+  assert.match(projectHeaderSource, /trainingProjectGenerationEntrySectionId\(project\)/, "project generation header should use the explicit helper");
+  assert.doesNotMatch(projectHeaderSource, /project\.sections\[0\]\?\.id/, "project generation header should not silently target the first section");
 });
 
 test("LoRA training resource route headers use the matched preset and template context", () => {

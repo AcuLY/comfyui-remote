@@ -306,6 +306,18 @@ test("training project repeated object actions include the acted-on object name"
   assert.match(scopedPageSource, /ariaLabel=\{`启动项目训练：\$\{project\.title\}`\}/, "project training action should name the project");
 });
 
+test("project-scoped generation actions use an explicit enabled section entry", () => {
+  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
+  assert.notEqual(scopedPageStart, -1);
+
+  const scopedPageSource = pagesSource.slice(scopedPageStart);
+
+  assert.match(scopedPageSource, /generationEntrySectionId/, "project generation actions should derive a named section entry id");
+  assert.match(scopedPageSource, /project\.sections\.find\(\(section\) => section\.enabled\)/, "project generation actions should prefer enabled sections");
+  assert.match(scopedPageSource, /generationEntrySectionId \?\? "stage-light"/, "project generation actions should keep a safe fallback id");
+  assert.doesNotMatch(scopedPageSource, /project\.sections\[0\]\?\.id/, "project generation actions should not silently target the first section");
+});
+
 test("training result lightbox tracks the active image by result id", () => {
   const gridStart = pagesSource.indexOf("function TrainingResultGrid");
   const runRowsStart = pagesSource.indexOf("function runPreviewImages");

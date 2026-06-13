@@ -989,8 +989,9 @@ function trainingProjectSaveAsTemplateHref(project: LoraTrainingProject) {
   return `/training/templates/new?${params.toString()}`;
 }
 
-function trainingProjectFirstSection(project: LoraTrainingProject) {
-  return project.sections[0]?.id ?? "stage-light";
+function trainingProjectGenerationEntrySectionId(project: LoraTrainingProject) {
+  const section = project.sections.find((section) => section.enabled) ?? project.sections[0];
+  return section?.id ?? "stage-light";
 }
 
 function projectHeaderBase(spec: HeaderSpec, project: LoraTrainingProject, title = project.title) {
@@ -1086,7 +1087,7 @@ function loraTrainingProjectHeader(data: DemoData, spec: HeaderSpec, matched: Re
   }
 
   if (matched.key === "training-project-generation-tasks") {
-    const sectionId = trainingProjectFirstSection(project);
+    const sectionId = trainingProjectGenerationEntrySectionId(project);
     return {
       ...projectHeaderBase(spec, project, `${project.title} / 生成任务`),
       actions: [headerAction("新建生成任务", Plus, "primary", `${projectHref}/sections/${sectionId}/generation-tasks/new`)],
