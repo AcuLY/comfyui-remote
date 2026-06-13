@@ -73,6 +73,27 @@ function createTrainingPresetHref(run: LoraTrainingRun) {
   return `/training/presets/new?${params.toString()}`;
 }
 
+async function copyTextWithFallback(text: string) {
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+  } catch {
+    // Fall through when browser permissions block the Clipboard API.
+  }
+
+  if (typeof document === "undefined") return;
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.className = s.clipboardTextarea;
+  document.body.append(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
+}
+
 export function LoraTrainingRunDetailPage({
   data,
   kind,
@@ -107,9 +128,7 @@ export function LoraTrainingRunDetailPage({
   function handleCopyActiveCaption() {
     if (!activeSample) return;
     const caption = activeSample.caption;
-    if (typeof navigator !== "undefined" && navigator.clipboard) {
-      void navigator.clipboard.writeText(caption).catch(() => undefined);
-    }
+    void copyTextWithFallback(caption);
     setCopiedCaption({ caption, runId: currentRun.id, sampleId: activeSample.id });
   }
 

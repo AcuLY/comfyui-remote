@@ -83,10 +83,18 @@ test("training sample lightbox copies captions through a real local action", () 
   assert.match(detailSource, /setCopiedCaption/, "copy action should update local copied-caption state");
   assert.match(detailSource, /handleCopyActiveCaption/, "run detail should define an explicit copy-caption handler");
   assert.match(detailSource, /navigator\.clipboard/, "copy-caption handler should use the browser Clipboard API when available");
-  assert.match(detailSource, /writeText\(caption\)/, "copy-caption handler should write the active caption text");
+  assert.match(detailSource, /copyTextWithFallback\(caption\)/, "copy-caption handler should write the active caption text through the fallback-capable helper");
   assert.match(detailSource, /onClick=\{handleCopyActiveCaption\}/, "copy caption button should call the local copy handler");
   assert.match(detailSource, /copiedCaption\?\.sampleId === activeSample\.id/, "copy caption button should reflect the copied active sample");
   assert.doesNotMatch(detailSource, /<Button\s+icon=\{Copy\}\s+feedback=\{\{ title: "caption 已复制"/, "copy caption should not remain feedback-only");
+});
+
+test("training sample caption copy falls back when clipboard permissions are unavailable", () => {
+  assert.match(detailSource, /copyTextWithFallback/, "caption copy should share a fallback-capable copy helper");
+  assert.match(detailSource, /document\.createElement\("textarea"\)/, "copy fallback should create a hidden textarea");
+  assert.match(detailSource, /document\.execCommand\("copy"\)/, "copy fallback should use the selection API");
+  assert.match(detailSource, /\.remove\(\)/, "copy fallback should remove its temporary textarea");
+  assert.match(detailCss, /\.clipboardTextarea\b/, "copy fallback should keep the temporary textarea invisible");
 });
 
 test("training sample lightbox state stays scoped to the active run", () => {
