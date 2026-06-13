@@ -684,8 +684,11 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
       })),
     },
   ].filter((group) => group.items.length > 0);
-  const [previewReference, setPreviewReference] = useState<ReferenceCandidate | null>(referenceSourceTree[0]?.items[0] ?? null);
-  const [selectedReferenceIds, setSelectedReferenceIds] = useState<Set<string>>(new Set());
+  const [projectReferenceSelectionState, setProjectReferenceSelectionState] = useState(() => ({
+    previewReference: referenceSourceTree[0]?.items[0] ?? null,
+    selectedReferenceIds: new Set<string>(),
+    templateContextId: projectTemplateContextId,
+  }));
   const [sectionSeedState, setSectionSeedState] = useState(() => ({
     sections: initialSectionSeeds,
     templateContextId: projectTemplateContextId,
@@ -695,7 +698,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     autoFreezeDataset: true,
     autoGenerateSamples: true,
   });
-  const [createdProjectDraft, setCreatedProjectDraft] = useState<{
+  type CreatedProjectDraft = {
     autoFreezeDataset: boolean;
     autoGenerateSamples: boolean;
     baseModel: string;
@@ -710,8 +713,22 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     title: string;
     trainingSteps: string;
     usagePrompt: string;
-  } | null>(null);
-  const activePreviewReference = previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
+  };
+  const [createdProjectDraftState, setCreatedProjectDraftState] = useState<{
+    draft: CreatedProjectDraft | null;
+    templateContextId: string;
+  }>(() => ({
+    draft: null,
+    templateContextId: projectTemplateContextId,
+  }));
+  const projectReferenceSelection = projectReferenceSelectionState.templateContextId === projectTemplateContextId ? projectReferenceSelectionState : {
+    previewReference: referenceSourceTree[0]?.items[0] ?? null,
+    selectedReferenceIds: new Set<string>(),
+    templateContextId: projectTemplateContextId,
+  };
+  const activePreviewReference = projectReferenceSelection.previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
+  const selectedReferenceIds = projectReferenceSelection.selectedReferenceIds;
+  const createdProjectDraft = createdProjectDraftState.templateContextId === projectTemplateContextId ? createdProjectDraftState.draft : null;
   const selectedProjectReferences = referenceSourceTree
     .flatMap((group) => group.items)
     .filter((candidate) => selectedReferenceIds.has(candidate.id));
@@ -727,6 +744,35 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
       const nextSections = typeof nextValue === "function" ? nextValue(currentSections) : nextValue;
       return {
         sections: nextSections,
+        templateContextId: projectTemplateContextId,
+      };
+    });
+  }
+
+  function setSelectedReferenceIds(updater: (current: Set<string>) => Set<string>) {
+    setProjectReferenceSelectionState((current) => {
+      const active = current.templateContextId === projectTemplateContextId ? current : projectReferenceSelection;
+      return {
+        ...active,
+        selectedReferenceIds: updater(active.selectedReferenceIds),
+        templateContextId: projectTemplateContextId,
+      };
+    });
+  }
+
+  function setCreatedProjectDraft(draft: CreatedProjectDraft) {
+    setCreatedProjectDraftState({
+      draft,
+      templateContextId: projectTemplateContextId,
+    });
+  }
+
+  function handlePreviewProjectReference(candidate: ReferenceCandidate) {
+    setProjectReferenceSelectionState((current) => {
+      const active = current.templateContextId === projectTemplateContextId ? current : projectReferenceSelection;
+      return {
+        ...active,
+        previewReference: candidate,
         templateContextId: projectTemplateContextId,
       };
     });
@@ -825,7 +871,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
             <ReferencePicker
                 referenceSourceTree={referenceSourceTree}
                 previewReference={activePreviewReference}
-                onPreviewReference={setPreviewReference}
+                onPreviewReference={handlePreviewProjectReference}
                 onAddReference={handleAddProjectReference}
                 selectedReferenceIds={selectedReferenceIds}
               />

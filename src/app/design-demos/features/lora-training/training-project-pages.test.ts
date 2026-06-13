@@ -615,6 +615,24 @@ test("training project create page carries selected references into the local dr
   assert.match(formSource, /selectedReferenceIds=\{selectedReferenceIds\}/, "reference picker should receive selected ids from project form state");
 });
 
+test("training project create reference and draft state stay scoped to the selected template context", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /projectReferenceSelectionState/, "project create reference state should be stored with template context");
+  assert.match(formSource, /createdProjectDraftState/, "created project draft should be stored with template context");
+  assert.match(formSource, /projectReferenceSelectionState\.templateContextId === projectTemplateContextId \? projectReferenceSelectionState :/, "project references should fall back after template context changes");
+  assert.match(formSource, /createdProjectDraftState\.templateContextId === projectTemplateContextId \? createdProjectDraftState\.draft : null/, "created draft should reset after template context changes");
+  assert.match(formSource, /selectedReferenceIds:\s*new Set<string>\(\)/, "a new template context should start with no selected references");
+  assert.doesNotMatch(formSource, /const \[previewReference, setPreviewReference\] = useState<ReferenceCandidate \| null>/, "project reference preview should not be stored without template context");
+  assert.doesNotMatch(formSource, /const \[selectedReferenceIds, setSelectedReferenceIds\] = useState<Set<string>>\(new Set\(\)\)/, "project selected references should not be stored without template context");
+  assert.doesNotMatch(formSource, /const \[createdProjectDraft, setCreatedProjectDraft\] = useState</, "created project draft should not be stored without template context");
+});
+
 test("training project create page training default switches feed into the local draft", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
