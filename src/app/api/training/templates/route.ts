@@ -1,9 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
 import { listTrainingTemplates, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
-  createCharacterLoraTrainingTemplate,
-  mapCharacterLoraSectionTemplateError,
-} from "@/server/services/character-lora-training/section-template-service";
+  createManagedTrainingTemplate,
+  mapTrainingTemplateError,
+} from "@/server/services/training/template-service";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +27,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const data = await createCharacterLoraTrainingTemplate(body);
+    const data = await createManagedTrainingTemplate(body);
     return ok(data, { status: 201 });
   } catch (error) {
-    const mapped = mapCharacterLoraSectionTemplateError(error);
+    const mapped = mapTrainingTemplateError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

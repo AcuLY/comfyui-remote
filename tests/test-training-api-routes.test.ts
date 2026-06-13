@@ -456,6 +456,117 @@ test("training preset sort rules reorder categories and presets through /api/tra
   );
 });
 
+test("training template routes create, update, read, and delete templates through /api/training", async () => {
+  const templatesRoute = await import("../src/app/api/training/templates/route");
+  const templateDetailRoute = await import("../src/app/api/training/templates/[templateId]/route");
+  const sectionRoute = await import("../src/app/api/training/templates/[templateId]/sections/[sectionId]/route");
+  const templateTitle = `测试训练模板 ${Date.now()}`;
+
+  const createResponse = await templatesRoute.POST(
+    new Request("http://localhost/api/training/templates", {
+      method: "POST",
+      body: JSON.stringify({
+        title: templateTitle,
+        description: "模板描述",
+        imageGuidance: "图片指引",
+        captionGuidance: "说明文本指引",
+        sections: [
+          {
+            id: "template-section-1",
+            title: "模板小节",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "template-block-1",
+                source: "本地",
+                title: "本地场景描述",
+                text: "模板文本",
+              },
+            ],
+            resolvedScene: "模板文本",
+            scenePreview: "模板文本",
+          },
+        ],
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  assert.equal(createPayload.data.title, templateTitle);
+  assert.equal(createPayload.data.sections.length, 1);
+
+  const templateId = createPayload.data.id as string;
+  const sectionId = createPayload.data.sections[0].id as string;
+  const detailParams = { params: Promise.resolve({ templateId }) };
+
+  const patchResponse = await templateDetailRoute.PATCH(
+    new Request(`http://localhost/api/training/templates/${templateId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: `${templateTitle} 已更新`,
+        description: "更新模板描述",
+        imageGuidance: "更新图片指引",
+        captionGuidance: "更新说明文本指引",
+        sections: createPayload.data.sections,
+      }),
+    }),
+    detailParams,
+  );
+  const patchPayload = await patchResponse.json();
+
+  assert.equal(patchResponse.status, 200);
+  assert.equal(patchPayload.ok, true);
+  assert.equal(patchPayload.data.title, `${templateTitle} 已更新`);
+
+  const sectionPatchResponse = await sectionRoute.PATCH(
+    new Request(`http://localhost/api/training/templates/${templateId}/sections/${sectionId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: "模板小节已更新",
+        enabled: true,
+        blocks: [
+          {
+            id: "template-block-1",
+            source: "本地",
+            title: "本地场景描述",
+            text: "模板文本已更新",
+          },
+        ],
+        resolvedScene: "模板文本已更新",
+        scenePreview: "模板文本已更新",
+      }),
+    }),
+    { params: Promise.resolve({ templateId, sectionId }) },
+  );
+  const sectionPatchPayload = await sectionPatchResponse.json();
+
+  assert.equal(sectionPatchResponse.status, 200);
+  assert.equal(sectionPatchPayload.ok, true);
+  assert.equal(sectionPatchPayload.data.sections[0].title, "模板小节已更新");
+
+  const getResponse = await templateDetailRoute.GET(
+    new Request(`http://localhost/api/training/templates/${templateId}`),
+    detailParams,
+  );
+  const getPayload = await getResponse.json();
+
+  assert.equal(getResponse.status, 200);
+  assert.equal(getPayload.ok, true);
+  assert.equal(getPayload.data.id, templateId);
+
+  const deleteResponse = await templateDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/templates/${templateId}`, { method: "DELETE" }),
+    detailParams,
+  );
+  const deletePayload = await deleteResponse.json();
+
+  assert.equal(deleteResponse.status, 200);
+  assert.equal(deletePayload.ok, true);
+});
+
 test("GET /api/training/scheduler/status exposes a training scheduler snapshot", async () => {
   const { GET } = await import("../src/app/api/training/scheduler/status/route");
 

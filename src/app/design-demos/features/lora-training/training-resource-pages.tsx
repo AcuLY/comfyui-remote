@@ -1096,12 +1096,15 @@ function TemplateEditorSectionRow({
 }
 
 export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
   const listRef = useRef<HTMLDivElement>(null);
   const [fromTemplateId] = useState(readAndClearTrainingTemplateListAnchor);
   const [orderedTemplateIds, setOrderedTemplateIds] = useState(() => training.templates.reduce<string[]>((ids, template) => [...ids, template.id], []));
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(() => new Set());
   const [hiddenTemplateIds, setHiddenTemplateIds] = useState<Set<string>>(() => new Set());
+  const [isDeletingTemplates, setIsDeletingTemplates] = useState(false);
   const orderedTemplates = orderTrainingTemplatesByIds(training.templates, orderedTemplateIds);
   const visibleTemplates = orderedTemplates.filter((template) => !hiddenTemplateIds.has(template.id));
   const visibleTemplateIds = visibleTemplates.map((template) => template.id);
@@ -1109,6 +1112,7 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
   const selectedVisibleCount = selectedVisibleTemplates.length;
   const allVisibleSelected = visibleTemplates.length > 0 && selectedVisibleCount === visibleTemplates.length;
   const projectTemplateSource = selectedVisibleTemplates.length === 1 ? selectedVisibleTemplates[0] : null;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   useLayoutEffect(() => {
     if (!fromTemplateId) return;
@@ -1116,13 +1120,49 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
     target?.scrollIntoView({ block: "center", behavior: "instant" });
   }, [fromTemplateId]);
 
-  function hideTemplate(templateId: string) {
-    setHiddenTemplateIds((current) => new Set(current).add(templateId));
-    setSelectedTemplateIds((current) => {
-      const next = new Set(current);
-      next.delete(templateId);
-      return next;
-    });
+  async function hideTemplate(templateId: string) {
+    const applyLocalDelete = (ids: Iterable<string>) => {
+      const removed = new Set(ids);
+      setHiddenTemplateIds((current) => new Set([...current, ...removed]));
+      setSelectedTemplateIds((current) => new Set([...current].filter((id) => !removed.has(id))));
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalDelete([templateId]);
+      return;
+    }
+
+    if (isDeletingTemplates) return;
+
+    setIsDeletingTemplates(true);
+    try {
+      const response = await fetch(`/api/training/templates/${templateId}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "训练模板删除失败",
+          detail: payload?.error?.message ?? "训练模板删除请求失败",
+        });
+        return;
+      }
+      applyLocalDelete([templateId]);
+      pushToast({
+        tone: "warning",
+        title: "训练模板已移除",
+        detail: templateId,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "训练模板删除失败",
+        detail: error instanceof Error ? error.message : "训练模板删除请求失败",
+      });
+    } finally {
+      setIsDeletingTemplates(false);
+    }
   }
 
   function toggleTemplateSelection(templateId: string) {
@@ -1145,10 +1185,64 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
     });
   }
 
-  function handleRemoveSelectedTemplates() {
+  async function handleRemoveSelectedTemplates() {
     const selectedVisibleIds = new Set(visibleTemplates.filter((template) => selectedTemplateIds.has(template.id)).map((template) => template.id));
-    setHiddenTemplateIds((current) => new Set([...current, ...selectedVisibleIds]));
-    setSelectedTemplateIds((current) => new Set([...current].filter((id) => !selectedVisibleIds.has(id))));
+
+    const applyLocalDelete = (ids: Iterable<string>) => {
+      const removed = new Set(ids);
+      setHiddenTemplateIds((current) => new Set([...current, ...removed]));
+      setSelectedTemplateIds((current) => new Set([...current].filter((id) => !removed.has(id))));
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalDelete(selectedVisibleIds);
+      return;
+    }
+
+    if (isDeletingTemplates || selectedVisibleIds.size === 0) return;
+
+    setIsDeletingTemplates(true);
+    try {
+      const responses = await Promise.all(
+        [...selectedVisibleIds].map(async (templateId) => {
+          const response = await fetch(`/api/training/templates/${templateId}`, {
+            method: "DELETE",
+          });
+          const payload = await response.json().catch(() => null);
+          return { templateId, response, payload };
+        }),
+      );
+      const completedIds = new Set(
+        responses
+          .filter(({ response, payload }) => response.ok && payload?.ok)
+          .map(({ templateId }) => templateId),
+      );
+      if (completedIds.size > 0) {
+        applyLocalDelete(completedIds);
+      }
+      const failedResponse = responses.find(({ response, payload }) => !response.ok || !payload?.ok);
+      if (failedResponse) {
+        pushToast({
+          tone: "error",
+          title: "训练模板删除失败",
+          detail: failedResponse.payload?.error?.message ?? "训练模板删除请求失败",
+        });
+        return;
+      }
+      pushToast({
+        tone: "warning",
+        title: "训练模板已移除",
+        detail: `${completedIds.size} 个训练模板`,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "训练模板删除失败",
+        detail: error instanceof Error ? error.message : "训练模板删除请求失败",
+      });
+    } finally {
+      setIsDeletingTemplates(false);
+    }
   }
 
   function handleReorderTemplates(nextVisibleIds: string[]) {

@@ -21,8 +21,6 @@ import {
   listCharacterLoraTrainingJobs,
 } from "@/server/services/character-lora-training/job-service";
 import {
-  getCharacterLoraTrainingTemplateSnapshot,
-  listCharacterLoraTrainingTemplates,
 } from "@/server/services/character-lora-training/section-template-service";
 import {
   listCharacterLoraCandidateImages,
@@ -32,6 +30,7 @@ import { listCharacterLoraJobSections } from "@/server/services/character-lora-t
 import { listCharacterLoraSourceImages } from "@/server/services/character-lora-training/source-image-service";
 import { listCharacterLoraTrainingRuns } from "@/server/services/character-lora-training/training-service";
 import { listTrainingSceneDescriptionPresets } from "@/server/services/training/preset-service";
+import { listManagedTrainingTemplates } from "@/server/services/training/template-service";
 import {
   listTrainingProjectSectionCollections,
   listTrainingProjectSectionOverrides,
@@ -111,12 +110,6 @@ function buildReferenceImages(sourceImages: Awaited<ReturnType<typeof listCharac
       } satisfies LoraTrainingReferenceImage;
     })
     .filter((image): image is LoraTrainingReferenceImage => Boolean(image));
-}
-
-function readTemplateGuidance(value: unknown, key: string, fallback: string) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return fallback;
-  const candidate = (value as Record<string, unknown>)[key];
-  return typeof candidate === "string" && candidate.trim().length > 0 ? candidate : fallback;
 }
 
 function buildResultPool(input: {
@@ -276,8 +269,8 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
   if (!jobs.jobs.length) return null;
 
   const baseTraining = buildLoraTrainingDemoData(baseData);
-  const [realTemplates, realPresets, sectionCollections, sectionOverrides] = await Promise.all([
-    listCharacterLoraTrainingTemplates(),
+  const [managedTemplates, realPresets, sectionCollections, sectionOverrides] = await Promise.all([
+    listManagedTrainingTemplates(),
     listTrainingSceneDescriptionPresets(),
     listTrainingProjectSectionCollections(),
     listTrainingProjectSectionOverrides(),
@@ -422,43 +415,11 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
     return [...generationRuns, ...mappedTrainingRuns];
   }));
 
-  const templates = await Promise.all(
-    realTemplates.map(async (template) => {
-      const snapshot = await getCharacterLoraTrainingTemplateSnapshot({ id: template.id });
-      return {
-        id: template.id,
-        title: template.name,
-        status: template.isActive ? "active" : "archived",
-        updatedAt: formatUpdatedAt(template.updatedAt),
-        description: template.description ?? "",
-        imageGuidance: readTemplateGuidance(snapshot.trainingDefaults, "imageGuidance", "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。"),
-        captionGuidance: readTemplateGuidance(snapshot.promptCardDefaults, "captionGuidance", "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。"),
-        sectionCount: snapshot.sectionTemplates.length,
-        sections: snapshot.sectionTemplates.map((section) => ({
-          id: section.id,
-          title: section.name,
-          enabled: section.isActive,
-          blockCount: 1,
-          blocks: [
-            {
-              id: `${section.id}-prompt-template`,
-              source: "本地" as const,
-              title: section.angleTag || "模板提示词",
-              text: section.promptTemplate || section.description || section.name,
-            },
-          ],
-          resolvedScene: section.description || section.promptTemplate || section.name,
-          scenePreview: section.description || section.name,
-        })),
-      };
-    }),
-  );
-
   return applyTrainingProjectSectionOverrides({
     projects,
     runs: runsByProject.flat().sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))),
     presets: realPresets.length ? realPresets : baseTraining.presets,
-    templates: templates.length ? templates : baseTraining.templates,
+    templates: managedTemplates.length ? managedTemplates : baseTraining.templates,
   }, sectionCollections, sectionOverrides);
 }
 

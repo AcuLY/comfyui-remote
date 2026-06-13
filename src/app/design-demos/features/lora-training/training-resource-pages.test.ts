@@ -625,6 +625,21 @@ test("training template list follows the template-list surface with local delete
   assert.match(cssSource, /\.trainingTemplateListItem\b/, "template cards should use a dedicated list-item class");
 });
 
+test("training template list deletes through the formal HTTP API on production routes", () => {
+  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  assert.notEqual(templatesStart, -1);
+  assert.notEqual(formStart, -1);
+
+  const templatesSource = pageSource.slice(templatesStart, formStart);
+
+  assert.match(templatesSource, /usePathname/, "template list should detect whether it is running under production \\/training routes");
+  assert.match(templatesSource, /fetch\(`\/api\/training\/templates\/\$\{templateId\}`/, "template delete should call the formal training template API");
+  assert.match(templatesSource, /method:\s*"DELETE"/, "template delete should use DELETE");
+  assert.match(templatesSource, /Promise\.all/, "batch template delete should persist all selected templates before hiding them");
+  assert.match(templatesSource, /pushToast/, "template delete should surface API success or failure through the shared feedback system");
+});
+
 test("training template list exposes managed object controls and local ordering", () => {
   const itemStart = pageSource.indexOf("function TrainingTemplateListItem");
   const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");

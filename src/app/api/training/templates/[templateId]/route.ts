@@ -1,9 +1,10 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  getCharacterLoraTrainingTemplateSnapshot,
-  mapCharacterLoraSectionTemplateError,
-  updateCharacterLoraTrainingTemplate,
-} from "@/server/services/character-lora-training/section-template-service";
+  deleteManagedTrainingTemplate,
+  getManagedTrainingTemplate,
+  mapTrainingTemplateError,
+  updateManagedTrainingTemplate,
+} from "@/server/services/training/template-service";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +14,10 @@ export async function GET(
 ) {
   try {
     const { templateId } = await params;
-    const data = await getCharacterLoraTrainingTemplateSnapshot({ id: templateId });
+    const data = await getManagedTrainingTemplate(templateId);
     return ok(data);
   } catch (error) {
-    const mapped = mapCharacterLoraSectionTemplateError(error);
+    const mapped = mapTrainingTemplateError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
@@ -35,10 +36,24 @@ export async function PATCH(
 
   try {
     const { templateId } = await params;
-    const data = await updateCharacterLoraTrainingTemplate(templateId, body);
+    const data = await updateManagedTrainingTemplate(templateId, body);
     return ok(data);
   } catch (error) {
-    const mapped = mapCharacterLoraSectionTemplateError(error);
+    const mapped = mapTrainingTemplateError(error);
+    return fail(mapped.message, mapped.status, mapped.details);
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ templateId: string }> },
+) {
+  try {
+    const { templateId } = await params;
+    const data = await deleteManagedTrainingTemplate(templateId);
+    return ok(data);
+  } catch (error) {
+    const mapped = mapTrainingTemplateError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
