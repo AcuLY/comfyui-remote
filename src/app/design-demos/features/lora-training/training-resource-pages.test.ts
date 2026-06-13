@@ -696,8 +696,22 @@ test("training preset sort rules keep local order state and save a visible draft
   assert.match(panelSource, /SortableList/, "sort panels should use the shared sortable list wrapper");
   assert.match(panelSource, /useDemoSortable/, "sort rows should expose sortable handles");
   assert.match(panelSource, /onReorder/, "sort panels should receive a reorder callback");
-  assert.doesNotMatch(sortSource, /feedback="排序规则已保存"/, "save-all should not remain feedback-only");
-  assert.doesNotMatch(panelSource, /排序已保存/, "group save should not remain feedback-only");
+});
+
+test("training preset sort rules save through the formal HTTP API on production routes", () => {
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  const templatesStart = pageSource.indexOf("function templateStatus");
+  assert.notEqual(sortStart, -1);
+  assert.notEqual(templatesStart, -1);
+
+  const sortSource = pageSource.slice(sortStart, templatesStart);
+
+  assert.match(sortSource, /usePathname/, "training preset sort rules should detect whether they are running under production \\/training routes");
+  assert.match(sortSource, /fetch\("\/api\/training\/presets\/sort-rules"/, "training preset sort rules should save through the formal HTTP API");
+  assert.match(sortSource, /method:\s*"POST"/, "training preset sort rules should POST the sort payload");
+  assert.match(sortSource, /categoryOrder:\s*orderedCategoryIds/, "training preset sort rules should submit the category order");
+  assert.match(sortSource, /presetOrder:\s*orderedPresetIds/, "training preset sort rules should submit the preset order");
+  assert.match(sortSource, /pushToast/, "training preset sort rules should surface API success or failure through the shared feedback system");
 });
 
 test("training preset sort mobile footer keeps save actions compact", () => {

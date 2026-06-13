@@ -728,6 +728,117 @@ export async function deleteTrainingSceneDescriptionPreset(presetId: string) {
   }
 }
 
+export async function saveTrainingSceneDescriptionPresetSortRules(input: unknown) {
+  const schema = z.object({
+    categoryOrder: z.array(z.string().trim().min(1)).min(1),
+    presetOrder: z.array(z.string().trim().min(1)).min(1),
+  });
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    throw new TrainingPresetServiceError("Invalid training preset sort-rules request", 400, {
+      issues: result.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      })),
+    });
+  }
+
+  const { categoryOrder, presetOrder } = result.data;
+
+  try {
+    const categories = await prisma.presetCategory.findMany({
+      where: { type: TRAINING_PRESET_CATEGORY_TYPE },
+      select: { id: true, name: true },
+    });
+    const categoryByName = new Map(categories.map((category) => [category.name, category]));
+    const missingCategories = categoryOrder.filter((name) => !categoryByName.has(name));
+    if (missingCategories.length > 0) {
+      throw new TrainingPresetServiceError("Training preset category not found", 404, { missingCategories });
+    }
+
+    const presets = await prisma.preset.findMany({
+      where: {
+        category: { type: TRAINING_PRESET_CATEGORY_TYPE },
+      },
+      select: {
+        id: true,
+        categoryId: true,
+      },
+    });
+    const presetById = new Map(presets.map((preset) => [preset.id, preset]));
+    const missingPresetIds = presetOrder.filter((id) => !presetById.has(id));
+    if (missingPresetIds.length > 0) {
+      throw new TrainingPresetServiceError("Training preset not found", 404, { missingPresetIds });
+    }
+
+    const groupedPresetIds = new Map<string, string[]>();
+    for (const presetId of presetOrder) {
+      const preset = presetById.get(presetId)!;
+      const group = groupedPresetIds.get(preset.categoryId) ?? [];
+      group.push(presetId);
+      groupedPresetIds.set(preset.categoryId, group);
+    }
+
+    await prisma.$transaction([
+      ...categoryOrder.map((name, index) =>
+        prisma.presetCategory.update({
+          where: { id: categoryByName.get(name)!.id },
+          data: { sortOrder: index },
+        })),
+      ...[...groupedPresetIds.entries()].flatMap(([, ids]) =>
+        ids.map((presetId, index) =>
+          prisma.preset.update({
+            where: { id: presetId },
+            data: { sortOrder: index },
+          }),
+        ),
+      ),
+    ]);
+
+    revalidateTrainingPresetPaths();
+    return {
+      categoryOrder,
+      presetOrder,
+    };
+  } catch (error) {
+    if (!shouldUseTrainingPresetFileFallback(error)) throw error;
+    const presets = await readFallbackTrainingPresets();
+    const presetById = new Map(presets.map((preset) => [preset.id, preset]));
+    const missingPresetIds = presetOrder.filter((id) => !presetById.has(id));
+    if (missingPresetIds.length > 0) {
+      throw new TrainingPresetServiceError("Training preset not found", 404, { missingPresetIds });
+    }
+
+    const categoryBuckets = new Map<string, LoraTrainingPreset[]>();
+    for (const preset of presets) {
+      const bucket = categoryBuckets.get(preset.category) ?? [];
+      bucket.push(preset);
+      categoryBuckets.set(preset.category, bucket);
+    }
+
+    const orderedByCategory = categoryOrder.flatMap((categoryName) => {
+      const bucket = categoryBuckets.get(categoryName) ?? [];
+      const orderIndex = new Map(presetOrder.map((id, index) => [id, index]));
+      return [...bucket].sort((left, right) => {
+        const leftIndex = orderIndex.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+        const rightIndex = orderIndex.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+        return leftIndex - rightIndex;
+      });
+    });
+
+    const untouchedCategories = presets
+      .filter((preset) => !categoryOrder.includes(preset.category))
+      .sort((left, right) => left.category.localeCompare(right.category));
+
+    await writeFallbackTrainingPresets([...orderedByCategory, ...untouchedCategories]);
+    revalidateTrainingPresetPaths();
+    return {
+      categoryOrder,
+      presetOrder,
+    };
+  }
+}
+
 export function mapTrainingPresetError(error: unknown) {
   if (error instanceof TrainingPresetServiceError) {
     return {

@@ -315,6 +315,55 @@ test("training preset routes create, update, read, and delete presets through /a
   assert.equal(deletePayload.ok, true);
 });
 
+test("training preset sort rules reorder categories and presets through /api/training", async () => {
+  const presetsRoute = await import("../src/app/api/training/presets/route");
+  const sortRulesRoute = await import("../src/app/api/training/presets/sort-rules/route");
+
+  const originalResponse = await presetsRoute.GET(new Request("http://localhost/api/training/presets"));
+  const originalPayload = await originalResponse.json();
+  const originalPresets = originalPayload.data as Array<{ category: string; id: string }>;
+  const originalCategoryOrder = [...new Set(originalPresets.map((preset) => preset.category))];
+  const originalPresetOrder = originalPresets.map((preset) => preset.id);
+
+  const reversedCategoryOrder = [...originalCategoryOrder].reverse();
+  const reversedPresetOrder = [...originalPresetOrder].reverse();
+
+  const reorderResponse = await sortRulesRoute.POST(
+    new Request("http://localhost/api/training/presets/sort-rules", {
+      method: "POST",
+      body: JSON.stringify({
+        categoryOrder: reversedCategoryOrder,
+        presetOrder: reversedPresetOrder,
+      }),
+    }),
+  );
+  const reorderPayload = await reorderResponse.json();
+
+  assert.equal(reorderResponse.status, 200);
+  assert.equal(reorderPayload.ok, true);
+  assert.equal(reorderPayload.data.categoryOrder[0], reversedCategoryOrder[0]);
+  assert.equal(reorderPayload.data.presetOrder[0], reversedPresetOrder[0]);
+
+  const afterResponse = await presetsRoute.GET(new Request("http://localhost/api/training/presets"));
+  const afterPayload = await afterResponse.json();
+  const afterPresets = afterPayload.data as Array<{ category: string; id: string }>;
+  const afterCategoryOrder = [...new Set(afterPresets.map((preset) => preset.category))];
+
+  assert.equal(afterResponse.status, 200);
+  assert.equal(afterPayload.ok, true);
+  assert.equal(afterCategoryOrder[0], reversedCategoryOrder[0]);
+
+  await sortRulesRoute.POST(
+    new Request("http://localhost/api/training/presets/sort-rules", {
+      method: "POST",
+      body: JSON.stringify({
+        categoryOrder: originalCategoryOrder,
+        presetOrder: originalPresetOrder,
+      }),
+    }),
+  );
+});
+
 test("GET /api/training/scheduler/status exposes a training scheduler snapshot", async () => {
   const { GET } = await import("../src/app/api/training/scheduler/status/route");
 
@@ -335,6 +384,7 @@ test("training write routes exist under /api/training and fail through HTTP cont
   const restoreProjectRoute = await import("../src/app/api/training/projects/[projectId]/restore/route");
   const updateProjectSectionRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
   const createTrainingPresetRoute = await import("../src/app/api/training/presets/route");
+  const saveTrainingPresetSortRulesRoute = await import("../src/app/api/training/presets/sort-rules/route");
   const updateTrainingPresetRoute = await import("../src/app/api/training/presets/[presetId]/route");
   const createTrainingTemplateRoute = await import("../src/app/api/training/templates/route");
   const updateTrainingTemplateRoute = await import("../src/app/api/training/templates/[templateId]/route");
@@ -352,13 +402,14 @@ test("training write routes exist under /api/training and fail through HTTP cont
   const missingTemplateParams = { params: Promise.resolve({ templateId: "missing-template" }) };
   const missingTemplateSectionParams = { params: Promise.resolve({ templateId: "missing-template", sectionId: "missing-section" }) };
 
-  const [createResponse, updateResponse, archiveResponse, restoreResponse, updateProjectSectionResponse, createPresetResponse, updatePresetResponse, createTemplateResponse, updateTemplateResponse, updateTemplateSectionResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
+  const [createResponse, updateResponse, archiveResponse, restoreResponse, updateProjectSectionResponse, createPresetResponse, savePresetSortRulesResponse, updatePresetResponse, createTemplateResponse, updateTemplateResponse, updateTemplateSectionResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
     createProjectRoute.POST(new Request("http://localhost/api/training/projects", { method: "POST", body: "{}" })),
     updateProjectRoute.PATCH(new Request("http://localhost/api/training/projects/missing-project", { method: "PATCH", body: "{}" }), missingProjectParams),
     archiveProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/archive", { method: "POST" }), missingProjectParams),
     restoreProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/restore", { method: "POST" }), missingProjectParams),
     updateProjectSectionRoute.PATCH(new Request("http://localhost/api/training/projects/missing-project/sections/missing-section", { method: "PATCH", body: "{}" }), missingProjectSectionParams),
     createTrainingPresetRoute.POST(new Request("http://localhost/api/training/presets", { method: "POST", body: "{}" })),
+    saveTrainingPresetSortRulesRoute.POST(new Request("http://localhost/api/training/presets/sort-rules", { method: "POST", body: "{}" })),
     updateTrainingPresetRoute.PATCH(new Request("http://localhost/api/training/presets/missing-preset", { method: "PATCH", body: "{}" }), missingPresetParams),
     createTrainingTemplateRoute.POST(new Request("http://localhost/api/training/templates", { method: "POST", body: "{}" })),
     updateTrainingTemplateRoute.PATCH(new Request("http://localhost/api/training/templates/missing-template", { method: "PATCH", body: "{}" }), missingTemplateParams),
@@ -376,6 +427,7 @@ test("training write routes exist under /api/training and fail through HTTP cont
     restoreResponse.json(),
     updateProjectSectionResponse.json(),
     createPresetResponse.json(),
+    savePresetSortRulesResponse.json(),
     updatePresetResponse.json(),
     createTemplateResponse.json(),
     updateTemplateResponse.json(),
@@ -398,22 +450,24 @@ test("training write routes exist under /api/training and fail through HTTP cont
   assert.equal(payloads[4].ok, false);
   assert.ok(createPresetResponse.status >= 400);
   assert.equal(payloads[5].ok, false);
-  assert.ok(updatePresetResponse.status >= 400);
+  assert.ok(savePresetSortRulesResponse.status >= 400);
   assert.equal(payloads[6].ok, false);
-  assert.ok(createTemplateResponse.status >= 400);
+  assert.ok(updatePresetResponse.status >= 400);
   assert.equal(payloads[7].ok, false);
-  assert.ok(updateTemplateResponse.status >= 400);
+  assert.ok(createTemplateResponse.status >= 400);
   assert.equal(payloads[8].ok, false);
-  assert.ok(updateTemplateSectionResponse.status >= 400);
+  assert.ok(updateTemplateResponse.status >= 400);
   assert.equal(payloads[9].ok, false);
-  assert.ok(freezeResponse.status >= 400);
+  assert.ok(updateTemplateSectionResponse.status >= 400);
   assert.equal(payloads[10].ok, false);
-  assert.ok(enqueueTrainingResponse.status >= 400);
+  assert.ok(freezeResponse.status >= 400);
   assert.equal(payloads[11].ok, false);
-  assert.ok(enqueueSectionResponse.status >= 400);
+  assert.ok(enqueueTrainingResponse.status >= 400);
   assert.equal(payloads[12].ok, false);
-  assert.ok(cancelResponse.status >= 400);
+  assert.ok(enqueueSectionResponse.status >= 400);
   assert.equal(payloads[13].ok, false);
+  assert.ok(cancelResponse.status >= 400);
+  assert.equal(payloads[14].ok, false);
 });
 
 test("training asset and review routes exist under /api/training and return JSON error contracts", async () => {

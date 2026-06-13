@@ -774,6 +774,8 @@ function LoraTrainingPresetDetailContent({
 }
 
 export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
   const categories = [...new Set(training.presets.map((preset) => preset.category))];
   const categoryItems = categories.map((category) => ({
@@ -795,28 +797,99 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
     presetCount: number;
     scope: string;
   } | null>(null);
+  const [isSavingSortRules, setIsSavingSortRules] = useState(false);
   const orderedCategoryItems = orderTrainingPresetSortItems(categoryItems, orderedCategoryIds);
   const orderedPresetItems = orderTrainingPresetSortItems(presetItems, orderedPresetIds);
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
-  function handleSaveSortRules() {
-    setSortRulesDraft({
+  function buildSortRulesDraft(scope: string) {
+    return {
       categoryCount: orderedCategoryIds.length,
       firstCategory: orderedCategoryItems[0]?.title ?? "无",
       firstPreset: orderedPresetItems[0]?.title ?? "无",
       presetCount: orderedPresetIds.length,
-      scope: "全部排序",
-    });
+      scope,
+    };
   }
 
-  function handleSaveSortGroup(scope: string, ids: string[], items: TrainingPresetSortItem[]) {
+  async function persistTrainingPresetSortRules(scope: string) {
+    const nextDraft = buildSortRulesDraft(scope);
+
+    if (!isProductionTrainingRoute) {
+      setSortRulesDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: sortRulesDraft ? "排序保存草稿已更新" : "排序保存草稿已记录",
+        detail: scope,
+      });
+      return;
+    }
+
+    if (isSavingSortRules) return;
+
+    setIsSavingSortRules(true);
+    try {
+      const response = await fetch("/api/training/presets/sort-rules", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          categoryOrder: orderedCategoryIds,
+          presetOrder: orderedPresetIds,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "排序保存失败",
+          detail: payload?.error?.message ?? "训练预制排序保存请求失败",
+        });
+        return;
+      }
+
+      setSortRulesDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: "训练预制排序已保存",
+        detail: scope,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "排序保存失败",
+        detail: error instanceof Error ? error.message : "训练预制排序保存请求失败",
+      });
+    } finally {
+      setIsSavingSortRules(false);
+    }
+  }
+
+  async function handleSaveSortRules() {
+    await persistTrainingPresetSortRules("全部排序");
+  }
+
+  async function handleSaveSortGroup(scope: string, ids: string[], items: TrainingPresetSortItem[]) {
     const orderedItems = orderTrainingPresetSortItems(items, ids);
-    setSortRulesDraft({
+    const nextDraft = {
       categoryCount: scope === "合成顺序" ? ids.length : orderedCategoryIds.length,
       firstCategory: scope === "合成顺序" ? orderedItems[0]?.title ?? "无" : orderedCategoryItems[0]?.title ?? "无",
       firstPreset: scope === "分类内顺序" ? orderedItems[0]?.title ?? "无" : orderedPresetItems[0]?.title ?? "无",
       presetCount: scope === "分类内顺序" ? ids.length : orderedPresetIds.length,
       scope,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setSortRulesDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: sortRulesDraft ? "排序保存草稿已更新" : "排序保存草稿已记录",
+        detail: scope,
+      });
+      return;
+    }
+
+    await persistTrainingPresetSortRules(scope);
   }
 
   return (
@@ -830,8 +903,8 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
           <Button
             tone="primary"
             icon={Save}
+            pending={isSavingSortRules}
             onClick={handleSaveSortRules}
-            feedback={{ title: sortRulesDraft ? "排序保存草稿已更新" : "排序保存草稿已记录", detail: sortRulesDraft?.scope ?? "全部排序" }}
           >
             {sortRulesDraft ? "更新排序草稿" : "保存全部"}
           </Button>
