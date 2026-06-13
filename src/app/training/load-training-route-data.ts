@@ -32,7 +32,10 @@ import { listCharacterLoraJobSections } from "@/server/services/character-lora-t
 import { listCharacterLoraSourceImages } from "@/server/services/character-lora-training/source-image-service";
 import { listCharacterLoraTrainingRuns } from "@/server/services/character-lora-training/training-service";
 import { listTrainingSceneDescriptionPresets } from "@/server/services/training/preset-service";
-import { listTrainingProjectSectionOverrides } from "@/server/services/training/project-section-service";
+import {
+  listTrainingProjectSectionCollections,
+  listTrainingProjectSectionOverrides,
+} from "@/server/services/training/project-section-service";
 
 type ImageStatus = DemoImage["status"];
 
@@ -242,25 +245,28 @@ async function buildGenerationRuns(input: {
 
 function applyTrainingProjectSectionOverrides(
   training: LoraTrainingDemoData,
+  sectionCollections: Awaited<ReturnType<typeof listTrainingProjectSectionCollections>>,
   sectionOverrides: Awaited<ReturnType<typeof listTrainingProjectSectionOverrides>>,
 ): LoraTrainingDemoData {
   return {
     ...training,
     projects: training.projects.map((project) => ({
       ...project,
-      sections: project.sections.map((section) => {
-        const override = sectionOverrides[`${project.id}:${section.id}`];
-        if (!override) return section;
-        return {
-          ...section,
-          title: override.title,
-          enabled: override.enabled,
-          updatedAt: override.updatedAt,
-          blocks: override.blocks,
-          resolvedScene: override.resolvedScene,
-          imagePrompt: override.imagePrompt,
-        };
-      }),
+      sections: sectionCollections[project.id]
+        ? sectionCollections[project.id]
+        : project.sections.map((section) => {
+          const override = sectionOverrides[`${project.id}:${section.id}`];
+          if (!override) return section;
+          return {
+            ...section,
+            title: override.title,
+            enabled: override.enabled,
+            updatedAt: override.updatedAt,
+            blocks: override.blocks,
+            resolvedScene: override.resolvedScene,
+            imagePrompt: override.imagePrompt,
+          };
+        }),
     })),
   };
 }
@@ -270,9 +276,10 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
   if (!jobs.jobs.length) return null;
 
   const baseTraining = buildLoraTrainingDemoData(baseData);
-  const [realTemplates, realPresets, sectionOverrides] = await Promise.all([
+  const [realTemplates, realPresets, sectionCollections, sectionOverrides] = await Promise.all([
     listCharacterLoraTrainingTemplates(),
     listTrainingSceneDescriptionPresets(),
+    listTrainingProjectSectionCollections(),
     listTrainingProjectSectionOverrides(),
   ]);
 
@@ -452,7 +459,7 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
     runs: runsByProject.flat().sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))),
     presets: realPresets.length ? realPresets : baseTraining.presets,
     templates: templates.length ? templates : baseTraining.templates,
-  }, sectionOverrides);
+  }, sectionCollections, sectionOverrides);
 }
 
 export async function loadTrainingRouteData(): Promise<DemoData> {
@@ -462,14 +469,15 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
   try {
     const loraTraining = await mapRealTrainingProjects(baseData);
     if (!loraTraining) {
-      const [fallbackPresets, sectionOverrides] = await Promise.all([
+      const [fallbackPresets, sectionCollections, sectionOverrides] = await Promise.all([
         listTrainingSceneDescriptionPresets().catch(() => baseTraining.presets),
+        listTrainingProjectSectionCollections().catch(() => ({})),
         listTrainingProjectSectionOverrides().catch(() => ({})),
       ]);
       const mergedTraining = applyTrainingProjectSectionOverrides({
         ...baseTraining,
         presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
-      }, sectionOverrides);
+      }, sectionCollections, sectionOverrides);
       return {
         ...baseData,
         loraTraining: mergedTraining,
@@ -490,14 +498,15 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
       },
     };
   } catch {
-    const [fallbackPresets, sectionOverrides] = await Promise.all([
+    const [fallbackPresets, sectionCollections, sectionOverrides] = await Promise.all([
       listTrainingSceneDescriptionPresets().catch(() => baseTraining.presets),
+      listTrainingProjectSectionCollections().catch(() => ({})),
       listTrainingProjectSectionOverrides().catch(() => ({})),
     ]);
     const mergedTraining = applyTrainingProjectSectionOverrides({
       ...baseTraining,
       presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
-    }, sectionOverrides);
+    }, sectionCollections, sectionOverrides);
     return {
       ...baseData,
       loraTraining: mergedTraining,

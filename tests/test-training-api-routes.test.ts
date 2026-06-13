@@ -169,6 +169,98 @@ test("training project section route reads and updates a saved section through /
   );
 });
 
+test("training project sections create, copy, delete, and reorder through /api/training", async () => {
+  const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
+  const reorderRoute = await import("../src/app/api/training/projects/[projectId]/sections/reorder/route");
+  const sectionDetailRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
+  const projects = await listProjects();
+  const projectId = projects[0].id;
+  const params = { params: Promise.resolve({ projectId }) };
+
+  const beforeResponse = await sectionsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/sections`), params);
+  const beforePayload = await beforeResponse.json();
+  const beforeSections = beforePayload.data as Array<{ id: string; title: string }>;
+  const sourceSectionId = beforeSections[0].id;
+
+  const createResponse = await sectionsRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+    params,
+  );
+  const createPayload = await createResponse.json();
+
+  assert.equal(createResponse.status, 200);
+  assert.equal(createPayload.ok, true);
+  assert.equal(typeof createPayload.data.id, "string");
+
+  const createdSectionId = createPayload.data.id as string;
+
+  const copyResponse = await sectionsRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections`, {
+      method: "POST",
+      body: JSON.stringify({ sourceSectionId }),
+    }),
+    params,
+  );
+  const copyPayload = await copyResponse.json();
+
+  assert.equal(copyResponse.status, 200);
+  assert.equal(copyPayload.ok, true);
+  assert.equal(typeof copyPayload.data.id, "string");
+
+  const copiedSectionId = copyPayload.data.id as string;
+
+  const afterCreateResponse = await sectionsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/sections`), params);
+  const afterCreatePayload = await afterCreateResponse.json();
+  const afterCreateSections = afterCreatePayload.data as Array<{ id: string }>;
+
+  assert.equal(afterCreateSections.length, beforeSections.length + 2);
+
+  const reversedIds = [...afterCreateSections.map((section) => section.id)].reverse();
+  const reorderResponse = await reorderRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections/reorder`, {
+      method: "POST",
+      body: JSON.stringify({ orderedSectionIds: reversedIds }),
+    }),
+    params,
+  );
+  const reorderPayload = await reorderResponse.json();
+
+  assert.equal(reorderResponse.status, 200);
+  assert.equal(reorderPayload.ok, true);
+  assert.equal(reorderPayload.data[0].id, reversedIds[0]);
+
+  const deleteCreatedResponse = await sectionDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections/${createdSectionId}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ projectId, sectionId: createdSectionId }) },
+  );
+  const deleteCreatedPayload = await deleteCreatedResponse.json();
+  assert.equal(deleteCreatedResponse.status, 200);
+  assert.equal(deleteCreatedPayload.ok, true);
+
+  const deleteCopiedResponse = await sectionDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections/${copiedSectionId}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ projectId, sectionId: copiedSectionId }) },
+  );
+  const deleteCopiedPayload = await deleteCopiedResponse.json();
+  assert.equal(deleteCopiedResponse.status, 200);
+  assert.equal(deleteCopiedPayload.ok, true);
+
+  await reorderRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections/reorder`, {
+      method: "POST",
+      body: JSON.stringify({ orderedSectionIds: beforeSections.map((section) => section.id) }),
+    }),
+    params,
+  );
+});
+
 test("GET /api/training/runs filters the global training workspace by kind and status", async () => {
   const { GET } = await import("../src/app/api/training/runs/route");
 

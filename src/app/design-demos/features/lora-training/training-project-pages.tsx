@@ -1740,6 +1740,8 @@ function SectionCard({
 }
 
 export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const project = findProject(data, projectId);
   const [localSectionState, setLocalSections] = useState(() => ({
     projectId: project?.id ?? null,
@@ -1749,6 +1751,7 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
     ids: project?.sections.map((section) => section.id) ?? [],
     projectId: project?.id ?? null,
   }));
+  const [isMutatingSections, setIsMutatingSections] = useState(false);
   if (!project) return <EmptyPage title="没有训练小节数据" />;
   const localSections = localSectionState.projectId === project.id ? localSectionState.sections : project.sections;
   const orderedSectionIds = orderedSectionState.projectId === project.id ? orderedSectionState.ids : project.sections.map((section) => section.id);
@@ -1756,8 +1759,9 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
   const sections = orderedSectionIds
     .map((sectionId) => sectionMap.get(sectionId))
     .filter((section): section is LoraTrainingSection => Boolean(section));
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
-  function handleCopySection(section: LoraTrainingSection) {
+  async function handleCopySection(section: LoraTrainingSection) {
     const copyNumber = nextProjectSectionCopyNumber(localSections, section.id);
     const copyId = `${section.id}-copy-${copyNumber}`;
     const copy: LoraTrainingSection = {
@@ -1766,54 +1770,171 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
       title: `${section.title} (副本)`,
       updatedAt: "刚刚",
     };
-    setLocalSections((current) => {
-      const currentSections = current.projectId === project.id ? current.sections : project.sections;
-      const sourceIndex = currentSections.findIndex((item) => item.id === section.id);
-      const sections = sourceIndex === -1
-        ? [...currentSections, copy]
+    const currentSections = localSections;
+    const sourceIndex = currentSections.findIndex((item) => item.id === section.id);
+    const nextSections = sourceIndex === -1
+      ? [...currentSections, copy]
+      : [
+        ...currentSections.slice(0, sourceIndex + 1),
+        copy,
+        ...currentSections.slice(sourceIndex + 1),
+      ];
+    const currentIds = orderedSectionIds;
+    const sourceOrderIndex = currentIds.indexOf(section.id);
+    const nextIds = sourceOrderIndex === -1
+      ? [...currentIds, copyId]
+      : [
+        ...currentIds.slice(0, sourceOrderIndex + 1),
+        copyId,
+        ...currentIds.slice(sourceOrderIndex + 1),
+      ];
+
+    setLocalSections({ projectId: project.id, sections: nextSections });
+    setOrderedSectionIds({ ids: nextIds, projectId: project.id });
+
+    if (!isProductionTrainingRoute) return;
+    if (isMutatingSections) return;
+
+    setIsMutatingSections(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/sections`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sourceSectionId: section.id,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "复制小节失败",
+          detail: payload?.error?.message ?? "训练小节复制请求失败",
+        });
+        setLocalSections({ projectId: project.id, sections: localSections });
+        setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+        return;
+      }
+      const savedCopy = payload.data as LoraTrainingSection;
+      const savedSections = sourceIndex === -1
+        ? [...localSections, savedCopy]
         : [
-          ...currentSections.slice(0, sourceIndex + 1),
-          copy,
-          ...currentSections.slice(sourceIndex + 1),
+          ...localSections.slice(0, sourceIndex + 1),
+          savedCopy,
+          ...localSections.slice(sourceIndex + 1),
         ];
-      return { projectId: project.id, sections };
-    });
-    setOrderedSectionIds((current) => {
-      const currentIds = current.projectId === project.id ? current.ids : project.sections.map((item) => item.id);
-      const sourceIndex = currentIds.indexOf(section.id);
-      const ids = sourceIndex === -1
-        ? [...currentIds, copyId]
+      const savedIds = sourceOrderIndex === -1
+        ? [...orderedSectionIds, savedCopy.id]
         : [
-          ...currentIds.slice(0, sourceIndex + 1),
-          copyId,
-          ...currentIds.slice(sourceIndex + 1),
+          ...orderedSectionIds.slice(0, sourceOrderIndex + 1),
+          savedCopy.id,
+          ...orderedSectionIds.slice(sourceOrderIndex + 1),
         ];
-      return { ids, projectId: project.id };
-    });
+      setLocalSections({ projectId: project.id, sections: savedSections });
+      setOrderedSectionIds({ ids: savedIds, projectId: project.id });
+      pushToast({
+        tone: "success",
+        title: "小节已复制",
+        detail: section.title,
+      });
+    } catch (error) {
+      setLocalSections({ projectId: project.id, sections: localSections });
+      setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+      pushToast({
+        tone: "error",
+        title: "复制小节失败",
+        detail: error instanceof Error ? error.message : "训练小节复制请求失败",
+      });
+    } finally {
+      setIsMutatingSections(false);
+    }
   }
 
-  function handleDeleteSection(sectionId: string) {
-    setLocalSections((current) => {
-      const currentSections = current.projectId === project.id ? current.sections : project.sections;
-      return {
-        projectId: project.id,
-        sections: currentSections.filter((section) => section.id !== sectionId),
-      };
-    });
-    setOrderedSectionIds((current) => {
-      const currentIds = current.projectId === project.id ? current.ids : project.sections.map((section) => section.id);
-      return {
-        ids: currentIds.filter((id) => id !== sectionId),
-        projectId: project.id,
-      };
-    });
+  async function handleDeleteSection(sectionId: string) {
+    const nextSections = localSections.filter((section) => section.id !== sectionId);
+    const nextIds = orderedSectionIds.filter((id) => id !== sectionId);
+    setLocalSections({ projectId: project.id, sections: nextSections });
+    setOrderedSectionIds({ ids: nextIds, projectId: project.id });
+
+    if (!isProductionTrainingRoute) return;
+    if (isMutatingSections) return;
+
+    setIsMutatingSections(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/sections/${sectionId}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "删除小节失败",
+          detail: payload?.error?.message ?? "训练小节删除请求失败",
+        });
+        setLocalSections({ projectId: project.id, sections: localSections });
+        setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+        return;
+      }
+      pushToast({
+        tone: "warning",
+        title: "小节已移除",
+        detail: sectionId,
+      });
+    } catch (error) {
+      setLocalSections({ projectId: project.id, sections: localSections });
+      setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+      pushToast({
+        tone: "error",
+        title: "删除小节失败",
+        detail: error instanceof Error ? error.message : "训练小节删除请求失败",
+      });
+    } finally {
+      setIsMutatingSections(false);
+    }
   }
 
-  function handleReorderSections(nextSectionIds: string[]) {
+  async function handleReorderSections(nextSectionIds: string[]) {
     setOrderedSectionIds({ ids: nextSectionIds, projectId: project.id });
+
+    if (!isProductionTrainingRoute) return;
+    if (isMutatingSections) return;
+
+    const previousIds = orderedSectionIds;
+    setIsMutatingSections(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/sections/reorder`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          orderedSectionIds: nextSectionIds,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok || !Array.isArray(payload?.data)) {
+        pushToast({
+          tone: "error",
+          title: "排序小节失败",
+          detail: payload?.error?.message ?? "训练小节排序请求失败",
+        });
+        setOrderedSectionIds({ ids: previousIds, projectId: project.id });
+        return;
+      }
+      const savedSections = payload.data as LoraTrainingSection[];
+      setLocalSections({ projectId: project.id, sections: savedSections });
+      setOrderedSectionIds({ ids: savedSections.map((section) => section.id), projectId: project.id });
+    } catch (error) {
+      setOrderedSectionIds({ ids: previousIds, projectId: project.id });
+      pushToast({
+        tone: "error",
+        title: "排序小节失败",
+        detail: error instanceof Error ? error.message : "训练小节排序请求失败",
+      });
+    } finally {
+      setIsMutatingSections(false);
+    }
   }
 
-  function handleAddSection() {
+  async function handleAddSection() {
     const source = localSections[0];
     const draftNumber = nextProjectSectionDraftNumber(localSections);
     const draftId = `new-section-${draftNumber}`;
@@ -1838,14 +1959,49 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
       images: [],
       resultStatus: "pending",
     };
-    setLocalSections((current) => {
-      const currentSections = current.projectId === project.id ? current.sections : project.sections;
-      return { projectId: project.id, sections: [...currentSections, draft] };
-    });
-    setOrderedSectionIds((current) => {
-      const currentIds = current.projectId === project.id ? current.ids : project.sections.map((section) => section.id);
-      return { ids: [...currentIds, draft.id], projectId: project.id };
-    });
+    setLocalSections({ projectId: project.id, sections: [...localSections, draft] });
+    setOrderedSectionIds({ ids: [...orderedSectionIds, draft.id], projectId: project.id });
+
+    if (!isProductionTrainingRoute) return;
+    if (isMutatingSections) return;
+
+    setIsMutatingSections(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/sections`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "新建小节失败",
+          detail: payload?.error?.message ?? "训练小节创建请求失败",
+        });
+        setLocalSections({ projectId: project.id, sections: localSections });
+        setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+        return;
+      }
+      const savedSection = payload.data as LoraTrainingSection;
+      setLocalSections({ projectId: project.id, sections: [...localSections, savedSection] });
+      setOrderedSectionIds({ ids: [...orderedSectionIds, savedSection.id], projectId: project.id });
+      pushToast({
+        tone: "success",
+        title: "小节草稿已添加",
+        detail: savedSection.title,
+      });
+    } catch (error) {
+      setLocalSections({ projectId: project.id, sections: localSections });
+      setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+      pushToast({
+        tone: "error",
+        title: "新建小节失败",
+        detail: error instanceof Error ? error.message : "训练小节创建请求失败",
+      });
+    } finally {
+      setIsMutatingSections(false);
+    }
   }
 
   return (

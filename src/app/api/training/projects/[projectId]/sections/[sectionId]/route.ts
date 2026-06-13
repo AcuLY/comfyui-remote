@@ -1,8 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
 import { getTrainingProject, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
+  deleteTrainingProjectSection,
   mapTrainingProjectSectionError,
-  upsertTrainingProjectSectionOverride,
+  upsertTrainingProjectSection,
 } from "@/server/services/training/project-section-service";
 
 type RouteContext = {
@@ -42,7 +43,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       return fail("Training project section not found", 404, { projectId, sectionId });
     }
 
-    await upsertTrainingProjectSectionOverride(projectId, sectionId, body);
+    await upsertTrainingProjectSection(projectId, sectionId, body, project.sections);
 
     const updatedProject = await getTrainingProject(projectId);
     const updatedSection = updatedProject.sections.find((item) => item.id === sectionId);
@@ -50,6 +51,23 @@ export async function PATCH(request: Request, context: RouteContext) {
       return fail("Training project section not found after save", 404, { projectId, sectionId });
     }
     return ok(updatedSection);
+  } catch (error) {
+    const mapped = mapTrainingProjectSectionError(error);
+    return fail(mapped.message, mapped.status, mapped.details);
+  }
+}
+
+export async function DELETE(_request: Request, context: RouteContext) {
+  try {
+    const { projectId, sectionId } = await context.params;
+    const project = await getTrainingProject(projectId);
+    const section = project.sections.find((item) => item.id === sectionId);
+    if (!section) {
+      return fail("Training project section not found", 404, { projectId, sectionId });
+    }
+
+    const data = await deleteTrainingProjectSection(projectId, sectionId, project.sections);
+    return ok(data);
   } catch (error) {
     const mapped = mapTrainingProjectSectionError(error);
     return fail(mapped.message, mapped.status, mapped.details);

@@ -403,6 +403,24 @@ test("training section detail saves through the formal HTTP API on production ro
   assert.match(sectionDetailSource, /pushToast/, "section detail save should surface API success or failure through the shared feedback system");
 });
 
+test("training section list mutations use the formal HTTP APIs on production routes", () => {
+  const sectionsPageStart = pagesSource.indexOf("export function LoraTrainingProjectSectionsPage");
+  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
+  assert.notEqual(sectionsPageStart, -1);
+  assert.notEqual(sectionDetailStart, -1);
+
+  const sectionsPageSource = pagesSource.slice(sectionsPageStart, sectionDetailStart);
+
+  assert.match(sectionsPageSource, /usePathname/, "section list should detect whether it is running under production \\/training routes");
+  assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/sections`/, "section add and copy should call the formal project sections API");
+  assert.match(sectionsPageSource, /sourceSectionId:\s*section\.id/, "section copy should pass the copied source section id");
+  assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/sections\/\$\{sectionId\}`/, "section delete should call the formal section delete API");
+  assert.match(sectionsPageSource, /method:\s*"DELETE"/, "section delete should use DELETE");
+  assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/sections\/reorder`/, "section reorder should call the formal section reorder API");
+  assert.match(sectionsPageSource, /orderedSectionIds:\s*nextSectionIds/, "section reorder should submit the visible section order");
+  assert.match(sectionsPageSource, /pushToast/, "section list mutation requests should surface API success or failure through the shared feedback system");
+});
+
 test("training project repeated object actions include the acted-on object name", () => {
   const gridStart = pagesSource.indexOf("function TrainingResultGrid");
   const runRowsStart = pagesSource.indexOf("function runPreviewImages");
