@@ -177,6 +177,8 @@ test("training run fixtures keep rendered sample and config copy product-facing"
   for (const term of [
     /training caption snapshot/i,
     /RTX worker/i,
+    /\bRTX\b/i,
+    /显卡/i,
     /label:\s*"Base"/,
     /label:\s*"Network"/,
     /label:\s*"Runner"/,

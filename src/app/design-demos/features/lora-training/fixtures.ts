@@ -229,7 +229,7 @@ const defaultTrainingConfig = [
   { label: "训练步数", value: "2400", detail: "批量 2 · 重复 10" },
   { label: "学习率", value: "1e-4", detail: "余弦调度" },
   { label: "分辨率", value: "1024", detail: "启用分桶" },
-  { label: "执行方式", value: "本地训练", detail: "RTX 显卡" },
+  { label: "执行方式", value: "本地训练", detail: "本地调度器" },
 ];
 
 export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData {
