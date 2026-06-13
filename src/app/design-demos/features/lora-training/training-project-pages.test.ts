@@ -154,10 +154,8 @@ test("training project overview saves as template through the real template form
 
   const overviewSource = pagesSource.slice(overviewStart, profileStart);
 
-  assert.match(overviewSource, /saveAsTemplateHref/, "overview should build a concrete save-as-template href");
-  assert.match(overviewSource, /<ButtonLink[\s\S]*?href=\{saveAsTemplateHref\}[\s\S]*?>\s*保存为模板\s*<\/ButtonLink>/, "save-as-template should navigate to the template form");
-  assert.match(overviewSource, /sourceProject/, "save-as-template href should carry the source project");
-  assert.match(overviewSource, /sections:\s*String\(project\.sections\.length\)/, "save-as-template href should carry section count context");
+  assert.doesNotMatch(overviewSource, /saveAsTemplateHref/, "overview should leave save-as-template link building to the route header");
+  assert.doesNotMatch(overviewSource, /保存为模板/, "overview should not render a duplicate save-as-template CTA");
   assert.doesNotMatch(overviewSource, /保存为模板入口已预览/, "save-as-template should not remain a feedback-only placeholder");
 });
 
@@ -331,8 +329,8 @@ test("training project repeated object actions include the acted-on object name"
   assert.match(newProjectSource, /ariaLabel=\{section\.enabled \? `停用初始小节：\$\{section\.title\}` : `启用初始小节：\$\{section\.title\}`\}/, "seed toggle should name the section and next action");
   assert.match(newProjectSource, /ariaLabel=\{`复制初始小节：\$\{section\.title\}`\}/, "seed copy should name the section");
   assert.match(newProjectSource, /ariaLabel=\{`删除初始小节：\$\{section\.title\}`\}/, "seed delete should name the section");
-  assert.match(projectDetailSource, /ariaLabel=\{`启动训练项目：\$\{project\.title\}`\}/, "start-training action should name the project");
-  assert.match(projectDetailSource, /ariaLabel=\{`保存训练项目为模板：\$\{project\.title\}`\}/, "save-template action should name the project");
+  assert.doesNotMatch(projectDetailSource, /ariaLabel=\{`启动训练项目：\$\{project\.title\}`\}/, "project detail should leave start-training to the route header");
+  assert.doesNotMatch(projectDetailSource, /ariaLabel=\{`保存训练项目为模板：\$\{project\.title\}`\}/, "project detail should leave save-as-template to the route header");
   assert.match(projectDetailSource, /ariaLabel=\{`编辑训练项目资料：\$\{project\.title\}`\}/, "edit-profile action should name the project");
   assert.match(projectDetailSource, /ariaLabel=\{`打开训练项目数据集工作台：\$\{project\.title\}`\}/, "dataset workspace action should name the project");
   assert.doesNotMatch(scopedPageSource, /ariaLabel=\{`新建项目生成任务：\$\{project\.title\}`\}/, "project generation action should not be duplicated inside the page header");

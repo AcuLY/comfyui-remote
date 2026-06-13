@@ -121,7 +121,7 @@ test("training section list can add a local draft section without backend calls"
   assert.match(sectionsPage, /onClick=\{handleAddSection\}/, "new section button should call the local add action");
 });
 
-test("training section generation actions name the target section", () => {
+test("training section list generation actions name the target section while detail pages leave the CTA to route headers", () => {
   const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
   const detailPage = sourceBetween(
     "export function LoraTrainingProjectSectionDetailPage",
@@ -133,10 +133,10 @@ test("training section generation actions name the target section", () => {
     /ariaLabel=\{`生成小节样本：\$\{section\.title\}`\}/,
     "section card generation action should name the section",
   );
-  assert.match(
+  assert.doesNotMatch(
     detailPage,
     /ariaLabel=\{`生成小节样本：\$\{section\.title\}`\}/,
-    "section detail generation action should name the section",
+    "section detail should leave the primary generation CTA to the route header",
   );
 });
 
@@ -270,7 +270,7 @@ test("training section detail saves a visible local section draft", () => {
   assert.match(detailPage, /sceneBlocks\.length/, "saved section draft should include current scene block count");
   assert.match(detailPage, /scenePreview/, "saved section draft should use current composed scene text");
   assert.match(detailPage, /小节保存草稿/, "section detail should render a visible saved draft panel");
-  assert.match(detailPage, /generation-tasks\/new/, "saving the section should not replace the generation action");
+  assert.doesNotMatch(detailPage, /generation-tasks\/new/, "section detail should leave the generation CTA to the route header");
   assert.doesNotMatch(detailPage, /小节已保存/, "section save should not remain feedback-only");
 });
 

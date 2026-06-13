@@ -1049,11 +1049,6 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
   const recentRuns = training.runs.filter((run) => run.projectId === project.id).slice(0, 4);
   const recentResults = project.resultPool.filter((result) => result.reviewStatus === "kept").slice(0, 4);
   const latestRevision = project.datasetRevisions[0];
-  const saveAsTemplateHref = `/training/templates/new?${new URLSearchParams({
-    projectId: project.id,
-    sections: String(project.sections.length),
-    sourceProject: project.title,
-  }).toString()}`;
 
   function handleToggleProjectArchive() {
     setProjectArchiveState((current) => {
@@ -1069,22 +1064,14 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
         project={activeProject}
         subtitle={isProjectArchived ? `${project.profileSummary} · 已归档` : project.profileSummary}
         actions={(
-          <>
-            <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Play} tone="primary" ariaLabel={`启动训练项目：${project.title}`}>
-              启动训练
-            </ButtonLink>
-            <ButtonLink href={saveAsTemplateHref} icon={CopyPlus} ariaLabel={`保存训练项目为模板：${project.title}`}>
-              保存为模板
-            </ButtonLink>
-            <Button
-              tone={isProjectArchived ? "subtle" : "danger"}
-              icon={Archive}
-              onClick={handleToggleProjectArchive}
-              feedback={{ tone: isProjectArchived ? "success" : "warning", title: isProjectArchived ? "训练项目已恢复" : "训练项目已归档", detail: project.title }}
-            >
-              {isProjectArchived ? "恢复" : "归档"}
-            </Button>
-          </>
+          <Button
+            tone={isProjectArchived ? "subtle" : "danger"}
+            icon={Archive}
+            onClick={handleToggleProjectArchive}
+            feedback={{ tone: isProjectArchived ? "success" : "warning", title: isProjectArchived ? "训练项目已恢复" : "训练项目已归档", detail: project.title }}
+          >
+            {isProjectArchived ? "恢复" : "归档"}
+          </Button>
         )}
       />
       <div className={s.overviewGrid}>
@@ -1595,23 +1582,13 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
         project={project}
         title={`${project.title} / ${section.title}`}
         actions={(
-          <>
-            <Button
-              icon={Save}
-              onClick={handleSaveSection}
-              feedback={{ title: visibleSectionDraft ? "小节保存草稿已更新" : "小节保存草稿已记录", detail: section.title }}
-            >
-              {visibleSectionDraft ? "更新小节草稿" : "保存小节"}
-            </Button>
-            <ButtonLink
-              href={`/training/projects/${project.id}/sections/${section.id}/generation-tasks/new`}
-              icon={ImagePlus}
-              tone="primary"
-              ariaLabel={`生成小节样本：${section.title}`}
-            >
-              生成样本
-            </ButtonLink>
-          </>
+          <Button
+            icon={Save}
+            onClick={handleSaveSection}
+            feedback={{ title: visibleSectionDraft ? "小节保存草稿已更新" : "小节保存草稿已记录", detail: section.title }}
+          >
+            {visibleSectionDraft ? "更新小节草稿" : "保存小节"}
+          </Button>
         )}
       />
       <TrainingSectionWorkspace activeSectionId={section.id} project={project}>
