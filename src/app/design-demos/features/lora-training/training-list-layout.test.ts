@@ -11,7 +11,10 @@ const resourcesCss = readFileSync(resolve(testDir, "training-resource-pages.modu
 const runsCss = readFileSync(resolve(testDir, "training-runs-page.module.css"), "utf8");
 
 function hasResponsiveColumns(css: string, className: string) {
-  return new RegExp(`@(?:media|container)[\\s\\S]*?\\.${className}[\\s\\S]*?grid-template-columns:\\s*repeat\\(2,\\s*minmax\\(0,\\s*1fr\\)\\)`).test(css);
+  const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(
+    `@(?:media|container)[^{]*\\{[\\s\\S]*?[^{}]*\\.${escaped}\\b[^{}]*\\{[^{}]*grid-template-columns:\\s*repeat\\(2,\\s*minmax\\(0,\\s*1fr\\)\\)`,
+  ).test(css);
 }
 
 function cssRule(css: string, className: string) {
@@ -37,6 +40,7 @@ function hasMobileSingleColumnOverride(css: string, className: string) {
 test("training list surfaces expand to two columns when there is enough width", () => {
   assert.ok(hasResponsiveColumns(projectsCss, "projectGrid"), "Training project list should use a responsive two-column grid");
   assert.ok(hasResponsiveColumns(runsCss, "currentRunList"), "Current running tasks should use responsive two-column rows");
+  assert.ok(hasResponsiveColumns(runsCss, "runGroupList"), "Training run project groups should use responsive two-column rows");
   assert.ok(hasResponsiveColumns(runsCss, "runRows"), "Training run groups should use responsive two-column rows");
   assert.ok(hasResponsiveColumns(projectPagesCss, "sectionGrid"), "Training section list should use a responsive two-column grid");
   assert.ok(hasResponsiveColumns(projectPagesCss, "sectionSeedList"), "Initial training section seeds should use a responsive two-column grid");
@@ -56,6 +60,7 @@ test("training list surfaces are real grids before responsive column rules apply
   const gridSurfaces = [
     [projectsCss, "projectGrid"],
     [runsCss, "currentRunList"],
+    [runsCss, "runGroupList"],
     [runsCss, "runRows"],
     [projectPagesCss, "sectionGrid"],
     [projectPagesCss, "sectionSeedList"],

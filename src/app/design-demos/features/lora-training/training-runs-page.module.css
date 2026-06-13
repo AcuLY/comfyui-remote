@@ -189,6 +189,7 @@
 
 .runSurface {
   display: grid;
+  container-type: inline-size;
   min-width: 0;
   min-height: 280px;
 }
@@ -246,17 +247,27 @@
 .runGroupList {
   display: grid;
   min-width: 0;
+  gap: 10px;
+  padding: 10px;
 }
 
 .runProjectGroup {
   display: grid;
   min-width: 0;
-  border-bottom: 1px solid var(--demo-border);
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
   container-type: inline-size;
 }
 
 .runProjectGroup:last-child {
-  border-bottom: 0;
+  border-bottom: 1px solid var(--demo-border);
+}
+
+@container (min-width: 720px) {
+  .runGroupList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .runProjectHeader {
