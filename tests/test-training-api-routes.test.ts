@@ -249,3 +249,21 @@ test("training asset and review routes exist under /api/training and return JSON
     assert.equal(typeof payload.error.message, "string");
   }
 });
+
+test("training profile update route exists under /api/training and returns JSON error contracts", async () => {
+  const profileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");
+  const missingProjectParams = { params: Promise.resolve({ projectId: "missing-project" }) };
+
+  const invalidBodyResponse = await profileRoute.PATCH(
+    new Request("http://localhost/api/training/projects/missing-project/profile", {
+      method: "PATCH",
+      body: JSON.stringify({ characterDetailPrompt: "plain text", loraUsagePrompt: "new prompt" }),
+    }),
+    missingProjectParams,
+  );
+  const invalidBodyPayload = await invalidBodyResponse.json();
+
+  assert.ok(invalidBodyResponse.status >= 400);
+  assert.equal(invalidBodyPayload.ok, false);
+  assert.equal(typeof invalidBodyPayload.error.message, "string");
+});
