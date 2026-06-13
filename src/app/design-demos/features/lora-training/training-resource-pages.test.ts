@@ -541,3 +541,21 @@ test("training preset sort rules keep local order state and save a visible draft
   assert.doesNotMatch(sortSource, /feedback="排序规则已保存"/, "save-all should not remain feedback-only");
   assert.doesNotMatch(panelSource, /排序已保存/, "group save should not remain feedback-only");
 });
+
+test("training preset sort mobile footer keeps save actions compact", () => {
+  assert.doesNotMatch(
+    cssSource,
+    /\.trainingPresetEditorHeader,\s*\.trainingPresetSortHeader,\s*\.trainingPresetSortFooter\s*\{\s*align-items:\s*stretch;\s*flex-direction:\s*column;\s*\}/,
+    "Mobile sort footers should not inherit the stretched header layout that makes save buttons full-width",
+  );
+  assert.match(
+    cssSource,
+    /@media\s*\(max-width:\s*639px\)\s*\{[\s\S]*?\.trainingPresetSortFooter\s*\{[\s\S]*?align-items:\s*flex-start[\s\S]*?flex-direction:\s*column/,
+    "Mobile sort footers should stack content while keeping actions sized to their content",
+  );
+  assert.match(
+    cssSource,
+    /\.trainingPresetSortFooter\s+:where\(\[data-demo-ui-button="true"\]\)\s*\{[\s\S]*?align-self:\s*flex-start/,
+    "Sort footer save buttons should explicitly align to the start instead of stretching",
+  );
+});

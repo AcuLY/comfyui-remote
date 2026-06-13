@@ -1168,10 +1168,19 @@
   }
 
   .trainingPresetEditorHeader,
-  .trainingPresetSortHeader,
-  .trainingPresetSortFooter {
+  .trainingPresetSortHeader {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .trainingPresetSortFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .trainingPresetSortFooter :where([data-demo-ui-button="true"]) {
+    align-self: flex-start;
+    max-width: 100%;
   }
 
   .trainingPresetSortRow {
