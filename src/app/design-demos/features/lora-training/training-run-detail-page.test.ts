@@ -106,6 +106,21 @@ test("completed image generation detail renders result thumbnails with review ac
   assert.match(detailCss, /\.generationOutputCaption\b/, "generation output captions should be compact text below thumbnails");
 });
 
+test("image generation detail prioritizes output before final input", () => {
+  const detailGridStart = detailSource.indexOf(`<div className={s.detailGrid}>`);
+  const evidenceGridStart = detailSource.indexOf(`<div className={s.trainingEvidenceGrid}>`, detailGridStart);
+  assert.notEqual(detailGridStart, -1, "detail page should render the primary detail grid");
+  assert.notEqual(evidenceGridStart, -1, "detail grid should end before training-only evidence panels");
+
+  const detailGridSource = detailSource.slice(detailGridStart, evidenceGridStart);
+  const outputPanelIndex = detailGridSource.indexOf(`title={isGeneration ? "输出" : "训练产物"}`);
+  const inputPanelIndex = detailGridSource.indexOf(`title={isGeneration ? "最终输入" : "训练配置"}`);
+
+  assert.notEqual(outputPanelIndex, -1, "detail grid should contain the output panel");
+  assert.notEqual(inputPanelIndex, -1, "detail grid should contain the final input/config panel");
+  assert.ok(outputPanelIndex < inputPanelIndex, "generation details should surface output thumbnails before final input copy");
+});
+
 test("training run detail repeated object actions include the acted-on object name", () => {
   const outputGridStart = detailSource.indexOf("function GenerationOutputGrid");
   const detailPageStart = detailSource.indexOf("export function LoraTrainingRunDetailPage");

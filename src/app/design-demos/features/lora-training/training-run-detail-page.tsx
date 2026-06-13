@@ -336,32 +336,6 @@ export function LoraTrainingRunDetailPage({
 
       <div className={s.detailGrid}>
         <Panel
-          title={isGeneration ? "最终输入" : "训练配置"}
-          subtitle={isGeneration ? "与生图运行详情一致，只展示本次任务提交给生成服务的最终请求。" : "训练任务只展示可复现所需配置和数据集版本。"}
-        >
-          <div className={s.stack}>
-            <Field readOnly multiline features={{ clipboard: true }} label={isGeneration ? "最终请求" : "训练参数快照"} value={isGeneration ? currentRun.finalInput ?? "未记录最终输入" : trainingConfigText(currentRun)} />
-            {!isGeneration && currentRun.trainingConfig?.length ? (
-              <dl className={s.configGrid}>
-                {currentRun.trainingConfig.map((row) => (
-                  <div key={row.label}>
-                    <dt>{row.label}</dt>
-                    <dd>{row.value}</dd>
-                    {row.detail ? <span>{row.detail}</span> : null}
-                  </div>
-                ))}
-              </dl>
-            ) : null}
-            {isGeneration && inputImages.length > 0 ? (
-              <div className={s.inputAttachmentStrip}>
-                <strong>最终输入附件</strong>
-                <ImageListSmall images={inputImages} limit={4} showCounts />
-              </div>
-            ) : null}
-          </div>
-        </Panel>
-
-        <Panel
           title={isGeneration ? "输出" : "训练产物"}
           subtitle={isGeneration ? "文本任务直接展示应用结果，图片任务展示进入结果池的样本。" : "完成后产出模型文件；未完成状态保留进度与日志入口。"}
           actions={canCreatePreset ? (
@@ -409,6 +383,32 @@ export function LoraTrainingRunDetailPage({
                 <div><dt>LoRA 文件</dt><dd>{currentRun.finalLoraArtifactId ? currentRun.artifactName ?? currentRun.finalLoraArtifactId : "尚未生成 LoRA 文件"}</dd></div>
                 <div><dt>预制</dt><dd>{canCreatePreset ? "可创建" : currentRun.presetCreatedAt ? "已创建" : "等待 LoRA 文件"}</dd></div>
               </dl>
+            ) : null}
+          </div>
+        </Panel>
+
+        <Panel
+          title={isGeneration ? "最终输入" : "训练配置"}
+          subtitle={isGeneration ? "与生图运行详情一致，只展示本次任务提交给生成服务的最终请求。" : "训练任务只展示可复现所需配置和数据集版本。"}
+        >
+          <div className={s.stack}>
+            <Field readOnly multiline features={{ clipboard: true }} label={isGeneration ? "最终请求" : "训练参数快照"} value={isGeneration ? currentRun.finalInput ?? "未记录最终输入" : trainingConfigText(currentRun)} />
+            {!isGeneration && currentRun.trainingConfig?.length ? (
+              <dl className={s.configGrid}>
+                {currentRun.trainingConfig.map((row) => (
+                  <div key={row.label}>
+                    <dt>{row.label}</dt>
+                    <dd>{row.value}</dd>
+                    {row.detail ? <span>{row.detail}</span> : null}
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+            {isGeneration && inputImages.length > 0 ? (
+              <div className={s.inputAttachmentStrip}>
+                <strong>最终输入附件</strong>
+                <ImageListSmall images={inputImages} limit={4} showCounts />
+              </div>
             ) : null}
           </div>
         </Panel>
