@@ -171,7 +171,7 @@ test("training section detail exposes full scene-block management controls", () 
   );
   const sceneBlockCard = sourceBetween("function SceneBlockCard", "function ReferencePicker");
 
-  for (const label of ["导入预制", "添加本地块"]) {
+  for (const label of ["选择预制", "导入所选", "添加本地块"]) {
     assert.match(detailPage, new RegExp(label), `section detail should include ${label}`);
   }
   for (const label of ["编辑", "上移", "下移", "删除"]) {
@@ -219,9 +219,13 @@ test("training section detail imports training presets into local scene blocks",
 
   assert.match(detailPage, /const training = buildLoraTrainingDemoData\(data\)/, "section detail should read available training presets");
   assert.match(detailPage, /handleImportPresetBlock/, "section detail should define a preset import action");
+  assert.match(detailPage, /presetImportOpen/, "preset import should open a visible candidate picker");
+  assert.match(detailPage, /selectedTrainingPresetId/, "preset import should track the selected training preset");
+  assert.match(detailPage, /selectedTrainingPreset/, "preset import should import the selected preset, not an implicit default");
+  assert.match(detailPage, /training\.presets\.map/, "preset import should render the available training presets as selectable candidates");
   assert.match(detailPage, /source:\s*"预制"/, "imported preset blocks should keep the preset source label");
-  assert.match(detailPage, /training\.presets\[0\]/, "demo import should copy a real preset fixture instead of showing a placeholder");
-  assert.match(detailPage, /onClick=\{handleImportPresetBlock\}/, "import button should call the preset import action");
+  assert.doesNotMatch(detailPage, /training\.presets\[0\]/, "preset import should not silently copy the first fixture");
+  assert.match(detailPage, /handleImportPresetBlock\(selectedTrainingPreset\)/, "import button should pass the selected preset to the import action");
   assert.doesNotMatch(detailPage, /导入预制入口已预览/, "preset import should not be a preview-only placeholder");
 });
 
@@ -233,9 +237,9 @@ test("training section detail generates scene block ids from existing ids instea
 
   assert.match(pagesSource, /function nextSceneBlockOrdinal/, "section block id generation should use a shared ordinal helper");
   assert.match(detailPage, /nextSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-local-block-`\)/, "local block ids should scan existing local ids");
-  assert.match(detailPage, /nextSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-preset-block-\$\{importedPreset\.id\}-`\)/, "imported preset block ids should scan existing imported ids");
+  assert.match(detailPage, /nextSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-preset-block-\$\{preset\.id\}-`\)/, "imported preset block ids should scan existing imported ids");
   assert.doesNotMatch(detailPage, /id:\s*`\$\{activeSection\.id\}-local-block-\$\{current\.length \+ 1\}`/, "local block ids should not reuse ids after deleting earlier blocks");
-  assert.doesNotMatch(detailPage, /id:\s*`\$\{activeSection\.id\}-preset-block-\$\{importedPreset\.id\}-\$\{current\.length \+ 1\}`/, "imported block ids should not reuse ids after deleting earlier blocks");
+  assert.doesNotMatch(detailPage, /id:\s*`\$\{activeSection\.id\}-preset-block-\$\{preset\.id\}-\$\{current\.length \+ 1\}`/, "imported block ids should not reuse ids after deleting earlier blocks");
 });
 
 test("training section detail saves a visible local section draft", () => {

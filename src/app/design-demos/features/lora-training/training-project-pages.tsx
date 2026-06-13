@@ -41,7 +41,7 @@ import { StatusBadge } from "../../shared/primitives/status-badge";
 import { SwitchRow } from "../../shared/primitives/switch-row";
 import { SelectionBatchBar } from "../../shared/patterns";
 import { buildLoraTrainingDemoData } from "./fixtures";
-import type { LoraTrainingImageResult, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "./types";
+import type { LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "./types";
 import s from "./training-project-pages.module.css";
 
 const PROJECT_TABS = [
@@ -1474,6 +1474,8 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     projectId: project?.id ?? null,
     sectionId: section?.id ?? null,
   }));
+  const [presetImportOpen, setPresetImportOpen] = useState(false);
+  const [selectedTrainingPresetId, setSelectedTrainingPresetId] = useState<string | null>(null);
   const [sectionDraft, setSectionDraft] = useState<{
     blockCount: number;
     firstBlock: string;
@@ -1493,7 +1495,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   const activeSection = section;
   const visibleSectionDraft = sectionDraft?.projectId === activeProject.id && sectionDraft?.sectionId === activeSection.id ? sectionDraft : null;
   const visibleEditingSceneBlockId = editingSceneBlockState.projectId === activeProject.id && editingSceneBlockState.sectionId === activeSection.id ? editingSceneBlockState.blockId : null;
-  const importedPreset = training.presets[0];
+  const selectedTrainingPreset = training.presets.find((preset) => preset.id === selectedTrainingPresetId) ?? null;
   const scenePreview = sceneBlocks.map((block) => block.text).join("\n\n");
 
   function setEditingSceneBlockId(blockId: string | null) {
@@ -1527,21 +1529,22 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     });
   }
 
-  function handleImportPresetBlock() {
-    if (!importedPreset) return;
+  function handleImportPresetBlock(preset: LoraTrainingPreset | null) {
+    if (!preset) return;
     updateSceneBlocks((current) => {
-      const prefix = `${activeSection.id}-preset-block-${importedPreset.id}-`;
-      const ordinal = nextSceneBlockOrdinal(current, `${activeSection.id}-preset-block-${importedPreset.id}-`);
+      const prefix = `${activeSection.id}-preset-block-${preset.id}-`;
+      const ordinal = nextSceneBlockOrdinal(current, `${activeSection.id}-preset-block-${preset.id}-`);
       return [
         ...current,
         {
           id: `${prefix}${ordinal}`,
           source: "预制",
-          title: importedPreset.title,
-          text: importedPreset.sceneDescriptionText,
+          title: preset.title,
+          text: preset.sceneDescriptionText,
         },
       ];
     });
+    setPresetImportOpen(false);
   }
 
   function handleMoveSceneBlock(index: number, direction: -1 | 1) {
@@ -1615,16 +1618,53 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
                 <Button
                   size="sm"
                   icon={CopyPlus}
-                  disabled={!importedPreset}
-                  onClick={handleImportPresetBlock}
-                  feedback={{ title: "预制已导入场景块", detail: importedPreset?.title ?? section.title }}
+                  onClick={() => setPresetImportOpen(!presetImportOpen)}
+                  feedback={{ title: presetImportOpen ? "预制选择已收起" : "预制选择已打开", detail: section.title }}
                 >
-                  导入预制
+                  {presetImportOpen ? "收起预制" : "选择预制"}
+                </Button>
+                <Button
+                  size="sm"
+                  icon={Check}
+                  disabled={!selectedTrainingPreset}
+                  onClick={() => handleImportPresetBlock(selectedTrainingPreset)}
+                  feedback={{ title: "预制已导入场景块", detail: selectedTrainingPreset?.title ?? section.title }}
+                >
+                  导入所选
                 </Button>
                 <Button size="sm" icon={Plus} onClick={handleAddLocalSceneBlock} feedback={{ title: "本地块已添加", detail: section.title }}>添加本地块</Button>
               </>
             )}
           >
+            {presetImportOpen ? (
+              <div className={s.trainingPresetImportPanel} aria-label="训练预制候选">
+                <div className={s.trainingPresetImportHeader}>
+                  <strong>选择要导入的小节预制</strong>
+                  <span>{selectedTrainingPreset ? `已选择 ${selectedTrainingPreset.title}` : "先选择一个预制，再导入为场景块"}</span>
+                </div>
+                <div className={s.trainingPresetImportGrid}>
+                  {training.presets.map((preset) => {
+                    const isSelected = selectedTrainingPresetId === preset.id;
+                    return (
+                      <button
+                        type="button"
+                        aria-pressed={isSelected}
+                        className={cx(s.trainingPresetImportItem, isSelected && s.trainingPresetImportItemSelected)}
+                        key={preset.id}
+                        onClick={() => setSelectedTrainingPresetId(preset.id)}
+                      >
+                        <span className={s.trainingPresetImportItemTop}>
+                          <strong>{preset.title}</strong>
+                          <em>{preset.category} / {preset.folder}</em>
+                        </span>
+                        <span className={s.trainingPresetImportStatus}>{preset.status === "active" ? "启用" : "停用"}</span>
+                        <p>{preset.sceneDescriptionText}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
             <div className={s.sceneBlockList}>
               {sceneBlocks.map((block, index) => (
                 <SceneBlockCard
