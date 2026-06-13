@@ -44,6 +44,7 @@ import { buildLoraTrainingDemoData } from "./fixtures";
 import type { LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "./types";
 import s from "./training-project-pages.module.css";
 import { useDemoFeedback } from "../../shared/feedback/context";
+import { toImageUrl } from "@/lib/image-url";
 
 const PROJECT_TABS = [
   { key: "overview", label: "总览", path: "" },
@@ -194,6 +195,37 @@ function toTrainingImageReviewApiStatus(reviewStatus: LoraTrainingImageResult["r
 
 function reviewResultToastTitle(reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
   return reviewStatus === "kept" ? "图片已保留" : reviewStatus === "rejected" ? "图片已拒绝" : "图片已标记为待审核";
+}
+
+function buildUploadedReferenceImage(
+  input: {
+    id: string;
+    index: number;
+    label: string;
+    note: string;
+    relativePath: string;
+  },
+): LoraTrainingReferenceImage | null {
+  const url = toImageUrl(input.relativePath);
+  if (!url) return null;
+  return {
+    id: input.id,
+    kind: input.index === 0 ? "original" : "auxiliary",
+    label: input.label,
+    note: input.note,
+    image: {
+      id: `${input.id}-image`,
+      src: url,
+      full: url,
+      label: input.label,
+      status: "pending",
+      featured: input.index === 0,
+      featured2: false,
+      cover: input.index === 0,
+      width: null,
+      height: null,
+    },
+  };
 }
 
 function ProjectNav({ active, project }: { active: (typeof PROJECT_TABS)[number]["key"]; project: LoraTrainingProject }) {
@@ -1268,6 +1300,7 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
 export function LoraTrainingProjectProfilePage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
+  const referenceUploadInputRef = useRef<HTMLInputElement | null>(null);
   const project = findProject(data, projectId);
   const [referenceImageState, setLocalReferenceImages] = useState(() => ({
     images: project?.referenceImages ?? [],
@@ -1287,6 +1320,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
     usagePrompt: string;
   } | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUploadingReferenceImage, setIsUploadingReferenceImage] = useState(false);
   if (!project) return <EmptyPage title="没有角色资料数据" />;
   const localReferenceImages = referenceImageState.projectId === project.id ? referenceImageState.images : project.referenceImages;
   const profileForm = profileFormState.projectId === project.id ? profileFormState : {
@@ -1370,6 +1404,11 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
   }
 
   function handleUploadReferenceImage() {
+    if (isProductionTrainingRoute) {
+      referenceUploadInputRef.current?.click();
+      return;
+    }
+
     setLocalReferenceImages((current) => {
       const currentImages = current.projectId === project.id ? current.images : project.referenceImages;
       const draftIndex = currentImages.length + 1;
@@ -1389,6 +1428,79 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
         projectId: project.id,
       };
     });
+  }
+
+  async function handleReferenceImageFileChange() {
+    const input = referenceUploadInputRef.current;
+    const file = input?.files?.[0];
+    if (!file) return;
+    if (isUploadingReferenceImage) return;
+
+    setIsUploadingReferenceImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("role", "source");
+      formData.append("sortOrder", String(localReferenceImages.length));
+      formData.append("provenance", JSON.stringify({ origin: "training_profile_upload" }));
+
+      const response = await fetch(`/api/training/projects/${project.id}/character-images`, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id || !payload?.data?.relativePath) {
+        pushToast({
+          tone: "error",
+          title: "参考图上传失败",
+          detail: payload?.error?.message ?? "参考图上传请求失败",
+        });
+        return;
+      }
+
+      const nextIndex = localReferenceImages.length;
+      const uploadedReference = buildUploadedReferenceImage({
+        id: payload.data.id,
+        index: nextIndex,
+        label: payload.data.provenance?.originalName ?? `参考图 ${nextIndex + 1}`,
+        note: typeof payload.data.role === "string" ? payload.data.role : "source",
+        relativePath: payload.data.relativePath,
+      });
+
+      if (!uploadedReference) {
+        pushToast({
+          tone: "error",
+          title: "参考图上传失败",
+          detail: "上传成功，但无法解析参考图地址。",
+        });
+        return;
+      }
+
+      setLocalReferenceImages((current) => {
+        const currentImages = current.projectId === project.id ? current.images : project.referenceImages;
+        return {
+          images: [...currentImages, uploadedReference],
+          projectId: project.id,
+        };
+      });
+      pushToast({
+        tone: "success",
+        title: "参考图已上传",
+        detail: uploadedReference.label,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "参考图上传失败",
+        detail: error instanceof Error ? error.message : "参考图上传请求失败",
+      });
+    } finally {
+      if (input) {
+        input.value = "";
+      }
+      setIsUploadingReferenceImage(false);
+    }
   }
 
   return (
@@ -1429,7 +1541,14 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
                 </article>
               ))}
             </div>
-            <Button icon={ImagePlus} onClick={handleUploadReferenceImage} feedback={{ title: "参考图已加入本地草稿", detail: `${localReferenceImages.length + 1} 张参考图` }}>上传参考图</Button>
+            <input
+              ref={referenceUploadInputRef}
+              hidden
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleReferenceImageFileChange}
+            />
+            <Button icon={ImagePlus} pending={isUploadingReferenceImage} onClick={handleUploadReferenceImage}>上传参考图</Button>
           </div>
         </Panel>
       </div>

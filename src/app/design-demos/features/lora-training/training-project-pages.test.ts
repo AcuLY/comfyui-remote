@@ -224,6 +224,23 @@ test("training profile page uploads reference images into local front-end state"
   assert.doesNotMatch(profileSource, /后续接入文件选择和后端存储/, "reference upload should not expose backend wiring gaps in the UI");
 });
 
+test("training profile page uploads reference images through the formal HTTP API on production routes", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /usePathname/, "profile upload should detect whether it is running under production \\/training routes");
+  assert.match(profileSource, /useRef<HTMLInputElement \| null>/, "profile upload should keep a real file input ref for production uploads");
+  assert.match(profileSource, /new FormData\(\)/, "profile upload should use multipart form data");
+  assert.match(profileSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/character-images`/, "profile upload should call the formal training character image API");
+  assert.match(profileSource, /method:\s*"POST"/, "profile upload should send uploads through POST");
+  assert.match(profileSource, /formData\.append\("file", file\)/, "profile upload should append the selected file to form data");
+  assert.match(profileSource, /pushToast/, "profile upload should surface API success or failure through the shared feedback system");
+});
+
 test("training profile page saves a visible local profile draft instead of only showing feedback", () => {
   const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const sectionsStart = pagesSource.indexOf("function SectionCard");
