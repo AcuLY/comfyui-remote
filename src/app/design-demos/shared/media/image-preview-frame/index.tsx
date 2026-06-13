@@ -129,7 +129,9 @@ export function ImagePreviewFrame({
   const content = image.full || image.src ? (
     <img
       src={image.full || image.src}
-      alt=""
+      alt={image.label}
+      width={image.width ?? 1}
+      height={image.height ?? 1}
       className={cx(s.imageFill, interactive && s.imagePreviewInteractiveImage)}
       fetchPriority={priority ? "high" : "auto"}
       loading="eager"
@@ -138,7 +140,7 @@ export function ImagePreviewFrame({
       style={interactiveImageStyle}
     />
   ) : (
-    <ImageIcon className={s.icon2xl} />
+    <ImageIcon className={s.icon2xl} aria-hidden="true" />
   );
 
   if (onOpen) {

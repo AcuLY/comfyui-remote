@@ -25,12 +25,14 @@ export function ImageThumbSmall({
       {image.src ? (
         <img
           src={image.src}
-          alt=""
+          alt={image.label}
+          width={image.width ?? 1}
+          height={image.height ?? 1}
           fetchPriority={priority ? "high" : "auto"}
           loading="eager"
         />
       ) : (
-        <ImageIcon className={s.iconLg} />
+        <ImageIcon className={s.iconLg} aria-hidden="true" />
       )}
     </span>
   );

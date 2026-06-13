@@ -54,12 +54,14 @@ export function ImageThumbMedium({
         {image.src ? (
           <img
             src={image.src}
-            alt=""
+            alt={image.label}
+            width={image.width ?? 1}
+            height={image.height ?? 1}
             fetchPriority={priority ? "high" : "auto"}
             loading="eager"
           />
         ) : (
-          <ImageIcon className={s.iconXl} />
+          <ImageIcon className={s.iconXl} aria-hidden="true" />
         )}
       </button>
       {showStatus ? (
