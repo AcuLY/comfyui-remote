@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Eye, EyeOff, Menu, Moon, MoreHorizontal, Sun } from "lucide-react";
+import { Eye, EyeOff, FlaskConical, ImageIcon, Menu, Moon, MoreHorizontal, Sun } from "lucide-react";
 
 import type { DemoData } from "../data";
 import s from "./app-shell.module.css";
@@ -16,17 +16,30 @@ import { DemoFeedbackProvider } from "../shared/feedback";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
   DESIGN_DEMO_THEME_STORAGE_KEY,
-  MOBILE_NAV_LINKS,
-  NAV_LINKS,
+  WORK_MODE_CHANGE_EVENT,
+  WORK_MODE_STORAGE_KEY,
   applyDesignDemoTheme,
   applyDesignDemoSfwMode,
+  buildWorkModeNavLinks,
   cx,
   demoHref,
+  isDesignDemoWorkModeValue,
   isDemoThemeValue,
   isNavActive,
   isSfwEnabledValue,
+  resolveWorkModeForRoute,
 } from "../routing";
-import type { DemoTheme } from "../routing";
+import type { DemoTheme, DesignDemoWorkMode, NavLinkDef } from "../routing";
+
+function readStoredWorkMode(): DesignDemoWorkMode {
+  if (typeof window === "undefined") return "generation";
+  try {
+    const storedMode = window.localStorage.getItem(WORK_MODE_STORAGE_KEY);
+    return isDesignDemoWorkModeValue(storedMode) ? storedMode : "generation";
+  } catch {
+    return "generation";
+  }
+}
 
 function Sidebar({
   collapsed,
@@ -39,6 +52,7 @@ function Sidebar({
   onToggleTheme,
   sfwMode,
   onToggleSfwMode,
+  navLinks,
 }: {
   collapsed: boolean;
   data: DemoData;
@@ -50,19 +64,20 @@ function Sidebar({
   onToggleTheme: () => void;
   sfwMode: boolean;
   onToggleSfwMode: () => void;
+  navLinks: NavLinkDef[];
 }) {
   const isLightTheme = theme === "light";
   const isDarkTheme = !isLightTheme;
   const ThemeIcon = isDarkTheme ? Sun : Moon;
   const SfwIcon = sfwMode ? EyeOff : Eye;
   const grouped = useMemo(() => {
-    const map = new Map<string, typeof NAV_LINKS>();
-    for (const link of NAV_LINKS) {
+    const map = new Map<string, NavLinkDef[]>();
+    for (const link of navLinks) {
       if (!map.has(link.group)) map.set(link.group, []);
       map.get(link.group)!.push(link);
     }
     return [...map.entries()];
-  }, []);
+  }, [navLinks]);
 
   return (
     <aside className={cx(s.sidebar, collapsed && s.sidebarCollapsed, open && s.sidebarOpen)}>
@@ -141,17 +156,22 @@ function Sidebar({
 function MobileBottomNav({
   data,
   currentRoute,
-  moreOpen,
-  onMore,
+  links,
+  workMode,
 }: {
   data: DemoData;
   currentRoute: string;
-  moreOpen: boolean;
-  onMore: () => void;
+  links: NavLinkDef[];
+  workMode: DesignDemoWorkMode;
 }) {
+  const isTrainingMode = workMode === "lora_training";
+  const ModeIcon = isTrainingMode ? FlaskConical : ImageIcon;
+  const modeText = isTrainingMode ? "LoRA 训练" : "生图模式";
+  const modeLabel = `当前模式：${modeText}`;
+
   return (
-    <nav className={s.mobileBottomNav} aria-label="移动端主导航">
-      {MOBILE_NAV_LINKS.map((link) => {
+    <nav className={s.mobileBottomNav} data-work-mode={workMode} aria-label="移动端主导航">
+      {links.map((link) => {
         const Icon = link.icon;
         const active = isNavActive(currentRoute, link.href, link.activePrefix);
         return (
@@ -166,16 +186,10 @@ function MobileBottomNav({
           </Link>
         );
       })}
-      <button
-        className={cx(s.mobileBottomItem, moreOpen && s.mobileBottomItemActive)}
-        type="button"
-        onClick={onMore}
-        aria-expanded={moreOpen}
-        aria-label="打开更多页面"
-      >
-        <MoreHorizontal className={s.iconMd} />
-        <span>更多</span>
-      </button>
+      <div className={s.mobileModeIndicator} aria-label={modeLabel} title={modeLabel}>
+        <ModeIcon className={s.iconMd} aria-hidden="true" />
+        <span>{modeText}</span>
+      </div>
     </nav>
   );
 }
@@ -294,6 +308,7 @@ export function DesignDemoShell({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [theme, setTheme] = useState<DemoTheme>(initialTheme);
   const [sfwMode, setSfwMode] = useState(false);
+  const [storedWorkMode, setStoredWorkMode] = useState<DesignDemoWorkMode>("generation");
   const [routeHeaderCompact, setRouteHeaderCompact] = useState(false);
   const [routeHeaderHidden, setRouteHeaderHidden] = useState(false);
   const isLightTheme = theme === "light";
@@ -302,9 +317,11 @@ export function DesignDemoShell({
   const setRouteHeaderNode = useCallback((node: HTMLElement | null) => {
     routeHeaderRef.current = node;
   }, []);
+  const workMode = resolveWorkModeForRoute(currentRoute, storedWorkMode);
+  const navLinks = useMemo(() => buildWorkModeNavLinks(workMode), [workMode]);
   const activeNav = useMemo(
-    () => NAV_LINKS.find((link) => isNavActive(currentRoute, link.href, link.activePrefix)) ?? NAV_LINKS[0],
-    [currentRoute],
+    () => navLinks.find((link) => isNavActive(currentRoute, link.href, link.activePrefix)) ?? navLinks[0],
+    [currentRoute, navLinks],
   );
 
   useEffect(() => {
@@ -326,6 +343,7 @@ export function DesignDemoShell({
       setTheme(resolvedTheme);
       setRouteHeaderCompact(window.matchMedia("(max-width: 760px)").matches);
       setSfwMode(isSfwEnabledValue(window.localStorage.getItem(DESIGN_DEMO_SFW_STORAGE_KEY)));
+      setStoredWorkMode(readStoredWorkMode());
     });
 
     return () => {
@@ -333,6 +351,24 @@ export function DesignDemoShell({
       window.cancelAnimationFrame(frameId);
     };
   }, [initialTheme]);
+
+  useEffect(() => {
+    function syncStoredWorkMode() {
+      setStoredWorkMode(readStoredWorkMode());
+    }
+
+    function handleWorkModeChange(event: Event) {
+      const nextMode = (event as CustomEvent<{ mode?: string }>).detail?.mode ?? null;
+      setStoredWorkMode(isDesignDemoWorkModeValue(nextMode) ? nextMode : readStoredWorkMode());
+    }
+
+    window.addEventListener("storage", syncStoredWorkMode);
+    window.addEventListener(WORK_MODE_CHANGE_EVENT, handleWorkModeChange);
+    return () => {
+      window.removeEventListener("storage", syncStoredWorkMode);
+      window.removeEventListener(WORK_MODE_CHANGE_EVENT, handleWorkModeChange);
+    };
+  }, []);
 
   useEffect(() => {
     routeHeaderInsetRef.current = 0;
@@ -508,6 +544,7 @@ export function DesignDemoShell({
             onToggleTheme={toggleTheme}
             sfwMode={sfwMode}
             onToggleSfwMode={toggleSfwMode}
+            navLinks={navLinks}
           />
           <div className={cx(s.contentFrame, hasRouteHeader && s.contentFrameWithRouteHeader)} ref={contentFrameRef}>
             {routeHeaderConfig ? (
@@ -527,12 +564,22 @@ export function DesignDemoShell({
         <MobileBottomNav
           data={data}
           currentRoute={currentRoute}
-          moreOpen={menuOpen}
-          onMore={() => {
+          links={navLinks}
+          workMode={workMode}
+        />
+        <button
+          className={cx(s.mobileNavDrawerButton, menuOpen && s.mobileNavDrawerButtonActive)}
+          type="button"
+          onClick={() => {
             setMenuOpen((open) => !open);
             setToolsOpen(false);
           }}
-        />
+          aria-expanded={menuOpen}
+          aria-label={menuOpen ? "关闭更多页面" : "打开更多页面"}
+          title={menuOpen ? "关闭更多页面" : "打开更多页面"}
+        >
+          <Menu className={s.iconMd} aria-hidden="true" />
+        </button>
       </DemoFeedbackProvider>
     </div>
   );

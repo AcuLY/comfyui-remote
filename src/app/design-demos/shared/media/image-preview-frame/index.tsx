@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- Local design shell previews use direct API image URLs. */
-import type { CSSProperties } from "react";
+import type { CSSProperties, SyntheticEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ImageIcon } from "lucide-react";
 
@@ -33,6 +33,31 @@ export function ImagePreviewFrame({
     startX: number;
     startY: number;
   } | null>(null);
+  const imageSrc = image.full || image.src;
+  const imageKey = imageSrc;
+  const [loadFailedSrc, setLoadFailedSrc] = useState<string | null>(null);
+  const loadFailed = imageKey !== "" && loadFailedSrc === imageKey;
+  const shouldRenderImage = Boolean(imageSrc) && !loadFailed;
+
+  useEffect(() => {
+    const node = imageRef.current;
+    if (!node || !shouldRenderImage) return;
+    const markBroken = () => {
+      if (node.complete && node.naturalWidth === 0) {
+        setLoadFailedSrc(imageKey);
+      }
+    };
+    const frameId = window.requestAnimationFrame(markBroken);
+    const intervalId = window.setInterval(markBroken, 250);
+    const timeoutId = window.setTimeout(() => window.clearInterval(intervalId), 2500);
+    node.addEventListener("error", markBroken);
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+      node.removeEventListener("error", markBroken);
+    };
+  }, [imageKey, shouldRenderImage]);
 
   const panBounds = useCallback((scale: number) => {
     const frame = frameRef.current;
@@ -126,24 +151,38 @@ export function ImagePreviewFrame({
     onBlankClick();
   }
 
-  const content = image.full || image.src ? (
+  function handleImageLoad(event: SyntheticEvent<HTMLImageElement>) {
+    if (event.currentTarget.naturalWidth === 0) {
+      setLoadFailedSrc(imageKey);
+    }
+  }
+
+  function handleImageError() {
+    setLoadFailedSrc(imageKey);
+  }
+
+  const content = shouldRenderImage ? (
     <img
-      src={image.full || image.src}
-      alt=""
+      src={imageSrc}
+      alt={image.label}
+      width={image.width ?? 1}
+      height={image.height ?? 1}
       className={cx(s.imageFill, interactive && s.imagePreviewInteractiveImage)}
       fetchPriority={priority ? "high" : "auto"}
       loading="eager"
       draggable={false}
+      onError={handleImageError}
+      onLoad={handleImageLoad}
       ref={imageRef}
       style={interactiveImageStyle}
     />
   ) : (
-    <ImageIcon className={s.icon2xl} />
+    <ImageIcon className={s.icon2xl} aria-hidden="true" />
   );
 
   if (onOpen) {
     return (
-      <button className={s.imagePreviewFrame} type="button" onClick={onOpen} aria-label="Open image preview">
+      <button className={s.imagePreviewFrame} type="button" onClick={onOpen} aria-label={`打开图片预览：${image.label}`}>
         {content}
       </button>
     );

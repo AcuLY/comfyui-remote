@@ -2,6 +2,7 @@ import { toImageUrl } from "@/lib/image-url";
 
 import type { DemoImage, DemoProject, DemoSection } from "./types";
 import type { SqlRow, SqlValue } from "./sql-types";
+import { isRenderableLocalImagePath } from "./local-image-files";
 
 export function text(value: SqlValue | undefined, fallback = "") {
   if (value === null || value === undefined) return fallback;
@@ -48,8 +49,16 @@ export function formatSize(value: SqlValue | undefined) {
 }
 
 export function imageFromRow(row: SqlRow, index: number): DemoImage | null {
-  const sourcePath = text(row.thumbPath) || text(row.filePath);
-  const fullPath = text(row.filePath) || sourcePath;
+  const thumbPath = text(row.thumbPath);
+  const filePath = text(row.filePath);
+  const hasThumbPath = isRenderableLocalImagePath(thumbPath);
+  const hasFilePath = isRenderableLocalImagePath(filePath);
+  const sourcePath = hasThumbPath
+    ? thumbPath
+    : hasFilePath
+      ? filePath
+      : "";
+  const fullPath = hasFilePath ? filePath : sourcePath;
   const src = toImageUrl(sourcePath);
   const full = toImageUrl(fullPath);
   if (!src || !full) return null;

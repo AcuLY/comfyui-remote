@@ -23,6 +23,16 @@ import {
 } from "lucide-react";
 
 import type { DemoData, DemoSection } from "../data";
+import { buildLoraTrainingDemoData } from "../data/lora-training";
+import type {
+  LoraTrainingDatasetRevision,
+  LoraTrainingPreset,
+  LoraTrainingProject,
+  LoraTrainingRun,
+  LoraTrainingSection,
+  LoraTrainingTaskKind,
+  LoraTrainingTemplate,
+} from "../data/lora-training-types";
 import {
   findCategory,
   findGroup,
@@ -166,6 +176,257 @@ export function buildHeaderSpecs(data: DemoData): HeaderSpecSection[] {
         ],
         meta: [run?.sectionName ?? "小节", `RUN-${String(run?.runIndex ?? 1).padStart(2, "0")}`, `${run?.imageCount ?? 0} 张`],
         status: "图片审核",
+      },
+    ]),
+    section("LoRA 训练", [
+      {
+        key: "training-runs",
+        route: currentRoute(routes, "training-runs"),
+        group: "LoRA 训练",
+        eyebrow: "LoRA 训练",
+        title: "运行",
+        subtitle: "训练集图片生成、角色描述文本和 LoRA 训练任务集中处理。",
+        meta: ["生成任务", "训练任务", "状态筛选"],
+        status: "训练运行",
+      },
+      {
+        key: "training-projects",
+        route: currentRoute(routes, "training-projects"),
+        group: "LoRA 训练",
+        eyebrow: "LoRA 训练",
+        title: "训练项目",
+        subtitle: "管理角色资料、最近结果、数据集版本和训练入口。",
+        actions: [headerAction("新建项目", Plus, "primary", currentRoute(routes, "training-project-new"))],
+        meta: ["当前项目", "已归档", "最近结果"],
+        status: "训练项目",
+      },
+      {
+        key: "training-generation-run-detail",
+        route: currentRoute(routes, "training-generation-run-detail"),
+        group: "LoRA 训练",
+        eyebrow: "生成任务",
+        title: "生成任务详情",
+        subtitle: "展示最终输入、输出图片和任务状态，保留来源脉络。",
+        back: { href: "/training/runs", label: "返回运行" },
+        actions: [headerAction("项目详情", ExternalLink, "default", currentRoute(routes, "training-project-detail"))],
+        status: "生成详情",
+      },
+      {
+        key: "training-training-run-detail",
+        route: currentRoute(routes, "training-training-run-detail"),
+        group: "LoRA 训练",
+        eyebrow: "训练任务",
+        title: "训练任务详情",
+        subtitle: "展示冻结数据集、训练配置、日志和最终 LoRA 产物。",
+        back: { href: "/training/runs", label: "返回运行" },
+        actions: [
+          headerAction("数据集版本", History, "default", currentRoute(routes, "training-project-dataset-revision")),
+          headerAction("创建预制", Plus, "primary", currentRoute(routes, "training-preset-new")),
+        ],
+        status: "训练详情",
+      },
+      {
+        key: "training-project-new",
+        route: currentRoute(routes, "training-project-new"),
+        group: "LoRA 训练",
+        eyebrow: "训练项目",
+        title: "新建训练项目",
+        subtitle: "选择模板、填写角色资料，并创建初始小节。",
+        back: { href: "/training/projects", label: "返回训练项目" },
+        status: "新建",
+      },
+      {
+        key: "training-project-detail",
+        route: currentRoute(routes, "training-project-detail"),
+        group: "LoRA 训练",
+        eyebrow: "训练项目",
+        title: "训练项目总览",
+        subtitle: "角色资料、最近任务、训练入口和最近产物。",
+        back: { href: "/training/projects", label: "返回训练项目" },
+        actions: [
+          headerAction("启动训练", Play, "primary", currentRoute(routes, "training-project-dataset")),
+          headerAction("保存为模板", Copy, "default", currentRoute(routes, "training-template-new")),
+        ],
+        status: "项目总览",
+      },
+      {
+        key: "training-project-profile",
+        route: currentRoute(routes, "training-project-profile"),
+        group: "LoRA 训练",
+        eyebrow: "角色资料",
+        title: "角色资料",
+        subtitle: "管理角色文本与自由参考图。",
+        back: { href: "/training/projects", label: "返回训练项目" },
+        status: "资料",
+      },
+      {
+        key: "training-project-sections",
+        route: currentRoute(routes, "training-project-sections"),
+        group: "LoRA 训练",
+        eyebrow: "训练小节",
+        title: "小节列表",
+        subtitle: "参考生图 section cards，管理小节顺序、场景块和生成入口。",
+        back: { href: "/training/projects", label: "返回训练项目" },
+        status: "小节",
+      },
+      {
+        key: "training-project-section-detail",
+        route: currentRoute(routes, "training-project-section-detail"),
+        group: "LoRA 训练",
+        eyebrow: "训练小节",
+        title: "小节详情",
+        subtitle: "场景块、合成场景描述、生成入口和小节结果同页展示。",
+        back: { href: currentRoute(routes, "training-project-sections"), label: "返回小节" },
+        actions: [headerAction("生成样本", Plus, "primary", currentRoute(routes, "training-generation-compose"))],
+        status: "小节详情",
+      },
+      {
+        key: "training-generation-compose",
+        route: currentRoute(routes, "training-generation-compose"),
+        group: "LoRA 训练",
+        eyebrow: "生成任务",
+        title: "新建生成任务",
+        subtitle: "选择来源资料、补充提示词并预览最终输入。",
+        back: { href: currentRoute(routes, "training-project-section-detail"), label: "返回小节" },
+        status: "生成编排",
+      },
+      {
+        key: "training-project-results",
+        route: currentRoute(routes, "training-project-results"),
+        group: "LoRA 训练",
+        eyebrow: "结果池",
+        title: "项目结果池",
+        subtitle: "项目级图片审查、批量保留/剔除、说明文本和大图预览。",
+        back: { href: currentRoute(routes, "training-project-detail"), label: "返回项目" },
+        status: "结果池",
+      },
+      {
+        key: "training-project-dataset",
+        route: currentRoute(routes, "training-project-dataset"),
+        group: "LoRA 训练",
+        eyebrow: "数据集",
+        title: "数据集",
+        subtitle: "训练准备、已保留草稿、冻结版本和启动训练入口。",
+        back: { href: currentRoute(routes, "training-project-detail"), label: "返回项目" },
+        status: "数据集",
+      },
+      {
+        key: "training-project-dataset-revision",
+        route: currentRoute(routes, "training-project-dataset-revision"),
+        group: "LoRA 训练",
+        eyebrow: "数据集版本",
+        title: "冻结版本详情",
+        subtitle: "冻结样本、说明快照、文件清单和关联训练。",
+        back: { href: currentRoute(routes, "training-project-dataset"), label: "返回数据集" },
+        status: "冻结版本",
+      },
+      {
+        key: "training-project-training-runs",
+        route: currentRoute(routes, "training-project-training-runs"),
+        group: "LoRA 训练",
+        eyebrow: "训练任务",
+        title: "项目训练任务",
+        subtitle: "项目内训练任务记录，详情可跳转到全局训练任务页。",
+        back: { href: currentRoute(routes, "training-project-detail"), label: "返回项目" },
+        actions: [headerAction("启动训练", Play, "primary", currentRoute(routes, "training-project-dataset"))],
+        status: "项目任务",
+      },
+      {
+        key: "training-project-generation-tasks",
+        route: currentRoute(routes, "training-project-generation-tasks"),
+        group: "LoRA 训练",
+        eyebrow: "生成任务",
+        title: "项目生成任务",
+        subtitle: "项目内生成任务记录，详情可跳转到全局生成任务页。",
+        back: { href: currentRoute(routes, "training-project-detail"), label: "返回项目" },
+        actions: [headerAction("新建生成任务", Plus, "primary", currentRoute(routes, "training-generation-compose"))],
+        status: "项目任务",
+      },
+      {
+        key: "training-presets",
+        route: currentRoute(routes, "training-presets"),
+        group: "LoRA 训练",
+        eyebrow: "训练预制",
+        title: "训练预制",
+        subtitle: "管理可复用的角色场景描述，按分类和文件夹整理。",
+        actions: [
+          headerAction("排序规则", Shuffle, "default", currentRoute(routes, "training-preset-sort-rules")),
+          headerAction("新建", Plus, "primary", currentRoute(routes, "training-preset-new")),
+        ],
+        status: "预制",
+      },
+      {
+        key: "training-preset-detail",
+        route: currentRoute(routes, "training-preset-detail"),
+        group: "LoRA 训练",
+        eyebrow: "训练预制",
+        title: "训练预制详情",
+        subtitle: "编辑角色场景描述，并展示删除影响。",
+        back: { href: "/training/presets", label: "返回训练预制" },
+        status: "预制详情",
+      },
+      {
+        key: "training-preset-new",
+        route: currentRoute(routes, "training-preset-new"),
+        group: "LoRA 训练",
+        eyebrow: "训练预制",
+        title: "新建训练预制",
+        subtitle: "创建可复用的角色场景描述，后续可导入训练小节。",
+        back: { href: "/training/presets", label: "返回训练预制" },
+        status: "草稿",
+      },
+      {
+        key: "training-preset-sort-rules",
+        route: currentRoute(routes, "training-preset-sort-rules"),
+        group: "LoRA 训练",
+        eyebrow: "训练预制",
+        title: "排序规则",
+        subtitle: "合成顺序和分类内顺序。",
+        back: { href: "/training/presets", label: "返回训练预制" },
+        status: "排序",
+      },
+      {
+        key: "training-templates",
+        route: currentRoute(routes, "training-templates"),
+        group: "LoRA 训练",
+        eyebrow: "训练模板",
+        title: "训练模板",
+        subtitle: "训练模板只作为创建项目时的初始配置。",
+        actions: [
+          headerAction("从模板创建项目", Copy, "default", currentRoute(routes, "training-project-new")),
+          headerAction("新建模板", Plus, "primary", currentRoute(routes, "training-template-new")),
+        ],
+        status: "模板",
+      },
+      {
+        key: "training-template-new",
+        route: currentRoute(routes, "training-template-new"),
+        group: "LoRA 训练",
+        eyebrow: "训练模板",
+        title: "新建训练模板",
+        subtitle: "模板信息、默认规则和初始小节。",
+        back: { href: "/training/templates", label: "返回训练模板" },
+        status: "新建模板",
+      },
+      {
+        key: "training-template-edit",
+        route: currentRoute(routes, "training-template-edit"),
+        group: "LoRA 训练",
+        eyebrow: "训练模板",
+        title: "编辑训练模板",
+        subtitle: "项目级指引、小节默认设置和预制/本地块。",
+        back: { href: "/training/templates", label: "返回训练模板" },
+        status: "编辑模板",
+      },
+      {
+        key: "training-template-section",
+        route: currentRoute(routes, "training-template-section"),
+        group: "LoRA 训练",
+        eyebrow: "模板小节",
+        title: "模板小节",
+        subtitle: "模板小节和项目小节保持同一场景块编辑心智。",
+        back: { href: currentRoute(routes, "training-template-edit"), label: "返回模板" },
+        status: "模板小节",
       },
     ]),
     section("项目", [
@@ -651,10 +912,358 @@ function sectionHeaderMeta(section: DemoSection | undefined) {
   ];
 }
 
+function trainingRunTitle(run: LoraTrainingRun, project?: LoraTrainingProject) {
+  if (run.kind === "training") {
+    const revision = project?.datasetRevisions.find((item) => item.id === run.datasetRevisionId);
+    const datasetVersion = revision?.version ?? project?.datasetVersion ?? run.datasetRevisionId ?? "未记录";
+    return `${run.projectTitle} / 数据集 ${datasetVersion}`;
+  }
+
+  return `${run.projectTitle} / ${run.title}`;
+}
+
+function trainingProjectHref(run: LoraTrainingRun) {
+  return `/training/projects/${run.projectId}`;
+}
+
+function trainingDatasetHref(run: LoraTrainingRun) {
+  const projectHref = trainingProjectHref(run);
+  return run.datasetRevisionId ? `${projectHref}/dataset/revisions/${run.datasetRevisionId}` : `${projectHref}/dataset`;
+}
+
+function trainingPresetHref(run: LoraTrainingRun) {
+  const params = new URLSearchParams({
+    category: "训练产物",
+    folder: "LoRA 产物",
+    sourceRun: run.id,
+    project: run.projectTitle,
+  });
+  params.set("artifact", run.artifactName ?? run.finalLoraArtifactId ?? "");
+  return `/training/presets/new?${params.toString()}`;
+}
+
+function canCreateTrainingPreset(run: LoraTrainingRun) {
+  return run.kind === "training" && run.status === "completed" && Boolean(run.finalLoraArtifactId) && !run.presetCreatedAt;
+}
+
+function findLoraTrainingRun(data: DemoData, kind: LoraTrainingTaskKind, runId: string | undefined) {
+  if (!runId) return undefined;
+  return buildLoraTrainingDemoData(data).runs.find((run) => run.kind === kind && run.id === runId);
+}
+
+function findLoraTrainingProject(data: DemoData, projectId: string | undefined) {
+  if (!projectId) return undefined;
+  return buildLoraTrainingDemoData(data).projects.find((project) => project.id === projectId);
+}
+
+function findLoraTrainingSection(project: LoraTrainingProject, sectionId: string | undefined) {
+  if (!sectionId) return undefined;
+  return project.sections.find((sectionItem) => sectionItem.id === sectionId);
+}
+
+function findLoraTrainingDatasetRevision(project: LoraTrainingProject, revisionId: string | undefined) {
+  if (!revisionId) return undefined;
+  return project.datasetRevisions.find((revision) => revision.id === revisionId);
+}
+
+function findLoraTrainingPreset(data: DemoData, presetId: string | undefined) {
+  if (!presetId) return undefined;
+  return buildLoraTrainingDemoData(data).presets.find((preset) => preset.id === presetId);
+}
+
+function findLoraTrainingTemplate(data: DemoData, templateId: string | undefined) {
+  if (!templateId) return undefined;
+  return buildLoraTrainingDemoData(data).templates.find((template) => template.id === templateId);
+}
+
+function findLoraTrainingTemplateSection(template: LoraTrainingTemplate, sectionIndex: string | undefined) {
+  const index = Number(sectionIndex);
+  if (!Number.isInteger(index) || index < 0) return undefined;
+  return template.sections[index];
+}
+
+function trainingProjectBaseHref(project: LoraTrainingProject) {
+  return `/training/projects/${project.id}`;
+}
+
+function trainingProjectSaveAsTemplateHref(project: LoraTrainingProject) {
+  const params = new URLSearchParams({
+    projectId: project.id,
+    sections: String(project.sections.length),
+    sourceProject: project.title,
+  });
+  return `/training/templates/new?${params.toString()}`;
+}
+
+function trainingProjectGenerationEntrySectionId(project: LoraTrainingProject) {
+  const section = project.sections.find((section) => section.enabled) ?? project.sections[0];
+  return section?.id ?? "stage-light";
+}
+
+function projectHeaderBase(spec: HeaderSpec, project: LoraTrainingProject, title = project.title) {
+  return {
+    ...spec,
+    subtitle: project.profileSummary,
+    title,
+  };
+}
+
+function projectSubresourceHeader(spec: HeaderSpec, project: LoraTrainingProject, label: string, subtitle?: string) {
+  const projectHref = trainingProjectBaseHref(project);
+  return {
+    ...projectHeaderBase(spec, project, `${project.title} / ${label}`),
+    back: { href: projectHref, label: "返回项目" },
+    subtitle: subtitle ?? spec.subtitle ?? project.profileSummary,
+  };
+}
+
+function sectionDetailHeader(spec: HeaderSpec, project: LoraTrainingProject, sectionItem: LoraTrainingSection) {
+  const projectHref = trainingProjectBaseHref(project);
+  return {
+    ...projectHeaderBase(spec, project, `${project.title} / ${sectionItem.title}`),
+    actions: [headerAction("生成样本", Plus, "primary", `${projectHref}/sections/${sectionItem.id}/generation-tasks/new`)],
+    back: { href: `${projectHref}/sections`, label: "返回小节" },
+  };
+}
+
+function datasetRevisionHeader(spec: HeaderSpec, project: LoraTrainingProject, revision: LoraTrainingDatasetRevision) {
+  const projectHref = trainingProjectBaseHref(project);
+  return {
+    ...projectHeaderBase(spec, project, `${project.title} / 数据集 ${revision.version}`),
+    back: { href: `${projectHref}/dataset`, label: "返回数据集" },
+  };
+}
+
+function projectMissingNestedHeader(spec: HeaderSpec, project: LoraTrainingProject, label: string, back: HeaderSpec["back"]) {
+  return {
+    ...projectHeaderBase(spec, project, `${project.title} / ${label}`),
+    actions: undefined,
+    back,
+    meta: undefined,
+  };
+}
+
+function missingLoraTrainingProjectHeader(spec: HeaderSpec) {
+  return {
+    ...spec,
+    actions: undefined,
+    back: { href: "/training/projects", label: "返回训练项目" },
+    meta: undefined,
+  };
+}
+
+function missingLoraTrainingRunHeader(spec: HeaderSpec) {
+  return {
+    ...spec,
+    actions: undefined,
+    back: { href: "/training/runs", label: "返回运行" },
+    meta: undefined,
+  };
+}
+
+function missingLoraTrainingTemplateSectionHeader(spec: HeaderSpec) {
+  return {
+    ...spec,
+    actions: undefined,
+    back: { href: "/training/templates", label: "返回训练模板" },
+    meta: undefined,
+  };
+}
+
+function loraTrainingProjectHeader(data: DemoData, spec: HeaderSpec, matched: ReturnType<typeof matchRoute>) {
+  const project = findLoraTrainingProject(data, matched.params.trainingProjectId);
+  if (!project) return missingLoraTrainingProjectHeader(spec);
+  const projectHref = trainingProjectBaseHref(project);
+
+  if (matched.key === "training-project-detail") {
+    return {
+      ...projectHeaderBase(spec, project),
+      actions: [
+        headerAction("启动训练", Play, "primary", `${projectHref}/dataset`),
+        headerAction("保存为模板", Copy, "default", trainingProjectSaveAsTemplateHref(project)),
+      ],
+    };
+  }
+
+  if (matched.key === "training-project-section-detail") {
+    const sectionItem = findLoraTrainingSection(project, matched.params.sectionId);
+    return sectionItem
+      ? sectionDetailHeader(spec, project, sectionItem)
+      : projectMissingNestedHeader(spec, project, "小节详情", { href: `${projectHref}/sections`, label: "返回小节" });
+  }
+
+  if (matched.key === "training-project-profile") {
+    return projectSubresourceHeader(spec, project, "角色资料", project.profileSummary);
+  }
+
+  if (matched.key === "training-project-sections") {
+    return projectSubresourceHeader(spec, project, "小节");
+  }
+
+  if (matched.key === "training-project-results") {
+    return projectSubresourceHeader(spec, project, "结果池");
+  }
+
+  if (matched.key === "training-project-dataset") {
+    return projectSubresourceHeader(spec, project, "数据集");
+  }
+
+  if (matched.key === "training-generation-compose") {
+    const sectionItem = findLoraTrainingSection(project, matched.params.sectionId);
+    if (!sectionItem) {
+      return projectMissingNestedHeader(spec, project, "新建生成任务", { href: `${projectHref}/sections`, label: "返回小节" });
+    }
+    return {
+      ...projectHeaderBase(spec, project, `${sectionItem.title} / 新建生成任务`),
+      back: { href: `${projectHref}/sections/${sectionItem.id}`, label: "返回小节" },
+      subtitle: "显式选择引用，补充提示词和图片附件，预览最终输入后再运行。",
+    };
+  }
+
+  if (matched.key === "training-project-dataset-revision") {
+    const revision = findLoraTrainingDatasetRevision(project, matched.params.revisionId);
+    return revision
+      ? datasetRevisionHeader(spec, project, revision)
+      : projectMissingNestedHeader(spec, project, "数据集版本", { href: `${projectHref}/dataset`, label: "返回数据集" });
+  }
+
+  if (matched.key === "training-project-training-runs") {
+    return {
+      ...projectHeaderBase(spec, project, `${project.title} / 训练任务`),
+      actions: [headerAction("启动训练", Play, "primary", `${projectHref}/dataset`)],
+    };
+  }
+
+  if (matched.key === "training-project-generation-tasks") {
+    const sectionId = trainingProjectGenerationEntrySectionId(project);
+    return {
+      ...projectHeaderBase(spec, project, `${project.title} / 生成任务`),
+      actions: [headerAction("新建生成任务", Plus, "primary", `${projectHref}/sections/${sectionId}/generation-tasks/new`)],
+    };
+  }
+
+  return spec;
+}
+
+function loraTrainingRunDetailHeader(data: DemoData, spec: HeaderSpec, matched: ReturnType<typeof matchRoute>) {
+  if (matched.key === "training-generation-run-detail") {
+    const run = findLoraTrainingRun(data, "generation", matched.params.taskId);
+    if (!run) return missingLoraTrainingRunHeader(spec);
+    return {
+      ...spec,
+      actions: [headerAction("项目详情", ExternalLink, "default", trainingProjectHref(run))],
+      title: trainingRunTitle(run),
+    };
+  }
+
+  if (matched.key === "training-training-run-detail") {
+    const run = findLoraTrainingRun(data, "training", matched.params.trainingRunId);
+    if (!run) return missingLoraTrainingRunHeader(spec);
+    const project = findLoraTrainingProject(data, run.projectId);
+    const actions = [headerAction("数据集版本", History, "default", trainingDatasetHref(run))];
+    if (canCreateTrainingPreset(run)) {
+      actions.push(headerAction("创建预制", Plus, "primary", trainingPresetHref(run)));
+    }
+    return {
+      ...spec,
+      actions,
+      title: trainingRunTitle(run, project),
+    };
+  }
+
+  return spec;
+}
+
+function loraTrainingResourceHeader(data: DemoData, spec: HeaderSpec, matched: ReturnType<typeof matchRoute>) {
+  if (matched.key === "training-preset-detail") {
+    const preset = findLoraTrainingPreset(data, matched.params.presetId);
+    return preset ? loraTrainingPresetHeader(spec, preset) : spec;
+  }
+
+  if (matched.key === "training-template-edit") {
+    const template = findLoraTrainingTemplate(data, matched.params.templateId);
+    return template ? loraTrainingTemplateHeader(spec, template) : spec;
+  }
+
+  if (matched.key === "training-template-section") {
+    const template = findLoraTrainingTemplate(data, matched.params.templateId);
+    if (!template) return missingLoraTrainingTemplateSectionHeader(spec);
+    const sectionItem = findLoraTrainingTemplateSection(template, matched.params.sectionIndex);
+    return sectionItem ? loraTrainingTemplateSectionHeader(spec, template, sectionItem) : loraTrainingTemplateSectionFallbackHeader(spec, template);
+  }
+
+  return spec;
+}
+
+function loraTrainingPresetHeader(spec: HeaderSpec, preset: LoraTrainingPreset) {
+  return {
+    ...spec,
+    subtitle: `${preset.category} / ${preset.folder} · 更新 ${preset.updatedAt}`,
+    title: preset.title,
+  };
+}
+
+function loraTrainingTemplateHeader(spec: HeaderSpec, template: LoraTrainingTemplate) {
+  return {
+    ...spec,
+    subtitle: template.description,
+    title: template.title,
+  };
+}
+
+function loraTrainingTemplateSectionFallbackHeader(spec: HeaderSpec, template: LoraTrainingTemplate) {
+  return {
+    ...loraTrainingTemplateHeader(spec, template),
+    back: { href: `/training/templates/${template.id}/edit`, label: "返回模板" },
+  };
+}
+
+function loraTrainingTemplateSectionHeader(
+  spec: HeaderSpec,
+  template: LoraTrainingTemplate,
+  sectionItem: LoraTrainingTemplate["sections"][number],
+) {
+  return {
+    ...spec,
+    back: { href: `/training/templates/${template.id}/edit`, label: "返回模板" },
+    title: `${template.title} / ${sectionItem.title}`,
+  };
+}
+
 export function findHeaderSpecForRoute(data: DemoData, currentRoute: string) {
   const specs = flattenHeaderSpecs(data);
   const matched = matchRoute(currentRoute);
   const spec = specs.find((item) => item.key === matched.key) ?? specs.find((item) => item.route === currentRoute) ?? specs.find((item) => item.key === "not-found") ?? null;
+  if (spec && (matched.key === "training-generation-run-detail" || matched.key === "training-training-run-detail")) {
+    return loraTrainingRunDetailHeader(data, spec, matched);
+  }
+  if (
+    spec
+    && (
+      matched.key === "training-project-detail"
+      || matched.key === "training-project-profile"
+      || matched.key === "training-project-sections"
+      || matched.key === "training-project-section-detail"
+      || matched.key === "training-generation-compose"
+      || matched.key === "training-project-results"
+      || matched.key === "training-project-dataset"
+      || matched.key === "training-project-dataset-revision"
+      || matched.key === "training-project-training-runs"
+      || matched.key === "training-project-generation-tasks"
+    )
+  ) {
+    return loraTrainingProjectHeader(data, spec, matched);
+  }
+  if (
+    spec
+    && (
+      matched.key === "training-preset-detail"
+      || matched.key === "training-template-edit"
+      || matched.key === "training-template-section"
+    )
+  ) {
+    return loraTrainingResourceHeader(data, spec, matched);
+  }
   if (!spec || matched.key !== "section-editor") return spec;
 
   const project = findProject(data, matched.params.projectId);

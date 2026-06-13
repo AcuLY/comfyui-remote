@@ -12,6 +12,7 @@ const floatingSelectStyleSource = readDemoSource("shared/primitives/floating-sel
 const segmentedControlStyleSource = readDemoSource("shared/primitives/segmented-control/segmented-control.module.css");
 const checkboxSource = readDemoSource("shared/primitives/checkbox/index.tsx");
 const buttonSource = readDemoSource("shared/primitives/button/index.tsx");
+const sortableSource = readDemoSource("shared/primitives/sortable/index.tsx");
 
 function readDemoSource(relativePath) {
   return readFileSync(resolve(designDemosDir, relativePath), "utf8");
@@ -181,4 +182,19 @@ test("ButtonLink preserves explicit aria labels even when visible text is presen
 
 test("Button primitives expose a stable label slot for responsive composition", () => {
   assert.match(buttonSource, /<span\s+data-demo-ui-button-label="true">\{children\}<\/span>/);
+});
+
+test("Button primitive icons stay decorative in the accessibility tree", () => {
+  const iconRenderings = buttonSource.match(/<[^>]+data-demo-ui-button-icon="true"[^>]*\/>/g) ?? [];
+
+  assert.equal(iconRenderings.length, 3, "Button, Button pending, and ButtonLink should each render one icon path");
+  for (const rendering of iconRenderings) {
+    assert.match(rendering, /aria-hidden="true"/, `${rendering} should hide the decorative icon`);
+  }
+});
+
+test("SortableList passes an SSR-stable id into DndContext", () => {
+  assert.match(sortableSource, /import\s*\{\s*useId\s*\}\s*from\s*"react"/);
+  assert.match(sortableSource, /const\s+dndContextId\s*=\s*`demo-sortable-\$\{reactId\.replace\(/);
+  assert.match(sortableSource, /<DndContext[\s\S]*?\sid=\{dndContextId\}/);
 });

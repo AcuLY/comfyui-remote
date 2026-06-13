@@ -4,9 +4,12 @@ import path from "node:path";
 import { toImageUrl } from "@/lib/image-url";
 
 import type { DemoImage } from "./types";
+import { isRenderableLocalImageFile } from "./local-image-files";
 
 export function fallbackImages(): DemoImage[] {
-  const imageRoot = path.resolve(/* turbopackIgnore: true */ process.cwd(), "data", "images");
+  const imageRoot = path.resolve(
+    /* turbopackIgnore: true */ process.env.OUTPUT_BASE_PATH ?? path.join(process.cwd(), "data", "images"),
+  );
   const files: string[] = [];
 
   function walk(dir: string) {
@@ -24,7 +27,9 @@ export function fallbackImages(): DemoImage[] {
       if (entry.isDirectory()) {
         walk(fullPath);
       } else if (/\.(png|jpe?g|webp|gif)$/i.test(entry.name)) {
-        files.push(fullPath);
+        if (isRenderableLocalImageFile(fullPath)) {
+          files.push(fullPath);
+        }
       }
     }
   }

@@ -78,7 +78,7 @@ export function ImageListMedium({
         </div>
         {collapsible ? (
           <button className={s.imageListMediumExpand} type="button" onClick={() => setExpanded((value) => !value)}>
-            {expanded ? <ChevronUp className={s.icon} /> : <ChevronDown className={s.icon} />}
+            {expanded ? <ChevronUp className={s.icon} aria-hidden="true" /> : <ChevronDown className={s.icon} aria-hidden="true" />}
             {expanded ? "收起" : "展开全部"}
           </button>
         ) : null}

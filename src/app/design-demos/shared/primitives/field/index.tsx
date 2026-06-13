@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ClipboardCopy, ClipboardPaste } from "lucide-react";
 
 import { cx } from "../../../routing";
@@ -35,6 +35,7 @@ export function Field({
   readOnly = false,
   onChange,
 }: FieldProps) {
+  const controlId = useId();
   const resolvedValue = stringifyFieldValue(value ?? defaultValue ?? "");
   const [fieldValue, setFieldValue] = useState(() => ({
     sourceValue: resolvedValue,
@@ -108,6 +109,7 @@ export function Field({
       aria-readonly={isReadOnly ? "true" : undefined}
       className={cx(s.control, s.multilineControl, resizeEnabled ? s.resizable : s.noResize)}
       disabled={disabled}
+      id={controlId}
       onBeforeInput={isReadOnly ? preventReadonlyEdit : undefined}
       onChange={(event) => updateValue(event.currentTarget.value)}
       onDrop={isReadOnly ? preventReadonlyEdit : undefined}
@@ -121,6 +123,7 @@ export function Field({
       aria-readonly={isReadOnly ? "true" : undefined}
       className={s.control}
       disabled={disabled}
+      id={controlId}
       onBeforeInput={isReadOnly ? preventReadonlyEdit : undefined}
       onChange={(event) => updateValue(event.currentTarget.value)}
       onDrop={isReadOnly ? preventReadonlyEdit : undefined}
@@ -133,7 +136,7 @@ export function Field({
 
   return (
     <div className={s.root} data-demo-ui-field="true">
-      <label>{label}</label>
+      <label htmlFor={controlId}>{label}</label>
       {hasClipboardTools ? (
         <div className={s.controlFrame}>
           {control}

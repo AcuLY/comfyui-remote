@@ -30,16 +30,19 @@ test("template section routes prefer the template editor before the template lis
 test("unknown child routes fall back by walking route parents", () => {
   assert.equal(resolveRouteFallback("/settings/monitor/details"), "/settings/monitor");
   assert.equal(resolveRouteFallback("/assets/presets/sort-rules/extra"), "/assets/presets/sort-rules");
-  assert.equal(
-    resolveRouteFallback("/character-lora-training/job-1/sections/section-1/extra"),
-    "/character-lora-training/job-1/sections/section-1",
-  );
+  assert.equal(resolveRouteFallback("/unknown-feature/child"), "/queue");
 });
 
 test("fallback skips API and static asset paths", () => {
   assert.equal(resolveRouteFallback("/api/missing"), null);
   assert.equal(resolveRouteFallback("/_next/static/missing.js"), null);
   assert.equal(resolveRouteFallback("/missing.png"), null);
+});
+
+test("fallback leaves design demo routes to the demo router", () => {
+  assert.equal(resolveRouteFallback("/design-demos"), null);
+  assert.equal(resolveRouteFallback("/design-demos/settings"), null);
+  assert.equal(resolveRouteFallback("/design-demos/training/models"), null);
 });
 
 test("unknown top-level pages fall back to the app home route", () => {

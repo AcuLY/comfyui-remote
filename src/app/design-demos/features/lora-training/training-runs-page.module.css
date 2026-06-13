@@ -1,0 +1,745 @@
+.page {
+  display: grid;
+  min-width: 0;
+  gap: 14px;
+}
+
+.runSurfaceStack {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: calc(var(--demo-radius) + 2px);
+  background: var(--demo-glass-bg);
+}
+
+.runSurfaceStack > [data-panel="card-header"] {
+  border: 0;
+  border-bottom: 1px solid var(--demo-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.currentRunSurface {
+  display: grid;
+  container-type: inline-size;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--demo-glass-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-glass-bg);
+  box-shadow: var(--demo-glass-shadow);
+}
+
+.currentRunHeader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--demo-border);
+  padding: 10px 14px;
+}
+
+.currentRunHeader > div {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.currentRunHeader > div > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--demo-muted);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.currentRunHeader strong {
+  color: var(--demo-muted);
+  font-size: 11px;
+  font-weight: 520;
+  line-height: 1;
+}
+
+.currentRunList {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  padding: 10px;
+}
+
+.currentRunItem {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.42fr) minmax(260px, 1fr);
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--demo-field-bg) 46%, transparent);
+  padding: 13px 14px 14px;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--demo-text) 5%, transparent) inset;
+}
+
+@container (min-width: 720px) {
+  .currentRunList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.currentRunTitleBlock,
+.currentRunProgressBlock {
+  display: grid;
+  min-width: 0;
+}
+
+.currentRunTitleBlock {
+  align-content: center;
+  gap: 4px;
+}
+
+.currentRunTitleBlock strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.currentRunTitleBlock span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.currentRunProgressBlock {
+  gap: 7px;
+}
+
+.currentRunProgressTop {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--demo-muted);
+  font-size: 11px;
+}
+
+.currentRunProgressTop span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.currentRunProgressTop strong {
+  flex: 0 0 auto;
+  min-width: 4ch;
+  color: var(--demo-green);
+  font-family: var(--demo-font-mono);
+  font-size: 11px;
+  font-weight: 650;
+  text-align: right;
+}
+
+.currentRunProgressTrack {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--demo-field-bg);
+}
+
+.currentRunProgressFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--demo-green), var(--demo-pink));
+  transition: width 500ms ease;
+}
+
+.currentRunMeta {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--demo-faint);
+  font-size: 10px;
+}
+
+.currentRunMeta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusTabs {
+  border-top: 1px solid var(--demo-border);
+}
+
+.runSurface {
+  display: grid;
+  container-type: inline-size;
+  min-width: 0;
+  min-height: 280px;
+}
+
+.runSurfaceHeader {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--demo-border);
+  padding: 12px 14px;
+}
+
+.runSurfaceHeader div:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.runSurfaceHeader strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runSurfaceHeader em {
+  color: var(--demo-muted);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.runSurfaceHeader > .toolbar :where([data-demo-ui-button="true"]) {
+  min-height: 34px;
+  flex: 0 0 auto;
+  gap: 5px;
+  border-radius: 8px;
+  font-size: 12px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.runGroupList {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  padding: 10px;
+}
+
+.runProjectGroup {
+  display: grid;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  container-type: inline-size;
+}
+
+.runProjectGroup:last-child {
+  border-bottom: 1px solid var(--demo-border);
+}
+
+@container (min-width: 720px) {
+  .runGroupList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.runProjectHeader {
+  display: grid;
+  grid-template-columns: 1fr 28px;
+  align-items: center;
+  min-width: 0;
+  border-bottom: 1px solid var(--demo-border);
+  background: color-mix(in srgb, var(--demo-field-bg) 58%, transparent);
+  padding-right: 14px;
+  transition: background-color 140ms ease;
+}
+
+.runProjectHeader:hover,
+.runProjectHeader:focus-within {
+  background: var(--demo-field-bg);
+}
+
+.runProjectHeaderToggle {
+  display: grid;
+  grid-template-columns: 18px minmax(140px, 0.42fr) minmax(180px, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 42px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.runProjectHeaderToggle .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--demo-muted);
+  transition: transform 140ms ease;
+}
+
+.runProjectChevronCollapsed {
+  transform: rotate(-90deg);
+}
+
+.runProjectHeaderToggle span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 580;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runProjectHeaderToggle em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 10px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runRows {
+  display: grid;
+  min-width: 0;
+}
+
+.runRow {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  border-bottom: 1px solid var(--demo-border);
+  background: transparent;
+  color: inherit;
+  padding: 12px 14px;
+  transition: background-color 140ms ease;
+}
+
+.runRow:hover,
+.runRow:focus-within {
+  background: var(--demo-field-bg);
+}
+
+.runRowSelected {
+  background: var(--demo-selected);
+  box-shadow: 3px 0 0 var(--demo-green) inset;
+}
+
+.runRowFailed {
+  grid-template-columns: 28px minmax(0, 1fr);
+  grid-template-areas:
+    "check body"
+    ". secondary";
+  align-items: start;
+  gap: 9px 12px;
+  padding-block: 14px;
+}
+
+.runRowFailed > :first-child {
+  grid-area: check;
+  margin-top: 2px;
+}
+
+.runRowFailed > .runMain {
+  grid-area: body;
+}
+
+.runRowFailed > .runSecondary {
+  grid-area: secondary;
+}
+
+.runRow:last-child {
+  border-bottom: 0;
+}
+
+@container (min-width: 520px) {
+  .runRows {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .runRows .runRow {
+    border-right: 1px solid var(--demo-border);
+    border-bottom: 1px solid var(--demo-border);
+  }
+
+  .runRows .runRowFailed {
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-areas:
+      "check body"
+      ". secondary";
+    align-items: start;
+    padding-block: 15px;
+  }
+
+  .runRows .runRow:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .runRows .runRow:last-child,
+  .runRows .runRow:nth-last-child(2):nth-child(odd) {
+    border-bottom: 0;
+  }
+}
+
+@container (min-width: 780px) {
+  .runMainWithThumbs {
+    grid-template-columns: minmax(150px, 0.62fr) minmax(180px, 1fr);
+    align-items: center;
+  }
+
+  .runThumbs :where([data-demo-ui-image-thumb-small="true"]) {
+    width: 64px;
+  }
+}
+
+.runMain {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.runMainWithThumbs {
+  gap: 10px;
+}
+
+.runText {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.runText strong {
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 13px;
+  font-weight: 580;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runText > span {
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runText em {
+  overflow: hidden;
+  color: var(--demo-faint);
+  font-size: 10px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runProgress {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.runProgressTrack {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--demo-muted) 16%, transparent);
+}
+
+.runProgressFill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--demo-green), var(--demo-sky));
+}
+
+.runProgress span {
+  color: var(--demo-muted);
+  font-size: 10px;
+}
+
+.runSecondary {
+  display: grid;
+  min-width: 0;
+  gap: 9px;
+  border: 1px solid color-mix(in srgb, var(--demo-red) 18%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--demo-red-soft) 30%, var(--demo-field-bg));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--demo-red) 10%, transparent);
+  padding: 10px;
+}
+
+.runFailureBlock {
+  display: grid;
+  min-width: 0;
+  max-width: 100%;
+  gap: 5px;
+  color: var(--demo-red);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.runFailureHeader {
+  display: inline-flex;
+  min-width: 0;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  color: color-mix(in srgb, var(--demo-red) 86%, var(--demo-text));
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+}
+
+.runFailureHeader .icon {
+  width: 13px;
+  height: 13px;
+}
+
+.runFailureToggle {
+  all: unset;
+  margin-left: auto;
+  color: color-mix(in srgb, var(--demo-red) 72%, var(--demo-text));
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 580;
+  line-height: 1;
+  opacity: 0.82;
+  transition: opacity 120ms ease;
+}
+
+.runFailureToggle:hover,
+.runFailureToggle:focus-visible {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.runFailureText {
+  min-width: 0;
+  margin: 0;
+  overflow: visible;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+.runFailureTextClamped {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--error-clamp-lines, 3);
+  text-overflow: ellipsis;
+}
+
+.runThumbs {
+  display: grid;
+  min-width: 0;
+  width: 100%;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.runThumbs :where([data-demo-ui-image-thumb-small="true"]) {
+  width: 58px;
+  border: 1px solid var(--demo-border);
+  border-radius: 7px;
+  background: var(--demo-panel-2);
+}
+
+.rowActions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.rowActions :where([data-demo-ui-button="true"]) {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  border-radius: 8px;
+  padding: 0;
+}
+
+.runFailureToolbar {
+  justify-content: flex-start;
+}
+
+.runFailureToolbar :where([data-demo-ui-button="true"]) {
+  width: auto;
+  min-width: 0;
+  height: 32px;
+  min-height: 32px;
+  border-radius: 8px;
+  padding: 5px 9px;
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  border: 1px dashed var(--demo-border);
+  border-radius: var(--demo-radius);
+  background: var(--demo-panel);
+  color: var(--demo-muted);
+  text-align: center;
+  padding: 32px 24px;
+}
+
+.clipboardTextarea {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@container (max-width: 860px) {
+  .currentRunItem {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 11px 12px 13px;
+  }
+
+  .currentRunTitleBlock strong,
+  .currentRunTitleBlock span,
+  .currentRunProgressTop span,
+  .currentRunMeta span {
+    white-space: normal;
+  }
+}
+
+@container (max-width: 460px) {
+  .currentRunHeader > div {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 639px) {
+  .currentRunHeader {
+    padding: 9px 12px;
+  }
+
+  .runRows {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .runSurfaceHeader {
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .runSurfaceHeader > div:first-child {
+    flex: 1 1 auto;
+  }
+
+  .runSurfaceHeader > .toolbar {
+    width: auto;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+
+  .runProjectHeader {
+    padding-right: 12px;
+  }
+
+  .runProjectHeaderToggle {
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 7px;
+    padding: 9px 12px;
+  }
+
+  .runProjectHeaderToggle em {
+    grid-column: 2;
+    white-space: normal;
+  }
+
+  .runRow {
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 9px;
+    padding: 12px;
+  }
+
+  .runRowFailed {
+    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-areas:
+      "check body"
+      ". secondary";
+    align-items: start;
+    padding: 12px;
+  }
+
+  .runText strong,
+  .runText > span,
+  .runText em {
+    white-space: normal;
+  }
+
+  .runThumbs {
+    width: 100%;
+  }
+
+  .runThumbs :where([data-demo-ui-image-thumb-small="true"]) {
+    width: 58px;
+  }
+
+  .rowActions {
+    align-self: center;
+  }
+}

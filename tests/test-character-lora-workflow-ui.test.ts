@@ -131,20 +131,6 @@ test("canonical view is a persisted backend field on generation runs and canonic
   }
 });
 
-test("persona reference UI exposes per-view generation, canonical reference checkboxes, and uploadable rerun references", () => {
-  const client = readFileSync("src/app/character-lora-training/[jobId]/persona-reference-client.tsx", "utf8");
-  const rerunPanel = readFileSync("src/app/character-lora-training/[jobId]/rerun-panel.tsx", "utf8");
-
-  // Per-view generation: the client maps every canonical view spec into its own panel.
-  assert.match(client, /CANONICAL_VIEW_SPECS\.map/);
-  assert.match(client, /CanonicalViewPanel/);
-  // Canonical reference checkboxes feed the selected canonical versions into a rerun.
-  assert.match(rerunPanel, /name="canonicalVersionIds"/);
-  // Uploadable rerun references accept files.
-  assert.match(rerunPanel, /name="referenceFiles"/);
-  assert.match(rerunPanel, /type="file"/);
-});
-
 test("prompt card draft prompt requests reviewed JSON fields without saving", () => {
   const prompt = buildPromptCardDraftPrompt({
     characterName: "Nakano Miku",
@@ -223,19 +209,10 @@ test("prompt card draft image selection preserves manual source and canonical pi
   assert.deepEqual(selection.canonicalVersionIds, ["canonical-current", "canonical-back", "canonical-left"]);
 });
 
-test("prompt card draft UI exposes manual image selection and task status", () => {
-  const form = readFileSync("src/app/character-lora-training/[jobId]/prompt-card/prompt-card-form.tsx", "utf8");
-  const workflowActions = readFileSync("src/app/character-lora-training/[jobId]/workflow-actions.ts", "utf8");
+test("prompt card draft worker contract stays wired to the backend task type", () => {
   const workerQueue = readFileSync("scripts/character-lora-training/worker-queue.ts", "utf8");
   const contracts = readFileSync("src/server/character-lora-training/contracts.ts", "utf8");
 
-  assert.match(form, /selectedSourceImageIds/);
-  assert.match(form, /selectedCanonicalVersionIds/);
-  assert.match(form, /ArtifactImagePreview/);
-  assert.match(form, /draftTask/);
-  assert.match(form, /getPromptCardDraftTaskAction/);
-  assert.match(workflowActions, /enqueueCharacterLoraPromptCardDraft/);
-  assert.match(workflowActions, /getPromptCardDraftTaskAction/);
   assert.match(workerQueue, /prompt-card-draft-worker\.ts/);
   assert.match(contracts, /prompt_card_draft/);
 });

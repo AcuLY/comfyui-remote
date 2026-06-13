@@ -11,14 +11,11 @@ test("project export image names pad indexes to the digit count of the image tot
     formatExportImageFileName?: (exportName: string, index: number, totalImages: number) => string;
   };
 
-  assert.equal(
-    typeof projectExport.formatExportImageFileName,
-    "function",
-    "project export service should expose the image filename formatter",
-  );
-
   const format = projectExport.formatExportImageFileName;
-  assert.ok(format, "project export service should expose the image filename formatter");
+  if (typeof format !== "function") {
+    assert.fail("project export service should expose the image filename formatter");
+  }
+
   assert.equal(format("Exported Project", 1, 9), "Exported Project_1.jpg");
   assert.equal(format("Exported Project", 1, 10), "Exported Project_01.jpg");
   assert.equal(format("Exported Project", 9, 100), "Exported Project_009.jpg");
@@ -39,11 +36,10 @@ test("project export pixiv and preview selections include only censored images",
     ) => Array<{ censoredFilePath: string | null }>;
   };
 
-  assert.equal(
-    typeof projectExport.selectCensoredFeatureImages,
-    "function",
-    "project export service should expose censored feature selection",
-  );
+  const selectCensoredFeatureImages = projectExport.selectCensoredFeatureImages;
+  if (typeof selectCensoredFeatureImages !== "function") {
+    assert.fail("project export service should expose censored feature selection");
+  }
 
   const images = [
     { featured: true, featured2: false, censoredFilePath: "images/a-censored.png" },
@@ -51,15 +47,14 @@ test("project export pixiv and preview selections include only censored images",
     { featured: false, featured2: true, censoredFilePath: "images/c-censored.png" },
   ];
 
-  const selectCensoredFeatureImages = projectExport.selectCensoredFeatureImages;
-  assert.ok(selectCensoredFeatureImages, "project export service should expose censored feature selection");
-
-  assert.deepEqual(selectCensoredFeatureImages(images, "featured").map((image) => image.censoredFilePath), [
-    "images/a-censored.png",
-  ]);
-  assert.deepEqual(selectCensoredFeatureImages(images, "featured2").map((image) => image.censoredFilePath), [
-    "images/c-censored.png",
-  ]);
+  assert.deepEqual(
+    selectCensoredFeatureImages(images, "featured").map((image) => image.censoredFilePath),
+    ["images/a-censored.png"],
+  );
+  assert.deepEqual(
+    selectCensoredFeatureImages(images, "featured2").map((image) => image.censoredFilePath),
+    ["images/c-censored.png"],
+  );
 });
 
 test("project export no longer creates duplicate censored pixiv and preview folders", () => {

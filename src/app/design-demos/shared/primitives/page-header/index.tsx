@@ -30,23 +30,27 @@ export function PageHeader({
   className,
 }: {
   back?: { href: string; label: string };
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   subtitle?: string;
   actions?: React.ReactNode;
   className?: string;
 }) {
   return (
-    <header className={cx(s.pageHeader, className)} data-demo-page-header>
-      <div className={s.pageTitleBlock}>
+    <header
+      className={cx(s.pageHeader, className)}
+      data-demo-page-header
+      data-demo-page-header-has-actions={actions ? "true" : undefined}
+    >
+      <div className={s.pageTitleBlock} data-demo-page-header-title-block>
         {back ? (
           <PageHeaderBack href={back.href} label={back.label} />
         ) : null}
-        <span className={s.eyebrow}>{eyebrow}</span>
+        {eyebrow ? <span className={s.eyebrow}>{eyebrow}</span> : null}
         <h1 className={s.pageTitle}>{title}</h1>
         {subtitle ? <div className={s.pageSubtitle}>{subtitle}</div> : null}
       </div>
-      {actions ? <div className={s.toolbar}>{actions}</div> : null}
+      {actions ? <div className={s.toolbar} data-demo-page-header-actions>{actions}</div> : null}
     </header>
   );
 }
