@@ -144,3 +144,31 @@ test("training managed lists stay single column in the mobile shell", () => {
   assert.ok(hasMobileSingleColumnOverride(projectPagesCss, "sectionSeedList"), "Initial project sections should stay single column on mobile");
   assert.ok(hasMobileSingleColumnOverride(resourcesCss, "trainingPresetSortGrid"), "Preset sort groups should stay single column on mobile");
 });
+
+test("training mobile row actions keep compact demo toolbar density", () => {
+  assert.match(
+    cssRule(projectPagesCss, "sectionSeedActions"),
+    /display:\s*flex/,
+    "Initial section seed actions should use a compact wrapping toolbar instead of wide grid buttons",
+  );
+  assert.match(
+    cssRule(projectPagesCss, "sceneBlockActions"),
+    /display:\s*flex/,
+    "Project scene block actions should use compact wrapping controls",
+  );
+  assert.match(
+    cssRule(resourcesCss, "templateSceneBlockActions"),
+    /display:\s*flex/,
+    "Template scene block actions should use compact wrapping controls",
+  );
+  assert.doesNotMatch(
+    projectPagesCss,
+    /@media\s*\(max-width:\s*639px\)\s*\{[\s\S]*?\.sceneBlockActions\s+:where\(\[data-demo-ui-button="true"\]\)\s*\{[\s\S]*?width:\s*100%/,
+    "Project scene block buttons should not be stretched full-width in the mobile shell",
+  );
+  assert.doesNotMatch(
+    resourcesCss,
+    /@media\s*\(max-width:\s*639px\)\s*\{[\s\S]*?\.templateSceneBlockActions\s+:where\(\[data-demo-ui-button="true"\]\)\s*\{[\s\S]*?width:\s*100%/,
+    "Template scene block buttons should not be stretched full-width in the mobile shell",
+  );
+});

@@ -1078,12 +1078,15 @@
 }
 
 .templateSceneBlockActions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(76px, auto));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
   gap: 6px;
 }
 
 .templateSceneBlockActions :where([data-demo-ui-button="true"]) {
+  flex: 0 0 auto;
   min-height: 32px;
   border-radius: 8px;
   padding-inline: 8px;
@@ -1192,11 +1195,6 @@
   }
 
   .templateSceneBlockActions {
-    width: 100%;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .templateSceneBlockActions :where([data-demo-ui-button="true"]) {
-    width: 100%;
+    justify-content: flex-start;
   }
 }
