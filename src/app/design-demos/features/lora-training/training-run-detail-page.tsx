@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { AlertTriangle, Check, CheckCircle2, Clock3, Copy, ExternalLink, FileText, History, ImageIcon, ImagePlus, Play, RotateCcw, Trash2 } from "lucide-react";
 
@@ -237,12 +237,14 @@ export function LoraTrainingRunDetailPage({
   runId?: string;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { pushToast } = useDemoFeedback();
   const [activeSampleState, setActiveSampleState] = useState<ActiveSampleState | null>(null);
   const [activeGenerationResultId, setActiveGenerationResultId] = useState<string | null>(null);
   const [copiedCaption, setCopiedCaption] = useState<CopiedCaptionState | null>(null);
   const [resultReviewState, setResultReviewState] = useState<Record<string, LoraTrainingReviewStatus>>({});
   const [retryDraft, setRetryDraft] = useState<RetryDraft | null>(null);
+  const [isQueueingRetry, setIsQueueingRetry] = useState(false);
   const [isReviewingGenerationOutput, setIsReviewingGenerationOutput] = useState(false);
   const training = buildLoraTrainingDemoData(data);
   const run = findRun(data, kind, runId);
@@ -283,8 +285,8 @@ export function LoraTrainingRunDetailPage({
     });
   }
 
-  function handleQueueRetry() {
-    setRetryDraft({
+  async function handleQueueRetry() {
+    const nextRetryDraft = {
       runId: currentRun.id,
       projectTitle: currentRun.projectTitle,
       title: currentRun.title,
@@ -292,7 +294,80 @@ export function LoraTrainingRunDetailPage({
       queuedAt: new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
       sourceStatus: currentRun.status,
       datasetVersion: project?.datasetVersion,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setRetryDraft(nextRetryDraft);
+      pushToast({
+        tone: "success",
+        title: "已加入重试队列",
+        detail: currentRun.title,
+      });
+      return;
+    }
+
+    if (isQueueingRetry) return;
+
+    setIsQueueingRetry(true);
+    try {
+      const response = isGeneration
+        ? await (async () => {
+            if (!currentRun.sectionId) {
+              throw new Error("当前生成任务缺少小节上下文，无法重试。");
+            }
+            return fetch(`/api/training/sections/${currentRun.sectionId}/runs`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                parentRunId: currentRun.id,
+              }),
+            });
+          })()
+        : await (async () => {
+            if (!currentRun.datasetRevisionId) {
+              throw new Error("当前训练任务缺少数据集版本，无法重试。");
+            }
+            return fetch(`/api/training/projects/${currentRun.projectId}/training-runs`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                revisionId: currentRun.datasetRevisionId,
+                config: {
+                  overrides: {
+                    ordinary: {
+                      targetSteps: currentRun.targetSteps,
+                    },
+                  },
+                },
+              }),
+            });
+          })();
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "重试失败",
+          detail: payload?.error?.message ?? "重试请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "success",
+        title: "重试已排队",
+        detail: currentRun.title,
+      });
+      router.push(`/training/runs/${isGeneration ? "generation" : "training"}/${payload.data.id}`);
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "重试失败",
+        detail: error instanceof Error ? error.message : "重试请求失败",
+      });
+    } finally {
+      setIsQueueingRetry(false);
+    }
   }
 
   async function handleReviewGenerationOutput(resultId: string, reviewStatus: LoraTrainingReviewStatus) {
@@ -376,8 +451,8 @@ export function LoraTrainingRunDetailPage({
                   数据集版本
                 </ButtonLink>
               ) : null}
-            {currentRun.status === "failed" && !isRetryQueued ? <Button tone="primary" icon={RotateCcw} ariaLabel={`重试任务：${currentRun.title}`} onClick={handleQueueRetry} feedback={{ title: "已加入重试队列", detail: currentRun.title }}>重试</Button> : null}
-            {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : null}
+                {currentRun.status === "failed" && !isRetryQueued ? <Button tone="primary" icon={RotateCcw} pending={isQueueingRetry} ariaLabel={`重试任务：${currentRun.title}`} onClick={handleQueueRetry}>重试</Button> : null}
+                {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : null}
           </>
         )}
       />

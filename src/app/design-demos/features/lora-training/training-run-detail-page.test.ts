@@ -210,6 +210,18 @@ test("failed training run detail retry creates a visible local queued-retry draf
   assert.match(detailSource, /!isRetryQueued/, "retry button should hide once the run is queued for retry");
 });
 
+test("failed run detail retries through the formal HTTP API on production routes", () => {
+  assert.match(detailSource, /usePathname/, "retry flow should detect whether it is running under production \\/training routes");
+  assert.match(detailSource, /useRouter/, "retry flow should be able to navigate to the queued retry run on production routes");
+  assert.match(detailSource, /fetch\(`\/api\/training\/sections\/\$\{currentRun\.sectionId\}\/runs`/, "generation retry should call the formal section run API");
+  assert.match(detailSource, /fetch\(`\/api\/training\/projects\/\$\{currentRun\.projectId\}\/training-runs`/, "training retry should call the formal project training run API");
+  assert.match(detailSource, /parentRunId:\s*currentRun\.id/, "generation retry should pass the failed run id as the parent run");
+  assert.match(detailSource, /revisionId:\s*currentRun\.datasetRevisionId/, "training retry should pass the original dataset revision id");
+  assert.match(detailSource, /targetSteps:/, "training retry should map the existing target step count into the HTTP request config");
+  assert.match(detailSource, /router\.push\(`/, "retry flow should navigate to the newly queued run after a successful API response");
+  assert.match(detailSource, /pushToast/, "retry flow should surface API success or failure through the shared feedback system");
+});
+
 test("training sample lightbox copies captions through a real local action", () => {
   assert.match(detailSource, /copiedCaption/, "run detail should track the copied caption locally");
   assert.match(detailSource, /setCopiedCaption/, "copy action should update local copied-caption state");
