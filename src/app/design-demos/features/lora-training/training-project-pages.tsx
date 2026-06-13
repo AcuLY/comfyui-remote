@@ -1884,8 +1884,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     });
   }
 
-  function handleAddSupplementalImage(candidate = supplementalImageCandidates[0]) {
-    if (!candidate) return;
+  function handleAddSupplementalImage(candidate: SupplementalImageAttachment) {
     setSupplementalImageAttachments((current) => {
       const activeAttachments = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.attachments : [];
       if (activeAttachments.some((attachment) => attachment.id === candidate.id)) {
@@ -1963,18 +1962,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
               <div className={s.supplementalImageHeader}>
                 <div>
                   <strong>补充图片附件</strong>
-                  <span>{supplementalImageAttachments.length ? `${supplementalImageAttachments.length} 张已附加` : "可从参考图或结果池补充"}</span>
+                  <span>{supplementalImageAttachments.length ? `${supplementalImageAttachments.length} 张已附加` : "点击下方参考图或结果池图片附加"}</span>
                 </div>
-                <Button
-                  size="sm"
-                  tone="subtle"
-                  icon={ImagePlus}
-                  disabled={supplementalImageCandidates.every((candidate) => supplementalImageAttachments.some((attachment) => attachment.id === candidate.id))}
-                  onClick={() => handleAddSupplementalImage()}
-                  feedback={{ title: "已添加补充图片", detail: supplementalImageCandidates[0]?.title }}
-                >
-                  快速添加
-                </Button>
               </div>
               <div className={s.supplementalImageCandidateList}>
                 {supplementalImageCandidates.map((candidate) => {

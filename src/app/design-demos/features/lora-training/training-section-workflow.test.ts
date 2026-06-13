@@ -360,10 +360,15 @@ test("generation compose manages supplemental image attachments in local state",
 
   assert.match(composePage, /supplementalImageAttachments/, "compose page should keep supplemental image attachments in local state");
   assert.match(composePage, /handleAddSupplementalImage/, "compose page should expose an explicit local add-image action");
+  assert.match(composePage, /handleAddSupplementalImage\(candidate: SupplementalImageAttachment\)/, "add-image action should require an explicit candidate");
+  assert.match(composePage, /onClick=\{\(\) => handleAddSupplementalImage\(candidate\)\}/, "candidate cards should pass the selected image to the add handler");
   assert.match(composePage, /handleRemoveSupplementalImage/, "compose page should expose an explicit local remove-image action");
   assert.match(composePage, /补充图片附件/, "compose page should render a visible supplemental image attachment list");
   assert.match(composePage, /supplementalImageCount:\s*supplementalImageAttachments\.length/, "task draft should save the supplemental image count");
   assert.match(composePage, /visibleGenerationTaskDraft\.supplementalImageCount/, "visible task draft should summarize attached supplemental images");
+  assert.doesNotMatch(composePage, /candidate = supplementalImageCandidates\[0\]/, "supplemental image add should not silently pick the first candidate");
+  assert.doesNotMatch(composePage, /handleAddSupplementalImage\(\)/, "supplemental image add buttons should not call the handler without a selected candidate");
+  assert.doesNotMatch(composePage, /supplementalImageCandidates\[0\]\?\.title/, "supplemental image feedback should not describe an implicit first candidate");
   assert.match(cssSource, /\.supplementalImageList\b/, "supplemental image attachments should have a dedicated compact list style");
 });
 
