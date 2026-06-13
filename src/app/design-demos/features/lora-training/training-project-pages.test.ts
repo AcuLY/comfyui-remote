@@ -617,6 +617,25 @@ test("training project create page reads template context from project-create li
   assert.match(formSource, /sourceTemplate\?\.sections/, "initial section seeds should come from the source template");
 });
 
+test("training project create page keeps source template ids out of visible copy", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+  const sourceFieldStart = formSource.indexOf('label="来源训练模板"');
+  const nextFieldStart = formSource.indexOf('<FloatingSelect label="基础模型"', sourceFieldStart);
+  assert.notEqual(sourceFieldStart, -1);
+  assert.notEqual(nextFieldStart, -1);
+
+  const sourceFieldSource = formSource.slice(sourceFieldStart, nextFieldStart);
+
+  assert.match(sourceFieldSource, /sourceTemplate\.title/, "source template copy should name the selected template");
+  assert.match(sourceFieldSource, /newProjectTemplateHints\.sections/, "source template copy may include the section count");
+  assert.doesNotMatch(sourceFieldSource, /newProjectTemplateHints\.templateId/, "source template copy should not expose the internal template id");
+});
+
 test("training project create page toggles initial section enabled state locally", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");

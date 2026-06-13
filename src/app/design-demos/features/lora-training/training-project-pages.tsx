@@ -936,7 +936,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
               <Field label="项目名称" value={projectForm.title} onChange={(value) => handleUpdateProjectForm("title", value)} />
               <FloatingSelect label="从模板创建" value={projectForm.templateTitle} options={["不使用模板", ...training.templates.map((template) => template.title)]} onChange={handleSelectTemplate} />
               {sourceTemplate ? (
-                <Field readOnly label="来源训练模板" value={`${sourceTemplate.title}${newProjectTemplateHints.sections ? ` · ${newProjectTemplateHints.sections} 个小节` : ""}${newProjectTemplateHints.templateId ? ` · ${newProjectTemplateHints.templateId}` : ""}`} />
+                <Field readOnly label="来源训练模板" value={`${sourceTemplate.title}${newProjectTemplateHints.sections ? ` · ${newProjectTemplateHints.sections} 个小节` : ""}`} />
               ) : null}
               <FloatingSelect label="基础模型" value={projectForm.baseModel} options={["继承训练默认模型", ...baseModelOptions]} onChange={(value) => handleUpdateProjectForm("baseModel", value)} />
               <Field multiline features={{ resize: true, clipboard: true }} label="角色使用提示词" value={projectForm.usagePrompt} onChange={(value) => handleUpdateProjectForm("usagePrompt", value)} />

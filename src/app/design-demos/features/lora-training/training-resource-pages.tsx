@@ -632,7 +632,7 @@ function LoraTrainingPresetDetailContent({
           <FloatingSelect label="分类" value={presetForm.category} options={[preset.category, "光线", "环境", "构图"]} onChange={(value) => handleUpdatePresetForm("category", value)} />
           <FloatingSelect label="文件夹" value={presetForm.folder} options={[preset.folder, "舞台", "城市", "训练净图"]} onChange={(value) => handleUpdatePresetForm("folder", value)} />
           {isNew && newPresetHints.artifact ? (
-            <Field readOnly label="来源训练产物" value={`${newPresetHints.project || "训练项目"} · ${newPresetHints.artifact}${newPresetHints.sourceRun ? ` · ${newPresetHints.sourceRun}` : ""}`} />
+            <Field readOnly label="来源训练产物" value={`${newPresetHints.project || "训练项目"} · ${newPresetHints.artifact}`} />
           ) : null}
           <Field multiline features={{ resize: true, clipboard: true }} label="场景描述" value={presetForm.sceneDescriptionText} onChange={(value) => handleUpdatePresetForm("sceneDescriptionText", value)} />
         </EditorBlock>
@@ -1261,7 +1261,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
           <Field label="名称" value={templateForm.title} onChange={(value) => handleUpdateTemplateForm("title", value)} />
           <Field multiline features={{ resize: true, clipboard: true }} label="描述" value={templateForm.description} onChange={(value) => handleUpdateTemplateForm("description", value)} />
           {mode === "new" && newTemplateHints.sourceProject ? (
-            <Field readOnly label="来源训练项目" value={`${newTemplateHints.sourceProject}${newTemplateHints.sections ? ` · ${newTemplateHints.sections} 个小节` : ""}${newTemplateHints.projectId ? ` · ${newTemplateHints.projectId}` : ""}`} />
+            <Field readOnly label="来源训练项目" value={`${newTemplateHints.sourceProject}${newTemplateHints.sections ? ` · ${newTemplateHints.sections} 个小节` : ""}`} />
           ) : null}
           <Field multiline features={{ resize: true, clipboard: true }} label="图片提示词指引" value={templateForm.imageGuidance} onChange={(value) => handleUpdateTemplateForm("imageGuidance", value)} />
           <Field multiline features={{ resize: true, clipboard: true }} label="说明文本生成指引" value={templateForm.captionGuidance} onChange={(value) => handleUpdateTemplateForm("captionGuidance", value)} />

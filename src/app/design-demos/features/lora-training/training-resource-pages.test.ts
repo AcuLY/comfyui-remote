@@ -189,6 +189,25 @@ test("training preset new form carries source training artifact context", () => 
   assert.match(detailSource, /newPresetHints\.artifact/, "source artifact field should only appear when artifact context exists");
 });
 
+test("training preset new form keeps source run ids out of visible copy", () => {
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  assert.notEqual(detailStart, -1);
+  assert.notEqual(sortStart, -1);
+
+  const detailSource = pageSource.slice(detailStart, sortStart);
+  const sourceFieldStart = detailSource.indexOf('label="来源训练产物"');
+  const nextFieldStart = detailSource.indexOf('<Field multiline', sourceFieldStart);
+  assert.notEqual(sourceFieldStart, -1);
+  assert.notEqual(nextFieldStart, -1);
+
+  const sourceFieldSource = detailSource.slice(sourceFieldStart, nextFieldStart);
+
+  assert.match(sourceFieldSource, /newPresetHints\.project/, "source artifact copy should name the project when present");
+  assert.match(sourceFieldSource, /newPresetHints\.artifact/, "source artifact copy should include the artifact name");
+  assert.doesNotMatch(sourceFieldSource, /newPresetHints\.sourceRun/, "source artifact copy should not expose the internal run id");
+});
+
 test("training preset detail saves a visible local preset draft instead of only showing feedback", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
   const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
@@ -269,6 +288,25 @@ test("training template new form carries source project context", () => {
   assert.match(formSource, /newTemplateHints/, "template form should derive hints in new mode");
   assert.match(formSource, /来源训练项目/, "new template form should show source project context");
   assert.match(formSource, /newTemplateHints\.sourceProject/, "source project field should only appear when project context exists");
+});
+
+test("training template new form keeps source project ids out of visible copy", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+  const sourceFieldStart = formSource.indexOf('label="来源训练项目"');
+  const nextFieldStart = formSource.indexOf('<Field multiline', sourceFieldStart);
+  assert.notEqual(sourceFieldStart, -1);
+  assert.notEqual(nextFieldStart, -1);
+
+  const sourceFieldSource = formSource.slice(sourceFieldStart, nextFieldStart);
+
+  assert.match(sourceFieldSource, /newTemplateHints\.sourceProject/, "source project copy should name the selected project");
+  assert.match(sourceFieldSource, /newTemplateHints\.sections/, "source project copy may include the section count");
+  assert.doesNotMatch(sourceFieldSource, /newTemplateHints\.projectId/, "source project copy should not expose the internal project id");
 });
 
 test("training template list creates projects with selected template context", () => {
