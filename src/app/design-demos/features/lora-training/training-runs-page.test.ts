@@ -105,6 +105,19 @@ test("failed training run rows use a structured failure block instead of single-
   assert.match(cssSource, /\.runFailureToolbar\b/, "failed run rows should keep copy and retry actions in a compact toolbar");
 });
 
+test("failed training run row actions name the affected task", () => {
+  assert.match(
+    pageSource,
+    /ariaLabel=\{`复制任务报错：\$\{run\.title\}`\}/,
+    "failed-row copy actions should expose which task error is copied",
+  );
+  assert.match(
+    pageSource,
+    /ariaLabel=\{`重试任务：\$\{run\.title\}`\}/,
+    "failed-row retry actions should expose which task is retried",
+  );
+});
+
 test("failed training run errors clamp long text with an expand affordance", () => {
   assert.match(pageSource, /const ERROR_CLAMP_LINES = 3;/, "failed error copy should use the same compact clamp depth as the generated-run demo");
   assert.match(pageSource, /useRef<HTMLParagraphElement>/, "failure block should measure the rendered paragraph");

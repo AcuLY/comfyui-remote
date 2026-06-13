@@ -406,6 +406,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                         tone="subtle"
                                         icon={Copy}
                                         size="sm"
+                                        ariaLabel={`复制任务报错：${run.title}`}
                                         onClick={() => copyRunMessage(errorMessage)}
                                         feedback={{ title: "报错已复制", detail: errorMessage }}
                                       >
@@ -415,6 +416,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                         tone="subtle"
                                         icon={RotateCcw}
                                         size="sm"
+                                        ariaLabel={`重试任务：${run.title}`}
                                         onClick={() => retryRuns([run.id])}
                                         feedback={{ title: "重试已排队", detail: run.title }}
                                       >
