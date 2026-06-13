@@ -8,7 +8,7 @@ import type {
   PresetGroupItem,
   SlotTemplateDef,
 } from "@/lib/server-data";
-import { toSlug } from "./group-utils";
+import { buildPresetGroupNameFromMembers, toSlug } from "./group-utils";
 
 function uniqueSlug(base: string, usedSlugs: Set<string>) {
   let slug = base;
@@ -97,9 +97,7 @@ export function GroupCreateForm({
   }
 
   function applyMemberNames() {
-    const slugParts = members.map((m) => toSlug(m.displayName));
-    const joined = slugParts.join("-");
-    setName(joined);
+    setName(buildPresetGroupNameFromMembers(members));
   }
 
   const canAddMember = mode === "group" ? !!selGroupId : !!pickerValue;
