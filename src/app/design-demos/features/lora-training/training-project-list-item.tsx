@@ -12,7 +12,7 @@ import { StatusBadge } from "../../shared/primitives/status-badge";
 import { useDemoSortable } from "../../shared/primitives/sortable";
 import { UnitRowShell } from "../../shared/patterns";
 import type { LoraTrainingProject } from "./types";
-import s from "./training-projects-page.module.css";
+import s from "./training-project-list-item.module.css";
 
 function projectStatusLabel(status: LoraTrainingProject["status"]) {
   if (status === "ready") return "可训练";
@@ -43,11 +43,11 @@ export function TrainingProjectCardShell({
 }) {
   return (
     <UnitRowShell
-      className={cx(s.projectCard, compact && s.projectCardCompact, selected && s.projectCardSelected)}
-      leadingClassName={leading ? s.projectControls : undefined}
-      mainClassName={s.projectContent}
-      bodyClassName={s.projectBody}
-      titleClassName={s.projectTitleSlot}
+      className={cx(s.trainingProjectCard, compact && s.trainingProjectCardCompact, selected && s.trainingProjectCardSelected)}
+      leadingClassName={leading ? s.trainingProjectControls : undefined}
+      mainClassName={s.trainingProjectContent}
+      bodyClassName={s.trainingProjectBody}
+      titleClassName={s.trainingProjectTitleSlot}
       leading={leading}
       title={title}
       body={body}
@@ -81,14 +81,14 @@ export function TrainingProjectListItem({
         leading={(
           <>
             <Checkbox
-              className={s.projectSelectCheckbox}
+              className={s.trainingProjectSelectCheckbox}
               checked={selected}
               label={selected ? `取消选择训练项目：${project.title}` : `选择训练项目：${project.title}`}
               onCheckedChange={() => onToggleSelected()}
             />
             <button
               type="button"
-              className={s.projectDragHandle}
+              className={s.trainingProjectDragHandle}
               aria-label={`拖拽排序训练项目：${project.title}`}
               {...handleProps}
             >
@@ -97,12 +97,12 @@ export function TrainingProjectListItem({
           </>
         )}
         title={(
-          <div className={s.projectTitleRow}>
-            <Link className={s.projectTitleLink} href={projectHref}>
+          <div className={s.trainingProjectTitleRow}>
+            <Link className={s.trainingProjectTitleLink} href={projectHref}>
               <strong>{project.title}</strong>
               <span>{sectionCountLabel}</span>
             </Link>
-            <div className={s.projectActions}>
+            <div className={s.trainingProjectActions}>
               <Button
                 tone="danger"
                 icon={Trash2}
@@ -117,12 +117,12 @@ export function TrainingProjectListItem({
         )}
         body={(
           <>
-            <Link aria-label={`打开训练项目最近结果：${project.title}`} className={s.projectRecentResults} href={projectHref}>
+            <Link aria-label={`打开训练项目最近结果：${project.title}`} className={s.trainingProjectRecentResults} href={projectHref}>
               <ImageListSmall className={s.recentResultImages} images={recentResultImages} limit={recentResultImages.length} showCounts />
             </Link>
-            <div className={s.projectMeta}>
-              <span className={s.projectMetaText}>更新：{project.updatedAt}</span>
-              <span className={s.projectStatusGroup}>
+            <div className={s.trainingProjectMeta}>
+              <span className={s.trainingProjectMetaText}>更新：{project.updatedAt}</span>
+              <span className={s.trainingProjectStatusGroup}>
                 <StatusBadge status={projectStatusTone(project.status)} label={projectStatusLabel(project.status)} />
               </span>
             </div>

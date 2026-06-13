@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const itemSource = readFileSync(resolve(testDir, "training-project-list-item.tsx"), "utf8");
+const itemCss = readFileSync(resolve(testDir, "training-project-list-item.module.css"), "utf8");
 const projectsPageSource = readFileSync(resolve(testDir, "training-projects-page.tsx"), "utf8");
 const projectsCss = readFileSync(resolve(testDir, "training-projects-page.module.css"), "utf8");
 
@@ -30,8 +31,8 @@ test("training project list keeps the project-demo header hierarchy", () => {
 
 test("training project card keeps the design-demo management controls first", () => {
   const checkboxIndex = itemSource.indexOf("<Checkbox");
-  const dragHandleIndex = itemSource.indexOf("projectDragHandle");
-  const titleIndex = itemSource.indexOf("projectTitleRow");
+  const dragHandleIndex = itemSource.indexOf("trainingProjectDragHandle");
+  const titleIndex = itemSource.indexOf("trainingProjectTitleRow");
 
   assert.ok(checkboxIndex > -1, "Project card should expose a selectable management control");
   assert.ok(dragHandleIndex > -1, "Project card should expose a drag handle management control");
@@ -56,7 +57,7 @@ test("training project card title stays clean and leaves business summaries out 
 });
 
 test("training project card meta stays light like the existing project demo", () => {
-  const metaStart = itemSource.indexOf("className={s.projectMeta}");
+  const metaStart = itemSource.indexOf("className={s.trainingProjectMeta}");
   assert.notEqual(metaStart, -1, "Project card should keep a bottom meta row");
 
   const metaRegion = itemSource.slice(metaStart, itemSource.indexOf("</div>", metaStart));
@@ -70,7 +71,7 @@ test("training project card body reuses the project-demo thumbnail stats", () =>
   const bodyStart = itemSource.indexOf("body={(");
   assert.notEqual(bodyStart, -1, "Project card should define an explicit body region");
 
-  const bodyRegion = itemSource.slice(bodyStart, itemSource.indexOf("className={s.projectMeta}", bodyStart));
+  const bodyRegion = itemSource.slice(bodyStart, itemSource.indexOf("className={s.trainingProjectMeta}", bodyStart));
 
   assert.match(bodyRegion, /ImageListSmall/, "Body should use the recent-result thumbnail strip");
   assert.match(itemSource, /project\.resultPool/, "Recent-result thumbnails should come from the training project result pool");
@@ -81,8 +82,15 @@ test("training project card body reuses the project-demo thumbnail stats", () =>
 
 test("training project compact mode has an explicit dense surface and hides secondary content", () => {
   assert.match(projectsCss, /\.projectSurfaceCompact\b/, "Compact project view should define the surface class used by the page");
-  assert.match(projectsCss, /\.projectCardCompact[\s\S]*?\.projectRecentResults[\s\S]*?display:\s*none/, "Compact project cards should hide thumbnails");
-  assert.match(projectsCss, /\.projectCardCompact[\s\S]*?\.projectMeta[\s\S]*?display:\s*none/, "Compact project cards should hide bottom meta");
+  assert.match(itemCss, /\.trainingProjectCardCompact[\s\S]*?\.trainingProjectRecentResults[\s\S]*?display:\s*none/, "Compact project cards should hide thumbnails");
+  assert.match(itemCss, /\.trainingProjectCardCompact[\s\S]*?\.trainingProjectMeta[\s\S]*?display:\s*none/, "Compact project cards should hide bottom meta");
+});
+
+test("training project card styles are owned by the list item module", () => {
+  assert.match(itemSource, /from "\.\/training-project-list-item\.module\.css"/, "Project list item should own its internal card styles");
+  assert.doesNotMatch(projectsCss, /\.trainingProjectCard\b/, "Project page CSS should not style list-item card internals");
+  assert.doesNotMatch(projectsCss, /\.trainingProjectDragHandle\b/, "Project page CSS should not style list-item management controls");
+  assert.doesNotMatch(projectsCss, /\.trainingProjectRecentResults\b/, "Project page CSS should not style list-item recent-result slots");
 });
 
 test("training project list creates projects through the implemented form route", () => {

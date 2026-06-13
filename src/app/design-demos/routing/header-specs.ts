@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 
 import type { DemoData, DemoSection } from "../data";
-import { buildLoraTrainingDemoData } from "../features/lora-training/fixtures";
+import { buildLoraTrainingDemoData } from "../data/lora-training";
 import type {
   LoraTrainingDatasetRevision,
   LoraTrainingPreset,
@@ -32,7 +32,7 @@ import type {
   LoraTrainingSection,
   LoraTrainingTaskKind,
   LoraTrainingTemplate,
-} from "../features/lora-training/types";
+} from "../data/lora-training-types";
 import {
   findCategory,
   findGroup,

@@ -7,8 +7,8 @@ import { fileURLToPath } from "node:url";
 const testDir = dirname(fileURLToPath(import.meta.url));
 const pagesSource = readFileSync(resolve(testDir, "training-project-pages.tsx"), "utf8");
 const cssSource = readFileSync(resolve(testDir, "training-project-pages.module.css"), "utf8");
-const fixtureSource = readFileSync(resolve(testDir, "fixtures.ts"), "utf8");
-const typesSource = readFileSync(resolve(testDir, "types.ts"), "utf8");
+const fixtureSource = readFileSync(resolve(testDir, "../../data/lora-training.ts"), "utf8");
+const typesSource = readFileSync(resolve(testDir, "../../data/lora-training-types.ts"), "utf8");
 
 test("training project fixtures model reference images, result pool captions, and dataset snapshots", () => {
   for (const typeName of [

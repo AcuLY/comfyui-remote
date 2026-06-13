@@ -444,8 +444,23 @@ test("failed run rows show a compact error card with footer actions", () => {
   );
   assert.match(
     runListSource,
-    /<p\s+className=\{s\.queueRunErrorText\}>\{errorMessage\}<\/p>/,
-    "failed run card should show the full error message before the action row",
+    /const\s+ERROR_CLAMP_LINES\s*=\s*3/,
+    "failed run error text should have an explicit compact clamp budget",
+  );
+  assert.match(
+    runListSource,
+    /className=\{cx\(s\.queueRunErrorText,\s*!expanded && s\.queueRunErrorTextClamped\)\}[\s\S]*?--error-clamp-lines[\s\S]*?ERROR_CLAMP_LINES[\s\S]*?\{errorMessage\}/,
+    "failed run card should clamp long error text before the action row",
+  );
+  assert.match(
+    runListSource,
+    /overflows && !expanded[\s\S]*?展开[\s\S]*?expanded[\s\S]*?收起/,
+    "failed run card should provide explicit expand and collapse controls for long errors",
+  );
+  assert.match(
+    runListCss,
+    /\.queueRunErrorTextClamped\s*\{[\s\S]*?-webkit-line-clamp:\s*var\(--error-clamp-lines,\s*3\)/,
+    "failed run card should clamp long error text through the compact error style",
   );
   assert.match(
     runListSource,

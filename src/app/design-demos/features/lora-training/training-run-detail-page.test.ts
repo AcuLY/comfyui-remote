@@ -7,8 +7,8 @@ import { fileURLToPath } from "node:url";
 const testDir = dirname(fileURLToPath(import.meta.url));
 const detailSource = readFileSync(resolve(testDir, "training-run-detail-page.tsx"), "utf8");
 const detailCss = readFileSync(resolve(testDir, "training-run-detail-page.module.css"), "utf8");
-const fixtureSource = readFileSync(resolve(testDir, "fixtures.ts"), "utf8");
-const typesSource = readFileSync(resolve(testDir, "types.ts"), "utf8");
+const fixtureSource = readFileSync(resolve(testDir, "../../data/lora-training.ts"), "utf8");
+const typesSource = readFileSync(resolve(testDir, "../../data/lora-training-types.ts"), "utf8");
 
 test("training run detail keeps the compact detail header", () => {
   const headerStart = detailSource.indexOf("<PageHeader");

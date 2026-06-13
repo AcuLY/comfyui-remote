@@ -95,7 +95,7 @@ export function Button({
       disabled={disabled || pending}
       className={buttonClassName({ tone, pending, iconOnly, size, className })}
     >
-      {pending ? <Activity className={cx(s.icon, s.spinner)} data-demo-ui-button-icon="true" /> : Icon ? <Icon className={s.icon} data-demo-ui-button-icon="true" /> : null}
+      {pending ? <Activity className={cx(s.icon, s.spinner)} data-demo-ui-button-icon="true" aria-hidden="true" /> : Icon ? <Icon className={s.icon} data-demo-ui-button-icon="true" aria-hidden="true" /> : null}
       {iconOnly ? null : <span data-demo-ui-button-label="true">{children}</span>}
     </button>
   );
@@ -136,7 +136,7 @@ export function ButtonLink({
       title={iconOnly ? label : undefined}
       className={buttonClassName({ tone, iconOnly, size, className })}
     >
-      {Icon ? <Icon className={s.icon} data-demo-ui-button-icon="true" /> : null}
+      {Icon ? <Icon className={s.icon} data-demo-ui-button-icon="true" aria-hidden="true" /> : null}
       {iconOnly ? null : <span data-demo-ui-button-label="true">{children}</span>}
     </Link>
   );

@@ -7,8 +7,8 @@ import { fileURLToPath } from "node:url";
 const testDir = dirname(fileURLToPath(import.meta.url));
 const resourceSource = readFileSync(resolve(testDir, "training-resource-pages.tsx"), "utf8");
 const cssSource = readFileSync(resolve(testDir, "training-resource-pages.module.css"), "utf8");
-const fixtureSource = readFileSync(resolve(testDir, "fixtures.ts"), "utf8");
-const typesSource = readFileSync(resolve(testDir, "types.ts"), "utf8");
+const fixtureSource = readFileSync(resolve(testDir, "../../data/lora-training.ts"), "utf8");
+const typesSource = readFileSync(resolve(testDir, "../../data/lora-training-types.ts"), "utf8");
 
 function sourceBetween(startMarker: string, endMarker: string) {
   const start = resourceSource.indexOf(startMarker);

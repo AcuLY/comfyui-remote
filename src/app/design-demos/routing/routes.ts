@@ -29,7 +29,7 @@ import {
 
 import type { DemoData } from "../data/types";
 import { firstGroup, firstPreset, firstProject, firstRun, firstSection, firstTemplate } from "../data/selectors";
-import { buildLoraTrainingDemoData } from "../features/lora-training/fixtures";
+import { buildLoraTrainingDemoData } from "../data/lora-training";
 import { rawSectionId } from "../shared/media/image-status";
 import type { Match, NavLinkDef, RouteDef } from "./types";
 import { SHOWCASE_ROUTE_METADATA } from "./showcase-routes";

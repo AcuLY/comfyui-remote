@@ -34,6 +34,13 @@ function parseCivitaiLinks(value: SqlRow[string]) {
   return Array.isArray(parsed) ? parsed.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0) : [];
 }
 
+function parseLinkedVariants(value: SqlRow[string]) {
+  const parsed = parseJson<DemoPresetLinkedVariant[]>(value, []);
+  return Array.isArray(parsed)
+    ? parsed.filter((entry): entry is DemoPresetLinkedVariant => typeof entry?.presetId === "string" && typeof entry.variantId === "string")
+    : [];
+}
+
 export async function loadDesignDemoData(): Promise<DemoData> {
   const sqlite = resolveSqlitePath();
   if (!sqlite.path) {
@@ -292,6 +299,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
       .all() as SqlRow[]) {
       const presetId = text(row.presetId);
       const variantId = text(row.id);
+      const linkedVariants = JSON.stringify(linkedVariantsBySource.get(variantId) ?? []);
       if (!variantsByPreset.has(presetId)) variantsByPreset.set(presetId, []);
       variantsByPreset.get(presetId)!.push({
         id: variantId,
@@ -301,7 +309,7 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         negativePrompt: text(row.negativePrompt, "negative prompt"),
         lora1: parsePresetLoras(row.lora1),
         lora2: parsePresetLoras(row.lora2),
-        linkedVariants: linkedVariantsBySource.get(variantId) ?? [],
+        linkedVariants: parseLinkedVariants(linkedVariants),
       });
     }
 
