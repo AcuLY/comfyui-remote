@@ -40,6 +40,23 @@ test("preview frames expose meaningful alt text and intrinsic dimensions", () =>
   assert.match(imgTag, /height=\{image\.height/, "preview images should forward image height metadata");
 });
 
+test("media image components fall back to icons after load failures", () => {
+  const components = [
+    sourceFor("image-thumb-small/index.tsx"),
+    sourceFor("image-thumb-medium/index.tsx"),
+    sourceFor("image-preview-frame/index.tsx"),
+  ];
+
+  for (const source of components) {
+    assert.match(source, /loadFailed/, "media components should track image load failure state");
+    assert.match(source, /onError=\{handleImageError\}/, "media images should switch to fallback content on load errors");
+    assert.match(source, /onLoad=\{handleImageLoad\}/, "media images should detect zero-byte image responses that finish as load events");
+    assert.match(source, /setInterval/, "media components should keep checking briefly after hydration for late broken image completion");
+    assert.match(source, /naturalWidth === 0/, "media components should catch images that failed before React hydration");
+    assert.match(source, /!loadFailed/, "media components should stop rendering the failing img after an error");
+  }
+});
+
 test("medium list expand chevrons are decorative", () => {
   const listSource = sourceFor("image-list-medium/index.tsx");
 

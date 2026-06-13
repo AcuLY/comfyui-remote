@@ -6,7 +6,9 @@ import { toImageUrl } from "@/lib/image-url";
 import type { DemoImage } from "./types";
 
 export function fallbackImages(): DemoImage[] {
-  const imageRoot = path.resolve(/* turbopackIgnore: true */ process.cwd(), "data", "images");
+  const imageRoot = path.resolve(
+    /* turbopackIgnore: true */ process.env.OUTPUT_BASE_PATH ?? path.join(process.cwd(), "data", "images"),
+  );
   const files: string[] = [];
 
   function walk(dir: string) {
@@ -24,7 +26,14 @@ export function fallbackImages(): DemoImage[] {
       if (entry.isDirectory()) {
         walk(fullPath);
       } else if (/\.(png|jpe?g|webp|gif)$/i.test(entry.name)) {
-        files.push(fullPath);
+        try {
+          const fileStat = fs.statSync(/* turbopackIgnore: true */ fullPath);
+          if (fileStat.isFile() && fileStat.size > 0) {
+            files.push(fullPath);
+          }
+        } catch {
+          // Ignore files that disappear during local preview scans.
+        }
       }
     }
   }

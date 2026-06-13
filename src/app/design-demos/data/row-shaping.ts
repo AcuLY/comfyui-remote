@@ -1,7 +1,45 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import { toImageUrl } from "@/lib/image-url";
 
 import type { DemoImage, DemoProject, DemoSection } from "./types";
 import type { SqlRow, SqlValue } from "./sql-types";
+
+const DATA_IMAGES_PREFIX = "data/images/";
+
+function outputImageRoot() {
+  return path.resolve(/* turbopackIgnore: true */ process.env.OUTPUT_BASE_PATH ?? path.join(process.cwd(), "data/images"));
+}
+
+function stripDataImagesPrefix(value: string) {
+  const normalized = value.replace(/\\/g, "/");
+  return normalized.startsWith(DATA_IMAGES_PREFIX) ? normalized.slice(DATA_IMAGES_PREFIX.length) : normalized;
+}
+
+function isInsideImageRoot(root: string, resolved: string) {
+  const rootWithSeparator = root.endsWith(path.sep) ? root : `${root}${path.sep}`;
+  if (process.platform === "win32") {
+    return resolved.toLowerCase().startsWith(rootWithSeparator.toLowerCase());
+  }
+  return resolved.startsWith(rootWithSeparator);
+}
+
+function hasRenderableLocalImage(value: string) {
+  const relativePath = stripDataImagesPrefix(value);
+  if (!relativePath) return false;
+
+  const root = outputImageRoot();
+  const resolved = path.resolve(/* turbopackIgnore: true */ root, relativePath);
+  if (!isInsideImageRoot(root, resolved)) return false;
+
+  try {
+    const fileStat = fs.statSync(/* turbopackIgnore: true */ resolved);
+    return fileStat.isFile() && fileStat.size > 0;
+  } catch {
+    return false;
+  }
+}
 
 export function text(value: SqlValue | undefined, fallback = "") {
   if (value === null || value === undefined) return fallback;
@@ -48,8 +86,14 @@ export function formatSize(value: SqlValue | undefined) {
 }
 
 export function imageFromRow(row: SqlRow, index: number): DemoImage | null {
-  const sourcePath = text(row.thumbPath) || text(row.filePath);
-  const fullPath = text(row.filePath) || sourcePath;
+  const thumbPath = text(row.thumbPath);
+  const filePath = text(row.filePath);
+  const sourcePath = hasRenderableLocalImage(thumbPath)
+    ? thumbPath
+    : hasRenderableLocalImage(filePath)
+      ? filePath
+      : "";
+  const fullPath = hasRenderableLocalImage(filePath) ? filePath : sourcePath;
   const src = toImageUrl(sourcePath);
   const full = toImageUrl(fullPath);
   if (!src || !full) return null;
