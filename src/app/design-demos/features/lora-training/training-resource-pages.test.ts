@@ -54,6 +54,7 @@ test("training resource pages use product-facing copy instead of internal prompt
     /普通预设/,
     /Caption 生成指引/,
     /Caption 指引/,
+    /字段/,
   ].forEach((pattern) => {
     assert.doesNotMatch(visibleResourceCopy, pattern, `training resource pages should hide internal copy: ${pattern}`);
   });

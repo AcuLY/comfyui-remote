@@ -1305,7 +1305,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
           <EditorBlock
             actions={<StatusBadge status="ready" label={templateDraft.mode === "new" ? "待创建" : "本地草稿"} />}
             className={s.trainingTemplateEditorBlock}
-            description="页面内记录当前模板草稿，可继续调整字段和小节列表。"
+            description="页面内记录当前模板草稿，可继续调整基础信息和小节列表。"
             headerClassName={s.trainingTemplateEditorHeader}
             title="模板保存草稿"
           >
