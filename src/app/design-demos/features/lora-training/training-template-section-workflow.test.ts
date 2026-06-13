@@ -60,10 +60,10 @@ test("training template section scene-block actions update local front-end state
   assert.match(templateSectionPage, /handleAddLocalTemplateBlock/, "template section should add a local draft block");
   assert.match(templateSectionPage, /handleMoveTemplateBlock/, "template section should reorder blocks locally");
   assert.match(templateSectionPage, /handleDeleteTemplateBlock/, "template section should delete blocks locally");
-  assert.match(templateSectionPage, /editingTemplateBlockId/, "template section should track the block currently being edited");
+  assert.match(templateSectionPage, /editingTemplateBlockState/, "template section should track the block currently being edited with route context");
   assert.match(templateSectionPage, /handleUpdateTemplateBlock/, "template section should update block text fields locally");
   assert.match(templateSectionPage, /sceneBlocks\.map/, "template block list should render the local block state");
-  assert.match(templateSectionPage, /isEditing=\{editingTemplateBlockId === block\.id\}/, "template block cards should receive edit state");
+  assert.match(templateSectionPage, /isEditing=\{visibleEditingTemplateBlockId === block\.id\}/, "template block cards should receive scoped edit state");
   assert.match(templateSectionPage, /onEdit=\{setEditingTemplateBlockId\}/, "template block cards should toggle local edit state");
   assert.match(templateSectionPage, /onUpdate=\{handleUpdateTemplateBlock\}/, "template block cards should push edits into local state");
   assert.match(blockCard, /isEditing/, "template block card should render an edit mode");
@@ -143,6 +143,13 @@ test("training template section state stays scoped to the active template sectio
   assert.match(templateSectionPage, /sectionId:\s*string;/, "saved template section drafts should be typed with the active section id");
   assert.match(templateSectionPage, /templateId:\s*activeTemplate\.id/, "scene-block updates and saved drafts should store the active template id");
   assert.match(templateSectionPage, /sectionId:\s*activeSection\.id/, "scene-block updates and saved drafts should store the active section id");
+  assert.match(templateSectionPage, /editingTemplateBlockState/, "editing template block state should be stored with route context");
+  assert.match(
+    templateSectionPage,
+    /editingTemplateBlockState\.templateId === activeTemplate\.id && editingTemplateBlockState\.sectionId === activeSection\.id \? editingTemplateBlockState\.blockId : null/,
+    "editing template block state should reset after template or section changes",
+  );
+  assert.match(templateSectionPage, /isEditing=\{visibleEditingTemplateBlockId === block\.id\}/, "template block cards should only receive scoped edit state");
   assert.match(
     templateSectionPage,
     /templateSectionDraft\?\.templateId === activeTemplate\.id && templateSectionDraft\?\.sectionId === activeSection\.id \? templateSectionDraft : null/,
@@ -158,6 +165,11 @@ test("training template section state stays scoped to the active template sectio
     templateSectionPage,
     /\{templateSectionDraft \? \(/,
     "template section should not render an unscoped saved draft",
+  );
+  assert.doesNotMatch(
+    templateSectionPage,
+    /const \[editingTemplateBlockId, setEditingTemplateBlockId\] = useState<string \| null>\(null\)/,
+    "editing template block state should not be stored without route context",
   );
 });
 

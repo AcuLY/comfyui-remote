@@ -165,10 +165,10 @@ test("training section detail scene-block actions update local front-end state",
   assert.match(detailPage, /handleAddLocalSceneBlock/, "section detail should add a local draft block");
   assert.match(detailPage, /handleMoveSceneBlock/, "section detail should reorder blocks locally");
   assert.match(detailPage, /handleDeleteSceneBlock/, "section detail should delete blocks locally");
-  assert.match(detailPage, /editingSceneBlockId/, "section detail should track the block currently being edited");
+  assert.match(detailPage, /editingSceneBlockState/, "section detail should track the block currently being edited with route context");
   assert.match(detailPage, /handleUpdateSceneBlock/, "section detail should update block text fields locally");
   assert.match(detailPage, /sceneBlocks\.map/, "block list should render the local block state");
-  assert.match(detailPage, /isEditing=\{editingSceneBlockId === block\.id\}/, "block cards should receive edit state");
+  assert.match(detailPage, /isEditing=\{visibleEditingSceneBlockId === block\.id\}/, "block cards should receive scoped edit state");
   assert.match(detailPage, /onEdit=\{setEditingSceneBlockId\}/, "block cards should toggle local edit state");
   assert.match(detailPage, /onUpdate=\{handleUpdateSceneBlock\}/, "block cards should push edits into local state");
   assert.match(sceneBlockCard, /isEditing/, "scene block card should render an edit mode");
@@ -245,6 +245,13 @@ test("training section detail state stays scoped to the active project section",
   );
   assert.match(detailPage, /projectId:\s*activeProject\.id/, "scene-block updates and saved drafts should store the active project id");
   assert.match(detailPage, /projectId:\s*string;/, "saved section drafts should be typed with the parent project id");
+  assert.match(detailPage, /editingSceneBlockState/, "editing scene-block state should be stored with route context");
+  assert.match(
+    detailPage,
+    /editingSceneBlockState\.projectId === activeProject\.id && editingSceneBlockState\.sectionId === activeSection\.id \? editingSceneBlockState\.blockId : null/,
+    "editing scene-block state should reset after project or section changes",
+  );
+  assert.match(detailPage, /isEditing=\{visibleEditingSceneBlockId === block\.id\}/, "scene block cards should only receive scoped edit state");
   assert.match(
     detailPage,
     /sectionDraft\?\.projectId === activeProject\.id && sectionDraft\?\.sectionId === activeSection\.id \? sectionDraft : null/,
@@ -259,6 +266,11 @@ test("training section detail state stays scoped to the active project section",
     detailPage,
     /const visibleSectionDraft = sectionDraft\?\.sectionId === section\?\.id \? sectionDraft : null/,
     "section-only saved drafts should not leak between projects",
+  );
+  assert.doesNotMatch(
+    detailPage,
+    /const \[editingSceneBlockId, setEditingSceneBlockId\] = useState<string \| null>\(null\)/,
+    "editing scene-block state should not be stored without route context",
   );
 });
 

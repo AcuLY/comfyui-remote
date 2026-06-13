@@ -1340,7 +1340,11 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     templateId: template?.id ?? null,
     title: section?.title ?? "",
   }));
-  const [editingTemplateBlockId, setEditingTemplateBlockId] = useState<string | null>(null);
+  const [editingTemplateBlockState, setEditingTemplateBlockState] = useState(() => ({
+    blockId: null as string | null,
+    sectionId: section?.id ?? null,
+    templateId: template?.id ?? null,
+  }));
   const [templateSectionDraft, setTemplateSectionDraft] = useState<{
     blockCount: number;
     enabledLabel: string;
@@ -1357,6 +1361,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   const activeTemplate = template;
   const activeSection = section;
   const visibleTemplateSectionDraft = templateSectionDraft?.templateId === activeTemplate.id && templateSectionDraft?.sectionId === activeSection.id ? templateSectionDraft : null;
+  const visibleEditingTemplateBlockId = editingTemplateBlockState.templateId === activeTemplate.id && editingTemplateBlockState.sectionId === activeSection.id ? editingTemplateBlockState.blockId : null;
   const templateSectionForm = templateSectionFormState.templateId === activeTemplate.id && templateSectionFormState.sectionId === activeSection.id ? templateSectionFormState : {
     enabledLabel: activeSection.enabled ? "启用" : "停用",
     sectionId: activeSection.id,
@@ -1365,6 +1370,14 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   };
   const importedPreset = training.presets[0];
   const resolvedTemplateScene = sceneBlocks.map((block) => block.text).join("\n\n");
+
+  function setEditingTemplateBlockId(blockId: string | null) {
+    setEditingTemplateBlockState({
+      blockId,
+      sectionId: activeSection.id,
+      templateId: activeTemplate.id,
+    });
+  }
 
   function handleUpdateTemplateSectionForm(field: "enabledLabel" | "title", value: string) {
     setTemplateSectionForm((current) => {
@@ -1427,7 +1440,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   }
 
   function handleDeleteTemplateBlock(blockId: string) {
-    if (editingTemplateBlockId === blockId) setEditingTemplateBlockId(null);
+    if (visibleEditingTemplateBlockId === blockId) setEditingTemplateBlockId(null);
     updateTemplateBlocks((current) => current.filter((block) => block.id !== blockId));
   }
 
@@ -1493,7 +1506,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
               <TemplateSceneBlockCard
                 block={block}
                 index={blockIndex}
-                isEditing={editingTemplateBlockId === block.id}
+                isEditing={visibleEditingTemplateBlockId === block.id}
                 key={block.id}
                 onDelete={handleDeleteTemplateBlock}
                 onEdit={setEditingTemplateBlockId}

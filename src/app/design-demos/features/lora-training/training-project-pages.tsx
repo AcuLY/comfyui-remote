@@ -1392,7 +1392,11 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     projectId: project?.id ?? null,
     results: project?.resultPool ?? [],
   }));
-  const [editingSceneBlockId, setEditingSceneBlockId] = useState<string | null>(null);
+  const [editingSceneBlockState, setEditingSceneBlockState] = useState(() => ({
+    blockId: null as string | null,
+    projectId: project?.id ?? null,
+    sectionId: section?.id ?? null,
+  }));
   const [sectionDraft, setSectionDraft] = useState<{
     blockCount: number;
     firstBlock: string;
@@ -1411,8 +1415,17 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   const activeProject = project;
   const activeSection = section;
   const visibleSectionDraft = sectionDraft?.projectId === activeProject.id && sectionDraft?.sectionId === activeSection.id ? sectionDraft : null;
+  const visibleEditingSceneBlockId = editingSceneBlockState.projectId === activeProject.id && editingSceneBlockState.sectionId === activeSection.id ? editingSceneBlockState.blockId : null;
   const importedPreset = training.presets[0];
   const scenePreview = sceneBlocks.map((block) => block.text).join("\n\n");
+
+  function setEditingSceneBlockId(blockId: string | null) {
+    setEditingSceneBlockState({
+      blockId,
+      projectId: activeProject.id,
+      sectionId: activeSection.id,
+    });
+  }
 
   function updateSceneBlocks(updater: (current: LoraTrainingSectionBlock[]) => LoraTrainingSectionBlock[]) {
     setSceneBlocks((current) => ({
@@ -1463,7 +1476,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   }
 
   function handleDeleteSceneBlock(blockId: string) {
-    if (editingSceneBlockId === blockId) setEditingSceneBlockId(null);
+    if (visibleEditingSceneBlockId === blockId) setEditingSceneBlockId(null);
     updateSceneBlocks((current) => current.filter((block) => block.id !== blockId));
   }
 
@@ -1533,7 +1546,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
                 <SceneBlockCard
                   block={block}
                   index={index}
-                  isEditing={editingSceneBlockId === block.id}
+                  isEditing={visibleEditingSceneBlockId === block.id}
                   key={block.id}
                   onDelete={handleDeleteSceneBlock}
                   onEdit={setEditingSceneBlockId}
