@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useSearchParams } from "next/navigation";
+import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, CheckSquare, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
@@ -98,22 +99,9 @@ function presetUsageLabel(preset: LoraTrainingPreset) {
   return usageCount > 0 ? `${usageCount} 处引用` : "未引用";
 }
 
-function subscribeToUrlSearch(onStoreChange: () => void) {
-  if (typeof window === "undefined") return () => {};
-  window.addEventListener("popstate", onStoreChange);
-  return () => window.removeEventListener("popstate", onStoreChange);
-}
-
-function getUrlSearchSnapshot() {
-  return typeof window === "undefined" ? "" : window.location.search;
-}
-
-function getServerUrlSearchSnapshot() {
-  return "";
-}
-
 function useUrlSearch() {
-  return useSyncExternalStore(subscribeToUrlSearch, getUrlSearchSnapshot, getServerUrlSearchSnapshot);
+  const searchParams = useSearchParams();
+  return searchParams.toString();
 }
 
 type NewPresetHints = {

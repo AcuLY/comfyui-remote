@@ -12,6 +12,14 @@ test("training resource pages keep backend wiring notes out of user-facing copy"
   assert.doesNotMatch(pageSource, /后端接入时/, "training resource UI should not expose backend integration notes");
 });
 
+test("training resource query hints use Next search params instead of a manual location store", () => {
+  assert.match(pageSource, /import \{ useSearchParams \} from "next\/navigation";/, "resource pages should subscribe to Next-managed query changes");
+  assert.match(pageSource, /const searchParams = useSearchParams\(\)/, "resource pages should read current query params through Next navigation state");
+  assert.match(pageSource, /searchParams\.toString\(\)/, "resource pages should pass the live query string into hint parsers");
+  assert.doesNotMatch(pageSource, /useSyncExternalStore/, "resource query hints should not depend on a manual window.location.search store");
+  assert.doesNotMatch(pageSource, /window\.location\.search/, "resource query hints should not read location.search during render");
+});
+
 test("training resource delete actions describe local removal instead of confirmation placeholders", () => {
   assert.doesNotMatch(pageSource, /删除训练预制需要确认/, "single preset delete feedback should describe the local list removal");
   assert.doesNotMatch(pageSource, /批量删除训练预制需要确认/, "batch preset delete feedback should describe the local list removal");

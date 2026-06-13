@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
-import { useCallback, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Archive,
   ArrowDown,
@@ -145,22 +146,9 @@ function nextProjectSectionDraftNumber(sections: LoraTrainingSection[]) {
   return ordinals.length ? Math.max(...ordinals) + 1 : 1;
 }
 
-function subscribeToUrlSearch(onStoreChange: () => void) {
-  if (typeof window === "undefined") return () => {};
-  window.addEventListener("popstate", onStoreChange);
-  return () => window.removeEventListener("popstate", onStoreChange);
-}
-
-function getUrlSearchSnapshot() {
-  return typeof window === "undefined" ? "" : window.location.search;
-}
-
-function getServerUrlSearchSnapshot() {
-  return "";
-}
-
 function useUrlSearch() {
-  return useSyncExternalStore(subscribeToUrlSearch, getUrlSearchSnapshot, getServerUrlSearchSnapshot);
+  const searchParams = useSearchParams();
+  return searchParams.toString();
 }
 
 function readNewProjectTemplateHints(search: string): NewProjectTemplateHints {
@@ -703,8 +691,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   const newProjectTemplateHints = readNewProjectTemplateHints(urlSearch);
   const sourceTemplate = training.templates.find((template) => template.id === newProjectTemplateHints.templateId)
     ?? training.templates.find((template) => template.title === newProjectTemplateHints.templateTitle);
-  const initialTemplate = sourceTemplate ?? training.templates[0];
-  const initialSectionSeeds = sourceTemplate?.sections ?? initialTemplate?.sections ?? [];
+  const initialTemplate = sourceTemplate;
+  const initialSectionSeeds = sourceTemplate?.sections ?? [];
   const projectTemplateContextId = initialTemplate?.id ?? "no-template";
   const baseModelOptions = data.models.filter((model) => model.modelType === "checkpoint").map((model) => model.name);
   const defaultProjectForm = {
@@ -713,7 +701,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     detailPrompt: "发型、眼睛、服装材质、常见构图和需要避免的变化。",
     perSectionImageCount: "4",
     templateContextId: projectTemplateContextId,
-    templateTitle: initialTemplate?.title ?? "不使用模板",
+    templateTitle: sourceTemplate?.title ?? "不使用模板",
     title: "新角色 LoRA 项目",
     trainingSteps: "2400",
     usagePrompt: "角色触发词、服装和稳定身份描述。",
@@ -964,6 +952,9 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
         <aside className={s.projectCreateAside}>
           <Panel title="初始小节" subtitle="模板小节只作为创建时初始小节，创建后独立管理。">
             <div className={s.sectionSeedList}>
+              {sectionSeeds.length === 0 ? (
+                <div className={s.emptyInline}>没有初始小节。选择一个训练模板后，会在这里生成可调整的小节种子。</div>
+              ) : null}
               {sectionSeeds.map((section, index) => (
                 <article className={s.sectionSeedCard} key={section.id}>
                   <div className={s.sectionSeedHeader}>

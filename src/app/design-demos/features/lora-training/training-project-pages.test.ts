@@ -77,6 +77,14 @@ test("training project pages keep backend wiring notes out of user-facing copy",
   assert.doesNotMatch(pagesSource, /后端接入时/, "training project UI should not expose backend integration notes");
 });
 
+test("training project query hints use Next search params instead of a manual location store", () => {
+  assert.match(pagesSource, /import \{ useSearchParams \} from "next\/navigation";/, "project pages should subscribe to Next-managed query changes");
+  assert.match(pagesSource, /const searchParams = useSearchParams\(\)/, "project pages should read current query params through Next navigation state");
+  assert.match(pagesSource, /searchParams\.toString\(\)/, "project pages should pass the live query string into hint parsers");
+  assert.doesNotMatch(pagesSource, /useSyncExternalStore/, "project query hints should not depend on a manual window.location.search store");
+  assert.doesNotMatch(pagesSource, /window\.location\.search/, "project query hints should not read location.search during render");
+});
+
 test("training project pages use product-facing dataset and template copy", () => {
   for (const term of [
     /最近 kept 图/,
@@ -651,6 +659,21 @@ test("training project create page reads template context from project-create li
   assert.match(formSource, /sourceTemplate/, "project form should resolve the hinted source template");
   assert.match(formSource, /来源训练模板/, "project form should show the source template context when present");
   assert.match(formSource, /sourceTemplate\?\.sections/, "initial section seeds should come from the source template");
+});
+
+test("training project create page does not silently apply the first template", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /const initialTemplate = sourceTemplate;/, "direct project creation should start without an implicit source template");
+  assert.match(formSource, /const initialSectionSeeds = sourceTemplate\?\.sections \?\? \[\];/, "seed sections should be empty until a template is hinted or chosen");
+  assert.match(formSource, /templateTitle:\s*sourceTemplate\?\.title \?\? "不使用模板"/, "the default template select should match the generation project form");
+  assert.match(formSource, /没有初始小节/, "empty seed state should explain that no template has been selected yet");
+  assert.doesNotMatch(formSource, /const initialTemplate = sourceTemplate \?\? training\.templates\[0\];/, "direct project creation should not silently use the first training template");
 });
 
 test("training project create page keeps source template ids out of visible copy", () => {
