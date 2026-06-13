@@ -134,23 +134,32 @@ test("training preset selection labels reflect selected state like the managed l
 });
 
 test("training resource repeated object actions include the acted-on object name", () => {
+  const presetItemStart = pageSource.indexOf("function TrainingPresetLibraryItemRow");
+  const presetCategoryStart = pageSource.indexOf("function TrainingPresetCategoryRailItem");
   const sortPanelStart = pageSource.indexOf("function TrainingPresetSortPanel");
   const sortRowStart = pageSource.indexOf("function TrainingPresetSortableSortRow");
   const templateItemStart = pageSource.indexOf("function TrainingTemplateListItem");
   const templateRowStart = pageSource.indexOf("function TemplateEditorSectionRow");
   const templatesPageStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  assert.notEqual(presetItemStart, -1);
+  assert.notEqual(presetCategoryStart, -1);
   assert.notEqual(sortPanelStart, -1);
   assert.notEqual(sortRowStart, -1);
   assert.notEqual(templateItemStart, -1);
   assert.notEqual(templateRowStart, -1);
   assert.notEqual(templatesPageStart, -1);
 
+  const presetItemSource = pageSource.slice(presetItemStart, presetCategoryStart);
   const sortPanelSource = pageSource.slice(sortPanelStart, sortRowStart);
   const templateItemSource = pageSource.slice(templateItemStart, templateRowStart);
   const templateRowSource = pageSource.slice(templateRowStart, templatesPageStart);
 
+  assert.match(presetItemSource, /ariaLabel=\{`编辑训练预制：\$\{preset\.title\}`\}/, "preset edit action should name the preset");
   assert.match(sortPanelSource, /ariaLabel=\{`保存排序组：\$\{title\}`\}/, "sort-group save action should name the group");
+  assert.match(templateItemSource, /ariaLabel=\{`用训练模板创建项目：\$\{template\.title\}`\}/, "template create-project action should name the template");
+  assert.match(templateItemSource, /ariaLabel=\{`编辑训练模板：\$\{template\.title\}`\}/, "template edit action should name the template");
   assert.match(templateItemSource, /ariaLabel=\{`删除训练模板：\$\{template\.title\}`\}/, "template delete action should name the template");
+  assert.match(templateRowSource, /ariaLabel=\{`编辑训练模板小节：\$\{section\.title\}`\}/, "template-section edit action should name the section");
   assert.match(templateRowSource, /ariaLabel=\{`复制训练模板小节：\$\{section\.title\}`\}/, "template-section copy action should name the section");
   assert.match(templateRowSource, /ariaLabel=\{`删除训练模板小节：\$\{section\.title\}`\}/, "template-section delete action should name the section");
 });

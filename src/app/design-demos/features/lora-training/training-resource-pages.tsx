@@ -342,7 +342,7 @@ function TrainingPresetLibraryItemRow({
         meta={<div className={s.trainingPresetMeta}>{presetStatus(preset)}<span>更新 {preset.updatedAt}</span></div>}
         actions={(
           <div className={s.trainingPresetActions}>
-            <ButtonLink href={`/training/presets/${preset.id}`} size="sm" icon={Edit3}>编辑</ButtonLink>
+            <ButtonLink href={`/training/presets/${preset.id}`} size="sm" icon={Edit3} ariaLabel={`编辑训练预制：${preset.title}`}>编辑</ButtonLink>
             <Button size="sm" tone="danger" icon={Trash2} iconOnly ariaLabel={`删除训练预制：${preset.title}`} onClick={onDelete} feedback={{ tone: "warning", title: "训练预制已从列表移除", detail: preset.title }} />
           </div>
         )}
@@ -872,8 +872,8 @@ function TrainingTemplateListItem({
           {templateStatus(template)}
           <StatusBadge status="template" label={`${template.sectionCount} 小节`} />
           <div className={s.trainingTemplateListActions}>
-            <ButtonLink href={createProjectHref} icon={CopyPlus}>创建项目</ButtonLink>
-            <ButtonLink href={`/training/templates/${template.id}/edit`} icon={Edit3}>编辑</ButtonLink>
+            <ButtonLink href={createProjectHref} icon={CopyPlus} ariaLabel={`用训练模板创建项目：${template.title}`}>创建项目</ButtonLink>
+            <ButtonLink href={`/training/templates/${template.id}/edit`} icon={Edit3} ariaLabel={`编辑训练模板：${template.title}`}>编辑</ButtonLink>
             <Button tone="danger" icon={Trash2} ariaLabel={`删除训练模板：${template.title}`} onClick={onDelete} feedback={{ tone: "warning", title: "训练模板已移除", detail: template.title }}>删除</Button>
           </div>
         </div>
@@ -922,7 +922,7 @@ function TemplateEditorSectionRow({
           </div>
         </Link>
         <div className={s.trainingTemplateSectionActions}>
-          <ButtonLink href={href} icon={Edit3}>编辑</ButtonLink>
+          <ButtonLink href={href} icon={Edit3} ariaLabel={`编辑训练模板小节：${section.title}`}>编辑</ButtonLink>
           <Button tone="subtle" icon={CopyPlus} ariaLabel={`复制训练模板小节：${section.title}`} onClick={() => onCopy?.(section)} feedback={{ title: "训练模板小节已复制", detail: section.title }}>复制</Button>
           <Button tone="danger" icon={Trash2} ariaLabel={`删除训练模板小节：${section.title}`} onClick={() => onDelete?.(section.id)} feedback={{ tone: "warning", title: "训练模板小节已从草稿移除", detail: section.title }}>删除</Button>
         </div>
