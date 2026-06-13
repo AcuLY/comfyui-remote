@@ -490,6 +490,14 @@ type ReferenceCandidate = {
   meta?: string;
 };
 
+type SupplementalImageAttachment = {
+  id: string;
+  title: string;
+  detail: string;
+  image: DemoImage;
+  source: string;
+};
+
 type ReferenceSourceGroup = {
   id: string;
   title: string;
@@ -1705,12 +1713,19 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     supplementalPrompt: DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT,
     taskType: "训练集图片生成",
   }));
+  const [supplementalImageAttachmentState, setSupplementalImageAttachments] = useState(() => ({
+    attachments: [] as SupplementalImageAttachment[],
+    projectId: project?.id ?? null,
+    sectionId: section?.id ?? null,
+  }));
   const [generationTaskDraft, setGenerationTaskDraft] = useState<{
     finalInput: string;
     projectId: string;
     selectedReferenceTitles: string[];
     sectionId: string;
     sectionTitle: string;
+    supplementalImageCount: number;
+    supplementalImageTitles: string[];
     supplementalPrompt: string;
     taskType: string;
   } | null>(null);
@@ -1732,6 +1747,25 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     supplementalPrompt: DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT,
     taskType: "训练集图片生成",
   };
+  const supplementalImageAttachments = supplementalImageAttachmentState.projectId === activeProject.id && supplementalImageAttachmentState.sectionId === activeSection.id
+    ? supplementalImageAttachmentState.attachments
+    : [];
+  const supplementalImageCandidates: SupplementalImageAttachment[] = [
+    ...activeProject.referenceImages.slice(0, 3).map((reference) => ({
+      detail: reference.note,
+      id: `reference-${reference.id}`,
+      image: reference.image,
+      source: referenceKindLabel(reference.kind),
+      title: reference.label,
+    })),
+    ...activeProject.resultPool.slice(0, 3).map((result) => ({
+      detail: result.caption,
+      id: `result-${result.id}`,
+      image: result.image,
+      source: reviewStatusLabel(result.reviewStatus),
+      title: result.sourceLabel,
+    })),
+  ];
   const visibleGenerationTaskDraft = generationTaskDraft?.projectId === activeProject.id && generationTaskDraft.sectionId === activeSection.id ? generationTaskDraft : null;
   const sectionTitle = activeSection.title;
   const selectedReferences = referenceSourceTree
@@ -1741,10 +1775,14 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
   const selectedReferenceDetails = selectedReferences
     .map((reference) => `- ${reference.title}: ${reference.detail}`)
     .join("\n");
+  const supplementalImageDetails = supplementalImageAttachments
+    .map((attachment) => `- ${attachment.title}: ${attachment.detail}`)
+    .join("\n");
   const finalInputText = [
     activeProject.usagePrompt,
     activeSection.resolvedScene,
     selectedReferenceDetails ? `显式引用\n${selectedReferenceDetails}` : "",
+    supplementalImageDetails ? `补充图片附件\n${supplementalImageDetails}` : "",
     generationForm.supplementalPrompt,
   ]
     .map((part) => part.trim())
@@ -1787,6 +1825,35 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     });
   }
 
+  function handleAddSupplementalImage(candidate = supplementalImageCandidates[0]) {
+    if (!candidate) return;
+    setSupplementalImageAttachments((current) => {
+      const activeAttachments = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.attachments : [];
+      if (activeAttachments.some((attachment) => attachment.id === candidate.id)) {
+        return {
+          attachments: activeAttachments,
+          projectId: activeProject.id,
+          sectionId: activeSection.id,
+        };
+      }
+      return {
+        attachments: [...activeAttachments, candidate],
+        projectId: activeProject.id,
+        sectionId: activeSection.id,
+      };
+    });
+  }
+
+  function handleRemoveSupplementalImage(attachmentId: string) {
+    setSupplementalImageAttachments((current) => ({
+      attachments: current.projectId === activeProject.id && current.sectionId === activeSection.id
+        ? current.attachments.filter((attachment) => attachment.id !== attachmentId)
+        : [],
+      projectId: activeProject.id,
+      sectionId: activeSection.id,
+    }));
+  }
+
   function handleQueueGenerationTask() {
     setGenerationTaskDraft({
       finalInput: finalInputText,
@@ -1794,6 +1861,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
       selectedReferenceTitles,
       sectionId: activeSection.id,
       sectionTitle,
+      supplementalImageCount: supplementalImageAttachments.length,
+      supplementalImageTitles: supplementalImageAttachments.map((attachment) => attachment.title),
       supplementalPrompt: generationForm.supplementalPrompt,
       taskType: generationForm.taskType,
     });
@@ -1831,6 +1900,66 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
           <div className={s.formStack}>
             <FloatingSelect label="任务类型" value={generationForm.taskType} options={["训练集图片生成", "角色描述生成", "说明文本补全"]} onChange={(value) => handleUpdateGenerationForm("taskType", value)} />
             <Field multiline features={{ resize: true, clipboard: true }} label="补充提示词" value={generationForm.supplementalPrompt} onChange={(value) => handleUpdateGenerationForm("supplementalPrompt", value)} />
+            <section className={s.supplementalImageBlock} aria-label="补充图片附件">
+              <div className={s.supplementalImageHeader}>
+                <div>
+                  <strong>补充图片附件</strong>
+                  <span>{supplementalImageAttachments.length ? `${supplementalImageAttachments.length} 张已附加` : "可从参考图或结果池补充"}</span>
+                </div>
+                <Button
+                  size="sm"
+                  tone="subtle"
+                  icon={ImagePlus}
+                  disabled={supplementalImageCandidates.every((candidate) => supplementalImageAttachments.some((attachment) => attachment.id === candidate.id))}
+                  onClick={() => handleAddSupplementalImage()}
+                  feedback={{ title: "已添加补充图片", detail: supplementalImageCandidates[0]?.title }}
+                >
+                  快速添加
+                </Button>
+              </div>
+              <div className={s.supplementalImageCandidateList}>
+                {supplementalImageCandidates.map((candidate) => {
+                  const alreadyAttached = supplementalImageAttachments.some((attachment) => attachment.id === candidate.id);
+                  return (
+                    <button
+                      className={cx(s.supplementalImageCandidate, alreadyAttached && s.supplementalImageCandidateAttached)}
+                      disabled={alreadyAttached}
+                      key={candidate.id}
+                      type="button"
+                      onClick={() => handleAddSupplementalImage(candidate)}
+                    >
+                      <ImagePreviewFrame image={candidate.image} />
+                      <span>
+                        <strong>{candidate.title}</strong>
+                        <em>{alreadyAttached ? "已附加" : candidate.source}</em>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className={s.supplementalImageList}>
+                {supplementalImageAttachments.length ? supplementalImageAttachments.map((attachment) => (
+                  <article className={s.supplementalImageAttachment} key={attachment.id}>
+                    <ImagePreviewFrame image={attachment.image} />
+                    <span>
+                      <strong>{attachment.title}</strong>
+                      <small>{attachment.source} · {attachment.detail}</small>
+                    </span>
+                    <Button
+                      size="sm"
+                      tone="danger"
+                      icon={Trash2}
+                      onClick={() => handleRemoveSupplementalImage(attachment.id)}
+                      feedback={{ tone: "warning", title: "已移除补充图片", detail: attachment.title }}
+                    >
+                      移除
+                    </Button>
+                  </article>
+                )) : (
+                  <p>还没有补充图片，最终输入会先使用资料、小节场景和已选引用。</p>
+                )}
+              </div>
+            </section>
             <Field readOnly multiline features={{ clipboard: true }} label="最终输入预览" value={finalInputText} />
           </div>
         </Panel>
@@ -1841,6 +1970,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
             <div><dt>任务类型</dt><dd>{visibleGenerationTaskDraft.taskType}</dd></div>
             <div><dt>小节</dt><dd>{visibleGenerationTaskDraft.sectionTitle}</dd></div>
             <div><dt>已选引用</dt><dd>{visibleGenerationTaskDraft.selectedReferenceTitles.join("、") || "未添加引用"}</dd></div>
+            <div><dt>补充图片</dt><dd>{visibleGenerationTaskDraft.supplementalImageCount ? `${visibleGenerationTaskDraft.supplementalImageCount} 张 · ${visibleGenerationTaskDraft.supplementalImageTitles.join("、")}` : "未附加图片"}</dd></div>
             <div><dt>补充提示词</dt><dd>{visibleGenerationTaskDraft.supplementalPrompt || "未填写"}</dd></div>
             <div><dt>最终输入</dt><dd>{visibleGenerationTaskDraft.finalInput.split("\n")[0]}</dd></div>
           </dl>

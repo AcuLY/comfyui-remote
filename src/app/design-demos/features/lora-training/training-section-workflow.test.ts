@@ -319,6 +319,21 @@ test("generation compose saves editable task fields into final input and draft",
   assert.match(composePage, /supplementalPrompt:\s*generationForm\.supplementalPrompt/, "task draft should save the edited supplemental prompt");
 });
 
+test("generation compose manages supplemental image attachments in local state", () => {
+  const composePage = sourceBetween(
+    "export function LoraTrainingGenerationComposePage",
+    "export function LoraTrainingProjectResultsPage",
+  );
+
+  assert.match(composePage, /supplementalImageAttachments/, "compose page should keep supplemental image attachments in local state");
+  assert.match(composePage, /handleAddSupplementalImage/, "compose page should expose an explicit local add-image action");
+  assert.match(composePage, /handleRemoveSupplementalImage/, "compose page should expose an explicit local remove-image action");
+  assert.match(composePage, /补充图片附件/, "compose page should render a visible supplemental image attachment list");
+  assert.match(composePage, /supplementalImageCount:\s*supplementalImageAttachments\.length/, "task draft should save the supplemental image count");
+  assert.match(composePage, /visibleGenerationTaskDraft\.supplementalImageCount/, "visible task draft should summarize attached supplemental images");
+  assert.match(cssSource, /\.supplementalImageList\b/, "supplemental image attachments should have a dedicated compact list style");
+});
+
 test("generation compose task draft stays scoped to the active project section", () => {
   const composePage = sourceBetween(
     "export function LoraTrainingGenerationComposePage",

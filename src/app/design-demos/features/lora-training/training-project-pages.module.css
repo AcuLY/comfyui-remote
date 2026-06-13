@@ -1321,6 +1321,148 @@
   white-space: nowrap;
 }
 
+.supplementalImageBlock {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  border: 1px solid var(--demo-border);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, var(--demo-route-header-highlight), transparent 54%),
+    var(--demo-glass-soft);
+  padding: 10px;
+}
+
+.supplementalImageHeader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.supplementalImageHeader div,
+.supplementalImageAttachment span,
+.supplementalImageCandidate span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.supplementalImageHeader strong,
+.supplementalImageAttachment strong,
+.supplementalImageCandidate strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.supplementalImageHeader span,
+.supplementalImageAttachment small {
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.supplementalImageCandidateList {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 7px;
+}
+
+.supplementalImageCandidate {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 7px;
+  text-align: left;
+}
+
+.supplementalImageCandidate:hover,
+.supplementalImageCandidate:focus-visible {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-selected);
+  outline: none;
+}
+
+.supplementalImageCandidateAttached {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.supplementalImageCandidate :global([class*="imagePreviewFrame"]) {
+  width: 42px;
+  min-width: 42px;
+  height: 52px;
+  min-height: 52px;
+  border-radius: 8px;
+}
+
+.supplementalImageCandidate em {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--demo-green);
+  font-size: 10px;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.supplementalImageList {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 10px;
+}
+
+.supplementalImageList p {
+  margin: 0;
+  color: var(--demo-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.supplementalImageAttachment {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: var(--demo-field-bg);
+  padding: 7px;
+}
+
+.supplementalImageAttachment :global([class*="imagePreviewFrame"]) {
+  width: 38px;
+  min-width: 38px;
+  height: 46px;
+  min-height: 46px;
+  border-radius: 7px;
+}
+
+.supplementalImageAttachment small {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 @media (max-width: 980px) {
   .overviewGrid,
   .projectCreateWorkspace,
@@ -1398,6 +1540,20 @@
   .entityRow,
   .projectRunRow {
     gap: 8px;
+  }
+
+  .supplementalImageHeader,
+  .supplementalImageAttachment {
+    align-items: stretch;
+  }
+
+  .supplementalImageAttachment {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .supplementalImageAttachment :where([data-demo-ui-button="true"]) {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .projectRunRowFailed {
