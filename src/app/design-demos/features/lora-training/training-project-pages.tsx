@@ -523,7 +523,7 @@ function RunRows({
                   <ProjectRunFailureBlock message={failureMessage} />
                   <div className={s.projectRunFailureToolbar}>
                     <Button size="sm" tone="subtle" icon={Copy} ariaLabel={`复制任务报错：${run.title}`} onClick={() => copyProjectRunMessage(failureMessage)} feedback={{ title: "报错已复制", detail: failureMessage }}>复制</Button>
-                    <Button size="sm" tone="subtle" icon={Play} ariaLabel={`重试任务：${run.title}`} onClick={() => onRetryRun?.(run.id)} feedback={{ title: "已排队重试", detail: run.title }}>重试</Button>
+                    <Button size="sm" tone="subtle" icon={Play} ariaLabel={`重试任务：${run.title}`} onClick={() => onRetryRun?.(run.id)}>重试</Button>
                     <Button size="sm" tone="danger" icon={Trash2} ariaLabel={`移除任务：${run.title}`} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
                   </div>
                 </div>
@@ -3003,6 +3003,8 @@ export function LoraTrainingProjectScopedRunsPage({
   kind: LoraTrainingTaskKind;
   projectId?: string;
 }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const training = useTraining(data);
   const project = findProject(data, projectId);
   const [projectRunInteractionState, setProjectRunInteractionState] = useState(() => ({
@@ -3012,7 +3014,9 @@ export function LoraTrainingProjectScopedRunsPage({
     retriedProjectRunIds: new Set<string>(),
     status: "completed" as LoraTrainingTaskStatus,
   }));
+  const [isRetryingProjectRuns, setIsRetryingProjectRuns] = useState(false);
   if (!project) return <EmptyPage title="没有项目任务数据" />;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const projectRunInteraction = projectRunInteractionState.projectId === project.id && projectRunInteractionState.kind === kind ? projectRunInteractionState : {
     hiddenProjectRunIds: new Set<string>(),
     kind,
@@ -3062,11 +3066,89 @@ export function LoraTrainingProjectScopedRunsPage({
     });
   }
 
-  function handleRetryProjectRun(runId: string) {
-    updateProjectRunInteraction((current) => ({
-      ...current,
-      retriedProjectRunIds: new Set([...current.retriedProjectRunIds, runId]),
-    }));
+  async function handleRetryProjectRun(runId: string) {
+    const run = projectRuns.find((candidate) => candidate.id === runId);
+    if (!run) return;
+
+    const applyLocalRetryState = () => {
+      updateProjectRunInteraction((current) => ({
+        ...current,
+        retriedProjectRunIds: new Set([...current.retriedProjectRunIds, runId]),
+      }));
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalRetryState();
+      pushToast({
+        tone: "success",
+        title: "重试已排队",
+        detail: run.title,
+      });
+      return;
+    }
+
+    if (isRetryingProjectRuns) return;
+
+    setIsRetryingProjectRuns(true);
+    try {
+      const response = run.kind === "generation"
+        ? await (async () => {
+            if (!run.sectionId) {
+              throw new Error("当前生成任务缺少小节上下文，无法重试。");
+            }
+            return fetch(`/api/training/sections/${run.sectionId}/runs`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                parentRunId: run.id,
+              }),
+            });
+          })()
+        : await (async () => {
+            if (!run.datasetRevisionId) {
+              throw new Error("当前训练任务缺少数据集版本，无法重试。");
+            }
+            return fetch(`/api/training/projects/${project.id}/training-runs`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                revisionId: run.datasetRevisionId,
+                config: {
+                  overrides: {
+                    ordinary: {
+                      targetSteps: run.targetSteps,
+                    },
+                  },
+                },
+              }),
+            });
+          })();
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "重试失败",
+          detail: payload?.error?.message ?? "重试请求失败",
+        });
+        return;
+      }
+
+      applyLocalRetryState();
+      pushToast({
+        tone: "success",
+        title: "重试已排队",
+        detail: run.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "重试失败",
+        detail: error instanceof Error ? error.message : "重试请求失败",
+      });
+    } finally {
+      setIsRetryingProjectRuns(false);
+    }
   }
 
   return (

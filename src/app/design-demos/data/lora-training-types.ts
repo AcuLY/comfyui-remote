@@ -75,6 +75,7 @@ export type LoraTrainingRun = {
   kind: LoraTrainingTaskKind;
   status: LoraTrainingTaskStatus;
   projectId: string;
+  sectionId?: string;
   projectTitle: string;
   title: string;
   summary: string;

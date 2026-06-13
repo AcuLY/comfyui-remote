@@ -211,6 +211,7 @@ async function buildGenerationRuns(input: {
         kind: "generation" as const,
         status: run.status === "done" ? "completed" : run.status === "running" ? "running" : run.status === "queued" ? "queued" : "failed",
         projectId: input.jobId,
+        sectionId: images[0]?.sectionId ?? undefined,
         projectTitle: input.projectTitle,
         title: images[0]?.sectionId ? `${sectionTitle} 图片生成` : "训练图片生成",
         summary: `图片 · 小节 ${sectionTitle}`,

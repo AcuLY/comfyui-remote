@@ -660,6 +660,20 @@ test("project-scoped run rows manage local delete and failed retry state", () =>
   assert.match(runRowsSource, /已排队重试/, "retried failed rows should show queued retry state");
 });
 
+test("project-scoped run rows retry through the formal HTTP API on production routes", () => {
+  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
+  assert.notEqual(scopedPageStart, -1);
+
+  const scopedPageSource = pagesSource.slice(scopedPageStart);
+
+  assert.match(scopedPageSource, /usePathname/, "project-scoped retry should detect whether it is running under production \\/training routes");
+  assert.match(scopedPageSource, /fetch\(`\/api\/training\/sections\/\$\{run\.sectionId\}\/runs`/, "project-scoped generation retry should call the formal section run API");
+  assert.match(scopedPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/training-runs`/, "project-scoped training retry should call the formal project training run API");
+  assert.match(scopedPageSource, /parentRunId:\s*run\.id/, "project-scoped generation retry should pass the failed run id as the parent run");
+  assert.match(scopedPageSource, /revisionId:\s*run\.datasetRevisionId/, "project-scoped training retry should pass the original dataset revision id");
+  assert.match(scopedPageSource, /pushToast/, "project-scoped retry should surface API success or failure through the shared feedback system");
+});
+
 test("project-scoped run page interactions stay scoped to project and task kind", () => {
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
   assert.notEqual(scopedPageStart, -1);
