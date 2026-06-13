@@ -31,12 +31,30 @@ function taskDetailHref(run: LoraTrainingRun) {
 }
 
 function groupRunsByProject(runs: LoraTrainingRun[]) {
-  const groups = new Map<string, { id: string; title: string; rows: LoraTrainingRun[] }>();
+  const groups = new Map<string, { id: string; latestTimestamp: string; title: string; rows: LoraTrainingRun[] }>();
   for (const run of runs) {
-    if (!groups.has(run.projectId)) groups.set(run.projectId, { id: run.projectId, title: run.projectTitle, rows: [] });
-    groups.get(run.projectId)!.rows.push(run);
+    const existing = groups.get(run.projectId);
+    if (existing) {
+      existing.rows.push(run);
+      if (timestampRank(run.timestamp) > timestampRank(existing.latestTimestamp)) {
+        existing.latestTimestamp = run.timestamp;
+      }
+    } else {
+      groups.set(run.projectId, { id: run.projectId, latestTimestamp: run.timestamp, title: run.projectTitle, rows: [run] });
+    }
   }
-  return [...groups.values()];
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      rows: [...group.rows].sort((a, b) => timestampRank(b.timestamp) - timestampRank(a.timestamp)),
+    }))
+    .sort((a, b) => timestampRank(b.latestTimestamp) - timestampRank(a.latestTimestamp));
+}
+
+function timestampRank(value: string) {
+  const match = value.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return 0;
+  return Number(match[1]) * 60 + Number(match[2]);
 }
 
 function runPreviewImages(run: LoraTrainingRun, projects: ReturnType<typeof buildLoraTrainingDemoData>["projects"]) {
@@ -335,7 +353,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                       >
                         <ChevronDown className={cx(s.icon, collapsed && s.runProjectChevronCollapsed)} aria-hidden="true" />
                         <span>{group.title}</span>
-                        <em>{group.rows.length} 条记录{selectedInGroup ? ` · 已选 ${selectedInGroup}` : ""}</em>
+                        <em>{group.rows.length} 条记录{selectedInGroup ? ` · 已选 ${selectedInGroup}` : ""} · 最新 {group.latestTimestamp}</em>
                       </button>
                       <Checkbox
                         checked={allGroupSelected}

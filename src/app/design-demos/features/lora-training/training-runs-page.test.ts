@@ -68,6 +68,25 @@ test("training runs page keeps status counts only in status tabs", () => {
   assert.doesNotMatch(cssSource, /\.metricCard\b/, "runs page styles should not keep duplicate status metric cards");
 });
 
+test("training run project groups keep the queue-demo latest-run context", () => {
+  const groupStart = pageSource.indexOf("function groupRunsByProject");
+  const previewStart = pageSource.indexOf("function runPreviewImages");
+  const headerStart = pageSource.indexOf("className={s.runProjectHeaderToggle}");
+  const checkboxStart = pageSource.indexOf("<Checkbox", headerStart);
+  assert.notEqual(groupStart, -1, "runs page should define project grouping");
+  assert.notEqual(previewStart, -1, "runs page should define the next helper after project grouping");
+  assert.notEqual(headerStart, -1, "runs page should render a group header toggle");
+  assert.notEqual(checkboxStart, -1, "runs page group header should include a selection control after the toggle");
+
+  const groupSource = pageSource.slice(groupStart, previewStart);
+  const headerSource = pageSource.slice(headerStart, checkboxStart);
+
+  assert.match(groupSource, /latestTimestamp/, "training run groups should retain a latest timestamp summary like the queue demo");
+  assert.match(groupSource, /\.sort\(/, "training run groups should sort by latest task time instead of insertion order");
+  assert.match(groupSource, /timestampRank/, "training run groups should normalize the Chinese timestamp labels before sorting");
+  assert.match(headerSource, /最新 \{group\.latestTimestamp\}/, "training run group headers should expose the latest task time");
+});
+
 test("training run status badges use task-specific running labels", () => {
   assert.match(
     pageSource,
