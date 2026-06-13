@@ -6,7 +6,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, CheckSquare, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
-import { cx, demoHref } from "../../routing";
+import { cx, useRouteHref } from "../../routing";
 import { OperationStateStrip } from "../../shared/feedback/operation-state-strip";
 import { Button, ButtonLink } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
@@ -337,6 +337,7 @@ function TrainingPresetLibraryItemRow({
   preset: LoraTrainingPreset;
   selected: boolean;
 }) {
+  const hrefForRoute = useRouteHref();
   const { ref, style, handleProps } = useDemoSortable(preset.id);
 
   return (
@@ -354,8 +355,8 @@ function TrainingPresetLibraryItemRow({
             variant="compact"
           />
         )}
-        title={<Link className={s.trainingPresetTitleLink} href={demoHref(`/training/presets/${preset.id}`)}>{preset.title}</Link>}
-        description={<Link className={s.trainingPresetDescriptionLink} href={demoHref(`/training/presets/${preset.id}`)}>{preset.sceneDescriptionText}</Link>}
+        title={<Link className={s.trainingPresetTitleLink} href={hrefForRoute(`/training/presets/${preset.id}`)}>{preset.title}</Link>}
+        description={<Link className={s.trainingPresetDescriptionLink} href={hrefForRoute(`/training/presets/${preset.id}`)}>{preset.sceneDescriptionText}</Link>}
         body={(
           <div className={s.trainingPresetUsageChips}>
             <span>{String(index + 1).padStart(2, "0")}</span>
@@ -851,6 +852,7 @@ function TrainingTemplateListItem({
   selected: boolean;
   template: LoraTrainingTemplate;
 }) {
+  const hrefForRoute = useRouteHref();
   const { ref, style, handleProps } = useDemoSortable(template.id);
 
   return (
@@ -875,7 +877,7 @@ function TrainingTemplateListItem({
         </div>
         <div className={s.trainingTemplateListMain}>
           <div className={s.trainingTemplateListTitle}>
-            <Link href={demoHref(`/training/templates/${template.id}/edit`)} onClick={() => rememberTrainingTemplateListAnchor(template.id)}>
+            <Link href={hrefForRoute(`/training/templates/${template.id}/edit`)} onClick={() => rememberTrainingTemplateListAnchor(template.id)}>
               <strong>{template.title}</strong>
             </Link>
             <span>{template.description}</span>
@@ -883,7 +885,7 @@ function TrainingTemplateListItem({
           <div className={s.trainingTemplateSectionSummary}>
             {template.sections.slice(0, 5).map((section, index) => (
               <Link
-                href={demoHref(`/training/templates/${template.id}/sections/${index}`)}
+                href={hrefForRoute(`/training/templates/${template.id}/sections/${index}`)}
                 key={section.id}
                 onClick={() => rememberTrainingTemplateListAnchor(template.id)}
               >
@@ -921,6 +923,7 @@ function TemplateEditorSectionRow({
   section: LoraTrainingTemplateSection;
   templateId?: string;
 }) {
+  const hrefForRoute = useRouteHref();
   const href = templateId ? `/training/templates/${templateId}/sections/${index}` : "/training/templates/new";
   const { ref, style, handleProps } = useDemoSortable(section.id);
 
@@ -935,7 +938,7 @@ function TemplateEditorSectionRow({
         >
           <GripVertical aria-hidden="true" />
         </button>
-        <Link className={s.trainingTemplateSectionMain} href={demoHref(href)}>
+        <Link className={s.trainingTemplateSectionMain} href={hrefForRoute(href)}>
           <span className={s.trainingTemplateSectionTitleLine}>
             <span>{String(index + 1).padStart(2, "0")}</span>
             <strong>{section.title}</strong>

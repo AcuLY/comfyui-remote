@@ -36,9 +36,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const pathname = headersList.get("x-pathname") ?? "/";
   const isLoginPage = pathname === "/login";
   const isDesignDemoPage = pathname === "/design-demos" || pathname.startsWith("/design-demos/");
+  const isTrainingPage = pathname === "/training" || pathname.startsWith("/training/");
   const designDemoTheme = resolveDemoTheme(cookieStore.get(DESIGN_DEMO_THEME_COOKIE)?.value);
 
-  const content = isLoginPage || isDesignDemoPage ? children : <AppShell>{children}</AppShell>;
+  const content = isLoginPage || isDesignDemoPage || isTrainingPage ? children : <AppShell>{children}</AppShell>;
 
   return (
     <html

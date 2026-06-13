@@ -26,7 +26,7 @@ const navItems: NavItem[] = [
   { href: "/assets/presets", label: "预制", icon: BookOpen },
   { href: "/assets/templates", label: "模板", icon: LayoutTemplate },
   { href: "/assets/models", label: "模型", icon: Database },
-  { href: "/design-demos/training/runs", label: "LoRA训练", icon: FlaskConical },
+  { href: "/training/runs", label: "LoRA训练", icon: FlaskConical },
   { href: "/settings", label: "设置", icon: Settings },
 ];
 

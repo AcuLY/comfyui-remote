@@ -5,7 +5,7 @@ import Link from "next/link";
 import { CheckSquare, ChevronDown, CircleAlert, Clock3, Copy, RotateCcw, X } from "lucide-react";
 
 import type { DemoData } from "../../data";
-import { cx, demoHref } from "../../routing";
+import { cx, useRouteHref } from "../../routing";
 import { ImageListSmall } from "../../shared/media";
 import { Button } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
@@ -25,9 +25,9 @@ const STATUS_ITEMS: Array<{ value: LoraTrainingTaskStatus; label: string }> = [
 
 const ERROR_CLAMP_LINES = 3;
 
-function taskDetailHref(run: LoraTrainingRun) {
+function taskDetailHref(run: LoraTrainingRun, hrefForRoute: (route: string) => string) {
   const type = run.kind === "generation" ? "generation" : "training";
-  return demoHref(`/training/runs/${type}/${run.id}`);
+  return hrefForRoute(`/training/runs/${type}/${run.id}`);
 }
 
 function groupRunsByProject(runs: LoraTrainingRun[]) {
@@ -208,6 +208,7 @@ function CurrentRunningSurface({ runs }: { runs: LoraTrainingRun[] }) {
 }
 
 export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
+  const hrefForRoute = useRouteHref();
   const training = buildLoraTrainingDemoData(data);
   const [kind, setKind] = useState<LoraTrainingTaskKind>("generation");
   const [status, setStatus] = useState<LoraTrainingTaskStatus>("completed");
@@ -388,7 +389,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                 stopPropagation
                                 variant="compact"
                               />
-                              <Link className={cx(s.runMain, previewImages.length > 0 && s.runMainWithThumbs)} href={taskDetailHref(run)}>
+                              <Link className={cx(s.runMain, previewImages.length > 0 && s.runMainWithThumbs)} href={taskDetailHref(run, hrefForRoute)}>
                                 <span className={s.runText}>
                                   <strong>{run.title}</strong>
                                   <span>{run.summary}{retried ? " · 已重试" : ""}</span>

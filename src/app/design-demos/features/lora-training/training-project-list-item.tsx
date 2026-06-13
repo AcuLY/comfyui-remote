@@ -4,7 +4,7 @@ import Link from "next/link";
 import { GripVertical, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { cx, demoHref } from "../../routing";
+import { cx, useRouteHref } from "../../routing";
 import { ImageListSmall } from "../../shared/media/image-list-small";
 import { Button } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
@@ -68,7 +68,8 @@ export function TrainingProjectListItem({
   project: LoraTrainingProject;
   selected: boolean;
 }) {
-  const projectHref = demoHref(`/training/projects/${project.id}`);
+  const hrefForRoute = useRouteHref();
+  const projectHref = hrefForRoute(`/training/projects/${project.id}`);
   const sectionCountLabel = `${project.sectionCount} 小节`;
   const recentResultImages = project.resultPool.map((result) => result.image);
   const { ref, style, handleProps } = useDemoSortable(project.id);

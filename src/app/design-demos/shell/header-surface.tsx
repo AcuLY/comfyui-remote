@@ -6,7 +6,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
 
-import { cx, demoHref } from "../routing";
+import { cx, useRouteHref } from "../routing";
 import type { HeaderAction, HeaderSpec } from "../routing/header-specs";
 import { Button, ButtonLink } from "../shared/primitives";
 import s from "./header-surface.module.css";
@@ -124,6 +124,7 @@ export function RouteHeaderSurface({
   surfaceRef?: (node: HTMLElement | null) => void;
   titleId?: string;
 }) {
+  const hrefForRoute = useRouteHref();
   const isMobile = mode === "mobile";
   const resolvedTitleId = titleId ?? `${spec.key}-${mode}-title`;
   const overflowMenuId = `${resolvedTitleId}-actions-overflow`;
@@ -376,7 +377,7 @@ export function RouteHeaderSurface({
                       <Link
                         className={s.overflowMenuItem}
                         data-tone={unit.action.tone ?? "default"}
-                        href={demoHref(unit.action.href)}
+                        href={hrefForRoute(unit.action.href)}
                         key={unit.key}
                         onClick={() => setOverflowOpen(false)}
                       >

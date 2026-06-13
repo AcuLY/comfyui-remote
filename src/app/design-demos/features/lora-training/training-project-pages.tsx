@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 import type { DemoData, DemoImage } from "../../data";
-import { cx, demoHref } from "../../routing";
+import { cx, useRouteHref } from "../../routing";
 import { ImageListSmall } from "../../shared/media/image-list-small";
 import { ImagePreviewFrame } from "../../shared/media/image-preview-frame";
 import { ImagePreviewLarge } from "../../shared/media/image-preview-large";
@@ -177,13 +177,14 @@ function readNewProjectTemplateHints(search: string): NewProjectTemplateHints {
 }
 
 function ProjectNav({ active, project }: { active: (typeof PROJECT_TABS)[number]["key"]; project: LoraTrainingProject }) {
+  const hrefForRoute = useRouteHref();
   return (
     <nav className={s.projectNav} aria-label="训练项目页面">
       {PROJECT_TABS.map((item) => (
         <Link
           aria-current={item.key === active ? "page" : undefined}
           className={cx(s.projectNavItem, item.key === active && s.projectNavItemActive)}
-          href={demoHref(`/training/projects/${project.id}${item.path}`)}
+          href={hrefForRoute(`/training/projects/${project.id}${item.path}`)}
           key={item.key}
         >
           {item.label}
@@ -431,6 +432,7 @@ function RunRows({
   retriedRunIds?: Set<string>;
   runs: LoraTrainingRun[];
 }) {
+  const hrefForRoute = useRouteHref();
   if (runs.length === 0) return <div className={s.emptyInline}>没有任务记录</div>;
 
   return (
@@ -444,7 +446,7 @@ function RunRows({
           const failureMessage = run.errorMessage ?? "任务失败，请打开详情查看日志。";
           return (
             <article className={cx(s.projectRunRow, failed && s.projectRunRowFailed)} key={run.id}>
-              <Link className={s.projectRunMain} href={demoHref(`/training/runs/${type}/${run.id}`)}>
+              <Link className={s.projectRunMain} href={hrefForRoute(`/training/runs/${type}/${run.id}`)}>
                 <span className={s.projectRunText}>
                   <strong>{run.title}</strong>
                   <span>{run.summary} · {run.timestamp}</span>
@@ -518,6 +520,7 @@ function TrainingSectionRail({
   project: LoraTrainingProject;
   sections?: LoraTrainingSection[];
 }) {
+  const hrefForRoute = useRouteHref();
   return (
     <nav className={s.trainingSectionRail} aria-label="训练小节导航">
       <div className={s.trainingSectionRailHeader}>
@@ -531,7 +534,7 @@ function TrainingSectionRail({
             <Link
               aria-current={activeSectionId === section.id ? "page" : undefined}
               className={cx(s.trainingSectionRailItem, activeSectionId === section.id && s.trainingSectionRailItemActive)}
-              href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}
+              href={hrefForRoute(`/training/projects/${project.id}/sections/${section.id}`)}
               key={section.id}
             >
               <strong>{section.title}</strong>
@@ -1253,6 +1256,7 @@ function SectionCard({
   project: LoraTrainingProject;
   section: LoraTrainingSection;
 }) {
+  const hrefForRoute = useRouteHref();
   const { ref, style, handleProps } = useDemoSortable(section.id);
 
   return (
@@ -1268,7 +1272,7 @@ function SectionCard({
         </button>
         <div className={s.sectionCardMain}>
           <div className={s.sectionCardHeader}>
-            <Link href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}>
+            <Link href={hrefForRoute(`/training/projects/${project.id}/sections/${section.id}`)}>
               <span>{String(index + 1).padStart(2, "0")}</span>
               <strong>{section.title}</strong>
             </Link>
@@ -1296,7 +1300,7 @@ function SectionCard({
             <Link
               aria-label={`打开第 ${index + 1} 个训练小节最近结果：${section.title}`}
               className={s.sectionImages}
-              href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}
+              href={hrefForRoute(`/training/projects/${project.id}/sections/${section.id}`)}
             >
               <ImageListSmall images={section.images} limit={4} showCounts wide />
             </Link>
@@ -2159,6 +2163,7 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
 }
 
 export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: DemoData; projectId?: string }) {
+  const hrefForRoute = useRouteHref();
   const project = findProject(data, projectId);
   const [trainingDraftState, setTrainingDraft] = useState<{
     draft: {
@@ -2216,7 +2221,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
           <div className={s.entityRowsSurface}>
             <div className={s.entityRows}>
               {project.datasetRevisions.map((revision) => (
-                <Link className={s.entityRow} href={demoHref(`/training/projects/${project.id}/dataset/revisions/${revision.id}`)} key={revision.id}>
+                <Link className={s.entityRow} href={hrefForRoute(`/training/projects/${project.id}/dataset/revisions/${revision.id}`)} key={revision.id}>
                   <div>
                     <strong>{revision.version}</strong>
                     <span>{revision.itemCount} 张 · 缺说明文本 {revision.captionMissingCount} · {revision.manifestName}</span>

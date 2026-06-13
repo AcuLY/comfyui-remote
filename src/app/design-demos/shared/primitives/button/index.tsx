@@ -6,7 +6,7 @@ import type * as React from "react";
 import { Activity } from "lucide-react";
 
 import type { DemoButtonFeedback } from "../../../routing";
-import { cx, demoHref } from "../../../routing";
+import { cx, useRouteHref } from "../../../routing";
 import { useDemoFeedback } from "../../feedback/context";
 import type { ButtonTone, RouteIcon } from "../shared/types";
 import { controlLabel } from "../shared/utils";
@@ -122,11 +122,12 @@ export function ButtonLink({
   size?: "sm" | "md";
   scroll?: boolean;
 }) {
+  const hrefForRoute = useRouteHref();
   const label = controlLabel(children, ariaLabel);
 
   return (
     <Link
-      href={demoHref(href)}
+      href={hrefForRoute(href)}
       scroll={scroll}
       data-demo-ui-button="true"
       data-demo-ui-button-icon-only={iconOnly ? "true" : undefined}
