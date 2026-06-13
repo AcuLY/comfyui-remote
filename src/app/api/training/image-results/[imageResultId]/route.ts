@@ -1,4 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
+import { updateManagedTrainingImageResult } from "@/server/services/training/project-service";
 import {
   mapCharacterLoraPhase3Error,
   reviewCharacterLoraImages,
@@ -23,6 +24,13 @@ export async function PATCH(
 
   try {
     const { imageResultId } = await params;
+    const managed = await updateManagedTrainingImageResult(imageResultId, {
+      reviewStatus: typeof payload.reviewStatus === "string" ? String(payload.reviewStatus) : undefined,
+      captionDraft: typeof payload.captionDraft === "string" ? payload.captionDraft : null,
+    });
+    if (managed) {
+      return ok(managed);
+    }
     const operations: unknown[] = [];
 
     if (typeof payload.captionDraft === "string") {

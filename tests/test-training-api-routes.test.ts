@@ -44,7 +44,11 @@ test("GET project-scoped training resources expose sections, results, dataset re
   const trainingRunsRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
   const generationTasksRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
   const projects = await listProjects();
-  const projectId = (projects.find((project) => (project.sectionCount ?? 0) > 0 && (project.imageCount ?? 0) > 0) ?? projects[0]).id;
+  const projectId = (
+    projects.find((project) => !String(project.id).startsWith("training-project-") && (project.sectionCount ?? 0) > 0 && (project.imageCount ?? 0) > 0)
+    ?? projects.find((project) => (project.sectionCount ?? 0) > 0 && (project.imageCount ?? 0) > 0)
+    ?? projects[0]
+  ).id;
 
   const params = { params: Promise.resolve({ projectId }) };
   const [sectionsResponse, resultsResponse, revisionsResponse, trainingRunsResponse, generationTasksResponse] = await Promise.all([
@@ -633,6 +637,154 @@ test("training project route creates a project from the product payload through 
   assert.equal(afterPayload.ok, true);
   assert.ok(afterProjects.some((project) => project.id === createPayload.data.id && project.title === title));
   assert.ok(!beforeIds.has(createPayload.data.id));
+});
+
+test("managed training project profile reads and updates through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const profileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");
+  const listResponse = await projectsRoute.GET(new Request("http://localhost/api/training/projects"));
+  const listPayload = await listResponse.json();
+  const managed = (listPayload.data as Array<{ id: string }>).find((project) => String(project.id).startsWith("training-project-"));
+  assert.ok(managed);
+  const projectId = managed!.id;
+
+  const getResponse = await profileRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/profile`),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const getPayload = await getResponse.json();
+
+  assert.equal(getResponse.status, 200);
+  assert.equal(getPayload.ok, true);
+  assert.equal(getPayload.data.projectId, projectId);
+
+  const patchResponse = await profileRoute.PATCH(
+    new Request(`http://localhost/api/training/projects/${projectId}/profile`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        loraUsagePrompt: "更新后的使用提示词",
+        characterDetailPrompt: "更新后的角色细节描述",
+        profileSummary: "更新后的资料备注",
+      }),
+    }),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const patchPayload = await patchResponse.json();
+
+  assert.equal(patchResponse.status, 200);
+  assert.equal(patchPayload.ok, true);
+  assert.equal(patchPayload.data.usagePrompt, "更新后的使用提示词");
+  assert.equal(patchPayload.data.detailPrompt, "更新后的角色细节描述");
+  assert.equal(patchPayload.data.profileSummary, "更新后的资料备注");
+});
+
+test("managed training project references flow into result review through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const reviewRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
+  const patchResultRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
+  const title = `测试参考图项目 ${Date.now()}`;
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_reference_project_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        baseModel: "继承训练默认模型",
+        captionStrategy: "先触发词后描述",
+        usagePrompt: "测试角色触发词",
+        detailPrompt: "测试角色细节描述",
+        perSectionImageCount: "4",
+        trainingSteps: "2400",
+        selectedReferenceIds: ["project-vela-neon"],
+        sections: [
+          {
+            id: "seed-1",
+            title: "新小节 1",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "block-1",
+                source: "本地",
+                title: "本地场景描述",
+                text: "测试场景描述",
+              },
+            ],
+            resolvedScene: "测试场景描述",
+            scenePreview: "测试场景描述",
+          },
+        ],
+        trainingDefaults: {
+          autoGenerateSamples: true,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  const projectId = createPayload.data.id as string;
+  const params = { params: Promise.resolve({ projectId }) };
+
+  const beforeResponse = await referenceRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+    params,
+  );
+  const beforePayload = await beforeResponse.json();
+  assert.equal(beforeResponse.status, 200);
+  assert.equal(beforePayload.ok, true);
+  assert.ok(Array.isArray(beforePayload.data));
+  assert.ok(beforePayload.data.length > 0);
+  const imageId = beforePayload.data[0].id as string;
+
+  const addToResultsResponse = await addToResultsRoute.POST(
+    new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+      method: "POST",
+      body: JSON.stringify({ reviewStatus: "pending", captionDraft: "初始说明文本" }),
+    }),
+    { params: Promise.resolve({ imageId }) },
+  );
+  const addToResultsPayload = await addToResultsResponse.json();
+
+  assert.equal(addToResultsResponse.status, 201);
+  assert.equal(addToResultsPayload.ok, true);
+  assert.equal(addToResultsPayload.data.id, `managed-result-${imageId}`);
+
+  const imageResultId = addToResultsPayload.data.id as string;
+
+  const reviewResponse = await reviewRoute.POST(
+    new Request(`http://localhost/api/training/image-results/${imageResultId}/review`, {
+      method: "POST",
+      body: JSON.stringify({ reviewStatus: "keep" }),
+    }),
+    { params: Promise.resolve({ imageResultId }) },
+  );
+  const reviewPayload = await reviewResponse.json();
+  assert.equal(reviewResponse.status, 200);
+  assert.equal(reviewPayload.ok, true);
+  assert.equal(reviewPayload.data.reviewStatus, "kept");
+
+  const patchResultResponse = await patchResultRoute.PATCH(
+    new Request(`http://localhost/api/training/image-results/${imageResultId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ captionDraft: "更新后的说明文本", reviewStatus: "pending" }),
+    }),
+    { params: Promise.resolve({ imageResultId }) },
+  );
+  const patchResultPayload = await patchResultResponse.json();
+  assert.equal(patchResultResponse.status, 200);
+  assert.equal(patchResultPayload.ok, true);
+  assert.equal(patchResultPayload.data.caption, "更新后的说明文本");
+  assert.equal(patchResultPayload.data.reviewStatus, "pending");
 });
 
 test("GET /api/training/scheduler/status exposes a training scheduler snapshot", async () => {

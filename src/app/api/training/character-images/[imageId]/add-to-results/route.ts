@@ -1,4 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
+import { addManagedTrainingReferenceImageToResults } from "@/server/services/training/project-service";
 import {
   getCharacterLoraSourceImage,
   registerCharacterLoraSourceImageAsCandidate,
@@ -22,13 +23,20 @@ export async function POST(
 
   try {
     const { imageId } = await params;
+    const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
+    const managedResult = await addManagedTrainingReferenceImageToResults(imageId, {
+      reviewStatus: typeof payload.reviewStatus === "string" ? payload.reviewStatus : undefined,
+      captionDraft: typeof payload.captionDraft === "string" ? payload.captionDraft : null,
+    });
+    if (managedResult) {
+      return ok(managedResult, { status: 201 });
+    }
     const sourceImage = await getCharacterLoraSourceImage(imageId);
 
     if (!sourceImage) {
       return fail("Character LoRA source image not found", 404);
     }
 
-    const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
     const data = await registerCharacterLoraSourceImageAsCandidate({
       jobId: sourceImage.jobId,
       sourceImageId: imageId,

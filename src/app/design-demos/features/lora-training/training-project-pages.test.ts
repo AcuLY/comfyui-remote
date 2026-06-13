@@ -285,6 +285,7 @@ test("training profile page saves through the formal HTTP API on production rout
   assert.match(profileSource, /usePathname/, "profile page should detect whether it is running under production /training routes");
   assert.match(profileSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/profile`/, "production profile save should call the formal training profile API");
   assert.match(profileSource, /method:\s*"PATCH"/, "production profile save should update profile data through PATCH");
+  assert.match(profileSource, /profileSummary:\s*profileForm\.profileSummary/, "production profile save should submit the edited profile summary");
   assert.match(profileSource, /pushToast/, "production profile save should surface API success or failure through the shared feedback system");
 });
 

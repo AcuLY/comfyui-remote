@@ -1,5 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
 import {
+  getManagedTrainingProjectProfile,
+  updateManagedTrainingProjectProfile,
+} from "@/server/services/training/project-service";
+import {
   getCharacterLoraTrainingJobOverview,
   mapCharacterLoraTrainingJobError,
   getCharacterLoraTrainingJob,
@@ -18,6 +22,10 @@ export async function GET(
 ) {
   try {
     const { projectId } = await params;
+    const managedProfile = await getManagedTrainingProjectProfile(projectId);
+    if (managedProfile) {
+      return ok(managedProfile);
+    }
     const [overview, promptCardVersions] = await Promise.all([
       getCharacterLoraTrainingJobOverview(projectId),
       listCharacterLoraPromptCardVersions(projectId),
@@ -69,15 +77,29 @@ export async function PATCH(
   const payload = body as Record<string, unknown>;
   const loraUsagePrompt = typeof payload.loraUsagePrompt === "string" ? payload.loraUsagePrompt.trim() : "";
   const characterDetailPrompt = typeof payload.characterDetailPrompt === "string" ? payload.characterDetailPrompt.trim() : "";
+  const profileSummary = typeof payload.profileSummary === "string" ? payload.profileSummary.trim() : "";
 
-  if (!loraUsagePrompt && !characterDetailPrompt) {
+  if (!loraUsagePrompt && !characterDetailPrompt && !profileSummary) {
     return fail("At least one profile field is required", 400, {
-      supportedFields: ["loraUsagePrompt", "characterDetailPrompt"],
+      supportedFields: ["loraUsagePrompt", "characterDetailPrompt", "profileSummary"],
     });
   }
 
   try {
     const { projectId } = await params;
+    const managedProfile = await getManagedTrainingProjectProfile(projectId);
+    if (managedProfile) {
+      const data = await updateManagedTrainingProjectProfile(projectId, {
+        loraUsagePrompt,
+        characterDetailPrompt,
+        profileSummary,
+      });
+      if (!data) {
+        return fail("Training project profile not found", 404, { projectId });
+      }
+      return ok(data);
+    }
+
     const [job, promptCardVersions] = await Promise.all([
       getCharacterLoraTrainingJob(projectId),
       listCharacterLoraPromptCardVersions(projectId),

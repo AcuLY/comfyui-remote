@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { dirname, extname, join } from "node:path";
 import type { DemoImage } from "@/app/design-demos/data/types";
 import type {
   LoraTrainingDatasetRevision,
@@ -10,6 +10,7 @@ import type {
 } from "@/app/design-demos/data/lora-training-types";
 import { buildLoraTrainingDemoData } from "@/app/design-demos/data/lora-training";
 import { loadDesignDemoData } from "@/app/design-demos/data/load-demo-data";
+import { toImageUrl } from "@/lib/image-url";
 import {
   createCharacterLoraTrainingProject,
   mapCharacterLoraTrainingJobError,
@@ -17,6 +18,8 @@ import {
 import { z } from "zod";
 
 const TRAINING_PROJECT_FALLBACK_PATH = join(process.cwd(), "data", "training-projects.json");
+const MANAGED_PROJECT_IMAGE_ROOT = join(process.cwd(), "data", "images", "training-managed");
+let projectStoreWriteQueue: Promise<unknown> = Promise.resolve();
 
 const projectSectionBlockSchema = z.object({
   id: z.string().trim().min(1),
@@ -94,7 +97,15 @@ async function readFallbackTrainingProjects() {
 
 async function writeFallbackTrainingProjects(projects: LoraTrainingProject[]) {
   await mkdir(dirname(TRAINING_PROJECT_FALLBACK_PATH), { recursive: true });
-  await writeFile(TRAINING_PROJECT_FALLBACK_PATH, `${JSON.stringify(projects, null, 2)}\n`, "utf8");
+  const tempPath = `${TRAINING_PROJECT_FALLBACK_PATH}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(tempPath, `${JSON.stringify(projects, null, 2)}\n`, "utf8");
+  await rename(tempPath, TRAINING_PROJECT_FALLBACK_PATH);
+}
+
+async function withProjectStoreWriteLock<T>(fn: () => Promise<T>) {
+  const next = projectStoreWriteQueue.then(fn, fn);
+  projectStoreWriteQueue = next.then(() => undefined, () => undefined);
+  return next;
 }
 
 function parseManagedProjectCreateInput(input: unknown) {
@@ -228,6 +239,272 @@ export async function listManagedTrainingProjects() {
   return readFallbackTrainingProjects();
 }
 
+export async function getManagedTrainingProject(projectId: string) {
+  const projects = await readFallbackTrainingProjects();
+  return projects.find((project) => project.id === projectId) ?? null;
+}
+
+export async function getManagedTrainingProjectProfile(projectId: string) {
+  const project = await getManagedTrainingProject(projectId);
+  if (!project) return null;
+  return {
+    projectId,
+    triggerToken: buildTrainingProjectTriggerToken(project.title),
+    characterName: project.title,
+    loraUsagePrompt: project.usagePrompt,
+    characterDetailPrompt: project.detailPrompt,
+    profileSummary: project.profileSummary,
+    promptCardVersionId: null,
+    sourceImageCount: project.referenceImages.length,
+    canonicalVersionId: null,
+  };
+}
+
+export async function updateManagedTrainingProjectProfile(
+  projectId: string,
+  input: {
+    loraUsagePrompt?: string | null;
+    characterDetailPrompt?: string | null;
+    profileSummary?: string | null;
+  },
+) {
+  return withProjectStoreWriteLock(async () => {
+    const projects = await readFallbackTrainingProjects();
+    const currentIndex = projects.findIndex((project) => project.id === projectId);
+    if (currentIndex === -1) return null;
+
+    const current = projects[currentIndex];
+    const next = [...projects];
+    next[currentIndex] = {
+      ...current,
+      updatedAt: formatUpdatedAt(),
+      usagePrompt: input.loraUsagePrompt?.trim() || current.usagePrompt,
+      detailPrompt: input.characterDetailPrompt?.trim() || current.detailPrompt,
+      profileSummary: input.profileSummary?.trim() || current.profileSummary,
+    };
+    await writeFallbackTrainingProjects(next);
+    return next[currentIndex];
+  });
+}
+
+function recomputeManagedProject(project: LoraTrainingProject): LoraTrainingProject {
+  const keptCount = project.resultPool.filter((result) => result.reviewStatus === "kept").length;
+  const captionMissingCount = project.resultPool.filter((result) => !result.caption?.trim()).length;
+  const images = project.resultPool.length > 0
+    ? project.resultPool.map((result) => result.image).slice(0, 8)
+    : project.referenceImages.map((reference) => reference.image).slice(0, 8);
+  const readiness = project.referenceImages.length > 0 && project.usagePrompt.trim() && project.detailPrompt.trim() ? "完整" : "待补";
+  return {
+    ...project,
+    readiness,
+    status: readiness === "完整" ? (project.status === "archived" ? "archived" : "ready") : "draft",
+    keptCount,
+    captionMissingCount,
+    imageCount: project.resultPool.length,
+    images,
+  };
+}
+
+function sanitizeManagedUploadName(name: string) {
+  const base = name
+    .normalize("NFKD")
+    .replace(/[^\p{Letter}\p{Number}._-]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return base || "reference";
+}
+
+function isFileLike(
+  value: unknown,
+): value is { name: string; arrayBuffer(): Promise<ArrayBuffer> } {
+  return Boolean(
+    value
+    && typeof value === "object"
+    && "name" in value
+    && typeof (value as { name?: unknown }).name === "string"
+    && "arrayBuffer" in value
+    && typeof (value as { arrayBuffer?: unknown }).arrayBuffer === "function",
+  );
+}
+
+function buildManagedReferenceImage(relativePath: string, label: string, note: string, index: number): LoraTrainingReferenceImage {
+  const url = toImageUrl(relativePath) ?? "";
+  return {
+    id: `managed-reference-${Date.now()}-${index + 1}`,
+    kind: index === 0 ? "original" : "auxiliary",
+    label,
+    note,
+    image: {
+      id: `managed-reference-image-${Date.now()}-${index + 1}`,
+      src: url,
+      full: url,
+      label,
+      status: "pending",
+      featured: index === 0,
+      featured2: false,
+      cover: index === 0,
+      width: null,
+      height: null,
+    },
+  };
+}
+
+export async function listManagedTrainingProjectReferenceImages(projectId: string) {
+  const project = await getManagedTrainingProject(projectId);
+  return project ? project.referenceImages : null;
+}
+
+export async function uploadManagedTrainingProjectReferenceImage(projectId: string, formData: FormData) {
+  const project = await getManagedTrainingProject(projectId);
+  if (!project) return null;
+
+  const file = formData.get("file");
+  if (!isFileLike(file)) {
+    throw new TrainingProjectServiceError("file is required", 400);
+  }
+
+  const role = typeof formData.get("role") === "string" ? String(formData.get("role")) : "source";
+  const safeName = sanitizeManagedUploadName(file.name);
+  const extension = extname(file.name).toLowerCase() || ".png";
+  const relativePath = `data/images/training-managed/${projectId}/references/${Date.now()}-${safeName}${extension}`;
+  const absolutePath = join(MANAGED_PROJECT_IMAGE_ROOT, projectId, "references", `${Date.now()}-${safeName}${extension}`);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await mkdir(dirname(absolutePath), { recursive: true });
+  await writeFile(absolutePath, buffer);
+
+  const reference = buildManagedReferenceImage(
+    relativePath,
+    file.name.replace(/\.[^.]+$/, "") || `参考图 ${project.referenceImages.length + 1}`,
+    role,
+    project.referenceImages.length,
+  );
+
+  return withProjectStoreWriteLock(async () => {
+    const projects = await readFallbackTrainingProjects();
+    const currentIndex = projects.findIndex((item) => item.id === projectId);
+    if (currentIndex === -1) return null;
+    const next = [...projects];
+    next[currentIndex] = recomputeManagedProject({
+      ...projects[currentIndex],
+      updatedAt: formatUpdatedAt(),
+      referenceImages: [...projects[currentIndex].referenceImages, reference],
+    });
+    await writeFallbackTrainingProjects(next);
+
+    return {
+      id: reference.id,
+      role,
+      relativePath,
+      provenance: {
+        originalName: file.name,
+      },
+    };
+  });
+}
+
+async function findManagedReferenceOwner(imageId: string) {
+  const projects = await readFallbackTrainingProjects();
+  for (const project of projects) {
+    const reference = project.referenceImages.find((item) => item.id === imageId);
+    if (reference) {
+      return { project, reference, projects };
+    }
+  }
+  return null;
+}
+
+async function findManagedResultOwner(imageResultId: string) {
+  const projects = await readFallbackTrainingProjects();
+  for (const project of projects) {
+    const result = project.resultPool.find((item) => item.id === imageResultId);
+    if (result) {
+      return { project, result, projects };
+    }
+  }
+  return null;
+}
+
+export async function addManagedTrainingReferenceImageToResults(
+  imageId: string,
+  input: { reviewStatus?: string; captionDraft?: string | null } = {},
+) {
+  const owner = await findManagedReferenceOwner(imageId);
+  if (!owner) return null;
+
+  const existing = owner.project.resultPool.find((result) => result.id === `managed-result-${imageId}`);
+  const nextResult: LoraTrainingImageResult = existing ?? {
+    id: `managed-result-${imageId}`,
+    sectionId: "managed-reference-images",
+    sectionTitle: "角色资料",
+    image: owner.reference.image,
+    reviewStatus: input.reviewStatus === "keep" ? "kept" : input.reviewStatus === "reject" ? "rejected" : "pending",
+    caption: input.captionDraft ?? owner.reference.note ?? "未填写说明文本",
+    sourceLabel: owner.reference.label,
+  };
+
+  const nextResultPool = existing
+    ? owner.project.resultPool.map((result) => result.id === existing.id ? nextResult : result)
+    : [...owner.project.resultPool, nextResult];
+
+  return withProjectStoreWriteLock(async () => {
+    const refreshed = await findManagedReferenceOwner(imageId);
+    if (!refreshed) return null;
+    const refreshedExisting = refreshed.project.resultPool.find((result) => result.id === `managed-result-${imageId}`);
+    const refreshedPool = refreshedExisting
+      ? refreshed.project.resultPool.map((result) => result.id === refreshedExisting.id ? nextResult : result)
+      : [...refreshed.project.resultPool, nextResult];
+    const nextProjects = refreshed.projects.map((project) => project.id === refreshed.project.id
+      ? recomputeManagedProject({
+        ...project,
+        updatedAt: formatUpdatedAt(),
+        resultPool: refreshedPool,
+      })
+      : project);
+    await writeFallbackTrainingProjects(nextProjects);
+    return nextResult;
+  });
+}
+
+export async function updateManagedTrainingImageResult(
+  imageResultId: string,
+  input: { reviewStatus?: string; captionDraft?: string | null },
+) {
+  const owner = await findManagedResultOwner(imageResultId);
+  if (!owner) return null;
+
+  const nextReviewStatus = input.reviewStatus === "keep"
+    ? "kept"
+    : input.reviewStatus === "reject"
+      ? "rejected"
+      : input.reviewStatus === "pending"
+        ? "pending"
+        : owner.result.reviewStatus;
+  const nextCaption = typeof input.captionDraft === "string" ? input.captionDraft : owner.result.caption;
+
+  return withProjectStoreWriteLock(async () => {
+    const refreshed = await findManagedResultOwner(imageResultId);
+    if (!refreshed) return null;
+    const nextProjects = refreshed.projects.map((project) => project.id === refreshed.project.id
+      ? recomputeManagedProject({
+        ...project,
+        updatedAt: formatUpdatedAt(),
+        resultPool: project.resultPool.map((result) => result.id === imageResultId
+          ? {
+            ...result,
+            reviewStatus: nextReviewStatus,
+            caption: nextCaption,
+          }
+          : result),
+      })
+      : project);
+    await writeFallbackTrainingProjects(nextProjects);
+
+    return nextProjects
+      .find((project) => project.id === refreshed.project.id)
+      ?.resultPool.find((result) => result.id === imageResultId) ?? null;
+  });
+}
+
 export async function createManagedTrainingProject(input: unknown) {
   const parsed = parseManagedProjectCreateInput(input);
   const title = normalizeTrainingProjectTitle(parsed);
@@ -271,18 +548,20 @@ export async function createManagedTrainingProject(input: unknown) {
     }
   }
 
-  const fallbackProjects = await readFallbackTrainingProjects();
-  const selectedReferenceImages = deriveReferenceImages(parsed.selectedReferenceIds, baseTraining, demoData.images);
-  const nextId = createdId ?? `training-project-${Date.now()}`;
-  const project = buildFallbackTrainingProject(parsed, nextId, selectedReferenceImages);
+  return withProjectStoreWriteLock(async () => {
+    const fallbackProjects = await readFallbackTrainingProjects();
+    const selectedReferenceImages = deriveReferenceImages(parsed.selectedReferenceIds, baseTraining, demoData.images);
+    const nextId = createdId ?? `training-project-${Date.now()}`;
+    const project = buildFallbackTrainingProject(parsed, nextId, selectedReferenceImages);
 
-  const currentIndex = fallbackProjects.findIndex((item) => item.id === nextId);
-  const nextProjects = [...fallbackProjects];
-  if (currentIndex === -1) nextProjects.unshift(project);
-  else nextProjects[currentIndex] = project;
-  await writeFallbackTrainingProjects(nextProjects);
+    const currentIndex = fallbackProjects.findIndex((item) => item.id === nextId);
+    const nextProjects = [...fallbackProjects];
+    if (currentIndex === -1) nextProjects.unshift(project);
+    else nextProjects[currentIndex] = project;
+    await writeFallbackTrainingProjects(nextProjects);
 
-  return project;
+    return project;
+  });
 }
 
 export function mapTrainingProjectError(error: unknown) {

@@ -1381,6 +1381,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
         body: JSON.stringify({
           loraUsagePrompt: profileForm.usagePrompt,
           characterDetailPrompt: profileForm.detailPrompt,
+          profileSummary: profileForm.profileSummary,
         }),
       });
       const payload = await response.json().catch(() => null);

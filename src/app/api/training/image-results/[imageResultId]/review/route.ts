@@ -1,4 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
+import { updateManagedTrainingImageResult } from "@/server/services/training/project-service";
 import {
   mapCharacterLoraPhase3Error,
   reviewCharacterLoraImages,
@@ -22,6 +23,12 @@ export async function POST(
 
   try {
     const { imageResultId } = await params;
+    const managed = await updateManagedTrainingImageResult(imageResultId, {
+      reviewStatus: typeof payload.reviewStatus === "string" ? String(payload.reviewStatus) : undefined,
+    });
+    if (managed) {
+      return ok(managed);
+    }
     const data = await reviewCharacterLoraImages({
       images: [
         {
