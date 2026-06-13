@@ -162,15 +162,14 @@ function createProjectFromTemplateHref(template: LoraTrainingTemplate) {
   return `/training/projects/new?${searchParams.toString()}`;
 }
 
-function createDraftTrainingPreset(training: ReturnType<typeof buildLoraTrainingDemoData>, hints: NewPresetHints): LoraTrainingPreset {
-  const source = training.presets[0];
+function createDraftTrainingPreset(hints: NewPresetHints): LoraTrainingPreset {
   const artifactTitle = hints.artifact.replace(/\.safetensors$/i, "");
   const sourceLabel = hints.project || artifactTitle;
   return {
     id: "new-training-preset",
     title: sourceLabel ? `${sourceLabel} 训练预制` : "新训练预制",
-    category: hints.category || source?.category || "角色",
-    folder: hints.folder || source?.folder || "未归档",
+    category: hints.category || "未分类",
+    folder: hints.folder || "未归档",
     status: "active",
     updatedAt: "本地草稿",
     sceneDescriptionText: hints.artifact
@@ -537,10 +536,9 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
 }
 
 export function LoraTrainingPresetDetailPage({ data, mode = "edit", presetId }: { data: DemoData; mode?: "new" | "edit"; presetId?: string }) {
-  const training = buildLoraTrainingDemoData(data);
   const urlSearch = useUrlSearch();
   const newPresetHints = mode === "new" ? readNewPresetHints(urlSearch) : { artifact: "", category: "", folder: "", project: "", sourceRun: "" };
-  const preset = mode === "new" ? createDraftTrainingPreset(training, newPresetHints) : findPreset(data, presetId);
+  const preset = mode === "new" ? createDraftTrainingPreset(newPresetHints) : findPreset(data, presetId);
   if (!preset) return <EmptyPage title="没有训练预制数据" />;
   return <LoraTrainingPresetDetailContent isNew={mode === "new"} newPresetHints={newPresetHints} preset={preset} />;
 }

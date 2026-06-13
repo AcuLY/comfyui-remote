@@ -248,6 +248,21 @@ test("training preset new form keeps source run ids out of visible copy", () => 
   assert.doesNotMatch(sourceFieldSource, /newPresetHints\.sourceRun/, "source artifact copy should not expose the internal run id");
 });
 
+test("training preset direct creation stays neutral instead of inheriting the first preset", () => {
+  const draftStart = pageSource.indexOf("function createDraftTrainingPreset");
+  const sortStart = pageSource.indexOf("type TrainingPresetSortItem");
+  assert.notEqual(draftStart, -1);
+  assert.notEqual(sortStart, -1);
+
+  const draftSource = pageSource.slice(draftStart, sortStart);
+
+  assert.doesNotMatch(draftSource, /training\.presets\[0\]/, "direct new preset drafts should not use the first demo preset as a hidden template");
+  assert.doesNotMatch(draftSource, /source\?\.category/, "direct new preset category should come from route hints or a neutral default");
+  assert.doesNotMatch(draftSource, /source\?\.folder/, "direct new preset folder should come from route hints or a neutral default");
+  assert.match(draftSource, /category:\s*hints\.category \|\| "未分类"/, "direct new preset category should use a neutral fallback");
+  assert.match(draftSource, /folder:\s*hints\.folder \|\| "未归档"/, "direct new preset folder should use a neutral fallback");
+});
+
 test("training preset detail saves a visible local preset draft instead of only showing feedback", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
   const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
