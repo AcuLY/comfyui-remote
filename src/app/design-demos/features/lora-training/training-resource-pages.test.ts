@@ -197,6 +197,25 @@ test("training preset detail saves a visible local preset draft instead of only 
   assert.doesNotMatch(detailSource, /训练预制已保存/, "preset save should not remain feedback-only");
 });
 
+test("training preset detail state stays scoped to the active preset context", () => {
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  assert.notEqual(detailStart, -1);
+  assert.notEqual(sortStart, -1);
+
+  const detailSource = pageSource.slice(detailStart, sortStart);
+
+  assert.match(detailSource, /presetFormContextId/, "preset detail should derive a route/query context id");
+  assert.match(detailSource, /presetFormState/, "preset form fields should be stored with preset context");
+  assert.match(detailSource, /presetDraftState/, "preset draft should be stored with preset context");
+  assert.match(detailSource, /presetFormState\.contextId === presetFormContextId \? presetFormState\.form : initialPresetForm/, "preset fields should fall back after context changes");
+  assert.match(detailSource, /presetDraftState\.contextId === presetFormContextId \? presetDraftState\.draft : null/, "preset draft should reset after context changes");
+  assert.match(detailSource, /newPresetHints\.sourceRun/, "new preset context should include the source run hint");
+  assert.match(detailSource, /newPresetHints\.artifact/, "new preset context should include the source artifact hint");
+  assert.doesNotMatch(detailSource, /const \[presetForm, setPresetForm\] = useState\(/, "preset form should not be stored without preset context");
+  assert.doesNotMatch(detailSource, /const \[presetDraft, setPresetDraft\] = useState/, "preset draft should not be stored without preset context");
+});
+
 test("training template form uses the shared template editor workspace model", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");

@@ -549,13 +549,46 @@ function LoraTrainingPresetDetailContent({
   preset: LoraTrainingPreset;
 }) {
   const usages = [...preset.projectUsage, ...preset.templateUsage];
-  const [presetForm, setPresetForm] = useState({
+  const presetFormContextId = [
+    isNew ? "new" : preset.id,
+    isNew ? newPresetHints.sourceRun : "",
+    isNew ? newPresetHints.artifact : "",
+    isNew ? newPresetHints.category : preset.category,
+    isNew ? newPresetHints.folder : preset.folder,
+  ].join(":");
+  const initialPresetForm = {
     category: preset.category,
     folder: preset.folder,
     sceneDescriptionText: preset.sceneDescriptionText,
     title: preset.title,
-  });
-  const [presetDraft, setPresetDraft] = useState<typeof presetForm & { usageCount: number } | null>(null);
+  };
+  const [presetFormState, setPresetFormState] = useState(() => ({
+    contextId: presetFormContextId,
+    form: initialPresetForm,
+  }));
+  const [presetDraftState, setPresetDraftState] = useState<{
+    contextId: string;
+    draft: typeof initialPresetForm & { usageCount: number } | null;
+  }>(() => ({
+    contextId: presetFormContextId,
+    draft: null,
+  }));
+  const presetForm = presetFormState.contextId === presetFormContextId ? presetFormState.form : initialPresetForm;
+  const presetDraft = presetDraftState.contextId === presetFormContextId ? presetDraftState.draft : null;
+
+  function setPresetForm(updater: (current: typeof initialPresetForm) => typeof initialPresetForm) {
+    setPresetFormState((current) => ({
+      contextId: presetFormContextId,
+      form: updater(current.contextId === presetFormContextId ? current.form : initialPresetForm),
+    }));
+  }
+
+  function setPresetDraft(draft: typeof initialPresetForm & { usageCount: number }) {
+    setPresetDraftState({
+      contextId: presetFormContextId,
+      draft,
+    });
+  }
 
   function handleUpdatePresetForm(field: keyof typeof presetForm, value: string) {
     setPresetForm((current) => ({ ...current, [field]: value }));
