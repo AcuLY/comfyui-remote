@@ -208,6 +208,21 @@ test("training profile page saves editable profile fields into the local draft",
   assert.match(profileSource, /profileSummary:\s*profileForm\.profileSummary/, "profile draft should save the edited profile summary");
 });
 
+test("training profile draft stays scoped to the active project", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /projectId:\s*string;/, "saved profile draft should remember the project it belongs to");
+  assert.match(profileSource, /visibleProfileDraft/, "profile page should derive a project-scoped visible draft");
+  assert.match(profileSource, /profileDraft\?\.projectId === project\.id \? profileDraft : null/, "draft display should be gated by the active project");
+  assert.match(profileSource, /projectId:\s*project\.id/, "save action should store the active project id on the draft");
+  assert.doesNotMatch(profileSource, /\{profileDraft \? \(/, "profile page should not render a stale draft from another project");
+});
+
 test("training results and dataset pages use caption-aware review grids instead of bare image grids", () => {
   assert.match(pagesSource, /function TrainingResultGrid/, "project pages should define a caption-aware training result grid");
   assert.match(pagesSource, /ImagePreviewLarge/, "training result grid should use the shared lightbox");

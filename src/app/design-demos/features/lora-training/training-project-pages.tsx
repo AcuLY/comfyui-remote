@@ -1036,6 +1036,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
   const [profileDraft, setProfileDraft] = useState<{
     detailPrompt: string;
     profileSummary: string;
+    projectId: string;
     referenceImageCount: number;
     usagePrompt: string;
   } | null>(null);
@@ -1047,11 +1048,13 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
     projectId: project.id,
     usagePrompt: project.usagePrompt,
   };
+  const visibleProfileDraft = profileDraft?.projectId === project.id ? profileDraft : null;
 
   function handleSaveProfile() {
     setProfileDraft({
       detailPrompt: profileForm.detailPrompt,
       profileSummary: profileForm.profileSummary,
+      projectId: project.id,
       referenceImageCount: localReferenceImages.length,
       usagePrompt: profileForm.usagePrompt,
     });
@@ -1105,9 +1108,9 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
             tone="primary"
             icon={Save}
             onClick={handleSaveProfile}
-            feedback={{ title: profileDraft ? "资料保存草稿已更新" : "资料保存草稿已记录", detail: project.title }}
+            feedback={{ title: visibleProfileDraft ? "资料保存草稿已更新" : "资料保存草稿已记录", detail: project.title }}
           >
-            {profileDraft ? "更新资料草稿" : "保存资料"}
+            {visibleProfileDraft ? "更新资料草稿" : "保存资料"}
           </Button>
         )}
       />
@@ -1137,13 +1140,13 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
           </div>
         </Panel>
       </div>
-      {profileDraft ? (
+      {visibleProfileDraft ? (
         <Panel title="资料保存草稿" subtitle="页面内已记录当前资料状态，可继续调整后再创建训练任务。">
           <dl className={s.profileDraft}>
-            <div><dt>使用提示词</dt><dd>{profileDraft.usagePrompt}</dd></div>
-            <div><dt>角色细节</dt><dd>{profileDraft.detailPrompt}</dd></div>
-            <div><dt>资料备注</dt><dd>{profileDraft.profileSummary}</dd></div>
-            <div><dt>参考图</dt><dd>{profileDraft.referenceImageCount} 张</dd></div>
+            <div><dt>使用提示词</dt><dd>{visibleProfileDraft.usagePrompt}</dd></div>
+            <div><dt>角色细节</dt><dd>{visibleProfileDraft.detailPrompt}</dd></div>
+            <div><dt>资料备注</dt><dd>{visibleProfileDraft.profileSummary}</dd></div>
+            <div><dt>参考图</dt><dd>{visibleProfileDraft.referenceImageCount} 张</dd></div>
           </dl>
         </Panel>
       ) : null}
