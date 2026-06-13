@@ -32,6 +32,7 @@ import { listCharacterLoraJobSections } from "@/server/services/character-lora-t
 import { listCharacterLoraSourceImages } from "@/server/services/character-lora-training/source-image-service";
 import { listCharacterLoraTrainingRuns } from "@/server/services/character-lora-training/training-service";
 import { listTrainingSceneDescriptionPresets } from "@/server/services/training/preset-service";
+import { listTrainingProjectSectionOverrides } from "@/server/services/training/project-section-service";
 
 type ImageStatus = DemoImage["status"];
 
@@ -239,14 +240,40 @@ async function buildGenerationRuns(input: {
   return runs.filter((run): run is LoraTrainingRun => Boolean(run));
 }
 
+function applyTrainingProjectSectionOverrides(
+  training: LoraTrainingDemoData,
+  sectionOverrides: Awaited<ReturnType<typeof listTrainingProjectSectionOverrides>>,
+): LoraTrainingDemoData {
+  return {
+    ...training,
+    projects: training.projects.map((project) => ({
+      ...project,
+      sections: project.sections.map((section) => {
+        const override = sectionOverrides[`${project.id}:${section.id}`];
+        if (!override) return section;
+        return {
+          ...section,
+          title: override.title,
+          enabled: override.enabled,
+          updatedAt: override.updatedAt,
+          blocks: override.blocks,
+          resolvedScene: override.resolvedScene,
+          imagePrompt: override.imagePrompt,
+        };
+      }),
+    })),
+  };
+}
+
 async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTrainingDemoData | null> {
   const jobs = await listCharacterLoraTrainingJobs({ page: 1, pageSize: 20 });
   if (!jobs.jobs.length) return null;
 
   const baseTraining = buildLoraTrainingDemoData(baseData);
-  const [realTemplates, realPresets] = await Promise.all([
+  const [realTemplates, realPresets, sectionOverrides] = await Promise.all([
     listCharacterLoraTrainingTemplates(),
     listTrainingSceneDescriptionPresets(),
+    listTrainingProjectSectionOverrides(),
   ]);
 
   const projects = await Promise.all(jobs.jobs.map(async (job) => {
@@ -272,24 +299,29 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
       );
     }
 
-    const mappedSections: LoraTrainingSection[] = sections.map((section) => ({
-      id: section.id,
-      title: section.name,
-      enabled: section.status !== "paused",
-      updatedAt: formatUpdatedAt(section.updatedAt),
-      blocks: [
-        {
-          id: `${section.id}-legacy-block`,
-          source: "本地",
-          title: "旧训练小节映射",
-          text: section.template?.description ?? `旧训练小节 ${section.key} 的数据已映射到新训练模块。`,
-        },
-      ],
-      resolvedScene: section.template?.description ?? section.name,
-      imagePrompt: latestPromptCard?.finalPromptDraft ?? job.triggerToken,
-      images: resultPool.filter((image) => image.sectionId === section.id).map((image) => image.image).slice(0, 5),
-      resultStatus: section.pendingCount > 0 ? "pending" : section.keepCount > 0 ? "kept" : "rejected",
-    }));
+    const mappedSections: LoraTrainingSection[] = sections.map((section) => {
+      const override = sectionOverrides[`${job.id}:${section.id}`];
+      const baseResolvedScene = section.template?.description ?? section.name;
+      const baseImagePrompt = latestPromptCard?.finalPromptDraft ?? job.triggerToken;
+      return {
+        id: section.id,
+        title: override?.title ?? section.name,
+        enabled: override?.enabled ?? section.status !== "paused",
+        updatedAt: override?.updatedAt ?? formatUpdatedAt(section.updatedAt),
+        blocks: override?.blocks ?? [
+          {
+            id: `${section.id}-legacy-block`,
+            source: "本地",
+            title: "旧训练小节映射",
+            text: section.template?.description ?? `旧训练小节 ${section.key} 的数据已映射到新训练模块。`,
+          },
+        ],
+        resolvedScene: override?.resolvedScene ?? baseResolvedScene,
+        imagePrompt: override?.imagePrompt ?? baseImagePrompt,
+        images: resultPool.filter((image) => image.sectionId === section.id).map((image) => image.image).slice(0, 5),
+        resultStatus: section.pendingCount > 0 ? "pending" : section.keepCount > 0 ? "kept" : "rejected",
+      };
+    });
 
     const mappedRevisions: LoraTrainingDatasetRevision[] = revisions.map((revision) => {
       const includedIds = revisionMap.get(revision.id) ?? new Set<string>();
@@ -415,20 +447,39 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
     }),
   );
 
-  return {
+  return applyTrainingProjectSectionOverrides({
     projects,
     runs: runsByProject.flat().sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))),
     presets: realPresets.length ? realPresets : baseTraining.presets,
     templates: templates.length ? templates : baseTraining.templates,
-  };
+  }, sectionOverrides);
 }
 
 export async function loadTrainingRouteData(): Promise<DemoData> {
   const baseData = await loadDesignDemoData();
+  const baseTraining = buildLoraTrainingDemoData(baseData);
 
   try {
     const loraTraining = await mapRealTrainingProjects(baseData);
-    if (!loraTraining) return baseData;
+    if (!loraTraining) {
+      const [fallbackPresets, sectionOverrides] = await Promise.all([
+        listTrainingSceneDescriptionPresets().catch(() => baseTraining.presets),
+        listTrainingProjectSectionOverrides().catch(() => ({})),
+      ]);
+      const mergedTraining = applyTrainingProjectSectionOverrides({
+        ...baseTraining,
+        presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
+      }, sectionOverrides);
+      return {
+        ...baseData,
+        loraTraining: mergedTraining,
+        metrics: {
+          ...baseData.metrics,
+          projects: mergedTraining.projects.length,
+          runs: mergedTraining.runs.length,
+        },
+      };
+    }
     return {
       ...baseData,
       loraTraining,
@@ -439,6 +490,22 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
       },
     };
   } catch {
-    return baseData;
+    const [fallbackPresets, sectionOverrides] = await Promise.all([
+      listTrainingSceneDescriptionPresets().catch(() => baseTraining.presets),
+      listTrainingProjectSectionOverrides().catch(() => ({})),
+    ]);
+    const mergedTraining = applyTrainingProjectSectionOverrides({
+      ...baseTraining,
+      presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
+    }, sectionOverrides);
+    return {
+      ...baseData,
+      loraTraining: mergedTraining,
+      metrics: {
+        ...baseData.metrics,
+        projects: mergedTraining.projects.length,
+        runs: mergedTraining.runs.length,
+      },
+    };
   }
 }

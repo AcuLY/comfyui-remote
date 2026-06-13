@@ -387,6 +387,22 @@ test("training result review posts through the formal HTTP API on production rou
   assert.match(resultsPageSource, /pushToast/, "project result review should surface API success or failure through the shared feedback system");
 });
 
+test("training section detail saves through the formal HTTP API on production routes", () => {
+  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
+  const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
+  assert.notEqual(sectionDetailStart, -1);
+  assert.notEqual(composeStart, -1);
+
+  const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
+
+  assert.match(sectionDetailSource, /usePathname/, "section detail save should detect whether it is running under production \\/training routes");
+  assert.match(sectionDetailSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/sections\/\$\{activeSection\.id\}`/, "section detail save should call the formal section save API");
+  assert.match(sectionDetailSource, /method:\s*"PATCH"/, "section detail save should PATCH the current training section");
+  assert.match(sectionDetailSource, /blocks:\s*sceneBlocks/, "section detail save should submit the edited scene blocks");
+  assert.match(sectionDetailSource, /resolvedScene:\s*scenePreview \|\| activeSection\.resolvedScene/, "section detail save should submit the resolved scene preview");
+  assert.match(sectionDetailSource, /pushToast/, "section detail save should surface API success or failure through the shared feedback system");
+});
+
 test("training project repeated object actions include the acted-on object name", () => {
   const gridStart = pagesSource.indexOf("function TrainingResultGrid");
   const runRowsStart = pagesSource.indexOf("function runPreviewImages");

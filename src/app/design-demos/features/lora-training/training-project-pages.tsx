@@ -1901,6 +1901,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   const [selectedTrainingPresetId, setSelectedTrainingPresetId] = useState<string | null>(null);
   const [sectionDraftsByKey, setSectionDraftsByKey] = useState<Record<string, ProjectSectionDraftState>>({});
   const [isReviewingSectionResult, setIsReviewingSectionResult] = useState(false);
+  const [isSavingSection, setIsSavingSection] = useState(false);
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   if (!project || !section) return <EmptyPage title="没有训练小节详情" />;
 
@@ -2037,20 +2038,75 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     }
   }
 
-  function handleSaveSection() {
-    setSectionDraftsByKey((current) => ({
-      ...current,
-      [projectSectionStateKey]: {
-        blockCount: sceneBlocks.length,
-        firstBlock: sceneBlocks[0]?.title ?? "无场景块",
-        imagePrompt: activeSection.imagePrompt,
-        projectId: activeProject.id,
-        projectTitle: activeProject.title,
-        scenePreview: scenePreview || activeSection.resolvedScene,
-        sectionId: activeSection.id,
-        sectionTitle: activeSection.title,
-      },
-    }));
+  async function handleSaveSection() {
+    const nextDraft = {
+      blockCount: sceneBlocks.length,
+      firstBlock: sceneBlocks[0]?.title ?? "无场景块",
+      imagePrompt: activeSection.imagePrompt,
+      projectId: activeProject.id,
+      projectTitle: activeProject.title,
+      scenePreview: scenePreview || activeSection.resolvedScene,
+      sectionId: activeSection.id,
+      sectionTitle: activeSection.title,
+    };
+
+    if (!isProductionTrainingRoute) {
+      setSectionDraftsByKey((current) => ({
+        ...current,
+        [projectSectionStateKey]: nextDraft,
+      }));
+      pushToast({
+        tone: "success",
+        title: visibleSectionDraft ? "小节保存草稿已更新" : "小节保存草稿已记录",
+        detail: section.title,
+      });
+      return;
+    }
+
+    if (isSavingSection) return;
+
+    setIsSavingSection(true);
+    try {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/sections/${activeSection.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: activeSection.title,
+          enabled: activeSection.enabled,
+          blocks: sceneBlocks,
+          resolvedScene: scenePreview || activeSection.resolvedScene,
+          imagePrompt: activeSection.imagePrompt,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "小节保存失败",
+          detail: payload?.error?.message ?? "训练小节保存请求失败",
+        });
+        return;
+      }
+
+      setSectionDraftsByKey((current) => ({
+        ...current,
+        [projectSectionStateKey]: nextDraft,
+      }));
+      pushToast({
+        tone: "success",
+        title: "训练小节已保存",
+        detail: activeSection.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "小节保存失败",
+        detail: error instanceof Error ? error.message : "训练小节保存请求失败",
+      });
+    } finally {
+      setIsSavingSection(false);
+    }
   }
 
   return (
@@ -2062,8 +2118,8 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
         actions={(
           <Button
             icon={Save}
+            pending={isSavingSection}
             onClick={handleSaveSection}
-            feedback={{ title: visibleSectionDraft ? "小节保存草稿已更新" : "小节保存草稿已记录", detail: section.title }}
           >
             {visibleSectionDraft ? "更新小节草稿" : "保存小节"}
           </Button>
