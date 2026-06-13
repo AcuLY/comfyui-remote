@@ -4,14 +4,30 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
-    <title>LoRA 训练模式 - 预制原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <title>LoRA 训练模式 - 预制</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
+    <style>
+      .preset-entry-grid {
+        display: grid;
+        gap: 8px;
+      }
+
+      @media (min-width: 1120px) {
+        .preset-entry-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+    </style>
   </head>
   <body>
-    <main class="app-shell">
+    <a class="skip-link" href="#prototype-main">跳到主要内容</a>
+    <main class="app-shell" id="prototype-main">
       <div class="page">
         <header class="topbar">
-          <div class="title-row"><h1>预制</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div>
+          <div class="title-stack">
+            <div class="title-row"><h1>预制</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div>
+            <p class="small muted">按分类和文件夹管理场景描述预制，优先复用现有预制，再进入详情页编辑正文。</p>
+          </div>
           <div class="topbar-actions">
             <a class="button" href="./manager-lora-training-preset-sort-rules-prototype.html"><i data-lucide="arrow-up-down" aria-hidden="true"></i>排序规则</a>
             <button class="button primary" type="button"><i data-lucide="plus" aria-hidden="true"></i>新建</button>
@@ -22,49 +38,90 @@
             <section class="panel">
               <div class="panel-header"><h2>分类</h2></div>
               <div class="panel-body entity-list">
-                <div class="entity-row"><div class="row-title"><strong>lighting</strong><span>sceneDescriptionOrder 10</span></div><span class="count">18</span></div>
-                <div class="entity-row"><div class="row-title"><strong>environment</strong><span>sceneDescriptionOrder 20</span></div><span class="count">24</span></div>
-                <div class="entity-row"><div class="row-title"><strong>pose</strong><span>sceneDescriptionOrder 30</span></div><span class="count">12</span></div>
+                <div class="entity-row"><div class="row-title"><strong>光线</strong><span>合成顺序 10</span></div><span class="count">18</span></div>
+                <div class="entity-row"><div class="row-title"><strong>环境</strong><span>合成顺序 20</span></div><span class="count">24</span></div>
+                <div class="entity-row"><div class="row-title"><strong>姿态</strong><span>合成顺序 30</span></div><span class="count">12</span></div>
               </div>
             </section>
             <section class="panel">
               <div class="panel-header"><h2>文件夹</h2></div>
               <div class="panel-body entity-list">
-                <div class="entity-row"><div class="row-title"><strong>stage</strong><span>sortOrder 1</span></div></div>
-                <div class="entity-row"><div class="row-title"><strong>studio</strong><span>sortOrder 2</span></div></div>
+                <div class="entity-row"><div class="row-title"><strong>舞台</strong><span>显示顺序 1</span></div></div>
+                <div class="entity-row"><div class="row-title"><strong>棚拍</strong><span>显示顺序 2</span></div></div>
               </div>
             </section>
           </aside>
           <section class="stack">
+            <section class="panel">
+              <div class="panel-header">
+                <div class="row-title">
+                  <h2>预制浏览</h2>
+                  <span>当前分类：光线 · 当前文件夹：舞台 · 共 18 项</span>
+                </div>
+              </div>
+              <div class="panel-body stack">
+                <div class="plain-meta">
+                  <span>路径</span>
+                  <span class="chip blue">根目录</span>
+                  <span class="chip blue">光线</span>
+                  <span class="chip">舞台</span>
+                </div>
+                <div class="entity-list">
+                  <div class="entity-row"><div class="row-title"><strong>舞台</strong><span>8 项 · 当前文件夹</span></div><span class="status-note blue">当前</span></div>
+                  <div class="entity-row"><div class="row-title"><strong>棚拍</strong><span>6 项 · 可切换</span></div><i data-lucide="chevron-right" aria-hidden="true"></i></div>
+                  <div class="entity-row"><div class="row-title"><strong>旧版目录</strong><span>4 项 · 仅保留兼容资源</span></div><i data-lucide="chevron-right" aria-hidden="true"></i></div>
+                </div>
+              </div>
+            </section>
             <div class="status-tabs" data-filter-group data-filter-target=".preset-card" role="tablist" aria-label="预制状态">
               <button type="button" role="tab" aria-selected="true" data-filter="all">全部 <span class="count">54</span></button>
               <button type="button" role="tab" aria-selected="false" data-filter="active">启用 <span class="count">51</span></button>
               <button type="button" role="tab" aria-selected="false" data-filter="inactive">停用 <span class="count">3</span></button>
             </div>
-            <div class="grid-2">
-              <a class="card preset-card" data-filter-value="active" href="./manager-lora-training-preset-detail-prototype.html">
-                <div class="row-head"><div class="row-title"><strong>cyan rim light</strong><span>lighting / stage · sortOrder 10</span></div><span class="status-note green">启用</span></div>
-                <p class="small muted">strong cyan rim light, subtle spotlight haze, clean silhouette, fashion editorial framing</p>
-              </a>
-              <a class="card preset-card" data-filter-value="active" href="./manager-lora-training-preset-detail-prototype.html?preset=wet-street">
-                <div class="row-head"><div class="row-title"><strong>wet neon street</strong><span>environment / night · sortOrder 20</span></div><span class="status-note green">启用</span></div>
-                <p class="small muted">wet pavement reflection, neon storefront light, shallow depth of field, clean night air</p>
-              </a>
-              <a class="card preset-card" data-filter-value="active" href="./manager-lora-training-preset-detail-prototype.html?preset=front-pose">
-                <div class="row-head"><div class="row-title"><strong>front-facing pose</strong><span>pose / portrait · sortOrder 30</span></div><span class="status-note green">启用</span></div>
-                <p class="small muted">confident front-facing half body pose, relaxed shoulders, clear clothing silhouette</p>
-              </a>
-              <a class="card preset-card" data-filter-value="inactive" href="./manager-lora-training-preset-detail-prototype.html?preset=old-haze">
-                <div class="row-head"><div class="row-title"><strong>old heavy haze</strong><span>lighting / legacy · sortOrder 80</span></div><span class="status-note">停用</span></div>
-                <p class="small muted">legacy preset retained for existing mutable block cleanup before soft delete</p>
-              </a>
-            </div>
+            <section class="panel">
+              <div class="panel-header">
+                <div class="row-title">
+                  <h2>预制条目</h2>
+                  <span>行式浏览，点击条目进入详情编辑；启用状态只在条目右侧轻量展示。</span>
+                </div>
+              </div>
+              <div class="panel-body entity-list preset-entry-grid">
+                <a class="entity-row preset-card" data-filter-value="active" href="./manager-lora-training-preset-detail-prototype.html">
+                  <div class="row-title">
+                    <strong>青色轮廓光</strong>
+                    <span>光线 / 舞台 · 顺序 10 · 强青色轮廓光，带一点舞台薄雾</span>
+                  </div>
+                  <span class="status-note green">启用</span>
+                </a>
+                <a class="entity-row preset-card" data-filter-value="active" href="./manager-lora-training-preset-detail-prototype.html?preset=wet-street">
+                  <div class="row-title">
+                    <strong>潮湿霓虹街道</strong>
+                    <span>环境 / 夜景 · 顺序 20 · 湿地反光，霓虹店招映亮街面</span>
+                  </div>
+                  <span class="status-note green">启用</span>
+                </a>
+                <a class="entity-row preset-card" data-filter-value="active" href="./manager-lora-training-preset-detail-prototype.html?preset=front-pose">
+                  <div class="row-title">
+                    <strong>正面半身站姿</strong>
+                    <span>姿态 / 人像 · 顺序 30 · 自信、正面、半身的人像站姿</span>
+                  </div>
+                  <span class="status-note green">启用</span>
+                </a>
+                <a class="entity-row preset-card" data-filter-value="inactive" href="./manager-lora-training-preset-detail-prototype.html?preset=old-haze">
+                  <div class="row-title">
+                    <strong>旧版重雾</strong>
+                    <span>光线 / 旧版目录 · 顺序 80 · 保留给历史可变场景块清理用</span>
+                  </div>
+                  <span class="status-note">停用</span>
+                </a>
+              </div>
+            </section>
           </section>
         </section>
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
     <script>initLoraPrototype("presets");</script>
   </body>
 </html>

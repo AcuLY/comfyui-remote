@@ -4,11 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
-    <title>LoRA 训练模式 - 小节详情原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-section-detail-2" />
+    <title>LoRA 训练模式 - 小节详情</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
   </head>
   <body>
-    <main class="app-shell">
+    <a class="skip-link" href="#prototype-main">跳到主要内容</a>
+    <main class="app-shell" id="prototype-main">
       <div class="page">
         <header class="topbar">
           <div class="title-stack">
@@ -20,7 +21,7 @@
             </div>
           </div>
           <div class="topbar-actions">
-            <a class="button primary" href="./manager-lora-training-generation-detail-prototype.html?task=street-running-image"><i data-lucide="image-plus" aria-hidden="true"></i>生成样本</a>
+            <a class="button primary" href="./manager-lora-training-generation-compose-prototype.html?task=trainingset&section=stage"><i data-lucide="image-plus" aria-hidden="true"></i>生成样本</a>
           </div>
         </header>
         <nav class="context-tabs" aria-label="项目页面">
@@ -36,30 +37,37 @@
               <div class="panel-header">
                 <h2>场景块</h2>
                 <div class="panel-actions">
-                  <button class="button" type="button"><i data-lucide="package-plus" aria-hidden="true"></i>导入预制</button>
-                  <button class="button primary" type="button"><i data-lucide="plus" aria-hidden="true"></i>添加块</button>
+                  <button class="button" type="button"><i data-lucide="layers" aria-hidden="true"></i>添加预制块</button>
+                  <button class="button primary" type="button"><i data-lucide="plus" aria-hidden="true"></i>新增本地块</button>
                 </div>
               </div>
               <div class="panel-body block-list">
                 <div class="block-item">
                   <span class="block-index">1</span>
-                  <div class="row-title"><strong>lighting / cyan rim light</strong><span>来自预制 · 强青色轮廓光</span></div>
+                  <div class="row-title"><strong>光线 / 青色轮廓光</strong><span>来自预制 · 强青色轮廓光</span></div>
                   <span class="status-note blue">预制</span>
                   <div class="block-actions">
-                    <button class="icon-button" type="button" aria-label="替换预制"><i data-lucide="pencil" aria-hidden="true"></i></button>
+                    <button class="button block-edit-action" type="button"><i data-lucide="replace" aria-hidden="true"></i>编辑绑定</button>
                     <button class="icon-button" type="button" aria-label="调整排序"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
                     <button class="icon-button" type="button" aria-label="删除场景块"><i data-lucide="trash-2" aria-hidden="true"></i></button>
                   </div>
                 </div>
                 <div class="block-item">
                   <span class="block-index">2</span>
-                  <div class="row-title"><strong>local prompt</strong><span>舞台聚光、干净剪影、杂志构图</span></div>
+                  <div class="row-title"><strong>本地描述</strong><span>舞台聚光、干净剪影、杂志构图</span></div>
                   <span class="status-note">本地</span>
                   <div class="block-actions">
-                    <button class="icon-button" type="button" aria-label="编辑本地块"><i data-lucide="pencil" aria-hidden="true"></i></button>
+                    <button class="button block-edit-action" type="button"><i data-lucide="pencil" aria-hidden="true"></i>编辑文本</button>
                     <button class="icon-button" type="button" aria-label="调整排序"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
                     <button class="icon-button" type="button" aria-label="删除场景块"><i data-lucide="trash-2" aria-hidden="true"></i></button>
                   </div>
+                </div>
+                <div class="resolved-scene-row">
+                  <div class="row-title">
+                    <strong>合成场景描述</strong>
+                    <span>强青色轮廓光，舞台聚光，干净剪影，杂志构图。</span>
+                  </div>
+                  <a class="button primary" href="./manager-lora-training-generation-compose-prototype.html?task=trainingset&section=stage"><i data-lucide="image-plus" aria-hidden="true"></i>生成样本</a>
                 </div>
               </div>
             </section>
@@ -85,23 +93,25 @@
           </div>
           <aside class="stack">
             <section class="panel">
-              <div class="panel-header"><h2>参数</h2></div>
-              <div class="panel-body compact-kv">
-                <div><span>sortOrder</span><span>1</span></div>
-                <div><span>imageSize</span><span>1024 x 1536</span></div>
-                <div><span>quality</span><span>high</span></div>
-                <div><span>已保留</span><span>8 张</span></div>
+              <div class="panel-header"><h2>小节设置</h2></div>
+              <div class="panel-body form-grid">
+                <div class="field full"><label>小节名</label><input class="input" name="section_name" aria-label="小节名" autocomplete="off" value="舞台灯光" /></div>
+                <div class="field full"><label class="check-row"><input type="checkbox" name="section_enabled" aria-label="启用这个小节" checked />启用这个小节</label></div>
+                <div class="field"><label>排序</label><input class="input" type="number" inputmode="numeric" name="section_sort_order" aria-label="小节排序" autocomplete="off" value="1" /></div>
+                <div class="field"><label>图片尺寸</label><input class="input" name="section_image_size" aria-label="图片尺寸" autocomplete="off" value="1024 x 1536" /></div>
+                <div class="field"><label>图片质量</label><input class="input" name="section_image_quality" aria-label="图片质量" autocomplete="off" value="高" /></div>
+                <div class="field full action-strip"><button class="button primary" type="button">保存小节</button><button class="button red" type="button">删除小节</button></div>
               </div>
             </section>
             <section class="panel">
               <div class="panel-header"><h2>生成历史</h2></div>
               <div class="panel-body entity-list">
                 <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=vela-completed-image">
-                  <div class="row-title"><strong>run #12</strong><span>完成于 15:20 · 输出 1 张图片</span></div>
+                  <div class="row-title"><strong>运行记录 12</strong><span>完成于 15:20 · 输出 1 张图片</span></div>
                   <span class="status-note green">完成</span>
                 </a>
                 <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=rain-queued-image">
-                  <div class="row-title"><strong>run #13</strong><span>已排队 · 尚无输出</span></div>
+                  <div class="row-title"><strong>运行记录 13</strong><span>已排队 · 尚无输出</span></div>
                   <span class="status-note amber">排队</span>
                 </a>
               </div>
@@ -111,7 +121,7 @@
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
     <script>initLoraPrototype("projects");</script>
   </body>
 </html>

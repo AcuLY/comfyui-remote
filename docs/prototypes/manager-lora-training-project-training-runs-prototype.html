@@ -4,39 +4,105 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
-    <title>LoRA 训练模式 - 项目训练任务原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <title>LoRA 训练模式 - 项目训练任务</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
+    <style>
+      .task-stage {
+        display: none;
+      }
+
+      .task-stage.active {
+        display: grid;
+      }
+
+      @media (min-width: 1080px) {
+        .task-stage.entity-list {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          align-items: start;
+        }
+      }
+    </style>
   </head>
   <body>
-    <main class="app-shell">
+    <a class="skip-link" href="#prototype-main">跳到主要内容</a>
+    <main class="app-shell" id="prototype-main">
       <div class="page">
         <header class="topbar">
           <div class="title-stack">
             <a class="back-link" href="./manager-lora-training-project-detail-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i>返回项目</a>
             <div class="title-row"><h1>Vela Neon Jacket / 训练任务</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div>
           </div>
+          <div class="topbar-actions">
+            <a class="button" href="./manager-lora-training-runs-prototype.html"><i data-lucide="external-link" aria-hidden="true"></i>查看全部运行</a>
+            <a class="button primary" href="./manager-lora-training-project-dataset-prototype.html"><i data-lucide="play" aria-hidden="true"></i>启动训练</a>
+          </div>
         </header>
         <section class="panel">
-          <div class="panel-header"><h2>训练任务</h2></div>
-          <div class="panel-body entity-list">
-            <a class="entity-row" href="./manager-lora-training-training-detail-prototype.html?task=vela-completed">
-              <div class="row-title"><strong>dataset v5</strong><span>完成于 16:21 · vela_neon_v05.safetensors</span></div>
-              <span class="status-note green">完成</span>
-            </a>
-            <a class="entity-row" href="./manager-lora-training-training-detail-prototype.html?task=azure-running">
-              <div class="row-title"><strong>dataset v4</strong><span>step 1280 / 2400</span></div>
-              <div class="task-progress"><div class="progress-meta"><span>进行中</span><span>53%</span></div><div class="progress"><span style="width: 53%"></span></div></div>
-            </a>
-            <a class="entity-row" href="./manager-lora-training-training-detail-prototype.html?task=mika-failed">
-              <div class="row-title"><strong>dataset v3</strong><span>3 张图片缺少 caption</span></div>
-              <span class="status-note red">失败</span>
-            </a>
+          <div class="panel-header">
+            <div class="row-title">
+              <h2>训练任务</h2>
+              <span>只显示当前项目的训练运行，详情仍进入全局训练任务页。</span>
+            </div>
+          </div>
+          <div class="panel-body stack">
+            <div class="status-tabs" role="tablist" aria-label="训练任务状态">
+              <button type="button" role="tab" aria-selected="true" data-stage-tab="training-completed">完成 <span class="count">1</span></button>
+              <button type="button" role="tab" aria-selected="false" data-stage-tab="training-running">进行中 <span class="count">1</span></button>
+              <button type="button" role="tab" aria-selected="false" data-stage-tab="training-queued">排队 <span class="count">1</span></button>
+              <button type="button" role="tab" aria-selected="false" data-stage-tab="training-failed">失败 <span class="count">1</span></button>
+            </div>
+
+            <div class="task-stage entity-list active" data-stage-view="training-completed">
+              <a class="entity-row" href="./manager-lora-training-training-detail-prototype.html?task=vela-completed">
+                <div class="row-title"><strong>数据集版本 v5</strong><span>完成于 16:21 · vela_neon_v05.safetensors</span></div>
+                <span class="status-note green">完成</span>
+              </a>
+            </div>
+
+            <div class="task-stage entity-list" data-stage-view="training-running">
+              <a class="entity-row" href="./manager-lora-training-training-detail-prototype.html?task=azure-running">
+                <div class="row-title"><strong>数据集版本 v4</strong><span>step 1280 / 2400</span></div>
+                <div class="task-progress"><div class="progress-meta"><span>进行中</span><span>53%</span></div><div class="progress"><span style="width: 53%"></span></div></div>
+              </a>
+            </div>
+
+            <div class="task-stage entity-list" data-stage-view="training-queued">
+              <a class="entity-row" href="./manager-lora-training-training-detail-prototype.html?task=noir-queued">
+                <div class="row-title"><strong>数据集版本 v7</strong><span>排队中 · 等待 GPU 空闲</span></div>
+                <span class="status-note amber">排队</span>
+              </a>
+            </div>
+
+            <div class="task-stage entity-list" data-stage-view="training-failed">
+              <a class="entity-row" href="./manager-lora-training-training-detail-prototype.html?task=mika-failed">
+                <div class="row-title"><strong>数据集版本 v3</strong><span>失败于 15:55 · 3 张图片缺少 caption</span></div>
+                <span class="status-note red">失败</span>
+              </a>
+            </div>
           </div>
         </section>
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
-    <script>initLoraPrototype("projects");</script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
+    <script>
+      initLoraPrototype("projects");
+
+      const stageButtons = Array.from(document.querySelectorAll("[data-stage-tab]"));
+      const stageViews = Array.from(document.querySelectorAll("[data-stage-view]"));
+
+      function activateStage(key) {
+        stageButtons.forEach((button) => {
+          button.setAttribute("aria-selected", String(button.dataset.stageTab === key));
+        });
+        stageViews.forEach((view) => {
+          view.classList.toggle("active", view.dataset.stageView === key);
+        });
+      }
+
+      stageButtons.forEach((button) => {
+        button.addEventListener("click", () => activateStage(button.dataset.stageTab));
+      });
+    </script>
   </body>
 </html>

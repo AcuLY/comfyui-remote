@@ -4,12 +4,298 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
-    <title>LoRA 训练模式 - 项目原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <title>LoRA 训练模式 - 项目</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
+    <style>
+      .project-list-surface {
+        display: grid;
+        gap: 10px;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        backdrop-filter: var(--blur);
+        box-shadow: var(--shadow);
+      }
+
+      .project-list-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        border-bottom: 1px solid var(--line-soft);
+        padding-bottom: 10px;
+      }
+
+      .project-list-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 12px;
+      }
+
+      .project-list-counts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .view-toggle {
+        display: inline-flex;
+        gap: 4px;
+        padding: 4px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--panel-soft) 62%, transparent);
+      }
+
+      .view-toggle button {
+        min-height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 10px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .view-toggle button[aria-selected="true"] {
+        background: var(--emerald-soft);
+        color: var(--emerald);
+      }
+
+      .project-card-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .project-row {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 14px;
+        align-items: start;
+        padding: 14px;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--panel-soft) 54%, transparent);
+        transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+      }
+
+      .project-row:hover {
+        border-color: var(--line-strong);
+        background: var(--surface-hover);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+      }
+
+      .project-row-controls {
+        width: 28px;
+        display: grid;
+        align-self: stretch;
+        align-items: center;
+        justify-items: center;
+        grid-template-rows: 36px minmax(0, 1fr);
+        gap: 8px;
+      }
+
+      .project-row-check {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 18px;
+      }
+
+      .project-row-check input {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--emerald);
+        cursor: pointer;
+      }
+
+      .project-row-drag.icon-button {
+        width: 28px;
+        height: 28px;
+        border-color: transparent;
+        background: transparent;
+        color: var(--muted);
+      }
+
+      .project-row-drag.icon-button:hover,
+      .project-row-drag.icon-button:focus-visible {
+        border-color: var(--line);
+        background: color-mix(in srgb, var(--surface-soft) 84%, transparent);
+        color: var(--emerald);
+      }
+
+      .project-row-main {
+        min-width: 0;
+        display: grid;
+        gap: 10px;
+      }
+
+      .project-row-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .project-row-title {
+        min-width: 0;
+        display: flex;
+        flex: 1 1 auto;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0 8px;
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .project-row-title strong {
+        color: var(--text);
+        font-size: 16px;
+        font-weight: 580;
+      }
+
+      .project-row-title span {
+        color: var(--faint);
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .project-row-delete.icon-button {
+        width: 36px;
+        height: 36px;
+        border-color: color-mix(in srgb, var(--red) 28%, transparent);
+        background: var(--red-soft);
+        color: var(--red);
+      }
+
+      .project-row-delete.icon-button:hover,
+      .project-row-delete.icon-button:focus-visible {
+        border-color: color-mix(in srgb, var(--red) 40%, transparent);
+        background: color-mix(in srgb, var(--red-soft) 84%, var(--surface-hover));
+      }
+
+      .project-row-strip {
+        display: grid;
+        gap: 8px;
+        padding: 8px 0;
+        border-block: 1px solid var(--line-soft);
+        color: inherit;
+      }
+
+      .project-row-strip .thumb-strip {
+        grid-template-columns: repeat(4, 52px);
+        width: max-content;
+      }
+
+      .project-row-meta {
+        min-width: 0;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px 12px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .project-row-meta > span:first-child {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .project-list-surface.compact .project-card-grid {
+        gap: 6px;
+      }
+
+      .project-list-surface.compact .project-row {
+        gap: 8px;
+        align-items: center;
+        min-height: 52px;
+        padding: 8px 10px;
+      }
+
+      .project-list-surface.compact .project-row-controls {
+        width: auto;
+        display: flex;
+        align-self: center;
+        gap: 6px;
+      }
+
+      .project-list-surface.compact .project-row-main {
+        gap: 0;
+        align-content: center;
+      }
+
+      .project-list-surface.compact .project-row-title {
+        flex-wrap: nowrap;
+      }
+
+      .project-list-surface.compact .project-row-title span,
+      .project-list-surface.compact .project-row-strip,
+      .project-list-surface.compact .project-row-meta {
+        display: none;
+      }
+
+      .project-list-surface .entity-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      @media (min-width: 980px) {
+        .project-list-surface .project-card-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 860px) {
+        .project-list-toolbar {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+      }
+
+      @media (max-width: 719px) {
+        .project-row {
+          padding: 12px;
+        }
+
+        .project-row-main {
+          gap: 8px;
+        }
+
+        .project-row-strip {
+          gap: 6px;
+          padding: 6px 0;
+        }
+
+        .project-row-strip .thumb-strip {
+          grid-template-columns: repeat(2, 52px);
+          width: max-content;
+        }
+
+        .project-row-strip .thumb:nth-child(n + 3) {
+          display: none;
+        }
+      }
+    </style>
   </head>
   <body>
     <a class="skip-link" href="#project-list">跳到项目列表</a>
-    <main class="app-shell">
+    <main class="app-shell" id="project-list">
       <div class="page">
         <header class="topbar">
           <div class="title-stack">
@@ -17,6 +303,7 @@
               <h1>项目</h1>
               <span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span>
             </div>
+            <p class="small muted">训练项目先作为可管理对象，再通过最近结果缩略图和底部状态快速判断是否继续推进。</p>
           </div>
           <div class="topbar-actions">
             <a class="button primary" href="./manager-lora-training-project-new-prototype.html">
@@ -25,179 +312,232 @@
           </div>
         </header>
 
-        <div class="status-tabs" role="tablist" aria-label="项目范围" data-filter-group data-filter-target=".project-card">
+        <div class="status-tabs" role="tablist" aria-label="项目范围" data-filter-group data-filter-target=".project-row">
           <button type="button" role="tab" aria-selected="true" data-filter="active">当前 <span class="count">6</span></button>
           <button type="button" role="tab" aria-selected="false" data-filter="archived">已归档 <span class="count">1</span></button>
         </div>
 
-        <section class="project-grid" id="project-list" aria-label="项目列表">
-          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=vela" data-filter-value="active">
-            <div class="row-head">
-              <div class="project-title">
-                <strong>Vela Neon Jacket</strong>
-                <span>更新于 16:28</span>
+        <section class="project-list-surface" id="project-list" aria-label="项目列表">
+          <div class="project-list-header">
+            <div class="row-title">
+              <h2>项目列表</h2>
+              <span>控制位优先，标题区保持干净，主体只保留最近结果缩略图带和轻量状态。</span>
+            </div>
+          </div>
+          <div class="project-list-toolbar">
+            <div class="project-list-counts">
+              <span>当前 6</span>
+              <span>已归档 1</span>
+            </div>
+            <div class="view-toggle" role="tablist" aria-label="项目列表密度">
+              <button type="button" role="tab" aria-selected="true" data-view-mode="card">卡片</button>
+              <button type="button" role="tab" aria-selected="false" data-view-mode="compact">紧凑</button>
+            </div>
+          </div>
+          <div class="entity-list project-card-grid">
+            <article class="project-row" data-filter-value="active">
+              <div class="project-row-controls">
+                <label class="project-row-check"><input type="checkbox" aria-label="选择训练项目 Vela Neon Jacket" /></label>
+                <button class="project-row-drag icon-button" type="button" aria-label="拖拽排序训练项目 Vela Neon Jacket"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
               </div>
-              <span class="state-line status-note green"><span class="state-dot"></span>当前</span>
-            </div>
-            <div class="thumb-strip" aria-label="角色参考图">
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Vela 参考图 1" /></span>
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Vela 参考图 2" /></span>
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Vela 参考图 3" /></span>
-            </div>
-            <div class="project-facts">
-              <span>资料 <strong>完整</strong></span>
-              <span>小节 <strong>6 个启用</strong></span>
-              <span>结果池 <strong>42 已保留</strong></span>
-            </div>
-            <div class="plain-meta">
-              <span>dataset v5 · 可用 · 42 张图片</span>
-              <span>最近训练 · 已完成 · vela_neon_v05.safetensors</span>
-            </div>
-          </a>
+              <div class="project-row-main">
+                <div class="project-row-head">
+                  <a class="project-row-title" href="./manager-lora-training-project-detail-prototype.html?project=vela">
+                    <strong>Vela Neon Jacket</strong>
+                    <span>6 小节</span>
+                  </a>
+                  <button class="project-row-delete icon-button" type="button" aria-label="删除训练项目 Vela Neon Jacket"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                </div>
+                <a class="project-row-strip" href="./manager-lora-training-project-detail-prototype.html?project=vela" aria-label="打开 Vela Neon Jacket 最近结果">
+                  <div class="thumb-strip" aria-label="最近结果缩略图">
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Vela 最近结果 1" /></span>
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Vela 最近结果 2" /></span>
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Vela 最近结果 3" /></span>
+                  </div>
+                </a>
+                <div class="project-row-meta">
+                  <span>更新：16:28</span>
+                  <span class="status-note green">可训练</span>
+                </div>
+              </div>
+            </article>
 
-          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=azure" data-filter-value="active">
-            <div class="row-head">
-              <div class="project-title">
-                <strong>Azure Idol</strong>
-                <span>更新于 16:17</span>
+            <article class="project-row" data-filter-value="active">
+              <div class="project-row-controls">
+                <label class="project-row-check"><input type="checkbox" aria-label="选择训练项目 Azure Idol" /></label>
+                <button class="project-row-drag icon-button" type="button" aria-label="拖拽排序训练项目 Azure Idol"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
               </div>
-              <span class="state-line status-note green"><span class="state-dot"></span>当前</span>
-            </div>
-            <div class="thumb-strip" aria-label="角色参考图">
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Azure 参考图 1" /></span>
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Azure 参考图 2" /></span>
-            </div>
-            <div class="project-facts">
-              <span>资料 <strong>完整</strong></span>
-              <span>小节 <strong>5 个启用</strong></span>
-              <span>结果池 <strong>33 已保留</strong></span>
-            </div>
-            <div class="plain-meta">
-              <span>dataset v4 · 可用 · 42 张图片</span>
-              <span>最近训练 · 进行中 · step 1280 / 2400</span>
-            </div>
-          </a>
+              <div class="project-row-main">
+                <div class="project-row-head">
+                  <a class="project-row-title" href="./manager-lora-training-project-detail-prototype.html?project=azure">
+                    <strong>Azure Idol</strong>
+                    <span>5 小节</span>
+                  </a>
+                  <button class="project-row-delete icon-button" type="button" aria-label="删除训练项目 Azure Idol"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                </div>
+                <a class="project-row-strip" href="./manager-lora-training-project-detail-prototype.html?project=azure" aria-label="打开 Azure Idol 最近结果">
+                  <div class="thumb-strip" aria-label="最近结果缩略图">
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Azure 最近结果 1" /></span>
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Azure 最近结果 2" /></span>
+                  </div>
+                </a>
+                <div class="project-row-meta">
+                  <span>更新：16:17</span>
+                  <span class="status-note blue">可继续训练</span>
+                </div>
+              </div>
+            </article>
 
-          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=noir" data-filter-value="active">
-            <div class="row-head">
-              <div class="project-title">
-                <strong>Noir Runner</strong>
-                <span>更新于 15:58</span>
+            <article class="project-row" data-filter-value="active">
+              <div class="project-row-controls">
+                <label class="project-row-check"><input type="checkbox" aria-label="选择训练项目 Noir Runner" /></label>
+                <button class="project-row-drag icon-button" type="button" aria-label="拖拽排序训练项目 Noir Runner"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
               </div>
-              <span class="state-line status-note green"><span class="state-dot"></span>当前</span>
-            </div>
-            <div class="thumb-strip" aria-label="角色参考图">
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Noir 参考图 1" /></span>
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Noir 参考图 2" /></span>
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Noir 参考图 3" /></span>
-            </div>
-            <div class="project-facts">
-              <span>资料 <strong>完整</strong></span>
-              <span>小节 <strong>8 个启用</strong></span>
-              <span>结果池 <strong>64 已保留</strong></span>
-            </div>
-            <div class="plain-meta">
-              <span>dataset v7 · 可用 · 64 张图片</span>
-              <span>最近训练 · 已完成 · noir_runner_v07.safetensors</span>
-            </div>
-          </a>
+              <div class="project-row-main">
+                <div class="project-row-head">
+                  <a class="project-row-title" href="./manager-lora-training-project-detail-prototype.html?project=noir">
+                    <strong>Noir Runner</strong>
+                    <span>8 小节</span>
+                  </a>
+                  <button class="project-row-delete icon-button" type="button" aria-label="删除训练项目 Noir Runner"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                </div>
+                <a class="project-row-strip" href="./manager-lora-training-project-detail-prototype.html?project=noir" aria-label="打开 Noir Runner 最近结果">
+                  <div class="thumb-strip" aria-label="最近结果缩略图">
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Noir 最近结果 1" /></span>
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Noir 最近结果 2" /></span>
+                  </div>
+                </a>
+                <div class="project-row-meta">
+                  <span>更新：15:58</span>
+                  <span class="status-note green">可训练</span>
+                </div>
+              </div>
+            </article>
 
-          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=mika" data-filter-value="active">
-            <div class="row-head">
-              <div class="project-title">
-                <strong>Mika Soft Portrait</strong>
-                <span>更新于 15:31</span>
+            <article class="project-row" data-filter-value="active">
+              <div class="project-row-controls">
+                <label class="project-row-check"><input type="checkbox" aria-label="选择训练项目 Mika Soft Portrait" /></label>
+                <button class="project-row-drag icon-button" type="button" aria-label="拖拽排序训练项目 Mika Soft Portrait"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
               </div>
-              <span class="state-line status-note amber"><span class="state-dot"></span>待补齐</span>
-            </div>
-            <div class="thumb-strip" aria-label="角色参考图">
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Mika 参考图 1" /></span>
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Mika 参考图 2" /></span>
-            </div>
-            <div class="project-facts">
-              <span>资料 <strong>缺少参考图</strong></span>
-              <span>小节 <strong>3 个启用</strong></span>
-              <span>结果池 <strong>12 已保留</strong></span>
-            </div>
-            <div class="plain-meta">
-              <span>dataset v3 · caption 缺失 3 张</span>
-              <span>最近训练 · 失败 · 数据集不可用</span>
-            </div>
-          </a>
+              <div class="project-row-main">
+                <div class="project-row-head">
+                  <a class="project-row-title" href="./manager-lora-training-project-detail-prototype.html?project=mika">
+                    <strong>Mika Soft Portrait</strong>
+                    <span>3 小节</span>
+                  </a>
+                  <button class="project-row-delete icon-button" type="button" aria-label="删除训练项目 Mika Soft Portrait"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                </div>
+                <a class="project-row-strip" href="./manager-lora-training-project-detail-prototype.html?project=mika" aria-label="打开 Mika Soft Portrait 最近结果">
+                  <div class="thumb-strip" aria-label="最近结果缩略图">
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Mika 最近结果 1" /></span>
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Mika 最近结果 2" /></span>
+                  </div>
+                </a>
+                <div class="project-row-meta">
+                  <span>更新：15:31</span>
+                  <span class="status-note amber">需补齐资料</span>
+                </div>
+              </div>
+            </article>
 
-          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=luna" data-filter-value="active">
-            <div class="row-head">
-              <div class="project-title">
-                <strong>Luna Editorial</strong>
-                <span>更新于 14:49</span>
+            <article class="project-row" data-filter-value="active">
+              <div class="project-row-controls">
+                <label class="project-row-check"><input type="checkbox" aria-label="选择训练项目 Luna Editorial" /></label>
+                <button class="project-row-drag icon-button" type="button" aria-label="拖拽排序训练项目 Luna Editorial"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
               </div>
-              <span class="state-line status-note green"><span class="state-dot"></span>当前</span>
-            </div>
-            <div class="thumb-strip" aria-label="角色参考图">
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Luna 参考图 1" /></span>
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Luna 参考图 2" /></span>
-            </div>
-            <div class="project-facts">
-              <span>资料 <strong>完整</strong></span>
-              <span>小节 <strong>7 个启用</strong></span>
-              <span>结果池 <strong>58 已保留</strong></span>
-            </div>
-            <div class="plain-meta">
-              <span>dataset v9 · 可用 · 58 张图片</span>
-              <span>最近训练 · 已完成 · luna_editorial_v09.safetensors</span>
-            </div>
-          </a>
+              <div class="project-row-main">
+                <div class="project-row-head">
+                  <a class="project-row-title" href="./manager-lora-training-project-detail-prototype.html?project=luna">
+                    <strong>Luna Editorial</strong>
+                    <span>7 小节</span>
+                  </a>
+                  <button class="project-row-delete icon-button" type="button" aria-label="删除训练项目 Luna Editorial"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                </div>
+                <a class="project-row-strip" href="./manager-lora-training-project-detail-prototype.html?project=luna" aria-label="打开 Luna Editorial 最近结果">
+                  <div class="thumb-strip" aria-label="最近结果缩略图">
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Luna 最近结果 1" /></span>
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Luna 最近结果 2" /></span>
+                  </div>
+                </a>
+                <div class="project-row-meta">
+                  <span>更新：14:49</span>
+                  <span class="status-note green">可训练</span>
+                </div>
+              </div>
+            </article>
 
-          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=nova" data-filter-value="active">
-            <div class="row-head">
-              <div class="project-title">
-                <strong>Nova Rain Coat</strong>
-                <span>更新于 13:22</span>
+            <article class="project-row" data-filter-value="active">
+              <div class="project-row-controls">
+                <label class="project-row-check"><input type="checkbox" aria-label="选择训练项目 Nova Rain Coat" /></label>
+                <button class="project-row-drag icon-button" type="button" aria-label="拖拽排序训练项目 Nova Rain Coat"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
               </div>
-              <span class="state-line status-note blue"><span class="state-dot"></span>生成中</span>
-            </div>
-            <div class="thumb-strip" aria-label="角色参考图">
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Nova 参考图 1" /></span>
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Nova 参考图 2" /></span>
-            </div>
-            <div class="project-facts">
-              <span>资料 <strong>完整</strong></span>
-              <span>小节 <strong>4 个启用</strong></span>
-              <span>结果池 <strong>31 已保留</strong></span>
-            </div>
-            <div class="plain-meta">
-              <span>dataset v2 · 可用 · 31 张图片</span>
-              <span>最近生成 · 排队 · 1 个小节</span>
-            </div>
-          </a>
+              <div class="project-row-main">
+                <div class="project-row-head">
+                  <a class="project-row-title" href="./manager-lora-training-project-detail-prototype.html?project=nova">
+                    <strong>Nova Rain Coat</strong>
+                    <span>4 小节</span>
+                  </a>
+                  <button class="project-row-delete icon-button" type="button" aria-label="删除训练项目 Nova Rain Coat"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                </div>
+                <a class="project-row-strip" href="./manager-lora-training-project-detail-prototype.html?project=nova" aria-label="打开 Nova Rain Coat 最近结果">
+                  <div class="thumb-strip" aria-label="最近结果缩略图">
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Nova 最近结果 1" /></span>
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Nova 最近结果 2" /></span>
+                  </div>
+                </a>
+                <div class="project-row-meta">
+                  <span>更新：13:22</span>
+                  <span class="status-note">等待生成</span>
+                </div>
+              </div>
+            </article>
 
-          <a class="project-card" href="./manager-lora-training-project-detail-prototype.html?project=rin" data-filter-value="archived" style="display: none">
-            <div class="row-head">
-              <div class="project-title">
-                <strong>Rin Classic</strong>
-                <span>归档于 06-09 18:20</span>
+            <article class="project-row" data-filter-value="archived" style="display: none">
+              <div class="project-row-controls">
+                <label class="project-row-check"><input type="checkbox" aria-label="选择训练项目 Rin Archive" /></label>
+                <button class="project-row-drag icon-button" type="button" aria-label="拖拽排序训练项目 Rin Archive"><i data-lucide="grip-vertical" aria-hidden="true"></i></button>
               </div>
-              <span class="state-line status-note"><span class="state-dot"></span>已归档</span>
-            </div>
-            <div class="thumb-strip" aria-label="角色参考图">
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Rin 参考图 1" /></span>
-              <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Rin 参考图 2" /></span>
-            </div>
-            <div class="project-facts">
-              <span>资料 <strong>完整</strong></span>
-              <span>小节 <strong>4 个启用</strong></span>
-              <span>结果池 <strong>29 已保留</strong></span>
-            </div>
-            <div class="plain-meta">
-              <span>dataset v1 · 可用 · 29 张图片</span>
-              <span>最终训练 · 已完成 · rin_classic_v01.safetensors</span>
-            </div>
-          </a>
+              <div class="project-row-main">
+                <div class="project-row-head">
+                  <a class="project-row-title" href="./manager-lora-training-project-detail-prototype.html?project=rin">
+                    <strong>Rin Archive</strong>
+                    <span>2 小节</span>
+                  </a>
+                  <button class="project-row-delete icon-button" type="button" aria-label="删除训练项目 Rin Archive"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                </div>
+                <a class="project-row-strip" href="./manager-lora-training-project-detail-prototype.html?project=rin" aria-label="打开 Rin Archive 最近结果">
+                  <div class="thumb-strip" aria-label="最近结果缩略图">
+                    <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="Rin 最近结果 1" /></span>
+                  </div>
+                </a>
+                <div class="project-row-meta">
+                  <span>更新：11:02</span>
+                  <span class="status-note">已归档</span>
+                </div>
+              </div>
+            </article>
+          </div>
         </section>
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
-    <script>initLoraPrototype("projects");</script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
+    <script>
+      initLoraPrototype("projects");
+
+      const projectSurface = document.querySelector(".project-list-surface");
+      const viewButtons = Array.from(document.querySelectorAll("[data-view-mode]"));
+
+      function setViewMode(mode) {
+        projectSurface.classList.toggle("compact", mode === "compact");
+        viewButtons.forEach((button) => {
+          button.setAttribute("aria-selected", String(button.dataset.viewMode === mode));
+        });
+      }
+
+      viewButtons.forEach((button) => {
+        button.addEventListener("click", () => setViewMode(button.dataset.viewMode));
+      });
+    </script>
   </body>
 </html>

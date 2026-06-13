@@ -4,39 +4,109 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
-    <title>LoRA 训练模式 - 项目生成任务原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <title>LoRA 训练模式 - 项目生成任务</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
+    <style>
+      .task-stage {
+        display: none;
+      }
+
+      .task-stage.active {
+        display: grid;
+      }
+
+      @media (min-width: 1080px) {
+        .task-stage.entity-list {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          align-items: start;
+        }
+      }
+    </style>
   </head>
   <body>
-    <main class="app-shell">
+    <a class="skip-link" href="#prototype-main">跳到主要内容</a>
+    <main class="app-shell" id="prototype-main">
       <div class="page">
         <header class="topbar">
           <div class="title-stack">
             <a class="back-link" href="./manager-lora-training-project-detail-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i>返回项目</a>
             <div class="title-row"><h1>Vela Neon Jacket / 生成任务</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div>
           </div>
+          <div class="topbar-actions">
+            <a class="button" href="./manager-lora-training-runs-prototype.html"><i data-lucide="external-link" aria-hidden="true"></i>查看全部运行</a>
+            <a class="button primary" href="./manager-lora-training-generation-compose-prototype.html"><i data-lucide="plus" aria-hidden="true"></i>新建生成任务</a>
+          </div>
         </header>
         <section class="panel">
-          <div class="panel-header"><h2>生成任务</h2></div>
-          <div class="panel-body entity-list">
-            <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=vela-completed-image">
-              <div class="row-title"><strong>舞台灯光 / 训练集图片生成</strong><span>图片 · gpt-image-2 · 完成于 15:20</span></div>
-              <span class="status-note green">完成</span>
-            </a>
-            <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=luna-completed-text">
-              <div class="row-title"><strong>角色细节文本生成</strong><span>文本 · Qwen2.5-VL · 已应用 14:49</span></div>
-              <span class="status-note green">完成</span>
-            </a>
-            <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=rain-queued-image">
-              <div class="row-title"><strong>街角夜景 / 训练集图片生成</strong><span>图片 · gpt-image-2 · 尚无输出</span></div>
-              <span class="status-note amber">排队</span>
-            </a>
+          <div class="panel-header">
+            <div class="row-title">
+              <h2>生成任务</h2>
+              <span>聚合当前项目里的图片生成和文本生成任务，详情仍进入全局生成任务页。</span>
+            </div>
+          </div>
+          <div class="panel-body stack">
+            <div class="status-tabs" role="tablist" aria-label="生成任务状态">
+              <button type="button" role="tab" aria-selected="true" data-stage-tab="generation-completed">完成 <span class="count">2</span></button>
+              <button type="button" role="tab" aria-selected="false" data-stage-tab="generation-running">进行中 <span class="count">1</span></button>
+              <button type="button" role="tab" aria-selected="false" data-stage-tab="generation-queued">排队 <span class="count">1</span></button>
+              <button type="button" role="tab" aria-selected="false" data-stage-tab="generation-failed">失败 <span class="count">1</span></button>
+            </div>
+
+            <div class="task-stage entity-list active" data-stage-view="generation-completed">
+              <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=vela-completed-image">
+                <div class="row-title"><strong>舞台灯光 / 训练集图片生成</strong><span>图片 · gpt-image-2 · 完成于 15:20</span></div>
+                <span class="status-note green">完成</span>
+              </a>
+              <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=luna-completed-text">
+                <div class="row-title"><strong>角色细节文本生成</strong><span>文本 · Qwen2.5-VL · 已应用 14:49</span></div>
+                <span class="status-note green">完成</span>
+              </a>
+            </div>
+
+            <div class="task-stage entity-list" data-stage-view="generation-running">
+              <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=street-running-image">
+                <div class="row-title"><strong>街角夜景 / 训练集图片生成</strong><span>图片 · gpt-image-2 · 进行中</span></div>
+                <span class="status-note blue">进行中</span>
+              </a>
+            </div>
+
+            <div class="task-stage entity-list" data-stage-view="generation-queued">
+              <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=rain-queued-image">
+                <div class="row-title"><strong>雨夜背光 / 训练集图片生成</strong><span>图片 · gpt-image-2 · 尚无输出</span></div>
+                <span class="status-note amber">排队</span>
+              </a>
+            </div>
+
+            <div class="task-stage entity-list" data-stage-view="generation-failed">
+              <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=failed-image">
+                <div class="row-title"><strong>白底棚拍 / 训练集图片生成</strong><span>失败于 15:18 · 参考图不足</span></div>
+                <span class="status-note red">失败</span>
+              </a>
+            </div>
           </div>
         </section>
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
-    <script>initLoraPrototype("projects");</script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
+    <script>
+      initLoraPrototype("projects");
+
+      const stageButtons = Array.from(document.querySelectorAll("[data-stage-tab]"));
+      const stageViews = Array.from(document.querySelectorAll("[data-stage-view]"));
+
+      function activateStage(key) {
+        stageButtons.forEach((button) => {
+          button.setAttribute("aria-selected", String(button.dataset.stageTab === key));
+        });
+        stageViews.forEach((view) => {
+          view.classList.toggle("active", view.dataset.stageView === key);
+        });
+      }
+
+      stageButtons.forEach((button) => {
+        button.addEventListener("click", () => activateStage(button.dataset.stageTab));
+      });
+    </script>
   </body>
 </html>

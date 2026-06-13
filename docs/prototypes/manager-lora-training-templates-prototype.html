@@ -4,34 +4,67 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
-    <title>LoRA 训练模式 - 模板原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <title>LoRA 训练模式 - 模板</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
   </head>
   <body>
-    <main class="app-shell">
+    <a class="skip-link" href="#prototype-main">跳到主要内容</a>
+    <main class="app-shell" id="prototype-main">
       <div class="page">
         <header class="topbar">
-          <div class="title-row"><h1>模板</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div>
-          <div class="topbar-actions"><a class="button primary" href="./manager-lora-training-template-new-prototype.html"><i data-lucide="plus" aria-hidden="true"></i>新建</a></div>
+          <div class="title-stack">
+            <div class="title-row"><h1>模板</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div>
+            <p class="small muted">管理可复用的小节结构、默认提示词规则和训练参数。</p>
+          </div>
+          <div class="topbar-actions"><a class="button" href="./manager-lora-training-project-new-prototype.html"><i data-lucide="copy-plus" aria-hidden="true"></i>从模板创建项目</a><a class="button primary" href="./manager-lora-training-template-new-prototype.html"><i data-lucide="plus" aria-hidden="true"></i>新建</a></div>
         </header>
-        <section class="grid-2">
-          <a class="card" href="./manager-lora-training-template-edit-prototype.html">
-            <div class="row-head"><div class="row-title"><strong>角色 LoRA 基础模板</strong><span>6 个小节 · sortOrder 1</span></div><span class="status-note green">启用</span></div>
-            <div class="summary-strip"><div class="summary-item"><span>指引</span><strong>4 字段</strong></div><div class="summary-item"><span>小节</span><strong>6</strong></div><div class="summary-item"><span>块</span><strong>18</strong></div></div>
-          </a>
-          <a class="card" href="./manager-lora-training-template-edit-prototype.html?template=portrait">
-            <div class="row-head"><div class="row-title"><strong>写实头像模板</strong><span>4 个小节 · sortOrder 2</span></div><span class="status-note green">启用</span></div>
-            <div class="summary-strip"><div class="summary-item"><span>指引</span><strong>4 字段</strong></div><div class="summary-item"><span>小节</span><strong>4</strong></div><div class="summary-item"><span>块</span><strong>11</strong></div></div>
-          </a>
-          <a class="card" href="./manager-lora-training-template-edit-prototype.html?template=legacy">
-            <div class="row-head"><div class="row-title"><strong>旧版角色模板</strong><span>保留给既有项目</span></div><span class="status-note">停用</span></div>
-            <div class="summary-strip"><div class="summary-item"><span>指引</span><strong>4 字段</strong></div><div class="summary-item"><span>小节</span><strong>5</strong></div><div class="summary-item"><span>块</span><strong>12</strong></div></div>
-          </a>
-        </section>
+        <section class="panel">
+          <div class="panel-header">
+            <div class="row-title">
+              <h2>模板列表</h2>
+              <span>按模板进入编辑页，小节摘要放在同一行内快速浏览。</span>
+            </div>
+          </div>
+              <div class="panel-body entity-list">
+                <a class="entity-row" href="./manager-lora-training-template-edit-prototype.html">
+                  <div class="row-title">
+                    <strong>角色 LoRA 基础模板</strong>
+                    <span>6 个小节 · 默认训练参数已配置 · 显示顺序 1</span>
+                  </div>
+                  <span class="status-note green">启用</span>
+                </a>
+                <div class="list-row subtle">
+                  <div class="plain-meta"><span>舞台肖像</span><span>街角夜景</span><span>白底棚拍</span><span>训练默认值 4 项</span></div>
+                  <div class="action-strip"><a class="button" href="./manager-lora-training-project-new-prototype.html?template=character-lora-base"><i data-lucide="copy-plus" aria-hidden="true"></i>从此模板创建项目</a></div>
+                </div>
+                <a class="entity-row" href="./manager-lora-training-template-edit-prototype.html?template=portrait">
+                  <div class="row-title">
+                    <strong>写实头像模板</strong>
+                    <span>4 个小节 · 轻量 caption 指引 · 显示顺序 2</span>
+                  </div>
+                  <span class="status-note green">启用</span>
+                </a>
+                <div class="list-row subtle">
+                  <div class="plain-meta"><span>近景人像</span><span>纯色背景</span><span>半身构图</span><span>训练默认值 4 项</span></div>
+                  <div class="action-strip"><a class="button" href="./manager-lora-training-project-new-prototype.html?template=portrait"><i data-lucide="copy-plus" aria-hidden="true"></i>从此模板创建项目</a></div>
+                </div>
+                <a class="entity-row" href="./manager-lora-training-template-edit-prototype.html?template=legacy">
+                  <div class="row-title">
+                    <strong>旧版角色模板</strong>
+                    <span>保留给既有项目使用，不再作为新建默认模板。</span>
+                  </div>
+                  <span class="status-note">停用</span>
+                </a>
+                <div class="list-row subtle">
+                  <div class="plain-meta"><span>旧版舞台</span><span>旧版街景</span><span>兼容历史项目</span></div>
+                  <div class="action-strip"><a class="button" href="./manager-lora-training-project-new-prototype.html?template=legacy"><i data-lucide="copy-plus" aria-hidden="true"></i>从此模板创建项目</a></div>
+                </div>
+              </div>
+            </section>
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
     <script>initLoraPrototype("templates");</script>
   </body>
 </html>

@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
-    <title>LoRA 训练模式 - 生成任务详情原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <title>LoRA 训练模式 - 生成任务详情</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
     <style>
       .detail-grid {
         grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.1fr);
@@ -29,17 +29,6 @@
 
       .review-thumb .image-card-img {
         border-color: rgba(245, 158, 11, 0.34);
-      }
-
-      .prompt-box {
-        padding: 12px;
-        border: 1px solid var(--line-soft);
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.025);
-        color: #e4e4e7;
-        font-size: 13px;
-        line-height: 1.65;
-        white-space: pre-wrap;
       }
 
       .input-image-row {
@@ -112,23 +101,23 @@
               <div class="panel-header"><h2>最终输入</h2></div>
               <div class="panel-body stack">
                 <div class="row-title">
-                  <strong>Prompt</strong>
+                  <strong>最终提示词</strong>
                   <span>提交给生成模型的最终提示词</span>
                 </div>
-                <p class="prompt-box" data-bind="prompt">Use the character detail prompt as identity guidance. Generate one training image for LoRA dataset use.
+                <p class="prompt-box" data-bind="prompt">请基于角色细节文本生成 1 张用于 LoRA 数据集的训练图片。
 
-Character: silver-black short hair, cool blue eyes, sleek neon cyan jacket, calm confident expression.
+角色：银黑色短发，冷调蓝眼，黑青色短夹克，表情平静自信。
 
-Scene: stage performance, strong cyan rim light, glossy black and teal cropped jacket, confident front-facing pose, clean silhouette, subtle spotlight haze.
+场景：舞台演出氛围，强青色轮廓光，黑青色短夹克，正面站姿，人物轮廓干净，轻微舞台雾气。
 
-Output: single character, full clean portrait, opaque background, no text, no watermark.</p>
+输出要求：单人，干净人像，不透明背景，无文字，无水印。</p>
                 <div class="input-image-row" data-bind-container="inputImage">
-                  <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="主参考图 original_reference">
+                  <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="主参考图">
                     <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="输入参考图缩略图" />
                   </button>
                   <div class="row-title">
                     <strong>主参考图</strong>
-                    <span translate="no">original_reference</span>
+                    <span>来自角色资料参考图</span>
                   </div>
                 </div>
               </div>
@@ -142,7 +131,7 @@ Output: single character, full clean portrait, opaque background, no text, no wa
                 <div><span>项目</span><span data-bind="project">Vela Neon Jacket</span></div>
                 <div><span>小节</span><span data-bind="section">舞台灯光</span></div>
                 <div><span>类型</span><span data-bind="kind">训练集图片生成</span></div>
-                <div><span>执行</span><span data-bind="runner">gpt-image-2 · 1024x1536 · high</span></div>
+                <div><span>执行</span><span data-bind="runner">gpt-image-2 · 1024 × 1536 · 高质量</span></div>
                 <div><span>创建时间</span><span data-bind="createdAt">15:18</span></div>
                 <div><span>运行时间</span><span data-bind="runtime">15:18 - 15:20</span></div>
                 <div><span>完成时间</span><span data-bind="completedAt">15:20</span></div>
@@ -172,7 +161,7 @@ Output: single character, full clean portrait, opaque background, no text, no wa
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
     <script>
       const tasks = {
         "vela-completed-image": {
@@ -202,6 +191,23 @@ Output: single character, full clean portrait, opaque background, no text, no wa
           reviewActions: "",
           inputImage: "",
         },
+        "profile-running-text": {
+          title: "Vela Neon Jacket / 角色资料生成",
+          section: "角色资料",
+          kind: "角色资料生成",
+          runner: "Qwen2.5-VL · text",
+          state: "进行中",
+          stateClass: "blue",
+          outputTitle: "输出文本",
+          outputMeta: "生成中 · 尚无文本",
+          createdAt: "15:41",
+          runtime: "15:41 -",
+          completedAt: "-",
+          outputSummary: "尚无输出",
+          prompt: "请根据现有参考图生成可直接写入角色资料页的角色细节文本，补足外观、服装、气质与镜头友好的可训练特征。",
+          outputBody: '<div class="empty">任务完成后显示生成的角色资料文本</div>',
+          reviewActions: "",
+        },
         "street-running-image": {
           title: "Vela Neon Jacket / 街角夜景图片生成",
           state: "进行中",
@@ -226,6 +232,19 @@ Output: single character, full clean portrait, opaque background, no text, no wa
           outputBody: '<div class="empty">任务开始后显示进度</div>',
           reviewActions: "",
         },
+        "studio-queued-image": {
+          title: "Vela Neon Jacket / 白底棚拍图片生成",
+          section: "白底棚拍",
+          state: "排队",
+          stateClass: "amber",
+          outputMeta: "排队中 · 尚无输出",
+          createdAt: "15:45",
+          runtime: "-",
+          completedAt: "-",
+          outputSummary: "尚无输出",
+          outputBody: '<div class="empty">等待生成槽位</div>',
+          reviewActions: "",
+        },
         "failed-image": {
           title: "Mika Soft Portrait / 训练集图片生成",
           project: "Mika Soft Portrait",
@@ -236,7 +255,7 @@ Output: single character, full clean portrait, opaque background, no text, no wa
           runtime: "15:16 - 15:18",
           completedAt: "15:18",
           outputSummary: "无输出",
-          outputBody: '<div class="empty">没有可审核结果</div>',
+          outputBody: '<div class="empty compact"><div class="row-title"><strong>失败原因</strong><span>GPT-Image-2 返回空结果，没有可审核结果</span></div></div>',
           reviewActions: "",
         },
       };
@@ -247,7 +266,7 @@ Output: single character, full clean portrait, opaque background, no text, no wa
         project: "Vela Neon Jacket",
         section: "舞台灯光",
         kind: "训练集图片生成",
-        runner: "gpt-image-2 · 1024x1536 · high",
+        runner: "gpt-image-2 · 1024 × 1536 · 高质量",
         createdAt: "15:18",
         runtime: "15:18 - 15:20",
         completedAt: "15:20",

@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
-    <title>LoRA 训练模式 - 训练任务详情原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <title>LoRA 训练模式 - 训练任务详情</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
     <style>
       .detail-grid {
         grid-template-columns: minmax(0, 1.08fr) minmax(280px, 0.92fr);
@@ -30,7 +30,7 @@
         padding: 10px;
         border: 1px solid var(--line-soft);
         border-radius: 10px;
-        background: rgba(255, 255, 255, 0.025);
+        background: color-mix(in srgb, var(--panel-soft) 54%, transparent);
       }
 
       .sample-card .image-card-img {
@@ -69,7 +69,7 @@
           <div class="title-stack">
             <a class="back-link" href="./manager-lora-training-runs-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i>返回运行</a>
             <div class="title-row">
-              <h1 data-bind="title">Vela Neon Jacket / dataset v5</h1>
+              <h1 data-bind="title">Vela Neon Jacket / 数据集版本 v5</h1>
               <span class="state-line status-note green" data-bind="state"><span class="state-dot"></span>完成</span>
               <span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span>
             </div>
@@ -87,9 +87,10 @@
               <div class="panel-header">
                 <div class="row-title">
                   <h2>产物</h2>
-                  <span data-bind="artifactMeta">final LoRA · 142 MB</span>
+                  <span data-bind="artifactMeta">最终 LoRA · 142 MB</span>
                 </div>
                 <div class="action-strip" data-bind-container="artifactActions">
+                  <button class="button" type="button"><i data-lucide="sparkles" aria-hidden="true"></i>创建预制</button>
                   <a class="button primary" href="./manager-lora-training-models-prototype.html"><i data-lucide="box" aria-hidden="true"></i>查看模型</a>
                 </div>
               </div>
@@ -166,12 +167,26 @@
               <div class="panel-header"><h2>任务</h2></div>
               <div class="panel-body compact-kv">
                 <div><span>项目</span><span data-bind="project">Vela Neon Jacket</span></div>
-                <div><span>数据集</span><span data-bind="dataset">dataset v5</span></div>
+                <div><span>数据集</span><span data-bind="dataset">数据集版本 v5</span></div>
                 <div><span>图片</span><span data-bind="items">42 张</span></div>
                 <div><span>开始时间</span><span data-bind="startedAt">15:50</span></div>
                 <div><span>完成时间</span><span data-bind="completedAt">16:21</span></div>
                 <div><span>步数</span><span data-bind="steps">2400 / 2400</span></div>
+                <div><span>等待原因</span><span data-bind="waitReason">无</span></div>
+                <div><span>调度提示</span><span data-bind="schedulerMessage">无</span></div>
                 <div><span>输出</span><span data-bind="output">vela_neon_v05.safetensors</span></div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header"><h2>训练配置</h2></div>
+              <div class="panel-body compact-kv">
+                <div><span>基础模型</span><span>sd_xl_base_1.0</span></div>
+                <div><span>训练执行器</span><span>local_wsl_sd_scripts</span></div>
+                <div><span>网络维度 / alpha</span><span>16 / 8</span></div>
+                <div><span>批量数</span><span>2</span></div>
+                <div><span>学习率</span><span>1e-4</span></div>
+                <div><span>训练分辨率</span><span>1024</span></div>
               </div>
             </section>
 
@@ -182,6 +197,15 @@
                   <div class="progress-meta"><span>已完成</span><span>100%</span></div>
                   <div class="progress"><span style="width: 100%"></span></div>
                 </div>
+              </div>
+            </section>
+
+            <section class="panel" data-bind-container="logPanel">
+              <div class="panel-header"><h2>训练日志</h2></div>
+              <div class="panel-body">
+                <pre class="prompt-box">[16:18] step 2200 / 2400 loss=0.071
+[16:21] 已保存最终 LoRA 产物
+[16:21] 训练完成</pre>
               </div>
             </section>
 
@@ -207,60 +231,88 @@
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
     <script>
       const runs = {
         "vela-completed": {
-          title: "Vela Neon Jacket / dataset v5",
+          title: "Vela Neon Jacket / 数据集版本 v5",
           state: "完成",
           stateClass: "green",
         },
         "azure-running": {
-          title: "Azure Idol / dataset v4",
+          title: "Azure Idol / 数据集版本 v4",
           project: "Azure Idol",
-          dataset: "dataset v4",
+          dataset: "数据集版本 v4",
           state: "进行中",
           stateClass: "blue",
           startedAt: "16:02",
           completedAt: "-",
           steps: "1280 / 2400",
+          waitReason: "无",
+          schedulerMessage: "训练已开始，正在持续写入日志",
           output: "尚无输出",
           artifactMeta: "训练中 · 尚无模型文件",
           artifactBody: '<div class="empty">训练完成后显示模型产物</div>',
           artifactActions: "",
           progressPanel: '<div class="panel-header"><h2>训练进度</h2></div><div class="panel-body"><div class="task-progress"><div class="progress-meta"><span>step 1280 / 2400</span><span>53%</span></div><div class="progress"><span style="width: 53%"></span></div></div></div>',
+          logPanel: '<div class="panel-header"><h2>训练日志</h2></div><div class="panel-body"><pre class="prompt-box">[16:02] training started\n[16:20] step 1280 / 2400 loss=0.094\n[16:20] saving sample preview</pre></div>',
+        },
+        "mika-running": {
+          title: "Mika Soft Portrait / 数据集版本 v3",
+          project: "Mika Soft Portrait",
+          dataset: "数据集版本 v3",
+          items: "39 张",
+          state: "进行中",
+          stateClass: "blue",
+          startedAt: "16:18",
+          completedAt: "-",
+          steps: "46 / 2200",
+          waitReason: "无",
+          schedulerMessage: "训练已开始，正在写入首轮日志",
+          output: "尚无输出",
+          artifactMeta: "训练中 · 尚无模型文件",
+          artifactBody: '<div class="empty">训练完成后显示模型产物</div>',
+          artifactActions: "",
+          progressPanel: '<div class="panel-header"><h2>训练进度</h2></div><div class="panel-body"><div class="task-progress"><div class="progress-meta"><span>step 46 / 2200</span><span>2%</span></div><div class="progress"><span style="width: 2%"></span></div></div></div>',
+          logPanel: '<div class="panel-header"><h2>训练日志</h2></div><div class="panel-body"><pre class="prompt-box">[16:18] training started\n[16:19] step 12 / 2200 loss=0.213\n[16:20] writing first optimizer checkpoint</pre></div>',
         },
         "noir-queued": {
-          title: "Noir Runner / dataset v7",
+          title: "Noir Runner / 数据集版本 v7",
           project: "Noir Runner",
-          dataset: "dataset v7",
+          dataset: "数据集版本 v7",
           items: "64 张",
           state: "排队",
           stateClass: "amber",
           startedAt: "-",
           completedAt: "-",
           steps: "-",
+          waitReason: "gpu_busy",
+          schedulerMessage: "当前本地 GPU 正在执行另一个训练任务，完成后自动开始",
           output: "尚无输出",
           artifactMeta: "排队中 · 尚无模型文件",
           artifactBody: '<div class="empty">训练开始后显示进度</div>',
           artifactActions: "",
           progressPanel: '<div class="panel-header"><h2>训练进度</h2></div><div class="panel-body"><div class="empty">等待训练槽位</div></div>',
+          logPanel: '<div class="panel-header"><h2>训练日志</h2></div><div class="panel-body"><div class="empty">尚未创建训练日志</div></div>',
         },
         "mika-failed": {
-          title: "Mika Soft Portrait / dataset v3",
+          title: "Mika Soft Portrait / 数据集版本 v3",
           project: "Mika Soft Portrait",
-          dataset: "dataset v3",
+          dataset: "数据集版本 v3",
           items: "39 张",
           state: "失败",
           stateClass: "red",
           startedAt: "15:34",
           completedAt: "15:55",
           steps: "460 / 2200",
+          waitReason: "无",
+          schedulerMessage: "训练已停止，需先补齐缺失 caption",
           output: "无输出",
           artifactMeta: "训练失败 · 尚无模型文件",
-          artifactBody: '<div class="empty">没有可用模型产物</div>',
+          artifactBody: '<div class="empty compact"><div class="row-title"><strong>失败原因</strong><span>3 张图片缺少 caption，未保存最终 LoRA</span></div></div>',
           artifactActions: "",
           progressPanel: '<div class="panel-header"><h2>训练进度</h2></div><div class="panel-body"><div class="task-progress"><div class="progress-meta"><span>step 460 / 2200</span><span>21%</span></div><div class="progress"><span style="width: 21%"></span></div></div></div>',
+          logPanel: '<div class="panel-header"><h2>训练日志</h2></div><div class="panel-body"><pre class="prompt-box">[15:34] training started\n[15:52] caption validation failed\n[15:55] stopped: 3 张图片缺少 caption</pre></div>',
         },
       };
 
@@ -268,13 +320,15 @@
       const data = runs[key] || runs["vela-completed"];
       const defaults = {
         project: "Vela Neon Jacket",
-        dataset: "dataset v5",
+        dataset: "数据集版本 v5",
         items: "42 张",
         startedAt: "15:50",
         completedAt: "16:21",
         steps: "2400 / 2400",
+        waitReason: "无",
+        schedulerMessage: "训练完成，无待处理调度信息",
         output: "vela_neon_v05.safetensors",
-        artifactMeta: "final LoRA · 142 MB",
+        artifactMeta: "最终 LoRA · 142 MB",
       };
       const merged = { ...defaults, ...data };
 

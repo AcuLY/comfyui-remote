@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#09090b" />
+    <title>LoRA 训练模式 - 生成任务面板</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
+  </head>
+  <body>
+    <a class="skip-link" href="#prototype-main">跳到主要内容</a>
+    <main class="app-shell" id="prototype-main">
+      <div class="page wide">
+        <header class="topbar">
+          <div class="title-stack">
+            <a class="back-link" href="./manager-lora-training-project-section-detail-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i>返回小节</a>
+            <div class="title-row">
+              <h1>Vela Neon Jacket / 生成样本</h1>
+              <span class="status-note amber">草稿</span>
+              <span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span>
+            </div>
+          </div>
+          <div class="topbar-actions">
+            <button class="button" type="button"><i data-lucide="save" aria-hidden="true"></i>保存</button>
+            <a class="button primary" href="./manager-lora-training-generation-detail-prototype.html?task=street-running-image"><i data-lucide="play" aria-hidden="true"></i>运行生成</a>
+          </div>
+        </header>
+
+        <nav class="context-tabs" aria-label="项目页面">
+          <a href="./manager-lora-training-project-detail-prototype.html">总览</a>
+          <a href="./manager-lora-training-project-profile-prototype.html">资料</a>
+          <a class="active" href="./manager-lora-training-project-sections-prototype.html" aria-current="page">小节</a>
+          <a href="./manager-lora-training-project-results-prototype.html">结果池</a>
+          <a href="./manager-lora-training-project-dataset-prototype.html">数据集</a>
+        </nav>
+
+        <section class="layout wide-left generation-composer">
+          <div class="stack">
+            <section class="panel">
+              <div class="panel-header"><h2>任务</h2></div>
+              <div class="panel-body compact-kv">
+                <div><span>类型</span><span>训练集图片生成</span></div>
+                <div><span>内容</span><span>图片</span></div>
+                <div><span>执行</span><span>gpt-image-2 · 1024 × 1536 · 高质量</span></div>
+                <div><span>目标</span><span>小节 舞台灯光</span></div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <h2>任务内容</h2>
+                <button class="button" type="button"><i data-lucide="plus" aria-hidden="true"></i>添加引用</button>
+              </div>
+              <div class="panel-body stack">
+                <div class="selected-reference-list">
+                  <div class="entity-row">
+                    <div class="row-title"><strong>角色细节文本</strong><span>来自角色资料正文</span></div>
+                    <span class="status-note">文本</span>
+                  </div>
+                  <div class="entity-row">
+                    <div class="row-title"><strong>主参考图</strong><span>来自角色参考图</span></div>
+                    <span class="status-note purple">图片</span>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>补充提示词</label>
+                  <textarea class="textarea" name="task_supplemental_prompt" aria-label="补充提示词" autocomplete="off" spellcheck="false">使用当前小节已经合成好的舞台场景描述，保持角色身份稳定，避免文字、水印和多余人物。</textarea>
+                </div>
+                <div class="upload-drop">
+                  <div class="row-title"><strong>补充图片</strong><span>拖入图片或从结果池选择</span></div>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header"><h2>最终输入预览</h2></div>
+              <div class="panel-body prompt-preview">
+                <div class="attachment-row">
+                  <span class="attachment-thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="主参考图缩略图" /></span>
+                </div>
+                <p class="prompt-box">请基于角色细节文本生成 1 张用于 LoRA 数据集的训练图片。
+
+角色：银黑色短发，冷调蓝眼，黑青色短夹克，表情平静自信。
+
+场景：强青色轮廓光，舞台聚光，干净剪影，杂志构图。
+
+输出要求：单人，全身或半身干净人像，不透明背景，无文字，无水印。</p>
+                <div class="empty compact">尚无输出 · 运行后生成 1 张图片</div>
+              </div>
+            </section>
+          </div>
+
+          <aside class="stack reference-picker">
+            <section class="panel">
+              <div class="panel-header"><h2>引用来源</h2></div>
+              <div class="panel-body source-tree">
+                <div class="source-group">
+                  <strong>文本</strong>
+                  <button class="entity-row" type="button"><div class="row-title"><strong>LoRA 触发提示词</strong><span>资料页中的触发提示词</span></div></button>
+                  <button class="entity-row" type="button"><div class="row-title"><strong>小节合成场景描述</strong><span>当前小节已合成的场景文本</span></div></button>
+                </div>
+                <div class="source-group">
+                  <strong>图片</strong>
+                  <button class="entity-row" type="button"><div class="row-title"><strong>主参考图</strong><span>角色资料里的参考图</span></div></button>
+                  <button class="entity-row" type="button"><div class="row-title"><strong>结果池保留图</strong><span>项目结果池里的已保留图片</span></div></button>
+                </div>
+                <div class="source-group">
+                  <strong>历史输出</strong>
+                  <button class="entity-row" type="button"><div class="row-title"><strong>角色细节补全</strong><span>历史文本输出</span></div></button>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header"><h2>预览</h2></div>
+              <div class="panel-body stack">
+                <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="主参考图">
+                  <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="引用预览缩略图" />
+                </button>
+                <button class="button primary" type="button"><i data-lucide="plus" aria-hidden="true"></i>添加到任务</button>
+              </div>
+            </section>
+          </aside>
+        </section>
+      </div>
+    </main>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
+    <script>initLoraPrototype("projects");</script>
+  </body>
+</html>

@@ -4,11 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
-    <title>LoRA 训练模式 - 新建项目原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <title>LoRA 训练模式 - 新建项目</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
   </head>
   <body>
-    <main class="app-shell">
+    <a class="skip-link" href="#prototype-main">跳到主要内容</a>
+    <main class="app-shell" id="prototype-main">
       <div class="page">
         <header class="topbar">
           <div class="title-stack">
@@ -32,21 +33,17 @@
                 <span class="status-note amber">未创建</span>
               </div>
               <div class="panel-body form-grid">
-                <div class="field">
+                <div class="field full">
                   <label>名称</label>
-                  <input class="input" value="Vela Neon Jacket" />
-                </div>
-                <div class="field">
-                  <label>slug</label>
-                  <input class="input" value="vela-neon-jacket" />
+                  <input class="input" name="project_name" aria-label="项目名称" autocomplete="off" value="Vela Neon Jacket" />
                 </div>
                 <div class="field full">
-                  <label>图片 Prompt 指引</label>
-                  <textarea class="textarea">Use the character detail prompt as identity guidance. Generate one clean training image for LoRA dataset use.</textarea>
+                  <label>图片提示词指引</label>
+                  <textarea class="textarea" name="image_prompt_guidance" aria-label="图片提示词指引" autocomplete="off" spellcheck="false">把角色细节文本作为身份锚点。每次生成 1 张干净、可训练、背景清晰的人物图片。</textarea>
                 </div>
                 <div class="field full">
-                  <label>训练 caption 格式</label>
-                  <textarea class="textarea">Begin with the LoRA usage prompt, then describe clothing, pose, lighting, camera framing, and background in one concise paragraph.</textarea>
+                  <label>caption 生成指引</label>
+                  <textarea class="textarea" name="training_caption_format" aria-label="caption 生成指引" autocomplete="off" spellcheck="false">先写 LoRA 触发提示词，再用一段简洁描述补充服装、姿态、光线、镜头构图和背景。</textarea>
                 </div>
               </div>
             </section>
@@ -59,11 +56,11 @@
               <div class="panel-body form-grid">
                 <div class="field full">
                   <label>LoRA 触发提示词</label>
-                  <textarea class="textarea">vela_neon_jacket, silver-black short hair, cool blue eyes, sleek cyan jacket</textarea>
+                  <textarea class="textarea" name="profile_lora_usage_prompt" aria-label="LoRA 触发提示词" autocomplete="off" spellcheck="false">vela_neon_jacket, silver-black short hair, cool blue eyes, sleek cyan jacket</textarea>
                 </div>
                 <div class="field full">
                   <label>角色细节文本</label>
-                  <textarea class="textarea">A calm front-facing young woman with silver-black short hair, cool blue eyes, glossy black and teal cropped jacket, clean silhouette, no text or watermark.</textarea>
+                  <textarea class="textarea" name="profile_character_detail_prompt" aria-label="角色细节文本" autocomplete="off" spellcheck="false">银黑色短发，冷调蓝眼，黑青色短夹克，正面站姿，表情平静自信，人物剪影干净，无文字水印。</textarea>
                 </div>
               </div>
             </section>
@@ -76,12 +73,12 @@
               <div class="panel-body block-list">
                 <div class="block-item">
                   <span class="block-index">1</span>
-                  <div class="row-title"><strong>舞台灯光</strong><span>category: lighting · preset: cyan rim light</span></div>
+                  <div class="row-title"><strong>舞台灯光</strong><span>来自光线分类预制 · 青色轮廓光</span></div>
                   <span class="chip green">启用</span>
                 </div>
                 <div class="block-item">
                   <span class="block-index">2</span>
-                  <div class="row-title"><strong>街角夜景</strong><span>category: environment · preset: wet neon street</span></div>
+                  <div class="row-title"><strong>街角夜景</strong><span>来自环境分类预制 · 潮湿霓虹街道</span></div>
                   <span class="chip green">启用</span>
                 </div>
               </div>
@@ -90,16 +87,20 @@
 
           <aside class="stack">
             <section class="panel">
-              <div class="panel-header"><h2>模板</h2></div>
+              <div class="panel-header"><h2>选择模板</h2></div>
               <div class="panel-body stack">
-                <a class="list-row" href="./manager-lora-training-template-edit-prototype.html">
-                  <div class="row-head">
-                    <div class="row-title"><strong>角色 LoRA 基础模板</strong><span>6 个小节 · 4 类 scene preset</span></div>
-                    <span class="status-note blue">选中</span>
-                  </div>
-                </a>
                 <div class="list-row">
-                  <div class="row-title"><strong>写实头像模板</strong><span>4 个小节 · 轻量 caption format</span></div>
+                  <div class="row-head">
+                    <div class="row-title"><strong>角色 LoRA 基础模板</strong><span>6 个小节 · 4 类场景预制</span></div>
+                    <span class="status-note blue">已选</span>
+                  </div>
+                </div>
+                <div class="list-row subtle">
+                  <div class="plain-meta"><span>已复制模板规则</span><span>后续项目内编辑不会回写模板</span></div>
+                </div>
+                <div class="list-row">
+                  <div class="row-title"><strong>写实头像模板</strong><span>4 个小节 · 轻量 caption 指引</span></div>
+                  <div class="action-strip"><a class="button" href="./manager-lora-training-template-edit-prototype.html?template=portrait"><i data-lucide="eye" aria-hidden="true"></i>预览模板</a><button class="button" type="button"><i data-lucide="check" aria-hidden="true"></i>改选此模板</button></div>
                 </div>
               </div>
             </section>
@@ -108,16 +109,16 @@
               <div class="panel-header"><h2>参考图</h2></div>
               <div class="panel-body reference-grid">
                 <article class="media-card">
-                  <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="original_reference · 正面半身">
+                  <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="主参考图 · 正面半身">
                     <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" />
                   </button>
-                  <div class="media-body"><strong class="small">original_reference</strong><span class="tiny muted">正面半身</span></div>
+                  <div class="media-body"><strong class="small">主参考图</strong><span class="tiny muted">正面半身</span></div>
                 </article>
                 <article class="media-card">
-                  <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="auxiliary_reference · 外套细节">
+                  <button class="image-card-img" type="button" data-lightbox-src="./assets/images/lora-training-generation-result-output.png" data-lightbox-caption="辅助参考图 · 外套细节">
                     <img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="训练图片缩略图" />
                   </button>
-                  <div class="media-body"><strong class="small">auxiliary_reference</strong><span class="tiny muted">外套细节</span></div>
+                  <div class="media-body"><strong class="small">辅助参考图</strong><span class="tiny muted">外套细节</span></div>
                 </article>
               </div>
             </section>
@@ -126,7 +127,7 @@
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
     <script>initLoraPrototype("projects");</script>
   </body>
 </html>
