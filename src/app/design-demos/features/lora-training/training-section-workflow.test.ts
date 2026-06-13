@@ -226,6 +226,42 @@ test("training section detail saves a visible local section draft", () => {
   assert.doesNotMatch(detailPage, /小节已保存/, "section save should not remain feedback-only");
 });
 
+test("training section detail state stays scoped to the active project section", () => {
+  const detailPage = sourceBetween(
+    "export function LoraTrainingProjectSectionDetailPage",
+    "export function LoraTrainingGenerationComposePage",
+  );
+
+  assert.match(detailPage, /projectId:\s*project\?\.id \?\? null/, "scene-block state should remember the parent project");
+  assert.match(
+    detailPage,
+    /sceneBlockState\.projectId === project\?\.id && sceneBlockState\.sectionId === section\?\.id \? sceneBlockState\.blocks : section\?\.blocks \?\? \[\]/,
+    "scene blocks should only reuse local state for the same project and section",
+  );
+  assert.match(
+    detailPage,
+    /current\.projectId === activeProject\.id && current\.sectionId === activeSection\.id \? current\.blocks : activeSection\.blocks/,
+    "scene-block updates should fall back to the active section when switching projects",
+  );
+  assert.match(detailPage, /projectId:\s*activeProject\.id/, "scene-block updates and saved drafts should store the active project id");
+  assert.match(detailPage, /projectId:\s*string;/, "saved section drafts should be typed with the parent project id");
+  assert.match(
+    detailPage,
+    /sectionDraft\?\.projectId === activeProject\.id && sectionDraft\?\.sectionId === activeSection\.id \? sectionDraft : null/,
+    "saved section drafts should only appear for the same project and section",
+  );
+  assert.doesNotMatch(
+    detailPage,
+    /const sceneBlocks = sceneBlockState\.sectionId === section\?\.id \? sceneBlockState\.blocks : section\?\.blocks \?\? \[\]/,
+    "section-only scene-block state should not leak between projects",
+  );
+  assert.doesNotMatch(
+    detailPage,
+    /const visibleSectionDraft = sectionDraft\?\.sectionId === section\?\.id \? sectionDraft : null/,
+    "section-only saved drafts should not leak between projects",
+  );
+});
+
 test("generation compose uses an explicit reference source tree with preview then add", () => {
   const composePage = sourceBetween(
     "export function LoraTrainingGenerationComposePage",

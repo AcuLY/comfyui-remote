@@ -1365,6 +1365,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   const section = findSection(project, sectionId);
   const [sceneBlockState, setSceneBlocks] = useState(() => ({
     blocks: section?.blocks ?? [],
+    projectId: project?.id ?? null,
     sectionId: section?.id ?? null,
   }));
   const [sectionResultState, setSectionResults] = useState(() => ({
@@ -1377,24 +1378,26 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     firstBlock: string;
     imagePrompt: string;
     projectTitle: string;
+    projectId: string;
     scenePreview: string;
     sectionId: string;
     sectionTitle: string;
   } | null>(null);
-  const sceneBlocks = sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
+  const sceneBlocks = sceneBlockState.projectId === project?.id && sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
   const sectionResults = (sectionResultState.projectId === project?.id ? sectionResultState.results : project?.resultPool ?? [])
     .filter((result) => result.sectionId === section?.id);
-  const visibleSectionDraft = sectionDraft?.sectionId === section?.id ? sectionDraft : null;
   if (!project || !section) return <EmptyPage title="没有训练小节详情" />;
 
   const activeProject = project;
   const activeSection = section;
+  const visibleSectionDraft = sectionDraft?.projectId === activeProject.id && sectionDraft?.sectionId === activeSection.id ? sectionDraft : null;
   const importedPreset = training.presets[0];
   const scenePreview = sceneBlocks.map((block) => block.text).join("\n\n");
 
   function updateSceneBlocks(updater: (current: LoraTrainingSectionBlock[]) => LoraTrainingSectionBlock[]) {
     setSceneBlocks((current) => ({
-      blocks: updater(current.sectionId === activeSection.id ? current.blocks : activeSection.blocks),
+      blocks: updater(current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.blocks : activeSection.blocks),
+      projectId: activeProject.id,
       sectionId: activeSection.id,
     }));
   }
@@ -1458,6 +1461,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
       blockCount: sceneBlocks.length,
       firstBlock: sceneBlocks[0]?.title ?? "无场景块",
       imagePrompt: activeSection.imagePrompt,
+      projectId: activeProject.id,
       projectTitle: activeProject.title,
       scenePreview: scenePreview || activeSection.resolvedScene,
       sectionId: activeSection.id,
