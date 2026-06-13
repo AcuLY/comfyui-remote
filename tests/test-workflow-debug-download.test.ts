@@ -13,6 +13,20 @@ type WorkflowNode = {
 };
 
 type WorkflowPrompt = Record<string, WorkflowNode>;
+type GraphNodeInput = { name: string; type: string; link: number | null };
+type GraphNodeOutput = { name: string; type: string; links: number[] | null };
+type GraphNode = {
+  id: number;
+  type: string;
+  title?: string;
+  inputs: GraphNodeInput[];
+  outputs: GraphNodeOutput[];
+  widgets_values?: unknown[];
+};
+type GraphWorkflow = {
+  nodes: GraphNode[];
+  links: Array<[number, number, number, number, number, string]>;
+};
 
 function loadStandardWorkflow(): WorkflowPrompt {
   return JSON.parse(
@@ -20,42 +34,50 @@ function loadStandardWorkflow(): WorkflowPrompt {
   ) as WorkflowPrompt;
 }
 
-function tupleEquals(value: unknown, expectedNodeId: string, expectedOutputIndex: number) {
-  return Array.isArray(value) && value[0] === expectedNodeId && value[1] === expectedOutputIndex;
+function asGraph(workflow: Record<string, unknown>) {
+  assert.ok(Array.isArray(workflow.nodes), "debug workflow should be a ComfyUI frontend graph");
+  assert.ok(Array.isArray(workflow.links), "debug workflow should include frontend graph links");
+  return workflow as unknown as GraphWorkflow;
 }
 
-test("debug workflow converts image save nodes to preview image nodes", () => {
-  const original = loadStandardWorkflow();
-  const debug = buildDebugWorkflowPrompt(original) as WorkflowPrompt;
+function findNode(graph: GraphWorkflow, id: number) {
+  const node = graph.nodes.find((candidate) => candidate.id === id);
+  assert.ok(node, `expected graph node ${id} to exist`);
+  return node;
+}
 
-  assert.notEqual(debug, original, "debug transform should return a cloned workflow");
+function inputLink(node: GraphNode, inputName: string) {
+  const input = node.inputs.find((candidate) => candidate.name === inputName);
+  assert.ok(input, `expected ${node.id}.${inputName} input to exist`);
+  return input.link;
+}
+
+test("debug workflow converts image save nodes to frontend preview image nodes", () => {
+  const original = loadStandardWorkflow();
+  const debug = asGraph(buildDebugWorkflowPrompt(original));
+
+  assert.notEqual(debug, original, "debug transform should return a new workflow");
   assert.equal(original["515"].class_type, "Image Save", "original workflow should remain unchanged");
 
-  assert.equal(debug["515"].class_type, "PreviewImage");
-  assert.deepEqual(debug["515"].inputs, { images: ["410", 0] });
-  assert.equal(debug["515"]._meta?.title, "Preview Image");
+  const preview = findNode(debug, 515);
+  assert.equal(preview.type, "PreviewImage");
+  assert.equal(inputLink(preview, "images"), 45);
+  assert.deepEqual(preview.widgets_values, []);
 });
 
 test("debug workflow adds a KSampler1 preview branch", () => {
-  const debug = buildDebugWorkflowPrompt(loadStandardWorkflow()) as WorkflowPrompt;
+  const debug = asGraph(buildDebugWorkflowPrompt(loadStandardWorkflow()));
 
-  const decodeEntry = Object.entries(debug).find(([id, node]) =>
-    id !== "410" &&
-    node.class_type === "VAEDecode" &&
-    tupleEquals(node.inputs?.samples, "3", 0) &&
-    tupleEquals(node.inputs?.vae, "1", 2)
-  );
-  assert.ok(decodeEntry, "debug workflow should add a VAEDecode node for KSampler1");
+  const decode = debug.nodes.find((node) => node.type === "VAEDecode" && node.title === "KSampler1 VAE Decode");
+  assert.ok(decode, "debug workflow should add a VAEDecode node for KSampler1");
+  assert.equal(inputLink(decode, "samples"), 52);
+  assert.equal(inputLink(decode, "vae"), 53);
 
-  const [decodeId] = decodeEntry;
-  const previewEntry = Object.entries(debug).find(([id, node]) =>
-    id !== "515" &&
-    node.class_type === "PreviewImage" &&
-    tupleEquals(node.inputs?.images, decodeId, 0)
-  );
-  assert.ok(previewEntry, "debug workflow should add a PreviewImage node for the KSampler1 decode");
+  const preview = debug.nodes.find((node) => node.type === "PreviewImage" && node.title === "KSampler1 Preview Image");
+  assert.ok(preview, "debug workflow should add a PreviewImage node for the KSampler1 decode");
+  assert.equal(inputLink(preview, "images"), 54);
 
-  assert.deepEqual(debug["410"].inputs?.samples, ["427", 0], "final output decode should keep reading KSampler2");
+  assert.equal(inputLink(findNode(debug, 410), "samples"), 38, "final output decode should keep reading KSampler2");
 });
 
 test("debug workflow adds blank lines after prompt block BREAK separators", () => {
@@ -63,16 +85,38 @@ test("debug workflow adds blank lines after prompt block BREAK separators", () =
   workflow["511"].inputs = { text: "character prompt BREAK pose prompt BREAK scene prompt" };
   workflow["513"].inputs = { text: "bad anatomy BREAK watermark" };
 
-  const debug = buildDebugWorkflowPrompt(workflow) as WorkflowPrompt;
+  const debug = asGraph(buildDebugWorkflowPrompt(workflow));
 
   assert.equal(
-    debug["511"].inputs?.text,
+    findNode(debug, 511).widgets_values?.[0],
     "character prompt BREAK\n\npose prompt BREAK\n\nscene prompt",
   );
-  assert.equal(debug["513"].inputs?.text, "bad anatomy BREAK\n\nwatermark");
+  assert.equal(findNode(debug, 513).widgets_values?.[0], "bad anatomy BREAK\n\nwatermark");
   assert.equal(
     workflow["511"].inputs?.text,
     "character prompt BREAK pose prompt BREAK scene prompt",
     "original workflow should remain unchanged",
   );
+});
+
+test("debug workflow uses one boolean to swap portrait and landscape dimensions", () => {
+  const debug = asGraph(buildDebugWorkflowPrompt(loadStandardWorkflow()));
+  const emptyLatent = findNode(debug, 407);
+  const latentUpscale = findNode(debug, 425);
+  const vertical = debug.nodes.find((node) => node.type === "PrimitiveBoolean" && node.title === "vertical");
+  assert.ok(vertical, "debug workflow should expose a vertical boolean control");
+  assert.deepEqual(vertical.widgets_values, [true]);
+
+  assert.equal(inputLink(emptyLatent, "width"), 56);
+  assert.equal(inputLink(emptyLatent, "height"), 61);
+  assert.equal(inputLink(latentUpscale, "width"), 70);
+  assert.equal(inputLink(latentUpscale, "height"), 71);
+
+  const booleanLinks = debug.links.filter((link) => link[1] === vertical.id).map((link) => link[0]).sort((a, b) => a - b);
+  assert.deepEqual(booleanLinks, [58, 72, 73, 74]);
+
+  assert.equal(findNode(debug, 526).widgets_values?.[0], 512);
+  assert.equal(findNode(debug, 528).widgets_values?.[0], 768);
+  assert.equal(findNode(debug, 533).widgets_values?.[0], 1024);
+  assert.equal(findNode(debug, 535).widgets_values?.[0], 1536);
 });
