@@ -71,6 +71,16 @@ const RESULT_FILTER_ITEMS = [
 type TrainingResultFilter = (typeof RESULT_FILTER_ITEMS)[number]["value"];
 type LoraTrainingTemplateSeedSection = LoraTrainingTemplate["sections"][number];
 type SceneBlockPatch = Partial<Pick<LoraTrainingSectionBlock, "text" | "title">>;
+type ProjectSectionDraftState = {
+  blockCount: number;
+  firstBlock: string;
+  imagePrompt: string;
+  projectTitle: string;
+  projectId: string;
+  scenePreview: string;
+  sectionId: string;
+  sectionTitle: string;
+};
 const DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT = "保持角色正面可训练，避免复杂遮挡和多人构图。";
 const PROJECT_RUN_ERROR_CLAMP_LINES = 3;
 
@@ -93,6 +103,10 @@ function findProject(data: DemoData, projectId?: string) {
 function findSection(project: LoraTrainingProject | undefined, sectionId?: string) {
   if (!project || !sectionId) return undefined;
   return project.sections.find((section) => section.id === sectionId);
+}
+
+function buildProjectSectionStateKey(projectId: string, sectionId: string) {
+  return `${projectId}:${sectionId}`;
 }
 
 function moveSceneBlock(blocks: LoraTrainingSectionBlock[], index: number, direction: -1 | 1) {
@@ -1462,15 +1476,12 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   const training = buildLoraTrainingDemoData(data);
   const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
-  const [sceneBlockState, setSceneBlocks] = useState(() => ({
-    blocks: section?.blocks ?? [],
-    projectId: project?.id ?? null,
-    sectionId: section?.id ?? null,
-  }));
-  const [sectionResultState, setSectionResults] = useState(() => ({
-    projectId: project?.id ?? null,
-    results: project?.resultPool ?? [],
-  }));
+  const [sectionSceneBlocksByKey, setSectionSceneBlocksByKey] = useState<Record<string, LoraTrainingSectionBlock[]>>(() => (
+    project && section ? { [buildProjectSectionStateKey(project.id, section.id)]: section.blocks } : {}
+  ));
+  const [sectionResultsByProjectKey, setSectionResultsByProjectKey] = useState<Record<string, LoraTrainingImageResult[]>>(() => (
+    project ? { [project.id]: project.resultPool } : {}
+  ));
   const [editingSceneBlockState, setEditingSceneBlockState] = useState(() => ({
     blockId: null as string | null,
     projectId: project?.id ?? null,
@@ -1478,24 +1489,16 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   }));
   const [presetImportOpen, setPresetImportOpen] = useState(false);
   const [selectedTrainingPresetId, setSelectedTrainingPresetId] = useState<string | null>(null);
-  const [sectionDraft, setSectionDraft] = useState<{
-    blockCount: number;
-    firstBlock: string;
-    imagePrompt: string;
-    projectTitle: string;
-    projectId: string;
-    scenePreview: string;
-    sectionId: string;
-    sectionTitle: string;
-  } | null>(null);
-  const sceneBlocks = sceneBlockState.projectId === project?.id && sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
-  const sectionResults = (sectionResultState.projectId === project?.id ? sectionResultState.results : project?.resultPool ?? [])
-    .filter((result) => result.sectionId === section?.id);
+  const [sectionDraftsByKey, setSectionDraftsByKey] = useState<Record<string, ProjectSectionDraftState>>({});
   if (!project || !section) return <EmptyPage title="没有训练小节详情" />;
 
   const activeProject = project;
   const activeSection = section;
-  const visibleSectionDraft = sectionDraft?.projectId === activeProject.id && sectionDraft?.sectionId === activeSection.id ? sectionDraft : null;
+  const projectSectionStateKey = buildProjectSectionStateKey(activeProject.id, activeSection.id);
+  const sceneBlocks = sectionSceneBlocksByKey[projectSectionStateKey] ?? activeSection.blocks;
+  const sectionResults = (sectionResultsByProjectKey[activeProject.id] ?? activeProject.resultPool)
+    .filter((result) => result.sectionId === activeSection.id);
+  const visibleSectionDraft = sectionDraftsByKey[projectSectionStateKey] ?? null;
   const visibleEditingSceneBlockId = editingSceneBlockState.projectId === activeProject.id && editingSceneBlockState.sectionId === activeSection.id ? editingSceneBlockState.blockId : null;
   const selectedTrainingPreset = training.presets.find((preset) => preset.id === selectedTrainingPresetId) ?? null;
   const scenePreview = sceneBlocks.map((block) => block.text).join("\n\n");
@@ -1509,10 +1512,9 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   }
 
   function updateSceneBlocks(updater: (current: LoraTrainingSectionBlock[]) => LoraTrainingSectionBlock[]) {
-    setSceneBlocks((current) => ({
-      blocks: updater(current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.blocks : activeSection.blocks),
-      projectId: activeProject.id,
-      sectionId: activeSection.id,
+    setSectionSceneBlocksByKey((current) => ({
+      ...current,
+      [projectSectionStateKey]: updater(current[projectSectionStateKey] ?? activeSection.blocks),
     }));
   }
 
@@ -1563,25 +1565,28 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   }
 
   function handleReviewSectionResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
-    setSectionResults((current) => ({
-      projectId: activeProject.id,
-      results: (current.projectId === activeProject.id ? current.results : activeProject.resultPool).map((result) =>
+    setSectionResultsByProjectKey((current) => ({
+      ...current,
+      [activeProject.id]: (current[activeProject.id] ?? activeProject.resultPool).map((result) =>
         result.id === resultId ? { ...result, reviewStatus } : result,
       ),
     }));
   }
 
   function handleSaveSection() {
-    setSectionDraft({
-      blockCount: sceneBlocks.length,
-      firstBlock: sceneBlocks[0]?.title ?? "无场景块",
-      imagePrompt: activeSection.imagePrompt,
-      projectId: activeProject.id,
-      projectTitle: activeProject.title,
-      scenePreview: scenePreview || activeSection.resolvedScene,
-      sectionId: activeSection.id,
-      sectionTitle: activeSection.title,
-    });
+    setSectionDraftsByKey((current) => ({
+      ...current,
+      [projectSectionStateKey]: {
+        blockCount: sceneBlocks.length,
+        firstBlock: sceneBlocks[0]?.title ?? "无场景块",
+        imagePrompt: activeSection.imagePrompt,
+        projectId: activeProject.id,
+        projectTitle: activeProject.title,
+        scenePreview: scenePreview || activeSection.resolvedScene,
+        sectionId: activeSection.id,
+        sectionTitle: activeSection.title,
+      },
+    }));
   }
 
   return (

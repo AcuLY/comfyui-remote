@@ -190,7 +190,7 @@ test("training section detail scene-block actions update local front-end state",
   const sceneBlockCard = sourceBetween("function SceneBlockCard", "function ReferencePicker");
 
   assert.match(detailPage, /sceneBlocks/, "section detail should render from a local editable block list");
-  assert.match(detailPage, /setSceneBlocks/, "section detail block actions should update local state");
+  assert.match(detailPage, /setSectionSceneBlocksByKey/, "section detail block actions should update keyed local state");
   assert.match(detailPage, /handleAddLocalSceneBlock/, "section detail should add a local draft block");
   assert.match(detailPage, /handleMoveSceneBlock/, "section detail should reorder blocks locally");
   assert.match(detailPage, /handleDeleteSceneBlock/, "section detail should delete blocks locally");
@@ -249,7 +249,7 @@ test("training section detail saves a visible local section draft", () => {
   );
 
   assert.match(detailPage, /sectionDraft/, "section detail should expose a saved local section draft");
-  assert.match(detailPage, /setSectionDraft/, "section save should update local draft state");
+  assert.match(detailPage, /setSectionDraftsByKey/, "section save should update keyed local draft state");
   assert.match(detailPage, /handleSaveSection/, "section detail should define a save handler");
   assert.match(detailPage, /onClick=\{handleSaveSection\}/, "section save action should call the local save handler");
   assert.match(detailPage, /sceneBlocks\.length/, "saved section draft should include current scene block count");
@@ -259,25 +259,45 @@ test("training section detail saves a visible local section draft", () => {
   assert.doesNotMatch(detailPage, /小节已保存/, "section save should not remain feedback-only");
 });
 
+test("training section detail keeps local edits keyed by project and section", () => {
+  const detailPage = sourceBetween(
+    "export function LoraTrainingProjectSectionDetailPage",
+    "export function LoraTrainingGenerationComposePage",
+  );
+
+  assert.match(detailPage, /projectSectionStateKey/, "section detail should build a stable local state key");
+  assert.match(detailPage, /sectionSceneBlocksByKey/, "scene-block edits should be stored per project section");
+  assert.match(detailPage, /setSectionSceneBlocksByKey/, "scene-block actions should update keyed local state");
+  assert.match(detailPage, /sectionResultsByProjectKey/, "result review changes should be stored per project");
+  assert.match(detailPage, /setSectionResultsByProjectKey/, "result review actions should update keyed local results");
+  assert.match(detailPage, /sectionDraftsByKey/, "saved section drafts should be stored per project section");
+  assert.match(detailPage, /setSectionDraftsByKey/, "save action should update keyed local drafts");
+  assert.match(detailPage, /sectionSceneBlocksByKey\[projectSectionStateKey\] \?\? activeSection\.blocks/, "scene blocks should read the active section key before falling back to fixtures");
+  assert.match(detailPage, /sectionDraftsByKey\[projectSectionStateKey\] \?\? null/, "saved drafts should read the active section key before falling back to empty state");
+  assert.doesNotMatch(detailPage, /sceneBlockState/, "section detail should not use a single mutable slot for scene blocks");
+  assert.doesNotMatch(detailPage, /sectionDraft\?\.projectId/, "section detail should not filter a single mutable draft slot");
+});
+
 test("training section detail state stays scoped to the active project section", () => {
   const detailPage = sourceBetween(
     "export function LoraTrainingProjectSectionDetailPage",
     "export function LoraTrainingGenerationComposePage",
   );
 
-  assert.match(detailPage, /projectId:\s*project\?\.id \?\? null/, "scene-block state should remember the parent project");
+  assert.match(detailPage, /buildProjectSectionStateKey\(activeProject\.id, activeSection\.id\)/, "state keys should include both parent project and active section");
   assert.match(
     detailPage,
-    /sceneBlockState\.projectId === project\?\.id && sceneBlockState\.sectionId === section\?\.id \? sceneBlockState\.blocks : section\?\.blocks \?\? \[\]/,
-    "scene blocks should only reuse local state for the same project and section",
+    /sectionSceneBlocksByKey\[projectSectionStateKey\] \?\? activeSection\.blocks/,
+    "scene blocks should read only the active keyed state",
   );
   assert.match(
     detailPage,
-    /current\.projectId === activeProject\.id && current\.sectionId === activeSection\.id \? current\.blocks : activeSection\.blocks/,
-    "scene-block updates should fall back to the active section when switching projects",
+    /\[projectSectionStateKey\]: updater\(current\[projectSectionStateKey\] \?\? activeSection\.blocks\)/,
+    "scene-block updates should write only the active keyed state",
   );
   assert.match(detailPage, /projectId:\s*activeProject\.id/, "scene-block updates and saved drafts should store the active project id");
-  assert.match(detailPage, /projectId:\s*string;/, "saved section drafts should be typed with the parent project id");
+  assert.match(pagesSource, /type ProjectSectionDraftState = \{[\s\S]*?projectId:\s*string;/, "saved section drafts should be typed with the parent project id");
+  assert.match(pagesSource, /type ProjectSectionDraftState = \{[\s\S]*?sectionId:\s*string;/, "saved section drafts should be typed with the active section id");
   assert.match(detailPage, /editingSceneBlockState/, "editing scene-block state should be stored with route context");
   assert.match(
     detailPage,
@@ -287,18 +307,18 @@ test("training section detail state stays scoped to the active project section",
   assert.match(detailPage, /isEditing=\{visibleEditingSceneBlockId === block\.id\}/, "scene block cards should only receive scoped edit state");
   assert.match(
     detailPage,
-    /sectionDraft\?\.projectId === activeProject\.id && sectionDraft\?\.sectionId === activeSection\.id \? sectionDraft : null/,
-    "saved section drafts should only appear for the same project and section",
+    /const visibleSectionDraft = sectionDraftsByKey\[projectSectionStateKey\] \?\? null/,
+    "saved section drafts should read only the active keyed draft",
   );
   assert.doesNotMatch(
     detailPage,
-    /const sceneBlocks = sceneBlockState\.sectionId === section\?\.id \? sceneBlockState\.blocks : section\?\.blocks \?\? \[\]/,
-    "section-only scene-block state should not leak between projects",
+    /sceneBlockState/,
+    "single-slot scene-block state should not replace keyed project-section state",
   );
   assert.doesNotMatch(
     detailPage,
-    /const visibleSectionDraft = sectionDraft\?\.sectionId === section\?\.id \? sectionDraft : null/,
-    "section-only saved drafts should not leak between projects",
+    /sectionDraft\?\.projectId/,
+    "saved drafts should not be filtered from a single mutable draft slot",
   );
   assert.doesNotMatch(
     detailPage,
