@@ -15,10 +15,238 @@
         display: grid;
       }
 
-      @media (min-width: 1080px) {
-        .task-stage.entity-list {
+      .current-run-surface {
+        display: grid;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .current-run-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid var(--line-soft);
+        padding: 10px 14px;
+      }
+
+      .current-run-header span {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .current-run-header strong {
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 520;
+      }
+
+      .current-run-list {
+        display: grid;
+        gap: 10px;
+        padding: 10px;
+      }
+
+      .current-run-card,
+      .task-card {
+        display: grid;
+        gap: 8px;
+        min-width: 0;
+        padding: 13px 14px 14px;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--field-bg) 42%, transparent);
+      }
+
+      .current-run-title,
+      .task-title {
+        display: grid;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .current-run-title strong,
+      .task-title strong {
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 580;
+        white-space: nowrap;
+      }
+
+      .current-run-title span,
+      .task-title span,
+      .task-meta span,
+      .task-failure-text {
+        min-width: 0;
+        overflow: hidden;
+        color: var(--muted);
+        font-size: 11px;
+        text-overflow: ellipsis;
+      }
+
+      .current-run-title span,
+      .task-title span {
+        white-space: nowrap;
+      }
+
+      .current-run-progress,
+      .task-progress {
+        display: grid;
+        gap: 6px;
+      }
+
+      .current-run-progress-top,
+      .task-progress-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .current-run-progress-top strong,
+      .task-progress-top strong {
+        min-width: 4ch;
+        color: var(--emerald);
+        font-size: 11px;
+        font-weight: 650;
+        text-align: right;
+      }
+
+      .current-run-progress-track {
+        height: 7px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: var(--field-bg);
+      }
+
+      .current-run-progress-track span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--emerald), var(--sky));
+      }
+
+      .task-surface-stack {
+        display: grid;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: rgba(24, 24, 27, 0.58);
+        box-shadow: var(--shadow);
+      }
+
+      .task-surface-stack .status-tabs {
+        margin: 0;
+        border: 0;
+        border-top: 1px solid var(--line-soft);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+      }
+
+      .task-surface {
+        display: grid;
+        min-height: 240px;
+      }
+
+      .task-surface-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        border-bottom: 1px solid var(--line-soft);
+        padding: 12px 14px;
+      }
+
+      .task-surface-header > div {
+        display: grid;
+        gap: 3px;
+      }
+
+      .task-surface-header strong {
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 580;
+      }
+
+      .task-surface-header em {
+        color: var(--muted);
+        font-size: 11px;
+        font-style: normal;
+      }
+
+      .task-grid {
+        display: grid;
+        gap: 10px;
+        padding: 10px;
+      }
+
+      .task-thumbs,
+      .task-meta,
+      .task-actions,
+      .task-failure-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 10px;
+      }
+
+      .task-actions {
+        justify-content: flex-end;
+      }
+
+      .task-action-button {
+        width: 36px;
+        height: 36px;
+        padding: 0;
+        border: 1px solid color-mix(in srgb, var(--red) 34%, transparent);
+        border-radius: 8px;
+        background: var(--red-soft);
+        color: var(--red);
+        cursor: pointer;
+      }
+
+      .task-failure {
+        display: grid;
+        gap: 8px;
+      }
+
+      .task-failure-block {
+        display: grid;
+        gap: 6px;
+        padding: 10px 12px;
+        border: 1px solid color-mix(in srgb, var(--red) 24%, transparent);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--red-soft) 54%, transparent);
+      }
+
+      .task-failure-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--red);
+        font-size: 11px;
+        font-weight: 650;
+      }
+
+      @media (min-width: 980px) {
+        .current-run-list,
+        .task-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
-          align-items: start;
+        }
+      }
+
+      @media (max-width: 719px) {
+        .task-action-button {
+          width: 32px;
+          height: 32px;
         }
       }
     </style>
@@ -37,53 +265,111 @@
             <a class="button primary" href="./manager-lora-training-generation-compose-prototype.html"><i data-lucide="plus" aria-hidden="true"></i>新建生成任务</a>
           </div>
         </header>
-        <section class="panel">
-          <div class="panel-header">
-            <div class="row-title">
-              <h2>生成任务</h2>
-              <span>聚合当前项目里的图片生成和文本生成任务，详情仍进入全局生成任务页。</span>
-            </div>
+
+        <section class="current-run-surface" aria-label="当前运行中">
+          <div class="current-run-header">
+            <span><i data-lucide="clock-3" aria-hidden="true"></i>当前运行中</span>
+            <strong>1 个任务</strong>
           </div>
-          <div class="panel-body stack">
-            <div class="status-tabs" role="tablist" aria-label="生成任务状态">
-              <button type="button" role="tab" aria-selected="true" data-stage-tab="generation-completed">完成 <span class="count">2</span></button>
-              <button type="button" role="tab" aria-selected="false" data-stage-tab="generation-running">进行中 <span class="count">1</span></button>
-              <button type="button" role="tab" aria-selected="false" data-stage-tab="generation-queued">排队 <span class="count">1</span></button>
-              <button type="button" role="tab" aria-selected="false" data-stage-tab="generation-failed">失败 <span class="count">1</span></button>
-            </div>
-
-            <div class="task-stage entity-list active" data-stage-view="generation-completed">
-              <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=vela-completed-image">
-                <div class="row-title"><strong>舞台灯光 / 训练集图片生成</strong><span>图片 · gpt-image-2 · 完成于 15:20</span></div>
-                <span class="status-note green">完成</span>
-              </a>
-              <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=luna-completed-text">
-                <div class="row-title"><strong>角色细节文本生成</strong><span>文本 · Qwen2.5-VL · 已应用 14:49</span></div>
-                <span class="status-note green">完成</span>
-              </a>
-            </div>
-
-            <div class="task-stage entity-list" data-stage-view="generation-running">
-              <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=street-running-image">
-                <div class="row-title"><strong>街角夜景 / 训练集图片生成</strong><span>图片 · gpt-image-2 · 进行中</span></div>
-                <span class="status-note blue">进行中</span>
-              </a>
-            </div>
-
-            <div class="task-stage entity-list" data-stage-view="generation-queued">
-              <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=rain-queued-image">
-                <div class="row-title"><strong>雨夜背光 / 训练集图片生成</strong><span>图片 · gpt-image-2 · 尚无输出</span></div>
-                <span class="status-note amber">排队</span>
-              </a>
-            </div>
-
-            <div class="task-stage entity-list" data-stage-view="generation-failed">
-              <a class="entity-row" href="./manager-lora-training-generation-detail-prototype.html?task=failed-image">
-                <div class="row-title"><strong>白底棚拍 / 训练集图片生成</strong><span>失败于 15:18 · 参考图不足</span></div>
-                <span class="status-note red">失败</span>
-              </a>
-            </div>
+          <div class="current-run-list">
+            <article class="current-run-card">
+              <div class="current-run-title">
+                <strong>街角夜景 / 训练集图片生成</strong>
+                <span>图片 · gpt-image-2 · 开始于 15:42</span>
+              </div>
+              <div class="current-run-progress">
+                <div class="current-run-progress-top"><span>生成中</span><strong>48%</strong></div>
+                <div class="current-run-progress-track"><span style="width: 48%"></span></div>
+              </div>
+            </article>
           </div>
+        </section>
+
+        <section class="task-surface-stack">
+          <div class="status-tabs" role="tablist" aria-label="生成任务状态">
+            <button type="button" role="tab" aria-selected="true" data-stage-tab="generation-completed">完成 <span class="count">2</span></button>
+            <button type="button" role="tab" aria-selected="false" data-stage-tab="generation-running">进行中 <span class="count">1</span></button>
+            <button type="button" role="tab" aria-selected="false" data-stage-tab="generation-queued">排队 <span class="count">1</span></button>
+            <button type="button" role="tab" aria-selected="false" data-stage-tab="generation-failed">失败 <span class="count">1</span></button>
+          </div>
+
+          <section class="task-surface">
+            <div class="task-surface-header">
+              <div>
+                <strong>项目内生成任务</strong>
+                <em>和全局运行页保持同样的状态工作区，只是上下文收束到当前项目。</em>
+              </div>
+            </div>
+
+            <div class="task-stage task-grid active" data-stage-view="generation-completed">
+              <article class="task-card">
+                <div class="task-title">
+                  <strong>舞台灯光 / 训练集图片生成</strong>
+                  <span>图片 · gpt-image-2 · 完成于 15:20</span>
+                </div>
+                <div class="task-thumbs">
+                  <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="舞台灯光输出 1" /></span>
+                  <span class="thumb"><img src="./assets/images/lora-training-generation-result-thumb.png" width="300" height="400" loading="lazy" alt="舞台灯光输出 2" /></span>
+                </div>
+                <div class="task-meta"><span>输出 1 张图片</span><span>已进入结果池</span></div>
+              </article>
+              <article class="task-card">
+                <div class="task-title">
+                  <strong>角色细节文本生成</strong>
+                  <span>文本 · Qwen2.5-VL · 已应用 14:49</span>
+                </div>
+                <div class="task-meta"><span>补齐角色描述</span><span>已同步到项目资料</span></div>
+              </article>
+            </div>
+
+            <div class="task-stage task-grid" data-stage-view="generation-running">
+              <article class="task-card">
+                <div class="task-title">
+                  <strong>街角夜景 / 训练集图片生成</strong>
+                  <span>图片 · gpt-image-2 · 开始于 15:42</span>
+                </div>
+                <div class="task-progress">
+                  <div class="task-progress-top"><span>生成中</span><strong>48%</strong></div>
+                  <div class="progress"><span style="width: 48%"></span></div>
+                </div>
+                <div class="task-actions">
+                  <button class="task-action-button" type="button" aria-label="终止任务"><i data-lucide="square" aria-hidden="true"></i></button>
+                </div>
+              </article>
+            </div>
+
+            <div class="task-stage task-grid" data-stage-view="generation-queued">
+              <article class="task-card">
+                <div class="task-title">
+                  <strong>雨夜背光 / 训练集图片生成</strong>
+                  <span>图片 · gpt-image-2 · 创建于 15:44</span>
+                </div>
+                <div class="task-meta"><span>尚无输出</span><span>排在当前生成任务之后</span></div>
+                <div class="task-actions">
+                  <button class="task-action-button" type="button" aria-label="取消任务"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+                </div>
+              </article>
+            </div>
+
+            <div class="task-stage task-grid" data-stage-view="generation-failed">
+              <article class="task-card">
+                <div class="task-failure">
+                  <div class="task-title">
+                    <strong>白底棚拍 / 训练集图片生成</strong>
+                    <span>失败于 15:18 · 参考图不足</span>
+                  </div>
+                  <div class="task-failure-block">
+                    <div class="task-failure-header"><i data-lucide="circle-alert" aria-hidden="true"></i>失败原因</div>
+                    <p class="task-failure-text">参考图数量不足，自动扩增未达到训练阈值，因此没有进入正式生成。</p>
+                  </div>
+                  <div class="task-failure-toolbar">
+                    <button class="button" type="button"><i data-lucide="copy" aria-hidden="true"></i>复制报错</button>
+                    <button class="button green" type="button"><i data-lucide="rotate-ccw" aria-hidden="true"></i>重试</button>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
         </section>
       </div>
     </main>
