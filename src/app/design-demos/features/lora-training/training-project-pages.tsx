@@ -246,15 +246,25 @@ function TrainingResultGrid({
   selectedIds?: Set<string>;
   title?: string;
 }) {
-  const [activeResultIndex, setActiveResultIndex] = useState<number | null>(null);
-  const activeResult = activeResultIndex === null ? null : results[activeResultIndex] ?? null;
+  const [activeResultId, setActiveResultId] = useState<string | null>(null);
+  const activeResult = activeResultId ? results.find((result) => result.id === activeResultId) ?? null : null;
+  const activeResultIndex = activeResult ? results.findIndex((result) => result.id === activeResult.id) : -1;
+
+  function moveActiveResult(offset: number) {
+    if (results.length === 0) return;
+    setActiveResultId((current) => {
+      const currentIndex = current ? results.findIndex((result) => result.id === current) : -1;
+      const nextIndex = ((currentIndex >= 0 ? currentIndex : 0) + offset + results.length) % results.length;
+      return results[nextIndex]?.id ?? null;
+    });
+  }
 
   if (results.length === 0) return <div className={s.emptyInline}>没有训练结果图片</div>;
 
   return (
     <>
       <div className={s.trainingResultGrid}>
-        {results.map((result, index) => {
+        {results.map((result) => {
           const selected = selectedIds?.has(result.id) ?? false;
 
           return (
@@ -279,7 +289,7 @@ function TrainingResultGrid({
                 aria-label={`打开训练结果：${result.sourceLabel}`}
                 className={s.trainingResultPreviewButton}
                 type="button"
-                onClick={() => setActiveResultIndex(index)}
+                onClick={() => setActiveResultId(result.id)}
               >
                 <ImagePreviewFrame image={result.image} />
               </button>
@@ -297,9 +307,9 @@ function TrainingResultGrid({
           image={activeResult.image}
           title={`${title} / ${activeResult.sectionTitle}`}
           meta={activeResult.caption}
-          onClose={() => setActiveResultIndex(null)}
-          onNext={() => setActiveResultIndex((current) => current === null ? 0 : (current + 1) % results.length)}
-          onPrevious={() => setActiveResultIndex((current) => current === null ? 0 : (current + results.length - 1) % results.length)}
+          onClose={() => setActiveResultId(null)}
+          onNext={activeResultIndex >= 0 ? () => moveActiveResult(1) : undefined}
+          onPrevious={activeResultIndex >= 0 ? () => moveActiveResult(-1) : undefined}
           actions={(
             <>
               <Button icon={Check} onClick={() => onReviewStatusChange?.(activeResult.id, "kept")} feedback={{ title: "图片已保留", detail: activeResult.sourceLabel }}>保留</Button>

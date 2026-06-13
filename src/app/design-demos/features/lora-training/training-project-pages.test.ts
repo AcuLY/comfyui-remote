@@ -262,6 +262,24 @@ test("training result review actions update local front-end review state", () =>
   assert.match(sectionDetailSource, /onReviewStatusChange=\{handleReviewSectionResult\}/, "section detail result grid should be wired to a review handler");
 });
 
+test("training result lightbox tracks the active image by result id", () => {
+  const gridStart = pagesSource.indexOf("function TrainingResultGrid");
+  const runRowsStart = pagesSource.indexOf("function runPreviewImages");
+  assert.notEqual(gridStart, -1);
+  assert.notEqual(runRowsStart, -1);
+
+  const gridSource = pagesSource.slice(gridStart, runRowsStart);
+
+  assert.match(gridSource, /activeResultId/, "result grid should store the active result id");
+  assert.match(gridSource, /setActiveResultId/, "result grid should update the active result by id");
+  assert.match(gridSource, /results\.find\(\(result\) => result\.id === activeResultId\)/, "active lightbox result should resolve from the current results by id");
+  assert.match(gridSource, /results\.findIndex\(\(result\) => result\.id === activeResult\.id\)/, "next and previous navigation should use the current result id");
+  assert.match(gridSource, /onClick=\{\(\) => setActiveResultId\(result\.id\)\}/, "opening a result should store its id");
+  assert.match(gridSource, /setActiveResultId\(null\)/, "closing the lightbox should clear the active result id");
+  assert.doesNotMatch(gridSource, /activeResultIndex, setActiveResultIndex\] = useState<number \| null>/, "result grid should not store the active result as an array index");
+  assert.doesNotMatch(gridSource, /results\[activeResultIndex\]/, "active lightbox result should not be read by stale array index");
+});
+
 test("training result review supports explicit selected batch keep and reject actions", () => {
   const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
