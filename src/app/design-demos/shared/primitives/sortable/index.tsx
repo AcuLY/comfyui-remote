@@ -1,6 +1,7 @@
 "use client";
 
 import type * as React from "react";
+import { useId } from "react";
 import {
   DndContext,
   closestCenter,
@@ -38,6 +39,8 @@ export function SortableList({
   onReorder: (items: string[]) => void;
   children: React.ReactNode;
 }) {
+  const reactId = useId();
+  const dndContextId = `demo-sortable-${reactId.replace(/:/g, "")}`;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -54,7 +57,7 @@ export function SortableList({
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext id={dndContextId} sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
         {children}
       </SortableContext>
