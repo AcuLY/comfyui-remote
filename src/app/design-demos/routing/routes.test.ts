@@ -295,3 +295,24 @@ test("LoRA training resource route headers use the matched preset and template c
   assert.equal(templateSection.title, "柔和肖像模板 / 服装补充");
   assert.equal(templateSection.back?.href, "/training/templates/portrait-soft/edit");
 });
+
+test("LoRA training template section headers do not replace invalid indexes with first fixtures", () => {
+  const data = fallbackData(null);
+
+  const invalidTemplateSection = findHeaderSpecForRoute(data, "/training/templates/portrait-soft/sections/99");
+  assert.ok(invalidTemplateSection, "invalid template section route should still resolve a header spec");
+  assert.equal(invalidTemplateSection.title, "柔和肖像模板");
+  assert.equal(invalidTemplateSection.subtitle, "偏轻量的人像模板，适合资料较完整的角色快速生成训练集。");
+  assert.equal(invalidTemplateSection.back?.href, "/training/templates/portrait-soft/edit");
+  assert.notEqual(invalidTemplateSection.title, "柔和肖像模板 / 半身特写");
+
+  const helperStart = headerSpecsSource.indexOf("function findLoraTrainingTemplateSection");
+  const helperEnd = headerSpecsSource.indexOf("function trainingProjectBaseHref", helperStart);
+  assert.notEqual(helperStart, -1);
+  assert.notEqual(helperEnd, -1);
+
+  const helperSource = headerSpecsSource.slice(helperStart, helperEnd);
+
+  assert.match(helperSource, /if \(!Number\.isInteger\(index\) \|\| index < 0\) return undefined;/, "invalid template section indexes should resolve to the parent header");
+  assert.doesNotMatch(helperSource, /template\.sections\[safeIndex\] \?\? template\.sections\[0\]/, "header helper should not silently render the first template section");
+});

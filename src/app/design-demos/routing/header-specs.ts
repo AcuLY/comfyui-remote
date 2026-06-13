@@ -971,9 +971,9 @@ function findLoraTrainingTemplate(data: DemoData, templateId: string | undefined
 }
 
 function findLoraTrainingTemplateSection(template: LoraTrainingTemplate, sectionIndex: string | undefined) {
-  const index = Number(sectionIndex ?? "0");
-  const safeIndex = Number.isFinite(index) ? index : 0;
-  return template.sections[safeIndex] ?? template.sections[0];
+  const index = Number(sectionIndex);
+  if (!Number.isInteger(index) || index < 0) return undefined;
+  return template.sections[index];
 }
 
 function trainingProjectBaseHref(project: LoraTrainingProject) {
@@ -1140,7 +1140,7 @@ function loraTrainingResourceHeader(data: DemoData, spec: HeaderSpec, matched: R
     const template = findLoraTrainingTemplate(data, matched.params.templateId);
     if (!template) return spec;
     const sectionItem = findLoraTrainingTemplateSection(template, matched.params.sectionIndex);
-    return sectionItem ? loraTrainingTemplateSectionHeader(spec, template, sectionItem) : loraTrainingTemplateHeader(spec, template);
+    return sectionItem ? loraTrainingTemplateSectionHeader(spec, template, sectionItem) : loraTrainingTemplateSectionFallbackHeader(spec, template);
   }
 
   return spec;
@@ -1159,6 +1159,13 @@ function loraTrainingTemplateHeader(spec: HeaderSpec, template: LoraTrainingTemp
     ...spec,
     subtitle: template.description,
     title: template.title,
+  };
+}
+
+function loraTrainingTemplateSectionFallbackHeader(spec: HeaderSpec, template: LoraTrainingTemplate) {
+  return {
+    ...loraTrainingTemplateHeader(spec, template),
+    back: { href: `/training/templates/${template.id}/edit`, label: "返回模板" },
   };
 }
 
