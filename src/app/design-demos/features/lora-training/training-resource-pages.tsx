@@ -24,6 +24,26 @@ import s from "./training-resource-pages.module.css";
 
 type TemplateSceneBlockPatch = Partial<Pick<LoraTrainingSectionBlock, "text" | "title">>;
 
+type TemplateSectionFormState = {
+  enabledLabel: string;
+  title: string;
+};
+
+type TemplateSectionDraftState = {
+  blockCount: number;
+  enabledLabel: string;
+  firstBlock: string;
+  resolvedScene: string;
+  sectionId: string;
+  sectionTitle: string;
+  templateId: string;
+  templateTitle: string;
+};
+
+function buildTemplateSectionStateKey(templateId: string, sectionId: string) {
+  return `${templateId}:${sectionId}`;
+}
+
 function presetStatus(preset: LoraTrainingPreset) {
   return preset.status === "active" ? <StatusBadge status="ready" label="启用" /> : <StatusBadge status="archived" label="停用" />;
 }
@@ -1350,17 +1370,17 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   const template = findTemplate(data, templateId);
   const index = Number(sectionIndex);
   const section = template && Number.isInteger(index) && index >= 0 ? template.sections[index] : undefined;
-  const [sceneBlockState, setSceneBlocks] = useState(() => ({
-    blocks: section?.blocks ?? [],
-    sectionId: section?.id ?? null,
-    templateId: template?.id ?? null,
-  }));
-  const [templateSectionFormState, setTemplateSectionForm] = useState(() => ({
-    enabledLabel: section?.enabled ? "启用" : "停用",
-    sectionId: section?.id ?? null,
-    templateId: template?.id ?? null,
-    title: section?.title ?? "",
-  }));
+  const [templateSectionSceneBlocksByKey, setTemplateSectionSceneBlocksByKey] = useState<Record<string, LoraTrainingSectionBlock[]>>(() => (
+    template && section ? { [buildTemplateSectionStateKey(template.id, section.id)]: section.blocks } : {}
+  ));
+  const [templateSectionFormsByKey, setTemplateSectionFormsByKey] = useState<Record<string, TemplateSectionFormState>>(() => (
+    template && section ? {
+      [buildTemplateSectionStateKey(template.id, section.id)]: {
+        enabledLabel: section.enabled ? "启用" : "停用",
+        title: section.title,
+      },
+    } : {}
+  ));
   const [editingTemplateBlockState, setEditingTemplateBlockState] = useState(() => ({
     blockId: null as string | null,
     sectionId: section?.id ?? null,
@@ -1368,27 +1388,17 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   }));
   const [templatePresetImportOpen, setTemplatePresetImportOpen] = useState(false);
   const [selectedTemplatePresetId, setSelectedTemplatePresetId] = useState<string | null>(null);
-  const [templateSectionDraft, setTemplateSectionDraft] = useState<{
-    blockCount: number;
-    enabledLabel: string;
-    firstBlock: string;
-    resolvedScene: string;
-    sectionId: string;
-    sectionTitle: string;
-    templateId: string;
-    templateTitle: string;
-  } | null>(null);
-  const sceneBlocks = sceneBlockState.templateId === template?.id && sceneBlockState.sectionId === section?.id ? sceneBlockState.blocks : section?.blocks ?? [];
+  const [templateSectionDraftsByKey, setTemplateSectionDraftsByKey] = useState<Record<string, TemplateSectionDraftState>>({});
   if (!template || !section) return <EmptyPage title="没有模板小节数据" />;
 
   const activeTemplate = template;
   const activeSection = section;
-  const visibleTemplateSectionDraft = templateSectionDraft?.templateId === activeTemplate.id && templateSectionDraft?.sectionId === activeSection.id ? templateSectionDraft : null;
+  const templateSectionStateKey = buildTemplateSectionStateKey(activeTemplate.id, activeSection.id);
+  const sceneBlocks = templateSectionSceneBlocksByKey[templateSectionStateKey] ?? activeSection.blocks;
+  const visibleTemplateSectionDraft = templateSectionDraftsByKey[templateSectionStateKey] ?? null;
   const visibleEditingTemplateBlockId = editingTemplateBlockState.templateId === activeTemplate.id && editingTemplateBlockState.sectionId === activeSection.id ? editingTemplateBlockState.blockId : null;
-  const templateSectionForm = templateSectionFormState.templateId === activeTemplate.id && templateSectionFormState.sectionId === activeSection.id ? templateSectionFormState : {
+  const templateSectionForm = templateSectionFormsByKey[templateSectionStateKey] ?? {
     enabledLabel: activeSection.enabled ? "启用" : "停用",
-    sectionId: activeSection.id,
-    templateId: activeTemplate.id,
     title: activeSection.title,
   };
   const selectedTemplatePreset = training.presets.find((preset) => preset.id === selectedTemplatePresetId) ?? null;
@@ -1403,22 +1413,19 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   }
 
   function handleUpdateTemplateSectionForm(field: "enabledLabel" | "title", value: string) {
-    setTemplateSectionForm((current) => {
-      const active = current.templateId === activeTemplate.id && current.sectionId === activeSection.id ? current : templateSectionForm;
-      return {
-        ...active,
+    setTemplateSectionFormsByKey((current) => ({
+      ...current,
+      [templateSectionStateKey]: {
+        ...(current[templateSectionStateKey] ?? templateSectionForm),
         [field]: value,
-        sectionId: activeSection.id,
-        templateId: activeTemplate.id,
-      };
-    });
+      },
+    }));
   }
 
   function updateTemplateBlocks(updater: (current: LoraTrainingSectionBlock[]) => LoraTrainingSectionBlock[]) {
-    setSceneBlocks((current) => ({
-      blocks: updater(current.templateId === activeTemplate.id && current.sectionId === activeSection.id ? current.blocks : activeSection.blocks),
-      sectionId: activeSection.id,
-      templateId: activeTemplate.id,
+    setTemplateSectionSceneBlocksByKey((current) => ({
+      ...current,
+      [templateSectionStateKey]: updater(current[templateSectionStateKey] ?? activeSection.blocks),
     }));
   }
 
@@ -1469,16 +1476,19 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   }
 
   function handleSaveTemplateSection() {
-    setTemplateSectionDraft({
-      blockCount: sceneBlocks.length,
-      enabledLabel: templateSectionForm.enabledLabel,
-      firstBlock: sceneBlocks[0]?.title ?? "无场景块",
-      resolvedScene: resolvedTemplateScene || section.resolvedScene,
-      sectionId: activeSection.id,
-      sectionTitle: templateSectionForm.title,
-      templateId: activeTemplate.id,
-      templateTitle: activeTemplate.title,
-    });
+    setTemplateSectionDraftsByKey((current) => ({
+      ...current,
+      [templateSectionStateKey]: {
+        blockCount: sceneBlocks.length,
+        enabledLabel: templateSectionForm.enabledLabel,
+        firstBlock: sceneBlocks[0]?.title ?? "无场景块",
+        resolvedScene: resolvedTemplateScene || section.resolvedScene,
+        sectionId: activeSection.id,
+        sectionTitle: templateSectionForm.title,
+        templateId: activeTemplate.id,
+        templateTitle: activeTemplate.title,
+      },
+    }));
   }
 
   return (

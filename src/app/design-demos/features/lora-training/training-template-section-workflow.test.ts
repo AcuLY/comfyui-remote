@@ -56,7 +56,7 @@ test("training template section scene-block actions update local front-end state
   const blockCard = sourceBetween("function TemplateSceneBlockCard", "export function LoraTrainingPresetsPage");
 
   assert.match(templateSectionPage, /sceneBlocks/, "template section should render from a local editable block list");
-  assert.match(templateSectionPage, /setSceneBlocks/, "template section block actions should update local state");
+  assert.match(templateSectionPage, /setTemplateSectionSceneBlocksByKey/, "template section block actions should update keyed local state");
   assert.match(templateSectionPage, /handleAddLocalTemplateBlock/, "template section should add a local draft block");
   assert.match(templateSectionPage, /handleMoveTemplateBlock/, "template section should reorder blocks locally");
   assert.match(templateSectionPage, /handleDeleteTemplateBlock/, "template section should delete blocks locally");
@@ -129,22 +129,38 @@ test("training template section saves editable basic fields into the local draft
   assert.match(templateSectionPage, /visibleTemplateSectionDraft\.enabledLabel/, "visible draft should render the saved enabled status");
 });
 
+test("training template section keeps local edits keyed by template and section", () => {
+  const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
+
+  assert.match(templateSectionPage, /templateSectionStateKey/, "template section should build a stable local state key");
+  assert.match(templateSectionPage, /templateSectionSceneBlocksByKey/, "scene-block edits should be stored per template section");
+  assert.match(templateSectionPage, /setTemplateSectionSceneBlocksByKey/, "scene-block actions should update keyed local state");
+  assert.match(templateSectionPage, /templateSectionFormsByKey/, "basic field edits should be stored per template section");
+  assert.match(templateSectionPage, /setTemplateSectionFormsByKey/, "basic field changes should update keyed local state");
+  assert.match(templateSectionPage, /templateSectionDraftsByKey/, "saved drafts should be stored per template section");
+  assert.match(templateSectionPage, /setTemplateSectionDraftsByKey/, "save action should update keyed local drafts");
+  assert.match(templateSectionPage, /templateSectionSceneBlocksByKey\[templateSectionStateKey\] \?\? activeSection\.blocks/, "scene blocks should read the active section key before falling back to fixtures");
+  assert.match(templateSectionPage, /templateSectionFormsByKey\[templateSectionStateKey\] \?\?/, "basic fields should read the active section key before falling back to fixtures");
+  assert.doesNotMatch(templateSectionPage, /sceneBlockState/, "template section should not use a single mutable slot for scene blocks");
+  assert.doesNotMatch(templateSectionPage, /templateSectionFormState/, "template section should not use a single mutable slot for fields");
+});
+
 test("training template section state stays scoped to the active template section", () => {
   const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
 
-  assert.match(templateSectionPage, /templateId:\s*template\?\.id \?\? null/, "scene-block state should remember the parent template");
+  assert.match(templateSectionPage, /buildTemplateSectionStateKey\(activeTemplate\.id, activeSection\.id\)/, "state keys should include both parent template and active section");
   assert.match(
     templateSectionPage,
-    /sceneBlockState\.templateId === template\?\.id && sceneBlockState\.sectionId === section\?\.id \? sceneBlockState\.blocks : section\?\.blocks \?\? \[\]/,
-    "scene blocks should only reuse local state for the same template and section",
+    /templateSectionSceneBlocksByKey\[templateSectionStateKey\] \?\? activeSection\.blocks/,
+    "scene blocks should read only the active keyed state",
   );
   assert.match(
     templateSectionPage,
-    /current\.templateId === activeTemplate\.id && current\.sectionId === activeSection\.id \? current\.blocks : activeSection\.blocks/,
-    "scene-block updates should fall back to the active section when switching templates",
+    /\[templateSectionStateKey\]: updater\(current\[templateSectionStateKey\] \?\? activeSection\.blocks\)/,
+    "scene-block updates should write only the active keyed state",
   );
-  assert.match(templateSectionPage, /templateId:\s*string;/, "saved template section drafts should be typed with the parent template id");
-  assert.match(templateSectionPage, /sectionId:\s*string;/, "saved template section drafts should be typed with the active section id");
+  assert.match(resourceSource, /type TemplateSectionDraftState = \{[\s\S]*?templateId:\s*string;/, "saved template section drafts should be typed with the parent template id");
+  assert.match(resourceSource, /type TemplateSectionDraftState = \{[\s\S]*?sectionId:\s*string;/, "saved template section drafts should be typed with the active section id");
   assert.match(templateSectionPage, /templateId:\s*activeTemplate\.id/, "scene-block updates and saved drafts should store the active template id");
   assert.match(templateSectionPage, /sectionId:\s*activeSection\.id/, "scene-block updates and saved drafts should store the active section id");
   assert.match(templateSectionPage, /editingTemplateBlockState/, "editing template block state should be stored with route context");
@@ -156,14 +172,19 @@ test("training template section state stays scoped to the active template sectio
   assert.match(templateSectionPage, /isEditing=\{visibleEditingTemplateBlockId === block\.id\}/, "template block cards should only receive scoped edit state");
   assert.match(
     templateSectionPage,
-    /templateSectionDraft\?\.templateId === activeTemplate\.id && templateSectionDraft\?\.sectionId === activeSection\.id \? templateSectionDraft : null/,
-    "saved template section drafts should only appear for the same template and section",
+    /const visibleTemplateSectionDraft = templateSectionDraftsByKey\[templateSectionStateKey\] \?\? null/,
+    "saved template section drafts should read only the active keyed draft",
   );
   assert.match(templateSectionPage, /visibleTemplateSectionDraft/, "template section should render through a scoped visible draft");
   assert.doesNotMatch(
     templateSectionPage,
-    /const sceneBlocks = sceneBlockState\.sectionId === section\?\.id \? sceneBlockState\.blocks : section\?\.blocks \?\? \[\]/,
-    "section-only scene-block state should not leak between templates",
+    /sceneBlockState/,
+    "single-slot scene-block state should not replace keyed template-section state",
+  );
+  assert.doesNotMatch(
+    templateSectionPage,
+    /templateSectionDraft\?\.templateId/,
+    "saved drafts should not be filtered from a single mutable draft slot",
   );
   assert.doesNotMatch(
     templateSectionPage,
