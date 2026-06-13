@@ -55,6 +55,14 @@ test("training runs page keeps status counts only in status tabs", () => {
   assert.doesNotMatch(cssSource, /\.metricCard\b/, "runs page styles should not keep duplicate status metric cards");
 });
 
+test("training run status badges use task-specific running labels", () => {
+  assert.match(
+    pageSource,
+    /run\.status === "running"[\s\S]*?run\.kind === "training" \? "训练中" : "生成中"/,
+    "running training rows should say 训练中 while image-generation rows keep 生成中",
+  );
+});
+
 test("completed training generation rows prioritize recent output thumbnails", () => {
   assert.match(pageSource, /ImageListSmall/, "completed generation rows should use the shared small thumbnail strip");
   assert.match(pageSource, /runPreviewImages/, "run rows should resolve preview images from project results or dataset samples");

@@ -58,7 +58,7 @@ function progressLabel(run: LoraTrainingRun) {
 
 function statusBadge(run: LoraTrainingRun) {
   if (run.status === "completed") return <StatusBadge status="done" label={run.outputLabel ?? "已完成"} />;
-  if (run.status === "running") return <StatusBadge status="running" label="生成中" />;
+  if (run.status === "running") return <StatusBadge status="running" label={run.kind === "training" ? "训练中" : "生成中"} />;
   if (run.status === "queued") return <StatusBadge status="pending" label="排队中" />;
   return <StatusBadge status="failed" label="需处理" />;
 }
