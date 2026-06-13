@@ -18,15 +18,55 @@ function cssRule(css: string, className: string) {
   return css.match(new RegExp(`\\.${className}\\s*\\{[\\s\\S]*?\\n\\}`))?.[0] ?? "";
 }
 
+function rulesForClass(css: string, className: string) {
+  const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const matches = css.matchAll(new RegExp(`([^{}]*\\.${escaped}\\b[^{}]*)\\{([\\s\\S]*?)\\}`, "g"));
+  return [...matches].map((match) => ({ declarations: match[2] ?? "", selector: match[1]?.trim() ?? "" }));
+}
+
+function classHasDeclaration(css: string, className: string, declaration: RegExp) {
+  return rulesForClass(css, className).some((rule) => declaration.test(rule.declarations));
+}
+
 test("training list surfaces expand to two columns when there is enough width", () => {
   assert.ok(hasResponsiveColumns(projectsCss, "projectGrid"), "Training project list should use a responsive two-column grid");
   assert.ok(hasResponsiveColumns(runsCss, "runRows"), "Training run groups should use responsive two-column rows");
   assert.ok(hasResponsiveColumns(projectPagesCss, "sectionGrid"), "Training section list should use a responsive two-column grid");
   assert.ok(hasResponsiveColumns(projectPagesCss, "sectionSeedList"), "Initial training section seeds should use a responsive two-column grid");
   assert.ok(hasResponsiveColumns(projectPagesCss, "entityRows"), "Project detail entity lists should use responsive two-column rows");
+  assert.ok(hasResponsiveColumns(projectPagesCss, "projectRunRows"), "Project-scoped generation/training runs should use responsive two-column rows");
+  assert.ok(hasResponsiveColumns(projectPagesCss, "manifestList"), "Dataset manifest rows should use responsive two-column rows");
+  assert.ok(hasResponsiveColumns(resourcesCss, "trainingPresetFolderGrid"), "Training preset folders should use responsive two-column rows");
+  assert.ok(hasResponsiveColumns(resourcesCss, "trainingPresetItemList"), "Training preset items should use responsive two-column rows");
+  assert.ok(hasResponsiveColumns(resourcesCss, "trainingTemplateList"), "Training template cards should use responsive two-column rows");
+  assert.ok(hasResponsiveColumns(resourcesCss, "trainingTemplateSectionList"), "Training template section rows should use responsive two-column rows");
   assert.ok(hasResponsiveColumns(resourcesCss, "resourceGrid"), "Training preset/template grids should use responsive two columns");
   assert.ok(hasResponsiveColumns(resourcesCss, "sortGrid"), "Sort rule grid should use responsive two columns");
   assert.ok(hasResponsiveColumns(resourcesCss, "usageList"), "Preset/template usage lists should use responsive two-column rows");
+});
+
+test("training list surfaces are real grids before responsive column rules apply", () => {
+  const gridSurfaces = [
+    [projectsCss, "projectGrid"],
+    [runsCss, "runRows"],
+    [projectPagesCss, "sectionGrid"],
+    [projectPagesCss, "sectionSeedList"],
+    [projectPagesCss, "entityRows"],
+    [projectPagesCss, "projectRunRows"],
+    [projectPagesCss, "manifestList"],
+    [resourcesCss, "trainingPresetFolderGrid"],
+    [resourcesCss, "trainingPresetItemList"],
+    [resourcesCss, "trainingTemplateList"],
+    [resourcesCss, "trainingTemplateSectionList"],
+    [resourcesCss, "resourceGrid"],
+    [resourcesCss, "sortGrid"],
+    [resourcesCss, "usageList"],
+  ] as const;
+
+  for (const [css, className] of gridSurfaces) {
+    assert.ok(classHasDeclaration(css, className, /display:\s*grid/), `${className} should be a grid container`);
+    assert.ok(classHasDeclaration(css, className, /min-width:\s*0/), `${className} should avoid overflow in constrained shells`);
+  }
 });
 
 test("training run list uses the same two-column breakpoint as the generation queue demo", () => {
