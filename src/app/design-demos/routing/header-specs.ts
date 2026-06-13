@@ -1028,9 +1028,18 @@ function datasetRevisionHeader(spec: HeaderSpec, project: LoraTrainingProject, r
   };
 }
 
+function missingLoraTrainingProjectHeader(spec: HeaderSpec) {
+  return {
+    ...spec,
+    actions: undefined,
+    back: { href: "/training/projects", label: "返回训练项目" },
+    meta: undefined,
+  };
+}
+
 function loraTrainingProjectHeader(data: DemoData, spec: HeaderSpec, matched: ReturnType<typeof matchRoute>) {
   const project = findLoraTrainingProject(data, matched.params.trainingProjectId);
-  if (!project) return spec;
+  if (!project) return missingLoraTrainingProjectHeader(spec);
   const projectHref = trainingProjectBaseHref(project);
 
   if (matched.key === "training-project-detail") {

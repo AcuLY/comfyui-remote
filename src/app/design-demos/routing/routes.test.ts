@@ -258,6 +258,23 @@ test("LoRA training project route headers use the matched project context", () =
   assert.equal(datasetRevision.back?.href, "/training/projects/azure-idol/dataset");
 });
 
+test("LoRA training project headers do not keep sample actions for invalid project ids", () => {
+  const data = fallbackData(null);
+
+  const missingProject = findHeaderSpecForRoute(data, "/training/projects/missing-project");
+  assert.ok(missingProject, "invalid project route should still resolve a generic header spec");
+  assert.equal(missingProject.title, "训练项目总览");
+  assert.equal(missingProject.back?.href, "/training/projects");
+  assert.equal(missingProject.actions, undefined);
+
+  const missingProjectGenerationTasks = findHeaderSpecForRoute(data, "/training/projects/missing-project/generation-tasks");
+  assert.ok(missingProjectGenerationTasks, "invalid project subroute should still resolve a generic header spec");
+  assert.equal(missingProjectGenerationTasks.title, "项目生成任务");
+  assert.equal(missingProjectGenerationTasks.back?.href, "/training/projects");
+  assert.equal(missingProjectGenerationTasks.actions, undefined);
+  assert.notEqual(missingProjectGenerationTasks.actions?.[0]?.href, "/training/projects/vela-neon/sections/stage-light/generation-tasks/new");
+});
+
 test("LoRA training project generation header action selects an enabled section entry", () => {
   const helperStart = headerSpecsSource.indexOf("function trainingProjectGenerationEntrySectionId");
   const helperEnd = headerSpecsSource.indexOf("function projectHeaderBase", helperStart);
