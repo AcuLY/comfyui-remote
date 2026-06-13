@@ -461,6 +461,24 @@ test("training dataset page opens a local training draft instead of only preview
   assert.doesNotMatch(datasetPageSource, /启动训练配置已打开/, "start training should not remain a toast-only placeholder");
 });
 
+test("training dataset page starts training through the formal HTTP API on production routes", () => {
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(revisionPageStart, -1);
+
+  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+
+  assert.match(datasetPageSource, /usePathname/, "dataset page should detect whether it is running under production \\/training routes");
+  assert.match(datasetPageSource, /useRouter/, "dataset page should be able to navigate to the queued training run on production routes");
+  assert.match(datasetPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/training-runs`/, "dataset page should call the formal project training run API");
+  assert.match(datasetPageSource, /method:\s*"POST"/, "dataset page should enqueue training runs through POST");
+  assert.match(datasetPageSource, /revisionId:/, "dataset page should pass the selected dataset revision when available");
+  assert.match(datasetPageSource, /targetSteps:/, "dataset page should map the draft training step count into the HTTP request config");
+  assert.match(datasetPageSource, /router\.push\(`/, "dataset page should navigate to the queued training run after a successful API response");
+  assert.match(datasetPageSource, /pushToast/, "dataset page should surface API success or failure through the shared feedback system");
+});
+
 test("training dataset draft stays scoped to the active project", () => {
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
   const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");

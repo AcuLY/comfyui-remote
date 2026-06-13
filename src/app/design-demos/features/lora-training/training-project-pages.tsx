@@ -2530,6 +2530,9 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
 }
 
 export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: DemoData; projectId?: string }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { pushToast } = useDemoFeedback();
   const hrefForRoute = useRouteHref();
   const project = findProject(data, projectId);
   const [trainingDraftState, setTrainingDraft] = useState<{
@@ -2544,11 +2547,14 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
     draft: null,
     projectId: project?.id ?? null,
   }));
+  const [isStartingTraining, setIsStartingTraining] = useState(false);
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   if (!project) return <EmptyPage title="没有训练数据集数据" />;
   const trainingDraft = trainingDraftState.projectId === project.id ? trainingDraftState.draft : null;
+  const latestRevision = project.datasetRevisions[0] ?? null;
 
-  function handleOpenTrainingDraft() {
-    setTrainingDraft({
+  async function handleOpenTrainingDraft() {
+    const nextDraft = {
       draft: {
         captionMissingCount: project.captionMissingCount,
         keptCount: project.keptCount,
@@ -2556,7 +2562,63 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
         version: project.datasetVersion,
       },
       projectId: project.id,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setTrainingDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: trainingDraft ? "训练配置草稿已更新" : "训练配置草稿已打开",
+        detail: project.datasetVersion,
+      });
+      return;
+    }
+
+    if (isStartingTraining) return;
+
+    setIsStartingTraining(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/training-runs`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          revisionId: latestRevision?.id,
+          config: {
+            overrides: {
+              ordinary: {
+                targetSteps: nextDraft.draft.stepCount,
+              },
+            },
+          },
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "训练任务创建失败",
+          detail: payload?.error?.message ?? "训练任务创建请求失败",
+        });
+        return;
+      }
+
+      setTrainingDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: "训练任务已创建",
+        detail: project.datasetVersion,
+      });
+      router.push(`/training/runs/training/${payload.data.id}`);
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "训练任务创建失败",
+        detail: error instanceof Error ? error.message : "训练任务创建请求失败",
+      });
+    } finally {
+      setIsStartingTraining(false);
+    }
   }
 
   return (
@@ -2568,8 +2630,8 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
           <Button
             tone="primary"
             icon={Play}
+            pending={isStartingTraining}
             onClick={handleOpenTrainingDraft}
-            feedback={{ title: trainingDraft ? "训练配置草稿已更新" : "训练配置草稿已打开", detail: project.datasetVersion }}
           >
             {trainingDraft ? "更新训练草稿" : "启动训练"}
           </Button>
