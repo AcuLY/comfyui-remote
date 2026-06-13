@@ -182,7 +182,7 @@ export function ImagePreviewFrame({
 
   if (onOpen) {
     return (
-      <button className={s.imagePreviewFrame} type="button" onClick={onOpen} aria-label="Open image preview">
+      <button className={s.imagePreviewFrame} type="button" onClick={onOpen} aria-label={`打开图片预览：${image.label}`}>
         {content}
       </button>
     );

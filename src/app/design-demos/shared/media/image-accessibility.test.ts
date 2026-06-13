@@ -40,6 +40,24 @@ test("preview frames expose meaningful alt text and intrinsic dimensions", () =>
   assert.match(imgTag, /height=\{image\.height/, "preview images should forward image height metadata");
 });
 
+test("clickable media previews include the concrete image label in their accessible names", () => {
+  const previewFrameSource = sourceFor("image-preview-frame/index.tsx");
+  const mediumThumbSource = sourceFor("image-thumb-medium/index.tsx");
+
+  assert.match(
+    previewFrameSource,
+    /aria-label=\{`打开图片预览：\$\{image\.label\}`\}/,
+    "preview frame buttons should describe the exact image they open",
+  );
+  assert.match(
+    mediumThumbSource,
+    /aria-label=\{`查看图片：\$\{image\.label\}`\}/,
+    "medium thumbnail buttons should describe the exact image they open",
+  );
+  assert.doesNotMatch(previewFrameSource, /Open image preview/, "preview buttons should not expose English placeholder labels");
+  assert.doesNotMatch(mediumThumbSource, /aria-label="查看图片"/, "thumbnail buttons should not use a generic repeated label");
+});
+
 test("media image components fall back to icons after load failures", () => {
   const components = [
     sourceFor("image-thumb-small/index.tsx"),

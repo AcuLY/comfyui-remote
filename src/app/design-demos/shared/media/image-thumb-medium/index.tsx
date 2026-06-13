@@ -87,7 +87,7 @@ export function ImageThumbMedium({
           {tags.map((tag) => <span key={tag}>{tag}</span>)}
         </div>
       ) : null}
-      <button className={s.imageThumbImageButton} type="button" onClick={onOpen} aria-label="查看图片">
+      <button className={s.imageThumbImageButton} type="button" onClick={onOpen} aria-label={`查看图片：${image.label}`}>
         {shouldRenderImage ? (
           <img
             src={image.src}
