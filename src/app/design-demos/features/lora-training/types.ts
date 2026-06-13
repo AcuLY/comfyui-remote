@@ -81,6 +81,7 @@ export type LoraTrainingRun = {
   timestamp: string;
   progress?: number;
   outputLabel?: string;
+  outputResultIds?: string[];
   errorMessage?: string;
   provider?: string;
   finalInput?: string;

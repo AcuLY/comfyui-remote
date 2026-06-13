@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, CheckCircle2, Clock3, Copy, FileText, History, ImagePlus, Play, RotateCcw } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Clock3, Copy, FileText, History, ImagePlus, Play, RotateCcw, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
 import { ImagePreviewFrame } from "../../shared/media/image-preview-frame";
@@ -14,7 +14,7 @@ import { PageHeader } from "../../shared/primitives/page-header";
 import { Panel } from "../../shared/primitives/panel";
 import { StatusBadge } from "../../shared/primitives/status-badge";
 import { buildLoraTrainingDemoData } from "./fixtures";
-import type { LoraTrainingRun, LoraTrainingTaskKind } from "./types";
+import type { LoraTrainingImageResult, LoraTrainingProject, LoraTrainingReviewStatus, LoraTrainingRun, LoraTrainingTaskKind } from "./types";
 import s from "./training-run-detail-page.module.css";
 
 type RetryDraft = {
@@ -45,6 +45,18 @@ function runStatusBadge(run: LoraTrainingRun) {
   return <StatusBadge status="failed" label="失败" />;
 }
 
+function reviewStatusLabel(status: LoraTrainingReviewStatus) {
+  if (status === "kept") return "已保留";
+  if (status === "rejected") return "已拒绝";
+  return "待审核";
+}
+
+function reviewStatusTone(status: LoraTrainingReviewStatus) {
+  if (status === "kept") return "ready";
+  if (status === "rejected") return "failed";
+  return "pending";
+}
+
 function findRun(data: DemoData, kind: LoraTrainingTaskKind, runId: string | undefined) {
   const training = buildLoraTrainingDemoData(data);
   return training.runs.find((run) => run.kind === kind && run.id === runId)
@@ -60,6 +72,23 @@ function trainingConfigText(run: LoraTrainingRun) {
   return run.trainingConfig
     .map((row) => `${row.label}: ${row.value}${row.detail ? ` · ${row.detail}` : ""}`)
     .join("\n");
+}
+
+function generationResultsForRun(
+  run: LoraTrainingRun,
+  project: LoraTrainingProject | undefined,
+  resultReviewState: Record<string, LoraTrainingReviewStatus>,
+) {
+  if (run.kind !== "generation" || run.status !== "completed" || !project) return [];
+  const outputResultIds = run.outputResultIds ?? [];
+  if (!outputResultIds.length) return [];
+  return outputResultIds
+    .map((resultId) => project.resultPool.find((result) => result.id === resultId))
+    .filter((result): result is LoraTrainingImageResult => Boolean(result))
+    .map((result) => ({
+      ...result,
+      reviewStatus: resultReviewState[result.id] ?? result.reviewStatus,
+    }));
 }
 
 function createTrainingPresetHref(run: LoraTrainingRun) {
@@ -94,6 +123,73 @@ async function copyTextWithFallback(text: string) {
   textarea.remove();
 }
 
+function GenerationOutputGrid({
+  activeResultId,
+  onActiveResultChange,
+  onReviewStatusChange,
+  results,
+}: {
+  activeResultId: string | null;
+  onActiveResultChange: (resultId: string | null) => void;
+  onReviewStatusChange: (resultId: string, status: LoraTrainingReviewStatus) => void;
+  results: LoraTrainingImageResult[];
+}) {
+  const activeResult = activeResultId ? results.find((result) => result.id === activeResultId) ?? null : null;
+  const activeResultIndex = activeResult ? results.findIndex((result) => result.id === activeResult.id) : -1;
+
+  function moveActiveResult(offset: number) {
+    if (!results.length) return;
+    const nextIndex = ((activeResultIndex >= 0 ? activeResultIndex : 0) + offset + results.length) % results.length;
+    onActiveResultChange(results[nextIndex]?.id ?? null);
+  }
+
+  if (!results.length) return <div className={s.empty}>当前任务尚无图片输出</div>;
+
+  return (
+    <>
+      <div className={s.generationOutputGrid}>
+        {results.map((result) => (
+          <article className={s.generationOutputCard} data-review-status={result.reviewStatus} key={result.id}>
+            <button
+              aria-label={`打开生成输出：${result.sourceLabel}`}
+              className={s.generationOutputPreviewButton}
+              type="button"
+              onClick={() => onActiveResultChange(result.id)}
+            >
+              <ImagePreviewFrame image={result.image} />
+            </button>
+            <span className={s.generationOutputMeta}>
+              <strong>{result.sourceLabel}</strong>
+              <StatusBadge status={reviewStatusTone(result.reviewStatus)} label={reviewStatusLabel(result.reviewStatus)} />
+            </span>
+            <p className={s.generationOutputCaption}>{result.caption}</p>
+          </article>
+        ))}
+      </div>
+      {activeResult ? (
+        <ImagePreviewLarge
+          image={activeResult.image}
+          title={`生成输出 / ${activeResult.sectionTitle}`}
+          meta={activeResult.caption}
+          onClose={() => onActiveResultChange(null)}
+          onNext={activeResultIndex >= 0 ? () => moveActiveResult(1) : undefined}
+          onPrevious={activeResultIndex >= 0 ? () => moveActiveResult(-1) : undefined}
+          actions={(
+            <>
+              <Button icon={Check} onClick={() => onReviewStatusChange(activeResult.id, "kept")} feedback={{ title: "图片已保留", detail: activeResult.sourceLabel }}>
+                保留
+              </Button>
+              <Button tone="danger" icon={Trash2} onClick={() => onReviewStatusChange(activeResult.id, "rejected")} feedback={{ tone: "warning", title: "图片已拒绝", detail: activeResult.sourceLabel }}>
+                拒绝
+              </Button>
+            </>
+          )}
+        />
+      ) : null}
+    </>
+  );
+}
+
 export function LoraTrainingRunDetailPage({
   data,
   kind,
@@ -104,7 +200,9 @@ export function LoraTrainingRunDetailPage({
   runId?: string;
 }) {
   const [activeSampleState, setActiveSampleState] = useState<ActiveSampleState | null>(null);
+  const [activeGenerationResultId, setActiveGenerationResultId] = useState<string | null>(null);
   const [copiedCaption, setCopiedCaption] = useState<CopiedCaptionState | null>(null);
+  const [resultReviewState, setResultReviewState] = useState<Record<string, LoraTrainingReviewStatus>>({});
   const [retryDraft, setRetryDraft] = useState<RetryDraft | null>(null);
   const training = buildLoraTrainingDemoData(data);
   const run = findRun(data, kind, runId);
@@ -120,6 +218,7 @@ export function LoraTrainingRunDetailPage({
   const projectHref = `/training/projects/${currentRun.projectId}`;
   const datasetHref = currentRun.datasetRevisionId ? `${projectHref}/dataset/revisions/${currentRun.datasetRevisionId}` : `${projectHref}/dataset`;
   const datasetSamples = isGeneration ? [] : currentRun.datasetSamples ?? [];
+  const generationOutputResults = generationResultsForRun(currentRun, project, resultReviewState);
   const activeSample = activeSampleState?.runId === currentRun.id ? datasetSamples[activeSampleState.index] ?? null : null;
   const isActiveCaptionCopied = activeSample ? copiedCaption?.runId === currentRun.id && copiedCaption?.sampleId === activeSample.id : false;
   const canCreatePreset = !isGeneration && Boolean(currentRun.finalLoraArtifactId) && !currentRun.presetCreatedAt;
@@ -149,6 +248,10 @@ export function LoraTrainingRunDetailPage({
       sourceStatus: currentRun.status,
       datasetVersion: project?.datasetVersion,
     });
+  }
+
+  function handleReviewGenerationOutput(resultId: string, status: LoraTrainingReviewStatus) {
+    setResultReviewState((current) => ({ ...current, [resultId]: status }));
   }
 
   return (
@@ -251,6 +354,14 @@ export function LoraTrainingRunDetailPage({
                 <CheckCircle2 aria-hidden="true" />
                 <span>{currentRun.outputText ?? currentRun.artifactName ?? currentRun.outputLabel ?? "任务已完成"}</span>
               </div>
+            ) : null}
+            {isGeneration && currentRun.status === "completed" ? (
+              <GenerationOutputGrid
+                activeResultId={activeGenerationResultId}
+                onActiveResultChange={setActiveGenerationResultId}
+                onReviewStatusChange={handleReviewGenerationOutput}
+                results={generationOutputResults}
+              />
             ) : null}
             {!isGeneration ? (
               <dl className={s.statGrid}>

@@ -354,6 +354,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       summary: "图片 · 小节 舞台灯光",
       timestamp: "完成于 15:20",
       outputLabel: "输出 1 张图片",
+      outputResultIds: ["vela-neon-result-1"],
       provider: "gpt-image-2",
       finalInput: "项目 Vela Neon Jacket，引用角色资料和小节「舞台灯光」，生成 1 张干净可训练图片。",
       outputText: "已生成舞台灯光半身样本，已进入结果池待审。",

@@ -59,6 +59,20 @@ test("training detail page renders training samples, captions, log preview, and 
   assert.match(detailSource, /!currentRun\.presetCreatedAt/, "preset creation should hide after a preset already exists");
 });
 
+test("completed image generation detail renders result thumbnails with review actions", () => {
+  assert.match(typesSource, /outputResultIds\?:\s*string\[\]/, "generation runs should identify their concrete output results");
+  assert.match(fixtureSource, /outputResultIds:\s*\["vela-neon-result-1"\]/, "completed image generation fixture should point at the result-pool output");
+  assert.match(detailSource, /generationOutputResults/, "generation detail should derive concrete output results");
+  assert.match(detailSource, /resultReviewState/, "generation output review state should be local to the detail page");
+  assert.match(detailSource, /handleReviewGenerationOutput/, "generation output review actions should update local state");
+  assert.match(detailSource, /setActiveGenerationResultId/, "generation result thumbnails should open a lightbox by result id");
+  assert.match(detailSource, /ImagePreviewFrame image=\{result\.image\}/, "generation image outputs should render as clickable thumbnails");
+  assert.match(detailSource, /ImagePreviewLarge/, "generation image outputs should use the shared lightbox");
+  assert.match(detailSource, /onReviewStatusChange=\{handleReviewGenerationOutput\}/, "generation output cards should wire keep/reject actions");
+  assert.match(detailCss, /\.generationOutputGrid\b/, "generation outputs should have a dedicated thumbnail grid");
+  assert.match(detailCss, /\.generationOutputCaption\b/, "generation output captions should be compact text below thumbnails");
+});
+
 test("completed training run creates presets through the real training preset form route", () => {
   assert.match(detailSource, /function createTrainingPresetHref/, "run detail should build a concrete preset creation href");
   assert.match(detailSource, /\/training\/presets\/new/, "preset creation should navigate to the new training preset route");
