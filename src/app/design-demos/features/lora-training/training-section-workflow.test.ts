@@ -370,6 +370,23 @@ test("generation compose queues a local generation task draft instead of only sh
   assert.doesNotMatch(composePage, /生成任务已加入队列/, "run action should not remain a toast-only placeholder");
 });
 
+test("generation compose posts through the formal HTTP API on production routes", () => {
+  const composePage = sourceBetween(
+    "export function LoraTrainingGenerationComposePage",
+    "export function LoraTrainingProjectResultsPage",
+  );
+
+  assert.match(composePage, /usePathname/, "generation compose should detect whether it is running under production \\/training routes");
+  assert.match(composePage, /useRouter/, "generation compose should be able to navigate to the queued generation run on production routes");
+  assert.match(composePage, /fetch\(`\/api\/training\/sections\/\$\{activeSection\.id\}\/runs`/, "generation compose should call the formal section run API");
+  assert.match(composePage, /method:\s*"POST"/, "generation compose should enqueue runs through POST");
+  assert.match(composePage, /userInstruction:/, "generation compose should send the composed task input through the HTTP request");
+  assert.match(composePage, /sourceImageIds:/, "generation compose should map selected source references into the HTTP request");
+  assert.match(composePage, /previousCandidateImageIds:/, "generation compose should map selected result-pool references into the HTTP request");
+  assert.match(composePage, /router\.push\(`/, "generation compose should navigate to the queued generation run after a successful API response");
+  assert.match(composePage, /pushToast/, "generation compose should surface API success or failure through the shared feedback system");
+});
+
 test("generation compose saves editable task fields into final input and draft", () => {
   const composePage = sourceBetween(
     "export function LoraTrainingGenerationComposePage",

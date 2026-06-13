@@ -1906,6 +1906,9 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
 }
 
 export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }: { data: DemoData; projectId?: string; sectionId?: string }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { pushToast } = useDemoFeedback();
   const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
   const referenceSourceTree: ReferenceSourceGroup[] = project && section ? [
@@ -1980,6 +1983,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     supplementalPrompt: string;
     taskType: string;
   } | null>(null);
+  const [isQueueingGenerationTask, setIsQueueingGenerationTask] = useState(false);
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   if (!project || !section) return <EmptyPage title="没有生成任务上下文" />;
   const activeProject = project;
@@ -2104,8 +2109,46 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     }));
   }
 
-  function handleQueueGenerationTask() {
-    setGenerationTaskDraft({
+  function collectGenerationReferenceIds() {
+    const sourceImageIds = new Set<string>();
+    const previousCandidateImageIds = new Set<string>();
+
+    for (const referenceId of selectedReferenceIds) {
+      if (referenceId.startsWith("reference-")) {
+        sourceImageIds.add(referenceId.slice("reference-".length));
+        continue;
+      }
+      if (referenceId.startsWith("result-")) {
+        previousCandidateImageIds.add(referenceId.slice("result-".length));
+        continue;
+      }
+      if (activeProject.referenceImages.some((reference) => reference.id === referenceId)) {
+        sourceImageIds.add(referenceId);
+        continue;
+      }
+      if (activeProject.resultPool.some((result) => result.id === referenceId)) {
+        previousCandidateImageIds.add(referenceId);
+      }
+    }
+
+    for (const attachment of supplementalImageAttachments) {
+      if (attachment.id.startsWith("reference-")) {
+        sourceImageIds.add(attachment.id.slice("reference-".length));
+        continue;
+      }
+      if (attachment.id.startsWith("result-")) {
+        previousCandidateImageIds.add(attachment.id.slice("result-".length));
+      }
+    }
+
+    return {
+      previousCandidateImageIds: [...previousCandidateImageIds],
+      sourceImageIds: [...sourceImageIds],
+    };
+  }
+
+  async function handleQueueGenerationTask() {
+    const nextDraft = {
       finalInput: finalInputText,
       projectId: activeProject.id,
       selectedReferenceTitles,
@@ -2115,7 +2158,60 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
       supplementalImageTitles: supplementalImageAttachments.map((attachment) => attachment.title),
       supplementalPrompt: generationForm.supplementalPrompt,
       taskType: generationForm.taskType,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setGenerationTaskDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: visibleGenerationTaskDraft ? "生成任务草稿已更新" : "生成任务草稿已排队",
+        detail: activeSection.title,
+      });
+      return;
+    }
+
+    if (isQueueingGenerationTask) return;
+
+    const { sourceImageIds, previousCandidateImageIds } = collectGenerationReferenceIds();
+
+    setIsQueueingGenerationTask(true);
+    try {
+      const response = await fetch(`/api/training/sections/${activeSection.id}/runs`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          userInstruction: `${generationForm.taskType}\n\n${finalInputText}`,
+          sourceImageIds: sourceImageIds.length ? sourceImageIds : undefined,
+          previousCandidateImageIds: previousCandidateImageIds.length ? previousCandidateImageIds : undefined,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "生成任务创建失败",
+          detail: payload?.error?.message ?? "生成任务创建请求失败",
+        });
+        return;
+      }
+
+      setGenerationTaskDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: "生成任务已创建",
+        detail: activeSection.title,
+      });
+      router.push(`/training/runs/generation/${payload.data.id}`);
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "生成任务创建失败",
+        detail: error instanceof Error ? error.message : "生成任务创建请求失败",
+      });
+    } finally {
+      setIsQueueingGenerationTask(false);
+    }
   }
 
   return (
@@ -2129,8 +2225,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
           <Button
             tone="primary"
             icon={Play}
+            pending={isQueueingGenerationTask}
             onClick={handleQueueGenerationTask}
-            feedback={{ title: visibleGenerationTaskDraft ? "生成任务草稿已更新" : "生成任务草稿已排队", detail: section.title }}
           >
             {visibleGenerationTaskDraft ? "更新任务草稿" : "运行生成"}
           </Button>
