@@ -28,6 +28,12 @@ function classHasDeclaration(css: string, className: string, declaration: RegExp
   return rulesForClass(css, className).some((rule) => declaration.test(rule.declarations));
 }
 
+function hasMobileSingleColumnOverride(css: string, className: string) {
+  return new RegExp(
+    `@media\\s*\\(max-width:\\s*639px\\)\\s*\\{[\\s\\S]*?\\.${className}\\b[\\s\\S]*?grid-template-columns:\\s*(?:minmax\\(0,\\s*)?1fr`,
+  ).test(css);
+}
+
 test("training list surfaces expand to two columns when there is enough width", () => {
   assert.ok(hasResponsiveColumns(projectsCss, "projectGrid"), "Training project list should use a responsive two-column grid");
   assert.ok(hasResponsiveColumns(runsCss, "currentRunList"), "Current running tasks should use responsive two-column rows");
@@ -131,4 +137,10 @@ test("training preset sort panels use the shared container-driven list breakpoin
     /@media\s*\(min-width:\s*700px\)\s*\{[\s\S]*?\.trainingPresetSortGrid/,
     "Training preset sort panels should not depend on the viewport width",
   );
+});
+
+test("training managed lists stay single column in the mobile shell", () => {
+  assert.ok(hasMobileSingleColumnOverride(runsCss, "runRows"), "Run groups should not split into narrow mobile columns");
+  assert.ok(hasMobileSingleColumnOverride(projectPagesCss, "sectionSeedList"), "Initial project sections should stay single column on mobile");
+  assert.ok(hasMobileSingleColumnOverride(resourcesCss, "trainingPresetSortGrid"), "Preset sort groups should stay single column on mobile");
 });

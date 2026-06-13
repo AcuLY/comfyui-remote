@@ -675,6 +675,10 @@
     padding: 9px 12px;
   }
 
+  .runRows {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .runSurfaceHeader {
     align-items: center;
     gap: 8px;
