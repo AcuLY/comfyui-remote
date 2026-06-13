@@ -176,10 +176,10 @@ function GenerationOutputGrid({
           onPrevious={activeResultIndex >= 0 ? () => moveActiveResult(-1) : undefined}
           actions={(
             <>
-              <Button icon={Check} onClick={() => onReviewStatusChange(activeResult.id, "kept")} feedback={{ title: "图片已保留", detail: activeResult.sourceLabel }}>
+              <Button icon={Check} ariaLabel={`保留生成输出：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange(activeResult.id, "kept")} feedback={{ title: "图片已保留", detail: activeResult.sourceLabel }}>
                 保留
               </Button>
-              <Button tone="danger" icon={Trash2} onClick={() => onReviewStatusChange(activeResult.id, "rejected")} feedback={{ tone: "warning", title: "图片已拒绝", detail: activeResult.sourceLabel }}>
+              <Button tone="danger" icon={Trash2} ariaLabel={`拒绝生成输出：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange(activeResult.id, "rejected")} feedback={{ tone: "warning", title: "图片已拒绝", detail: activeResult.sourceLabel }}>
                 拒绝
               </Button>
             </>
@@ -269,7 +269,7 @@ export function LoraTrainingRunDetailPage({
               {generationResultsHref ? <ButtonLink href={generationResultsHref} icon={ImageIcon}>查看结果</ButtonLink> : null}
               <ButtonLink href={projectHref} icon={FileText}>项目详情</ButtonLink>
               {!isGeneration ? <ButtonLink href={datasetHref} icon={History}>数据集版本</ButtonLink> : null}
-            {currentRun.status === "failed" && !isRetryQueued ? <Button tone="primary" icon={RotateCcw} onClick={handleQueueRetry} feedback={{ title: "已加入重试队列", detail: currentRun.title }}>重试</Button> : null}
+            {currentRun.status === "failed" && !isRetryQueued ? <Button tone="primary" icon={RotateCcw} ariaLabel={`重试任务：${currentRun.title}`} onClick={handleQueueRetry} feedback={{ title: "已加入重试队列", detail: currentRun.title }}>重试</Button> : null}
             {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : null}
           </>
         )}

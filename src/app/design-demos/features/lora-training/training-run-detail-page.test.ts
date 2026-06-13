@@ -73,6 +73,20 @@ test("completed image generation detail renders result thumbnails with review ac
   assert.match(detailCss, /\.generationOutputCaption\b/, "generation output captions should be compact text below thumbnails");
 });
 
+test("training run detail repeated object actions include the acted-on object name", () => {
+  const outputGridStart = detailSource.indexOf("function GenerationOutputGrid");
+  const detailPageStart = detailSource.indexOf("export function LoraTrainingRunDetailPage");
+  assert.notEqual(outputGridStart, -1);
+  assert.notEqual(detailPageStart, -1);
+
+  const outputGridSource = detailSource.slice(outputGridStart, detailPageStart);
+  const detailPageSource = detailSource.slice(detailPageStart);
+
+  assert.match(outputGridSource, /ariaLabel=\{`保留生成输出：\$\{activeResult\.sourceLabel\}`\}/, "keep action should name the active output");
+  assert.match(outputGridSource, /ariaLabel=\{`拒绝生成输出：\$\{activeResult\.sourceLabel\}`\}/, "reject action should name the active output");
+  assert.match(detailPageSource, /ariaLabel=\{`重试任务：\$\{currentRun\.title\}`\}/, "retry action should name the run");
+});
+
 test("image generation detail header links back to its training section and section results", () => {
   assert.match(detailSource, /generationOutputSection/, "generation detail should derive the output section context from result-pool data");
   assert.match(detailSource, /generationSectionHref/, "generation detail should build a direct section href");

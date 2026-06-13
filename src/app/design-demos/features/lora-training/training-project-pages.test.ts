@@ -262,6 +262,30 @@ test("training result review actions update local front-end review state", () =>
   assert.match(sectionDetailSource, /onReviewStatusChange=\{handleReviewSectionResult\}/, "section detail result grid should be wired to a review handler");
 });
 
+test("training project repeated object actions include the acted-on object name", () => {
+  const gridStart = pagesSource.indexOf("function TrainingResultGrid");
+  const runRowsStart = pagesSource.indexOf("function runPreviewImages");
+  const newProjectStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const projectDetailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(gridStart, -1);
+  assert.notEqual(runRowsStart, -1);
+  assert.notEqual(newProjectStart, -1);
+  assert.notEqual(projectDetailStart, -1);
+
+  const gridSource = pagesSource.slice(gridStart, runRowsStart);
+  const runRowsSource = pagesSource.slice(runRowsStart, newProjectStart);
+  const newProjectSource = pagesSource.slice(newProjectStart, projectDetailStart);
+
+  assert.match(gridSource, /ariaLabel=\{`保留训练结果：\$\{activeResult\.sourceLabel\}`\}/, "keep action should name the active training result");
+  assert.match(gridSource, /ariaLabel=\{`拒绝训练结果：\$\{activeResult\.sourceLabel\}`\}/, "reject action should name the active training result");
+  assert.match(runRowsSource, /ariaLabel=\{`复制任务报错：\$\{run\.title\}`\}/, "copy-error action should name the run");
+  assert.match(runRowsSource, /ariaLabel=\{`重试任务：\$\{run\.title\}`\}/, "retry action should name the run");
+  assert.match(runRowsSource, /ariaLabel=\{`移除任务：\$\{run\.title\}`\}/, "remove action should name the run");
+  assert.match(newProjectSource, /ariaLabel=\{section\.enabled \? `停用初始小节：\$\{section\.title\}` : `启用初始小节：\$\{section\.title\}`\}/, "seed toggle should name the section and next action");
+  assert.match(newProjectSource, /ariaLabel=\{`复制初始小节：\$\{section\.title\}`\}/, "seed copy should name the section");
+  assert.match(newProjectSource, /ariaLabel=\{`删除初始小节：\$\{section\.title\}`\}/, "seed delete should name the section");
+});
+
 test("training result lightbox tracks the active image by result id", () => {
   const gridStart = pagesSource.indexOf("function TrainingResultGrid");
   const runRowsStart = pagesSource.indexOf("function runPreviewImages");

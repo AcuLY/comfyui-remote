@@ -133,6 +133,28 @@ test("training preset selection labels reflect selected state like the managed l
   );
 });
 
+test("training resource repeated object actions include the acted-on object name", () => {
+  const sortPanelStart = pageSource.indexOf("function TrainingPresetSortPanel");
+  const sortRowStart = pageSource.indexOf("function TrainingPresetSortableSortRow");
+  const templateItemStart = pageSource.indexOf("function TrainingTemplateListItem");
+  const templateRowStart = pageSource.indexOf("function TemplateEditorSectionRow");
+  const templatesPageStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  assert.notEqual(sortPanelStart, -1);
+  assert.notEqual(sortRowStart, -1);
+  assert.notEqual(templateItemStart, -1);
+  assert.notEqual(templateRowStart, -1);
+  assert.notEqual(templatesPageStart, -1);
+
+  const sortPanelSource = pageSource.slice(sortPanelStart, sortRowStart);
+  const templateItemSource = pageSource.slice(templateItemStart, templateRowStart);
+  const templateRowSource = pageSource.slice(templateRowStart, templatesPageStart);
+
+  assert.match(sortPanelSource, /ariaLabel=\{`保存排序组：\$\{title\}`\}/, "sort-group save action should name the group");
+  assert.match(templateItemSource, /ariaLabel=\{`删除训练模板：\$\{template\.title\}`\}/, "template delete action should name the template");
+  assert.match(templateRowSource, /ariaLabel=\{`复制训练模板小节：\$\{section\.title\}`\}/, "template-section copy action should name the section");
+  assert.match(templateRowSource, /ariaLabel=\{`删除训练模板小节：\$\{section\.title\}`\}/, "template-section delete action should name the section");
+});
+
 test("training preset category rail drag handles reorder categories locally", () => {
   const categoryItemStart = pageSource.indexOf("function TrainingPresetCategoryRailItem");
   const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");

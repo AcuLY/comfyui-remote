@@ -313,8 +313,8 @@ function TrainingResultGrid({
           onPrevious={activeResultIndex >= 0 ? () => moveActiveResult(-1) : undefined}
           actions={(
             <>
-              <Button icon={Check} onClick={() => onReviewStatusChange?.(activeResult.id, "kept")} feedback={{ title: "图片已保留", detail: activeResult.sourceLabel }}>保留</Button>
-              <Button tone="danger" icon={Trash2} onClick={() => onReviewStatusChange?.(activeResult.id, "rejected")} feedback={{ tone: "warning", title: "图片已拒绝", detail: activeResult.sourceLabel }}>拒绝</Button>
+              <Button icon={Check} ariaLabel={`保留训练结果：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange?.(activeResult.id, "kept")} feedback={{ title: "图片已保留", detail: activeResult.sourceLabel }}>保留</Button>
+              <Button tone="danger" icon={Trash2} ariaLabel={`拒绝训练结果：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange?.(activeResult.id, "rejected")} feedback={{ tone: "warning", title: "图片已拒绝", detail: activeResult.sourceLabel }}>拒绝</Button>
             </>
           )}
         />
@@ -464,14 +464,14 @@ function RunRows({
                 <div className={s.projectRunSecondary}>
                   <ProjectRunFailureBlock message={failureMessage} />
                   <div className={s.projectRunFailureToolbar}>
-                    <Button size="sm" tone="subtle" icon={Copy} onClick={() => copyProjectRunMessage(failureMessage)} feedback={{ title: "报错已复制", detail: failureMessage }}>复制</Button>
-                    <Button size="sm" tone="subtle" icon={Play} onClick={() => onRetryRun?.(run.id)} feedback={{ title: "已排队重试", detail: run.title }}>重试</Button>
-                    <Button size="sm" tone="danger" icon={Trash2} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+                    <Button size="sm" tone="subtle" icon={Copy} ariaLabel={`复制任务报错：${run.title}`} onClick={() => copyProjectRunMessage(failureMessage)} feedback={{ title: "报错已复制", detail: failureMessage }}>复制</Button>
+                    <Button size="sm" tone="subtle" icon={Play} ariaLabel={`重试任务：${run.title}`} onClick={() => onRetryRun?.(run.id)} feedback={{ title: "已排队重试", detail: run.title }}>重试</Button>
+                    <Button size="sm" tone="danger" icon={Trash2} ariaLabel={`移除任务：${run.title}`} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
                   </div>
                 </div>
               ) : (
                 <span className={s.projectRunActions}>
-                  <Button tone="danger" icon={Trash2} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+                  <Button tone="danger" icon={Trash2} ariaLabel={`移除任务：${run.title}`} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
                 </span>
               )}
             </article>
@@ -973,9 +973,9 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
                   </div>
                   <p>{section.blockCount} 个场景块 · {section.scenePreview}</p>
                   <div className={s.sectionSeedActions}>
-                    <Button size="sm" icon={Check} onClick={() => handleToggleSeedSection(section.id)} feedback={{ title: section.enabled ? "初始小节已停用" : "初始小节已启用", detail: section.title }}>{section.enabled ? "停用" : "启用"}</Button>
-                    <Button size="sm" icon={Copy} onClick={() => handleCopySeedSection(section)} feedback={{ title: "初始小节已复制", detail: section.title }}>复制</Button>
-                    <Button size="sm" tone="danger" icon={Trash2} onClick={() => handleDeleteSeedSection(section.id)} feedback={{ tone: "warning", title: "初始小节已移除", detail: section.title }}>删除</Button>
+                    <Button size="sm" icon={Check} ariaLabel={section.enabled ? `停用初始小节：${section.title}` : `启用初始小节：${section.title}`} onClick={() => handleToggleSeedSection(section.id)} feedback={{ title: section.enabled ? "初始小节已停用" : "初始小节已启用", detail: section.title }}>{section.enabled ? "停用" : "启用"}</Button>
+                    <Button size="sm" icon={Copy} ariaLabel={`复制初始小节：${section.title}`} onClick={() => handleCopySeedSection(section)} feedback={{ title: "初始小节已复制", detail: section.title }}>复制</Button>
+                    <Button size="sm" tone="danger" icon={Trash2} ariaLabel={`删除初始小节：${section.title}`} onClick={() => handleDeleteSeedSection(section.id)} feedback={{ tone: "warning", title: "初始小节已移除", detail: section.title }}>删除</Button>
                   </div>
                 </article>
               ))}
