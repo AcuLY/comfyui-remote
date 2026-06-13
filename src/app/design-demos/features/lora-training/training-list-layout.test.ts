@@ -30,6 +30,7 @@ function classHasDeclaration(css: string, className: string, declaration: RegExp
 
 test("training list surfaces expand to two columns when there is enough width", () => {
   assert.ok(hasResponsiveColumns(projectsCss, "projectGrid"), "Training project list should use a responsive two-column grid");
+  assert.ok(hasResponsiveColumns(runsCss, "currentRunList"), "Current running tasks should use responsive two-column rows");
   assert.ok(hasResponsiveColumns(runsCss, "runRows"), "Training run groups should use responsive two-column rows");
   assert.ok(hasResponsiveColumns(projectPagesCss, "sectionGrid"), "Training section list should use a responsive two-column grid");
   assert.ok(hasResponsiveColumns(projectPagesCss, "sectionSeedList"), "Initial training section seeds should use a responsive two-column grid");
@@ -48,6 +49,7 @@ test("training list surfaces expand to two columns when there is enough width", 
 test("training list surfaces are real grids before responsive column rules apply", () => {
   const gridSurfaces = [
     [projectsCss, "projectGrid"],
+    [runsCss, "currentRunList"],
     [runsCss, "runRows"],
     [projectPagesCss, "sectionGrid"],
     [projectPagesCss, "sectionSeedList"],
@@ -74,6 +76,14 @@ test("training run list uses the same two-column breakpoint as the generation qu
     runsCss,
     /@container\s*\(min-width:\s*520px\)\s*\{[\s\S]*?\.runRows\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
     "Training run groups should expand at the queue-demo 520px container breakpoint",
+  );
+});
+
+test("training current-running list waits for desktop workspace width before splitting", () => {
+  assert.match(
+    runsCss,
+    /@container\s*\(min-width:\s*720px\)\s*\{[\s\S]*?\.currentRunList\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "Current running tasks should stay single-column on mobile-width workspaces",
   );
 });
 
