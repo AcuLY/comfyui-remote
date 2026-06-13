@@ -265,10 +265,24 @@ export function LoraTrainingRunDetailPage({
         title={`${currentRun.projectTitle} / ${currentRun.title}`}
         actions={(
             <>
-              {generationSectionHref ? <ButtonLink href={generationSectionHref} icon={ExternalLink}>跳转小节</ButtonLink> : null}
-              {generationResultsHref ? <ButtonLink href={generationResultsHref} icon={ImageIcon}>查看结果</ButtonLink> : null}
-              <ButtonLink href={projectHref} icon={FileText}>项目详情</ButtonLink>
-              {!isGeneration ? <ButtonLink href={datasetHref} icon={History}>数据集版本</ButtonLink> : null}
+              {generationSectionHref ? (
+                <ButtonLink href={generationSectionHref} icon={ExternalLink} ariaLabel={`打开生成任务小节：${currentRun.title}`}>
+                  跳转小节
+                </ButtonLink>
+              ) : null}
+              {generationResultsHref ? (
+                <ButtonLink href={generationResultsHref} icon={ImageIcon} ariaLabel={`查看生成任务结果：${currentRun.title}`}>
+                  查看结果
+                </ButtonLink>
+              ) : null}
+              <ButtonLink href={projectHref} icon={FileText} ariaLabel={`打开任务项目：${currentRun.projectTitle}`}>
+                项目详情
+              </ButtonLink>
+              {!isGeneration ? (
+                <ButtonLink href={datasetHref} icon={History} ariaLabel={`查看训练任务数据集版本：${currentRun.title}`}>
+                  数据集版本
+                </ButtonLink>
+              ) : null}
             {currentRun.status === "failed" && !isRetryQueued ? <Button tone="primary" icon={RotateCcw} ariaLabel={`重试任务：${currentRun.title}`} onClick={handleQueueRetry} feedback={{ title: "已加入重试队列", detail: currentRun.title }}>重试</Button> : null}
             {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : null}
           </>
@@ -340,7 +354,16 @@ export function LoraTrainingRunDetailPage({
         <Panel
           title={isGeneration ? "输出" : "训练产物"}
           subtitle={isGeneration ? "文本任务直接展示应用结果，图片任务展示进入结果池的样本。" : "完成后产出模型文件；未完成状态保留进度与日志入口。"}
-          actions={canCreatePreset ? <ButtonLink href={createTrainingPresetHref(currentRun)} icon={ImagePlus} tone="primary">创建预制</ButtonLink> : null}
+          actions={canCreatePreset ? (
+            <ButtonLink
+              href={createTrainingPresetHref(currentRun)}
+              icon={ImagePlus}
+              tone="primary"
+              ariaLabel={`从训练任务创建预制：${currentRun.title}`}
+            >
+              创建预制
+            </ButtonLink>
+          ) : null}
         >
           <div className={s.stack}>
             {currentRun.status === "failed" ? (

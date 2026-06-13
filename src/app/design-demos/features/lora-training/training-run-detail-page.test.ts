@@ -84,6 +84,11 @@ test("training run detail repeated object actions include the acted-on object na
 
   assert.match(outputGridSource, /ariaLabel=\{`保留生成输出：\$\{activeResult\.sourceLabel\}`\}/, "keep action should name the active output");
   assert.match(outputGridSource, /ariaLabel=\{`拒绝生成输出：\$\{activeResult\.sourceLabel\}`\}/, "reject action should name the active output");
+  assert.match(detailPageSource, /ariaLabel=\{`打开生成任务小节：\$\{currentRun\.title\}`\}/, "section jump should name the run context");
+  assert.match(detailPageSource, /ariaLabel=\{`查看生成任务结果：\$\{currentRun\.title\}`\}/, "results jump should name the run context");
+  assert.match(detailPageSource, /ariaLabel=\{`打开任务项目：\$\{currentRun\.projectTitle\}`\}/, "project jump should name the target project");
+  assert.match(detailPageSource, /ariaLabel=\{`查看训练任务数据集版本：\$\{currentRun\.title\}`\}/, "dataset jump should name the run context");
+  assert.match(detailPageSource, /ariaLabel=\{`从训练任务创建预制：\$\{currentRun\.title\}`\}/, "preset creation should name the source run");
   assert.match(detailPageSource, /ariaLabel=\{`重试任务：\$\{currentRun\.title\}`\}/, "retry action should name the run");
 });
 
@@ -94,8 +99,8 @@ test("image generation detail header links back to its training section and sect
   assert.match(detailSource, /\/sections\/\$\{generationOutputSection\.sectionId\}/, "section href should point to the concrete training section");
   assert.match(detailSource, /`\$\{generationSectionHref\}#section-results`/, "results href should point to the result anchor inside the concrete training section");
   assert.doesNotMatch(detailSource, /\/sections\/\$\{generationOutputSection\.sectionId\}\/results/, "section results should not link to a removed independent route");
-  assert.match(detailSource, />跳转小节<\/ButtonLink>/, "generation detail should expose the same section jump as generation run review pages");
-  assert.match(detailSource, />查看结果<\/ButtonLink>/, "generation detail should expose the result surface linked from the output");
+  assert.match(detailSource, /<ButtonLink[\s\S]*?>\s*跳转小节\s*<\/ButtonLink>/, "generation detail should expose the same section jump as generation run review pages");
+  assert.match(detailSource, /<ButtonLink[\s\S]*?>\s*查看结果\s*<\/ButtonLink>/, "generation detail should expose the result surface linked from the output");
   assert.match(readFileSync(resolve(testDir, "training-project-pages.tsx"), "utf8"), /id="section-results"/, "section detail should expose a stable result anchor");
 });
 
@@ -113,7 +118,7 @@ test("completed training run creates presets through the real training preset fo
   assert.match(detailSource, /\/training\/presets\/new/, "preset creation should navigate to the new training preset route");
   assert.match(detailSource, /sourceRun/, "preset creation should pass the source training run id");
   assert.match(detailSource, /artifact/, "preset creation should pass the final LoRA artifact name");
-  assert.match(detailSource, /<ButtonLink href=\{createTrainingPresetHref\(currentRun\)\} icon=\{ImagePlus\} tone="primary">创建预制<\/ButtonLink>/, "create preset action should be a link, not feedback-only UI");
+  assert.match(detailSource, /<ButtonLink[\s\S]*?href=\{createTrainingPresetHref\(currentRun\)\}[\s\S]*?>\s*创建预制\s*<\/ButtonLink>/, "create preset action should be a link, not feedback-only UI");
   assert.doesNotMatch(detailSource, /创建预制入口已预览/, "create preset action should not remain a preview-only placeholder");
 });
 
