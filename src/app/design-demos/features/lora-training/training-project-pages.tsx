@@ -1319,6 +1319,14 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
     referenceImageCount: number;
     usagePrompt: string;
   } | null>(null);
+  const [referenceResultState, setReferenceResultState] = useState(() => ({
+    addedReferenceResultIds: new Set<string>(),
+    projectId: project?.id ?? null,
+  }));
+  const [referenceResultRequestState, setReferenceResultRequestState] = useState(() => ({
+    pendingReferenceIds: new Set<string>(),
+    projectId: project?.id ?? null,
+  }));
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingReferenceImage, setIsUploadingReferenceImage] = useState(false);
   if (!project) return <EmptyPage title="没有角色资料数据" />;
@@ -1331,6 +1339,8 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
   };
   const visibleProfileDraft = profileDraft?.projectId === project.id ? profileDraft : null;
   const isProductionTrainingRoute = pathname === "/training" || pathname.startsWith("/training/");
+  const addedReferenceResultIds = referenceResultState.projectId === project.id ? referenceResultState.addedReferenceResultIds : new Set<string>();
+  const pendingReferenceIds = referenceResultRequestState.projectId === project.id ? referenceResultRequestState.pendingReferenceIds : new Set<string>();
 
   async function handleSaveProfile() {
     const nextDraft = {
@@ -1503,6 +1513,81 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
     }
   }
 
+  async function handleAddReferenceImageToResults(referenceId: string, label: string) {
+    const applyLocalAddedState = () => {
+      setReferenceResultState((current) => ({
+        addedReferenceResultIds: new Set([
+          ...(current.projectId === project.id ? current.addedReferenceResultIds : new Set<string>()),
+          referenceId,
+        ]),
+        projectId: project.id,
+      }));
+    };
+
+    if (addedReferenceResultIds.has(referenceId) || pendingReferenceIds.has(referenceId)) {
+      return;
+    }
+
+    if (!isProductionTrainingRoute) {
+      applyLocalAddedState();
+      pushToast({
+        tone: "success",
+        title: "参考图已加入结果池",
+        detail: label,
+      });
+      return;
+    }
+
+    setReferenceResultRequestState((current) => ({
+      pendingReferenceIds: new Set([
+        ...(current.projectId === project.id ? current.pendingReferenceIds : new Set<string>()),
+        referenceId,
+      ]),
+      projectId: project.id,
+    }));
+    try {
+      const response = await fetch(`/api/training/character-images/${referenceId}/add-to-results`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          reviewStatus: "pending",
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "加入结果池失败",
+          detail: payload?.error?.message ?? "参考图入池请求失败",
+        });
+        return;
+      }
+
+      applyLocalAddedState();
+      pushToast({
+        tone: "success",
+        title: "参考图已加入结果池",
+        detail: label,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "加入结果池失败",
+        detail: error instanceof Error ? error.message : "参考图入池请求失败",
+      });
+    } finally {
+      setReferenceResultRequestState((current) => {
+        const nextPending = new Set(current.projectId === project.id ? current.pendingReferenceIds : new Set<string>());
+        nextPending.delete(referenceId);
+        return {
+          pendingReferenceIds: nextPending,
+          projectId: project.id,
+        };
+      });
+    }
+  }
+
   return (
     <div className={s.page}>
       <ProjectHeader
@@ -1537,6 +1622,16 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
                     <span>{referenceKindLabel(reference.kind)}</span>
                     <strong>{reference.label}</strong>
                     <p>{reference.note}</p>
+                    {addedReferenceResultIds.has(reference.id) ? <StatusBadge status="pending" label="已加入结果池" /> : null}
+                    <Button
+                      size="sm"
+                      tone="subtle"
+                      pending={pendingReferenceIds.has(reference.id)}
+                      disabled={addedReferenceResultIds.has(reference.id)}
+                      onClick={() => handleAddReferenceImageToResults(reference.id, reference.label)}
+                    >
+                      {addedReferenceResultIds.has(reference.id) ? "已加入结果池" : "加入结果池"}
+                    </Button>
                   </div>
                 </article>
               ))}

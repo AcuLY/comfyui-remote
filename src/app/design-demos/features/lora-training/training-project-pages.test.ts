@@ -241,6 +241,21 @@ test("training profile page uploads reference images through the formal HTTP API
   assert.match(profileSource, /pushToast/, "profile upload should surface API success or failure through the shared feedback system");
 });
 
+test("training profile page adds reference images to the result pool through the formal HTTP API on production routes", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /fetch\(`\/api\/training\/character-images\/\$\{referenceId\}\/add-to-results`/, "profile reference cards should call the formal add-to-results API");
+  assert.match(profileSource, /method:\s*"POST"/, "profile add-to-results action should use POST");
+  assert.match(profileSource, /addedReferenceResultIds/, "profile page should keep a visible local state for references that were added to the result pool");
+  assert.match(profileSource, /已加入结果池/, "profile page should render a visible added-to-result-pool state");
+  assert.match(profileSource, /pushToast/, "profile add-to-results action should surface API success or failure through the shared feedback system");
+});
+
 test("training profile page saves a visible local profile draft instead of only showing feedback", () => {
   const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const sectionsStart = pagesSource.indexOf("function SectionCard");
