@@ -199,6 +199,7 @@ test("training preset new actions route into a real new-preset form", () => {
   assert.match(presetsSource, /<ButtonLink href="\/training\/presets\/new" icon=\{Plus\} tone="primary">新建<\/ButtonLink>/, "global new action should navigate to the new training preset route");
   assert.match(presetsSource, /newPresetInCategoryHref/, "category-scoped new action should preserve the active category");
   assert.match(presetsSource, /href=\{newPresetInCategoryHref\}/, "category-scoped new action should be a link, not a feedback-only button");
+  assert.match(presetsSource, /ariaLabel=\{`新建训练预制到分类：\$\{activeCategoryLabel\}`\}/, "category-scoped new action should name the active category");
   assert.doesNotMatch(presetsSource, /新建训练预制入口已预览/, "new preset actions should not be fake preview feedback");
   assert.match(detailSource, /mode === "new"/, "preset editor should expose a real new mode");
   assert.match(detailSource, /草稿/, "new preset editor should show draft state");
@@ -350,6 +351,7 @@ test("training template list creates projects with selected template context", (
 
   assert.match(pageSource, /function createProjectFromTemplateHref/, "template list should build a concrete project-create href");
   assert.match(templatesSource, /createProjectFromTemplateHref\(template\)/, "template row create actions should carry the row template context");
+  assert.match(templatesSource, /ariaLabel=\{`从训练模板创建项目：\$\{projectTemplateSource\.title\}`\}/, "template-source create action should name the selected template");
   assert.match(pageSource, /templateId:\s*template\.id/, "project-create href should include the template id");
   assert.match(pageSource, /sections:\s*String\(template\.sections\.length\)/, "project-create href should include the template section count");
   assert.doesNotMatch(templatesSource, /<ButtonLink href="\/training\/projects\/new" icon=\{CopyPlus\}>从模板创建项目<\/ButtonLink>/, "template create-project action should not navigate to a blank project form");

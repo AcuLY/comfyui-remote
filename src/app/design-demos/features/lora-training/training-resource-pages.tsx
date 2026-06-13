@@ -397,6 +397,7 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
   const visiblePresets = categoryPresets.filter((preset) => !currentFolder || preset.folder === currentFolder);
   const visiblePresetIds = visiblePresets.map((preset) => preset.id);
   const selectedCount = selectedIds.size;
+  const activeCategoryLabel = activeCategory || "训练预制";
   const newPresetInCategoryHref = `/training/presets/new?category=${encodeURIComponent(activeCategory)}${currentFolder ? `&folder=${encodeURIComponent(currentFolder)}` : ""}`;
 
   function togglePresetSelection(presetId: string, checked: boolean) {
@@ -466,9 +467,11 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
           <header className={s.trainingPresetWorkspaceHeader}>
             <div>
               <strong>{activeCategory || "训练预制"}</strong>
-              <span>{categoryPresets.length} 个场景描述 · 当前文件夹 {currentFolder ?? "全部"}</span>
-            </div>
-            <ButtonLink href={newPresetInCategoryHref} size="sm" icon={Plus}>新建到当前分类</ButtonLink>
+            <span>{categoryPresets.length} 个场景描述 · 当前文件夹 {currentFolder ?? "全部"}</span>
+          </div>
+            <ButtonLink href={newPresetInCategoryHref} size="sm" icon={Plus} ariaLabel={`新建训练预制到分类：${activeCategoryLabel}`}>
+              新建到当前分类
+            </ButtonLink>
           </header>
           <div className={s.trainingPresetContextBar}>
             <FolderBreadcrumb
@@ -1001,11 +1004,17 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
         eyebrow="LoRA 训练"
         title="训练模板"
         subtitle="模板提供创建训练项目时的初始小节结构；项目创建后会独立编辑。"
-        actions={(
-          <>
-            {projectTemplateSource ? (
-              <ButtonLink href={createProjectFromTemplateHref(projectTemplateSource)} icon={CopyPlus}>从模板创建项目</ButtonLink>
-            ) : null}
+            actions={(
+              <>
+                {projectTemplateSource ? (
+                  <ButtonLink
+                    href={createProjectFromTemplateHref(projectTemplateSource)}
+                    icon={CopyPlus}
+                    ariaLabel={`从训练模板创建项目：${projectTemplateSource.title}`}
+                  >
+                    从模板创建项目
+                  </ButtonLink>
+                ) : null}
             <ButtonLink href="/training/templates/new" tone="primary" icon={Plus}>新建模板</ButtonLink>
           </>
         )}
