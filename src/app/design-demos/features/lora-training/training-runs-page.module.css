@@ -25,6 +25,7 @@
 
 .currentRunSurface {
   display: grid;
+  container-type: inline-size;
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--demo-glass-border);
@@ -629,7 +630,7 @@
   pointer-events: none;
 }
 
-@media (max-width: 720px) {
+@container (max-width: 860px) {
   .currentRunItem {
     grid-template-columns: 1fr;
     gap: 10px;
@@ -641,6 +642,12 @@
   .currentRunProgressTop span,
   .currentRunMeta span {
     white-space: normal;
+  }
+}
+
+@container (max-width: 460px) {
+  .currentRunHeader > div {
+    flex-wrap: wrap;
   }
 }
 

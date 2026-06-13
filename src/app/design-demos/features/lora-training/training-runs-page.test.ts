@@ -29,6 +29,24 @@ test("training runs page keeps the generated-run workbench hierarchy", () => {
   assert.match(cssSource, /\.currentRunProgressTrack\b/, "current-running cards should use a compact progress bar");
 });
 
+test("training current-running cards adapt from their own surface width", () => {
+  assert.match(
+    cssSource,
+    /\.currentRunSurface\s*\{[\s\S]*?container-type:\s*inline-size/,
+    "current-running surface should be a container query root like the generated-run demo",
+  );
+  assert.match(
+    cssSource,
+    /@container\s*\(max-width:\s*860px\)\s*\{[\s\S]*?\.currentRunItem\s*\{[\s\S]*?grid-template-columns:\s*1fr/,
+    "current-running card layout should collapse from the surface width, not the viewport width",
+  );
+  assert.doesNotMatch(
+    cssSource,
+    /@media\s*\(max-width:\s*720px\)\s*\{[\s\S]*?\.currentRunItem/,
+    "current-running cards should not rely on viewport-only media queries inside desktop shells",
+  );
+});
+
 test("training runs page keeps status counts only in status tabs", () => {
   assert.match(pageSource, /items=\{STATUS_ITEMS\.map\(\(item\) => \(\{ \.\.\.item, count: countFor\(kind, item\.value\) \}\)\)\}/, "status tabs should own the status counts");
   assert.doesNotMatch(pageSource, /modeSummary/, "runs page should not render a separate top status summary");
