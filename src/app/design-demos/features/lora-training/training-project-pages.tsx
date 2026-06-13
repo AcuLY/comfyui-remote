@@ -85,12 +85,14 @@ function useTraining(data: DemoData) {
 }
 
 function findProject(data: DemoData, projectId?: string) {
+  if (!projectId) return undefined;
   const training = buildLoraTrainingDemoData(data);
-  return training.projects.find((project) => project.id === projectId) ?? training.projects[0];
+  return training.projects.find((project) => project.id === projectId);
 }
 
 function findSection(project: LoraTrainingProject | undefined, sectionId?: string) {
-  return project?.sections.find((section) => section.id === sectionId) ?? project?.sections[0];
+  if (!project || !sectionId) return undefined;
+  return project.sections.find((section) => section.id === sectionId);
 }
 
 function moveSceneBlock(blocks: LoraTrainingSectionBlock[], index: number, direction: -1 | 1) {
@@ -1458,7 +1460,7 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
 
 export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionId }: { data: DemoData; projectId?: string; sectionId?: string }) {
   const training = buildLoraTrainingDemoData(data);
-  const project = training.projects.find((item) => item.id === projectId) ?? training.projects[0];
+  const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
   const [sceneBlockState, setSceneBlocks] = useState(() => ({
     blocks: section?.blocks ?? [],

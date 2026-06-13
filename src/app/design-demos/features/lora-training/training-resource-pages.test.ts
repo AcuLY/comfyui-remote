@@ -12,6 +12,28 @@ test("training resource pages keep backend wiring notes out of user-facing copy"
   assert.doesNotMatch(pageSource, /后端接入时/, "training resource UI should not expose backend integration notes");
 });
 
+test("training resource route helpers do not replace invalid route ids with first fixtures", () => {
+  const helperStart = pageSource.indexOf("function findPreset");
+  const foldersStart = pageSource.indexOf("function uniquePresetCategories");
+  const templateFormStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const templateSectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(helperStart, -1);
+  assert.notEqual(foldersStart, -1);
+  assert.notEqual(templateFormStart, -1);
+  assert.notEqual(templateSectionStart, -1);
+
+  const helperSource = pageSource.slice(helperStart, foldersStart);
+  const templateFormSource = pageSource.slice(templateFormStart, templateSectionStart);
+  const templateSectionSource = pageSource.slice(templateSectionStart);
+
+  assert.match(helperSource, /if \(!presetId\) return undefined;/, "preset routes without a preset id should resolve to the empty state");
+  assert.match(helperSource, /if \(!templateId\) return undefined;/, "template routes without a template id should resolve to the empty state");
+  assert.doesNotMatch(helperSource, /training\.presets\[0\]/, "invalid preset ids should not silently render the first preset");
+  assert.doesNotMatch(helperSource, /training\.templates\[0\]/, "invalid template ids should not silently render the first template");
+  assert.match(templateFormSource, /if \(mode === "edit" && !template\) return <EmptyPage title="没有训练模板数据" \/>;/, "invalid template edit routes should show the empty state");
+  assert.doesNotMatch(templateSectionSource, /template\?\.sections\[0\]/, "invalid template section indexes should not silently render the first section");
+});
+
 test("training resource query hints use Next search params instead of a manual location store", () => {
   assert.match(pageSource, /import \{ useSearchParams \} from "next\/navigation";/, "resource pages should subscribe to Next-managed query changes");
   assert.match(pageSource, /const searchParams = useSearchParams\(\)/, "resource pages should read current query params through Next navigation state");

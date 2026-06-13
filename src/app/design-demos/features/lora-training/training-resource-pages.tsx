@@ -29,13 +29,15 @@ function presetStatus(preset: LoraTrainingPreset) {
 }
 
 function findPreset(data: DemoData, presetId?: string) {
+  if (!presetId) return undefined;
   const training = buildLoraTrainingDemoData(data);
-  return training.presets.find((preset) => preset.id === presetId) ?? training.presets[0];
+  return training.presets.find((preset) => preset.id === presetId);
 }
 
 function findTemplate(data: DemoData, templateId?: string) {
+  if (!templateId) return undefined;
   const training = buildLoraTrainingDemoData(data);
-  return training.templates.find((template) => template.id === templateId) ?? training.templates[0];
+  return training.templates.find((template) => template.id === templateId);
 }
 
 function uniquePresetCategories(presets: LoraTrainingPreset[]) {
@@ -1245,6 +1247,8 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
     setLocalTemplateSections((current) => orderTemplateSectionsByIds(current, nextIds));
   }
 
+  if (mode === "edit" && !template) return <EmptyPage title="没有训练模板数据" />;
+
   return (
     <div className={s.page}>
       <PageHeader
@@ -1344,8 +1348,8 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
 export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex }: { data: DemoData; templateId?: string; sectionIndex?: string }) {
   const training = buildLoraTrainingDemoData(data);
   const template = findTemplate(data, templateId);
-  const index = Number(sectionIndex ?? "0");
-  const section = template?.sections[Number.isFinite(index) ? index : 0] ?? template?.sections[0];
+  const index = Number(sectionIndex);
+  const section = template && Number.isInteger(index) && index >= 0 ? template.sections[index] : undefined;
   const [sceneBlockState, setSceneBlocks] = useState(() => ({
     blocks: section?.blocks ?? [],
     sectionId: section?.id ?? null,

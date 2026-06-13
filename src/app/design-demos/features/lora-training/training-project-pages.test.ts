@@ -77,6 +77,26 @@ test("training project pages keep backend wiring notes out of user-facing copy",
   assert.doesNotMatch(pagesSource, /后端接入时/, "training project UI should not expose backend integration notes");
 });
 
+test("training project route helpers do not replace invalid route ids with first fixtures", () => {
+  const helperStart = pagesSource.indexOf("function findProject");
+  const moveStart = pagesSource.indexOf("function moveSceneBlock");
+  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
+  const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
+  assert.notEqual(helperStart, -1);
+  assert.notEqual(moveStart, -1);
+  assert.notEqual(sectionDetailStart, -1);
+  assert.notEqual(composeStart, -1);
+
+  const helperSource = pagesSource.slice(helperStart, moveStart);
+  const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
+
+  assert.match(helperSource, /if \(!projectId\) return undefined;/, "project routes without a project id should resolve to the empty state");
+  assert.match(helperSource, /if \(!project \|\| !sectionId\) return undefined;/, "section routes without a section id should resolve to the empty state");
+  assert.doesNotMatch(helperSource, /training\.projects\[0\]/, "invalid project ids should not silently render the first project");
+  assert.doesNotMatch(helperSource, /project\?\.sections\[0\]/, "invalid section ids should not silently render the first section");
+  assert.doesNotMatch(sectionDetailSource, /training\.projects\.find\(\(item\) => item\.id === projectId\) \?\? training\.projects\[0\]/, "section detail should use the route helper instead of its own first-project fallback");
+});
+
 test("training project query hints use Next search params instead of a manual location store", () => {
   assert.match(pagesSource, /import \{ useSearchParams \} from "next\/navigation";/, "project pages should subscribe to Next-managed query changes");
   assert.match(pagesSource, /const searchParams = useSearchParams\(\)/, "project pages should read current query params through Next navigation state");
