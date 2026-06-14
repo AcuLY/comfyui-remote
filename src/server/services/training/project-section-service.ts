@@ -189,6 +189,14 @@ async function saveProjectSections(projectId: string, sections: LoraTrainingSect
   });
 }
 
+export async function setTrainingProjectSectionCollection(projectId: string, sections: LoraTrainingSection[]) {
+  if (!projectId.trim()) {
+    throw new TrainingProjectSectionServiceError("projectId is required", 400);
+  }
+  await saveProjectSections(projectId, sections);
+  return sections;
+}
+
 export async function upsertTrainingProjectSection(
   projectId: string,
   sectionId: string,

@@ -1974,6 +1974,91 @@ test("training project route creates a project from the product payload through 
   assert.ok(!beforeIds.has(createPayload.data.id));
 });
 
+test("production training project creation uses the real project path when the training database is available", async () => {
+  const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
+  try {
+    await listCharacterLoraTrainingJobs({ page: 1, pageSize: 1 });
+  } catch (error) {
+    if (isProductionTrainingDatabaseUnavailable(error)) {
+      return;
+    }
+    throw error;
+  }
+
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const title = `真实创建链项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_real_project_create_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        selectedReferenceIds: [],
+        sections: [
+          {
+            id: "real-create-section",
+            title: "真实创建小节",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "real-create-block",
+                source: "本地",
+                title: "真实创建 block",
+                text: "真实创建场景描述",
+              },
+            ],
+            resolvedScene: "真实创建场景描述",
+            scenePreview: "真实创建场景描述",
+          },
+        ],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  const projectId = createPayload.data.id as string;
+  assert.equal(createPayload.data.sections[0].id, "real-create-section");
+
+  const sectionsResponse = await sectionsRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections`),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const sectionsPayload = await sectionsResponse.json();
+  assert.equal(sectionsResponse.status, 200);
+  assert.equal(sectionsPayload.ok, true);
+  assert.ok(sectionsPayload.data.some((section: { id: string }) => section.id === "real-create-section"));
+
+  const uploadFormData = new FormData();
+  uploadFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "real-create-source.png", { type: "image/png" }));
+  uploadFormData.append("role", "source");
+  const uploadResponse = await referenceRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+      method: "POST",
+      body: uploadFormData,
+    }),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const uploadPayload = await uploadResponse.json();
+  assert.equal(uploadResponse.status, 201);
+  assert.equal(uploadPayload.ok, true);
+  assert.equal(uploadPayload.data.jobId, projectId);
+  assert.equal(typeof uploadPayload.data.artifactId, "string");
+});
+
 test("training project detail route deletes a managed project through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const projectDetailRoute = await import("../src/app/api/training/projects/[projectId]/route");
@@ -3477,9 +3562,23 @@ test("managed worker endpoints can mark generation and training runs as failed t
     const generationDetailPayload = await generationDetailResponse.json();
     assert.equal(generationDetailPayload.data.status, "failed");
 
+    const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
     const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
     const reviewRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
-    const imageId = createPayload.data.referenceImages[0].id as string;
+    const uploadReferenceFormData = new FormData();
+    uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "worker-fail-reference.png", { type: "image/png" }));
+    uploadReferenceFormData.append("role", "source");
+    const uploadReferenceResponse = await referenceRoute.POST(
+      new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+        method: "POST",
+        body: uploadReferenceFormData,
+      }),
+      { params: Promise.resolve({ projectId }) },
+    );
+    const uploadReferencePayload = await uploadReferenceResponse.json();
+    assert.equal(uploadReferenceResponse.status, 201);
+    assert.equal(uploadReferencePayload.ok, true);
+    const imageId = uploadReferencePayload.data.id as string;
     const addToResultsResponse = await addToResultsRoute.POST(
       new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
         method: "POST",
@@ -3546,6 +3645,7 @@ test("managed worker endpoints can mark generation and training runs as failed t
 test("managed training project can enqueue generation, freeze dataset, and start training through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
   const reviewRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
   const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
   const datasetRevisionRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
@@ -3604,7 +3704,20 @@ test("managed training project can enqueue generation, freeze dataset, and start
   assert.equal(createPayload.ok, true);
   const projectId = createPayload.data.id as string;
   const sectionId = createPayload.data.sections[0].id as string;
-  const imageId = createPayload.data.referenceImages[0].id as string;
+  const uploadReferenceFormData = new FormData();
+  uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "run-chain-reference.png", { type: "image/png" }));
+  uploadReferenceFormData.append("role", "source");
+  const uploadReferenceResponse = await referenceRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+      method: "POST",
+      body: uploadReferenceFormData,
+    }),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const uploadReferencePayload = await uploadReferenceResponse.json();
+  assert.equal(uploadReferenceResponse.status, 201);
+  assert.equal(uploadReferencePayload.ok, true);
+  const imageId = uploadReferencePayload.data.id as string;
 
   const addToResultsResponse = await addToResultsRoute.POST(
     new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {

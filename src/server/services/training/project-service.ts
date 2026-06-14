@@ -13,6 +13,7 @@ import type {
 import { buildLoraTrainingDemoData } from "@/app/design-demos/data/lora-training";
 import { loadDesignDemoData } from "@/app/design-demos/data/load-demo-data";
 import { toImageUrl } from "@/lib/image-url";
+import { setTrainingProjectSectionCollection } from "@/server/services/training/project-section-service";
 import {
   createCharacterLoraTrainingProject,
   mapCharacterLoraTrainingJobError,
@@ -1378,6 +1379,8 @@ export async function createManagedTrainingProject(input: unknown) {
 
   const triggerToken = parsed.triggerToken?.trim() || buildTrainingProjectTriggerToken(title);
   let createdId: string | null = null;
+  const selectedReferenceImages = deriveReferenceImages(parsed.selectedReferenceIds, baseTraining, demoData.images);
+  const responseProject = buildFallbackTrainingProject(parsed, createdId ?? `training-project-${Date.now()}`, selectedReferenceImages);
 
   try {
     const checkpointRelativePath = parsed.checkpointRelativePath?.trim();
@@ -1392,6 +1395,9 @@ export async function createManagedTrainingProject(input: unknown) {
       trainingTemplateId: template.id,
     });
     createdId = created.id;
+    if (parsed.sections.length > 0) {
+      await setTrainingProjectSectionCollection(created.id, buildSeedSections(parsed));
+    }
   } catch (error) {
     if (!shouldUseTrainingProjectFileFallback(error)) {
       const mapped = mapCharacterLoraTrainingJobError(error);
@@ -1399,11 +1405,20 @@ export async function createManagedTrainingProject(input: unknown) {
     }
   }
 
+  if (createdId) {
+    return {
+      ...responseProject,
+      id: createdId,
+    };
+  }
+
   return withProjectStoreWriteLock(async () => {
     const fallbackProjects = await readFallbackTrainingProjects();
-    const selectedReferenceImages = deriveReferenceImages(parsed.selectedReferenceIds, baseTraining, demoData.images);
-    const nextId = createdId ?? `training-project-${Date.now()}`;
-    const project = buildFallbackTrainingProject(parsed, nextId, selectedReferenceImages);
+    const nextId = `training-project-${Date.now()}`;
+    const project = {
+      ...responseProject,
+      id: nextId,
+    };
 
     const currentIndex = fallbackProjects.findIndex((item) => item.id === nextId);
     const nextProjects = [...fallbackProjects];
