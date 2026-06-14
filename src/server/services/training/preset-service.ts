@@ -99,14 +99,14 @@ const DEFAULT_TRAINING_PRESETS: TrainingPresetDefault[] = [
     categoryName: "光线",
     categorySlug: "training-lighting",
     categorySortOrder: 10,
-    folderName: "舞台",
-    folderSortOrder: 10,
-    sortOrder: 10,
-    isActive: true,
-    sceneDescriptionText: "冷色舞台灯光，侧后方有清晰青色轮廓光，背景暗部保留少量霓虹反射。",
-    projectUsage: ["Vela Neon Jacket / 舞台灯光"],
-    templateUsage: ["角色 LoRA 基础模板 / 舞台肖像"],
-  },
+  folderName: "舞台",
+  folderSortOrder: 10,
+  sortOrder: 10,
+  isActive: true,
+  sceneDescriptionText: "冷色舞台灯光，侧后方有清晰青色轮廓光，背景暗部保留少量霓虹反射。",
+  projectUsage: ["训练项目 / 舞台肖像"],
+  templateUsage: ["角色 LoRA 基础模板 / 舞台肖像"],
+},
   {
     id: "rainy-street",
     title: "雨后街角",
@@ -114,14 +114,14 @@ const DEFAULT_TRAINING_PRESETS: TrainingPresetDefault[] = [
     categoryName: "环境",
     categorySlug: "training-environment",
     categorySortOrder: 20,
-    folderName: "城市",
-    folderSortOrder: 10,
-    sortOrder: 20,
-    isActive: true,
-    sceneDescriptionText: "雨后街角，地面有霓虹反射，背景轻微虚化但仍可辨认街道层次。",
-    projectUsage: ["Vela Neon Jacket / 街角夜景", "Noir Runner / 雨夜背光"],
-    templateUsage: ["街拍扩展模板 / 夜景"],
-  },
+  folderName: "城市",
+  folderSortOrder: 10,
+  sortOrder: 20,
+  isActive: true,
+  sceneDescriptionText: "雨后街角，地面有霓虹反射，背景轻微虚化但仍可辨认街道层次。",
+  projectUsage: ["训练项目 / 街角夜景", "训练项目 / 雨夜背光"],
+  templateUsage: ["街拍扩展模板 / 夜景"],
+},
   {
     id: "white-studio",
     title: "白底棚拍",
@@ -129,14 +129,14 @@ const DEFAULT_TRAINING_PRESETS: TrainingPresetDefault[] = [
     categoryName: "构图",
     categorySlug: "training-composition",
     categorySortOrder: 30,
-    folderName: "训练净图",
-    folderSortOrder: 10,
-    sortOrder: 30,
-    isActive: true,
-    sceneDescriptionText: "白底棚拍，少量柔光，移除复杂背景，优先保证角色全身服装和发型稳定。",
-    projectUsage: ["Vela Neon Jacket / 白底棚拍"],
-    templateUsage: ["角色 LoRA 基础模板 / 净图"],
-  },
+  folderName: "训练净图",
+  folderSortOrder: 10,
+  sortOrder: 30,
+  isActive: true,
+  sceneDescriptionText: "白底棚拍，少量柔光，移除复杂背景，优先保证角色全身服装和发型稳定。",
+  projectUsage: ["训练项目 / 白底棚拍"],
+  templateUsage: ["角色 LoRA 基础模板 / 净图"],
+},
   {
     id: "old-haze",
     title: "旧版薄雾",
@@ -220,6 +220,23 @@ function buildDefaultFallbackPreset(preset: TrainingPresetDefault): LoraTraining
     sceneDescriptionText: preset.sceneDescriptionText,
     projectUsage: preset.projectUsage,
     templateUsage: preset.templateUsage,
+  };
+}
+
+function normalizeBuiltInFallbackPreset(preset: LoraTrainingPreset) {
+  const builtIn = DEFAULT_TRAINING_PRESETS.find((item) => item.id === preset.id);
+  if (!builtIn) return preset;
+
+  return {
+    ...preset,
+    title: builtIn.title,
+    category: builtIn.categoryName,
+    folder: builtIn.folderName,
+    status: builtIn.isActive ? "active" : "inactive",
+    updatedAt: builtIn.updatedAt,
+    sceneDescriptionText: builtIn.sceneDescriptionText,
+    projectUsage: [...builtIn.projectUsage],
+    templateUsage: [...builtIn.templateUsage],
   };
 }
 
@@ -330,7 +347,7 @@ async function readFallbackTrainingPresets() {
     const raw = await readFile(TRAINING_PRESET_FALLBACK_PATH, "utf8");
     const parsed = JSON.parse(raw) as unknown;
     if (Array.isArray(parsed)) {
-      return parsed as LoraTrainingPreset[];
+      return (parsed as LoraTrainingPreset[]).map(normalizeBuiltInFallbackPreset);
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {

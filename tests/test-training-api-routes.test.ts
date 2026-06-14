@@ -1536,6 +1536,10 @@ test("GET /api/training/presets and /api/training/templates expose training reso
   assert.equal(presetsPayload.ok, true);
   assert.ok(Array.isArray(presetsPayload.data));
   assert.ok(presetsPayload.data.some((preset: { id: string }) => preset.id === "rainy-street"));
+  const builtInPresetUsages = (presetsPayload.data as Array<{ id: string; projectUsage: string[] }>)
+    .filter((preset) => ["cyan-rim-light", "rainy-street", "white-studio"].includes(preset.id))
+    .flatMap((preset) => preset.projectUsage);
+  assert.ok(builtInPresetUsages.every((usage) => !/Vela Neon Jacket|Noir Runner/i.test(usage)));
   assert.equal(sceneDescriptionTreeResponse.status, 200);
   assert.equal(sceneDescriptionTreePayload.ok, true);
   assert.ok(Array.isArray(sceneDescriptionTreePayload.data.categories));
