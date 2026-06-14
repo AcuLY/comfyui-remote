@@ -82,6 +82,11 @@ async function withTrainingManagedStoreSnapshot<T>(fn: () => Promise<T>) {
   }
 }
 
+function isProductionTrainingDatabaseUnavailable(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003/i.test(message);
+}
+
 async function listRuns(query = "") {
   const { GET } = await import("../src/app/api/training/runs/route");
   const response = await GET(new Request(`http://localhost/api/training/runs${query}`));
@@ -2514,6 +2519,115 @@ test("managed training project references flow into result review through /api/t
   assert.equal(deleteReferenceResponse.status, 200);
   assert.equal(deleteReferencePayload.ok, true);
   assert.equal(deleteReferencePayload.data.id, imageId);
+});
+
+test("production training character images support patch, delete, and artifact registration through /api/training", async () => {
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const referenceDetailRoute = await import("../src/app/api/training/character-images/[imageId]/route");
+  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
+  let productionProjects;
+  try {
+    productionProjects = await listCharacterLoraTrainingJobs({ page: 1, pageSize: 20 });
+  } catch (error) {
+    if (isProductionTrainingDatabaseUnavailable(error)) {
+      return;
+    }
+    throw error;
+  }
+  const productionProject = productionProjects.jobs.find((project) => project.status !== "archived");
+  assert.ok(productionProject);
+  const projectId = productionProject!.id;
+  const projectParams = { params: Promise.resolve({ projectId }) };
+
+  const uploadFormData = new FormData();
+  uploadFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "production-reference-source.png", { type: "image/png" }));
+  uploadFormData.append("role", "source");
+  const uploadResponse = await referenceRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+      method: "POST",
+      body: uploadFormData,
+    }),
+    projectParams,
+  );
+  const uploadPayload = await uploadResponse.json();
+  assert.equal(uploadResponse.status, 201);
+  assert.equal(uploadPayload.ok, true);
+  const imageId = uploadPayload.data.id as string;
+
+  const patchReferenceResponse = await referenceDetailRoute.PATCH(
+    new Request(`http://localhost/api/training/character-images/${imageId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        label: "已更新生产参考图",
+        note: "已更新生产参考图备注",
+        kind: "generated",
+      }),
+    }),
+    { params: Promise.resolve({ imageId }) },
+  );
+  const patchReferencePayload = await patchReferenceResponse.json();
+  assert.equal(patchReferenceResponse.status, 200);
+  assert.equal(patchReferencePayload.ok, true);
+  assert.equal(patchReferencePayload.data.id, imageId);
+  assert.equal(patchReferencePayload.data.provenance.label, "已更新生产参考图");
+  assert.equal(patchReferencePayload.data.provenance.note, "已更新生产参考图备注");
+  assert.equal(patchReferencePayload.data.provenance.kind, "generated");
+
+  const addToResultsResponse = await addToResultsRoute.POST(
+    new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+      method: "POST",
+      body: JSON.stringify({ reviewStatus: "pending", captionDraft: "候选图用于注册参考图" }),
+    }),
+    { params: Promise.resolve({ imageId }) },
+  );
+  const addToResultsPayload = await addToResultsResponse.json();
+  assert.equal(addToResultsResponse.status, 201);
+  assert.equal(addToResultsPayload.ok, true);
+  const candidateArtifactId = addToResultsPayload.data.artifactId as string;
+  assert.equal(typeof candidateArtifactId, "string");
+
+  const registerResponse = await referenceRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        artifactId: candidateArtifactId,
+        imageType: "generated",
+        label: "候选转参考图",
+        note: "从候选输出注册为资料图",
+      }),
+    }),
+    projectParams,
+  );
+  const registerPayload = await registerResponse.json();
+  assert.equal(registerResponse.status, 201);
+  assert.equal(registerPayload.ok, true);
+  assert.equal(registerPayload.data.artifactId, candidateArtifactId);
+  assert.equal(registerPayload.data.provenance.label, "候选转参考图");
+  assert.equal(registerPayload.data.provenance.note, "从候选输出注册为资料图");
+  const registeredImageId = registerPayload.data.id as string;
+
+  const referencesListResponse = await referenceRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+    projectParams,
+  );
+  const referencesListPayload = await referencesListResponse.json();
+  assert.equal(referencesListResponse.status, 200);
+  assert.equal(referencesListPayload.ok, true);
+  assert.ok(Array.isArray(referencesListPayload.data));
+  assert.ok(referencesListPayload.data.some((image: { id: string }) => image.id === registeredImageId));
+
+  const deleteReferenceResponse = await referenceDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/character-images/${registeredImageId}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ imageId: registeredImageId }) },
+  );
+  const deleteReferencePayload = await deleteReferenceResponse.json();
+  assert.equal(deleteReferenceResponse.status, 200);
+  assert.equal(deleteReferencePayload.ok, true);
+  assert.equal(deleteReferencePayload.data.id, registeredImageId);
 });
 
 test("managed training project can upload result images through /api/training", async () => {

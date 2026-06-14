@@ -4,6 +4,12 @@ import {
   mapTrainingProjectError,
   updateManagedTrainingReferenceImage,
 } from "@/server/services/training/project-service";
+import {
+  deleteCharacterLoraSourceImage,
+  mapCharacterLoraSourceImageError,
+  updateCharacterLoraSourceImage,
+} from "@/server/services/character-lora-training/source-image-service";
+import { getCharacterLoraSourceImage } from "@/server/repositories/character-lora-training";
 
 export const dynamic = "force-dynamic";
 
@@ -28,12 +34,23 @@ export async function PATCH(
       label: typeof payload.label === "string" ? payload.label : null,
       note: typeof payload.note === "string" ? payload.note : null,
     });
-    if (!data) {
+    if (data) {
+      return ok(data);
+    }
+
+    const sourceImage = await getCharacterLoraSourceImage(imageId).catch(() => null);
+    const productionProjectId = sourceImage?.jobId ?? null;
+    if (!productionProjectId) {
       return fail("Character LoRA source image not found", 404, { imageId });
     }
-    return ok(data);
+    const updated = await updateCharacterLoraSourceImage(productionProjectId, imageId, payload);
+    return ok(updated);
   } catch (error) {
-    const mapped = mapTrainingProjectError(error);
+    const managedMapped = mapTrainingProjectError(error);
+    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
+      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
+    }
+    const mapped = mapCharacterLoraSourceImageError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
@@ -45,12 +62,22 @@ export async function DELETE(
   try {
     const { imageId } = await params;
     const data = await deleteManagedTrainingReferenceImage(imageId);
-    if (!data) {
+    if (data) {
+      return ok(data);
+    }
+    const sourceImage = await getCharacterLoraSourceImage(imageId).catch(() => null);
+    const productionProjectId = sourceImage?.jobId ?? null;
+    if (!productionProjectId) {
       return fail("Character LoRA source image not found", 404, { imageId });
     }
-    return ok(data);
+    const deleted = await deleteCharacterLoraSourceImage(productionProjectId, imageId);
+    return ok(deleted);
   } catch (error) {
-    const mapped = mapTrainingProjectError(error);
+    const managedMapped = mapTrainingProjectError(error);
+    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
+      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
+    }
+    const mapped = mapCharacterLoraSourceImageError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

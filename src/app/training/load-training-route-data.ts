@@ -106,11 +106,19 @@ function buildReferenceImages(sourceImages: Awaited<ReturnType<typeof listCharac
     .map((image, index) => {
       const demoImage = buildDemoImage(image.relativePath, String(index + 1).padStart(2, "0"), "pending", index);
       if (!demoImage) return null;
+      const provenance = image.provenance && typeof image.provenance === "object" && !Array.isArray(image.provenance)
+        ? image.provenance as Record<string, unknown>
+        : null;
+      const provenanceKind = typeof provenance?.kind === "string" ? provenance.kind : null;
+      const provenanceLabel = typeof provenance?.label === "string" && provenance.label.trim() ? provenance.label.trim() : null;
+      const provenanceNote = typeof provenance?.note === "string" && provenance.note.trim() ? provenance.note.trim() : null;
       return {
         id: image.id,
-        kind: index === 0 ? "original" : "auxiliary",
-        label: `参考图 ${index + 1}`,
-        note: image.role,
+        kind: provenanceKind === "original" || provenanceKind === "generated" || provenanceKind === "auxiliary"
+          ? provenanceKind
+          : index === 0 ? "original" : "auxiliary",
+        label: provenanceLabel ?? `参考图 ${index + 1}`,
+        note: provenanceNote ?? image.role,
         image: demoImage,
       } satisfies LoraTrainingReferenceImage;
     })

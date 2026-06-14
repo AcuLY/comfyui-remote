@@ -6,6 +6,7 @@ import {
 } from "@/server/services/training/project-service";
 import {
   listCharacterLoraSourceImages,
+  registerCharacterLoraSourceImageFromArtifact,
   mapCharacterLoraSourceImageError,
   uploadCharacterLoraSourceImage,
 } from "@/server/services/character-lora-training/source-image-service";
@@ -38,16 +39,26 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
-  let formData: FormData;
-
-  try {
-    formData = await request.formData();
-  } catch {
-    return fail("Invalid multipart form data", 400);
-  }
+  const contentType = request.headers.get("content-type") ?? "";
 
   try {
     const { projectId } = await params;
+    if (contentType.includes("application/json")) {
+      const body = await request.json().catch(() => null);
+      if (!body || typeof body !== "object") {
+        return fail("Invalid JSON body", 400);
+      }
+      const data = await registerCharacterLoraSourceImageFromArtifact(projectId, body);
+      return ok(data, { status: 201 });
+    }
+
+    let formData: FormData;
+    try {
+      formData = await request.formData();
+    } catch {
+      return fail("Invalid multipart form data", 400);
+    }
+
     const managedUpload = await uploadManagedTrainingProjectReferenceImage(projectId, formData);
     if (managedUpload) {
       return ok(managedUpload, { status: 201 });
