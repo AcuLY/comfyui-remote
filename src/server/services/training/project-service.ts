@@ -721,6 +721,79 @@ export async function updateManagedTrainingReferenceImage(
   });
 }
 
+export async function applyManagedTrainingImageResultToReferenceImage(
+  imageResultId: string,
+  input: {
+    kind?: string | null;
+    label?: string | null;
+    note?: string | null;
+    targetProjectId?: string | null;
+  } = {},
+) {
+  const owner = await findManagedResultOwner(imageResultId);
+  if (!owner) return null;
+
+  if (input.targetProjectId && input.targetProjectId !== owner.project.id) {
+    throw new TrainingProjectServiceError("Managed generation output does not belong to the target project", 409, {
+      imageResultId,
+      projectId: owner.project.id,
+      targetProjectId: input.targetProjectId,
+    });
+  }
+
+  const referenceId = `managed-reference-from-output-${imageResultId}`;
+  const existing = owner.project.referenceImages.find((reference) =>
+    reference.id === referenceId || reference.image.full === owner.result.image.full,
+  );
+  if (existing) {
+    return {
+      created: false,
+      reference: existing,
+      projectId: owner.project.id,
+    };
+  }
+
+  const nextReference: LoraTrainingReferenceImage = {
+    id: referenceId,
+    kind: normalizeManagedReferenceKind(typeof input.kind === "string" ? input.kind : undefined, "generated"),
+    label: typeof input.label === "string" && input.label.trim() ? input.label.trim() : owner.result.sourceLabel,
+    note: typeof input.note === "string" && input.note.trim() ? input.note.trim() : owner.result.caption,
+    image: owner.result.image,
+  };
+
+  return withProjectStoreWriteLock(async () => {
+    const refreshed = await findManagedResultOwner(imageResultId);
+    if (!refreshed) return null;
+    const refreshedExisting = refreshed.project.referenceImages.find((reference) =>
+      reference.id === referenceId || reference.image.full === refreshed.result.image.full,
+    );
+    if (refreshedExisting) {
+      return {
+        created: false,
+        reference: refreshedExisting,
+        projectId: refreshed.project.id,
+      };
+    }
+
+    const nextProjects = refreshed.projects.map((project) => project.id === refreshed.project.id
+      ? recomputeManagedProject({
+        ...project,
+        updatedAt: formatUpdatedAt(),
+        referenceImages: [...project.referenceImages, nextReference],
+      })
+      : project);
+    await writeFallbackTrainingProjects(nextProjects);
+
+    return {
+      created: true,
+      projectId: refreshed.project.id,
+      reference: nextProjects
+        .find((project) => project.id === refreshed.project.id)
+        ?.referenceImages.find((reference) => reference.id === nextReference.id) ?? nextReference,
+    };
+  });
+}
+
 export async function deleteManagedTrainingReferenceImage(imageId: string) {
   const owner = await findManagedReferenceOwner(imageId);
   if (!owner) return null;

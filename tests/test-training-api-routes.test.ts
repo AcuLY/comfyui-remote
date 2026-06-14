@@ -1380,6 +1380,316 @@ test("scene-description category and folder routes create, update, guard non-emp
   assert.equal(deleteCategoryPayload.data.success, true);
 });
 
+test("generation output apply can add a managed output into project reference images through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const resultUploadRoute = await import("../src/app/api/training/projects/[projectId]/image-results/upload/route");
+  const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
+  const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
+  const workerGenerationCompleteRoute = await import("../src/app/api/training/worker/generation-tasks/[taskId]/complete/route");
+  const generationTaskDetailRoute = await import("../src/app/api/training/generation-tasks/[taskId]/route");
+  const generationOutputApplyRoute = await import("../src/app/api/training/generation-outputs/[outputId]/apply/route");
+
+  await withTrainingManagedStoreSnapshot(async () => {
+    const title = `测试输出应用项目 ${Date.now()}`;
+    const createResponse = await projectsRoute.POST(
+      new Request("http://localhost/api/training/projects", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          characterName: title,
+          projectName: title,
+          triggerToken: `test_output_apply_${Date.now()}`,
+          templateId: "character_identity_default",
+          trainingTemplateId: "character_identity_default",
+          checkpointRelativePath: "models/checkpoints/mock.safetensors",
+          usagePrompt: "测试输出应用提示词",
+          detailPrompt: "测试输出应用细节",
+          selectedReferenceIds: ["project-vela-neon"],
+          sections: [
+            {
+              id: "output-apply-section",
+              title: "输出应用小节",
+              enabled: true,
+              blockCount: 1,
+              blocks: [
+                {
+                  id: "output-apply-block",
+                  source: "本地",
+                  title: "输出应用 block",
+                  text: "output apply 场景描述",
+                },
+              ],
+              resolvedScene: "output apply 场景描述",
+              scenePreview: "output apply 场景描述",
+            },
+          ],
+          trainingDefaults: {
+            autoGenerateSamples: false,
+            autoFreezeDataset: false,
+          },
+        }),
+      }),
+    );
+    const createPayload = await createResponse.json();
+    assert.equal(createResponse.status, 201);
+    assert.equal(createPayload.ok, true);
+
+    const projectId = createPayload.data.id as string;
+    const sectionId = createPayload.data.sections[0].id as string;
+    const projectParams = { params: Promise.resolve({ projectId }) };
+
+    const beforeReferenceResponse = await referenceRoute.GET(
+      new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+      projectParams,
+    );
+    const beforeReferencePayload = await beforeReferenceResponse.json();
+    assert.equal(beforeReferenceResponse.status, 200);
+    assert.equal(beforeReferencePayload.ok, true);
+    const beforeReferenceCount = beforeReferencePayload.data.length as number;
+
+    const runResponse = await sectionRunRoute.POST(
+      new Request(`http://localhost/api/training/sections/${sectionId}/runs`, {
+        method: "POST",
+        body: JSON.stringify({
+          userInstruction: "output apply generation",
+        }),
+      }),
+      { params: Promise.resolve({ sectionId }) },
+    );
+    const runPayload = await runResponse.json();
+    assert.equal(runResponse.status, 201);
+    assert.equal(runPayload.ok, true);
+    const taskId = runPayload.data.id as string;
+
+    const tickResponse = await schedulerTickRoute.POST(
+      new Request("http://localhost/api/training/scheduler/tick", { method: "POST" }),
+    );
+    const tickPayload = await tickResponse.json();
+    assert.equal(tickResponse.status, 200);
+    assert.equal(tickPayload.ok, true);
+    assert.equal(tickPayload.data.id, taskId);
+
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "managed-output-apply.png", { type: "image/png" }));
+    uploadFormData.append("sectionId", sectionId);
+    uploadFormData.append("captionDraft", "用于应用到资料图的输出");
+    uploadFormData.append("reviewStatus", "keep");
+    const uploadResultResponse = await resultUploadRoute.POST(
+      new Request(`http://localhost/api/training/projects/${projectId}/image-results/upload`, {
+        method: "POST",
+        body: uploadFormData,
+      }),
+      projectParams,
+    );
+    const uploadResultPayload = await uploadResultResponse.json();
+    assert.equal(uploadResultResponse.status, 201);
+    assert.equal(uploadResultPayload.ok, true);
+    const uploadedResultId = uploadResultPayload.data.id as string;
+
+    const completeResponse = await workerGenerationCompleteRoute.POST(
+      new Request(`http://localhost/api/training/worker/generation-tasks/${taskId}/complete`, {
+        method: "POST",
+        body: JSON.stringify({
+          resultImageResultId: uploadedResultId,
+        }),
+      }),
+      { params: Promise.resolve({ taskId }) },
+    );
+    const completePayload = await completeResponse.json();
+    assert.equal(completeResponse.status, 200);
+    assert.equal(completePayload.ok, true);
+
+    const taskDetailResponse = await generationTaskDetailRoute.GET(
+      new Request(`http://localhost/api/training/generation-tasks/${taskId}`),
+      { params: Promise.resolve({ taskId }) },
+    );
+    const taskDetailPayload = await taskDetailResponse.json();
+    assert.equal(taskDetailResponse.status, 200);
+    assert.equal(taskDetailPayload.ok, true);
+    const outputId = taskDetailPayload.data.outputResultIds[0] as string;
+
+    const applyResponse = await generationOutputApplyRoute.POST(
+      new Request(`http://localhost/api/training/generation-outputs/${outputId}/apply`, {
+        method: "POST",
+        body: JSON.stringify({
+          targetEntityType: "reference_image",
+          targetEntityId: projectId,
+        }),
+      }),
+      { params: Promise.resolve({ outputId }) },
+    );
+    const applyPayload = await applyResponse.json();
+    assert.equal(applyResponse.status, 200);
+    assert.equal(applyPayload.ok, true);
+    assert.equal(applyPayload.data.targetEntityType, "reference_image");
+    assert.equal(applyPayload.data.targetEntityId, projectId);
+    assert.equal(applyPayload.data.created, true);
+    assert.equal(applyPayload.data.result.kind, "generated");
+
+    const afterReferenceResponse = await referenceRoute.GET(
+      new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+      projectParams,
+    );
+    const afterReferencePayload = await afterReferenceResponse.json();
+    assert.equal(afterReferenceResponse.status, 200);
+    assert.equal(afterReferencePayload.ok, true);
+    assert.equal(afterReferencePayload.data.length, beforeReferenceCount + 1);
+
+    const repeatApplyResponse = await generationOutputApplyRoute.POST(
+      new Request(`http://localhost/api/training/generation-outputs/${outputId}/apply`, {
+        method: "POST",
+        body: JSON.stringify({
+          targetEntityType: "reference_image",
+          targetEntityId: projectId,
+        }),
+      }),
+      { params: Promise.resolve({ outputId }) },
+    );
+    const repeatApplyPayload = await repeatApplyResponse.json();
+    assert.equal(repeatApplyResponse.status, 200);
+    assert.equal(repeatApplyPayload.ok, true);
+    assert.equal(repeatApplyPayload.data.created, false);
+  });
+});
+
+test("generation output apply can idempotently project a production candidate output into reference images through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const generationOutputApplyRoute = await import("../src/app/api/training/generation-outputs/[outputId]/apply/route");
+
+  const title = `测试真实输出应用项目 ${Date.now()}`;
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_real_output_apply_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        baseModel: "继承训练默认模型",
+        captionStrategy: "先触发词后描述",
+        usagePrompt: "测试真实输出应用提示词",
+        detailPrompt: "测试真实输出应用细节描述",
+        perSectionImageCount: "4",
+        trainingSteps: "2400",
+        selectedReferenceIds: [],
+        sections: [
+          {
+            id: "real-output-section",
+            title: "真实输出应用小节",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "real-output-block",
+                source: "本地",
+                title: "本地场景描述",
+                text: "真实输出应用场景描述",
+              },
+            ],
+            resolvedScene: "真实输出应用场景描述",
+            scenePreview: "真实输出应用场景描述",
+          },
+        ],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+
+  const projectId = createPayload.data.id as string;
+  const params = { params: Promise.resolve({ projectId }) };
+
+  const referenceUploadFormData = new FormData();
+  referenceUploadFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "production-output-source.png", { type: "image/png" }));
+  referenceUploadFormData.append("role", "source");
+  const uploadReferenceResponse = await referenceRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+      method: "POST",
+      body: referenceUploadFormData,
+    }),
+    params,
+  );
+  const uploadReferencePayload = await uploadReferenceResponse.json();
+  assert.equal(uploadReferenceResponse.status, 201);
+  assert.equal(uploadReferencePayload.ok, true);
+
+  const beforeReferenceResponse = await referenceRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+    params,
+  );
+  const beforeReferencePayload = await beforeReferenceResponse.json();
+  assert.equal(beforeReferenceResponse.status, 200);
+  assert.equal(beforeReferencePayload.ok, true);
+  const beforeReferenceCount = beforeReferencePayload.data.length as number;
+  const imageId = uploadReferencePayload.data.id as string;
+
+  const candidateResponse = await addToResultsRoute.POST(
+    new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+      method: "POST",
+      body: JSON.stringify({
+        reviewStatus: "pending",
+        captionDraft: "真实输出应用候选图",
+      }),
+    }),
+    { params: Promise.resolve({ imageId }) },
+  );
+  const candidatePayload = await candidateResponse.json();
+  assert.equal(candidateResponse.status, 201);
+  assert.equal(candidatePayload.ok, true);
+  const outputId = candidatePayload.data.id as string;
+
+  const applyResponse = await generationOutputApplyRoute.POST(
+    new Request(`http://localhost/api/training/generation-outputs/${outputId}/apply`, {
+      method: "POST",
+      body: JSON.stringify({
+        targetEntityType: "reference_image",
+        targetEntityId: projectId,
+      }),
+    }),
+    { params: Promise.resolve({ outputId }) },
+  );
+  const applyPayload = await applyResponse.json();
+  assert.equal(applyResponse.status, 200);
+  assert.equal(applyPayload.ok, true);
+  assert.equal(applyPayload.data.targetEntityType, "reference_image");
+  assert.equal(applyPayload.data.targetEntityId, projectId);
+
+  const afterReferenceResponse = await referenceRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+    params,
+  );
+  const afterReferencePayload = await afterReferenceResponse.json();
+  assert.equal(afterReferenceResponse.status, 200);
+  assert.equal(afterReferencePayload.ok, true);
+  assert.ok(afterReferencePayload.data.length >= beforeReferenceCount);
+
+  const repeatApplyResponse = await generationOutputApplyRoute.POST(
+    new Request(`http://localhost/api/training/generation-outputs/${outputId}/apply`, {
+      method: "POST",
+      body: JSON.stringify({
+        targetEntityType: "reference_image",
+        targetEntityId: projectId,
+      }),
+    }),
+    { params: Promise.resolve({ outputId }) },
+  );
+  const repeatApplyPayload = await repeatApplyResponse.json();
+  assert.equal(repeatApplyResponse.status, 200);
+  assert.equal(repeatApplyPayload.ok, true);
+  assert.equal(repeatApplyPayload.data.created, false);
+});
+
 test("training preset sort rules reorder categories and presets through /api/training", async () => {
   const presetsRoute = await import("../src/app/api/training/presets/route");
   const sortRulesRoute = await import("../src/app/api/training/presets/sort-rules/route");
@@ -2863,6 +3173,7 @@ test("training write routes exist under /api/training and fail through HTTP cont
   const restoreProjectRoute = await import("../src/app/api/training/projects/[projectId]/restore/route");
   const updateProjectSectionRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
   const updateSectionAliasRoute = await import("../src/app/api/training/sections/[sectionId]/route");
+  const applyGenerationOutputRoute = await import("../src/app/api/training/generation-outputs/[outputId]/apply/route");
   const createSceneCategoryRoute = await import("../src/app/api/training/scene-description/categories/route");
   const updateSceneCategoryRoute = await import("../src/app/api/training/scene-description/categories/[categoryId]/route");
   const createSceneFolderRoute = await import("../src/app/api/training/scene-description/folders/route");
@@ -2887,16 +3198,18 @@ test("training write routes exist under /api/training and fail through HTTP cont
   const missingPresetParams = { params: Promise.resolve({ presetId: "missing-preset" }) };
   const missingCategoryParams = { params: Promise.resolve({ categoryId: "missing-category" }) };
   const missingFolderParams = { params: Promise.resolve({ folderId: "missing-folder" }) };
+  const missingOutputParams = { params: Promise.resolve({ outputId: "missing-output" }) };
   const missingTemplateParams = { params: Promise.resolve({ templateId: "missing-template" }) };
   const missingTemplateSectionParams = { params: Promise.resolve({ templateId: "missing-template", sectionId: "missing-section" }) };
 
-  const [createResponse, updateResponse, archiveResponse, restoreResponse, updateProjectSectionResponse, updateSectionAliasResponse, createSceneCategoryResponse, updateSceneCategoryResponse, createSceneFolderResponse, updateSceneFolderResponse, createPresetResponse, savePresetSortRulesResponse, updatePresetResponse, createScenePresetAliasResponse, updateScenePresetAliasResponse, createTemplateResponse, updateTemplateResponse, updateTemplateSectionResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
+  const [createResponse, updateResponse, archiveResponse, restoreResponse, updateProjectSectionResponse, updateSectionAliasResponse, applyGenerationOutputResponse, createSceneCategoryResponse, updateSceneCategoryResponse, createSceneFolderResponse, updateSceneFolderResponse, createPresetResponse, savePresetSortRulesResponse, updatePresetResponse, createScenePresetAliasResponse, updateScenePresetAliasResponse, createTemplateResponse, updateTemplateResponse, updateTemplateSectionResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
     createProjectRoute.POST(new Request("http://localhost/api/training/projects", { method: "POST", body: "{}" })),
     updateProjectRoute.PATCH(new Request("http://localhost/api/training/projects/missing-project", { method: "PATCH", body: "{}" }), missingProjectParams),
     archiveProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/archive", { method: "POST" }), missingProjectParams),
     restoreProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/restore", { method: "POST" }), missingProjectParams),
     updateProjectSectionRoute.PATCH(new Request("http://localhost/api/training/projects/missing-project/sections/missing-section", { method: "PATCH", body: "{}" }), missingProjectSectionParams),
     updateSectionAliasRoute.PATCH(new Request("http://localhost/api/training/sections/missing-section", { method: "PATCH", body: "{}" }), missingSectionParams),
+    applyGenerationOutputRoute.POST(new Request("http://localhost/api/training/generation-outputs/missing-output/apply", { method: "POST", body: JSON.stringify({ targetEntityType: "reference_image" }) }), missingOutputParams),
     createSceneCategoryRoute.POST(new Request("http://localhost/api/training/scene-description/categories", { method: "POST", body: "{}" })),
     updateSceneCategoryRoute.PATCH(new Request("http://localhost/api/training/scene-description/categories/missing-category", { method: "PATCH", body: "{}" }), missingCategoryParams),
     createSceneFolderRoute.POST(new Request("http://localhost/api/training/scene-description/folders", { method: "POST", body: "{}" })),
@@ -2922,6 +3235,7 @@ test("training write routes exist under /api/training and fail through HTTP cont
     restoreResponse.json(),
     updateProjectSectionResponse.json(),
     updateSectionAliasResponse.json(),
+    applyGenerationOutputResponse.json(),
     createSceneCategoryResponse.json(),
     updateSceneCategoryResponse.json(),
     createSceneFolderResponse.json(),
@@ -2952,38 +3266,40 @@ test("training write routes exist under /api/training and fail through HTTP cont
   assert.equal(payloads[4].ok, false);
   assert.ok(updateSectionAliasResponse.status >= 400);
   assert.equal(payloads[5].ok, false);
-  assert.ok(createSceneCategoryResponse.status >= 400);
+  assert.ok(applyGenerationOutputResponse.status >= 400);
   assert.equal(payloads[6].ok, false);
-  assert.ok(updateSceneCategoryResponse.status >= 400);
+  assert.ok(createSceneCategoryResponse.status >= 400);
   assert.equal(payloads[7].ok, false);
-  assert.ok(createSceneFolderResponse.status >= 400);
+  assert.ok(updateSceneCategoryResponse.status >= 400);
   assert.equal(payloads[8].ok, false);
-  assert.ok(updateSceneFolderResponse.status >= 400);
+  assert.ok(createSceneFolderResponse.status >= 400);
   assert.equal(payloads[9].ok, false);
-  assert.ok(createPresetResponse.status >= 400);
+  assert.ok(updateSceneFolderResponse.status >= 400);
   assert.equal(payloads[10].ok, false);
-  assert.ok(savePresetSortRulesResponse.status >= 400);
+  assert.ok(createPresetResponse.status >= 400);
   assert.equal(payloads[11].ok, false);
-  assert.ok(updatePresetResponse.status >= 400);
+  assert.ok(savePresetSortRulesResponse.status >= 400);
   assert.equal(payloads[12].ok, false);
-  assert.ok(createScenePresetAliasResponse.status >= 400);
+  assert.ok(updatePresetResponse.status >= 400);
   assert.equal(payloads[13].ok, false);
-  assert.ok(updateScenePresetAliasResponse.status >= 400);
+  assert.ok(createScenePresetAliasResponse.status >= 400);
   assert.equal(payloads[14].ok, false);
-  assert.ok(createTemplateResponse.status >= 400);
+  assert.ok(updateScenePresetAliasResponse.status >= 400);
   assert.equal(payloads[15].ok, false);
-  assert.ok(updateTemplateResponse.status >= 400);
+  assert.ok(createTemplateResponse.status >= 400);
   assert.equal(payloads[16].ok, false);
-  assert.ok(updateTemplateSectionResponse.status >= 400);
+  assert.ok(updateTemplateResponse.status >= 400);
   assert.equal(payloads[17].ok, false);
-  assert.ok(freezeResponse.status >= 400);
+  assert.ok(updateTemplateSectionResponse.status >= 400);
   assert.equal(payloads[18].ok, false);
-  assert.ok(enqueueTrainingResponse.status >= 400);
+  assert.ok(freezeResponse.status >= 400);
   assert.equal(payloads[19].ok, false);
-  assert.ok(enqueueSectionResponse.status >= 400);
+  assert.ok(enqueueTrainingResponse.status >= 400);
   assert.equal(payloads[20].ok, false);
-  assert.ok(cancelResponse.status >= 400);
+  assert.ok(enqueueSectionResponse.status >= 400);
   assert.equal(payloads[21].ok, false);
+  assert.ok(cancelResponse.status >= 400);
+  assert.equal(payloads[22].ok, false);
 });
 
 test("training asset and review routes exist under /api/training and return JSON error contracts", async () => {
