@@ -12,10 +12,10 @@ export {
   LoraTrainingProjectScopedRunsPage,
   LoraTrainingProjectSectionDetailPage,
   LoraTrainingProjectSectionsPage,
-  LoraTrainingRunDetailPage,
-  LoraTrainingRunsPage,
   LoraTrainingTemplateFormPage,
   LoraTrainingTemplatesPage,
   LoraTrainingTemplateSectionPage,
 } from "@/app/design-demos/features/lora-training";
 export { LoraTrainingProjectsPage } from "./training-projects-page";
+export { LoraTrainingRunDetailPage } from "./training-run-detail-page";
+export { LoraTrainingRunsPage } from "./training-runs-page";

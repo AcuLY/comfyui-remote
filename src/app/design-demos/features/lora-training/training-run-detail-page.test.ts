@@ -5,10 +5,21 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const detailSource = readFileSync(resolve(testDir, "training-run-detail-page.tsx"), "utf8");
-const detailCss = readFileSync(resolve(testDir, "training-run-detail-page.module.css"), "utf8");
-const fixtureSource = readFileSync(resolve(testDir, "../../data/lora-training.ts"), "utf8");
-const typesSource = readFileSync(resolve(testDir, "../../data/lora-training-types.ts"), "utf8");
+const featureUiDir = resolve(testDir, "../../../../features/training/ui");
+const featureRoot = resolve(testDir, "../../../../features/training");
+const detailSource = readFileSync(resolve(featureUiDir, "training-run-detail-page.tsx"), "utf8");
+const detailCss = readFileSync(resolve(featureUiDir, "training-run-detail-page.module.css"), "utf8");
+const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
+const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
+const legacyDetailSource = readFileSync(resolve(testDir, "training-run-detail-page.tsx"), "utf8");
+
+test("training run detail implementation is owned by the training feature layer", () => {
+  assert.match(
+    legacyDetailSource,
+    /export \{ LoraTrainingRunDetailPage \} from "@\/features\/training\/ui\/training-run-detail-page";/,
+    "design-demos run detail file should re-export the feature-layer run detail implementation",
+  );
+});
 
 test("training run detail keeps the compact detail header with dataset-version training titles", () => {
   const headerStart = detailSource.indexOf("<PageHeader");
@@ -194,7 +205,7 @@ test("image generation detail header links back to its training section and sect
 });
 
 test("image generation detail renders task input attachments instead of project reference images", () => {
-  assert.match(typesSource, /inputImages\?:\s*DemoImage\[\]/, "generation runs should expose the final input image attachments");
+  assert.match(typesSource, /inputImages\?:\s*TrainingImage\[\]/, "generation runs should expose the final input image attachments");
   assert.match(fixtureSource, /inputImages:\s*pickImages\(images,\s*0,\s*2\)/, "completed image generation fixture should carry concrete task input images");
   assert.match(detailSource, /currentRun\.inputImages/, "generation detail should read attachments from the run itself");
   assert.match(detailSource, /最终输入附件/, "generation detail should label input images as final request attachments");

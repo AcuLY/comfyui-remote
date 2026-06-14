@@ -5,8 +5,18 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const pageSource = readFileSync(resolve(testDir, "training-runs-page.tsx"), "utf8");
-const cssSource = readFileSync(resolve(testDir, "training-runs-page.module.css"), "utf8");
+const featureUiDir = resolve(testDir, "../../../../features/training/ui");
+const pageSource = readFileSync(resolve(featureUiDir, "training-runs-page.tsx"), "utf8");
+const cssSource = readFileSync(resolve(featureUiDir, "training-runs-page.module.css"), "utf8");
+const legacyPageSource = readFileSync(resolve(testDir, "training-runs-page.tsx"), "utf8");
+
+test("training runs page implementation is owned by the training feature layer", () => {
+  assert.match(
+    legacyPageSource,
+    /export \{ LoraTrainingRunsPage \} from "@\/features\/training\/ui\/training-runs-page";/,
+    "design-demos runs page file should re-export the feature-layer runs page",
+  );
+});
 
 test("training runs page keeps the queue-demo compact header", () => {
   const headerStart = pageSource.indexOf("<PageHeader");
