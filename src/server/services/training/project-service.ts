@@ -520,10 +520,6 @@ export async function addManagedTrainingReferenceImageToResults(
     sourceLabel: owner.reference.label,
   };
 
-  const nextResultPool = existing
-    ? owner.project.resultPool.map((result) => result.id === existing.id ? nextResult : result)
-    : [...owner.project.resultPool, nextResult];
-
   return withProjectStoreWriteLock(async () => {
     const refreshed = await findManagedReferenceOwner(imageId);
     if (!refreshed) return null;
@@ -753,6 +749,29 @@ export async function enqueueManagedTrainingRun(
   });
 
   return run;
+}
+
+export async function cancelManagedTrainingRun(trainingRunId: string) {
+  const runs = await readFallbackTrainingRuns();
+  const currentRun = runs.find((run) => run.id === trainingRunId && run.kind === "training");
+  if (!currentRun) return null;
+
+  return withRunStoreWriteLock(async () => {
+    const refreshedRuns = await readFallbackTrainingRuns();
+    const nextRuns = refreshedRuns.map((run) => (
+      run.id === trainingRunId && run.kind === "training"
+        ? {
+          ...run,
+          status: "failed" as const,
+          errorMessage: "训练任务已取消",
+          schedulerMessage: "训练任务已取消",
+          timestamp: formatTimestamp(new Date(), "失败于"),
+        }
+        : run
+    ));
+    await writeFallbackTrainingRuns(nextRuns);
+    return nextRuns.find((run) => run.id === trainingRunId) ?? null;
+  });
 }
 
 export async function createManagedTrainingProject(input: unknown) {

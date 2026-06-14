@@ -795,6 +795,7 @@ test("managed training project can enqueue generation, freeze dataset, and start
   const datasetRevisionRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
   const trainingRunRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
   const generationTaskDetailRoute = await import("../src/app/api/training/generation-tasks/[taskId]/route");
+  const cancelTrainingRunRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/cancel/route");
   const trainingRunDetailRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
   const title = `测试运行链项目 ${Date.now()}`;
 
@@ -942,6 +943,18 @@ test("managed training project can enqueue generation, freeze dataset, and start
   assert.equal(trainingDetailResponse.status, 200);
   assert.equal(trainingDetailPayload.ok, true);
   assert.equal(trainingDetailPayload.data.id, trainingRunId);
+
+  const cancelTrainingResponse = await cancelTrainingRunRoute.POST(
+    new Request(`http://localhost/api/training/training-runs/${trainingRunId}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ requestedBy: "test" }),
+    }),
+    { params: Promise.resolve({ trainingRunId }) },
+  );
+  const cancelTrainingPayload = await cancelTrainingResponse.json();
+  assert.equal(cancelTrainingResponse.status, 200);
+  assert.equal(cancelTrainingPayload.ok, true);
+  assert.equal(cancelTrainingPayload.data.id, trainingRunId);
 });
 
 test("GET /api/training/scheduler/status exposes a training scheduler snapshot", async () => {
