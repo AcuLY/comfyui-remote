@@ -1,7 +1,11 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, extname, join } from "node:path";
 import { getTrainingProject } from "@/server/services/training/read-service";
-import { enqueueManagedTrainingSectionGenerationRun, mapTrainingProjectError } from "@/server/services/training/project-service";
+import type { CharacterLoraProviderInputImage } from "@/server/character-lora-training/contracts";
+import { createCharacterLoraJobArtifact } from "@/server/repositories/character-lora-training";
+import { writeCharacterLoraBufferArtifact } from "@/server/services/character-lora-training/artifact-service";
+import { getExistingJob, getExistingSection } from "@/server/services/character-lora-training/phase3-internal";
+import { enqueueManagedTrainingSectionGenerationRun, getManagedTrainingProject, mapTrainingProjectError } from "@/server/services/training/project-service";
 import { enqueueCharacterLoraSectionGenerationRun, mapCharacterLoraPhase3Error } from "@/server/services/character-lora-training/phase3-service";
 
 const TRAINING_GENERATION_TASK_DRAFTS_PATH = join(process.cwd(), "data", "training-generation-task-drafts.json");
@@ -347,6 +351,14 @@ function sanitizeManagedUploadName(name: string) {
   return base || "reference";
 }
 
+function imageMimeTypeFromExtension(extension: string) {
+  const normalized = extension.toLowerCase();
+  if (normalized === ".jpg" || normalized === ".jpeg") return "image/jpeg";
+  if (normalized === ".webp") return "image/webp";
+  if (normalized === ".gif") return "image/gif";
+  return "image/png";
+}
+
 function isFileLike(
   value: unknown,
 ): value is { name: string; arrayBuffer(): Promise<ArrayBuffer> } {
@@ -401,6 +413,63 @@ export async function previewManagedGenerationTask(taskId: string) {
   return buildGenerationTaskDraftView(draft);
 }
 
+function resolveDraftSupplementalImageAbsolutePath(relativePath: string) {
+  return relativePath.startsWith("data/images/")
+    ? join(process.cwd(), relativePath)
+    : join(process.cwd(), "data", "images", relativePath);
+}
+
+async function buildCharacterLoraSupplementalInputImages(taskId: string, sectionId: string, supplementalImages: GenerationTaskDraftSupplementalImage[]) {
+  if (supplementalImages.length === 0) {
+    return [] as CharacterLoraProviderInputImage[];
+  }
+
+  const section = await getExistingSection(sectionId);
+  const job = await getExistingJob(section.jobId);
+
+  return Promise.all(supplementalImages.map(async (image, index) => {
+    const extension = extname(image.relativePath).toLowerCase() || ".png";
+    const safeName = sanitizeManagedUploadName(image.title || `supplemental-${index + 1}`);
+    const relativePath = `generation-drafts/${taskId}/supplemental/${Date.now()}-${index + 1}-${safeName}${extension}`;
+    let buffer: Buffer;
+
+    try {
+      buffer = await readFile(resolveDraftSupplementalImageAbsolutePath(image.relativePath));
+    } catch (error) {
+      throw new TrainingGenerationTaskDraftServiceError("Training supplemental image file not found", 404, {
+        taskId,
+        sectionId,
+        relativePath: image.relativePath,
+        cause: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    const artifactStat = await writeCharacterLoraBufferArtifact(job.artifactRoot, relativePath, buffer);
+    const artifact = await createCharacterLoraJobArtifact({
+      absolutePath: artifactStat.absolutePath,
+      byteSize: BigInt(artifactStat.byteSize),
+      jobId: job.id,
+      kind: "source_image",
+      metadata: {
+        origin: "training_generation_task_supplemental_upload",
+        sectionId,
+        taskId,
+        title: image.title,
+      },
+      mimeType: imageMimeTypeFromExtension(extension),
+      relativePath: artifactStat.relativePath,
+      sha256: artifactStat.sha256,
+    });
+
+    return {
+      artifactId: artifact.id,
+      relativePath: artifactStat.relativePath,
+      role: "local_reference",
+      sha256: artifactStat.sha256,
+    } satisfies CharacterLoraProviderInputImage;
+  }));
+}
+
 export async function runManagedGenerationTask(taskId: string) {
   const { draft, drafts } = await getDraftOrThrow(taskId);
   const project = await getTrainingProject(draft.projectId);
@@ -417,10 +486,15 @@ export async function runManagedGenerationTask(taskId: string) {
   const resolvedInputs = draft.inputs.map((input) => resolveReference(project, section.id, input.referenceId));
   const sourceImageIds = [...new Set(resolvedInputs.flatMap((input) => input.type === "source-image" ? [input.sourceImageId] : []))];
   const previousCandidateImageIds = [...new Set(resolvedInputs.flatMap((input) => input.type === "result-image" ? [input.previousCandidateImageId] : []))];
+  const supplementalImages = draft.supplementalImages.map((image) => ({
+    relativePath: image.relativePath,
+    title: image.title,
+  }));
 
   let run = await enqueueManagedTrainingSectionGenerationRun(section.id, {
     previousCandidateImageIds,
     sourceImageIds,
+    supplementalImages,
     userInstruction: `${draft.taskType}\n\n${preview.finalInput}`,
   }).catch((error) => {
     const mapped = mapTrainingProjectError(error);
@@ -428,8 +502,12 @@ export async function runManagedGenerationTask(taskId: string) {
   });
 
   if (!run) {
+    const projectIsManaged = Boolean(await getManagedTrainingProject(draft.projectId));
     run = await enqueueCharacterLoraSectionGenerationRun(section.id, {
       previousCandidateImageIds,
+      supplementalInputImages: projectIsManaged
+        ? []
+        : await buildCharacterLoraSupplementalInputImages(taskId, section.id, draft.supplementalImages),
       sourceImageIds,
       userInstruction: `${draft.taskType}\n\n${preview.finalInput}`,
     }).catch((error) => {

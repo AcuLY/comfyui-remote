@@ -298,6 +298,9 @@ async function resolveSectionInputImages(
     previousCandidateImageIds: parsed.previousCandidateImageIds,
   });
   inputImages.push(...previousCandidateImages.map(candidateImageToPreviousCandidateInput));
+  if (parsed.supplementalInputImages?.length) {
+    inputImages.push(...await validateExplicitSectionInputImages(jobId, parsed.supplementalInputImages));
+  }
 
   return inputImages;
 }

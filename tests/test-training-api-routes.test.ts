@@ -2335,7 +2335,7 @@ test("production generation task draft lifecycle works through /api/training whe
   assert.equal(runDetailPayload.data.id, runId);
   assert.equal(runDetailPayload.data.kind, "generation");
   assert.ok(Array.isArray(runDetailPayload.data.inputImages));
-  assert.ok(runDetailPayload.data.inputImages.length >= 2);
+  assert.ok(runDetailPayload.data.inputImages.length >= 3);
 });
 
 test("training project detail route deletes a managed project through /api/training", async () => {
@@ -3580,6 +3580,8 @@ test("managed training project generation task draft lifecycle works through /ap
   assert.equal(runResponse.status, 201);
   assert.equal(runPayload.ok, true);
   assert.equal(runPayload.data.kind, "generation");
+  assert.ok(Array.isArray(runPayload.data.inputImages));
+  assert.ok(runPayload.data.inputImages.length >= 1);
 
   const getAfterRunResponse = await generationTaskDetailRoute.GET(
     new Request(`http://localhost/api/training/generation-tasks/${taskId}`),

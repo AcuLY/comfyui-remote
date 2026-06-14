@@ -444,6 +444,17 @@ test("generation compose uploads supplemental images through the formal HTTP API
   assert.match(pagesSource, /function buildUploadedSupplementalImage/, "compose upload flow should define a helper for uploaded supplemental previews");
 });
 
+test("generation compose does not post uploaded supplemental images as ordinary reference inputs", () => {
+  const composePage = sourceBetween(
+    "export function LoraTrainingGenerationComposePage",
+    "export function LoraTrainingProjectResultsPage",
+  );
+
+  assert.match(composePage, /attachment\.source !== "上传"/, "uploaded supplemental images should be excluded from draft reference-input posting");
+  assert.match(composePage, /supplementalDraftReferenceIds/, "compose page should derive queue-time supplemental references separately");
+  assert.doesNotMatch(composePage, /supplementalReferenceIds/, "compose page should no longer post every supplemental attachment as a reference id");
+});
+
 test("generation compose task draft stays scoped to the active project section", () => {
   const composePage = sourceBetween(
     "export function LoraTrainingGenerationComposePage",

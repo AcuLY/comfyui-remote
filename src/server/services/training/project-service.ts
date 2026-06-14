@@ -553,6 +553,22 @@ function buildManagedResultImage(relativePath: string, label: string) {
   };
 }
 
+function buildManagedRunInputImage(relativePath: string, label: string, index: number): DemoImage {
+  const url = toImageUrl(relativePath) ?? "";
+  return {
+    id: `managed-run-input-${Date.now()}-${index + 1}`,
+    src: url,
+    full: url,
+    label,
+    status: "pending",
+    featured: false,
+    featured2: false,
+    cover: false,
+    width: null,
+    height: null,
+  };
+}
+
 export async function listManagedTrainingProjectReferenceImages(projectId: string) {
   const project = await getManagedTrainingProject(projectId);
   return project ? project.referenceImages : null;
@@ -997,9 +1013,25 @@ export async function enqueueManagedTrainingSectionGenerationRun(
 
   const selectedSourceIds = Array.isArray(input.sourceImageIds) ? input.sourceImageIds.filter((id): id is string => typeof id === "string") : [];
   const selectedResultIds = Array.isArray(input.previousCandidateImageIds) ? input.previousCandidateImageIds.filter((id): id is string => typeof id === "string") : [];
+  const supplementalImages = Array.isArray(input.supplementalImages)
+    ? input.supplementalImages
+      .map((image, index) => {
+        if (!image || typeof image !== "object") return null;
+        const relativePath = typeof (image as { relativePath?: unknown }).relativePath === "string"
+          ? (image as { relativePath: string }).relativePath
+          : null;
+        if (!relativePath) return null;
+        const label = typeof (image as { title?: unknown }).title === "string" && (image as { title: string }).title.trim()
+          ? (image as { title: string }).title.trim()
+          : `补充图片 ${index + 1}`;
+        return buildManagedRunInputImage(relativePath, label, index);
+      })
+      .filter((image): image is DemoImage => Boolean(image))
+    : [];
   const inputImages = [
     ...match.project.referenceImages.filter((reference) => selectedSourceIds.includes(reference.id)).map((reference) => reference.image),
     ...match.project.resultPool.filter((result) => selectedResultIds.includes(result.id)).map((result) => result.image),
+    ...supplementalImages,
   ];
 
   const run: LoraTrainingRun = {

@@ -2858,7 +2858,11 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
 
     if (isQueueingGenerationTask) return;
     const explicitReferenceIds = [...new Set([...selectedReferenceIds].map(normalizeGenerationDraftReferenceId))];
-    const supplementalReferenceIds = [...new Set(supplementalImageAttachments.map((attachment) => normalizeGenerationDraftReferenceId(attachment.id)))];
+    const supplementalDraftReferenceIds = [...new Set(
+      supplementalImageAttachments
+        .filter((attachment) => attachment.source !== "上传")
+        .map((attachment) => normalizeGenerationDraftReferenceId(attachment.id)),
+    )];
 
     setIsQueueingGenerationTask(true);
     try {
@@ -2884,7 +2888,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
         }
       }
 
-      for (const referenceId of supplementalReferenceIds) {
+      for (const referenceId of supplementalDraftReferenceIds) {
         const inputResponse = await fetch(`/api/training/generation-tasks/${draftTaskId}/inputs`, {
           method: "POST",
           headers: { "content-type": "application/json" },

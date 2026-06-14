@@ -577,6 +577,7 @@ export const characterLoraSectionGenerationRequestSchema = z.object({
   parentRunId: z.string().trim().min(1).optional(),
   toolParams: characterLoraProviderToolParamsSchema.optional(),
   inputImages: z.array(characterLoraProviderInputImageSchema).optional(),
+  supplementalInputImages: z.array(characterLoraProviderInputImageSchema).optional(),
   sourceImageIds: z.array(z.string().trim().min(1)).optional(),
   previousCandidateImageIds: z.array(z.string().trim().min(1)).min(1).optional(),
 }).strict();
