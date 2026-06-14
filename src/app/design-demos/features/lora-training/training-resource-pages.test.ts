@@ -48,6 +48,22 @@ test("training resource delete actions describe local removal instead of confirm
   assert.doesNotMatch(pageSource, /删除训练模板小节需要确认/, "template section delete feedback should describe the local draft removal");
 });
 
+test("training preset library deletes through the formal HTTP API on production routes", () => {
+  const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  assert.notEqual(presetsStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const presetsSource = pageSource.slice(presetsStart, detailStart);
+
+  assert.match(presetsSource, /usePathname/, "training preset library should detect whether it is running under production \\/training routes");
+  assert.match(presetsSource, /isDeletingPresets/, "training preset library should track the delete request state");
+  assert.match(presetsSource, /fetch\(`\/api\/training\/presets\/\$\{presetId\}`/, "single preset delete should call the formal preset detail API");
+  assert.match(presetsSource, /Promise\.all/, "batch preset delete should persist all selected presets before hiding them locally");
+  assert.match(presetsSource, /method:\s*"DELETE"/, "preset delete should use DELETE");
+  assert.match(presetsSource, /训练预制删除失败/, "preset delete should surface API failures through shared feedback");
+});
+
 test("training resource pages use product-facing copy instead of internal prompt schema terms", () => {
   const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
   const presetDetailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");

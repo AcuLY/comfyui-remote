@@ -420,6 +420,7 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [hiddenPresetIds, setHiddenPresetIds] = useState<Set<string>>(() => new Set());
   const [orderedPresetIds, setOrderedPresetIds] = useState(() => training.presets.reduce<string[]>((ids, preset) => [...ids, preset.id], []));
+  const [isDeletingPresets, setIsDeletingPresets] = useState(false);
   const presetMap = new Map(training.presets.reduce<Array<[string, LoraTrainingPreset]>>((entries, preset) => [...entries, [preset.id, preset]], []));
   const orderedPresets = orderedPresetIds
     .map((presetId) => presetMap.get(presetId))
@@ -476,18 +477,110 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
     });
   }
 
-  function hidePreset(presetId: string) {
-    setHiddenPresetIds((previous) => new Set(previous).add(presetId));
+  function applyLocalPresetDelete(presetIds: Iterable<string>) {
+    const removed = new Set(presetIds);
+    setHiddenPresetIds((previous) => new Set([...previous, ...removed]));
     setSelectedIds((previous) => {
       const next = new Set(previous);
-      next.delete(presetId);
+      removed.forEach((presetId) => next.delete(presetId));
       return next;
     });
   }
 
-  function hideSelectedPresets() {
-    setHiddenPresetIds((previous) => new Set([...previous, ...selectedIds]));
-    setSelectedIds(new Set());
+  async function hidePreset(presetId: string) {
+    if (!isProductionTrainingRoute) {
+      applyLocalPresetDelete([presetId]);
+      return;
+    }
+
+    if (isDeletingPresets) return;
+
+    setIsDeletingPresets(true);
+    try {
+      const response = await fetch(`/api/training/presets/${presetId}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "训练预制删除失败",
+          detail: payload?.error?.message ?? "训练预制删除请求失败",
+        });
+        return;
+      }
+
+      applyLocalPresetDelete([presetId]);
+      pushToast({
+        tone: "warning",
+        title: "训练预制已从列表移除",
+        detail: presetId,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "训练预制删除失败",
+        detail: error instanceof Error ? error.message : "训练预制删除请求失败",
+      });
+    } finally {
+      setIsDeletingPresets(false);
+    }
+  }
+
+  async function hideSelectedPresets() {
+    const selectedPresetIds = [...selectedIds];
+
+    if (!isProductionTrainingRoute) {
+      applyLocalPresetDelete(selectedPresetIds);
+      return;
+    }
+
+    if (isDeletingPresets || selectedPresetIds.length === 0) return;
+
+    setIsDeletingPresets(true);
+    try {
+      const responses = await Promise.all(
+        selectedPresetIds.map(async (presetId) => {
+          const response = await fetch(`/api/training/presets/${presetId}`, {
+            method: "DELETE",
+          });
+          const payload = await response.json().catch(() => null);
+          return { payload, presetId, response };
+        }),
+      );
+
+      const completedIds = responses
+        .filter(({ payload, response }) => response.ok && payload?.ok)
+        .map(({ presetId }) => presetId);
+      if (completedIds.length > 0) {
+        applyLocalPresetDelete(completedIds);
+      }
+
+      const failedResponse = responses.find(({ payload, response }) => !response.ok || !payload?.ok);
+      if (failedResponse) {
+        pushToast({
+          tone: "error",
+          title: "训练预制删除失败",
+          detail: failedResponse.payload?.error?.message ?? "训练预制删除请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "warning",
+        title: "训练预制已从列表移除",
+        detail: `${completedIds.length} 项`,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "训练预制删除失败",
+        detail: error instanceof Error ? error.message : "训练预制删除请求失败",
+      });
+    } finally {
+      setIsDeletingPresets(false);
+    }
   }
 
   function handleReorderPresets(nextVisiblePresetIds: string[]) {
@@ -573,17 +666,17 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
             <span>{visiblePresets.length} 个可见预制</span>
           </div>
           {selectedCount > 0 ? (
-            <SelectionBatchBar
-              className={s.trainingPresetBatchBar}
-              selectedCount={selectedCount}
-              subject="个训练预制"
-              onClear={() => setSelectedIds(new Set())}
-              actions={(
-                <Button size="sm" tone="danger" icon={Trash2} onClick={hideSelectedPresets} feedback={{ tone: "warning", title: "训练预制已从列表移除", detail: `${selectedCount} 项` }}>
-                  删除所选
-                </Button>
-              )}
-            />
+                <SelectionBatchBar
+                  className={s.trainingPresetBatchBar}
+                  selectedCount={selectedCount}
+                  subject="个训练预制"
+                  onClear={() => setSelectedIds(new Set())}
+                  actions={(
+                    <Button size="sm" tone="danger" icon={Trash2} pending={isDeletingPresets} onClick={hideSelectedPresets} feedback={{ tone: "warning", title: "训练预制已从列表移除", detail: `${selectedCount} 项` }}>
+                      删除所选
+                    </Button>
+                  )}
+                />
           ) : null}
           <div className={s.trainingPresetLibrarySurface}>
             {!currentFolder && folders.length > 0 ? (
