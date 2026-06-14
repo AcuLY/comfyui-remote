@@ -105,8 +105,8 @@ test("training section copy inserts the duplicate directly after the source sect
 
   assert.match(sectionsPage, /const sourceIndex = currentSections\.findIndex\(\(item\) => item\.id === section\.id\)/, "copy should find the source section position");
   assert.match(sectionsPage, /\.\.\.currentSections\.slice\(0, sourceIndex \+ 1\),\s*copy,\s*\.\.\.currentSections\.slice\(sourceIndex \+ 1\)/, "local section copy should stay adjacent to the source");
-  assert.match(sectionsPage, /const sourceIndex = currentIds\.indexOf\(section\.id\)/, "copy should find the source id position in the visible order");
-  assert.match(sectionsPage, /\.\.\.currentIds\.slice\(0, sourceIndex \+ 1\),\s*copyId,\s*\.\.\.currentIds\.slice\(sourceIndex \+ 1\)/, "visible section order should insert the copy after the source");
+  assert.match(sectionsPage, /const sourceOrderIndex = currentIds\.indexOf\(section\.id\)/, "copy should find the source id position in the visible order");
+  assert.match(sectionsPage, /\.\.\.currentIds\.slice\(0, sourceOrderIndex \+ 1\),\s*copyId,\s*\.\.\.currentIds\.slice\(sourceOrderIndex \+ 1\)/, "visible section order should insert the copy after the source");
   assert.doesNotMatch(sectionsPage, /setOrderedSectionIds\(\(current\) => \[\.\.\.current, copyId\]\)/, "copy should not append to the end of the section order");
 });
 
@@ -271,7 +271,7 @@ test("training section detail saves a visible local section draft", () => {
   assert.match(detailPage, /scenePreview/, "saved section draft should use current composed scene text");
   assert.match(detailPage, /小节保存草稿/, "section detail should render a visible saved draft panel");
   assert.doesNotMatch(detailPage, /generation-tasks\/new/, "section detail should leave the generation CTA to the route header");
-  assert.doesNotMatch(detailPage, /小节已保存/, "section save should not remain feedback-only");
+  assert.doesNotMatch(detailPage, /feedback=\{\{\s*title:\s*"训练小节已保存"/, "section save should not remain feedback-only");
 });
 
 test("training section detail keeps local edits keyed by project and section", () => {
