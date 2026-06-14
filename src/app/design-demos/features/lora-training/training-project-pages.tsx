@@ -298,6 +298,12 @@ function nextDatasetVersionLabel(currentVersion: string) {
   return `v${Number(match[1]) + 1}`;
 }
 
+function normalizeGenerationDraftReferenceId(referenceId: string) {
+  if (referenceId.startsWith("reference-")) return referenceId.slice("reference-".length);
+  if (referenceId.startsWith("result-")) return referenceId.slice("result-".length);
+  return referenceId;
+}
+
 function captionMissing(caption: string) {
   const normalized = caption.trim();
   return normalized.length === 0 || normalized === "未填写说明文本";
@@ -2649,44 +2655,6 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     }));
   }
 
-  function collectGenerationReferenceIds() {
-    const sourceImageIds = new Set<string>();
-    const previousCandidateImageIds = new Set<string>();
-
-    for (const referenceId of selectedReferenceIds) {
-      if (referenceId.startsWith("reference-")) {
-        sourceImageIds.add(referenceId.slice("reference-".length));
-        continue;
-      }
-      if (referenceId.startsWith("result-")) {
-        previousCandidateImageIds.add(referenceId.slice("result-".length));
-        continue;
-      }
-      if (activeProject.referenceImages.some((reference) => reference.id === referenceId)) {
-        sourceImageIds.add(referenceId);
-        continue;
-      }
-      if (activeProject.resultPool.some((result) => result.id === referenceId)) {
-        previousCandidateImageIds.add(referenceId);
-      }
-    }
-
-    for (const attachment of supplementalImageAttachments) {
-      if (attachment.id.startsWith("reference-")) {
-        sourceImageIds.add(attachment.id.slice("reference-".length));
-        continue;
-      }
-      if (attachment.id.startsWith("result-")) {
-        previousCandidateImageIds.add(attachment.id.slice("result-".length));
-      }
-    }
-
-    return {
-      previousCandidateImageIds: [...previousCandidateImageIds],
-      sourceImageIds: [...sourceImageIds],
-    };
-  }
-
   async function handleQueueGenerationTask() {
     const nextDraft = {
       finalInput: finalInputText,
@@ -2711,19 +2679,88 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     }
 
     if (isQueueingGenerationTask) return;
-
-    const { sourceImageIds, previousCandidateImageIds } = collectGenerationReferenceIds();
+    const explicitReferenceIds = [...new Set([...selectedReferenceIds].map(normalizeGenerationDraftReferenceId))];
+    const supplementalReferenceIds = [...new Set(supplementalImageAttachments.map((attachment) => normalizeGenerationDraftReferenceId(attachment.id)))];
 
     setIsQueueingGenerationTask(true);
     try {
-      const response = await fetch(`/api/training/sections/${activeSection.id}/runs`, {
+      const createDraftResponse = await fetch(`/api/training/projects/${activeProject.id}/generation-tasks`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          userInstruction: `${generationForm.taskType}\n\n${finalInputText}`,
-          sourceImageIds: sourceImageIds.length ? sourceImageIds : undefined,
-          previousCandidateImageIds: previousCandidateImageIds.length ? previousCandidateImageIds : undefined,
+          sectionId: activeSection.id,
+          supplementalPrompt: generationForm.supplementalPrompt,
+          taskType: generationForm.taskType,
         }),
+      });
+      const createDraftPayload = await createDraftResponse.json().catch(() => null);
+
+      if (!createDraftResponse.ok || !createDraftPayload?.ok || !createDraftPayload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "生成任务创建失败",
+          detail: createDraftPayload?.error?.message ?? "生成任务草稿创建请求失败",
+        });
+        return;
+      }
+
+      const draftTaskId = createDraftPayload.data.id as string;
+
+      for (const referenceId of explicitReferenceIds) {
+        const inputResponse = await fetch(`/api/training/generation-tasks/${draftTaskId}/inputs`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            referenceId,
+            role: "reference",
+          }),
+        });
+        const inputPayload = await inputResponse.json().catch(() => null);
+        if (!inputResponse.ok || !inputPayload?.ok) {
+          pushToast({
+            tone: "error",
+            title: "生成任务创建失败",
+            detail: inputPayload?.error?.message ?? "生成任务引用写入失败",
+          });
+          return;
+        }
+      }
+
+      for (const referenceId of supplementalReferenceIds) {
+        const inputResponse = await fetch(`/api/training/generation-tasks/${draftTaskId}/inputs`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            referenceId,
+            role: "supplemental_image",
+          }),
+        });
+        const inputPayload = await inputResponse.json().catch(() => null);
+        if (!inputResponse.ok || !inputPayload?.ok) {
+          pushToast({
+            tone: "error",
+            title: "生成任务创建失败",
+            detail: inputPayload?.error?.message ?? "补充图片写入失败",
+          });
+          return;
+        }
+      }
+
+      const previewResponse = await fetch(`/api/training/generation-tasks/${draftTaskId}/preview`, {
+        method: "POST",
+      });
+      const previewPayload = await previewResponse.json().catch(() => null);
+      if (!previewResponse.ok || !previewPayload?.ok || typeof previewPayload?.data?.finalInput !== "string") {
+        pushToast({
+          tone: "error",
+          title: "生成任务创建失败",
+          detail: previewPayload?.error?.message ?? "生成任务预览请求失败",
+        });
+        return;
+      }
+
+      const response = await fetch(`/api/training/generation-tasks/${draftTaskId}/run`, {
+        method: "POST",
       });
       const payload = await response.json().catch(() => null);
 
@@ -2731,12 +2768,16 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
         pushToast({
           tone: "error",
           title: "生成任务创建失败",
-          detail: payload?.error?.message ?? "生成任务创建请求失败",
+          detail: payload?.error?.message ?? "生成任务执行请求失败",
         });
         return;
       }
 
       setGenerationTaskDraft(nextDraft);
+      setGenerationTaskDraft({
+        ...nextDraft,
+        finalInput: previewPayload.data.finalInput,
+      });
       pushToast({
         tone: "success",
         title: "生成任务已创建",

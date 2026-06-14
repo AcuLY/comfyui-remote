@@ -378,11 +378,15 @@ test("generation compose posts through the formal HTTP API on production routes"
 
   assert.match(composePage, /usePathname/, "generation compose should detect whether it is running under production \\/training routes");
   assert.match(composePage, /useRouter/, "generation compose should be able to navigate to the queued generation run on production routes");
-  assert.match(composePage, /fetch\(`\/api\/training\/sections\/\$\{activeSection\.id\}\/runs`/, "generation compose should call the formal section run API");
-  assert.match(composePage, /method:\s*"POST"/, "generation compose should enqueue runs through POST");
-  assert.match(composePage, /userInstruction:/, "generation compose should send the composed task input through the HTTP request");
-  assert.match(composePage, /sourceImageIds:/, "generation compose should map selected source references into the HTTP request");
-  assert.match(composePage, /previousCandidateImageIds:/, "generation compose should map selected result-pool references into the HTTP request");
+  assert.match(composePage, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/generation-tasks`/, "generation compose should create a formal generation-task draft first");
+  assert.match(composePage, /fetch\(`\/api\/training\/generation-tasks\/\$\{draftTaskId\}\/inputs`/, "generation compose should add selected references through the formal draft input API");
+  assert.match(composePage, /role:\s*"reference"/, "generation compose should classify explicit references when posting draft inputs");
+  assert.match(composePage, /role:\s*"supplemental_image"/, "generation compose should classify supplemental image attachments when posting draft inputs");
+  assert.match(composePage, /fetch\(`\/api\/training\/generation-tasks\/\$\{draftTaskId\}\/preview`/, "generation compose should preview the formal draft before running it");
+  assert.match(composePage, /fetch\(`\/api\/training\/generation-tasks\/\$\{draftTaskId\}\/run`/, "generation compose should run the formal generation-task draft");
+  assert.match(composePage, /sectionId:\s*activeSection\.id/, "generation compose should scope draft creation to the active section");
+  assert.match(composePage, /supplementalPrompt:\s*generationForm\.supplementalPrompt/, "generation compose should persist the current supplemental prompt into the draft");
+  assert.match(composePage, /taskType:\s*generationForm\.taskType/, "generation compose should persist the current task type into the draft");
   assert.match(composePage, /router\.push\(`/, "generation compose should navigate to the queued generation run after a successful API response");
   assert.match(composePage, /pushToast/, "generation compose should surface API success or failure through the shared feedback system");
 });
