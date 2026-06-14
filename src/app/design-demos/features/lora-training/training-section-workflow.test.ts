@@ -226,6 +226,22 @@ test("training section detail scene-block actions update local front-end state",
   assert.doesNotMatch(detailPage, /编辑场景块入口已预览/, "scene-block editing should not be a preview-only placeholder");
 });
 
+test("training section detail scene-block actions persist through formal HTTP APIs on production routes", () => {
+  const detailPage = sourceBetween(
+    "export function LoraTrainingProjectSectionDetailPage",
+    "export function LoraTrainingGenerationComposePage",
+  );
+
+  assert.match(detailPage, /usePathname/, "section detail should detect whether it is running under production \\/training routes");
+  assert.match(detailPage, /fetch\(`\/api\/training\/sections\/\$\{activeSection\.id\}\/blocks\?projectId=\$\{activeProject\.id\}`/, "section block create actions should call the formal section block collection API");
+  assert.match(detailPage, /fetch\(`\/api\/training\/sections\/\$\{activeSection\.id\}\/blocks\/reorder\?projectId=\$\{activeProject\.id\}`/, "section block move actions should call the formal section block reorder API");
+  assert.match(detailPage, /fetch\(`\/api\/training\/blocks\/\$\{blockId\}\?projectId=\$\{activeProject\.id\}`/, "section block update and delete actions should call the formal block detail API");
+  assert.match(detailPage, /method:\s*"PATCH"/, "section block updates should save through PATCH");
+  assert.match(detailPage, /method:\s*"DELETE"/, "section block delete should use DELETE");
+  assert.match(detailPage, /ids:\s*reorderedBlocks\.map\(\(block\) => block\.id\)/, "section block reorder should submit the updated block id order");
+  assert.match(detailPage, /场景块(创建|保存|排序|删除)失败/, "section block production actions should surface API failures through the shared feedback system");
+});
+
 test("training section detail imports training presets into local scene blocks", () => {
   const detailPage = sourceBetween(
     "export function LoraTrainingProjectSectionDetailPage",

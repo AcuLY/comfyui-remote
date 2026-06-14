@@ -2329,6 +2329,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   const [sectionDraftsByKey, setSectionDraftsByKey] = useState<Record<string, ProjectSectionDraftState>>({});
   const [isReviewingSectionResult, setIsReviewingSectionResult] = useState(false);
   const [isSavingSection, setIsSavingSection] = useState(false);
+  const [isMutatingSceneBlocks, setIsMutatingSceneBlocks] = useState(false);
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   if (!project || !section) return <EmptyPage title="没有训练小节详情" />;
 
@@ -2358,50 +2359,251 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     }));
   }
 
+  function replaceSceneBlocks(blocks: LoraTrainingSectionBlock[]) {
+    setSectionSceneBlocksByKey((current) => ({
+      ...current,
+      [projectSectionStateKey]: blocks,
+    }));
+  }
+
   function handleAddLocalSceneBlock() {
-    updateSceneBlocks((current) => {
-      const ordinal = nextSceneBlockOrdinal(current, `${activeSection.id}-local-block-`);
-      return [
-        ...current,
-        {
-          id: `${activeSection.id}-local-block-${ordinal}`,
-          source: "本地",
-          title: `本地补充块 ${ordinal}`,
-          text: "补充这一小节的造型、动作或画面约束。",
-        },
-      ];
-    });
+    const nextBlock = {
+      source: "本地" as const,
+      title: `本地补充块 ${nextSceneBlockOrdinal(sceneBlocks, `${activeSection.id}-local-block-`)}`,
+      text: "补充这一小节的造型、动作或画面约束。",
+    };
+
+    if (!isProductionTrainingRoute) {
+      updateSceneBlocks((current) => {
+        const ordinal = nextSceneBlockOrdinal(current, `${activeSection.id}-local-block-`);
+        return [
+          ...current,
+          {
+            id: `${activeSection.id}-local-block-${ordinal}`,
+            ...nextBlock,
+          },
+        ];
+      });
+      return;
+    }
+
+    if (isMutatingSceneBlocks) return;
+
+    setIsMutatingSceneBlocks(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/sections/${activeSection.id}/blocks?projectId=${activeProject.id}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(nextBlock),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !payload?.data?.id) {
+          pushToast({
+            tone: "error",
+            title: "场景块创建失败",
+            detail: payload?.error?.message ?? "场景块创建请求失败",
+          });
+          return;
+        }
+        replaceSceneBlocks([...sceneBlocks, payload.data as LoraTrainingSectionBlock]);
+      } catch (error) {
+        pushToast({
+          tone: "error",
+          title: "场景块创建失败",
+          detail: error instanceof Error ? error.message : "场景块创建请求失败",
+        });
+      } finally {
+        setIsMutatingSceneBlocks(false);
+      }
+    })();
   }
 
   function handleImportPresetBlock(preset: LoraTrainingPreset | null) {
     if (!preset) return;
-    updateSceneBlocks((current) => {
-      const prefix = `${activeSection.id}-preset-block-${preset.id}-`;
-      const ordinal = nextSceneBlockOrdinal(current, `${activeSection.id}-preset-block-${preset.id}-`);
-      return [
-        ...current,
-        {
-          id: `${prefix}${ordinal}`,
-          source: "预制",
-          title: preset.title,
-          text: preset.sceneDescriptionText,
-        },
-      ];
-    });
-    setPresetImportOpen(false);
+    const nextBlock = {
+      source: "预制" as const,
+      title: preset.title,
+      text: preset.sceneDescriptionText,
+    };
+
+    if (!isProductionTrainingRoute) {
+      updateSceneBlocks((current) => {
+        const prefix = `${activeSection.id}-preset-block-${preset.id}-`;
+        const ordinal = nextSceneBlockOrdinal(current, `${activeSection.id}-preset-block-${preset.id}-`);
+        return [
+          ...current,
+          {
+            id: `${prefix}${ordinal}`,
+            ...nextBlock,
+          },
+        ];
+      });
+      setPresetImportOpen(false);
+      return;
+    }
+
+    if (isMutatingSceneBlocks) return;
+
+    setIsMutatingSceneBlocks(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/sections/${activeSection.id}/blocks?projectId=${activeProject.id}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(nextBlock),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !payload?.data?.id) {
+          pushToast({
+            tone: "error",
+            title: "场景块创建失败",
+            detail: payload?.error?.message ?? "场景块创建请求失败",
+          });
+          return;
+        }
+        replaceSceneBlocks([...sceneBlocks, payload.data as LoraTrainingSectionBlock]);
+        setPresetImportOpen(false);
+      } catch (error) {
+        pushToast({
+          tone: "error",
+          title: "场景块创建失败",
+          detail: error instanceof Error ? error.message : "场景块创建请求失败",
+        });
+      } finally {
+        setIsMutatingSceneBlocks(false);
+      }
+    })();
   }
 
   function handleMoveSceneBlock(index: number, direction: -1 | 1) {
-    updateSceneBlocks((current) => moveSceneBlock(current, index, direction));
+    const reorderedBlocks = moveSceneBlock(sceneBlocks, index, direction);
+
+    if (!isProductionTrainingRoute) {
+      updateSceneBlocks((current) => moveSceneBlock(current, index, direction));
+      return;
+    }
+
+    if (isMutatingSceneBlocks) return;
+
+    const previousBlocks = sceneBlocks;
+    replaceSceneBlocks(reorderedBlocks);
+    setIsMutatingSceneBlocks(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/sections/${activeSection.id}/blocks/reorder?projectId=${activeProject.id}`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            ids: reorderedBlocks.map((block) => block.id),
+          }),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !Array.isArray(payload?.data)) {
+          replaceSceneBlocks(previousBlocks);
+          pushToast({
+            tone: "error",
+            title: "场景块排序失败",
+            detail: payload?.error?.message ?? "场景块排序请求失败",
+          });
+          return;
+        }
+        replaceSceneBlocks(payload.data as LoraTrainingSectionBlock[]);
+      } catch (error) {
+        replaceSceneBlocks(previousBlocks);
+        pushToast({
+          tone: "error",
+          title: "场景块排序失败",
+          detail: error instanceof Error ? error.message : "场景块排序请求失败",
+        });
+      } finally {
+        setIsMutatingSceneBlocks(false);
+      }
+    })();
   }
 
   function handleUpdateSceneBlock(blockId: string, patch: SceneBlockPatch) {
-    updateSceneBlocks((current) => current.map((block) => (block.id === blockId ? { ...block, ...patch } : block)));
+    if (!isProductionTrainingRoute) {
+      updateSceneBlocks((current) => current.map((block) => (block.id === blockId ? { ...block, ...patch } : block)));
+      return;
+    }
+
+    if (isMutatingSceneBlocks) return;
+
+    const previousBlocks = sceneBlocks;
+    const nextBlocks = sceneBlocks.map((block) => (block.id === blockId ? { ...block, ...patch } : block));
+    replaceSceneBlocks(nextBlocks);
+    setIsMutatingSceneBlocks(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/blocks/${blockId}?projectId=${activeProject.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !payload?.data?.id) {
+          replaceSceneBlocks(previousBlocks);
+          pushToast({
+            tone: "error",
+            title: "场景块保存失败",
+            detail: payload?.error?.message ?? "场景块保存请求失败",
+          });
+          return;
+        }
+        replaceSceneBlocks(nextBlocks.map((block) => block.id === blockId ? payload.data as LoraTrainingSectionBlock : block));
+      } catch (error) {
+        replaceSceneBlocks(previousBlocks);
+        pushToast({
+          tone: "error",
+          title: "场景块保存失败",
+          detail: error instanceof Error ? error.message : "场景块保存请求失败",
+        });
+      } finally {
+        setIsMutatingSceneBlocks(false);
+      }
+    })();
   }
 
   function handleDeleteSceneBlock(blockId: string) {
+    if (!isProductionTrainingRoute) {
+      if (visibleEditingSceneBlockId === blockId) setEditingSceneBlockId(null);
+      updateSceneBlocks((current) => current.filter((block) => block.id !== blockId));
+      return;
+    }
+
+    if (isMutatingSceneBlocks) return;
+
+    const previousBlocks = sceneBlocks;
     if (visibleEditingSceneBlockId === blockId) setEditingSceneBlockId(null);
-    updateSceneBlocks((current) => current.filter((block) => block.id !== blockId));
+    replaceSceneBlocks(sceneBlocks.filter((block) => block.id !== blockId));
+    setIsMutatingSceneBlocks(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/blocks/${blockId}?projectId=${activeProject.id}`, {
+          method: "DELETE",
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok) {
+          replaceSceneBlocks(previousBlocks);
+          pushToast({
+            tone: "error",
+            title: "场景块删除失败",
+            detail: payload?.error?.message ?? "场景块删除请求失败",
+          });
+          return;
+        }
+      } catch (error) {
+        replaceSceneBlocks(previousBlocks);
+        pushToast({
+          tone: "error",
+          title: "场景块删除失败",
+          detail: error instanceof Error ? error.message : "场景块删除请求失败",
+        });
+      } finally {
+        setIsMutatingSceneBlocks(false);
+      }
+    })();
   }
 
   async function handleReviewSectionResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
