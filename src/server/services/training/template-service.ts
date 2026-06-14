@@ -8,6 +8,7 @@ import {
   mapCharacterLoraSectionTemplateError,
   updateCharacterLoraTrainingTemplate,
 } from "@/server/services/character-lora-training/section-template-service";
+import { listTrainingTemplateOrderIds, orderTrainingTemplatesByStoredIds } from "@/server/services/training/template-order-service";
 import { upsertCharacterLoraTrainingTemplates } from "@/server/repositories/character-lora-training-repository";
 import { z } from "zod";
 
@@ -306,19 +307,20 @@ function buildDefaultFallbackTrainingTemplates() {
 
 export async function listManagedTrainingTemplates() {
   const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
+  const orderedTemplateIds = await listTrainingTemplateOrderIds().catch(() => []);
 
   try {
     const summaries = await listCharacterLoraTrainingTemplates();
     const snapshots = await Promise.all(summaries.map((template) => getCharacterLoraTrainingTemplateSnapshot({ id: template.id })));
     const databaseTemplates = snapshots.map(mapTemplateSnapshot);
     const databaseIds = new Set(databaseTemplates.map((template) => template.id));
-    return [
+    return orderTrainingTemplatesByStoredIds([
       ...fallbackTemplates.filter((template) => !databaseIds.has(template.id)),
       ...databaseTemplates,
-    ];
+    ], orderedTemplateIds);
   } catch (error) {
     if (!shouldUseTrainingTemplateFileFallback(error)) throw error;
-    return fallbackTemplates;
+    return orderTrainingTemplatesByStoredIds(fallbackTemplates, orderedTemplateIds);
   }
 }
 

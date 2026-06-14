@@ -6,6 +6,7 @@ import test from "node:test";
 const TRAINING_RUN_PRESET_STATE_PATH = join(process.cwd(), "data", "training-run-preset-state.json");
 const TRAINING_MANAGED_RUNS_PATH = join(process.cwd(), "data", "training-managed-runs.json");
 const TRAINING_PROJECTS_PATH = join(process.cwd(), "data", "training-projects.json");
+const TRAINING_TEMPLATE_ORDER_PATH = join(process.cwd(), "data", "training-template-order.json");
 let trainingManagedStoreSnapshotQueue: Promise<unknown> = Promise.resolve();
 
 async function listProjects() {
@@ -65,21 +66,24 @@ async function restoreOptionalFile(path: string, contents: string | null) {
 
 async function withTrainingManagedStoreSnapshot<T>(fn: () => Promise<T>) {
   const run = async () => {
-    const [runsBefore, projectsBefore] = await Promise.all([
+    const [runsBefore, projectsBefore, templateOrderBefore] = await Promise.all([
       readOptionalFile(TRAINING_MANAGED_RUNS_PATH),
       readOptionalFile(TRAINING_PROJECTS_PATH),
+      readOptionalFile(TRAINING_TEMPLATE_ORDER_PATH),
     ]);
 
     try {
       await Promise.all([
         writeFile(TRAINING_MANAGED_RUNS_PATH, "[]\n", "utf8"),
         writeFile(TRAINING_PROJECTS_PATH, "[]\n", "utf8"),
+        rm(TRAINING_TEMPLATE_ORDER_PATH, { force: true }),
       ]);
       return await fn();
     } finally {
       await Promise.all([
         restoreOptionalFile(TRAINING_MANAGED_RUNS_PATH, runsBefore),
         restoreOptionalFile(TRAINING_PROJECTS_PATH, projectsBefore),
+        restoreOptionalFile(TRAINING_TEMPLATE_ORDER_PATH, templateOrderBefore),
       ]);
     }
   };
@@ -2437,6 +2441,47 @@ test("training template route can create a project from an existing template thr
   assert.equal(createPayload.ok, true);
   assert.equal(createPayload.data.title, projectTitle);
   assert.equal(createPayload.data.sections.length, templateDetailPayload.data.sections.length);
+});
+
+test("training template reorder route persists managed template order through /api/training", async () => {
+  const templatesRoute = await import("../src/app/api/training/templates/route");
+  const templateReorderRoute = await import("../src/app/api/training/templates/reorder/route");
+
+  await withTrainingManagedStoreSnapshot(async () => {
+    const initialResponse = await templatesRoute.GET(new Request("http://localhost/api/training/templates"));
+    const initialPayload = await initialResponse.json();
+
+    assert.equal(initialResponse.status, 200);
+    assert.equal(initialPayload.ok, true);
+
+    const initialTemplates = initialPayload.data as Array<{ id: string }>;
+    assert.ok(initialTemplates.length >= 2, "template reorder test needs at least two templates");
+
+    const reorderedIds = [...initialTemplates.map((template) => template.id)].reverse();
+    const reorderResponse = await templateReorderRoute.POST(
+      new Request("http://localhost/api/training/templates/reorder", {
+        method: "POST",
+        body: JSON.stringify({
+          orderedTemplateIds: reorderedIds,
+        }),
+      }),
+    );
+    const reorderPayload = await reorderResponse.json();
+
+    assert.equal(reorderResponse.status, 200);
+    assert.equal(reorderPayload.ok, true);
+    assert.deepEqual(reorderPayload.data.orderedTemplateIds, reorderedIds);
+
+    const afterResponse = await templatesRoute.GET(new Request("http://localhost/api/training/templates"));
+    const afterPayload = await afterResponse.json();
+
+    assert.equal(afterResponse.status, 200);
+    assert.equal(afterPayload.ok, true);
+    assert.deepEqual(
+      (afterPayload.data as Array<{ id: string }>).map((template) => template.id).slice(0, reorderedIds.length),
+      reorderedIds,
+    );
+  });
 });
 
 test("newly created managed training template can immediately create a project through /api/training", async () => {

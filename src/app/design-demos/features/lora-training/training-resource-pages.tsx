@@ -1248,9 +1248,42 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
   function handleReorderTemplates(nextVisibleIds: string[]) {
     const visibleTemplateIdSet = new Set(visibleTemplateIds);
     const reorderedVisibleIds = [...nextVisibleIds];
-    setOrderedTemplateIds((current) =>
-      current.map((templateId) => visibleTemplateIdSet.has(templateId) ? reorderedVisibleIds.shift() ?? templateId : templateId),
+    const previousIds = orderedTemplateIds;
+    const nextOrderedIds = orderedTemplateIds.map((templateId) =>
+      visibleTemplateIdSet.has(templateId) ? reorderedVisibleIds.shift() ?? templateId : templateId,
     );
+    setOrderedTemplateIds(nextOrderedIds);
+
+    if (!isProductionTrainingRoute) return;
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/training/templates/reorder", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            orderedTemplateIds: nextOrderedIds,
+          }),
+        });
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok || !payload?.ok) {
+          setOrderedTemplateIds(previousIds);
+          pushToast({
+            tone: "error",
+            title: "训练模板排序保存失败",
+            detail: payload?.error?.message ?? "训练模板排序保存请求失败",
+          });
+        }
+      } catch (error) {
+        setOrderedTemplateIds(previousIds);
+        pushToast({
+          tone: "error",
+          title: "训练模板排序保存失败",
+          detail: error instanceof Error ? error.message : "训练模板排序保存请求失败",
+        });
+      }
+    })();
   }
 
   return (

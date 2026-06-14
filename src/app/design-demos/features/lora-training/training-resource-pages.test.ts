@@ -682,6 +682,21 @@ test("training template list exposes managed object controls and local ordering"
   assert.match(cssSource, /\.trainingTemplateListControls\b/, "template cards should have a dedicated leading control column");
 });
 
+test("training template list persists reorder through the formal HTTP API on production routes", () => {
+  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  assert.notEqual(templatesStart, -1);
+  assert.notEqual(formStart, -1);
+
+  const templatesSource = pageSource.slice(templatesStart, formStart);
+
+  assert.match(templatesSource, /usePathname/, "template list should detect whether it is running under production \\/training routes");
+  assert.match(templatesSource, /fetch\("\/api\/training\/templates\/reorder"/, "template reorder should call the formal template reorder API");
+  assert.match(templatesSource, /orderedTemplateIds\.map\(\(templateId\) =>/, "template reorder should preserve hidden rows while reordering visible templates");
+  assert.match(templatesSource, /setOrderedTemplateIds\(previousIds\)/, "template reorder should roll back local order when persistence fails");
+  assert.match(templatesSource, /训练模板排序保存失败/, "template reorder should expose save failures through the shared feedback system");
+});
+
 test("training preset detail and sort rules reuse editor/sort shells without regular preset dimensions", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
   const sortPanelStart = pageSource.indexOf("function TrainingPresetSortPanel");
