@@ -1,5 +1,11 @@
 import { fail, ok } from "@/lib/api-response";
 import { cancelManagedGenerationRun, mapTrainingProjectError } from "@/server/services/training/project-service";
+import {
+  cancelCharacterLoraGenerationRun,
+} from "@/server/services/character-lora-training/generation-run-service";
+import {
+  mapCharacterLoraPhase3Error,
+} from "@/server/services/character-lora-training/phase3-service";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +28,14 @@ export async function POST(
     if (managed) {
       return ok(managed);
     }
-    return fail("Section run cancellation is not supported for this run", 501, {
-      requestedBy: typeof body === "object" && body ? (body as Record<string, unknown>).requestedBy : null,
-      runId,
-    });
+    const data = await cancelCharacterLoraGenerationRun(runId, body);
+    return ok(data);
   } catch (error) {
     const mapped = mapTrainingProjectError(error);
-    return fail(mapped.message, mapped.status, mapped.details);
+    if (mapped.status !== 500 || mapped.message !== "Unexpected training project error") {
+      return fail(mapped.message, mapped.status, mapped.details);
+    }
+    const phase3Mapped = mapCharacterLoraPhase3Error(error);
+    return fail(phase3Mapped.message, phase3Mapped.status, phase3Mapped.details);
   }
 }

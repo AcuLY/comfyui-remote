@@ -405,3 +405,60 @@ export async function getCharacterLoraGenerationRun(generationRunId: string) {
 
   return run ? serializeGenerationRun(run) : null;
 }
+
+export async function cancelCharacterLoraGenerationRun(input: {
+  generationRunId: string;
+  reason?: string | null;
+  requestedBy?: string | null;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const run = await tx.characterLoraGenerationRun.findUnique({
+      where: { id: input.generationRunId },
+      select: GENERATION_RUN_SUMMARY_SELECT,
+    });
+
+    if (!run) {
+      return null;
+    }
+
+    const cancelSummary = {
+      cancelRequested: true,
+      reason: input.reason ?? null,
+      requestedBy: input.requestedBy ?? null,
+    };
+
+    await tx.characterLoraWorkerTask.updateMany({
+      where: {
+        targetType: "generationRun",
+        targetId: run.id,
+        status: { in: [CharacterLoraRunStatus.queued, CharacterLoraRunStatus.running] },
+      },
+      data: {
+        status: CharacterLoraRunStatus.cancelled,
+        leaseExpiresAt: null,
+        heartbeatAt: new Date(),
+        finishedAt: new Date(),
+        progressJson: toInputJsonValue(cancelSummary),
+        errorSummary: input.reason ?? "Generation run cancelled",
+      },
+    });
+
+    await tx.characterLoraGenerationRun.update({
+      where: { id: run.id },
+      data: {
+        status: CharacterLoraRunStatus.cancelled,
+        errorSummary: input.reason ?? "Generation run cancelled",
+        finishedAt: new Date(),
+        responseSummary: toInputJsonValue(cancelSummary),
+      },
+      select: { id: true },
+    });
+
+    return tx.characterLoraGenerationRun.findUnique({
+      where: { id: run.id },
+      select: GENERATION_RUN_SUMMARY_SELECT,
+    });
+  });
+
+  return result ? serializeGenerationRun(result) : null;
+}

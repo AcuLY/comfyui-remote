@@ -2059,6 +2059,105 @@ test("production training project creation uses the real project path when the t
   assert.equal(typeof uploadPayload.data.artifactId, "string");
 });
 
+test("production generation tasks can be cancelled through /api/training when the training database is available", async () => {
+  const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
+  try {
+    await listCharacterLoraTrainingJobs({ page: 1, pageSize: 1 });
+  } catch (error) {
+    if (isProductionTrainingDatabaseUnavailable(error)) {
+      return;
+    }
+    throw error;
+  }
+
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
+  const generationTaskDetailRoute = await import("../src/app/api/training/generation-tasks/[taskId]/route");
+  const cancelGenerationTaskRoute = await import("../src/app/api/training/generation-tasks/[taskId]/cancel/route");
+  const title = `真实取消生成项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_real_generation_cancel_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        usagePrompt: "真实取消生成测试提示词",
+        detailPrompt: "真实取消生成测试细节",
+        selectedReferenceIds: [],
+        sections: [
+          {
+            id: "real-cancel-generation-section",
+            title: "真实取消生成小节",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "real-cancel-generation-block",
+                source: "本地",
+                title: "真实取消生成 block",
+                text: "真实取消生成场景描述",
+              },
+            ],
+            resolvedScene: "真实取消生成场景描述",
+            scenePreview: "真实取消生成场景描述",
+          },
+        ],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  assert.ok(!String(createPayload.data.id).startsWith("training-project-"));
+
+  const sectionId = createPayload.data.sections[0].id as string;
+  const generationResponse = await sectionRunRoute.POST(
+    new Request(`http://localhost/api/training/sections/${sectionId}/runs`, {
+      method: "POST",
+      body: JSON.stringify({
+        userInstruction: "真实取消生成任务",
+      }),
+    }),
+    { params: Promise.resolve({ sectionId }) },
+  );
+  const generationPayload = await generationResponse.json();
+  assert.equal(generationResponse.status, 201);
+  assert.equal(generationPayload.ok, true);
+
+  const generationTaskId = generationPayload.data.id as string;
+  const cancelResponse = await cancelGenerationTaskRoute.POST(
+    new Request(`http://localhost/api/training/generation-tasks/${generationTaskId}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ requestedBy: "test" }),
+    }),
+    { params: Promise.resolve({ taskId: generationTaskId }) },
+  );
+  const cancelPayload = await cancelResponse.json();
+  assert.equal(cancelResponse.status, 200);
+  assert.equal(cancelPayload.ok, true);
+  assert.equal(cancelPayload.data.id, generationTaskId);
+
+  const detailResponse = await generationTaskDetailRoute.GET(
+    new Request(`http://localhost/api/training/generation-tasks/${generationTaskId}`),
+    { params: Promise.resolve({ taskId: generationTaskId }) },
+  );
+  const detailPayload = await detailResponse.json();
+  assert.equal(detailResponse.status, 200);
+  assert.equal(detailPayload.ok, true);
+  assert.equal(detailPayload.data.id, generationTaskId);
+  assert.equal(detailPayload.data.status, "cancelled");
+});
+
 test("training project detail route deletes a managed project through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const projectDetailRoute = await import("../src/app/api/training/projects/[projectId]/route");

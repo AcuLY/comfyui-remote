@@ -15,6 +15,7 @@ import {
   type CharacterLoraProviderToolParams,
 } from "@/server/character-lora-training/contracts";
 import {
+  cancelCharacterLoraGenerationRun as cancelGenerationRunInRepository,
   createCharacterLoraSectionGenerationRunWithTask,
   getCharacterLoraArtifact,
   getCharacterLoraCandidateImage,
@@ -52,6 +53,11 @@ const DEFAULT_HOST_MODELS = {
   "mock-local": "mock-local",
   "openai-codex": "codex-image-worker",
 } satisfies Record<CharacterLoraImageProvider, string>;
+
+const characterLoraGenerationCancelRequestSchema = z.object({
+  reason: z.string().trim().min(1).optional(),
+  requestedBy: z.string().trim().min(1).optional(),
+}).strict();
 
 export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string, input: unknown = {}) {
   const normalizedSectionId = normalizeId(sectionId, "sectionId");
@@ -200,6 +206,35 @@ export async function enqueueCharacterLoraSectionGenerationRun(sectionId: string
     },
     taskPayload,
   });
+}
+
+export async function cancelCharacterLoraGenerationRun(runId: string, input: unknown = {}) {
+  const normalizedRunId = normalizeId(runId, "generationRunId");
+  const parsed = parseWithSchema(characterLoraGenerationCancelRequestSchema, input);
+  const run = await getCharacterLoraGenerationRun(normalizedRunId);
+
+  if (!run) {
+    throw new CharacterLoraPhase3ServiceError("Character LoRA generation run not found", 404);
+  }
+
+  if (run.status !== "queued" && run.status !== "running") {
+    throw new CharacterLoraPhase3ServiceError("Only queued or running generation runs can be cancelled", 409, {
+      generationRunId: run.id,
+      status: run.status,
+    });
+  }
+
+  const cancelled = await cancelGenerationRunInRepository({
+    generationRunId: run.id,
+    reason: parsed.reason ?? null,
+    requestedBy: parsed.requestedBy ?? null,
+  });
+
+  if (!cancelled) {
+    throw new CharacterLoraPhase3ServiceError("Character LoRA generation run not found", 404);
+  }
+
+  return cancelled;
 }
 
 // ---------------------------------------------------------------------------
