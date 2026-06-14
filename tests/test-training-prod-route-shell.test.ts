@@ -15,6 +15,8 @@ const hrefContextPath = resolve(repoRoot, "src/app/design-demos/routing/href-con
 const trainingRoutePagePath = resolve(repoRoot, "src/app/training/[[...route]]/page.tsx");
 const trainingAppClientPath = resolve(repoRoot, "src/app/training/training-app-client.tsx");
 const trainingFeatureAppPath = resolve(repoRoot, "src/features/training/app.tsx");
+const trainingRuntimePath = resolve(repoRoot, "src/features/training/runtime.ts");
+const trainingThemePath = resolve(repoRoot, "src/features/training/theme.ts");
 
 const layoutSource = readFileSync(layoutPath, "utf8");
 const bottomNavSource = readFileSync(bottomNavPath, "utf8");
@@ -25,6 +27,8 @@ const hrefContextSource = existsSync(hrefContextPath) ? readFileSync(hrefContext
 const trainingRoutePageSource = existsSync(trainingRoutePagePath) ? readFileSync(trainingRoutePagePath, "utf8") : "";
 const trainingAppClientSource = existsSync(trainingAppClientPath) ? readFileSync(trainingAppClientPath, "utf8") : "";
 const trainingFeatureAppSource = existsSync(trainingFeatureAppPath) ? readFileSync(trainingFeatureAppPath, "utf8") : "";
+const trainingRuntimeSource = existsSync(trainingRuntimePath) ? readFileSync(trainingRuntimePath, "utf8") : "";
+const trainingThemeSource = existsSync(trainingThemePath) ? readFileSync(trainingThemePath, "utf8") : "";
 
 test("production app shell treats /training routes as standalone surfaces", () => {
   assert.match(
@@ -150,5 +154,25 @@ test("training routes render a production shell without the /design-demos prefix
     trainingFeatureAppSource,
     /from "@\/app\/design-demos\/data"/,
     "feature-layer training app should not import training page data types directly from the design-demos data path anymore",
+  );
+  assert.doesNotMatch(
+    trainingRuntimeSource,
+    /from "@\/app\/design-demos\/routing"/,
+    "feature-layer training runtime should not import the training route matcher directly from the design-demos routing path anymore",
+  );
+  assert.match(
+    trainingRuntimeSource,
+    /from "\.\/routes"/,
+    "feature-layer training runtime should read route matching from a local training route module",
+  );
+  assert.doesNotMatch(
+    trainingThemeSource,
+    /from "@\/app\/design-demos\/routing\/sfw"/,
+    "feature-layer training theme should not re-export theme helpers from the design-demos routing module anymore",
+  );
+  assert.match(
+    trainingThemeSource,
+    /TRAINING_THEME_COOKIE = "comfyui_manager_design_demo_theme"/,
+    "feature-layer training theme should own the production theme cookie constant directly",
   );
 });

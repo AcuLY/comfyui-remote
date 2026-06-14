@@ -1,7 +1,11 @@
-import { DESIGN_DEMO_THEME_COOKIE, resolveDemoTheme } from "@/app/design-demos/routing/sfw";
+export type TrainingTheme = "dark" | "light";
 
-export const TRAINING_THEME_COOKIE = DESIGN_DEMO_THEME_COOKIE;
+export const TRAINING_THEME_COOKIE = "comfyui_manager_design_demo_theme";
 
-export function resolveTrainingTheme(cookieValue?: string | null) {
-  return resolveDemoTheme(cookieValue);
+function isTrainingThemeValue(value: string | null | undefined): value is TrainingTheme {
+  return value === "dark" || value === "light";
+}
+
+export function resolveTrainingTheme(cookieValue?: string | null, fallback: TrainingTheme = "dark") {
+  return isTrainingThemeValue(cookieValue) ? cookieValue : fallback;
 }
