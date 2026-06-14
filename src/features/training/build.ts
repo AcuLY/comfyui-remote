@@ -14,8 +14,15 @@ import type {
 } from "./types";
 
 function imagePool(data: TrainingAppData) {
-  const fromImages = data.images.length ? data.images : data.projects.flatMap((project) => project.images);
-  return fromImages.length ? fromImages : data.projects.flatMap((project) => project.sections.flatMap((section) => section.images));
+  if (data.images.length > 0) return data.images;
+
+  if (data.loraTraining) {
+    const projectImages = data.loraTraining.projects.flatMap((project) => project.images);
+    if (projectImages.length > 0) return projectImages;
+    return data.loraTraining.projects.flatMap((project) => project.sections.flatMap((section) => section.images));
+  }
+
+  return [];
 }
 
 function pickImages(images: TrainingImage[], start: number, count: number) {
@@ -23,7 +30,7 @@ function pickImages(images: TrainingImage[], start: number, count: number) {
   return Array.from({ length: count }, (_, index) => images[(start + index) % images.length]);
 }
 
-function buildSections(images: DemoImage[], start: number): LoraTrainingSection[] {
+function buildSections(images: TrainingImage[], start: number): LoraTrainingSection[] {
   return [
     {
       id: "stage-light",
@@ -140,7 +147,7 @@ function buildImageResults(images: TrainingImage[], start: number, prefix: strin
   });
 }
 
-function buildRevisionItems(images: DemoImage[], start: number, prefix: string): LoraTrainingDatasetRevision["samples"] {
+function buildRevisionItems(images: TrainingImage[], start: number, prefix: string): LoraTrainingDatasetRevision["samples"] {
   return buildImageResults(images, start, prefix)
     .filter((result) => result.reviewStatus === "kept")
     .slice(0, 6)

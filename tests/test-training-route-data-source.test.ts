@@ -99,6 +99,11 @@ test("buildLoraTrainingDemoData prefers an injected production training payload 
     /export \{ buildLoraTrainingDemoData \} from "@\/features\/training\/build";/,
     "legacy design-demo training data file should become a compatibility re-export from the shared feature build module",
   );
+  assert.doesNotMatch(
+    trainingFeatureBuildSource,
+    /data\.projects\.flatMap/,
+    "training feature build should not depend on the full DemoData project list for fallback images anymore",
+  );
 });
 
 test("production training route loader delegates snapshot assembly to a dedicated training service", () => {
@@ -116,6 +121,21 @@ test("production training route loader delegates snapshot assembly to a dedicate
     trainingFeatureDataSource,
     /loadTrainingSnapshot/,
     "training feature data module should import the dedicated training snapshot service",
+  );
+  assert.match(
+    trainingFeatureDataSource,
+    /shellData:/,
+    "training feature data module should package shell-specific demo data separately from training page data",
+  );
+  assert.doesNotMatch(
+    trainingFeatureDataSource,
+    /export type TrainingAppData = DemoData;/,
+    "training feature data module should not alias the full DemoData shape anymore",
+  );
+  assert.match(
+    trainingFeatureDataSource,
+    /export function resolveTrainingShellData/,
+    "training feature data module should expose a shell-data resolver for the production training app",
   );
 });
 

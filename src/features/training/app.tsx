@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
+import { resolveTrainingShellData } from "@/features/training/data";
 import type { TrainingAppData } from "@/features/training/data";
 import { DesignDemoShell, matchRoute, NotFoundPage } from "@/features/training/runtime";
 import type { DemoTheme, Match } from "@/features/training/runtime";
@@ -90,11 +91,12 @@ export function TrainingApp({
   const pathname = usePathname();
   const currentRoute = pathname === "/training" ? "/training/runs" : pathname ?? "/training/runs";
   const match = matchRoute(currentRoute);
+  const shellData = resolveTrainingShellData(data) ?? (data as never);
 
   return (
     <DesignDemoShell
       currentRoute={currentRoute}
-      data={data}
+      data={shellData}
       hrefForRoute={(route) => route}
       initialTheme={initialTheme}
     >
