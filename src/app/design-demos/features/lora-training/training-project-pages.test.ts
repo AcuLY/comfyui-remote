@@ -1052,6 +1052,18 @@ test("training project create page stages local uploaded references and syncs th
   assert.match(formSource, /fetch\(`\/api\/training\/character-images\/\$\{uploadPayload\.data\.id\}`/, "uploaded reference images should patch label metadata through the formal character-image detail API");
 });
 
+test("training project create page hides the demo local image library on production routes", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /const isProductionTrainingRoute = pathname === "\/training" \|\| pathname\.startsWith\("\/training\/"\)/, "project create page should detect real training routes before building reference sources");
+  assert.match(formSource, /items: isProductionTrainingRoute \? \[\] : data\.images\.slice\(0, 4\)/, "demo local image candidates should be disabled on real training routes");
+});
+
 test("training project create page carries selected references into the local draft", () => {
   const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");

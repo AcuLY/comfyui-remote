@@ -870,6 +870,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   const router = useRouter();
   const { pushToast } = useDemoFeedback();
   const projectReferenceUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const isProductionTrainingRoute = pathname === "/training" || pathname.startsWith("/training/");
   const training = useTraining(data);
   const urlSearch = useUrlSearch();
   const newProjectTemplateHints = readNewProjectTemplateHints(urlSearch);
@@ -928,7 +929,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
       id: "local-image-library",
       title: "本地图库",
       description: "资料候选",
-      items: data.images.slice(0, 4).map((image) => ({
+      items: isProductionTrainingRoute ? [] : data.images.slice(0, 4).map((image) => ({
         id: `image-${image.id}`,
         title: image.label,
         detail: "作为新训练项目的原始参考图，确认后加入角色资料。",
@@ -998,7 +999,6 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   const selectedStagedProjectReferenceUploads = stagedProjectReferenceUploads.filter((upload) => selectedReferenceIds.has(upload.id));
   const selectedReferenceTitles = selectedProjectReferences.map((reference) => reference.title);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
-  const isProductionTrainingRoute = pathname === "/training" || pathname.startsWith("/training/");
 
   function setProjectForm(updater: (current: typeof projectForm) => typeof projectForm) {
     setProjectFormState((current) => updater(current.templateContextId === projectTemplateContextId ? current : projectForm));
