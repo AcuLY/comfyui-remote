@@ -115,6 +115,7 @@ export async function saveProjectAsTemplate(
               categoryId: true,
               presetId: true,
               variantId: true,
+              presetGroupId: true,
               groupBindingKey: true,
               sortOrder: true,
               category: {

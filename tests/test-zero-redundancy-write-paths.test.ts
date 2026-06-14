@@ -11,6 +11,7 @@ import type * as SectionActions from "../src/lib/actions/section";
 import type * as PromptBlockService from "../src/server/services/prompt-block-service";
 import type * as TemplateImportActions from "../src/lib/actions/template-import";
 import type * as TemplateCrudActions from "../src/lib/actions/template-crud";
+import type * as TemplateSaveActions from "../src/lib/actions/template-save";
 import type * as ProjectActions from "../src/lib/actions/project";
 
 process.env.DB_PROVIDER = "sqlite";
@@ -210,6 +211,15 @@ setupDb.exec(`
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
   CREATE UNIQUE INDEX "ProjectPresetBinding_projectId_categoryId_key" ON "ProjectPresetBinding"("projectId", "categoryId");
+  CREATE TABLE "ProjectSectionFolder" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectId" TEXT NOT NULL,
+    "parentId" TEXT,
+    "name" TEXT NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
   CREATE TABLE "ProjectSection" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "projectId" TEXT NOT NULL,
@@ -324,6 +334,7 @@ let importTemplateToProject: typeof TemplateImportActions.importTemplateToProjec
 let createProjectTemplate: typeof TemplateCrudActions.createProjectTemplate;
 let updateProjectTemplateSection: typeof TemplateCrudActions.updateProjectTemplateSection;
 let copyProjectTemplateSection: typeof TemplateCrudActions.copyProjectTemplateSection;
+let saveProjectAsTemplate: typeof TemplateSaveActions.saveProjectAsTemplate;
 let createProject: typeof ProjectActions.createProject;
 let updateProject: typeof ProjectActions.updateProject;
 let applyParamToAllSections: typeof ProjectActions.applyParamToAllSections;
@@ -341,6 +352,7 @@ test.before(async () => {
   const promptBlockService = await import("../src/server/services/prompt-block-service");
   const templateImportActions = await import("../src/lib/actions/template-import");
   const templateCrudActions = await import("../src/lib/actions/template-crud");
+  const templateSaveActions = await import("../src/lib/actions/template-save");
   const projectActions = await import("../src/lib/actions/project");
 
   prisma = prismaModule.prisma;
@@ -359,6 +371,7 @@ test.before(async () => {
   createProjectTemplate = templateCrudActions.createProjectTemplate;
   updateProjectTemplateSection = templateCrudActions.updateProjectTemplateSection;
   copyProjectTemplateSection = templateCrudActions.copyProjectTemplateSection;
+  saveProjectAsTemplate = templateSaveActions.saveProjectAsTemplate;
   createProject = projectActions.createProject;
   updateProject = projectActions.updateProject;
   applyParamToAllSections = projectActions.applyParamToAllSections;
@@ -1114,6 +1127,131 @@ test("importTemplateToProject creates normalized rows from template relation row
   ]);
 });
 
+test("saveProjectAsTemplate preserves preset group bindings from project sections", async () => {
+  const seed = await seedProjectWithPreset();
+  const groupCategory = await prisma.presetCategory.create({
+    data: {
+      id: `${seed.key}-save-group-category`,
+      name: `${seed.key} Save Group Category`,
+      slug: `${seed.key}-save-group-category`,
+      type: "group",
+    },
+  });
+  const group = await prisma.presetGroup.create({
+    data: {
+      id: `${seed.key}-save-group`,
+      categoryId: groupCategory.id,
+      name: `${seed.key} Save Group`,
+      slug: `${seed.key}-save-group`,
+    },
+  });
+  const groupBinding = await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: seed.section.id,
+      bindingKey: `${seed.key}-save-group-binding`,
+      categoryId: groupCategory.id,
+      presetId: null,
+      variantId: null,
+      presetGroupId: group.id,
+      groupBindingKey: `grp:${group.id}:${seed.key}-save-instance`,
+      sortOrder: 0,
+    },
+  });
+  await prisma.sectionPromptBlock.create({
+    data: {
+      projectSectionId: seed.section.id,
+      sectionBindingId: groupBinding.id,
+      type: "preset",
+      sortOrder: 0,
+    },
+  });
+
+  const templateId = await ignoreStaticRevalidateError(() =>
+    saveProjectAsTemplate(seed.project.id, `${seed.key} Saved Template`)
+  ) ?? (await prisma.projectTemplate.findFirstOrThrow({
+    where: { name: `${seed.key} Saved Template` },
+    select: { id: true },
+  })).id;
+
+  const templateSection = await prisma.projectTemplateSection.findFirstOrThrow({
+    where: { projectTemplateId: templateId },
+  });
+  const templateBinding = await prisma.templateSectionPresetBinding.findFirstOrThrow({
+    where: { projectTemplateSectionId: templateSection.id },
+  });
+  assert.equal(templateBinding.presetId, null);
+  assert.equal(templateBinding.variantId, null);
+  assert.equal(templateBinding.presetGroupId, group.id);
+  assert.equal(templateBinding.groupBindingKey, groupBinding.groupBindingKey);
+});
+
+test("importTemplateToProject preserves presetGroupId from template section bindings", async () => {
+  const seed = await seedProjectWithPreset();
+  const groupCategory = await prisma.presetCategory.create({
+    data: {
+      id: `${seed.key}-import-group-category`,
+      name: `${seed.key} Import Group Category`,
+      slug: `${seed.key}-import-group-category`,
+      type: "group",
+    },
+  });
+  const group = await prisma.presetGroup.create({
+    data: {
+      id: `${seed.key}-import-group`,
+      categoryId: groupCategory.id,
+      name: `${seed.key} Import Group`,
+      slug: `${seed.key}-import-group`,
+    },
+  });
+  const template = await prisma.projectTemplate.create({
+    data: { id: `${seed.key}-group-template`, name: `${seed.key} Group Template` },
+  });
+  const templateSection = await prisma.projectTemplateSection.create({
+    data: {
+      id: `${seed.key}-group-template-section`,
+      projectTemplateId: template.id,
+      sortOrder: 0,
+      name: `${seed.key} Imported Group Section`,
+    },
+  });
+  const templateBinding = await prisma.templateSectionPresetBinding.create({
+    data: {
+      projectTemplateSectionId: templateSection.id,
+      bindingKey: `${seed.key}-template-group-binding`,
+      categoryId: groupCategory.id,
+      presetId: null,
+      variantId: null,
+      presetGroupId: group.id,
+      groupBindingKey: `grp:${group.id}:${seed.key}-import-instance`,
+      sortOrder: 0,
+    },
+  });
+  await prisma.templateSectionPromptBlock.create({
+    data: {
+      projectTemplateSectionId: templateSection.id,
+      templateSectionBindingId: templateBinding.id,
+      type: "preset",
+      sortOrder: 0,
+    },
+  });
+
+  const importedCount = await ignoreStaticRevalidateError(() =>
+    importTemplateToProject(seed.project.id, template.id) as Promise<number>
+  );
+
+  if (importedCount !== undefined) assert.equal(importedCount, 1);
+  const importedSection = await prisma.projectSection.findFirstOrThrow({
+    where: { projectId: seed.project.id, name: `${seed.key} Imported Group Section` },
+  });
+  const importedBinding = await prisma.sectionPresetBinding.findFirstOrThrow({
+    where: { projectSectionId: importedSection.id },
+  });
+  assert.equal(importedBinding.presetId, null);
+  assert.equal(importedBinding.variantId, null);
+  assert.equal(importedBinding.presetGroupId, group.id);
+  assert.equal(importedBinding.groupBindingKey, templateBinding.groupBindingKey);
+});
+
 test("importTemplateToProject imports template project binding sections without duplicate section binding ids", async () => {
   const seed = await seedProjectWithPreset({ withProjectBinding: true });
   const template = await prisma.projectTemplate.create({
@@ -1293,6 +1431,74 @@ test("copyProjectTemplateSection inserts the copy immediately after the source s
     laterSection.id,
   ]);
   assert.deepEqual(orderedSections.map((section) => section.sortOrder), [0, 1, 2]);
+});
+
+test("copyProjectTemplateSection preserves presetGroupId on copied bindings", async () => {
+  const seed = await seedProjectWithPreset();
+  const groupCategory = await prisma.presetCategory.create({
+    data: {
+      id: `${seed.key}-copy-group-category`,
+      name: `${seed.key} Copy Group Category`,
+      slug: `${seed.key}-copy-group-category`,
+      type: "group",
+    },
+  });
+  const group = await prisma.presetGroup.create({
+    data: {
+      id: `${seed.key}-copy-group`,
+      categoryId: groupCategory.id,
+      name: `${seed.key} Copy Group`,
+      slug: `${seed.key}-copy-group`,
+    },
+  });
+  const template = await prisma.projectTemplate.create({
+    data: {
+      id: `${seed.key}-copy-group-template`,
+      name: `${seed.key} Copy Group Template`,
+    },
+  });
+  const sourceSection = await prisma.projectTemplateSection.create({
+    data: {
+      id: `${seed.key}-copy-group-source-section`,
+      projectTemplateId: template.id,
+      sortOrder: 0,
+      name: `${seed.key} Copy Group Source`,
+    },
+  });
+  const sourceBinding = await prisma.templateSectionPresetBinding.create({
+    data: {
+      projectTemplateSectionId: sourceSection.id,
+      bindingKey: `${seed.key}-copy-group-binding`,
+      categoryId: groupCategory.id,
+      presetId: null,
+      variantId: null,
+      presetGroupId: group.id,
+      groupBindingKey: `grp:${group.id}:${seed.key}-copy-instance`,
+      sortOrder: 0,
+    },
+  });
+  await prisma.templateSectionPromptBlock.create({
+    data: {
+      projectTemplateSectionId: sourceSection.id,
+      templateSectionBindingId: sourceBinding.id,
+      type: "preset",
+      sortOrder: 0,
+    },
+  });
+
+  const copiedSectionId = await ignoreStaticRevalidateError(() => copyProjectTemplateSection(sourceSection.id)) ??
+    (await prisma.projectTemplateSection.findFirstOrThrow({
+      where: { projectTemplateId: template.id, id: { not: sourceSection.id } },
+      select: { id: true },
+    })).id;
+
+  const copiedBinding = await prisma.templateSectionPresetBinding.findFirstOrThrow({
+    where: { projectTemplateSectionId: copiedSectionId },
+  });
+  assert.equal(copiedBinding.presetId, null);
+  assert.equal(copiedBinding.variantId, null);
+  assert.equal(copiedBinding.presetGroupId, group.id);
+  assert.equal(copiedBinding.groupBindingKey, sourceBinding.groupBindingKey);
 });
 
 test("project preset binding writes use ProjectPresetBinding rows without rewriting section caches", async () => {

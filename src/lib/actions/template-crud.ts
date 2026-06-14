@@ -370,6 +370,7 @@ export async function copyProjectTemplateSection(sectionId: string): Promise<str
           categoryId: row.categoryId,
           presetId: row.presetId,
           variantId: row.variantId,
+          presetGroupId: row.presetGroupId,
           groupBindingKey: row.groupBindingKey,
           sortOrder: row.sortOrder,
         },

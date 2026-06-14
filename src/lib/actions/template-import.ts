@@ -130,6 +130,7 @@ export async function importTemplateToProject(
               categoryId: true,
               presetId: true,
               variantId: true,
+              presetGroupId: true,
               groupBindingKey: true,
               sortOrder: true,
               category: {
