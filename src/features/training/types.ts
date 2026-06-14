@@ -1,4 +1,17 @@
-import type { DemoImage } from "@/app/design-demos/data/types";
+export type TrainingImageStatus = "pending" | "kept" | "trashed";
+
+export type TrainingImage = {
+  id: string;
+  src: string;
+  full: string;
+  label: string;
+  status: TrainingImageStatus;
+  featured: boolean;
+  featured2: boolean;
+  cover: boolean;
+  width: number | null;
+  height: number | null;
+};
 
 export type LoraTrainingProjectStatus = "ready" | "training" | "draft" | "archived";
 export type LoraTrainingReviewStatus = "pending" | "kept" | "rejected";
@@ -8,14 +21,14 @@ export type LoraTrainingReferenceImage = {
   kind: "original" | "generated" | "auxiliary";
   label: string;
   note: string;
-  image: DemoImage;
+  image: TrainingImage;
 };
 
 export type LoraTrainingImageResult = {
   id: string;
   sectionId: string;
   sectionTitle: string;
-  image: DemoImage;
+  image: TrainingImage;
   reviewStatus: LoraTrainingReviewStatus;
   caption: string;
   sourceLabel: string;
@@ -25,7 +38,7 @@ export type LoraTrainingDatasetRevisionItem = {
   id: string;
   label: string;
   sectionTitle: string;
-  image: DemoImage;
+  image: TrainingImage;
   captionSnapshot: string;
   filePathSnapshot: string;
 };
@@ -45,7 +58,7 @@ export type LoraTrainingProject = {
   readiness: "完整" | "待补";
   keptCount: number;
   captionMissingCount: number;
-  images: DemoImage[];
+  images: TrainingImage[];
   referenceImages: LoraTrainingReferenceImage[];
   resultPool: LoraTrainingImageResult[];
   sections: LoraTrainingSection[];
@@ -65,7 +78,7 @@ export type LoraTrainingDatasetSample = {
   id: string;
   label: string;
   sectionTitle: string;
-  image: DemoImage;
+  image: TrainingImage;
   caption: string;
   status: LoraTrainingReviewStatus;
 };
@@ -81,7 +94,7 @@ export type LoraTrainingRun = {
   summary: string;
   timestamp: string;
   progress?: number;
-  inputImages?: DemoImage[];
+  inputImages?: TrainingImage[];
   outputLabel?: string;
   outputResultIds?: string[];
   errorMessage?: string;
@@ -117,7 +130,7 @@ export type LoraTrainingSection = {
   blocks: LoraTrainingSectionBlock[];
   resolvedScene: string;
   imagePrompt: string;
-  images: DemoImage[];
+  images: TrainingImage[];
   resultStatus: LoraTrainingReviewStatus;
 };
 

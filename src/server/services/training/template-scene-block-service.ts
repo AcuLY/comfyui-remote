@@ -125,7 +125,7 @@ export async function updateTrainingTemplateSectionBlock(templateId: string, blo
     });
   }
 
-  const { block, template } = await getTemplateBlockContext(templateId, blockId);
+  const { block, section, template } = await getTemplateBlockContext(templateId, blockId);
   const updatedBlock: LoraTrainingSectionBlock = {
     ...block,
     source: parsed.data.source ?? block.source,

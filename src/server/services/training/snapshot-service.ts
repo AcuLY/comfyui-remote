@@ -7,8 +7,9 @@ import type {
   LoraTrainingReferenceImage,
   LoraTrainingRun,
   LoraTrainingSection,
+  TrainingImage,
+  TrainingImageStatus,
 } from "@/features/training/types";
-import type { DemoImage } from "@/app/design-demos/data/types";
 import { toImageUrl } from "@/lib/image-url";
 import { getCharacterLoraGenerationRun } from "@/server/repositories/character-lora-training";
 import {
@@ -40,8 +41,6 @@ import {
   listTrainingProjectSectionOverrides,
 } from "@/server/services/training/project-section-service";
 
-type ImageStatus = DemoImage["status"];
-
 function formatTimestamp(value: string | null | undefined, prefix: "完成于" | "开始于" | "创建于" | "失败于" = "创建于") {
   if (!value) return "未记录";
   const date = new Date(value);
@@ -60,7 +59,7 @@ function formatUpdatedAt(value: string | null | undefined) {
   return `${hh}:${mm}`;
 }
 
-function mapReviewStatusToImageStatus(reviewStatus: string): ImageStatus {
+function mapReviewStatusToImageStatus(reviewStatus: string): TrainingImageStatus {
   if (reviewStatus === "keep" || reviewStatus === "included_in_training") return "kept";
   if (reviewStatus === "reject" || reviewStatus === "excluded") return "trashed";
   return "pending";
@@ -83,7 +82,7 @@ function mapProjectStatus(input: {
   return "ready";
 }
 
-function buildDemoImage(relativePath: string, label: string, status: ImageStatus, index: number): DemoImage | null {
+function buildDemoImage(relativePath: string, label: string, status: TrainingImageStatus, index: number): TrainingImage | null {
   const url = toImageUrl(relativePath);
   if (!url) return null;
   return {
@@ -188,7 +187,7 @@ function buildGenerationInputImages(
         index,
       );
     })
-    .filter((image): image is DemoImage => Boolean(image));
+    .filter((image): image is TrainingImage => Boolean(image));
 }
 
 function buildTrainingRuns(

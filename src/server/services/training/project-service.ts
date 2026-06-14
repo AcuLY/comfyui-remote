@@ -1,7 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
-import type { DemoImage } from "@/app/design-demos/data/types";
 import type {
   LoraTrainingDatasetRevision,
   LoraTrainingDatasetRevisionItem,
@@ -10,6 +9,7 @@ import type {
   LoraTrainingReferenceImage,
   LoraTrainingRun,
   LoraTrainingSection,
+  TrainingImage,
 } from "@/features/training/types";
 import { toImageUrl } from "@/lib/image-url";
 import {
@@ -205,7 +205,7 @@ function buildManagedUploadStem(safeName: string) {
   return `${Date.now()}-${randomUUID()}-${safeName}`;
 }
 
-function buildReferencePreviewImage(relativePath: string, label: string): DemoImage | null {
+function buildReferencePreviewImage(relativePath: string, label: string): TrainingImage | null {
   const url = toImageUrl(relativePath);
   if (!url) return null;
   return {
@@ -697,7 +697,7 @@ function buildManagedResultImage(relativePath: string, label: string) {
   };
 }
 
-function buildManagedRunInputImage(relativePath: string, label: string, index: number): DemoImage {
+function buildManagedRunInputImage(relativePath: string, label: string, index: number): TrainingImage {
   const url = toImageUrl(relativePath) ?? "";
   return {
     id: buildManagedScopedId(`managed-run-input-${index + 1}`),
@@ -1175,7 +1175,7 @@ export async function enqueueManagedTrainingSectionGenerationRun(
           : `补充图片 ${index + 1}`;
         return buildManagedRunInputImage(relativePath, label, index);
       })
-      .filter((image): image is DemoImage => Boolean(image))
+      .filter((image): image is TrainingImage => Boolean(image))
     : [];
   const inputImages = [
     ...match.project.referenceImages.filter((reference) => selectedSourceIds.includes(reference.id)).map((reference) => reference.image),

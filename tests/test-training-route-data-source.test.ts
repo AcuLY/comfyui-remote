@@ -171,3 +171,31 @@ test("training services share a dedicated feature-level view-model type module i
     "legacy design-demo training type file should become a compatibility re-export from the shared feature types",
   );
 });
+
+test("training feature types define their image preview contract locally instead of importing design-demo data types", () => {
+  assert.match(
+    sharedTrainingTypesSource,
+    /export type TrainingImageStatus = "pending" \| "kept" \| "trashed";/,
+    "shared training feature types should define their image status contract",
+  );
+  assert.match(
+    sharedTrainingTypesSource,
+    /export type TrainingImage = \{[\s\S]*?src:\s*string;[\s\S]*?full:\s*string;[\s\S]*?label:\s*string;/,
+    "shared training feature types should define their own preview image shape",
+  );
+  assert.doesNotMatch(
+    sharedTrainingTypesSource,
+    /@\/app\/design-demos\/data\/types/,
+    "training feature types should not import DemoImage from the design-demos data layer",
+  );
+  assert.doesNotMatch(
+    trainingProjectServiceSource,
+    /@\/app\/design-demos\/data\/types/,
+    "training project service should not depend on the design-demos data type module",
+  );
+  assert.doesNotMatch(
+    trainingSnapshotServiceSource,
+    /@\/app\/design-demos\/data\/types/,
+    "training snapshot service should not depend on the design-demos data type module",
+  );
+});
