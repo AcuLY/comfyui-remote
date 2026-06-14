@@ -154,3 +154,10 @@ test("training project drag handles are wired to a local sortable project order"
   assert.match(itemSource, /ref=\{ref\}/, "Project item should apply sortable refs");
   assert.match(itemSource, /style=\{style\}/, "Project item should apply sortable transform styles");
 });
+
+test("training project order persists through the formal HTTP API on production routes", () => {
+  assert.match(projectsPageSource, /fetch\("\/api\/training\/projects\/reorder"/, "Project reorder should call the formal project reorder API on production routes");
+  assert.match(projectsPageSource, /orderedProjectIds:\s*nextOrderedIds/, "Project reorder should submit the fully ordered project id list");
+  assert.match(projectsPageSource, /setOrderedProjectIds\(previousIds\)/, "Failed reorder saves should roll back the local order state");
+  assert.match(projectsPageSource, /pushToast/, "Project reorder should surface save failures through the shared feedback system");
+});

@@ -422,6 +422,39 @@ test("GET /api/training/projects lists training projects", async () => {
   assert.equal(typeof projects[0]?.id, "string");
 });
 
+test("training project reorder route persists managed project order through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const reorderRoute = await import("../src/app/api/training/projects/reorder/route");
+
+  await withTrainingManagedStoreSnapshot(async () => {
+    const first = await createManagedProjectFixture({ title: `项目排序 A ${Date.now()}` });
+    const second = await createManagedProjectFixture({ title: `项目排序 B ${Date.now()}` });
+    const third = await createManagedProjectFixture({ title: `项目排序 C ${Date.now()}` });
+
+    const reorderResponse = await reorderRoute.POST(
+      new Request("http://localhost/api/training/projects/reorder", {
+        method: "POST",
+        body: JSON.stringify({
+          orderedProjectIds: [third.id, first.id, second.id],
+        }),
+      }),
+    );
+    const reorderPayload = await reorderResponse.json();
+    assert.equal(reorderResponse.status, 200);
+    assert.equal(reorderPayload.ok, true);
+    assert.deepEqual(reorderPayload.data.orderedProjectIds, [third.id, first.id, second.id]);
+
+    const listResponse = await projectsRoute.GET(new Request("http://localhost/api/training/projects"));
+    const listPayload = await listResponse.json();
+    assert.equal(listResponse.status, 200);
+    assert.equal(listPayload.ok, true);
+    const visibleOrderedIds = (listPayload.data as Array<{ id: string }>)
+      .filter((project) => [first.id, second.id, third.id].includes(project.id))
+      .map((project) => project.id);
+    assert.deepEqual(visibleOrderedIds.slice(0, 3), [third.id, first.id, second.id]);
+  });
+});
+
 test("managed training projects suppress demo project fixtures on /api/training/projects", async () => {
   const { createManagedTrainingProject } = await import("../src/server/services/training/project-service");
 

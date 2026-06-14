@@ -78,10 +78,43 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
 
   function handleReorderProjects(nextVisibleIds: string[]) {
     const visibleProjectIdSet = new Set(visibleProjectIds);
+    const previousIds = orderedProjectIds;
     const reorderedVisibleIds = [...nextVisibleIds];
-    setOrderedProjectIds((current) =>
-      current.map((projectId) => visibleProjectIdSet.has(projectId) ? reorderedVisibleIds.shift() ?? projectId : projectId),
-    );
+    const nextOrderedIds = orderedProjectIds.map((projectId) => (
+      visibleProjectIdSet.has(projectId) ? reorderedVisibleIds.shift() ?? projectId : projectId
+    ));
+    setOrderedProjectIds(nextOrderedIds);
+
+    if (!isProductionTrainingRoute) return;
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/training/projects/reorder", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            orderedProjectIds: nextOrderedIds,
+          }),
+        });
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok || !payload?.ok) {
+          setOrderedProjectIds(previousIds);
+          pushToast({
+            tone: "error",
+            title: "项目排序保存失败",
+            detail: payload?.error?.message ?? "训练项目排序保存请求失败",
+          });
+        }
+      } catch (error) {
+        setOrderedProjectIds(previousIds);
+        pushToast({
+          tone: "error",
+          title: "项目排序保存失败",
+          detail: error instanceof Error ? error.message : "训练项目排序保存请求失败",
+        });
+      }
+    })();
   }
 
   function applyLocalDelete(projectIds: Iterable<string>) {
