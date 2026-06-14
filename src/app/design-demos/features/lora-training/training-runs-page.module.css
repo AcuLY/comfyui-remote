@@ -253,15 +253,9 @@
 
 .runProjectGroup {
   display: grid;
+  gap: 8px;
   min-width: 0;
-  overflow: hidden;
-  border: 1px solid var(--demo-border);
-  border-radius: 12px;
   container-type: inline-size;
-}
-
-.runProjectGroup:last-child {
-  border-bottom: 1px solid var(--demo-border);
 }
 
 @container (min-width: 720px) {
@@ -275,14 +269,16 @@
   grid-template-columns: 1fr 28px;
   align-items: center;
   min-width: 0;
-  border-bottom: 1px solid var(--demo-border);
-  background: color-mix(in srgb, var(--demo-field-bg) 58%, transparent);
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--demo-field-bg) 52%, transparent);
   padding-right: 14px;
-  transition: background-color 140ms ease;
+  transition: background-color 140ms ease, border-color 140ms ease;
 }
 
 .runProjectHeader:hover,
 .runProjectHeader:focus-within {
+  border-color: var(--demo-glass-accent-border);
   background: var(--demo-field-bg);
 }
 
@@ -341,6 +337,7 @@
 .runRows {
   display: grid;
   min-width: 0;
+  gap: 8px;
 }
 
 .runRow {
@@ -349,15 +346,17 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
-  border-bottom: 1px solid var(--demo-border);
-  background: transparent;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--demo-field-bg) 42%, transparent);
   color: inherit;
   padding: 12px 14px;
-  transition: background-color 140ms ease;
+  transition: background-color 140ms ease, border-color 140ms ease;
 }
 
 .runRow:hover,
 .runRow:focus-within {
+  border-color: var(--demo-glass-accent-border);
   background: var(--demo-field-bg);
 }
 
@@ -389,18 +388,9 @@
   grid-area: secondary;
 }
 
-.runRow:last-child {
-  border-bottom: 0;
-}
-
 @container (min-width: 520px) {
   .runRows {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .runRows .runRow {
-    border-right: 1px solid var(--demo-border);
-    border-bottom: 1px solid var(--demo-border);
   }
 
   .runRows .runRowFailed {
@@ -410,15 +400,6 @@
       ". secondary";
     align-items: start;
     padding-block: 15px;
-  }
-
-  .runRows .runRow:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .runRows .runRow:last-child,
-  .runRows .runRow:nth-last-child(2):nth-child(odd) {
-    border-bottom: 0;
   }
 }
 

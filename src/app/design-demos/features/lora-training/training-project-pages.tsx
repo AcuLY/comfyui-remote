@@ -472,13 +472,15 @@ async function copyProjectRunMessage(message: string) {
 }
 
 function RunRows({
-  onHideRun,
+  onDeleteRun,
+  isDeletingRuns = false,
   onRetryRun,
   project,
   retriedRunIds = new Set<string>(),
   runs,
 }: {
-  onHideRun?: (runId: string) => void;
+  onDeleteRun?: (runId: string) => void;
+  isDeletingRuns?: boolean;
   onRetryRun?: (runId: string) => void;
   project: LoraTrainingProject;
   retriedRunIds?: Set<string>;
@@ -524,12 +526,12 @@ function RunRows({
                   <div className={s.projectRunFailureToolbar}>
                     <Button size="sm" tone="subtle" icon={Copy} ariaLabel={`复制任务报错：${run.title}`} onClick={() => copyProjectRunMessage(failureMessage)} feedback={{ title: "报错已复制", detail: failureMessage }}>复制</Button>
                     <Button size="sm" tone="subtle" icon={Play} ariaLabel={`重试任务：${run.title}`} onClick={() => onRetryRun?.(run.id)}>重试</Button>
-                    <Button size="sm" tone="danger" icon={Trash2} ariaLabel={`移除任务：${run.title}`} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+                    <Button size="sm" tone="danger" icon={Trash2} pending={isDeletingRuns} ariaLabel={`移除任务：${run.title}`} onClick={() => onDeleteRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
                   </div>
                 </div>
               ) : (
                 <span className={s.projectRunActions}>
-                  <Button tone="danger" icon={Trash2} ariaLabel={`移除任务：${run.title}`} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+                  <Button tone="danger" icon={Trash2} pending={isDeletingRuns} ariaLabel={`移除任务：${run.title}`} onClick={() => onDeleteRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
                 </span>
               )}
             </article>
@@ -3242,6 +3244,7 @@ export function LoraTrainingProjectScopedRunsPage({
     status: "completed" as LoraTrainingTaskStatus,
   }));
   const [isRetryingProjectRuns, setIsRetryingProjectRuns] = useState(false);
+  const [isDeletingProjectRuns, setIsDeletingProjectRuns] = useState(false);
   if (!project) return <EmptyPage title="没有项目任务数据" />;
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const projectRunInteraction = projectRunInteractionState.projectId === project.id && projectRunInteractionState.kind === kind ? projectRunInteractionState : {
@@ -3281,7 +3284,7 @@ export function LoraTrainingProjectScopedRunsPage({
     }));
   }
 
-  function handleHideProjectRun(runId: string) {
+  function applyLocalProjectRunDelete(runId: string) {
     updateProjectRunInteraction((current) => {
       const retriedProjectRunIds = new Set(current.retriedProjectRunIds);
       retriedProjectRunIds.delete(runId);
@@ -3291,6 +3294,58 @@ export function LoraTrainingProjectScopedRunsPage({
         retriedProjectRunIds,
       };
     });
+  }
+
+  async function handleDeleteProjectRun(runId: string) {
+    const run = projectRuns.find((candidate) => candidate.id === runId);
+    if (!run) return;
+
+    if (!isProductionTrainingRoute) {
+      applyLocalProjectRunDelete(runId);
+      pushToast({
+        tone: "warning",
+        title: "任务已从项目列表移除",
+        detail: run.title,
+      });
+      return;
+    }
+
+    if (isDeletingProjectRuns) return;
+
+    setIsDeletingProjectRuns(true);
+    try {
+      const response = await fetch(
+        run.kind === "generation"
+          ? `/api/training/generation-tasks/${run.id}`
+          : `/api/training/training-runs/${run.id}`,
+        { method: "DELETE" },
+      );
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "删除失败",
+          detail: payload?.error?.message ?? "任务移除请求失败",
+        });
+        return;
+      }
+
+      applyLocalProjectRunDelete(runId);
+      pushToast({
+        tone: "warning",
+        title: "任务已从项目列表移除",
+        detail: run.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "删除失败",
+        detail: error instanceof Error ? error.message : "任务移除请求失败",
+      });
+    } finally {
+      setIsDeletingProjectRuns(false);
+    }
   }
 
   async function handleRetryProjectRun(runId: string) {
@@ -3395,7 +3450,8 @@ export function LoraTrainingProjectScopedRunsPage({
       />
       <Panel title={kind === "generation" ? "项目生成任务" : "项目训练任务"}>
         <RunRows
-          onHideRun={handleHideProjectRun}
+          onDeleteRun={handleDeleteProjectRun}
+          isDeletingRuns={isDeletingProjectRuns}
           onRetryRun={handleRetryProjectRun}
           project={project}
           retriedRunIds={retriedProjectRunIds}

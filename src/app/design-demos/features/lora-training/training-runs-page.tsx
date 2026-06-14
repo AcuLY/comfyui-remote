@@ -225,6 +225,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
   const [retriedRunIds, setRetriedRunIds] = useState<Set<string>>(new Set());
   const [cancelledRunIds, setCancelledRunIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeletingRuns, setIsDeletingRuns] = useState(false);
   const [isRetryingRuns, setIsRetryingRuns] = useState(false);
   const [isCancellingRuns, setIsCancellingRuns] = useState(false);
   const effectiveRunStatus = (run: LoraTrainingRun) => (cancelledRunIds.has(run.id) ? "failed" : run.status);
@@ -260,10 +261,76 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
     });
   }
 
-  function hideRuns(runIds: Iterable<string>) {
+  function applyLocalHiddenRuns(runIds: Iterable<string>) {
     const ids = new Set(runIds);
     setHiddenRunIds((current) => new Set([...current, ...ids]));
     setSelectedIds((current) => new Set([...current].filter((id) => !ids.has(id))));
+  }
+
+  async function handleDeleteRuns(runIds: Iterable<string>) {
+    const ids = new Set(runIds);
+    const runs = runsForKind.filter((run) => ids.has(run.id));
+
+    if (!isProductionTrainingRoute) {
+      applyLocalHiddenRuns(ids);
+      pushToast({
+        tone: "warning",
+        title: "任务已从列表移除",
+        detail: runs.length === 1 ? (runs[0]?.title ?? "任务") : `${runs.length} 条任务`,
+      });
+      return;
+    }
+
+    if (isDeletingRuns || runs.length === 0) return;
+
+    setIsDeletingRuns(true);
+    try {
+      const responses = await Promise.all(
+        runs.map(async (run) => {
+          const response = await fetch(
+            run.kind === "generation"
+              ? `/api/training/generation-tasks/${run.id}`
+              : `/api/training/training-runs/${run.id}`,
+            { method: "DELETE" },
+          );
+          const payload = await response.json().catch(() => null);
+          return { payload, response, run };
+        }),
+      );
+
+      const completedIds = new Set(
+        responses
+          .filter(({ payload, response }) => response.ok && payload?.ok)
+          .map(({ run }) => run.id),
+      );
+      if (completedIds.size > 0) {
+        applyLocalHiddenRuns(completedIds);
+      }
+
+      const failedResponse = responses.find(({ payload, response }) => !response.ok || !payload?.ok);
+      if (failedResponse) {
+        pushToast({
+          tone: "error",
+          title: "删除失败",
+          detail: failedResponse.payload?.error?.message ?? "任务移除请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "warning",
+        title: "任务已从列表移除",
+        detail: completedIds.size === 1 ? (runs[0]?.title ?? "任务") : `${completedIds.size} 条任务`,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "删除失败",
+        detail: error instanceof Error ? error.message : "任务移除请求失败",
+      });
+    } finally {
+      setIsDeletingRuns(false);
+    }
   }
 
   async function retryRuns(runIds: Iterable<string>) {
@@ -506,11 +573,12 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                       取消所选
                     </Button>
                   ) : (
-                    <Button
-                      icon={X}
+                <Button
+                  icon={X}
                   tone="danger"
+                  pending={isDeletingRuns}
                   disabled={selectedVisibleCount === 0}
-                  onClick={() => hideRuns(selectedIds)}
+                  onClick={() => handleDeleteRuns(selectedIds)}
                   feedback={{ tone: "warning", title: "任务已从列表移除", detail: `${selectedVisibleCount} 条任务` }}
                 >
                   删除所选
@@ -656,16 +724,17 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                           {kind === "generation" ? "终止" : "取消"}
                                         </Button>
                                       ) : (
-                                        <Button
-                                          icon={X}
-                                          iconOnly
-                                          size="sm"
-                                          tone="danger"
-                                          ariaLabel={`删除任务：${run.title}`}
-                                          onClick={() => hideRuns([run.id])}
-                                          feedback={{ tone: "warning", title: "任务已从列表移除", detail: run.title }}
-                                        />
-                                      )}
+                                            <Button
+                                              icon={X}
+                                              iconOnly
+                                              size="sm"
+                                              tone="danger"
+                                              pending={isDeletingRuns}
+                                              ariaLabel={`删除任务：${run.title}`}
+                                              onClick={() => handleDeleteRuns([run.id])}
+                                              feedback={{ tone: "warning", title: "任务已从列表移除", detail: run.title }}
+                                            />
+                                          )}
                                     </div>
                                   )}
                             </div>

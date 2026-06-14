@@ -193,11 +193,23 @@ test("failed training run toolbar keeps text buttons wider than row icon actions
   );
 });
 
-test("training run delete actions remove runs locally instead of previewing a placeholder", () => {
+test("training run rows stay visually separated instead of sharing one grouped card shell", () => {
+  assert.match(cssSource, /\.runRows\s*\{[\s\S]*?gap:\s*(?:8|9|10|11|12)px;/, "run row grids should keep real spacing between task cards");
+  assert.match(cssSource, /\.runRow\s*\{[\s\S]*?border:\s*1px solid var\(--demo-border\);/, "each run row should draw its own border");
+  assert.match(cssSource, /\.runRow\s*\{[\s\S]*?border-radius:\s*(?:10|11|12)px;/, "each run row should own its own rounded corners");
+  assert.doesNotMatch(cssSource, /\.runRows\s+\.runRow\s*\{[\s\S]*?border-right:/, "run rows should not share a table-like border grid");
+  assert.doesNotMatch(cssSource, /\.runRows\s+\.runRow:nth-child/, "run rows should not depend on nth-child border merging");
+});
+
+test("training run delete actions persist through the formal HTTP API on production routes", () => {
   assert.match(pageSource, /hiddenRunIds/, "runs page should track locally removed runs");
-  assert.match(pageSource, /hideRuns/, "runs page should define a shared local delete handler");
-  assert.match(pageSource, /onClick=\{\(\) => hideRuns\(selectedIds\)\}/, "batch delete should call the local delete handler");
-  assert.match(pageSource, /onClick=\{\(\) => hideRuns\(\[run\.id\]\)\}/, "row delete should call the local delete handler");
+  assert.match(pageSource, /isDeletingRuns/, "runs page should track the deletion request state");
+  assert.match(pageSource, /handleDeleteRuns/, "runs page should define a shared delete handler");
+  assert.match(pageSource, /fetch\(\s*run\.kind === "generation"\s*\?\s*`\/api\/training\/generation-tasks\/\$\{run\.id\}`\s*:\s*`\/api\/training\/training-runs\/\$\{run\.id\}`/, "delete actions should call the formal task detail routes");
+  assert.match(pageSource, /method:\s*"DELETE"/, "run deletion should use DELETE requests");
+  assert.match(pageSource, /Promise\.all/, "runs page should await every delete request before hiding rows locally");
+  assert.match(pageSource, /onClick=\{\(\) => handleDeleteRuns\(selectedIds\)\}/, "batch delete should call the shared delete handler");
+  assert.match(pageSource, /onClick=\{\(\) => handleDeleteRuns\(\[run\.id\]\)\}/, "row delete should call the shared delete handler");
   assert.match(pageSource, /任务已从列表移除/, "delete feedback should describe the local state change");
   assert.doesNotMatch(pageSource, /删除动作已预览/, "delete actions should not remain preview-only placeholders");
 });

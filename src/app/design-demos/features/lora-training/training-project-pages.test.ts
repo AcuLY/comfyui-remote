@@ -670,7 +670,7 @@ test("project-scoped run rows use task cards with recent output thumbnails", () 
   assert.match(cssSource, /\.projectRunThumbs\b/, "project run rows should style thumbnail strips separately");
 });
 
-test("project-scoped run rows manage local delete and failed retry state", () => {
+test("project-scoped run rows manage local visibility and failed retry state", () => {
   const runRowsStart = pagesSource.indexOf("function RunRows");
   const referenceSourceStart = pagesSource.indexOf("type ReferenceCandidate");
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
@@ -683,16 +683,28 @@ test("project-scoped run rows manage local delete and failed retry state", () =>
 
   assert.match(scopedPageSource, /hiddenProjectRunIds/, "project task page should track locally removed run ids");
   assert.match(scopedPageSource, /retriedProjectRunIds/, "project task page should track locally retried failed run ids");
-  assert.match(scopedPageSource, /handleHideProjectRun/, "project task page should define a local delete handler");
+  assert.match(scopedPageSource, /handleDeleteProjectRun/, "project task page should define a delete handler");
   assert.match(scopedPageSource, /handleRetryProjectRun/, "project task page should define a local retry handler");
   assert.match(scopedPageSource, /!hiddenProjectRunIds\.has\(run\.id\)/, "visible project runs should exclude locally removed runs");
-  assert.match(scopedPageSource, /onHideRun=\{handleHideProjectRun\}/, "project task rows should receive the delete handler");
+  assert.match(scopedPageSource, /onDeleteRun=\{handleDeleteProjectRun\}/, "project task rows should receive the delete handler");
   assert.match(scopedPageSource, /onRetryRun=\{handleRetryProjectRun\}/, "failed project task rows should receive the retry handler");
   assert.match(scopedPageSource, /retriedRunIds=\{retriedProjectRunIds\}/, "project task rows should receive retry state");
-  assert.match(runRowsSource, /onHideRun\?\.\(run\.id\)/, "row delete button should remove the run locally");
+  assert.match(runRowsSource, /onDeleteRun\?\.\(run\.id\)/, "row delete button should remove the run locally");
   assert.match(runRowsSource, /onRetryRun\?\.\(run\.id\)/, "row retry button should queue a failed run locally");
   assert.match(runRowsSource, /retriedRunIds\.has\(run\.id\)/, "rows should derive retry state per run");
   assert.match(runRowsSource, /已排队重试/, "retried failed rows should show queued retry state");
+});
+
+test("project-scoped run rows delete through the formal HTTP API on production routes", () => {
+  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
+  assert.notEqual(scopedPageStart, -1);
+
+  const scopedPageSource = pagesSource.slice(scopedPageStart);
+
+  assert.match(scopedPageSource, /usePathname/, "project-scoped delete should detect whether it is running under production \\/training routes");
+  assert.match(scopedPageSource, /fetch\(\s*run\.kind === "generation"\s*\?\s*`\/api\/training\/generation-tasks\/\$\{run\.id\}`\s*:\s*`\/api\/training\/training-runs\/\$\{run\.id\}`/, "project-scoped delete should call the formal task detail routes");
+  assert.match(scopedPageSource, /method:\s*"DELETE"/, "project-scoped delete should use DELETE requests");
+  assert.match(scopedPageSource, /pushToast/, "project-scoped delete should surface API success or failure through the shared feedback system");
 });
 
 test("project-scoped run rows retry through the formal HTTP API on production routes", () => {

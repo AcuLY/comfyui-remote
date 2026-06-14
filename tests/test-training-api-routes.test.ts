@@ -14,6 +14,102 @@ async function listProjects() {
   return payload.data as Array<{ id: string; sectionCount?: number; imageCount?: number }>;
 }
 
+async function listRuns(query = "") {
+  const { GET } = await import("../src/app/api/training/runs/route");
+  const response = await GET(new Request(`http://localhost/api/training/runs${query}`));
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(Array.isArray(payload.data));
+
+  return payload.data as Array<{ id: string; kind: string; projectId: string; status: string }>;
+}
+
+async function createManagedRunsForDeletionTest() {
+  const {
+    addManagedTrainingReferenceImageToResults,
+    createManagedTrainingProject,
+    enqueueManagedTrainingRun,
+    enqueueManagedTrainingSectionGenerationRun,
+    freezeManagedTrainingDataset,
+    uploadManagedTrainingProjectReferenceImage,
+  } = await import("../src/server/services/training/project-service");
+
+  const project = await createManagedTrainingProject({
+    title: `删除路由测试项目 ${Date.now()}`,
+    characterName: "删除路由测试角色",
+    triggerToken: `delete_route_${Date.now()}`,
+    templateId: "character_identity_default",
+    trainingTemplateId: "character_identity_default",
+    checkpointRelativePath: "models/checkpoints/mock.safetensors",
+    usagePrompt: "删除路由测试",
+    detailPrompt: "删除路由测试项目资料",
+    sections: [
+      {
+        id: "delete-route-section",
+        title: "删除路由小节",
+        enabled: true,
+        blockCount: 1,
+        blocks: [
+          {
+            id: "delete-route-block",
+            source: "本地",
+            title: "删除路由场景块",
+            text: "删除路由测试场景。",
+          },
+        ],
+        resolvedScene: "删除路由测试场景。",
+        scenePreview: "删除路由测试场景。",
+      },
+    ],
+    trainingDefaults: {
+      autoFreezeDataset: false,
+      autoGenerateSamples: false,
+    },
+  });
+
+  const formData = new FormData();
+  formData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "delete-route.png", { type: "image/png" }));
+  formData.append("role", "source");
+  const uploadedReference = await uploadManagedTrainingProjectReferenceImage(project.id, formData);
+
+  assert.ok(uploadedReference?.id, "managed delete-route fixture should upload a reference image");
+
+  const result = await addManagedTrainingReferenceImageToResults(uploadedReference.id, {
+    reviewStatus: "keep",
+    captionDraft: "删除路由测试 caption",
+  });
+
+  assert.ok(result?.id, "managed delete-route fixture should add a kept result");
+
+  const frozen = await freezeManagedTrainingDataset(project.id);
+  assert.ok(frozen?.revision?.id, "managed delete-route fixture should freeze a dataset revision");
+
+  const generationRun = await enqueueManagedTrainingSectionGenerationRun(project.sections[0].id, {
+    userInstruction: "删除路由测试生成任务",
+  });
+  const trainingRun = await enqueueManagedTrainingRun(project.id, {
+    revisionId: frozen.revision.id,
+    config: {
+      overrides: {
+        ordinary: {
+          targetSteps: 1200,
+        },
+      },
+    },
+  });
+
+  assert.ok(generationRun?.id, "managed delete-route fixture should create a generation run");
+  assert.ok(trainingRun?.id, "managed delete-route fixture should create a training run");
+
+  return {
+    generationRunId: generationRun.id,
+    projectId: project.id,
+    trainingRunId: trainingRun.id,
+  };
+}
+
 test("GET /api/training/projects lists training projects", async () => {
   const projects = await listProjects();
   assert.equal(typeof projects[0]?.id, "string");
@@ -266,16 +362,10 @@ test("training project sections create, copy, delete, and reorder through /api/t
 });
 
 test("GET /api/training/runs filters the global training workspace by kind and status", async () => {
-  const { GET } = await import("../src/app/api/training/runs/route");
+  const runs = await listRuns("?kind=generation&status=completed");
 
-  const response = await GET(new Request("http://localhost/api/training/runs?kind=generation&status=completed"));
-  const payload = await response.json();
-
-  assert.equal(response.status, 200);
-  assert.equal(payload.ok, true);
-  assert.ok(Array.isArray(payload.data));
-  assert.ok(payload.data.length > 0);
-  assert.ok(payload.data.every((run: { kind: string; status: string }) => run.kind === "generation" && run.status === "completed"));
+  assert.ok(runs.length > 0);
+  assert.ok(runs.every((run) => run.kind === "generation" && run.status === "completed"));
 });
 
 test("GET /api/training/training-runs/:trainingRunId returns training run detail", async () => {
@@ -298,11 +388,8 @@ test("GET /api/training/training-runs/:trainingRunId returns training run detail
 });
 
 test("GET /api/training/generation-tasks/:taskId returns generation task detail", async () => {
-  const runsRoute = await import("../src/app/api/training/runs/route");
   const { GET } = await import("../src/app/api/training/generation-tasks/[taskId]/route");
-  const runsResponse = await runsRoute.GET(new Request("http://localhost/api/training/runs?kind=generation"));
-  const runsPayload = await runsResponse.json();
-  const taskId = runsPayload.data[0].id;
+  const taskId = (await listRuns("?kind=generation"))[0].id;
 
   const response = await GET(
     new Request(`http://localhost/api/training/generation-tasks/${taskId}`),
@@ -314,6 +401,75 @@ test("GET /api/training/generation-tasks/:taskId returns generation task detail"
   assert.equal(payload.ok, true);
   assert.equal(payload.data.id, taskId);
   assert.equal(payload.data.kind, "generation");
+});
+
+test("DELETE /api/training run detail routes hide managed runs from global and project-scoped lists", async () => {
+  const generationDetailRoute = await import("../src/app/api/training/generation-tasks/[taskId]/route");
+  const trainingDetailRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
+  const projectGenerationRunsRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
+  const projectTrainingRunsRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
+  const { generationRunId, projectId, trainingRunId } = await createManagedRunsForDeletionTest();
+
+  const deleteGenerationResponse = await generationDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/generation-tasks/${generationRunId}`, { method: "DELETE" }),
+    { params: Promise.resolve({ taskId: generationRunId }) },
+  );
+  const deleteGenerationPayload = await deleteGenerationResponse.json();
+
+  assert.equal(deleteGenerationResponse.status, 200);
+  assert.equal(deleteGenerationPayload.ok, true);
+  assert.equal(deleteGenerationPayload.data.id, generationRunId);
+
+  const deleteTrainingResponse = await trainingDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/training-runs/${trainingRunId}`, { method: "DELETE" }),
+    { params: Promise.resolve({ trainingRunId }) },
+  );
+  const deleteTrainingPayload = await deleteTrainingResponse.json();
+
+  assert.equal(deleteTrainingResponse.status, 200);
+  assert.equal(deleteTrainingPayload.ok, true);
+  assert.equal(deleteTrainingPayload.data.id, trainingRunId);
+
+  const hiddenGenerationDetailResponse = await generationDetailRoute.GET(
+    new Request(`http://localhost/api/training/generation-tasks/${generationRunId}`),
+    { params: Promise.resolve({ taskId: generationRunId }) },
+  );
+  const hiddenGenerationDetailPayload = await hiddenGenerationDetailResponse.json();
+
+  assert.equal(hiddenGenerationDetailResponse.status, 404);
+  assert.equal(hiddenGenerationDetailPayload.ok, false);
+
+  const hiddenTrainingDetailResponse = await trainingDetailRoute.GET(
+    new Request(`http://localhost/api/training/training-runs/${trainingRunId}`),
+    { params: Promise.resolve({ trainingRunId }) },
+  );
+  const hiddenTrainingDetailPayload = await hiddenTrainingDetailResponse.json();
+
+  assert.equal(hiddenTrainingDetailResponse.status, 404);
+  assert.equal(hiddenTrainingDetailPayload.ok, false);
+
+  const generationRuns = await listRuns("?kind=generation");
+  const trainingRuns = await listRuns("?kind=training");
+  assert.ok(!generationRuns.some((run) => run.id === generationRunId), "deleted generation runs should disappear from the global training workspace");
+  assert.ok(!trainingRuns.some((run) => run.id === trainingRunId), "deleted training runs should disappear from the global training workspace");
+
+  const projectGenerationRunsResponse = await projectGenerationRunsRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/generation-tasks`),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const projectGenerationRunsPayload = await projectGenerationRunsResponse.json();
+  assert.equal(projectGenerationRunsResponse.status, 200);
+  assert.equal(projectGenerationRunsPayload.ok, true);
+  assert.ok(!projectGenerationRunsPayload.data.some((run: { id: string }) => run.id === generationRunId), "deleted generation runs should disappear from project-scoped lists");
+
+  const projectTrainingRunsResponse = await projectTrainingRunsRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/training-runs`),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const projectTrainingRunsPayload = await projectTrainingRunsResponse.json();
+  assert.equal(projectTrainingRunsResponse.status, 200);
+  assert.equal(projectTrainingRunsPayload.ok, true);
+  assert.ok(!projectTrainingRunsPayload.data.some((run: { id: string }) => run.id === trainingRunId), "deleted training runs should disappear from project-scoped lists");
 });
 
 test("GET /api/training/presets and /api/training/templates expose training resource libraries", async () => {
