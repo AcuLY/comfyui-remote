@@ -122,6 +122,11 @@ test("production training route loader delegates snapshot assembly to a dedicate
     /loadTrainingSnapshot/,
     "training feature data module should import the dedicated training snapshot service",
   );
+  assert.doesNotMatch(
+    trainingFeatureDataSource,
+    /loadDesignDemoData/,
+    "training feature data module should not load the full design-demo dataset anymore",
+  );
   assert.match(
     trainingFeatureDataSource,
     /shellData:/,
@@ -136,6 +141,11 @@ test("production training route loader delegates snapshot assembly to a dedicate
     trainingFeatureDataSource,
     /export function resolveTrainingShellData/,
     "training feature data module should expose a shell-data resolver for the production training app",
+  );
+  assert.match(
+    trainingFeatureDataSource,
+    /function buildTrainingShellData/,
+    "training feature data module should synthesize a minimal shell dataset for /training routes",
   );
 });
 
