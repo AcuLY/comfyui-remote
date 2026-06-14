@@ -238,6 +238,37 @@ test("GET /api/training/sections/:sectionId/scene-description returns the resolv
   assert.ok(sceneDescriptionPayload.data.blocks.length > 0);
 });
 
+test("GET /api/training/sections/:sectionId/runs lists generation runs scoped to one training section", async () => {
+  const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
+  const sectionRunsRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
+  const projects = await listProjects();
+  const projectId = (
+    projects.find((project) => (project.sectionCount ?? 0) > 0 && (project.imageCount ?? 0) > 0)
+    ?? projects.find((project) => (project.sectionCount ?? 0) > 0)
+    ?? projects[0]
+  ).id;
+
+  const sectionsResponse = await sectionsRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections`),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const sectionsPayload = await sectionsResponse.json();
+  assert.equal(sectionsResponse.status, 200);
+  assert.equal(sectionsPayload.ok, true);
+
+  const sectionId = sectionsPayload.data[0].id as string;
+  const sectionRunsResponse = await sectionRunsRoute.GET(
+    new Request(`http://localhost/api/training/sections/${sectionId}/runs`),
+    { params: Promise.resolve({ sectionId }) },
+  );
+  const sectionRunsPayload = await sectionRunsResponse.json();
+
+  assert.equal(sectionRunsResponse.status, 200);
+  assert.equal(sectionRunsPayload.ok, true);
+  assert.ok(Array.isArray(sectionRunsPayload.data));
+  assert.ok(sectionRunsPayload.data.every((run: { kind: string; sectionId: string }) => run.kind === "generation" && run.sectionId === sectionId));
+});
+
 test("training project section route reads and updates a saved section through /api/training", async () => {
   const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
   const sectionDetailRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
@@ -522,6 +553,78 @@ test("GET /api/training/generation-tasks/:taskId returns generation task detail"
   assert.equal(payload.ok, true);
   assert.equal(payload.data.id, taskId);
   assert.equal(payload.data.kind, "generation");
+});
+
+test("GET /api/training/section-runs/:runId reads generation run detail and POST cancel updates it through the section-run alias", async () => {
+  const sectionRunRoute = await import("../src/app/api/training/section-runs/[runId]/route");
+  const sectionRunCancelRoute = await import("../src/app/api/training/section-runs/[runId]/cancel/route");
+  const {
+    createManagedTrainingProject,
+    enqueueManagedTrainingSectionGenerationRun,
+  } = await import("../src/server/services/training/project-service");
+
+  const createdProject = await createManagedTrainingProject({
+    title: `Section Run Alias ${Date.now()}`,
+    characterName: "Section Run Alias",
+    projectName: "Section Run Alias",
+    triggerToken: `section_run_alias_${Date.now()}`,
+    templateId: "character_identity_default",
+    trainingTemplateId: "character_identity_default",
+    checkpointRelativePath: "models/checkpoints/mock.safetensors",
+    usagePrompt: "section run alias usage",
+    detailPrompt: "section run alias detail",
+    sections: [
+      {
+        id: "section-run-alias-section",
+        title: "Section Run Alias Section",
+        enabled: true,
+        blockCount: 1,
+        blocks: [
+          {
+            id: "section-run-alias-block",
+            source: "本地",
+            title: "Section Run Alias Block",
+            text: "section run alias scene",
+          },
+        ],
+        resolvedScene: "section run alias scene",
+        scenePreview: "section run alias scene",
+      },
+    ],
+    trainingDefaults: {
+      autoGenerateSamples: false,
+      autoFreezeDataset: false,
+    },
+  });
+  const createdRun = await enqueueManagedTrainingSectionGenerationRun(createdProject.sections[0].id, {
+    userInstruction: "section run alias test",
+  });
+
+  assert.ok(createdRun?.id, "expected a managed generation run for section-run alias tests");
+
+  const getResponse = await sectionRunRoute.GET(
+    new Request(`http://localhost/api/training/section-runs/${createdRun.id}`),
+    { params: Promise.resolve({ runId: createdRun.id }) },
+  );
+  const getPayload = await getResponse.json();
+
+  assert.equal(getResponse.status, 200);
+  assert.equal(getPayload.ok, true);
+  assert.equal(getPayload.data.id, createdRun.id);
+  assert.equal(getPayload.data.kind, "generation");
+
+  const cancelResponse = await sectionRunCancelRoute.POST(
+    new Request(`http://localhost/api/training/section-runs/${createdRun.id}/cancel`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ runId: createdRun.id }) },
+  );
+  const cancelPayload = await cancelResponse.json();
+
+  assert.equal(cancelResponse.status, 200);
+  assert.equal(cancelPayload.ok, true);
+  assert.equal(cancelPayload.data.id, createdRun.id);
+  assert.equal(cancelPayload.data.kind, "generation");
 });
 
 test("DELETE /api/training run detail routes hide managed runs from global and project-scoped lists", async () => {

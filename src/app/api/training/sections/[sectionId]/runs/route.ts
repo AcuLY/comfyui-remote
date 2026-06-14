@@ -1,11 +1,26 @@
 import { fail, ok } from "@/lib/api-response";
 import { enqueueManagedTrainingSectionGenerationRun, mapTrainingProjectError } from "@/server/services/training/project-service";
+import { listTrainingRuns, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
   enqueueCharacterLoraSectionGenerationRun,
   mapCharacterLoraPhase3Error,
 } from "@/server/services/character-lora-training/phase3-service";
 
 export const dynamic = "force-dynamic";
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ sectionId: string }> },
+) {
+  try {
+    const { sectionId } = await params;
+    const data = await listTrainingRuns({ kind: "generation", sectionId });
+    return ok(data);
+  } catch (error) {
+    const mapped = mapTrainingReadError(error);
+    return fail(mapped.message, mapped.status, mapped.details);
+  }
+}
 
 export async function POST(
   request: Request,

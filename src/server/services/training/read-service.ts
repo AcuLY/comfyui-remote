@@ -36,12 +36,14 @@ function filterRuns(
   filters: {
     kind?: LoraTrainingTaskKind;
     projectId?: string;
+    sectionId?: string;
     status?: LoraTrainingTaskStatus;
   },
 ) {
   return runs.filter((run) => {
     if (filters.kind && run.kind !== filters.kind) return false;
     if (filters.projectId && run.projectId !== filters.projectId) return false;
+    if (filters.sectionId && run.sectionId !== filters.sectionId) return false;
     if (filters.status && run.status !== filters.status) return false;
     return true;
   });
@@ -99,6 +101,7 @@ export async function getTrainingSectionSceneDescription(sectionId: string) {
 export async function listTrainingRuns(filters: {
   kind?: LoraTrainingTaskKind;
   projectId?: string;
+  sectionId?: string;
   status?: LoraTrainingTaskStatus;
 } = {}) {
   const snapshot = await loadTrainingSnapshot();
