@@ -15,7 +15,15 @@ import { buildLoraTrainingDemoData } from "@/app/design-demos/data/lora-training
 import { loadDesignDemoData } from "@/app/design-demos/data/load-demo-data";
 import { toImageUrl } from "@/lib/image-url";
 import {
+  getCharacterLoraCandidateImage,
+  getCharacterLoraJobSection,
+} from "@/server/repositories/character-lora-training";
+import {
+  getCharacterLoraTrainingJob,
+} from "@/server/services/character-lora-training/job-service";
+import {
   uploadCharacterLoraSourceImage,
+  listCharacterLoraSourceImages,
   updateCharacterLoraSourceImage,
 } from "@/server/services/character-lora-training/source-image-service";
 import { setTrainingProjectSectionCollection } from "@/server/services/training/project-section-service";
@@ -199,6 +207,23 @@ function buildManagedUploadStem(safeName: string) {
   return `${Date.now()}-${randomUUID()}-${safeName}`;
 }
 
+function buildReferencePreviewImage(relativePath: string, label: string): DemoImage | null {
+  const url = toImageUrl(relativePath);
+  if (!url) return null;
+  return {
+    id: buildManagedScopedId("managed-reference-preview"),
+    src: url,
+    full: url,
+    label,
+    status: "pending",
+    featured: false,
+    featured2: false,
+    cover: false,
+    width: null,
+    height: null,
+  };
+}
+
 function imageUrlToRelativePath(url: string | null | undefined) {
   if (!url) return null;
   const normalized = url.split(/[?#]/, 1)[0] ?? url;
@@ -215,38 +240,85 @@ function imageMimeTypeFromPath(relativePath: string) {
   return "image/png";
 }
 
-function deriveReferenceImages(
+async function deriveReferenceImages(
   selectedReferenceIds: string[],
   sourceProjects: LoraTrainingProject[],
   fallbackImages: DemoImage[],
-): LoraTrainingReferenceImage[] {
+): Promise<LoraTrainingReferenceImage[]> {
   const results = sourceProjects.flatMap((project) => project.resultPool);
   const projects = sourceProjects;
 
-  const picked = selectedReferenceIds.map((referenceId) => {
+  const picked = await Promise.all(selectedReferenceIds.map(async (referenceId) => {
     if (referenceId.startsWith("project-")) {
-      const project = projects.find((item) => item.id === referenceId.slice("project-".length));
+      const projectId = referenceId.slice("project-".length);
+      const project = projects.find((item) => item.id === projectId);
       const image = project?.referenceImages[0]?.image;
-      if (!project || !image) return null;
-      return {
-        id: `reference-${referenceId}`,
-        kind: "auxiliary" as const,
-        label: project.title,
-        note: project.profileSummary,
-        image,
-      };
+      if (project && image) {
+        return {
+          id: `reference-${referenceId}`,
+          kind: "auxiliary" as const,
+          label: project.title,
+          note: project.profileSummary,
+          image,
+        };
+      }
+
+      try {
+        const [job, sourceImages] = await Promise.all([
+          getCharacterLoraTrainingJob(projectId),
+          listCharacterLoraSourceImages(projectId),
+        ]);
+        const firstSourceImage = sourceImages[0];
+        if (!firstSourceImage) return null;
+        const productionImage = buildReferencePreviewImage(firstSourceImage.relativePath, job.characterName);
+        if (!productionImage) return null;
+        return {
+          id: `reference-${referenceId}`,
+          kind: "auxiliary" as const,
+          label: job.characterName,
+          note: `${job.triggerToken} · 源图 ${job.counts.sourceImages} 张`,
+          image: productionImage,
+        };
+      } catch {
+        return null;
+      }
     }
 
     if (referenceId.startsWith("result-")) {
-      const result = results.find((item) => item.id === referenceId.slice("result-".length));
-      if (!result) return null;
-      return {
-        id: `reference-${referenceId}`,
-        kind: "generated" as const,
-        label: result.sourceLabel,
-        note: result.caption,
-        image: result.image,
-      };
+      const resultId = referenceId.slice("result-".length);
+      const result = results.find((item) => item.id === resultId);
+      if (result) {
+        return {
+          id: `reference-${referenceId}`,
+          kind: "generated" as const,
+          label: result.sourceLabel,
+          note: result.caption,
+          image: result.image,
+        };
+      }
+
+      try {
+        const candidate = await getCharacterLoraCandidateImage(resultId);
+        if (!candidate) return null;
+        const [job, section] = await Promise.all([
+          getCharacterLoraTrainingJob(candidate.jobId).catch(() => null),
+          candidate.sectionId ? getCharacterLoraJobSection(candidate.sectionId).catch(() => null) : Promise.resolve(null),
+        ]);
+        const label = job?.characterName
+          ? `${job.characterName} / ${section?.name ?? "结果池"}`
+          : section?.name ?? candidate.id;
+        const image = buildReferencePreviewImage(candidate.relativePath, label);
+        if (!image) return null;
+        return {
+          id: `reference-${referenceId}`,
+          kind: "generated" as const,
+          label,
+          note: candidate.captionDraft?.trim() || "创建项目时从已保留结果显式加入。",
+          image,
+        };
+      } catch {
+        return null;
+      }
     }
 
     if (referenceId.startsWith("image-")) {
@@ -262,9 +334,9 @@ function deriveReferenceImages(
     }
 
     return null;
-  }).filter((item): item is LoraTrainingReferenceImage => Boolean(item));
+  }));
 
-  return picked;
+  return picked.filter((item): item is LoraTrainingReferenceImage => Boolean(item));
 }
 
 async function syncSelectedReferenceImagesToTrainingProject(
@@ -1518,7 +1590,7 @@ export async function createManagedTrainingProject(input: unknown) {
   const triggerToken = parsed.triggerToken?.trim() || buildTrainingProjectTriggerToken(title);
   let createdId: string | null = null;
   const managedReferenceSourceProjects = await listManagedTrainingProjects().catch(() => []);
-  const selectedReferenceImages = deriveReferenceImages(
+  const selectedReferenceImages = await deriveReferenceImages(
     parsed.selectedReferenceIds,
     managedReferenceSourceProjects.length ? managedReferenceSourceProjects : baseTraining.projects,
     demoData.images,
