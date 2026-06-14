@@ -13,10 +13,14 @@ function mapSyncError(error: unknown) {
     "SOURCE_PROJECT_NOT_FOUND",
     "TARGET_PROJECT_NOT_FOUND",
   ]);
+  const ambiguousMessages = new Set([
+    "SOURCE_PRESET_AMBIGUOUS",
+    "TARGET_PRESET_AMBIGUOUS",
+  ]);
 
   return {
     message,
-    status: notFoundMessages.has(message) ? 404 : 400,
+    status: notFoundMessages.has(message) ? 404 : ambiguousMessages.has(message) ? 409 : 400,
   };
 }
 

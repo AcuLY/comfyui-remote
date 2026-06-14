@@ -13,6 +13,8 @@ function mapFlowError(error: unknown) {
     "TARGET_ROLE_PRESET_NOT_INFERRED",
   ]);
   const ambiguousMessages = new Set([
+    "SOURCE_PRESET_AMBIGUOUS",
+    "TARGET_PRESET_AMBIGUOUS",
     "SOURCE_ROLE_PRESET_AMBIGUOUS",
     "TARGET_ROLE_PRESET_AMBIGUOUS",
     "SOURCE_PROJECT_TITLE_MISMATCH",

@@ -66,50 +66,50 @@ async function inferPresetNameFromProject(projectId: string, explicitPresetName:
   const sections = await prisma.projectSection.findMany({
     where: { projectId, enabled: true },
     select: {
-      sectionPromptBlocks: {
-        where: {
-          sectionBinding: { isNot: null },
-        },
+      presetBindingRows: {
+        where: { presetId: { not: null } },
         select: {
-          sectionBinding: {
-            select: { presetId: true },
+          presetId: true,
+          preset: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              sortOrder: true,
+              createdAt: true,
+              category: { select: { name: true, slug: true } },
+              isActive: true,
+            },
           },
         },
       },
     },
   });
 
-  const counts = new Map<string, number>();
+  const candidatesById = new Map<string, PresetCandidate>();
   for (const section of sections) {
-    for (const block of section.sectionPromptBlocks) {
-      const presetId = block.sectionBinding?.presetId;
-      if (presetId) {
-        counts.set(presetId, (counts.get(presetId) ?? 0) + 1);
+    for (const binding of section.presetBindingRows) {
+      const preset = binding.preset;
+      if (!preset?.isActive) continue;
+
+      const existing = candidatesById.get(preset.id);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        candidatesById.set(preset.id, {
+          id: preset.id,
+          name: preset.name,
+          slug: preset.slug,
+          sortOrder: preset.sortOrder,
+          createdAt: preset.createdAt,
+          category: preset.category,
+          count: 1,
+        });
       }
     }
   }
 
-  const presetIds = [...counts.keys()];
-  if (presetIds.length === 0) {
-    throw new Error(`${errorPrefix}_ROLE_PRESET_NOT_INFERRED`);
-  }
-
-  const presets = await prisma.preset.findMany({
-    where: { id: { in: presetIds }, isActive: true },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      sortOrder: true,
-      createdAt: true,
-      category: { select: { name: true, slug: true } },
-    },
-  });
-
-  const candidates: PresetCandidate[] = (presets as PresetRecord[]).map((preset) => ({
-    ...preset,
-    count: counts.get(preset.id) ?? 0,
-  }));
+  const candidates = [...candidatesById.values()];
   const roleCandidates = candidates.filter((candidate) => isRoleCategory(candidate.category));
   const usableCandidates = roleCandidates.length > 0 ? roleCandidates : candidates;
   if (usableCandidates.length === 0) {
@@ -233,26 +233,31 @@ export async function syncPresetVariantFlow(body: unknown) {
     matchVariantsBy: input.matchVariantsBy,
   };
   const initialDryRun = await syncPresetVariants(targetProject.id, { ...syncBody, dryRun: true });
+  const resolvedSyncBody = {
+    ...syncBody,
+    sourcePresetName: initialDryRun.sourcePreset.name,
+    targetPresetName: initialDryRun.targetPreset.name,
+  };
 
   if (input.dryRun) {
     return {
       dryRun: true,
       sourceProject: { id: sourceProject.id, title: sourceProject.title, updatedAt: sourceProject.updatedAt },
       targetProject: { id: targetProject.id, title: targetProject.title, updatedAt: targetProject.updatedAt },
-      sourcePresetName,
-      targetPresetName,
+      sourcePresetName: resolvedSyncBody.sourcePresetName,
+      targetPresetName: resolvedSyncBody.targetPresetName,
       initialDryRun,
     };
   }
 
-  const apply = await syncPresetVariants(targetProject.id, { ...syncBody, dryRun: false });
-  const verificationDryRun = await syncPresetVariants(targetProject.id, { ...syncBody, dryRun: true });
+  const apply = await syncPresetVariants(targetProject.id, { ...resolvedSyncBody, dryRun: false });
+  const verificationDryRun = await syncPresetVariants(targetProject.id, { ...resolvedSyncBody, dryRun: true });
   const [targetPreset, sections] = await Promise.all([
-    findPresetForVerification(targetPresetName),
+    findPresetForVerification(resolvedSyncBody.targetPresetName),
     getSectionsForVerification(targetProject.id),
   ]);
   const verification = buildSyncPresetVariantFlowVerification({
-    targetPresetName,
+    targetPresetName: resolvedSyncBody.targetPresetName,
     verificationDryRun: toVerificationDryRun(verificationDryRun),
     sections,
     targetPreset,
@@ -263,8 +268,8 @@ export async function syncPresetVariantFlow(body: unknown) {
     dryRun: false,
     sourceProject: { id: sourceProject.id, title: sourceProject.title, updatedAt: sourceProject.updatedAt },
     targetProject: { id: targetProject.id, title: targetProject.title, updatedAt: targetProject.updatedAt },
-    sourcePresetName,
-    targetPresetName,
+    sourcePresetName: resolvedSyncBody.sourcePresetName,
+    targetPresetName: resolvedSyncBody.targetPresetName,
     initialDryRun,
     apply,
     verificationDryRun,

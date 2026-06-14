@@ -26,6 +26,12 @@ function normalizeKey(value: string | null | undefined) {
   return (value ?? "").trim().toLocaleLowerCase();
 }
 
+function isRoleCategory(category: { name: string; slug: string }) {
+  const normalizedName = normalizeKey(category.name);
+  const normalizedSlug = normalizeKey(category.slug);
+  return normalizedName === "角色" || ["character", "characters", "role", "roles"].includes(normalizedSlug);
+}
+
 function isSwitchVariantUpdate(value: unknown): value is SwitchVariantUpdate {
   if (!value || typeof value !== "object") return false;
   const update = value as Record<string, unknown>;
@@ -148,13 +154,15 @@ function parseSyncInput(body: unknown): SyncPresetVariantsInput {
   };
 }
 
-async function findPresetByNameOrSlug(nameOrSlug: string) {
-  return prisma.preset.findFirst({
+async function findPresetByNameOrSlug(nameOrSlug: string, errorPrefix: "SOURCE" | "TARGET") {
+  const normalizedInput = nameOrSlug.trim();
+  const exactPreset = await prisma.preset.findFirst({
     where: {
       isActive: true,
-      OR: [{ name: nameOrSlug }, { slug: nameOrSlug }],
+      OR: [{ name: normalizedInput }, { slug: normalizedInput }],
     },
     include: {
+      category: { select: { name: true, slug: true } },
       variants: {
         where: { isActive: true },
         orderBy: { sortOrder: "asc" },
@@ -163,6 +171,30 @@ async function findPresetByNameOrSlug(nameOrSlug: string) {
     },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
+  if (exactPreset) return exactPreset;
+
+  const partialMatches = await prisma.preset.findMany({
+    where: {
+      isActive: true,
+      OR: [{ name: { contains: normalizedInput } }, { slug: { contains: normalizedInput } }],
+    },
+    include: {
+      category: { select: { name: true, slug: true } },
+      variants: {
+        where: { isActive: true },
+        orderBy: { sortOrder: "asc" },
+        select: { id: true, name: true, slug: true },
+      },
+    },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+  });
+
+  const roleMatches = partialMatches.filter((preset) => isRoleCategory(preset.category));
+  const usableMatches = roleMatches.length > 0 ? roleMatches : partialMatches;
+  if (usableMatches.length > 1) {
+    throw new Error(`${errorPrefix}_PRESET_AMBIGUOUS`);
+  }
+  return usableMatches[0] ?? null;
 }
 
 async function getProjectSectionsForSync(projectId: string) {
@@ -201,8 +233,8 @@ export async function syncPresetVariants(targetProjectId: string, body: unknown)
   }
 
   const [sourcePreset, targetPreset, sourceProject, targetProject] = await Promise.all([
-    findPresetByNameOrSlug(input.sourcePresetName),
-    findPresetByNameOrSlug(input.targetPresetName),
+    findPresetByNameOrSlug(input.sourcePresetName, "SOURCE"),
+    findPresetByNameOrSlug(input.targetPresetName, "TARGET"),
     getProjectSectionsForSync(input.sourceProjectId),
     getProjectSectionsForSync(normalizedTargetProjectId),
   ]);
