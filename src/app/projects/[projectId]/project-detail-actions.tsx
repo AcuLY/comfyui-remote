@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Play } from "lucide-react";
 import { runSection } from "@/lib/actions";
+import { showRunSubmissionToast } from "@/lib/run-submission-toast";
 import { toast } from "sonner";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 
@@ -78,8 +79,8 @@ export function SectionRunButton({
 
     startTransition(async () => {
       try {
-        await runSection(sectionId, overrideBatchSize);
-        toast.success("已提交运行");
+        const result = await runSection(sectionId, overrideBatchSize);
+        showRunSubmissionToast(result, "已提交运行");
       } catch (e: unknown) {
         toast.error(e instanceof Error ? e.message : "运行失败");
       }

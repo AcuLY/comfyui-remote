@@ -27,10 +27,11 @@ import {
   Square,
   Play,
 } from "lucide-react";
-import { moveProjectSectionsToFolder, reorderSections, deleteSections, runSection } from "@/lib/actions";
+import { moveProjectSectionsToFolder, reorderSections, deleteSections, runSections } from "@/lib/actions";
 import { normalizeBatchRunBatchSize } from "@/lib/section-batch-run";
 import { buildGroupedDragOrder, mergeVisibleOrderIntoAllIds } from "@/lib/section-list-ordering";
 import { toast } from "sonner";
+import { showRunSubmissionToast } from "@/lib/run-submission-toast";
 import type { FolderItem } from "@/lib/server-data";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
@@ -155,12 +156,11 @@ export function SectionCards({
     setIsRunningSelected(true);
     startTransition(async () => {
       try {
-        for (const sectionId of idsToRun) {
-          await runSection(sectionId, overrideBatchSize);
-        }
+        const result = await runSections(idsToRun, overrideBatchSize);
         setSelectedIds(new Set());
         router.refresh();
-        toast.success(
+        showRunSubmissionToast(
+          result,
           overrideBatchSize
             ? `已提交 ${idsToRun.length} 个小节运行 (batch ${overrideBatchSize})`
             : `已提交 ${idsToRun.length} 个小节运行`,

@@ -6,7 +6,8 @@ import {
   enqueueProjectRuns as enqueueProjectRunsRepo,
   enqueueProjectSectionRun as enqueueProjectSectionRunRepo,
 } from "@/server/repositories/project-repository";
-import { trySubmitQueuedRunToComfyUI } from "@/server/services/run-executor";
+import { submitQueuedRunsToComfyUIWithHealthCheck } from "@/server/services/run-executor";
+import type { SubmitComfyPromptOptions } from "@/server/services/comfyui-service";
 
 type RunSectionOptions = {
   prioritize?: boolean;
@@ -16,17 +17,11 @@ type EnqueuedRun = {
   runId: string;
 };
 
-function submitQueuedRunsInBackground(
+async function submitQueuedRunsInBackground(
   runs: EnqueuedRun[],
-  optionsForRun?: (run: EnqueuedRun) => Parameters<typeof trySubmitQueuedRunToComfyUI>[1],
+  optionsForRun?: (run: EnqueuedRun) => SubmitComfyPromptOptions,
 ) {
-  void (async () => {
-    for (const enqueuedRun of runs) {
-      await trySubmitQueuedRunToComfyUI(enqueuedRun.runId, optionsForRun?.(enqueuedRun));
-    }
-  })().catch((error) => {
-    console.error("Failed to submit queued runs to ComfyUI in background:", error);
-  });
+  return submitQueuedRunsToComfyUIWithHealthCheck(runs, optionsForRun);
 }
 
 // ---------------------------------------------------------------------------
@@ -43,11 +38,64 @@ export async function runProject(
     overrideBatchSize ?? undefined,
   );
 
-  submitQueuedRunsInBackground(result.runs);
+  const submission = await submitQueuedRunsInBackground(result.runs);
 
   revalidatePath("/projects");
   revalidatePath("/queue");
 
+  return { ...result, submission };
+}
+
+export async function runSections(
+  sectionIds: string[],
+  overrideBatchSize?: number | null,
+) {
+  const uniqueSectionIds = Array.from(
+    new Set(sectionIds.map((sectionId) => sectionId.trim()).filter(Boolean)),
+  );
+
+  if (uniqueSectionIds.length === 0) {
+    const submission = await submitQueuedRunsInBackground([]);
+    return {
+      queuedRunCount: 0,
+      runs: [],
+      submission,
+    };
+  }
+
+  const sectionOwners = await prisma.projectSection.findMany({
+    where: { id: { in: uniqueSectionIds } },
+    select: { id: true, projectId: true },
+  });
+  const projectIdBySectionId = new Map(
+    sectionOwners.map((section): [string, string] => [section.id, section.projectId]),
+  );
+
+  const results = [];
+  for (const sectionId of uniqueSectionIds) {
+    const projectId = projectIdBySectionId.get(sectionId);
+    if (!projectId) continue;
+
+    results.push(
+      await enqueueProjectSectionRunRepo(
+        projectId,
+        sectionId,
+        overrideBatchSize ?? undefined,
+      ),
+    );
+  }
+
+  const runs = results.flatMap((result) => result.runs);
+  const submission = await submitQueuedRunsInBackground(runs);
+
+  revalidatePath("/projects");
+  revalidatePath("/queue");
+
+  return {
+    queuedRunCount: runs.length,
+    runs,
+    submission,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -77,10 +125,12 @@ export async function runSection(
     ? [...result.runs].reverse()
     : result.runs;
 
-  submitQueuedRunsInBackground(runsToSubmit, () => ({
+  const submission = await submitQueuedRunsInBackground(runsToSubmit, () => ({
     front: options?.prioritize === true,
   }));
 
   revalidatePath("/projects");
   revalidatePath("/queue");
+
+  return { ...result, submission };
 }

@@ -13,7 +13,28 @@ test("run actions defer ComfyUI submission failures instead of deleting queued r
   const actionSource = readSource("src/lib/actions/run-execution.ts");
   const serviceSource = readSource("src/server/services/project-service.ts");
   const executorSource = readSource("src/server/services/run-executor.ts");
+  const comfyServiceSource = readSource("src/server/services/comfyui-service.ts");
 
+  assert.match(
+    comfyServiceSource,
+    /export async function checkComfyUIReachability/,
+    "ComfyUI service should expose a reusable reachability check",
+  );
+  assert.match(
+    executorSource,
+    /export async function submitQueuedRunsToComfyUIWithHealthCheck/,
+    "run-executor should expose a batch helper that checks ComfyUI once before submitting queued runs",
+  );
+  assert.match(
+    executorSource,
+    /function scheduleDeferredQueuedRunSubmissionRecovery/,
+    "deferred batches should schedule automatic recovery when ComfyUI becomes reachable",
+  );
+  assert.match(
+    executorSource,
+    /scheduleDeferredQueuedRunSubmissionRecovery\(runs\.map\(\(run\) => run\.runId\)\)/,
+    "unreachable precheck should schedule the affected queued runs for later submission",
+  );
   assert.match(
     executorSource,
     /export async function trySubmitQueuedRunToComfyUI/,
@@ -31,13 +52,13 @@ test("run actions defer ComfyUI submission failures instead of deleting queued r
   );
   assert.match(
     actionSource,
-    /trySubmitQueuedRunToComfyUI\(enqueuedRun\.runId/,
-    "server actions should use the shared submission helper",
+    /submitQueuedRunsToComfyUIWithHealthCheck\(runs/,
+    "server actions should use the batch submission helper",
   );
   assert.match(
     serviceSource,
-    /trySubmitQueuedRunToComfyUI\(enqueuedRun\.runId/,
-    "API and agent services should use the shared submission helper",
+    /submitQueuedRunsToComfyUIWithHealthCheck\(runs/,
+    "API and agent services should use the batch submission helper",
   );
   assert.doesNotMatch(
     actionSource,
@@ -48,6 +69,57 @@ test("run actions defer ComfyUI submission failures instead of deleting queued r
     serviceSource,
     /run\.delete/,
     "API and agent services must not delete the queued run when ComfyUI submission fails",
+  );
+});
+
+test("batch run actions and toasts report ComfyUI outage once", () => {
+  const actionSource = readSource("src/lib/actions/run-execution.ts");
+  const sectionCardsSource = readSource("src/app/projects/[projectId]/section-cards.tsx");
+  const projectActionsSource = readSource("src/app/projects/[projectId]/project-detail-actions.tsx");
+  const projectSidebarSource = readSource("src/app/projects/[projectId]/app-sidebar.tsx");
+  const resultsGridSource = readSource("src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx");
+  const queuePageSource = readSource("src/app/queue/queue-page-client.tsx");
+  const toastSource = readSource("src/lib/run-submission-toast.ts");
+
+  assert.match(
+    actionSource,
+    /export async function runSections/,
+    "selected-section batch run should use one server action so ComfyUI is checked once for the whole batch",
+  );
+  assert.doesNotMatch(
+    sectionCardsSource,
+    /for \(const sectionId of idsToRun\)[\s\S]*runSection\(sectionId/,
+    "selected-section batch run should not call runSection once per selected section",
+  );
+  assert.match(
+    sectionCardsSource,
+    /runSections\(idsToRun,\s*overrideBatchSize\)/,
+    "selected-section batch run should call the batch action",
+  );
+
+  for (const [name, source] of [
+    ["section cards", sectionCardsSource],
+    ["project run button", projectActionsSource],
+    ["project sidebar", projectSidebarSource],
+    ["results quick run", resultsGridSource],
+    ["queue retry", queuePageSource],
+  ] as const) {
+    assert.match(
+      source,
+      /showRunSubmissionToast/,
+      `${name} should surface the deferred submission toast`,
+    );
+  }
+
+  assert.match(
+    toastSource,
+    /toast\.warning\("ComfyUI 未启动，任务已加入队列"/,
+    "deferred submissions should show the ComfyUI-not-started notification",
+  );
+  assert.match(
+    toastSource,
+    /ComfyUI 可达后会自动恢复/,
+    "deferred submission notification should tell the user recovery is automatic",
   );
 });
 

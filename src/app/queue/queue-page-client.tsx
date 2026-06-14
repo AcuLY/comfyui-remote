@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
 import { cancelRun, runSection, clearRuns, clearActiveRuns, clearTrash, restoreImage, pauseRun, resumeRun, pauseAllRuns, resumeAllRuns } from "@/lib/actions";
+import { showRunSubmissionToast } from "@/lib/run-submission-toast";
 import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem, CensoringProgressItem, CensoringHistoryItem } from "@/lib/types";
 
 export type QueueTabKey = "pending" | "running" | "failed" | "censoring" | "trash";
@@ -869,8 +870,8 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                     disabled={isPending}
                     onClick={() => {
                       startTransition(async () => {
-                        await runSection(run.sectionId);
-                        toast.success(`已重新提交「${run.sectionName}」`);
+                        const result = await runSection(run.sectionId);
+                        showRunSubmissionToast(result, `已重新提交「${run.sectionName}」`);
                         refresh();
                       });
                     }}

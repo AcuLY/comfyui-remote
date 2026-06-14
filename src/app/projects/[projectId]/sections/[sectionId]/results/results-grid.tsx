@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { trashImages, runSection, censorImage } from "@/lib/actions";
+import { showRunSubmissionToast } from "@/lib/run-submission-toast";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { ResultsGalleryProvider } from "./results-gallery";
@@ -85,8 +86,8 @@ export function ResultsGrid({
     if (isPending) return;
     startTransition(async () => {
       try {
-        await runSection(sectionId, tempBatchSize, { prioritize: true });
-        toast.success(`已提交运行 (batch ${tempBatchSize})`);
+        const result = await runSection(sectionId, tempBatchSize, { prioritize: true });
+        showRunSubmissionToast(result, `已提交运行 (batch ${tempBatchSize})`);
         router.refresh();
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "运行失败");

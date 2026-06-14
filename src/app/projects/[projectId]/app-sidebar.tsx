@@ -17,6 +17,7 @@ import {
   runProject,
   saveProjectAsTemplate,
 } from "@/lib/actions";
+import { showRunSubmissionToast } from "@/lib/run-submission-toast";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { exportProjectImages } from "@/app/projects/actions-export";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
@@ -99,8 +100,8 @@ export function AppSidebar({
       parsed && Number.isInteger(parsed) && parsed >= 1 ? parsed : undefined;
     startTransition(async () => {
       try {
-        await runProject(projectId, overrideBatchSize);
-        toast.success("已提交运行");
+        const result = await runProject(projectId, overrideBatchSize);
+        showRunSubmissionToast(result, "已提交运行");
       } catch (e: unknown) {
         toast.error(e instanceof Error ? e.message : "运行失败");
       }

@@ -7,21 +7,11 @@
 import { fail, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
-
-async function pingComfyUI(): Promise<boolean> {
-  try {
-    const res = await fetch(`${env.comfyApiUrl}/system_stats`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
+import { checkComfyUIReachability } from "@/server/services/comfyui-service";
 
 export async function GET() {
   try {
-    const [queuedCount, runningCount, recentDone, recentFailed, comfyReachable] =
+    const [queuedCount, runningCount, recentDone, recentFailed, comfyReachability] =
       await Promise.all([
         prisma.run.count({ where: { status: "queued" } }),
         prisma.run.count({ where: { status: "running" } }),
@@ -43,12 +33,12 @@ export async function GET() {
             project: { select: { title: true } },
           },
         }),
-        pingComfyUI(),
+        checkComfyUIReachability(),
       ]);
 
     return ok({
       comfyui: {
-        reachable: comfyReachable,
+        reachable: comfyReachability.reachable,
         url: env.comfyApiUrl,
       },
       queue: {

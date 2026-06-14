@@ -22,6 +22,7 @@ import {
   extractOutputDir,
   extractExecutionMeta,
   getComfyQueuePosition,
+  checkComfyUIReachability,
   ComfyPromptPollAbortedError,
   type SubmitComfyPromptOptions,
   type ValidatedComfyPromptDraft,
@@ -33,7 +34,7 @@ import {
 } from "@/server/services/image-result-service";
 import { resolveProjectPath } from "@/server/services/runtime-data-path";
 import { rm } from "node:fs/promises";
-import { audit } from "@/server/services/audit-service";
+import { audit, auditMany } from "@/server/services/audit-service";
 import { buildComfyPromptDraft } from "@/server/worker/payload-builder";
 import {
   completeWorkerRun,
@@ -177,6 +178,133 @@ export type QueuedRunSubmissionOutcome =
   | { status: "submitted"; runId: string; comfyPromptId: string }
   | { status: "deferred"; runId: string; errorMessage: string }
   | { status: "missing"; runId: string };
+
+export type QueuedRunForSubmission = {
+  runId: string;
+};
+
+export type QueuedRunSubmissionBatchOutcome =
+  | {
+      status: "empty";
+      queuedRunCount: 0;
+      submittedRunCount: 0;
+      deferredRunCount: 0;
+    }
+  | {
+      status: "submitting";
+      queuedRunCount: number;
+      submittedRunCount: number;
+      deferredRunCount: 0;
+    }
+  | {
+      status: "deferred";
+      queuedRunCount: number;
+      submittedRunCount: 0;
+      deferredRunCount: number;
+      errorMessage: string;
+    };
+
+const DEFERRED_SUBMISSION_RECOVERY_INTERVAL_MS = 10_000;
+const deferredQueuedRunSubmissionIds = new Set<string>();
+let deferredQueuedRunSubmissionRecoveryTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleDeferredQueuedRunSubmissionRecovery(runIds: string[]) {
+  for (const runId of runIds) {
+    deferredQueuedRunSubmissionIds.add(runId);
+  }
+
+  if (deferredQueuedRunSubmissionIds.size === 0 || deferredQueuedRunSubmissionRecoveryTimer) {
+    return;
+  }
+
+  deferredQueuedRunSubmissionRecoveryTimer = setTimeout(() => {
+    deferredQueuedRunSubmissionRecoveryTimer = null;
+    void recoverDeferredQueuedRunSubmissions();
+  }, DEFERRED_SUBMISSION_RECOVERY_INTERVAL_MS);
+  const maybeNodeTimer = deferredQueuedRunSubmissionRecoveryTimer as { unref?: () => void };
+  maybeNodeTimer.unref?.();
+}
+
+async function recoverDeferredQueuedRunSubmissions() {
+  if (deferredQueuedRunSubmissionIds.size === 0) {
+    return;
+  }
+
+  const reachability = await checkComfyUIReachability();
+  if (!reachability.reachable) {
+    scheduleDeferredQueuedRunSubmissionRecovery([]);
+    return;
+  }
+
+  const runIds = Array.from(deferredQueuedRunSubmissionIds);
+  deferredQueuedRunSubmissionIds.clear();
+
+  for (const runId of runIds) {
+    await trySubmitQueuedRunToComfyUI(runId);
+  }
+}
+
+export async function submitQueuedRunsToComfyUIWithHealthCheck<T extends QueuedRunForSubmission>(
+  runs: T[],
+  optionsForRun?: (run: T) => SubmitComfyPromptOptions,
+): Promise<QueuedRunSubmissionBatchOutcome> {
+  if (runs.length === 0) {
+    return {
+      status: "empty",
+      queuedRunCount: 0,
+      submittedRunCount: 0,
+      deferredRunCount: 0,
+    };
+  }
+
+  const reachability = await checkComfyUIReachability();
+
+  if (!reachability.reachable) {
+    const errorMessage = reachability.errorMessage;
+    log.warn("ComfyUI unavailable; queued runs will remain deferred", {
+      queuedRunCount: runs.length,
+      error: errorMessage,
+    });
+    auditMany(
+      runs.map((run) => ({
+        entityType: "Run" as const,
+        entityId: run.runId,
+        action: "executor.submit_deferred" as const,
+        payload: {
+          reason: "comfyui_unreachable_precheck",
+          errorMessage,
+        },
+      })),
+    );
+    scheduleDeferredQueuedRunSubmissionRecovery(runs.map((run) => run.runId));
+
+    return {
+      status: "deferred",
+      queuedRunCount: runs.length,
+      submittedRunCount: 0,
+      deferredRunCount: runs.length,
+      errorMessage,
+    };
+  }
+
+  void (async () => {
+    for (const enqueuedRun of runs) {
+      await trySubmitQueuedRunToComfyUI(enqueuedRun.runId, optionsForRun?.(enqueuedRun));
+    }
+  })().catch((error) => {
+    log.error(
+      "Failed to submit queued runs to ComfyUI in background",
+      error instanceof Error ? error : new Error(String(error)),
+    );
+  });
+
+  return {
+    status: "submitting",
+    queuedRunCount: runs.length,
+    submittedRunCount: runs.length,
+    deferredRunCount: 0,
+  };
+}
 
 export async function trySubmitQueuedRunToComfyUI(
   runId: string,
@@ -605,8 +733,19 @@ export async function recoverStaleRuns(): Promise<void> {
       take: 10,
     });
 
-    for (const run of unsubmittedQueuedRuns) {
-      await trySubmitQueuedRunToComfyUI(run.id);
+    if (unsubmittedQueuedRuns.length > 0) {
+      const reachability = await checkComfyUIReachability();
+
+      if (reachability.reachable) {
+        for (const run of unsubmittedQueuedRuns) {
+          await trySubmitQueuedRunToComfyUI(run.id);
+        }
+      } else {
+        log.debug("Skipping queued run recovery while ComfyUI is unreachable", {
+          queuedRunCount: unsubmittedQueuedRuns.length,
+          error: reachability.errorMessage,
+        });
+      }
     }
 
     if (staleRuns.length === 0) return;

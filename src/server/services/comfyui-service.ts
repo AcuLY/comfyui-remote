@@ -73,6 +73,10 @@ export type ValidatedComfyPromptDraft = {
   extraData: JsonRecord;
 };
 
+export type ComfyUIReachabilityResult =
+  | { reachable: true }
+  | { reachable: false; errorMessage: string };
+
 function asRecord(value: unknown): JsonRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     return null;
@@ -100,6 +104,10 @@ function normalizeApiUrl(apiUrl: string) {
 }
 
 function formatUnknownValue(value: unknown) {
+  if (value instanceof Error) {
+    return value.message;
+  }
+
   if (typeof value === "string") {
     return value.length > 500 ? `${value.slice(0, 497)}...` : value;
   }
@@ -111,6 +119,43 @@ function formatUnknownValue(value: unknown) {
       : serializedValue;
   } catch {
     return String(value);
+  }
+}
+
+export async function checkComfyUIReachability(
+  apiUrl = env.comfyApiUrl,
+  timeoutMs = 5000,
+): Promise<ComfyUIReachabilityResult> {
+  let normalizedApiUrl: string;
+
+  try {
+    normalizedApiUrl = normalizeApiUrl(apiUrl);
+  } catch (error) {
+    return {
+      reachable: false,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  try {
+    const response = await fetch(`${normalizedApiUrl}/system_stats`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (!response.ok) {
+      return {
+        reachable: false,
+        errorMessage: `ComfyUI status check failed with ${response.status}: ${response.statusText}`,
+      };
+    }
+
+    return { reachable: true };
+  } catch (error) {
+    return {
+      reachable: false,
+      errorMessage: `ComfyUI is not reachable: ${formatUnknownValue(error)}`,
+    };
   }
 }
 

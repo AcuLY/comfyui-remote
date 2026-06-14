@@ -13,7 +13,7 @@ import {
 } from "@/server/repositories/project-repository";
 import { audit } from "@/server/services/audit-service";
 import {
-  trySubmitQueuedRunToComfyUI,
+  submitQueuedRunsToComfyUIWithHealthCheck,
 } from "@/server/services/run-executor";
 import {
   ServiceValidationError,
@@ -31,14 +31,8 @@ type EnqueuedRun = {
   runId: string;
 };
 
-function submitQueuedRunsInBackground(runs: EnqueuedRun[]) {
-  void (async () => {
-    for (const enqueuedRun of runs) {
-      await trySubmitQueuedRunToComfyUI(enqueuedRun.runId);
-    }
-  })().catch((error) => {
-    log.error("Failed to submit queued runs to ComfyUI in background", error);
-  });
+async function submitQueuedRunsInBackground(runs: EnqueuedRun[]) {
+  return submitQueuedRunsToComfyUIWithHealthCheck(runs);
 }
 
 type CreateProjectRequestBody = {
@@ -514,9 +508,9 @@ export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: 
   log.info("Project runs enqueued", { projectId: normalizedId, queuedRunCount: result.queuedRunCount });
   audit("Project", normalizedId, "enqueue", { queuedRunCount: result.queuedRunCount }, actorType);
 
-  submitQueuedRunsInBackground(result.runs);
+  const submission = await submitQueuedRunsInBackground(result.runs);
 
-  return result;
+  return { ...result, submission };
 }
 
 export async function copyProject(projectId: string, actorType: ActorType = ActorType.user) {
@@ -546,9 +540,9 @@ export async function enqueueProjectSectionRun(
   );
   audit("ProjectSection", normalizedSectionId, "enqueue", { projectId: normalizedProjectId }, actorType);
 
-  submitQueuedRunsInBackground(result.runs);
+  const submission = await submitQueuedRunsInBackground(result.runs);
 
-  return result;
+  return { ...result, submission };
 }
 
 export function mapProjectError(error: unknown) {
