@@ -560,6 +560,25 @@ test("training dataset page starts training through the formal HTTP API on produ
   assert.match(datasetPageSource, /pushToast/, "dataset page should surface API success or failure through the shared feedback system");
 });
 
+test("training dataset page gates start-training behind readiness and active-run checks", () => {
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(revisionPageStart, -1);
+
+  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+
+  assert.match(datasetPageSource, /const training = useTraining\(data\)/, "dataset page should inspect the full training run list for gating");
+  assert.match(datasetPageSource, /run\.kind === "training"/, "dataset gating should only consider training runs");
+  assert.match(datasetPageSource, /run\.projectId === project\.id/, "dataset gating should stay scoped to the active project");
+  assert.match(datasetPageSource, /run\.status === "queued" \|\| run\.status === "running"/, "dataset gating should block when a training run is queued or running");
+  assert.match(datasetPageSource, /const startTrainingBlockedReason =/, "dataset page should define a shared blocked-start reason");
+  assert.match(datasetPageSource, /同一训练项目不能同时存在多个进行中训练任务/, "dataset page should explain why concurrent training is blocked");
+  assert.match(datasetPageSource, /至少保留 1 张训练图片后才能启动训练/, "dataset page should explain the missing-kept-results gate");
+  assert.match(datasetPageSource, /请先补齐/, "dataset page should explain the missing-caption gate");
+  assert.match(datasetPageSource, /disabled=\{Boolean\(startTrainingBlockedReason\) \|\| isStartingTraining\}/, "start training button should disable when readiness gating blocks it");
+});
+
 test("training dataset page freezes the current dataset version through the formal HTTP API on production routes", () => {
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
   const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");

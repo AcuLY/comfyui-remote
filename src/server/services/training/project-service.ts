@@ -311,6 +311,10 @@ export async function listManagedTrainingRuns() {
   return readFallbackTrainingRuns();
 }
 
+function isActiveManagedTrainingRun(run: LoraTrainingRun) {
+  return run.kind === "training" && (run.status === "queued" || run.status === "running");
+}
+
 export async function getManagedTrainingRun(runId: string) {
   const runs = await readFallbackTrainingRuns();
   return runs.find((run) => run.id === runId) ?? null;
@@ -1082,6 +1086,19 @@ export async function enqueueManagedTrainingRun(
     })),
   };
 
+  await withRunStoreWriteLock(async () => {
+    const runs = await readFallbackTrainingRuns();
+    const activeRun = runs.find((existingRun) => existingRun.projectId === projectId && isActiveManagedTrainingRun(existingRun));
+    if (activeRun) {
+      throw new TrainingProjectServiceError("Training project already has an active training run", 409, {
+        projectId,
+        activeRunId: activeRun.id,
+        status: activeRun.status,
+      });
+    }
+    await writeFallbackTrainingRuns([run, ...runs]);
+  });
+
   await withProjectStoreWriteLock(async () => {
     const projects = await readFallbackTrainingProjects();
     const currentIndex = projects.findIndex((item) => item.id === projectId);
@@ -1100,11 +1117,6 @@ export async function enqueueManagedTrainingRun(
       };
       await writeFallbackTrainingProjects(next);
     }
-  });
-
-  await withRunStoreWriteLock(async () => {
-    const runs = await readFallbackTrainingRuns();
-    await writeFallbackTrainingRuns([run, ...runs]);
   });
 
   return run;

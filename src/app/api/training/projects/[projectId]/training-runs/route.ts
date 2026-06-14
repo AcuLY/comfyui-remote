@@ -47,6 +47,12 @@ export async function POST(
     }
     const revisionId = typeof body.revisionId === "string" && body.revisionId.trim() ? body.revisionId.trim() : null;
     const config = typeof body.config === "object" && body.config ? body.config : {};
+    const enqueueInput = {
+      ...body,
+      ...(typeof config === "object" && config ? config : {}),
+    };
+    delete enqueueInput.revisionId;
+    delete enqueueInput.config;
 
     const resolvedRevisionId = revisionId ?? await (async () => {
       const frozen = await freezeCharacterLoraDataset(projectId, {});
@@ -56,7 +62,7 @@ export async function POST(
       return frozen.revision.id;
     })();
 
-    const data = await enqueueCharacterLoraTrainingRun(resolvedRevisionId, config);
+    const data = await enqueueCharacterLoraTrainingRun(resolvedRevisionId, enqueueInput);
     return ok(data, { status: 201 });
   } catch (error) {
     const managedMapped = mapTrainingProjectError(error);

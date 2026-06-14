@@ -3816,6 +3816,27 @@ test("managed training project can enqueue generation, freeze dataset, and start
   assert.equal(trainingPayload.data.kind, "training");
   assert.equal(trainingPayload.data.datasetRevisionId, revisionId);
 
+  const duplicateTrainingResponse = await trainingRunRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/training-runs`, {
+      method: "POST",
+      body: JSON.stringify({
+        revisionId,
+        config: {
+          overrides: {
+            ordinary: {
+              targetSteps: 2400,
+            },
+          },
+        },
+      }),
+    }),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const duplicateTrainingPayload = await duplicateTrainingResponse.json();
+  assert.equal(duplicateTrainingResponse.status, 409);
+  assert.equal(duplicateTrainingPayload.ok, false);
+  assert.match(String(duplicateTrainingPayload.error?.message ?? ""), /active training run/i);
+
   const trainingRunId = trainingPayload.data.id as string;
   const trainingDetailResponse = await trainingRunDetailRoute.GET(
     new Request(`http://localhost/api/training/training-runs/${trainingRunId}`),

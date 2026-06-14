@@ -3074,6 +3074,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
   const router = useRouter();
   const { pushToast } = useDemoFeedback();
   const hrefForRoute = useRouteHref();
+  const training = useTraining(data);
   const project = findProject(data, projectId);
   const [datasetResultState, setDatasetResultState] = useState<{
     hasOverride: boolean;
@@ -3124,6 +3125,26 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
   const datasetRevisions = hasDatasetRevisionOverride ? (datasetRevisionState.revisions ?? project.datasetRevisions) : project.datasetRevisions;
   const trainingDraft = trainingDraftState.projectId === project.id ? trainingDraftState.draft : null;
   const latestRevision = datasetRevisions[0] ?? null;
+  const activeTrainingRuns = training.runs.filter((run) =>
+    run.kind === "training"
+    && run.projectId === project.id
+    && (run.status === "queued" || run.status === "running"));
+  const activeTrainingRun = activeTrainingRuns[0] ?? null;
+  const hasActiveTrainingRun = activeTrainingRuns.length > 0;
+  const startTrainingBlockedReason = hasActiveTrainingRun
+    ? `同一训练项目不能同时存在多个进行中训练任务。当前任务：${activeTrainingRun?.title ?? "训练中"}`
+    : keptCount === 0
+      ? "至少保留 1 张训练图片后才能启动训练。"
+      : captionMissingCount > 0
+        ? `还有 ${captionMissingCount} 张保留图片缺少说明文本，请先补齐。`
+        : null;
+  const startTrainingActionLabel = hasActiveTrainingRun
+    ? "训练进行中"
+    : startTrainingBlockedReason
+      ? "准备数据集"
+      : trainingDraft
+        ? "更新训练草稿"
+        : "启动训练";
 
   async function handleGenerateDatasetCaptions() {
     if (isGeneratingDatasetCaptions || captionMissingCount === 0) return;
@@ -3253,6 +3274,15 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
   }
 
   async function handleOpenTrainingDraft() {
+    if (startTrainingBlockedReason) {
+      pushToast({
+        tone: "warning",
+        title: hasActiveTrainingRun ? "训练任务已在进行中" : "请先准备数据集",
+        detail: startTrainingBlockedReason,
+      });
+      return;
+    }
+
     const nextDraft = {
       draft: {
         captionMissingCount,
@@ -3338,10 +3368,11 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
             <Button
               tone="primary"
               icon={Play}
-              pending={isStartingTraining}
+              disabled={Boolean(startTrainingBlockedReason) || isStartingTraining}
+              pending={!startTrainingBlockedReason && isStartingTraining}
               onClick={handleOpenTrainingDraft}
             >
-              {trainingDraft ? "更新训练草稿" : "启动训练"}
+              {startTrainingActionLabel}
             </Button>
           </>
         )}
@@ -3354,6 +3385,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
             <span><strong>{datasetVersion}</strong> 当前版本</span>
           </div>
           <p className={s.bodyText}>准备信息保持在训练入口附近，完整样本与冻结快照继续由下方草稿和版本列表承载。</p>
+          {startTrainingBlockedReason ? <p className={s.bodyText}>{startTrainingBlockedReason}</p> : null}
         </Panel>
         <Panel title="冻结版本">
           <div className={s.entityRowsSurface}>
