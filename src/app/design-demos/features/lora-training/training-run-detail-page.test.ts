@@ -136,6 +136,16 @@ test("completed image generation detail reviews outputs through the formal HTTP 
   assert.match(detailSource, /pushToast/, "generation output review should surface API success or failure through the shared feedback system");
 });
 
+test("completed image generation detail can apply outputs to project reference images through the formal HTTP API", () => {
+  assert.match(detailSource, /appliedGenerationOutputState/, "generation detail should keep local state for outputs applied to reference images");
+  assert.match(detailSource, /handleApplyGenerationOutput/, "generation detail should define an explicit apply-output handler");
+  assert.match(detailSource, /fetch\(`\/api\/training\/generation-outputs\/\$\{resultId\}\/apply`/, "generation output apply should call the formal training generation-output API");
+  assert.match(detailSource, /targetEntityType:\s*"reference_image"/, "generation output apply should target reference-image application");
+  assert.match(detailSource, /targetEntityId:\s*currentRun\.projectId/, "generation output apply should scope the target to the current project");
+  assert.match(detailSource, /已加入资料图/, "generation output apply should expose a visible applied state");
+  assert.match(detailSource, /pushToast/, "generation output apply should surface API success or failure through the shared feedback system");
+});
+
 test("image generation detail prioritizes output before final input", () => {
   const detailGridStart = detailSource.indexOf(`<div className={s.detailGrid}>`);
   const evidenceGridStart = detailSource.indexOf(`<div className={s.trainingEvidenceGrid}>`, detailGridStart);
@@ -162,6 +172,7 @@ test("training run detail repeated object actions include the acted-on object na
 
   assert.match(outputGridSource, /ariaLabel=\{`保留生成输出：\$\{activeResult\.sourceLabel\}`\}/, "keep action should name the active output");
   assert.match(outputGridSource, /ariaLabel=\{`拒绝生成输出：\$\{activeResult\.sourceLabel\}`\}/, "reject action should name the active output");
+  assert.match(outputGridSource, /ariaLabel=\{`加入资料图：\$\{activeResult\.sourceLabel\}`\}/, "apply-to-reference action should name the active output");
   assert.match(detailPageSource, /ariaLabel=\{`打开生成任务小节：\$\{currentRun\.title\}`\}/, "section jump should name the run context");
   assert.match(detailPageSource, /ariaLabel=\{`查看生成任务结果：\$\{currentRun\.title\}`\}/, "results jump should name the run context");
   assert.match(detailPageSource, /ariaLabel=\{`打开任务项目：\$\{currentRun\.projectTitle\}`\}/, "project jump should name the target project");

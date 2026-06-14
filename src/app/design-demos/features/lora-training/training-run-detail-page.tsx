@@ -162,13 +162,19 @@ async function copyTextWithFallback(text: string) {
 
 function GenerationOutputGrid({
   activeResultId,
+  appliedResultIds,
   onActiveResultChange,
+  onApplyReference,
   onReviewStatusChange,
+  pendingApplyResultIds,
   results,
 }: {
   activeResultId: string | null;
+  appliedResultIds: Set<string>;
   onActiveResultChange: (resultId: string | null) => void;
+  onApplyReference: (resultId: string) => void;
   onReviewStatusChange: (resultId: string, status: LoraTrainingReviewStatus) => void;
+  pendingApplyResultIds: Set<string>;
   results: LoraTrainingImageResult[];
 }) {
   const activeResult = activeResultId ? results.find((result) => result.id === activeResultId) ?? null : null;
@@ -198,6 +204,7 @@ function GenerationOutputGrid({
             <span className={s.generationOutputMeta}>
               <strong>{result.sourceLabel}</strong>
               <StatusBadge status={reviewStatusTone(result.reviewStatus)} label={reviewStatusLabel(result.reviewStatus)} />
+              {appliedResultIds.has(result.id) ? <StatusBadge status="ready" label="已加入资料图" /> : null}
             </span>
             <p className={s.generationOutputCaption}>{result.caption}</p>
           </article>
@@ -213,6 +220,15 @@ function GenerationOutputGrid({
           onPrevious={activeResultIndex >= 0 ? () => moveActiveResult(-1) : undefined}
           actions={(
             <>
+              <Button
+                icon={ImagePlus}
+                pending={pendingApplyResultIds.has(activeResult.id)}
+                disabled={appliedResultIds.has(activeResult.id)}
+                ariaLabel={`加入资料图：${activeResult.sourceLabel}`}
+                onClick={() => onApplyReference(activeResult.id)}
+              >
+                {appliedResultIds.has(activeResult.id) ? "已加入资料图" : "加入资料图"}
+              </Button>
               <Button icon={Check} ariaLabel={`保留生成输出：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange(activeResult.id, "kept")}>
                 保留
               </Button>
@@ -243,6 +259,15 @@ export function LoraTrainingRunDetailPage({
   const [activeGenerationResultId, setActiveGenerationResultId] = useState<string | null>(null);
   const [copiedCaption, setCopiedCaption] = useState<CopiedCaptionState | null>(null);
   const [resultReviewState, setResultReviewState] = useState<Record<string, LoraTrainingReviewStatus>>({});
+  const [appliedGenerationOutputState, setAppliedGenerationOutputState] = useState<{
+    appliedResultIds: Set<string>;
+    pendingResultIds: Set<string>;
+    runId: string | null;
+  }>({
+    appliedResultIds: new Set<string>(),
+    pendingResultIds: new Set<string>(),
+    runId: null,
+  });
   const [retryDraft, setRetryDraft] = useState<RetryDraft | null>(null);
   const [cancelledRunId, setCancelledRunId] = useState<string | null>(null);
   const [isQueueingRetry, setIsQueueingRetry] = useState(false);
@@ -266,6 +291,12 @@ export function LoraTrainingRunDetailPage({
   const inputImages = isGeneration ? currentRun.inputImages ?? [] : [];
   const generationOutputResults = generationResultsForRun(currentRun, project, resultReviewState);
   const generationOutputSection = isGeneration ? generationOutputResults[0] ?? null : null;
+  const appliedGenerationOutputIds = appliedGenerationOutputState.runId === currentRun.id
+    ? appliedGenerationOutputState.appliedResultIds
+    : new Set<string>();
+  const pendingGenerationOutputApplyIds = appliedGenerationOutputState.runId === currentRun.id
+    ? appliedGenerationOutputState.pendingResultIds
+    : new Set<string>();
   const generationSectionHref = generationOutputSection ? `${projectHref}/sections/${generationOutputSection.sectionId}` : null;
   const generationResultsHref = generationSectionHref ? `${generationSectionHref}#section-results` : null;
   const activeSample = activeSampleState?.runId === currentRun.id ? datasetSamples[activeSampleState.index] ?? null : null;
@@ -426,6 +457,105 @@ export function LoraTrainingRunDetailPage({
       });
     } finally {
       setIsReviewingGenerationOutput(false);
+    }
+  }
+
+  async function handleApplyGenerationOutput(resultId: string) {
+    const appliedResult = generationOutputResults.find((result) => result.id === resultId);
+
+    const applyLocalState = () => {
+      setAppliedGenerationOutputState((current) => {
+        const active = current.runId === currentRun.id ? current : {
+          appliedResultIds: new Set<string>(),
+          pendingResultIds: new Set<string>(),
+          runId: currentRun.id,
+        };
+        const nextApplied = new Set(active.appliedResultIds);
+        nextApplied.add(resultId);
+        const nextPending = new Set(active.pendingResultIds);
+        nextPending.delete(resultId);
+        return {
+          appliedResultIds: nextApplied,
+          pendingResultIds: nextPending,
+          runId: currentRun.id,
+        };
+      });
+    };
+
+    if (appliedGenerationOutputIds.has(resultId) || pendingGenerationOutputApplyIds.has(resultId)) {
+      return;
+    }
+
+    if (!isProductionTrainingRoute) {
+      applyLocalState();
+      pushToast({
+        tone: "success",
+        title: "生成输出已加入资料图",
+        detail: appliedResult?.sourceLabel ?? currentRun.title,
+      });
+      return;
+    }
+
+    setAppliedGenerationOutputState((current) => {
+      const active = current.runId === currentRun.id ? current : {
+        appliedResultIds: new Set<string>(),
+        pendingResultIds: new Set<string>(),
+        runId: currentRun.id,
+      };
+      return {
+        appliedResultIds: active.appliedResultIds,
+        pendingResultIds: new Set([...active.pendingResultIds, resultId]),
+        runId: currentRun.id,
+      };
+    });
+
+    try {
+      const response = await fetch(`/api/training/generation-outputs/${resultId}/apply`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          targetEntityType: "reference_image",
+          targetEntityId: currentRun.projectId,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "加入资料图失败",
+          detail: payload?.error?.message ?? "生成输出应用请求失败",
+        });
+        return;
+      }
+
+      applyLocalState();
+      pushToast({
+        tone: "success",
+        title: "生成输出已加入资料图",
+        detail: appliedResult?.sourceLabel ?? currentRun.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "加入资料图失败",
+        detail: error instanceof Error ? error.message : "生成输出应用请求失败",
+      });
+    } finally {
+      setAppliedGenerationOutputState((current) => {
+        const active = current.runId === currentRun.id ? current : {
+          appliedResultIds: new Set<string>(),
+          pendingResultIds: new Set<string>(),
+          runId: currentRun.id,
+        };
+        const nextPending = new Set(active.pendingResultIds);
+        nextPending.delete(resultId);
+        return {
+          appliedResultIds: active.appliedResultIds,
+          pendingResultIds: nextPending,
+          runId: currentRun.id,
+        };
+      });
     }
   }
 
@@ -600,8 +730,11 @@ export function LoraTrainingRunDetailPage({
             {isGeneration && currentRun.status === "completed" ? (
               <GenerationOutputGrid
                 activeResultId={activeGenerationResultId}
+                appliedResultIds={appliedGenerationOutputIds}
                 onActiveResultChange={setActiveGenerationResultId}
+                onApplyReference={handleApplyGenerationOutput}
                 onReviewStatusChange={handleReviewGenerationOutput}
+                pendingApplyResultIds={pendingGenerationOutputApplyIds}
                 results={generationOutputResults}
               />
             ) : null}
