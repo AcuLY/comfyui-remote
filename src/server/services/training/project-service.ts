@@ -679,6 +679,15 @@ export async function getManagedTrainingImageResult(imageResultId: string) {
   return owner?.result ?? null;
 }
 
+export async function getManagedTrainingImageResultContext(imageResultId: string) {
+  const owner = await findManagedResultOwner(imageResultId);
+  if (!owner) return null;
+  return {
+    project: owner.project,
+    result: owner.result,
+  };
+}
+
 function normalizeManagedReferenceKind(value: string | undefined, fallback: LoraTrainingReferenceImage["kind"]) {
   if (value === "original" || value === "generated" || value === "auxiliary") {
     return value;
