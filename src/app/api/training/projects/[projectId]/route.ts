@@ -4,6 +4,10 @@ import {
   mapTrainingReadError,
 } from "@/server/services/training/read-service";
 import {
+  mapTrainingProjectError,
+  updateManagedTrainingProject,
+} from "@/server/services/training/project-service";
+import {
   mapCharacterLoraTrainingJobError,
   updateCharacterLoraTrainingJob,
 } from "@/server/services/character-lora-training/job-service";
@@ -38,9 +42,17 @@ export async function PATCH(
 
   try {
     const { projectId } = await params;
+    const managed = await updateManagedTrainingProject(projectId, body);
+    if (managed) {
+      return ok(managed);
+    }
     const data = await updateCharacterLoraTrainingJob(projectId, body);
     return ok(data);
   } catch (error) {
+    const managedMapped = mapTrainingProjectError(error);
+    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
+      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
+    }
     const mapped = mapCharacterLoraTrainingJobError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }

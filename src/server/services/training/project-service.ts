@@ -78,6 +78,15 @@ export class TrainingProjectServiceError extends Error {
   }
 }
 
+const managedProjectUpdateSchema = z.object({
+  title: z.string().trim().min(1).max(160).optional(),
+  characterName: z.string().trim().min(1).max(160).optional(),
+  projectName: z.string().trim().min(1).max(160).optional(),
+  usagePrompt: z.string().trim().max(20_000).optional(),
+  detailPrompt: z.string().trim().max(20_000).optional(),
+  profileSummary: z.string().trim().max(20_000).optional(),
+}).strict();
+
 function shouldUseTrainingProjectFileFallback(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return /MODEL_BASE_DIR is not configured|Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003/i.test(message);
@@ -309,6 +318,41 @@ export async function getManagedTrainingRun(runId: string) {
 export async function getManagedTrainingProject(projectId: string) {
   const projects = await readFallbackTrainingProjects();
   return projects.find((project) => project.id === projectId) ?? null;
+}
+
+export async function updateManagedTrainingProject(projectId: string, input: unknown) {
+  const result = managedProjectUpdateSchema.safeParse(input);
+  if (!result.success) {
+    throw new TrainingProjectServiceError("Invalid training project update request", 400, {
+      issues: result.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      })),
+    });
+  }
+
+  return withProjectStoreWriteLock(async () => {
+    const projects = await readFallbackTrainingProjects();
+    const currentIndex = projects.findIndex((project) => project.id === projectId);
+    if (currentIndex === -1) return null;
+    const current = projects[currentIndex];
+    const nextTitle =
+      result.data.title?.trim()
+      || result.data.characterName?.trim()
+      || result.data.projectName?.trim()
+      || current.title;
+    const next = [...projects];
+    next[currentIndex] = recomputeManagedProject({
+      ...current,
+      title: nextTitle,
+      updatedAt: formatUpdatedAt(),
+      usagePrompt: result.data.usagePrompt?.trim() ?? current.usagePrompt,
+      detailPrompt: result.data.detailPrompt?.trim() ?? current.detailPrompt,
+      profileSummary: result.data.profileSummary?.trim() ?? current.profileSummary,
+    });
+    await writeFallbackTrainingProjects(next);
+    return next[currentIndex];
+  });
 }
 
 export async function archiveManagedTrainingProject(projectId: string) {

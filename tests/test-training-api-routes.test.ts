@@ -679,6 +679,38 @@ test("managed training project profile reads and updates through /api/training",
   assert.equal(patchPayload.data.profileSummary, "更新后的资料备注");
 });
 
+test("managed training project updates through /api/training/projects/:projectId", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const projectRoute = await import("../src/app/api/training/projects/[projectId]/route");
+  const listResponse = await projectsRoute.GET(new Request("http://localhost/api/training/projects"));
+  const listPayload = await listResponse.json();
+  const managed = (listPayload.data as Array<{ id: string }>).find((project) => String(project.id).startsWith("training-project-"));
+  assert.ok(managed);
+  const projectId = managed!.id;
+
+  const patchResponse = await projectRoute.PATCH(
+    new Request(`http://localhost/api/training/projects/${projectId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: "更新后的项目标题",
+        usagePrompt: "更新后的使用提示词",
+        detailPrompt: "更新后的角色细节描述",
+        profileSummary: "更新后的项目备注",
+      }),
+    }),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const patchPayload = await patchResponse.json();
+
+  assert.equal(patchResponse.status, 200);
+  assert.equal(patchPayload.ok, true);
+  assert.equal(patchPayload.data.id, projectId);
+  assert.equal(patchPayload.data.title, "更新后的项目标题");
+  assert.equal(patchPayload.data.usagePrompt, "更新后的使用提示词");
+  assert.equal(patchPayload.data.detailPrompt, "更新后的角色细节描述");
+  assert.equal(patchPayload.data.profileSummary, "更新后的项目备注");
+});
+
 test("managed training project references flow into result review through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
