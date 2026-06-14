@@ -165,6 +165,33 @@ function buildDatasetRevisionSamples(
     }));
 }
 
+function buildGenerationInputImages(
+  inputImages: Array<{
+    relativePath: string;
+    role: string;
+  }>,
+) {
+  return inputImages
+    .map((inputImage, index) => {
+      const roleLabel = inputImage.role === "canonical"
+        ? "主体"
+        : inputImage.role === "source"
+          ? "参考"
+          : inputImage.role === "setting"
+            ? "场景"
+            : inputImage.role === "local_reference"
+              ? "补充"
+              : "历史";
+      return buildDemoImage(
+        inputImage.relativePath,
+        `${String(index + 1).padStart(2, "0")} · ${roleLabel}`,
+        "pending",
+        index,
+      );
+    })
+    .filter((image): image is DemoImage => Boolean(image));
+}
+
 function buildTrainingRuns(
   project: { id: string; title: string },
   resultPool: LoraTrainingImageResult[],
@@ -239,6 +266,7 @@ async function buildGenerationRuns(input: {
             : formatTimestamp(run.createdAt, "创建于"),
         provider: run.imageModel ?? run.hostModel ?? run.provider,
         finalInput: run.visualPrompt ?? run.hostInstruction,
+        inputImages: buildGenerationInputImages(run.inputImages),
         errorMessage: typeof run.errorSummary === "string" ? run.errorSummary : run.errorSummary ? JSON.stringify(run.errorSummary) : undefined,
         outputLabel: `输出 ${images.length} 张图片`,
         outputResultIds: images.map((image) => image.id),

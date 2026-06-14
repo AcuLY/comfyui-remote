@@ -60,6 +60,16 @@ test("production training loader projects real CharacterLora data into the train
     /provenanceKind|typeof provenance\\?\\.kind === "string"/,
     "training route data loader should project source-image provenance kind when present",
   );
+  assert.match(
+    trainingRouteDataSource,
+    /run\.inputImages/,
+    "training route data loader should map real generation input attachments into the route payload",
+  );
+  assert.match(
+    trainingRouteDataSource,
+    /relativePath/,
+    "training route data loader should resolve generation input attachments from artifact-relative paths",
+  );
 });
 
 test("buildLoraTrainingDemoData prefers an injected production training payload when present", () => {
