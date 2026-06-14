@@ -194,6 +194,19 @@ test("failed training run toolbar keeps text buttons wider than row icon actions
   );
 });
 
+test("training run row actions stay compact in the mobile shell", () => {
+  assert.match(
+    cssSource,
+    /\.rowActions :where\(\[data-demo-ui-button="true"\]\)\s*\{[\s\S]*?width:\s*34px;[\s\S]*?height:\s*34px;/,
+    "run row actions should keep a compact icon-button footprint by default",
+  );
+  assert.doesNotMatch(
+    cssSource,
+    /@media\s*\(max-width:\s*639px\)\s*\{[\s\S]*?\.rowActions :where\(\[data-demo-ui-button="true"\]\)\s*\{[\s\S]*?width:\s*100%/,
+    "mobile run row actions should not stretch into full-width delete bars",
+  );
+});
+
 test("training run rows stay visually separated instead of sharing one grouped card shell", () => {
   assert.match(cssSource, /\.runRows\s*\{[\s\S]*?gap:\s*(?:8|9|10|11|12)px;/, "run row grids should keep real spacing between task cards");
   assert.match(cssSource, /\.runRow\s*\{[\s\S]*?border:\s*1px solid var\(--demo-border\);/, "each run row should draw its own border");
