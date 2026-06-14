@@ -8,7 +8,10 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const trainingPageSource = readFileSync(resolve(testDir, "../src/app/training/[[...route]]/page.tsx"), "utf8");
 const trainingRouteDataPath = resolve(testDir, "../src/app/training/load-training-route-data.ts");
 const trainingRouteDataSource = existsSync(trainingRouteDataPath) ? readFileSync(trainingRouteDataPath, "utf8") : "";
+const trainingSnapshotServicePath = resolve(testDir, "../src/server/services/training/snapshot-service.ts");
+const trainingSnapshotServiceSource = existsSync(trainingSnapshotServicePath) ? readFileSync(trainingSnapshotServicePath, "utf8") : "";
 const trainingReadServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/read-service.ts"), "utf8");
+const projectTemplateCopyServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/project-template-copy-service.ts"), "utf8");
 const trainingDataSource = readFileSync(resolve(testDir, "../src/app/design-demos/data/lora-training.ts"), "utf8");
 
 test("production training routes use a dedicated loader instead of the generic design-demo loader", () => {
@@ -24,51 +27,51 @@ test("production training routes use a dedicated loader instead of the generic d
   );
 });
 
-test("production training loader projects real CharacterLora data into the training route payload", () => {
+test("dedicated training snapshot service projects real CharacterLora data into the training route payload", () => {
   assert.match(
-    trainingRouteDataSource,
+    trainingSnapshotServiceSource,
     /listCharacterLoraTrainingJobs/,
-    "training route data loader should read real training jobs",
+    "training snapshot service should read real training jobs",
   );
   assert.match(
-    trainingRouteDataSource,
+    trainingSnapshotServiceSource,
     /getCharacterLoraTrainingJobOverview/,
-    "training route data loader should read project-level overview data",
+    "training snapshot service should read project-level overview data",
   );
   assert.match(
-    trainingRouteDataSource,
+    trainingSnapshotServiceSource,
     /listCharacterLoraSourceImages/,
-    "training route data loader should read real reference images",
+    "training snapshot service should read real reference images",
   );
   assert.match(
-    trainingRouteDataSource,
+    trainingSnapshotServiceSource,
     /listCharacterLoraCandidateImages/,
-    "training route data loader should read real result-pool candidates",
+    "training snapshot service should read real result-pool candidates",
   );
   assert.match(
-    trainingRouteDataSource,
+    trainingSnapshotServiceSource,
     /provenanceLabel|typeof provenance\\?\\.label === "string"/,
-    "training route data loader should project source-image provenance labels when present",
+    "training snapshot service should project source-image provenance labels when present",
   );
   assert.match(
-    trainingRouteDataSource,
+    trainingSnapshotServiceSource,
     /provenanceNote|typeof provenance\\?\\.note === "string"/,
-    "training route data loader should project source-image provenance notes when present",
+    "training snapshot service should project source-image provenance notes when present",
   );
   assert.match(
-    trainingRouteDataSource,
+    trainingSnapshotServiceSource,
     /provenanceKind|typeof provenance\\?\\.kind === "string"/,
-    "training route data loader should project source-image provenance kind when present",
+    "training snapshot service should project source-image provenance kind when present",
   );
   assert.match(
-    trainingRouteDataSource,
+    trainingSnapshotServiceSource,
     /run\.inputImages/,
-    "training route data loader should map real generation input attachments into the route payload",
+    "training snapshot service should map real generation input attachments into the route payload",
   );
   assert.match(
-    trainingRouteDataSource,
+    trainingSnapshotServiceSource,
     /relativePath/,
-    "training route data loader should resolve generation input attachments from artifact-relative paths",
+    "training snapshot service should resolve generation input attachments from artifact-relative paths",
   );
 });
 
@@ -80,15 +83,51 @@ test("buildLoraTrainingDemoData prefers an injected production training payload 
   );
 });
 
-test("training read APIs share the same production training route data projection", () => {
+test("production training route loader delegates snapshot assembly to a dedicated training service", () => {
+  assert.match(
+    trainingRouteDataSource,
+    /loadTrainingSnapshot/,
+    "route loader should import the dedicated training snapshot service",
+  );
+  assert.match(
+    trainingSnapshotServiceSource,
+    /export async function loadTrainingSnapshot/,
+    "training snapshot service should expose the shared snapshot builder",
+  );
+});
+
+test("training read APIs use the dedicated training snapshot service instead of the route loader", () => {
   assert.match(
     trainingReadServiceSource,
-    /loadTrainingRouteData/,
-    "training read service should consume the same production training route loader as the /training pages",
+    /loadTrainingSnapshot/,
+    "training read service should consume the shared training snapshot service",
   );
   assert.doesNotMatch(
     trainingReadServiceSource,
-    /loadDesignDemoData/,
-    "training read service should not keep a private fallback to the generic demo loader",
+    /loadTrainingRouteData/,
+    "training read service should not depend on the route-level /training page loader",
+  );
+  assert.doesNotMatch(
+    trainingReadServiceSource,
+    /buildLoraTrainingDemoData/,
+    "training read service should not rebuild snapshots through the design-demos adapter",
+  );
+});
+
+test("template/project copy flows use the shared training snapshot service instead of the route loader", () => {
+  assert.match(
+    projectTemplateCopyServiceSource,
+    /loadTrainingSnapshot/,
+    "project/template copy service should read from the shared training snapshot service",
+  );
+  assert.doesNotMatch(
+    projectTemplateCopyServiceSource,
+    /loadTrainingRouteData/,
+    "project/template copy service should not depend on the route-level training loader",
+  );
+  assert.doesNotMatch(
+    projectTemplateCopyServiceSource,
+    /buildLoraTrainingDemoData/,
+    "project/template copy service should not rebuild snapshots through the design-demos adapter",
   );
 });

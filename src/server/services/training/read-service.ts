@@ -1,10 +1,8 @@
-import { buildLoraTrainingDemoData } from "@/app/design-demos/data/lora-training";
 import type {
   LoraTrainingRun,
   LoraTrainingTaskKind,
   LoraTrainingTaskStatus,
 } from "@/app/design-demos/data/lora-training-types";
-import { loadTrainingRouteData } from "@/app/training/load-training-route-data";
 import {
   getCharacterLoraWorkerQueueStatus,
   mapCharacterLoraPhase3Error,
@@ -13,6 +11,7 @@ import {
   getTrainingSceneDescriptionPreset,
   listTrainingSceneDescriptionPresets,
 } from "@/server/services/training/preset-service";
+import { loadTrainingSnapshot } from "@/server/services/training/snapshot-service";
 
 export class TrainingReadServiceError extends Error {
   details?: unknown;
@@ -24,11 +23,6 @@ export class TrainingReadServiceError extends Error {
     this.status = status;
     this.details = details;
   }
-}
-
-async function loadTrainingSnapshot() {
-  const demoData = await loadTrainingRouteData();
-  return buildLoraTrainingDemoData(demoData);
 }
 
 function filterRuns(

@@ -1,14 +1,13 @@
 import { z } from "zod";
-import { buildLoraTrainingDemoData } from "@/app/design-demos/data/lora-training";
 import type {
   LoraTrainingProject,
   LoraTrainingTemplate,
 } from "@/app/design-demos/data/lora-training-types";
-import { loadTrainingRouteData } from "@/app/training/load-training-route-data";
 import {
   createManagedTrainingProject,
   mapTrainingProjectError,
 } from "@/server/services/training/project-service";
+import { loadTrainingSnapshot } from "@/server/services/training/snapshot-service";
 import {
   createManagedTrainingTemplate,
   mapTrainingTemplateError,
@@ -68,12 +67,7 @@ export class TrainingProjectTemplateCopyServiceError extends Error {
   }
 }
 
-async function loadTrainingSnapshot() {
-  const demoData = await loadTrainingRouteData();
-  return buildLoraTrainingDemoData(demoData);
-}
-
-function findTemplate(snapshot: ReturnType<typeof buildLoraTrainingDemoData>, templateId: string) {
+function findTemplate(snapshot: Awaited<ReturnType<typeof loadTrainingSnapshot>>, templateId: string) {
   const template = snapshot.templates.find((item) => item.id === templateId);
   if (!template) {
     throw new TrainingProjectTemplateCopyServiceError("Training template not found", 404, { templateId });
@@ -81,7 +75,7 @@ function findTemplate(snapshot: ReturnType<typeof buildLoraTrainingDemoData>, te
   return template;
 }
 
-function findProject(snapshot: ReturnType<typeof buildLoraTrainingDemoData>, projectId: string) {
+function findProject(snapshot: Awaited<ReturnType<typeof loadTrainingSnapshot>>, projectId: string) {
   const project = snapshot.projects.find((item) => item.id === projectId);
   if (!project) {
     throw new TrainingProjectTemplateCopyServiceError("Training project not found", 404, { projectId });
