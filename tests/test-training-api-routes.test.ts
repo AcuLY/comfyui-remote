@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
 
 const TRAINING_RUN_PRESET_STATE_PATH = join(process.cwd(), "data", "training-run-preset-state.json");
+const TRAINING_MANAGED_RUNS_PATH = join(process.cwd(), "data", "training-managed-runs.json");
+const TRAINING_PROJECTS_PATH = join(process.cwd(), "data", "training-projects.json");
 
 async function listProjects() {
   const { GET } = await import("../src/app/api/training/projects/route");
@@ -31,6 +33,45 @@ async function clearTrainingRunPresetState(runId: string) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
       throw error;
     }
+  }
+}
+
+async function readOptionalFile(path: string) {
+  try {
+    return await readFile(path, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+async function restoreOptionalFile(path: string, contents: string | null) {
+  if (contents === null) {
+    await rm(path, { force: true });
+    return;
+  }
+  await writeFile(path, contents, "utf8");
+}
+
+async function withTrainingManagedStoreSnapshot<T>(fn: () => Promise<T>) {
+  const [runsBefore, projectsBefore] = await Promise.all([
+    readOptionalFile(TRAINING_MANAGED_RUNS_PATH),
+    readOptionalFile(TRAINING_PROJECTS_PATH),
+  ]);
+
+  try {
+    await Promise.all([
+      writeFile(TRAINING_MANAGED_RUNS_PATH, "[]\n", "utf8"),
+      writeFile(TRAINING_PROJECTS_PATH, "[]\n", "utf8"),
+    ]);
+    return await fn();
+  } finally {
+    await Promise.all([
+      restoreOptionalFile(TRAINING_MANAGED_RUNS_PATH, runsBefore),
+      restoreOptionalFile(TRAINING_PROJECTS_PATH, projectsBefore),
+    ]);
   }
 }
 
@@ -1871,6 +1912,357 @@ test("managed training project generation task draft lifecycle works through /ap
   const getAfterRunPayload = await getAfterRunResponse.json();
   assert.equal(getAfterRunResponse.status, 404);
   assert.equal(getAfterRunPayload.ok, false);
+});
+
+test("managed scheduler and worker endpoints can advance generation and training runs through completion", async () => {
+  await withTrainingManagedStoreSnapshot(async () => {
+    const projectsRoute = await import("../src/app/api/training/projects/route");
+    const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
+    const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
+    const workerGenerationCompleteRoute = await import("../src/app/api/training/worker/generation-tasks/[taskId]/complete/route");
+    const datasetRevisionRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
+    const trainingRunRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
+    const workerTrainingProgressRoute = await import("../src/app/api/training/worker/training-runs/[trainingRunId]/progress/route");
+    const workerTrainingCompleteRoute = await import("../src/app/api/training/worker/training-runs/[trainingRunId]/complete/route");
+    const generationTaskDetailRoute = await import("../src/app/api/training/generation-tasks/[taskId]/route");
+    const trainingRunDetailRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
+    const title = `测试 worker 链项目 ${Date.now()}`;
+
+    const createResponse = await projectsRoute.POST(
+      new Request("http://localhost/api/training/projects", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          characterName: title,
+          projectName: title,
+          triggerToken: `test_worker_flow_${Date.now()}`,
+          templateId: "character_identity_default",
+          trainingTemplateId: "character_identity_default",
+          checkpointRelativePath: "models/checkpoints/mock.safetensors",
+          usagePrompt: "测试 worker 链提示词",
+          detailPrompt: "测试 worker 链细节",
+          selectedReferenceIds: ["project-vela-neon"],
+          sections: [
+            {
+              id: "worker-section",
+              title: "Worker Section",
+              enabled: true,
+              blockCount: 1,
+              blocks: [
+                {
+                  id: "worker-block",
+                  source: "本地",
+                  title: "Worker Block",
+                  text: "worker 测试场景描述",
+                },
+              ],
+              resolvedScene: "worker 测试场景描述",
+              scenePreview: "worker 测试场景描述",
+            },
+          ],
+          trainingDefaults: {
+            autoGenerateSamples: false,
+            autoFreezeDataset: false,
+          },
+        }),
+      }),
+    );
+    const createPayload = await createResponse.json();
+    assert.equal(createResponse.status, 201);
+    assert.equal(createPayload.ok, true);
+
+    const projectId = createPayload.data.id as string;
+    const sectionId = createPayload.data.sections[0].id as string;
+
+    const queuedGenerationResponse = await sectionRunRoute.POST(
+      new Request(`http://localhost/api/training/sections/${sectionId}/runs`, {
+        method: "POST",
+        body: JSON.stringify({
+          userInstruction: "worker flow generation",
+        }),
+      }),
+      { params: Promise.resolve({ sectionId }) },
+    );
+    const queuedGenerationPayload = await queuedGenerationResponse.json();
+    assert.equal(queuedGenerationResponse.status, 201);
+    assert.equal(queuedGenerationPayload.ok, true);
+    const generationTaskId = queuedGenerationPayload.data.id as string;
+
+    const tickGenerationResponse = await schedulerTickRoute.POST(new Request("http://localhost/api/training/scheduler/tick", { method: "POST" }));
+    const tickGenerationPayload = await tickGenerationResponse.json();
+    assert.equal(tickGenerationResponse.status, 200);
+    assert.equal(tickGenerationPayload.ok, true);
+    assert.equal(tickGenerationPayload.data.id, generationTaskId);
+    assert.equal(tickGenerationPayload.data.status, "running");
+
+    const completeGenerationResponse = await workerGenerationCompleteRoute.POST(
+      new Request(`http://localhost/api/training/worker/generation-tasks/${generationTaskId}/complete`, {
+        method: "POST",
+        body: JSON.stringify({
+          captionDraft: "worker 生成结果",
+          reviewStatus: "keep",
+        }),
+      }),
+      { params: Promise.resolve({ taskId: generationTaskId }) },
+    );
+    const completeGenerationPayload = await completeGenerationResponse.json();
+    assert.equal(completeGenerationResponse.status, 200);
+    assert.equal(completeGenerationPayload.ok, true);
+    assert.equal(completeGenerationPayload.data.id, generationTaskId);
+    assert.equal(completeGenerationPayload.data.status, "completed");
+
+    const generationDetailResponse = await generationTaskDetailRoute.GET(
+      new Request(`http://localhost/api/training/generation-tasks/${generationTaskId}`),
+      { params: Promise.resolve({ taskId: generationTaskId }) },
+    );
+    const generationDetailPayload = await generationDetailResponse.json();
+    assert.equal(generationDetailResponse.status, 200);
+    assert.equal(generationDetailPayload.ok, true);
+    assert.ok(Array.isArray(generationDetailPayload.data.outputResultIds));
+    assert.equal(generationDetailPayload.data.outputResultIds.length, 1);
+    assert.equal(typeof generationDetailPayload.data.outputResultIds[0], "string");
+
+    const freezeResponse = await datasetRevisionRoute.POST(
+      new Request(`http://localhost/api/training/projects/${projectId}/dataset-revisions`, {
+        method: "POST",
+        body: "{}",
+      }),
+      { params: Promise.resolve({ projectId }) },
+    );
+    const freezePayload = await freezeResponse.json();
+    assert.equal(freezeResponse.status, 201);
+    assert.equal(freezePayload.ok, true);
+    const revisionId = freezePayload.data.revision.id as string;
+
+    const queuedTrainingResponse = await trainingRunRoute.POST(
+      new Request(`http://localhost/api/training/projects/${projectId}/training-runs`, {
+        method: "POST",
+        body: JSON.stringify({
+          revisionId,
+          config: {
+            overrides: {
+              ordinary: {
+                targetSteps: 1200,
+              },
+            },
+          },
+        }),
+      }),
+      { params: Promise.resolve({ projectId }) },
+    );
+    const queuedTrainingPayload = await queuedTrainingResponse.json();
+    assert.equal(queuedTrainingResponse.status, 201);
+    assert.equal(queuedTrainingPayload.ok, true);
+    const trainingRunId = queuedTrainingPayload.data.id as string;
+
+    const tickTrainingResponse = await schedulerTickRoute.POST(new Request("http://localhost/api/training/scheduler/tick", { method: "POST" }));
+    const tickTrainingPayload = await tickTrainingResponse.json();
+    assert.equal(tickTrainingResponse.status, 200);
+    assert.equal(tickTrainingPayload.ok, true);
+    assert.equal(tickTrainingPayload.data.id, trainingRunId);
+    assert.equal(tickTrainingPayload.data.status, "running");
+
+    const progressResponse = await workerTrainingProgressRoute.POST(
+      new Request(`http://localhost/api/training/worker/training-runs/${trainingRunId}/progress`, {
+        method: "POST",
+        body: JSON.stringify({
+          currentStep: 600,
+          targetSteps: 1200,
+          schedulerMessage: "进行中 600 / 1200",
+        }),
+      }),
+      { params: Promise.resolve({ trainingRunId }) },
+    );
+    const progressPayload = await progressResponse.json();
+    assert.equal(progressResponse.status, 200);
+    assert.equal(progressPayload.ok, true);
+    assert.equal(progressPayload.data.currentStep, 600);
+    assert.equal(progressPayload.data.status, "running");
+
+    const completeTrainingResponse = await workerTrainingCompleteRoute.POST(
+      new Request(`http://localhost/api/training/worker/training-runs/${trainingRunId}/complete`, {
+        method: "POST",
+        body: JSON.stringify({
+          artifactName: "worker_complete.safetensors",
+        }),
+      }),
+      { params: Promise.resolve({ trainingRunId }) },
+    );
+    const completeTrainingPayload = await completeTrainingResponse.json();
+    assert.equal(completeTrainingResponse.status, 200);
+    assert.equal(completeTrainingPayload.ok, true);
+    assert.equal(completeTrainingPayload.data.status, "completed");
+    assert.equal(completeTrainingPayload.data.artifactName, "worker_complete.safetensors");
+
+    const trainingDetailResponse = await trainingRunDetailRoute.GET(
+      new Request(`http://localhost/api/training/training-runs/${trainingRunId}`),
+      { params: Promise.resolve({ trainingRunId }) },
+    );
+    const trainingDetailPayload = await trainingDetailResponse.json();
+    assert.equal(trainingDetailResponse.status, 200);
+    assert.equal(trainingDetailPayload.ok, true);
+    assert.equal(trainingDetailPayload.data.status, "completed");
+    assert.equal(trainingDetailPayload.data.artifactName, "worker_complete.safetensors");
+    assert.equal(typeof trainingDetailPayload.data.finalLoraArtifactId, "string");
+  });
+});
+
+test("managed worker endpoints can mark generation and training runs as failed through /api/training", async () => {
+  await withTrainingManagedStoreSnapshot(async () => {
+    const projectsRoute = await import("../src/app/api/training/projects/route");
+    const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
+    const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
+    const workerGenerationFailRoute = await import("../src/app/api/training/worker/generation-tasks/[taskId]/fail/route");
+    const datasetRevisionRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
+    const trainingRunRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
+    const workerTrainingFailRoute = await import("../src/app/api/training/worker/training-runs/[trainingRunId]/fail/route");
+    const generationTaskDetailRoute = await import("../src/app/api/training/generation-tasks/[taskId]/route");
+    const trainingRunDetailRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
+    const title = `测试 worker fail 项目 ${Date.now()}`;
+
+    const createResponse = await projectsRoute.POST(
+      new Request("http://localhost/api/training/projects", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          characterName: title,
+          projectName: title,
+          triggerToken: `test_worker_fail_${Date.now()}`,
+          templateId: "character_identity_default",
+          trainingTemplateId: "character_identity_default",
+          checkpointRelativePath: "models/checkpoints/mock.safetensors",
+          usagePrompt: "测试 worker fail 提示词",
+          detailPrompt: "测试 worker fail 细节",
+          selectedReferenceIds: ["project-vela-neon"],
+          sections: [
+            {
+              id: "worker-fail-section",
+              title: "Worker Fail Section",
+              enabled: true,
+              blockCount: 1,
+              blocks: [
+                {
+                  id: "worker-fail-block",
+                  source: "本地",
+                  title: "Worker Fail Block",
+                  text: "worker fail 场景描述",
+                },
+              ],
+              resolvedScene: "worker fail 场景描述",
+              scenePreview: "worker fail 场景描述",
+            },
+          ],
+          trainingDefaults: {
+            autoGenerateSamples: false,
+            autoFreezeDataset: false,
+          },
+        }),
+      }),
+    );
+    const createPayload = await createResponse.json();
+    assert.equal(createResponse.status, 201);
+    assert.equal(createPayload.ok, true);
+
+    const projectId = createPayload.data.id as string;
+    const sectionId = createPayload.data.sections[0].id as string;
+    const generationResponse = await sectionRunRoute.POST(
+      new Request(`http://localhost/api/training/sections/${sectionId}/runs`, {
+        method: "POST",
+        body: JSON.stringify({
+          userInstruction: "worker fail generation",
+        }),
+      }),
+      { params: Promise.resolve({ sectionId }) },
+    );
+    const generationPayload = await generationResponse.json();
+    const generationTaskId = generationPayload.data.id as string;
+    await schedulerTickRoute.POST(new Request("http://localhost/api/training/scheduler/tick", { method: "POST" }));
+
+    const failGenerationResponse = await workerGenerationFailRoute.POST(
+      new Request(`http://localhost/api/training/worker/generation-tasks/${generationTaskId}/fail`, {
+        method: "POST",
+        body: JSON.stringify({
+          errorSummary: "生成任务失败",
+        }),
+      }),
+      { params: Promise.resolve({ taskId: generationTaskId }) },
+    );
+    const failGenerationPayload = await failGenerationResponse.json();
+    assert.equal(failGenerationResponse.status, 200);
+    assert.equal(failGenerationPayload.ok, true);
+    assert.equal(failGenerationPayload.data.status, "failed");
+
+    const generationDetailResponse = await generationTaskDetailRoute.GET(
+      new Request(`http://localhost/api/training/generation-tasks/${generationTaskId}`),
+      { params: Promise.resolve({ taskId: generationTaskId }) },
+    );
+    const generationDetailPayload = await generationDetailResponse.json();
+    assert.equal(generationDetailPayload.data.status, "failed");
+
+    const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+    const reviewRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
+    const imageId = createPayload.data.referenceImages[0].id as string;
+    const addToResultsResponse = await addToResultsRoute.POST(
+      new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+        method: "POST",
+        body: JSON.stringify({ reviewStatus: "pending", captionDraft: "可训练参考图" }),
+      }),
+      { params: Promise.resolve({ imageId }) },
+    );
+    const addToResultsPayload = await addToResultsResponse.json();
+    const imageResultId = addToResultsPayload.data.id as string;
+    await reviewRoute.POST(
+      new Request(`http://localhost/api/training/image-results/${imageResultId}/review`, {
+        method: "POST",
+        body: JSON.stringify({ reviewStatus: "keep" }),
+      }),
+      { params: Promise.resolve({ imageResultId }) },
+    );
+
+    const freezeResponse = await datasetRevisionRoute.POST(
+      new Request(`http://localhost/api/training/projects/${projectId}/dataset-revisions`, {
+        method: "POST",
+        body: "{}",
+      }),
+      { params: Promise.resolve({ projectId }) },
+    );
+    const freezePayload = await freezeResponse.json();
+    const revisionId = freezePayload.data.revision.id as string;
+
+    const trainingResponse = await trainingRunRoute.POST(
+      new Request(`http://localhost/api/training/projects/${projectId}/training-runs`, {
+        method: "POST",
+        body: JSON.stringify({
+          revisionId,
+        }),
+      }),
+      { params: Promise.resolve({ projectId }) },
+    );
+    const trainingPayload = await trainingResponse.json();
+    const trainingRunId = trainingPayload.data.id as string;
+    await schedulerTickRoute.POST(new Request("http://localhost/api/training/scheduler/tick", { method: "POST" }));
+
+    const failTrainingResponse = await workerTrainingFailRoute.POST(
+      new Request(`http://localhost/api/training/worker/training-runs/${trainingRunId}/fail`, {
+        method: "POST",
+        body: JSON.stringify({
+          errorSummary: "训练任务失败",
+        }),
+      }),
+      { params: Promise.resolve({ trainingRunId }) },
+    );
+    const failTrainingPayload = await failTrainingResponse.json();
+    assert.equal(failTrainingResponse.status, 200);
+    assert.equal(failTrainingPayload.ok, true);
+    assert.equal(failTrainingPayload.data.status, "failed");
+
+    const trainingDetailResponse = await trainingRunDetailRoute.GET(
+      new Request(`http://localhost/api/training/training-runs/${trainingRunId}`),
+      { params: Promise.resolve({ trainingRunId }) },
+    );
+    const trainingDetailPayload = await trainingDetailResponse.json();
+    assert.equal(trainingDetailPayload.data.status, "failed");
+  });
 });
 
 test("managed training project can enqueue generation, freeze dataset, and start training through /api/training", async () => {

@@ -1068,6 +1068,207 @@ export async function cancelManagedGenerationRun(taskId: string) {
   });
 }
 
+export async function tickManagedTrainingScheduler() {
+  return withRunStoreWriteLock(async () => {
+    const runs = await readFallbackTrainingRuns();
+    const queuedIndex = [...runs].map((run, index) => ({ run, index })).reverse().find(({ run }) => run.status === "queued");
+    if (!queuedIndex) return null;
+
+    const nextRuns = [...runs];
+    const current = nextRuns[queuedIndex.index];
+    nextRuns[queuedIndex.index] = {
+      ...current,
+      status: "running",
+      progress: 0,
+      currentStep: current.kind === "training" ? 0 : current.currentStep,
+      schedulerMessage: current.kind === "training" ? "训练任务执行中" : "生成任务执行中",
+      timestamp: formatTimestamp(new Date(), "开始于"),
+    };
+    await writeFallbackTrainingRuns(nextRuns);
+    return nextRuns[queuedIndex.index];
+  });
+}
+
+export async function completeManagedGenerationRun(taskId: string, input: {
+  resultImageResultId?: string | null;
+  captionDraft?: string | null;
+  reviewStatus?: string | null;
+}) {
+  const runs = await readFallbackTrainingRuns();
+  const run = runs.find((candidate) => candidate.id === taskId && candidate.kind === "generation");
+  if (!run) return null;
+
+  let outputResultId = typeof input.resultImageResultId === "string" && input.resultImageResultId.trim()
+    ? input.resultImageResultId.trim()
+    : null;
+
+  await withProjectStoreWriteLock(async () => {
+    const projects = await readFallbackTrainingProjects();
+    const projectIndex = projects.findIndex((project) => project.id === run.projectId);
+    if (projectIndex === -1) return;
+    const project = projects[projectIndex];
+
+    if (!outputResultId) {
+      const sourceImage = project.referenceImages[0]?.image ?? project.images[0] ?? project.resultPool[0]?.image;
+      if (sourceImage) {
+        const nextResult: LoraTrainingImageResult = {
+          id: `managed-worker-result-${Date.now()}`,
+          sectionId: run.sectionId ?? "managed-worker",
+          sectionTitle: project.sections.find((section) => section.id === run.sectionId)?.title ?? "生成结果",
+          image: sourceImage,
+          reviewStatus: input.reviewStatus === "keep" ? "kept" : input.reviewStatus === "reject" ? "rejected" : "pending",
+          caption: typeof input.captionDraft === "string" && input.captionDraft.trim() ? input.captionDraft.trim() : "生成任务结果",
+          sourceLabel: run.title,
+        };
+        outputResultId = nextResult.id;
+        projects[projectIndex] = recomputeManagedProject({
+          ...project,
+          updatedAt: formatUpdatedAt(),
+          resultPool: [nextResult, ...project.resultPool],
+        });
+        await writeFallbackTrainingProjects(projects);
+      }
+      return;
+    }
+
+    if (!project.resultPool.some((result) => result.id === outputResultId)) {
+      throw new TrainingProjectServiceError("Managed generation result not found", 404, {
+        resultImageResultId: outputResultId,
+        taskId,
+      });
+    }
+  });
+
+  return withRunStoreWriteLock(async () => {
+    const refreshedRuns = await readFallbackTrainingRuns();
+    const nextRuns = refreshedRuns.map((candidate) => (
+      candidate.id === taskId && candidate.kind === "generation"
+        ? {
+          ...candidate,
+          status: "completed" as const,
+          progress: 100,
+          outputLabel: outputResultId ? "输出 1 张图片" : candidate.outputLabel,
+          outputResultIds: outputResultId ? [outputResultId] : candidate.outputResultIds,
+          schedulerMessage: "生成任务已完成",
+          timestamp: formatTimestamp(new Date(), "完成于"),
+        }
+        : candidate
+    ));
+    await writeFallbackTrainingRuns(nextRuns);
+    return nextRuns.find((candidate) => candidate.id === taskId) ?? null;
+  });
+}
+
+export async function failManagedGenerationRun(taskId: string, input: { errorSummary?: string | null }) {
+  const runs = await readFallbackTrainingRuns();
+  const currentRun = runs.find((run) => run.id === taskId && run.kind === "generation");
+  if (!currentRun) return null;
+
+  return withRunStoreWriteLock(async () => {
+    const refreshedRuns = await readFallbackTrainingRuns();
+    const nextRuns = refreshedRuns.map((run) => (
+      run.id === taskId && run.kind === "generation"
+        ? {
+          ...run,
+          status: "failed" as const,
+          errorMessage: input.errorSummary?.trim() || "生成任务失败",
+          schedulerMessage: input.errorSummary?.trim() || "生成任务失败",
+          timestamp: formatTimestamp(new Date(), "失败于"),
+        }
+        : run
+    ));
+    await writeFallbackTrainingRuns(nextRuns);
+    return nextRuns.find((run) => run.id === taskId) ?? null;
+  });
+}
+
+export async function progressManagedTrainingRun(trainingRunId: string, input: {
+  currentStep?: number | null;
+  targetSteps?: number | null;
+  schedulerMessage?: string | null;
+}) {
+  const runs = await readFallbackTrainingRuns();
+  const currentRun = runs.find((run) => run.id === trainingRunId && run.kind === "training");
+  if (!currentRun) return null;
+
+  const nextCurrentStep = typeof input.currentStep === "number" ? input.currentStep : currentRun.currentStep ?? 0;
+  const nextTargetSteps = typeof input.targetSteps === "number" ? input.targetSteps : currentRun.targetSteps ?? 0;
+  const nextProgress = nextTargetSteps > 0 ? Math.max(0, Math.min(100, Math.round((nextCurrentStep / nextTargetSteps) * 100))) : currentRun.progress ?? 0;
+
+  return withRunStoreWriteLock(async () => {
+    const refreshedRuns = await readFallbackTrainingRuns();
+    const nextRuns = refreshedRuns.map((run) => (
+      run.id === trainingRunId && run.kind === "training"
+        ? {
+          ...run,
+          status: "running" as const,
+          currentStep: nextCurrentStep,
+          targetSteps: nextTargetSteps || run.targetSteps,
+          progress: nextProgress,
+          schedulerMessage: input.schedulerMessage?.trim() || run.schedulerMessage || "训练任务执行中",
+          timestamp: formatTimestamp(new Date(), "开始于"),
+        }
+        : run
+    ));
+    await writeFallbackTrainingRuns(nextRuns);
+    return nextRuns.find((run) => run.id === trainingRunId) ?? null;
+  });
+}
+
+export async function completeManagedTrainingRun(trainingRunId: string, input: {
+  artifactName?: string | null;
+}) {
+  const runs = await readFallbackTrainingRuns();
+  const currentRun = runs.find((run) => run.id === trainingRunId && run.kind === "training");
+  if (!currentRun) return null;
+
+  const artifactName = input.artifactName?.trim() || `${trainingRunId}.safetensors`;
+  const artifactId = currentRun.finalLoraArtifactId || `managed-final-lora-${Date.now()}`;
+
+  return withRunStoreWriteLock(async () => {
+    const refreshedRuns = await readFallbackTrainingRuns();
+    const nextRuns = refreshedRuns.map((run) => (
+      run.id === trainingRunId && run.kind === "training"
+        ? {
+          ...run,
+          status: "completed" as const,
+          progress: 100,
+          currentStep: run.targetSteps ?? run.currentStep ?? 0,
+          artifactName,
+          finalLoraArtifactId: artifactId,
+          schedulerMessage: "训练任务已完成",
+          timestamp: formatTimestamp(new Date(), "完成于"),
+        }
+        : run
+    ));
+    await writeFallbackTrainingRuns(nextRuns);
+    return nextRuns.find((run) => run.id === trainingRunId) ?? null;
+  });
+}
+
+export async function failManagedTrainingRun(trainingRunId: string, input: { errorSummary?: string | null }) {
+  const runs = await readFallbackTrainingRuns();
+  const currentRun = runs.find((run) => run.id === trainingRunId && run.kind === "training");
+  if (!currentRun) return null;
+
+  return withRunStoreWriteLock(async () => {
+    const refreshedRuns = await readFallbackTrainingRuns();
+    const nextRuns = refreshedRuns.map((run) => (
+      run.id === trainingRunId && run.kind === "training"
+        ? {
+          ...run,
+          status: "failed" as const,
+          errorMessage: input.errorSummary?.trim() || "训练任务失败",
+          schedulerMessage: input.errorSummary?.trim() || "训练任务失败",
+          timestamp: formatTimestamp(new Date(), "失败于"),
+        }
+        : run
+    ));
+    await writeFallbackTrainingRuns(nextRuns);
+    return nextRuns.find((run) => run.id === trainingRunId) ?? null;
+  });
+}
+
 export async function createManagedTrainingProject(input: unknown) {
   const parsed = parseManagedProjectCreateInput(input);
   const title = normalizeTrainingProjectTitle(parsed);
