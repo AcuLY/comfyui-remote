@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { LoraTrainingSectionBlock } from "@/app/design-demos/data/lora-training-types";
+import type { LoraTrainingSectionBlock } from "@/features/training/types";
 import { getTrainingBlockContext, getTrainingSectionContext } from "@/server/services/training/read-service";
 import { mapTrainingProjectSectionError, upsertTrainingProjectSection } from "@/server/services/training/project-section-service";
 

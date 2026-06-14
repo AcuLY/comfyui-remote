@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import type { LoraTrainingSection, LoraTrainingSectionBlock } from "@/app/design-demos/data/lora-training-types";
+import type { LoraTrainingSection, LoraTrainingSectionBlock } from "@/features/training/types";
 import { z } from "zod";
 
 const TRAINING_PROJECT_SECTION_OVERRIDE_PATH = join(process.cwd(), "data", "training-project-section-overrides.json");

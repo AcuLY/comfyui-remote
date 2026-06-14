@@ -2,7 +2,7 @@ import { z } from "zod";
 import type {
   LoraTrainingProject,
   LoraTrainingTemplate,
-} from "@/app/design-demos/data/lora-training-types";
+} from "@/features/training/types";
 import {
   createManagedTrainingProject,
   mapTrainingProjectError,

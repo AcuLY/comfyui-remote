@@ -2,7 +2,7 @@ import type {
   LoraTrainingRun,
   LoraTrainingTaskKind,
   LoraTrainingTaskStatus,
-} from "@/app/design-demos/data/lora-training-types";
+} from "@/features/training/types";
 import {
   getCharacterLoraWorkerQueueStatus,
   mapCharacterLoraPhase3Error,

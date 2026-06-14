@@ -7,7 +7,7 @@ import type {
   LoraTrainingReferenceImage,
   LoraTrainingRun,
   LoraTrainingSection,
-} from "@/app/design-demos/data/lora-training-types";
+} from "@/features/training/types";
 import type { DemoImage } from "@/app/design-demos/data/types";
 import { toImageUrl } from "@/lib/image-url";
 import { getCharacterLoraGenerationRun } from "@/server/repositories/character-lora-training";

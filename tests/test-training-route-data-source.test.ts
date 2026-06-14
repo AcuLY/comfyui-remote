@@ -10,8 +10,17 @@ const trainingRouteDataPath = resolve(testDir, "../src/app/training/load-trainin
 const trainingRouteDataSource = existsSync(trainingRouteDataPath) ? readFileSync(trainingRouteDataPath, "utf8") : "";
 const trainingSnapshotServicePath = resolve(testDir, "../src/server/services/training/snapshot-service.ts");
 const trainingSnapshotServiceSource = existsSync(trainingSnapshotServicePath) ? readFileSync(trainingSnapshotServicePath, "utf8") : "";
+const sharedTrainingTypesPath = resolve(testDir, "../src/features/training/types.ts");
+const sharedTrainingTypesSource = existsSync(sharedTrainingTypesPath) ? readFileSync(sharedTrainingTypesPath, "utf8") : "";
+const legacyTrainingTypesPath = resolve(testDir, "../src/app/design-demos/data/lora-training-types.ts");
+const legacyTrainingTypesSource = readFileSync(legacyTrainingTypesPath, "utf8");
 const trainingReadServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/read-service.ts"), "utf8");
 const projectTemplateCopyServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/project-template-copy-service.ts"), "utf8");
+const trainingProjectServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/project-service.ts"), "utf8");
+const trainingTemplateServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/template-service.ts"), "utf8");
+const trainingPresetServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/preset-service.ts"), "utf8");
+const trainingProjectSectionServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/project-section-service.ts"), "utf8");
+const trainingProjectSceneBlockServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/project-scene-block-service.ts"), "utf8");
 const trainingDataSource = readFileSync(resolve(testDir, "../src/app/design-demos/data/lora-training.ts"), "utf8");
 
 test("production training routes use a dedicated loader instead of the generic design-demo loader", () => {
@@ -129,5 +138,36 @@ test("template/project copy flows use the shared training snapshot service inste
     projectTemplateCopyServiceSource,
     /buildLoraTrainingDemoData/,
     "project/template copy service should not rebuild snapshots through the design-demos adapter",
+  );
+});
+
+test("training services share a dedicated feature-level view-model type module instead of importing app design-demo types", () => {
+  const serviceSources = [
+    trainingReadServiceSource,
+    projectTemplateCopyServiceSource,
+    trainingProjectServiceSource,
+    trainingTemplateServiceSource,
+    trainingPresetServiceSource,
+    trainingProjectSectionServiceSource,
+    trainingProjectSceneBlockServiceSource,
+    trainingSnapshotServiceSource,
+  ];
+
+  assert.match(
+    sharedTrainingTypesSource,
+    /export type LoraTrainingProjectStatus/,
+    "shared training feature types should define the training view-model contract",
+  );
+  for (const source of serviceSources) {
+    assert.doesNotMatch(
+      source,
+      /@\/app\/design-demos\/data\/lora-training-types/,
+      "training services should not import their view-model types from the app design-demo layer",
+    );
+  }
+  assert.match(
+    legacyTrainingTypesSource,
+    /export \* from "@\/features\/training\/types";/,
+    "legacy design-demo training type file should become a compatibility re-export from the shared feature types",
   );
 });

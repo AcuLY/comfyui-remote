@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import type { LoraTrainingTemplate } from "@/app/design-demos/data/lora-training-types";
+import type { LoraTrainingTemplate } from "@/features/training/types";
 import {
   createCharacterLoraTrainingTemplate,
   getCharacterLoraTrainingTemplateSnapshot,

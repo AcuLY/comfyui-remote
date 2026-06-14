@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
-import type { LoraTrainingPreset } from "@/app/design-demos/data/lora-training-types";
+import type { LoraTrainingPreset } from "@/features/training/types";
 import { prisma } from "@/lib/prisma";
 import { slugifyForRepository } from "@/server/repositories/character-lora-training/helpers";
 import { z } from "zod";
