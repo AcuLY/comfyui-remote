@@ -369,6 +369,137 @@ test("training project section route reads and updates a saved section through /
   );
 });
 
+test("training scene block routes create, update, detach, reorder, and delete blocks through /api/training", async () => {
+  const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
+  const blockCreateRoute = await import("../src/app/api/training/sections/[sectionId]/blocks/route");
+  const blockReorderRoute = await import("../src/app/api/training/sections/[sectionId]/blocks/reorder/route");
+  const blockDetailRoute = await import("../src/app/api/training/blocks/[blockId]/route");
+  const blockDetachRoute = await import("../src/app/api/training/blocks/[blockId]/detach/route");
+  const sectionDetailRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
+  const projects = await listProjects();
+  const projectId = projects[0].id;
+  const sectionsResponse = await sectionsRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections`),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const sectionsPayload = await sectionsResponse.json();
+  assert.equal(sectionsResponse.status, 200);
+  assert.equal(sectionsPayload.ok, true);
+  const sectionId = sectionsPayload.data[0].id as string;
+  const sectionDetailResponse = await sectionDetailRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections/${sectionId}`),
+    { params: Promise.resolve({ projectId, sectionId }) },
+  );
+  const sectionDetailPayload = await sectionDetailResponse.json();
+  const section = sectionDetailPayload.data as {
+    blocks: Array<{ id: string; source: string; text: string; title: string }>;
+    enabled: boolean;
+    id: string;
+    imagePrompt: string;
+    resolvedScene: string;
+    title: string;
+  };
+  const originalBlocks = section.blocks;
+
+  const createResponse = await blockCreateRoute.POST(
+    new Request(`http://localhost/api/training/sections/${sectionId}/blocks`, {
+      method: "POST",
+      body: JSON.stringify({
+        title: "HTTP 新场景块",
+        text: "通过正式 block API 新增的场景块。",
+        source: "本地",
+      }),
+    }),
+    { params: Promise.resolve({ sectionId }) },
+  );
+  const createPayload = await createResponse.json();
+
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  assert.equal(createPayload.data.title, "HTTP 新场景块");
+
+  const createdBlockId = createPayload.data.id as string;
+
+  const patchResponse = await blockDetailRoute.PATCH(
+    new Request(`http://localhost/api/training/blocks/${createdBlockId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: "HTTP 新场景块 已更新",
+        text: "通过正式 block API 更新后的场景块。",
+      }),
+    }),
+    { params: Promise.resolve({ blockId: createdBlockId }) },
+  );
+  const patchPayload = await patchResponse.json();
+
+  assert.equal(patchResponse.status, 200);
+  assert.equal(patchPayload.ok, true);
+  assert.equal(patchPayload.data.title, "HTTP 新场景块 已更新");
+
+  const detachResponse = await blockDetachRoute.POST(
+    new Request(`http://localhost/api/training/blocks/${createdBlockId}/detach`, {
+      method: "POST",
+      body: JSON.stringify({
+        editedText: "detach 后的本地文本",
+      }),
+    }),
+    { params: Promise.resolve({ blockId: createdBlockId }) },
+  );
+  const detachPayload = await detachResponse.json();
+
+  assert.equal(detachResponse.status, 200);
+  assert.equal(detachPayload.ok, true);
+  assert.equal(detachPayload.data.source, "本地");
+  assert.equal(detachPayload.data.text, "detach 后的本地文本");
+
+  const afterCreateSectionResponse = await sectionDetailRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections/${sectionId}`),
+    { params: Promise.resolve({ projectId, sectionId }) },
+  );
+  const afterCreateSectionPayload = await afterCreateSectionResponse.json();
+  const blockIds = (afterCreateSectionPayload.data.blocks as Array<{ id: string }>).map((block) => block.id);
+  const reorderedIds = [...blockIds].reverse();
+
+  const reorderResponse = await blockReorderRoute.POST(
+    new Request(`http://localhost/api/training/sections/${sectionId}/blocks/reorder`, {
+      method: "POST",
+      body: JSON.stringify({ ids: reorderedIds }),
+    }),
+    { params: Promise.resolve({ sectionId }) },
+  );
+  const reorderPayload = await reorderResponse.json();
+
+  assert.equal(reorderResponse.status, 200);
+  assert.equal(reorderPayload.ok, true);
+  assert.equal(reorderPayload.data[0].id, reorderedIds[0]);
+
+  const deleteResponse = await blockDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/blocks/${createdBlockId}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ blockId: createdBlockId }) },
+  );
+  const deletePayload = await deleteResponse.json();
+
+  assert.equal(deleteResponse.status, 200);
+  assert.equal(deletePayload.ok, true);
+  assert.equal(deletePayload.data.id, createdBlockId);
+
+  await sectionDetailRoute.PATCH(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections/${sectionId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: section.title,
+        enabled: section.enabled,
+        blocks: originalBlocks,
+        resolvedScene: section.resolvedScene,
+        imagePrompt: section.imagePrompt,
+      }),
+    }),
+    { params: Promise.resolve({ projectId, sectionId }) },
+  );
+});
+
 test("training project sections create, copy, delete, and reorder through /api/training", async () => {
   const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
   const reorderRoute = await import("../src/app/api/training/projects/[projectId]/sections/reorder/route");

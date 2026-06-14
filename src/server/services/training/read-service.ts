@@ -97,20 +97,39 @@ export async function getTrainingDatasetReadiness(projectId: string) {
 }
 
 export async function getTrainingSectionSceneDescription(sectionId: string) {
+  const { project, section } = await getTrainingSectionContext(sectionId);
+  return {
+    projectId: project.id,
+    sectionId,
+    text: section.resolvedScene,
+    blocks: section.blocks,
+  };
+}
+
+export async function getTrainingSectionContext(sectionId: string) {
   const snapshot = await loadTrainingSnapshot();
   for (const project of snapshot.projects) {
     const section = project.sections.find((item) => item.id === sectionId);
     if (section) {
-      return {
-        projectId: project.id,
-        sectionId,
-        text: section.resolvedScene,
-        blocks: section.blocks,
-      };
+      return { project, section };
     }
   }
 
   throw new TrainingReadServiceError("Training section not found", 404, { sectionId });
+}
+
+export async function getTrainingBlockContext(blockId: string) {
+  const snapshot = await loadTrainingSnapshot();
+  for (const project of snapshot.projects) {
+    for (const section of project.sections) {
+      const block = section.blocks.find((item) => item.id === blockId);
+      if (block) {
+        return { project, section, block };
+      }
+    }
+  }
+
+  throw new TrainingReadServiceError("Training section block not found", 404, { blockId });
 }
 
 export async function listTrainingRuns(filters: {
