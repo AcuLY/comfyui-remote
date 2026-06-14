@@ -483,12 +483,29 @@ test("training template form saves through the formal HTTP API on production rou
 
   assert.match(formSource, /usePathname/, "template form should detect whether it is running under production \\/training routes");
   assert.match(formSource, /useRouter/, "template form should be able to navigate to the saved training template on production routes");
-  assert.match(formSource, /fetch\(mode === "new" \? "\/api\/training\/templates" : `\/api\/training\/templates\/\$\{template\??\.id\}`/, "template form should call the formal training template API");
-  assert.match(formSource, /method:\s*mode === "new" \? "POST" : "PATCH"/, "template form should create or update through the matching HTTP method");
+  assert.match(formSource, /saveTemplateEndpoint/, "template form should derive the formal save endpoint before posting");
+  assert.match(formSource, /fetch\(saveTemplateEndpoint/, "template form should call the resolved formal save endpoint");
+  assert.match(formSource, /method:\s*saveTemplateMethod/, "template form should save through the resolved HTTP method");
   assert.match(formSource, /imageGuidance:/, "template form should send image guidance through the HTTP request");
   assert.match(formSource, /captionGuidance:/, "template form should send caption guidance through the HTTP request");
   assert.match(formSource, /sections:/, "template form should send the editable section list through the HTTP request");
   assert.match(formSource, /pushToast/, "template form should surface API success or failure through the shared feedback system");
+});
+
+test("project-sourced template creation saves through the formal save-as-template API", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(formSource, /const sourceProject = mode === "new"/, "project-backed template creation should resolve the source project explicitly");
+  assert.match(formSource, /sourceProject && mode === "new"/, "save endpoint should branch when the template is sourced from a project");
+  assert.match(formSource, /`\/api\/training\/projects\/\$\{sourceProject\.id\}\/save-as-template`/, "project-backed template creation should call the formal save-as-template route");
+  assert.match(formSource, /const saveTemplateMethod = sourceProject && mode === "new"[\s\S]*?"POST"/, "project-backed template creation should submit through POST");
+  assert.match(formSource, /const saveTemplateSections = orderedTemplateSectionIds/, "project-backed template save should derive payload sections from the current edited order");
+  assert.match(formSource, /sections:\s*saveTemplateSections/, "project-backed template save should include the current edited section list");
 });
 
 test("training template form state stays scoped to the active template context", () => {

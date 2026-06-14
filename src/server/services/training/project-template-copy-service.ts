@@ -40,6 +40,20 @@ const saveProjectAsTemplateSchema = z.object({
   description: z.string().trim().max(20_000).optional(),
   imageGuidance: z.string().trim().max(20_000).optional(),
   captionGuidance: z.string().trim().max(20_000).optional(),
+  sections: z.array(z.object({
+    id: z.string().trim().min(1).optional(),
+    title: z.string().trim().min(1).max(160),
+    enabled: z.boolean(),
+    blockCount: z.coerce.number().int().min(0).optional(),
+    blocks: z.array(z.object({
+      id: z.string().trim().min(1).optional(),
+      source: z.enum(["预制", "本地"]).optional(),
+      title: z.string().trim().min(1).max(160),
+      text: z.string().trim().min(1).max(20_000),
+    }).strict()).default([]),
+    resolvedScene: z.string().trim().max(20_000).nullable().optional(),
+    scenePreview: z.string().trim().max(20_000).nullable().optional(),
+  }).strict()).optional(),
 }).strict();
 
 export class TrainingProjectTemplateCopyServiceError extends Error {
@@ -171,6 +185,20 @@ export async function saveTrainingProjectAsTemplate(projectId: string, input: un
   const snapshot = await loadTrainingSnapshot();
   const project = findProject(snapshot, projectId);
   const title = parsed.data.title?.trim() || parsed.data.name?.trim() || `${project.title} 训练模板`;
+  const sections = parsed.data.sections?.map((section) => ({
+    id: section.id ?? `${project.id}-template-section-${section.title}`,
+    title: section.title,
+    enabled: section.enabled,
+    blockCount: section.blockCount ?? section.blocks.length,
+    blocks: section.blocks.map((block) => ({
+      id: block.id ?? `${section.id ?? section.title}-block-${block.title}`,
+      source: block.source ?? "本地",
+      title: block.title,
+      text: block.text,
+    })),
+    resolvedScene: section.resolvedScene ?? section.scenePreview ?? section.title,
+    scenePreview: section.scenePreview ?? section.resolvedScene ?? section.title,
+  })) ?? mapProjectSectionsToTemplateSections(project);
 
   try {
     return await createManagedTrainingTemplate({
@@ -178,7 +206,7 @@ export async function saveTrainingProjectAsTemplate(projectId: string, input: un
       description: parsed.data.description ?? `从训练项目 ${project.title} 保存为模板。`,
       imageGuidance: parsed.data.imageGuidance ?? project.usagePrompt ?? "",
       captionGuidance: parsed.data.captionGuidance ?? project.detailPrompt ?? "",
-      sections: mapProjectSectionsToTemplateSections(project),
+      sections,
     });
   } catch (error) {
     const mapped = mapTrainingTemplateError(error);

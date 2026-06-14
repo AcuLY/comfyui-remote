@@ -2144,6 +2144,7 @@ test("training project route can save a project as a template through /api/train
   const projectDetailRoute = await import("../src/app/api/training/projects/[projectId]/route");
   const saveAsTemplateRoute = await import("../src/app/api/training/projects/[projectId]/save-as-template/route");
   const templatesRoute = await import("../src/app/api/training/templates/route");
+  const templateDetailRoute = await import("../src/app/api/training/templates/[templateId]/route");
   const projects = await listProjects();
   const projectId = (
     projects.find((project) => (project.sectionCount ?? 0) > 0)
@@ -2166,6 +2167,26 @@ test("training project route can save a project as a template through /api/train
       body: JSON.stringify({
         title: templateTitle,
         description: "从项目保存为模板的测试描述。",
+        imageGuidance: "从项目保存为模板的图片指引。",
+        captionGuidance: "从项目保存为模板的说明文本指引。",
+        sections: [
+          {
+            id: "saved-template-section",
+            title: "保存模板小节",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "saved-template-block",
+                source: "本地",
+                title: "保存模板场景块",
+                text: "从项目模板保存时提交的场景描述。",
+              },
+            ],
+            resolvedScene: "从项目模板保存时提交的场景描述。",
+            scenePreview: "从项目模板保存时提交的场景描述。",
+          },
+        ],
       }),
     }),
     { params: Promise.resolve({ projectId }) },
@@ -2175,7 +2196,20 @@ test("training project route can save a project as a template through /api/train
   assert.equal(saveResponse.status, 201);
   assert.equal(savePayload.ok, true);
   assert.equal(savePayload.data.title, templateTitle);
-  assert.equal(savePayload.data.sections.length, projectDetailPayload.data.sections.length);
+  assert.equal(savePayload.data.sections.length, 1);
+  assert.equal(savePayload.data.sections[0].title, "保存模板小节");
+
+  const templateId = savePayload.data.id as string;
+  const templateDetailResponse = await templateDetailRoute.GET(
+    new Request(`http://localhost/api/training/templates/${templateId}`),
+    { params: Promise.resolve({ templateId }) },
+  );
+  const templateDetailPayload = await templateDetailResponse.json();
+  assert.equal(templateDetailResponse.status, 200);
+  assert.equal(templateDetailPayload.ok, true);
+  assert.equal(templateDetailPayload.data.imageGuidance, "从项目保存为模板的图片指引。");
+  assert.equal(templateDetailPayload.data.captionGuidance, "从项目保存为模板的说明文本指引。");
+  assert.equal(templateDetailPayload.data.sections[0].title, "保存模板小节");
 
   const templatesResponse = await templatesRoute.GET(new Request("http://localhost/api/training/templates"));
   const templatesPayload = await templatesResponse.json();

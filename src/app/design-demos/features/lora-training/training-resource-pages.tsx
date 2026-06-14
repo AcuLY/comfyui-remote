@@ -1450,17 +1450,28 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
 
     setIsSavingTemplate(true);
     try {
-      const response = await fetch(mode === "new" ? "/api/training/templates" : `/api/training/templates/${template?.id}`, {
-        method: mode === "new" ? "POST" : "PATCH",
+      const saveTemplateSections = orderedTemplateSectionIds
+        .map((sectionId) => templateSectionMap[sectionId])
+        .filter((section): section is LoraTrainingTemplate["sections"][number] => Boolean(section));
+      const saveTemplateEndpoint = sourceProject && mode === "new"
+        ? `/api/training/projects/${sourceProject.id}/save-as-template`
+        : mode === "new"
+          ? "/api/training/templates"
+          : `/api/training/templates/${template?.id}`;
+      const saveTemplateMethod = sourceProject && mode === "new"
+        ? "POST"
+        : mode === "new"
+          ? "POST"
+          : "PATCH";
+      const response = await fetch(saveTemplateEndpoint, {
+        method: saveTemplateMethod,
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           title: templateForm.title,
           description: templateForm.description,
           imageGuidance: templateForm.imageGuidance,
           captionGuidance: templateForm.captionGuidance,
-          sections: orderedTemplateSectionIds
-            .map((sectionId) => templateSectionMap[sectionId])
-            .filter((section): section is LoraTrainingTemplate["sections"][number] => Boolean(section)),
+          sections: saveTemplateSections,
         }),
       });
       const payload = await response.json().catch(() => null);
