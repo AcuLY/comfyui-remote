@@ -2291,6 +2291,8 @@ test("training preset sort rules reorder categories and presets through /api/tra
 test("training template routes create, update, read, and delete templates through /api/training", async () => {
   const templatesRoute = await import("../src/app/api/training/templates/route");
   const templateDetailRoute = await import("../src/app/api/training/templates/[templateId]/route");
+  const templateSectionsRoute = await import("../src/app/api/training/templates/[templateId]/sections/route");
+  const templateSectionReorderRoute = await import("../src/app/api/training/templates/[templateId]/sections/reorder/route");
   const sectionRoute = await import("../src/app/api/training/templates/[templateId]/sections/[sectionId]/route");
   const templateTitle = `测试训练模板 ${Date.now()}`;
 
@@ -2378,6 +2380,76 @@ test("training template routes create, update, read, and delete templates throug
   assert.equal(sectionPatchResponse.status, 200);
   assert.equal(sectionPatchPayload.ok, true);
   assert.equal(sectionPatchPayload.data.sections[0].title, "模板小节已更新");
+
+  const addSectionResponse = await templateSectionsRoute.POST(
+    new Request(`http://localhost/api/training/templates/${templateId}/sections`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+    { params: Promise.resolve({ templateId }) },
+  );
+  const addSectionPayload = await addSectionResponse.json();
+
+  assert.equal(addSectionResponse.status, 201);
+  assert.equal(addSectionPayload.ok, true);
+  assert.equal(addSectionPayload.data.sections.length, 2);
+
+  const addedSectionId = addSectionPayload.data.sections[1].id as string;
+
+  const copySectionResponse = await templateSectionsRoute.POST(
+    new Request(`http://localhost/api/training/templates/${templateId}/sections`, {
+      method: "POST",
+      body: JSON.stringify({
+        sourceSectionId: sectionId,
+      }),
+    }),
+    { params: Promise.resolve({ templateId }) },
+  );
+  const copySectionPayload = await copySectionResponse.json();
+
+  assert.equal(copySectionResponse.status, 201);
+  assert.equal(copySectionPayload.ok, true);
+  assert.equal(copySectionPayload.data.sections.length, 3);
+
+  const copySectionId = (copySectionPayload.data.sections as Array<{ id: string }>)
+    .map((section) => section.id)
+    .find((id) => id !== sectionId && id !== addedSectionId);
+  assert.ok(copySectionId, "template section copy should create a distinct copied section id");
+
+  const reorderedTemplateSectionIds = [
+    copySectionId,
+    sectionId,
+    addedSectionId,
+  ];
+  const reorderSectionResponse = await templateSectionReorderRoute.POST(
+    new Request(`http://localhost/api/training/templates/${templateId}/sections/reorder`, {
+      method: "POST",
+      body: JSON.stringify({
+        orderedSectionIds: reorderedTemplateSectionIds,
+      }),
+    }),
+    { params: Promise.resolve({ templateId }) },
+  );
+  const reorderSectionPayload = await reorderSectionResponse.json();
+
+  assert.equal(reorderSectionResponse.status, 200);
+  assert.equal(reorderSectionPayload.ok, true);
+  assert.deepEqual(
+    reorderSectionPayload.data.sections.map((section: { id: string }) => section.id),
+    reorderedTemplateSectionIds,
+  );
+
+  const deleteSectionResponse = await sectionRoute.DELETE(
+    new Request(`http://localhost/api/training/templates/${templateId}/sections/${addedSectionId}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ templateId, sectionId: addedSectionId }) },
+  );
+  const deleteSectionPayload = await deleteSectionResponse.json();
+
+  assert.equal(deleteSectionResponse.status, 200);
+  assert.equal(deleteSectionPayload.ok, true);
+  assert.equal(deleteSectionPayload.data.sections.length, 2);
 
   const getResponse = await templateDetailRoute.GET(
     new Request(`http://localhost/api/training/templates/${templateId}`),

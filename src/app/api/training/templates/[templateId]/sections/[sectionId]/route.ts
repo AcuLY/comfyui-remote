@@ -1,5 +1,6 @@
 import { fail, ok } from "@/lib/api-response";
 import {
+  deleteManagedTrainingTemplateSection,
   getManagedTrainingTemplate,
   mapTrainingTemplateError,
   updateManagedTrainingTemplateSection,
@@ -36,6 +37,17 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { sectionId, templateId } = await context.params;
     const data = await updateManagedTrainingTemplateSection(templateId, sectionId, body);
+    return ok(data);
+  } catch (error) {
+    const mapped = mapTrainingTemplateError(error);
+    return fail(mapped.message, mapped.status, mapped.details);
+  }
+}
+
+export async function DELETE(_request: Request, context: RouteContext) {
+  try {
+    const { sectionId, templateId } = await context.params;
+    const data = await deleteManagedTrainingTemplateSection(templateId, sectionId);
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingTemplateError(error);

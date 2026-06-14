@@ -598,6 +598,25 @@ test("training template form section actions update local front-end state", () =
   assert.match(rowSource, /onDelete\?\.\(section\.id\)/, "template section delete button should call the delete handler");
 });
 
+test("training template form section actions persist through formal HTTP APIs on production edit routes", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(formSource, /usePathname/, "template form should detect whether it is running under production \\/training routes");
+  assert.match(formSource, /mode === "edit"/, "template section mutations should distinguish persisted edit routes from new-template drafts");
+  assert.match(formSource, /fetch\(`\/api\/training\/templates\/\$\{template\.id\}\/sections`/, "add and copy template section actions should call the formal template section collection API");
+  assert.match(formSource, /sourceSectionId:\s*section\.id/, "template section copy should send the copied source section id");
+  assert.match(formSource, /fetch\(`\/api\/training\/templates\/\$\{template\.id\}\/sections\/\$\{sectionId\}`/, "template section delete should call the formal template section detail API");
+  assert.match(formSource, /fetch\(`\/api\/training\/templates\/\$\{template\.id\}\/sections\/reorder`/, "template section reorder should call the formal template section reorder API");
+  assert.match(formSource, /method:\s*"DELETE"/, "template section delete should use DELETE");
+  assert.match(formSource, /orderedSectionIds:\s*nextIds/, "template section reorder should submit the updated ordered ids");
+  assert.match(formSource, /模板小节(创建|复制|删除|排序)失败/, "template section mutations should surface API failures through the shared feedback system");
+});
+
 test("training template section copy inserts the duplicate directly after the source section", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");

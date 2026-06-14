@@ -295,6 +295,46 @@ function nextTemplateUpdatedAt() {
   return formatUpdatedAt(new Date());
 }
 
+function nextTemplateSectionOrdinal(sections: LoraTrainingTemplate["sections"], prefix: string) {
+  const ordinals = sections
+    .map((section) => (section.id.startsWith(prefix) ? Number(section.id.slice(prefix.length)) : Number.NaN))
+    .filter((value) => Number.isFinite(value));
+  return ordinals.length ? Math.max(...ordinals) + 1 : 1;
+}
+
+function createDraftTemplateSection(
+  current: LoraTrainingTemplate["sections"],
+  templateId: string,
+  titleSuffix: string,
+): LoraTrainingTemplate["sections"][number] {
+  const source = current[0];
+  const sectionOrdinal = nextTemplateSectionOrdinal(current, `${templateId}-section-`);
+  const sectionId = `${templateId}-section-${sectionOrdinal}`;
+  const draftIndex = current.length + 1;
+  return source ? {
+    ...source,
+    id: sectionId,
+    title: `新模板小节 ${draftIndex}${titleSuffix}`,
+    enabled: true,
+    scenePreview: "补充这个模板小节的训练场景摘要。",
+  } : {
+    id: sectionId,
+    title: `新模板小节 ${draftIndex}${titleSuffix}`,
+    enabled: true,
+    blockCount: 1,
+    blocks: [
+      {
+        id: `${sectionId}-block-1`,
+        source: "本地",
+        title: "本地场景描述",
+        text: "补充这个模板小节的训练场景描述。",
+      },
+    ],
+    resolvedScene: "补充这个模板小节的训练场景描述。",
+    scenePreview: "补充这个模板小节的训练场景摘要。",
+  };
+}
+
 function buildDefaultFallbackTrainingTemplates() {
   return DEFAULT_FALLBACK_TRAINING_TEMPLATES.map((template) => ({
     ...template,
@@ -564,6 +604,112 @@ export async function updateManagedTrainingTemplateSection(templateId: string, s
     imageGuidance: current.imageGuidance,
     captionGuidance: current.captionGuidance,
     sections,
+  });
+}
+
+export async function createManagedTrainingTemplateSection(templateId: string, input: unknown = {}) {
+  const schema = z.object({
+    sourceSectionId: z.string().trim().min(1).optional(),
+  }).strict();
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    throw new TrainingTemplateServiceError("Invalid training template section create request", 400, {
+      issues: result.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      })),
+    });
+  }
+
+  const current = await getManagedTrainingTemplate(templateId);
+  const sourceSectionId = result.data.sourceSectionId?.trim();
+  const nextSection = sourceSectionId
+    ? (() => {
+        const source = current.sections.find((section) => section.id === sourceSectionId);
+        if (!source) {
+          throw new TrainingTemplateServiceError("Training template section not found", 404, { sourceSectionId, templateId });
+        }
+        const copyOrdinal = nextTemplateSectionOrdinal(current.sections, `${source.id}-copy-`);
+        return {
+          ...source,
+          id: `${source.id}-copy-${copyOrdinal}`,
+          title: `${source.title} (副本)`,
+        };
+      })()
+    : createDraftTemplateSection(current.sections, templateId, "");
+
+  const nextSections = sourceSectionId
+    ? (() => {
+        const sourceIndex = current.sections.findIndex((section) => section.id === sourceSectionId);
+        if (sourceIndex === -1) return [...current.sections, nextSection];
+        return [
+          ...current.sections.slice(0, sourceIndex + 1),
+          nextSection,
+          ...current.sections.slice(sourceIndex + 1),
+        ];
+      })()
+    : [...current.sections, nextSection];
+
+  return updateManagedTrainingTemplate(templateId, {
+    title: current.title,
+    description: current.description,
+    imageGuidance: current.imageGuidance,
+    captionGuidance: current.captionGuidance,
+    sections: nextSections,
+  });
+}
+
+export async function deleteManagedTrainingTemplateSection(templateId: string, sectionId: string) {
+  const current = await getManagedTrainingTemplate(templateId);
+  if (!current.sections.some((section) => section.id === sectionId)) {
+    throw new TrainingTemplateServiceError("Training template section not found", 404, { templateId, sectionId });
+  }
+
+  return updateManagedTrainingTemplate(templateId, {
+    title: current.title,
+    description: current.description,
+    imageGuidance: current.imageGuidance,
+    captionGuidance: current.captionGuidance,
+    sections: current.sections.filter((section) => section.id !== sectionId),
+  });
+}
+
+export async function reorderManagedTrainingTemplateSections(templateId: string, input: unknown) {
+  const schema = z.object({
+    orderedSectionIds: z.array(z.string().trim().min(1)).min(1),
+  }).strict();
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    throw new TrainingTemplateServiceError("Invalid training template reorder request", 400, {
+      issues: result.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      })),
+    });
+  }
+
+  const current = await getManagedTrainingTemplate(templateId);
+  const orderedSectionIds = [...new Set(result.data.orderedSectionIds)];
+  if (orderedSectionIds.length !== current.sections.length) {
+    throw new TrainingTemplateServiceError("orderedSectionIds must include every template section exactly once", 400, {
+      expected: current.sections.length,
+      actual: orderedSectionIds.length,
+    });
+  }
+
+  const sectionMap = new Map(current.sections.map((section) => [section.id, section]));
+  const missingSectionIds = orderedSectionIds.filter((sectionId) => !sectionMap.has(sectionId));
+  if (missingSectionIds.length > 0) {
+    throw new TrainingTemplateServiceError("Training template section not found", 404, { missingSectionIds, templateId });
+  }
+
+  const nextSections = orderedSectionIds.map((sectionId) => sectionMap.get(sectionId)!);
+  return updateManagedTrainingTemplate(templateId, {
+    title: current.title,
+    description: current.description,
+    imageGuidance: current.imageGuidance,
+    captionGuidance: current.captionGuidance,
+    sections: nextSections,
   });
 }
 

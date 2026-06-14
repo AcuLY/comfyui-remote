@@ -1556,6 +1556,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
     draft: null,
   }));
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [isMutatingTemplateSections, setIsMutatingTemplateSections] = useState(false);
   const templateSections = templateSectionState.contextId === templateFormContextId ? templateSectionState.sections : templateSeedSections;
   const orderedTemplateSectionIds = templateSectionState.contextId === templateFormContextId ? templateSectionState.orderedIds : templateSeedSectionIds;
   const templateForm = templateFormState.contextId === templateFormContextId ? templateFormState.form : initialTemplateForm;
@@ -1581,6 +1582,14 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
         orderedIds: active.orderedIds.filter((id) => sectionIds.has(id)),
         sections,
       };
+    });
+  }
+
+  function replaceTemplateSections(nextSections: LoraTrainingTemplateSection[]) {
+    setTemplateSectionState({
+      contextId: templateFormContextId,
+      orderedIds: nextSections.map((section) => section.id),
+      sections: nextSections,
     });
   }
 
@@ -1717,6 +1726,42 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
     const draft = createDraftTemplateSection(templateSections, "");
     setLocalTemplateSections((current) => [...current, draft]);
     setOrderedTemplateSectionIds((ids) => [...ids, draft.id]);
+
+    if (!isProductionTrainingRoute || mode !== "edit" || !template?.id) return;
+    if (isMutatingTemplateSections) return;
+
+    setIsMutatingTemplateSections(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/templates/${template.id}/sections`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !Array.isArray(payload?.data?.sections)) {
+          replaceTemplateSections(templateSections);
+          setOrderedTemplateSectionIds(orderedTemplateSectionIds);
+          pushToast({
+            tone: "error",
+            title: "模板小节创建失败",
+            detail: payload?.error?.message ?? "模板小节创建请求失败",
+          });
+          return;
+        }
+        replaceTemplateSections(payload.data.sections as LoraTrainingTemplateSection[]);
+      } catch (error) {
+        replaceTemplateSections(templateSections);
+        setOrderedTemplateSectionIds(orderedTemplateSectionIds);
+        pushToast({
+          tone: "error",
+          title: "模板小节创建失败",
+          detail: error instanceof Error ? error.message : "模板小节创建请求失败",
+        });
+      } finally {
+        setIsMutatingTemplateSections(false);
+      }
+    })();
   }
 
   function handleCopyTemplateSection(section: LoraTrainingTemplateSection) {
@@ -1744,16 +1789,132 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
         ...ids.slice(sourceIndex + 1),
       ];
     });
+
+    if (!isProductionTrainingRoute || mode !== "edit" || !template?.id) return;
+    if (isMutatingTemplateSections) return;
+
+    const previousSections = templateSections;
+    const previousIds = orderedTemplateSectionIds;
+    setIsMutatingTemplateSections(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/templates/${template.id}/sections`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            sourceSectionId: section.id,
+          }),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !Array.isArray(payload?.data?.sections)) {
+          replaceTemplateSections(previousSections);
+          setOrderedTemplateSectionIds(previousIds);
+          pushToast({
+            tone: "error",
+            title: "模板小节复制失败",
+            detail: payload?.error?.message ?? "模板小节复制请求失败",
+          });
+          return;
+        }
+        replaceTemplateSections(payload.data.sections as LoraTrainingTemplateSection[]);
+      } catch (error) {
+        replaceTemplateSections(previousSections);
+        setOrderedTemplateSectionIds(previousIds);
+        pushToast({
+          tone: "error",
+          title: "模板小节复制失败",
+          detail: error instanceof Error ? error.message : "模板小节复制请求失败",
+        });
+      } finally {
+        setIsMutatingTemplateSections(false);
+      }
+    })();
   }
 
   function handleDeleteTemplateSection(sectionId: string) {
     setLocalTemplateSections((current) => current.filter((section) => section.id !== sectionId));
     setOrderedTemplateSectionIds((ids) => ids.filter((id) => id !== sectionId));
+
+    if (!isProductionTrainingRoute || mode !== "edit" || !template?.id) return;
+    if (isMutatingTemplateSections) return;
+
+    const previousSections = templateSections;
+    const previousIds = orderedTemplateSectionIds;
+    setIsMutatingTemplateSections(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/templates/${template.id}/sections/${sectionId}`, {
+          method: "DELETE",
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !Array.isArray(payload?.data?.sections)) {
+          replaceTemplateSections(previousSections);
+          setOrderedTemplateSectionIds(previousIds);
+          pushToast({
+            tone: "error",
+            title: "模板小节删除失败",
+            detail: payload?.error?.message ?? "模板小节删除请求失败",
+          });
+          return;
+        }
+        replaceTemplateSections(payload.data.sections as LoraTrainingTemplateSection[]);
+      } catch (error) {
+        replaceTemplateSections(previousSections);
+        setOrderedTemplateSectionIds(previousIds);
+        pushToast({
+          tone: "error",
+          title: "模板小节删除失败",
+          detail: error instanceof Error ? error.message : "模板小节删除请求失败",
+        });
+      } finally {
+        setIsMutatingTemplateSections(false);
+      }
+    })();
   }
 
   function handleReorderTemplateSections(nextIds: string[]) {
     setOrderedTemplateSectionIds(nextIds);
     setLocalTemplateSections((current) => orderTemplateSectionsByIds(current, nextIds));
+
+    if (!isProductionTrainingRoute || mode !== "edit" || !template?.id) return;
+    if (isMutatingTemplateSections) return;
+
+    const previousSections = templateSections;
+    const previousIds = orderedTemplateSectionIds;
+    setIsMutatingTemplateSections(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/templates/${template.id}/sections/reorder`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            orderedSectionIds: nextIds,
+          }),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !Array.isArray(payload?.data?.sections)) {
+          replaceTemplateSections(previousSections);
+          setOrderedTemplateSectionIds(previousIds);
+          pushToast({
+            tone: "error",
+            title: "模板小节排序失败",
+            detail: payload?.error?.message ?? "模板小节排序请求失败",
+          });
+          return;
+        }
+        replaceTemplateSections(payload.data.sections as LoraTrainingTemplateSection[]);
+      } catch (error) {
+        replaceTemplateSections(previousSections);
+        setOrderedTemplateSectionIds(previousIds);
+        pushToast({
+          tone: "error",
+          title: "模板小节排序失败",
+          detail: error instanceof Error ? error.message : "模板小节排序请求失败",
+        });
+      } finally {
+        setIsMutatingTemplateSections(false);
+      }
+    })();
   }
 
   if (mode === "edit" && !template) return <EmptyPage title="没有训练模板数据" />;
