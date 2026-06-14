@@ -2158,6 +2158,184 @@ test("production generation tasks can be cancelled through /api/training when th
   assert.equal(detailPayload.data.status, "cancelled");
 });
 
+test("production generation task draft lifecycle works through /api/training when the training database is available", async () => {
+  const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
+  try {
+    await listCharacterLoraTrainingJobs({ page: 1, pageSize: 1 });
+  } catch (error) {
+    if (isProductionTrainingDatabaseUnavailable(error)) {
+      return;
+    }
+    throw error;
+  }
+
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const projectGenerationTasksRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
+  const generationTaskDetailRoute = await import("../src/app/api/training/generation-tasks/[taskId]/route");
+  const generationTaskInputsRoute = await import("../src/app/api/training/generation-tasks/[taskId]/inputs/route");
+  const generationTaskSupplementalImagesRoute = await import("../src/app/api/training/generation-tasks/[taskId]/supplemental-images/route");
+  const generationTaskPreviewRoute = await import("../src/app/api/training/generation-tasks/[taskId]/preview/route");
+  const generationTaskRunRoute = await import("../src/app/api/training/generation-tasks/[taskId]/run/route");
+  const title = `真实生成草稿项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_real_generation_draft_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        usagePrompt: "真实生成草稿提示词",
+        detailPrompt: "真实生成草稿细节",
+        sections: [
+          {
+            id: "real-generation-draft-section",
+            title: "真实生成草稿小节",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "real-generation-draft-block",
+                source: "本地",
+                title: "真实生成草稿 block",
+                text: "真实生成草稿场景描述",
+              },
+            ],
+            resolvedScene: "真实生成草稿场景描述",
+            scenePreview: "真实生成草稿场景描述",
+          },
+        ],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  assert.ok(!String(createPayload.data.id).startsWith("training-project-"));
+
+  const projectId = createPayload.data.id as string;
+  const sectionId = createPayload.data.sections[0].id as string;
+
+  const uploadReferenceFormData = new FormData();
+  uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "real-generation-draft-source.png", { type: "image/png" }));
+  uploadReferenceFormData.append("role", "source");
+  const uploadReferenceResponse = await referenceRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+      method: "POST",
+      body: uploadReferenceFormData,
+    }),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const uploadReferencePayload = await uploadReferenceResponse.json();
+  assert.equal(uploadReferenceResponse.status, 201);
+  assert.equal(uploadReferencePayload.ok, true);
+  const referenceId = uploadReferencePayload.data.id as string;
+
+  const createTaskResponse = await projectGenerationTasksRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/generation-tasks`, {
+      method: "POST",
+      body: JSON.stringify({
+        sectionId,
+        taskType: "训练集图片生成",
+        supplementalPrompt: "真实初始补充提示词",
+      }),
+    }),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const createTaskPayload = await createTaskResponse.json();
+  assert.equal(createTaskResponse.status, 201);
+  assert.equal(createTaskPayload.ok, true);
+  const taskId = createTaskPayload.data.id as string;
+
+  const patchTaskResponse = await generationTaskDetailRoute.PATCH(
+    new Request(`http://localhost/api/training/generation-tasks/${taskId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        taskType: "角色描述生成",
+        supplementalPrompt: "真实更新后的补充提示词",
+      }),
+    }),
+    { params: Promise.resolve({ taskId }) },
+  );
+  const patchTaskPayload = await patchTaskResponse.json();
+  assert.equal(patchTaskResponse.status, 200);
+  assert.equal(patchTaskPayload.ok, true);
+  assert.equal(patchTaskPayload.data.taskType, "角色描述生成");
+
+  const addInputResponse = await generationTaskInputsRoute.POST(
+    new Request(`http://localhost/api/training/generation-tasks/${taskId}/inputs`, {
+      method: "POST",
+      body: JSON.stringify({
+        referenceId,
+      }),
+    }),
+    { params: Promise.resolve({ taskId }) },
+  );
+  const addInputPayload = await addInputResponse.json();
+  assert.equal(addInputResponse.status, 201);
+  assert.equal(addInputPayload.ok, true);
+  assert.equal(addInputPayload.data.referenceId, referenceId);
+
+  const supplementalFormData = new FormData();
+  supplementalFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "real-draft-extra.png", { type: "image/png" }));
+  supplementalFormData.append("title", "真实补充图");
+  supplementalFormData.append("detail", "真实补充附件说明");
+  const supplementalImageResponse = await generationTaskSupplementalImagesRoute.POST(
+    new Request(`http://localhost/api/training/generation-tasks/${taskId}/supplemental-images`, {
+      method: "POST",
+      body: supplementalFormData,
+    }),
+    { params: Promise.resolve({ taskId }) },
+  );
+  const supplementalImagePayload = await supplementalImageResponse.json();
+  assert.equal(supplementalImageResponse.status, 201);
+  assert.equal(supplementalImagePayload.ok, true);
+
+  const previewResponse = await generationTaskPreviewRoute.POST(
+    new Request(`http://localhost/api/training/generation-tasks/${taskId}/preview`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ taskId }) },
+  );
+  const previewPayload = await previewResponse.json();
+  assert.equal(previewResponse.status, 200);
+  assert.equal(previewPayload.ok, true);
+  assert.match(previewPayload.data.finalInput, /真实更新后的补充提示词/);
+  assert.match(previewPayload.data.finalInput, /真实补充附件说明/);
+
+  const runResponse = await generationTaskRunRoute.POST(
+    new Request(`http://localhost/api/training/generation-tasks/${taskId}/run`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ taskId }) },
+  );
+  const runPayload = await runResponse.json();
+  assert.equal(runResponse.status, 201);
+  assert.equal(runPayload.ok, true);
+  assert.equal(runPayload.data.kind, "generation");
+  assert.equal(runPayload.data.projectId, projectId);
+
+  const runId = runPayload.data.id as string;
+  const runDetailResponse = await generationTaskDetailRoute.GET(
+    new Request(`http://localhost/api/training/generation-tasks/${runId}`),
+    { params: Promise.resolve({ taskId: runId }) },
+  );
+  const runDetailPayload = await runDetailResponse.json();
+  assert.equal(runDetailResponse.status, 200);
+  assert.equal(runDetailPayload.ok, true);
+  assert.equal(runDetailPayload.data.id, runId);
+  assert.equal(runDetailPayload.data.kind, "generation");
+});
+
 test("training project detail route deletes a managed project through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const projectDetailRoute = await import("../src/app/api/training/projects/[projectId]/route");
