@@ -762,6 +762,7 @@ function LoraTrainingPresetDetailContent({
     draft: null,
   }));
   const [isSavingPreset, setIsSavingPreset] = useState(false);
+  const [isDeletingPreset, setIsDeletingPreset] = useState(false);
   const presetForm = presetFormState.contextId === presetFormContextId ? presetFormState.form : initialPresetForm;
   const presetDraft = presetDraftState.contextId === presetFormContextId ? presetDraftState.draft : null;
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
@@ -843,6 +844,58 @@ function LoraTrainingPresetDetailContent({
     }
   }
 
+  async function handleDeletePreset() {
+    if (isNew) return;
+
+    if (!isProductionTrainingRoute) {
+      pushToast({
+        tone: "warning",
+        title: "训练预制已从列表移除",
+        detail: preset.title,
+      });
+      router.push("/training/presets");
+      return;
+    }
+
+    if (isDeletingPreset) return;
+
+    setIsDeletingPreset(true);
+    try {
+      const response = await fetch(`/api/training/scene-description/presets/${preset.id}/cascade`, {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          confirm: true,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "训练预制删除失败",
+          detail: payload?.error?.message ?? "训练预制删除请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "warning",
+        title: "训练预制已从列表移除",
+        detail: preset.title,
+      });
+      router.push("/training/presets");
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "训练预制删除失败",
+        detail: error instanceof Error ? error.message : "训练预制删除请求失败",
+      });
+    } finally {
+      setIsDeletingPreset(false);
+    }
+  }
+
   return (
     <div className={s.page}>
       <PageHeader
@@ -851,14 +904,26 @@ function LoraTrainingPresetDetailContent({
         title={isNew ? "新建训练预制" : presetForm.title}
         subtitle={isNew ? `${presetForm.category} / ${presetForm.folder} · 本地草稿` : `${presetForm.category} / ${presetForm.folder} · 更新 ${preset.updatedAt}`}
         actions={(
-          <Button
-            tone="primary"
-            icon={Save}
-            pending={isSavingPreset}
-            onClick={handleSavePreset}
-          >
-            {presetDraft ? "更新草稿" : isNew ? "创建预制" : "保存"}
-          </Button>
+          <>
+            {!isNew ? (
+              <Button
+                tone="danger"
+                icon={Trash2}
+                pending={isDeletingPreset}
+                onClick={handleDeletePreset}
+              >
+                删除
+              </Button>
+            ) : null}
+            <Button
+              tone="primary"
+              icon={Save}
+              pending={isSavingPreset}
+              onClick={handleSavePreset}
+            >
+              {presetDraft ? "更新草稿" : isNew ? "创建预制" : "保存"}
+            </Button>
+          </>
         )}
       />
       <WorkbenchSurface className={s.trainingPresetEditorSurface}>

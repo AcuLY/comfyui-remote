@@ -390,6 +390,23 @@ test("training preset detail saves through the formal HTTP API on production rou
   assert.match(detailSource, /pushToast/, "preset detail should surface API success or failure through shared feedback");
 });
 
+test("training preset detail deletes through the formal cascade API on production routes", () => {
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  assert.notEqual(detailStart, -1);
+  assert.notEqual(sortStart, -1);
+
+  const detailSource = pageSource.slice(detailStart, sortStart);
+
+  assert.match(detailSource, /isDeletingPreset/, "preset detail should track delete request state");
+  assert.match(detailSource, /handleDeletePreset/, "preset detail should define a delete handler");
+  assert.match(detailSource, /fetch\(`\/api\/training\/scene-description\/presets\/\$\{preset\.id\}\/cascade`/, "preset detail should call the formal cascade delete API");
+  assert.match(detailSource, /method:\s*"DELETE"/, "preset detail delete should use DELETE");
+  assert.match(detailSource, /confirm:\s*true/, "preset detail delete should send the explicit cascade confirmation");
+  assert.match(detailSource, /router\.push\("\/training\/presets"\)/, "preset detail delete should return to the preset library after success");
+  assert.match(detailSource, /训练预制删除失败/, "preset detail delete should surface API failures through shared feedback");
+});
+
 test("training template form uses the shared template editor workspace model", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");
