@@ -230,6 +230,7 @@ test("failed run detail retries through the formal HTTP API on production routes
   assert.match(detailSource, /fetch\(`\/api\/training\/sections\/\$\{currentRun\.sectionId\}\/runs`/, "generation retry should call the formal section run API");
   assert.match(detailSource, /fetch\(`\/api\/training\/projects\/\$\{currentRun\.projectId\}\/training-runs`/, "training retry should call the formal project training run API");
   assert.match(detailSource, /parentRunId:\s*currentRun\.id/, "generation retry should pass the failed run id as the parent run");
+  assert.match(detailSource, /projectId:\s*currentRun\.projectId/, "generation retry should keep the project scope when section ids overlap");
   assert.match(detailSource, /revisionId:\s*currentRun\.datasetRevisionId/, "training retry should pass the original dataset revision id");
   assert.match(detailSource, /targetSteps:/, "training retry should map the existing target step count into the HTTP request config");
   assert.match(detailSource, /router\.push\(`/, "retry flow should navigate to the newly queued run after a successful API response");

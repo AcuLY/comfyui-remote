@@ -119,6 +119,7 @@ test("failed training runs retry through the formal HTTP API on production route
   assert.match(pageSource, /fetch\(`\/api\/training\/sections\/\$\{run\.sectionId\}\/runs`/, "failed generation rows should call the formal section run retry API");
   assert.match(pageSource, /fetch\(`\/api\/training\/projects\/\$\{run\.projectId\}\/training-runs`/, "failed training rows should call the formal project training retry API");
   assert.match(pageSource, /parentRunId:\s*run\.id/, "failed generation retries should pass the original run id as parentRunId");
+  assert.match(pageSource, /projectId:\s*run\.projectId/, "failed generation retries should keep the project scope when section ids overlap");
   assert.match(pageSource, /revisionId:\s*run\.datasetRevisionId/, "failed training retries should pass the original dataset revision id");
   assert.match(pageSource, /targetSteps:/, "failed training retries should map the original target step count into the HTTP request config");
   assert.match(pageSource, /Promise\.all/, "runs page should persist all retry requests before updating local retry state");

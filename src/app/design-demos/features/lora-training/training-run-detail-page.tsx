@@ -351,6 +351,7 @@ export function LoraTrainingRunDetailPage({
               headers: { "content-type": "application/json" },
               body: JSON.stringify({
                 parentRunId: currentRun.id,
+                projectId: currentRun.projectId,
               }),
             });
           })()

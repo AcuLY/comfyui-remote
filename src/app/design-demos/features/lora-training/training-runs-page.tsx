@@ -367,6 +367,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
               headers: { "content-type": "application/json" },
               body: JSON.stringify({
                 parentRunId: run.id,
+                projectId: run.projectId,
               }),
             });
             const payload = await response.json().catch(() => null);
