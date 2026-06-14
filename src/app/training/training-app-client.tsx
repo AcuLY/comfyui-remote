@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
-import type { DemoData } from "@/app/design-demos/data";
+import type { TrainingAppData } from "@/features/training/data";
 import {
   LoraTrainingGenerationComposePage,
   LoraTrainingPresetDetailPage,
@@ -27,7 +27,7 @@ import {
 import { DesignDemoShell, matchRoute, NotFoundPage } from "@/features/training/runtime";
 import type { DemoTheme, Match } from "@/features/training/runtime";
 
-function CurrentTrainingPage({ data, match }: { data: DemoData; match: Match }) {
+function CurrentTrainingPage({ data, match }: { data: TrainingAppData; match: Match }) {
   switch (match.key) {
     case "training-runs":
       return <LoraTrainingRunsPage data={data} />;
@@ -84,7 +84,7 @@ export function TrainingApp({
   data,
   initialTheme,
 }: {
-  data: DemoData;
+  data: TrainingAppData;
   initialTheme: DemoTheme;
 }) {
   const pathname = usePathname();

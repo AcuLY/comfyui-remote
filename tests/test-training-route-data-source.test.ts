@@ -10,6 +10,8 @@ const trainingRouteDataPath = resolve(testDir, "../src/app/training/load-trainin
 const trainingRouteDataSource = existsSync(trainingRouteDataPath) ? readFileSync(trainingRouteDataPath, "utf8") : "";
 const trainingSnapshotServicePath = resolve(testDir, "../src/server/services/training/snapshot-service.ts");
 const trainingSnapshotServiceSource = existsSync(trainingSnapshotServicePath) ? readFileSync(trainingSnapshotServicePath, "utf8") : "";
+const trainingFeatureDataPath = resolve(testDir, "../src/features/training/data.ts");
+const trainingFeatureDataSource = existsSync(trainingFeatureDataPath) ? readFileSync(trainingFeatureDataPath, "utf8") : "";
 const sharedTrainingTypesPath = resolve(testDir, "../src/features/training/types.ts");
 const sharedTrainingTypesSource = existsSync(sharedTrainingTypesPath) ? readFileSync(sharedTrainingTypesPath, "utf8") : "";
 const legacyTrainingTypesPath = resolve(testDir, "../src/app/design-demos/data/lora-training-types.ts");
@@ -95,13 +97,18 @@ test("buildLoraTrainingDemoData prefers an injected production training payload 
 test("production training route loader delegates snapshot assembly to a dedicated training service", () => {
   assert.match(
     trainingRouteDataSource,
-    /loadTrainingSnapshot/,
-    "route loader should import the dedicated training snapshot service",
+    /export \{ loadTrainingRouteData \} from "@\/features\/training\/data";/,
+    "app-layer route loader should re-export the dedicated training feature data loader",
   );
   assert.match(
-    trainingSnapshotServiceSource,
-    /export async function loadTrainingSnapshot/,
-    "training snapshot service should expose the shared snapshot builder",
+    trainingFeatureDataSource,
+    /export async function loadTrainingRouteData/,
+    "training feature data module should expose the shared route-data builder",
+  );
+  assert.match(
+    trainingFeatureDataSource,
+    /loadTrainingSnapshot/,
+    "training feature data module should import the dedicated training snapshot service",
   );
 });
 

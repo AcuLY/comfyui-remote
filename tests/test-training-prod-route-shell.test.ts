@@ -86,6 +86,16 @@ test("training routes render a production shell without the /design-demos prefix
   );
   assert.match(
     trainingRoutePageSource,
+    /from "@\/features\/training\/theme"/,
+    "training route entry should read theme resolution through the training feature layer",
+  );
+  assert.doesNotMatch(
+    trainingRoutePageSource,
+    /from "@\/app\/design-demos\/routing\/sfw"/,
+    "training route entry should not read theme resolution directly from the design-demos routing path anymore",
+  );
+  assert.match(
+    trainingRoutePageSource,
     /TrainingApp/,
     "training route entry should render a dedicated production training app client",
   );
@@ -114,6 +124,11 @@ test("training routes render a production shell without the /design-demos prefix
     /from "@\/features\/training\/runtime"/,
     "production training app should read training shell and route runtime concerns through a feature-layer runtime entry point",
   );
+  assert.match(
+    trainingAppClientSource,
+    /from "@\/features\/training\/data"/,
+    "production training app should read its page-data type through a feature-layer data entry point",
+  );
   assert.doesNotMatch(
     trainingAppClientSource,
     /from "@\/app\/design-demos\/routing"/,
@@ -123,5 +138,10 @@ test("training routes render a production shell without the /design-demos prefix
     trainingAppClientSource,
     /from "@\/app\/design-demos\/shell\/app-shell"/,
     "production training app should not import the training shell directly from the design-demos shell path anymore",
+  );
+  assert.doesNotMatch(
+    trainingAppClientSource,
+    /from "@\/app\/design-demos\/data"/,
+    "production training app should not import training page data types directly from the design-demos data path anymore",
   );
 });

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 
-import { DESIGN_DEMO_THEME_COOKIE, resolveDemoTheme } from "@/app/design-demos/routing/sfw";
+import { resolveTrainingTheme, TRAINING_THEME_COOKIE } from "@/features/training/theme";
 import { loadTrainingRouteData } from "../load-training-route-data";
 import { TrainingApp } from "../training-app-client";
 
@@ -25,7 +25,7 @@ export default async function TrainingPage({
     redirect("/training/runs");
   }
 
-  const initialTheme = resolveDemoTheme(cookieStore.get(DESIGN_DEMO_THEME_COOKIE)?.value);
+  const initialTheme = resolveTrainingTheme(cookieStore.get(TRAINING_THEME_COOKIE)?.value);
 
   return <TrainingApp data={data} initialTheme={initialTheme} />;
 }
