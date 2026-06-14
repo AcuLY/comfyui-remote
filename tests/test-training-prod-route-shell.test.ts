@@ -8,8 +8,8 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(testDir, "..");
 const layoutPath = resolve(repoRoot, "src/app/layout.tsx");
 const bottomNavPath = resolve(repoRoot, "src/components/persistent-bottom-nav.tsx");
-const shellPath = resolve(repoRoot, "src/app/design-demos/shell/app-shell.tsx");
-const headerSurfacePath = resolve(repoRoot, "src/app/design-demos/shell/header-surface.tsx");
+const shellPath = resolve(repoRoot, "src/components/design-demo-shell/app-shell.tsx");
+const headerSurfacePath = resolve(repoRoot, "src/components/design-demo-shell/header-surface.tsx");
 const buttonPath = resolve(repoRoot, "src/app/design-demos/shared/primitives/button/index.tsx");
 const hrefContextPath = resolve(repoRoot, "src/app/design-demos/routing/href-context.tsx");
 const trainingRoutePagePath = resolve(repoRoot, "src/app/training/[[...route]]/page.tsx");
@@ -148,7 +148,7 @@ test("training routes render a production shell without the /design-demos prefix
   assert.doesNotMatch(
     trainingFeatureAppSource,
     /from "@\/app\/design-demos\/shell\/app-shell"/,
-    "feature-layer training app should not import the training shell directly from the design-demos shell path anymore",
+    "feature-layer training app should not import the training shell directly from the design-demos app-shell path anymore",
   );
   assert.doesNotMatch(
     trainingFeatureAppSource,

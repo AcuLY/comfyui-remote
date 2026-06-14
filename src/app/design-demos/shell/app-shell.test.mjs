@@ -5,7 +5,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const appShellCss = readFileSync(resolve(testDir, "app-shell.module.css"), "utf8");
+const appShellCss = readFileSync(resolve(testDir, "../../../components/design-demo-shell/app-shell.module.css"), "utf8");
 
 function cssBlockSource(source, marker) {
   const start = source.indexOf(marker);

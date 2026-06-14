@@ -5,8 +5,9 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const shellSource = readFileSync(resolve(testDir, "app-shell.tsx"), "utf8");
-const cssSource = readFileSync(resolve(testDir, "app-shell.module.css"), "utf8");
+const shellDir = resolve(testDir, "../../../components/design-demo-shell");
+const shellSource = readFileSync(resolve(shellDir, "app-shell.tsx"), "utf8");
+const cssSource = readFileSync(resolve(shellDir, "app-shell.module.css"), "utf8");
 const pageHeaderSource = readFileSync(resolve(testDir, "../shared/primitives/page-header/index.tsx"), "utf8");
 
 function sourceRegion(source: string, startMarker: string, endMarker: string) {
