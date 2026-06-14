@@ -45,6 +45,7 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
   const [localProjects, setLocalProjects] = useState(training.projects);
   const [orderedProjectIds, setOrderedProjectIds] = useState(() => training.projects.map((project) => project.id));
   const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(new Set());
+  const [isDeletingProjects, setIsDeletingProjects] = useState(false);
   const [isPersistingProjectArchive, setIsPersistingProjectArchive] = useState(false);
   const orderedProjects = orderTrainingProjectsByIds(localProjects, orderedProjectIds);
   const visibleProjects = orderedProjects.filter((project) => scopeForProject(project) === scope && !hiddenProjectIds.has(project.id));
@@ -83,13 +84,10 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
     );
   }
 
-  function removeProject(projectId: string) {
-    setHiddenProjectIds((current) => new Set([...current, projectId]));
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      next.delete(projectId);
-      return next;
-    });
+  function applyLocalDelete(projectIds: Iterable<string>) {
+    const ids = new Set(projectIds);
+    setHiddenProjectIds((current) => new Set([...current, ...ids]));
+    setSelectedIds((current) => new Set([...current].filter((id) => !ids.has(id))));
   }
 
   async function handleToggleSelectedProjectArchive() {
@@ -162,10 +160,67 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
     }
   }
 
-  function handleRemoveSelectedProjects() {
-    const selectedVisibleIds = new Set(visibleProjects.filter((project) => selectedIds.has(project.id)).map((project) => project.id));
-    setHiddenProjectIds((current) => new Set([...current, ...selectedVisibleIds]));
-    setSelectedIds((current) => new Set([...current].filter((id) => !selectedVisibleIds.has(id))));
+  async function handleDeleteProjects(projectIds: Iterable<string>) {
+    const ids = new Set(projectIds);
+    const projects = visibleProjects.filter((project) => ids.has(project.id));
+
+    if (!isProductionTrainingRoute) {
+      applyLocalDelete(ids);
+      pushToast({
+        tone: "warning",
+        title: "训练项目已从列表移除",
+        detail: projects.length === 1 ? (projects[0]?.title ?? "训练项目") : `${projects.length} 个训练项目`,
+      });
+      return;
+    }
+
+    if (isDeletingProjects || projects.length === 0) return;
+
+    setIsDeletingProjects(true);
+    try {
+      const responses = await Promise.all(
+        projects.map(async (project) => {
+          const response = await fetch(`/api/training/projects/${project.id}`, {
+            method: "DELETE",
+          });
+          const payload = await response.json().catch(() => null);
+          return { payload, project, response };
+        }),
+      );
+
+      const completedIds = new Set(
+        responses
+          .filter(({ payload, response }) => response.ok && payload?.ok)
+          .map(({ project }) => project.id),
+      );
+      if (completedIds.size > 0) {
+        applyLocalDelete(completedIds);
+      }
+
+      const failedResponse = responses.find(({ payload, response }) => !response.ok || !payload?.ok);
+      if (failedResponse) {
+        pushToast({
+          tone: "error",
+          title: "删除失败",
+          detail: failedResponse.payload?.error?.message ?? "训练项目删除请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "warning",
+        title: "训练项目已从列表移除",
+        detail: completedIds.size === 1 ? (projects[0]?.title ?? "训练项目") : `${completedIds.size} 个训练项目`,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "删除失败",
+        detail: error instanceof Error ? error.message : "训练项目删除请求失败",
+      });
+    } finally {
+      setIsDeletingProjects(false);
+    }
   }
 
   return (
@@ -228,8 +283,9 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
                 <Button
                   tone="danger"
                   icon={X}
+                  pending={isDeletingProjects}
                   feedback={{ tone: "warning", title: "训练项目已从列表移除", detail: `${selectedVisibleCount} 个训练项目` }}
-                  onClick={handleRemoveSelectedProjects}
+                  onClick={() => handleDeleteProjects(selectedIds)}
                 >
                   删除
                 </Button>
@@ -246,7 +302,7 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
                   <div data-training-project-id={project.id} key={project.id}>
                     <TrainingProjectListItem
                       compact={viewMode === "compact"}
-                      onDelete={() => removeProject(project.id)}
+                      onDelete={() => handleDeleteProjects([project.id])}
                       onToggleSelected={() => toggleProjectSelection(project.id)}
                       project={project}
                       selected={selectedIds.has(project.id)}

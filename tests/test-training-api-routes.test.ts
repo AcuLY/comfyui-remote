@@ -795,6 +795,87 @@ test("training project route creates a project from the product payload through 
   assert.ok(!beforeIds.has(createPayload.data.id));
 });
 
+test("training project detail route deletes a managed project through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const projectDetailRoute = await import("../src/app/api/training/projects/[projectId]/route");
+  const title = `待删除训练项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `delete_training_project_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        baseModel: "继承训练默认模型",
+        captionStrategy: "先触发词后描述",
+        usagePrompt: "待删除训练项目触发词",
+        detailPrompt: "待删除训练项目资料",
+        perSectionImageCount: "4",
+        trainingSteps: "2400",
+        selectedReferenceIds: [],
+        sections: [
+          {
+            id: "delete-project-section",
+            title: "待删除小节",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "delete-project-block",
+                source: "本地",
+                title: "待删除场景块",
+                text: "删除项目测试场景描述",
+              },
+            ],
+            resolvedScene: "删除项目测试场景描述",
+            scenePreview: "删除项目测试场景描述",
+          },
+        ],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+
+  const projectId = createPayload.data.id as string;
+  const detailParams = { params: Promise.resolve({ projectId }) };
+
+  const deleteResponse = await projectDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/projects/${projectId}`, { method: "DELETE" }),
+    detailParams,
+  );
+  const deletePayload = await deleteResponse.json();
+
+  assert.equal(deleteResponse.status, 200);
+  assert.equal(deletePayload.ok, true);
+  assert.equal(deletePayload.data.id, projectId);
+
+  const afterListResponse = await projectsRoute.GET(new Request("http://localhost/api/training/projects"));
+  const afterListPayload = await afterListResponse.json();
+  assert.equal(afterListResponse.status, 200);
+  assert.equal(afterListPayload.ok, true);
+  assert.ok(!(afterListPayload.data as Array<{ id: string }>).some((project) => project.id === projectId));
+
+  const detailAfterDeleteResponse = await projectDetailRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}`),
+    detailParams,
+  );
+  const detailAfterDeletePayload = await detailAfterDeleteResponse.json();
+  assert.equal(detailAfterDeleteResponse.status, 404);
+  assert.equal(detailAfterDeletePayload.ok, false);
+});
+
 test("managed training project profile reads and updates through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const profileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");

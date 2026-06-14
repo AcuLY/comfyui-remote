@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, extname, join } from "node:path";
 import type { DemoImage } from "@/app/design-demos/data/types";
 import type {
@@ -388,6 +388,31 @@ export async function restoreManagedTrainingProject(projectId: string) {
     });
     await writeFallbackTrainingProjects(next);
     return next[currentIndex];
+  });
+}
+
+export async function deleteManagedTrainingProject(projectId: string) {
+  return withProjectStoreWriteLock(async () => {
+    const projects = await readFallbackTrainingProjects();
+    const currentIndex = projects.findIndex((project) => project.id === projectId);
+    if (currentIndex === -1) return null;
+
+    const [deletedProject] = projects.splice(currentIndex, 1);
+    await writeFallbackTrainingProjects(projects);
+
+    await withRunStoreWriteLock(async () => {
+      const runs = await readFallbackTrainingRuns();
+      const nextRuns = runs.filter((run) => run.projectId !== projectId);
+      await writeFallbackTrainingRuns(nextRuns);
+    });
+
+    await rm(join(MANAGED_PROJECT_IMAGE_ROOT, projectId), { force: true, recursive: true }).catch(() => {});
+
+    return {
+      deletedRunCount: deletedProject ? deletedProject.datasetRevisions.reduce((count, revision) => count + revision.relatedTrainingRunIds.length, 0) : 0,
+      id: projectId,
+      success: true,
+    };
   });
 }
 
