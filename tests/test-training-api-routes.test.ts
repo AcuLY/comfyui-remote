@@ -2294,6 +2294,9 @@ test("training template routes create, update, read, and delete templates throug
   const templateSectionsRoute = await import("../src/app/api/training/templates/[templateId]/sections/route");
   const templateSectionReorderRoute = await import("../src/app/api/training/templates/[templateId]/sections/reorder/route");
   const sectionRoute = await import("../src/app/api/training/templates/[templateId]/sections/[sectionId]/route");
+  const templateBlockRoute = await import("../src/app/api/training/templates/[templateId]/blocks/[blockId]/route");
+  const templateBlockCollectionRoute = await import("../src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/route");
+  const templateBlockReorderRoute = await import("../src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/reorder/route");
   const templateTitle = `测试训练模板 ${Date.now()}`;
 
   const createResponse = await templatesRoute.POST(
@@ -2380,6 +2383,70 @@ test("training template routes create, update, read, and delete templates throug
   assert.equal(sectionPatchResponse.status, 200);
   assert.equal(sectionPatchPayload.ok, true);
   assert.equal(sectionPatchPayload.data.sections[0].title, "模板小节已更新");
+
+  const createBlockResponse = await templateBlockCollectionRoute.POST(
+    new Request(`http://localhost/api/training/templates/${templateId}/sections/${sectionId}/blocks`, {
+      method: "POST",
+      body: JSON.stringify({
+        source: "本地",
+        title: "新增模板块",
+        text: "新增模板块内容",
+      }),
+    }),
+    { params: Promise.resolve({ templateId, sectionId }) },
+  );
+  const createBlockPayload = await createBlockResponse.json();
+
+  assert.equal(createBlockResponse.status, 201);
+  assert.equal(createBlockPayload.ok, true);
+  assert.equal(createBlockPayload.data.title, "新增模板块");
+
+  const createdBlockId = createBlockPayload.data.id as string;
+  const updateBlockResponse = await templateBlockRoute.PATCH(
+    new Request(`http://localhost/api/training/templates/${templateId}/blocks/${createdBlockId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: "新增模板块已更新",
+        text: "新增模板块内容已更新",
+      }),
+    }),
+    { params: Promise.resolve({ templateId, blockId: createdBlockId }) },
+  );
+  const updateBlockPayload = await updateBlockResponse.json();
+
+  assert.equal(updateBlockResponse.status, 200);
+  assert.equal(updateBlockPayload.ok, true);
+  assert.equal(updateBlockPayload.data.title, "新增模板块已更新");
+
+  const reorderBlockResponse = await templateBlockReorderRoute.POST(
+    new Request(`http://localhost/api/training/templates/${templateId}/sections/${sectionId}/blocks/reorder`, {
+      method: "POST",
+      body: JSON.stringify({
+        ids: [createdBlockId, "template-block-1"],
+      }),
+    }),
+    { params: Promise.resolve({ templateId, sectionId }) },
+  );
+  const reorderBlockPayload = await reorderBlockResponse.json();
+
+  assert.equal(reorderBlockResponse.status, 200);
+  assert.equal(reorderBlockPayload.ok, true);
+  assert.deepEqual(
+    reorderBlockPayload.data.map((block: { id: string }) => block.id),
+    [createdBlockId, "template-block-1"],
+  );
+
+  const deleteBlockResponse = await templateBlockRoute.DELETE(
+    new Request(`http://localhost/api/training/templates/${templateId}/blocks/${createdBlockId}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ templateId, blockId: createdBlockId }) },
+  );
+  const deleteBlockPayload = await deleteBlockResponse.json();
+
+  assert.equal(deleteBlockResponse.status, 200);
+  assert.equal(deleteBlockPayload.ok, true);
+  assert.equal(deleteBlockPayload.data.success, true);
 
   const addSectionResponse = await templateSectionsRoute.POST(
     new Request(`http://localhost/api/training/templates/${templateId}/sections`, {

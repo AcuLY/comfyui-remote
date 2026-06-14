@@ -8,7 +8,7 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const resourceSource = readFileSync(resolve(testDir, "training-resource-pages.tsx"), "utf8");
 const cssSource = readFileSync(resolve(testDir, "training-resource-pages.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(testDir, "../../data/lora-training.ts"), "utf8");
-const typesSource = readFileSync(resolve(testDir, "../../data/lora-training-types.ts"), "utf8");
+const typesSource = readFileSync(resolve(testDir, "../../../../features/training/types.ts"), "utf8");
 
 function sourceBetween(startMarker: string, endMarker: string) {
   const start = resourceSource.indexOf(startMarker);
@@ -75,6 +75,19 @@ test("training template section scene-block actions update local front-end state
   assert.match(blockCard, /onMove\?\.\(index, 1\)/, "template move-down button should call the move handler");
   assert.match(blockCard, /onDelete\?\.\(block\.id\)/, "template delete button should call the delete handler");
   assert.doesNotMatch(templateSectionPage, /编辑模板场景块入口已预览/, "template block editing should not be a preview-only placeholder");
+});
+
+test("training template section scene-block actions persist through formal HTTP APIs on production routes", () => {
+  const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
+
+  assert.match(templateSectionPage, /usePathname/, "template section page should detect whether it is running under production \\/training routes");
+  assert.match(templateSectionPage, /fetch\(`\/api\/training\/templates\/\$\{activeTemplate\.id\}\/sections\/\$\{activeSection\.id\}\/blocks`/, "template block create actions should call the formal template block collection API");
+  assert.match(templateSectionPage, /fetch\(`\/api\/training\/templates\/\$\{activeTemplate\.id\}\/sections\/\$\{activeSection\.id\}\/blocks\/reorder`/, "template block move actions should call the formal template block reorder API");
+  assert.match(templateSectionPage, /fetch\(`\/api\/training\/templates\/\$\{activeTemplate\.id\}\/blocks\/\$\{blockId\}`/, "template block update and delete actions should call the formal template block detail API");
+  assert.match(templateSectionPage, /method:\s*"PATCH"/, "template block updates should save through PATCH");
+  assert.match(templateSectionPage, /method:\s*"DELETE"/, "template block delete should use DELETE");
+  assert.match(templateSectionPage, /ids:\s*reorderedBlocks\.map\(\(block\) => block\.id\)/, "template block reorder should submit the updated block id order");
+  assert.match(templateSectionPage, /模板场景块(创建|保存|排序|删除)失败/, "template block production actions should surface API failures through the shared feedback system");
 });
 
 test("training template section imports training presets into local scene blocks", () => {

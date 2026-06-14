@@ -2042,6 +2042,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   const [selectedTemplatePresetId, setSelectedTemplatePresetId] = useState<string | null>(null);
   const [templateSectionDraftsByKey, setTemplateSectionDraftsByKey] = useState<Record<string, TemplateSectionDraftState>>({});
   const [isSavingTemplateSection, setIsSavingTemplateSection] = useState(false);
+  const [isMutatingTemplateBlocks, setIsMutatingTemplateBlocks] = useState(false);
   if (!template || !section) return <EmptyPage title="没有模板小节数据" />;
 
   const activeTemplate = template;
@@ -2083,50 +2084,251 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     }));
   }
 
+  function replaceTemplateBlocks(blocks: LoraTrainingSectionBlock[]) {
+    setTemplateSectionSceneBlocksByKey((current) => ({
+      ...current,
+      [templateSectionStateKey]: blocks,
+    }));
+  }
+
   function handleAddLocalTemplateBlock() {
-    updateTemplateBlocks((current) => {
-      const ordinal = nextTemplateSceneBlockOrdinal(current, `${activeSection.id}-template-local-block-`);
-      return [
-        ...current,
-        {
-          id: `${activeSection.id}-template-local-block-${ordinal}`,
-          source: "本地",
-          title: `模板补充块 ${ordinal}`,
-          text: "补充模板导入后默认带入的场景描述。",
-        },
-      ];
-    });
+    const nextBlock = {
+      source: "本地" as const,
+      title: `模板补充块 ${nextTemplateSceneBlockOrdinal(sceneBlocks, `${activeSection.id}-template-local-block-`)}`,
+      text: "补充模板导入后默认带入的场景描述。",
+    };
+
+    if (!isProductionTrainingRoute) {
+      updateTemplateBlocks((current) => {
+        const ordinal = nextTemplateSceneBlockOrdinal(current, `${activeSection.id}-template-local-block-`);
+        return [
+          ...current,
+          {
+            id: `${activeSection.id}-template-local-block-${ordinal}`,
+            ...nextBlock,
+          },
+        ];
+      });
+      return;
+    }
+
+    if (isMutatingTemplateBlocks) return;
+
+    setIsMutatingTemplateBlocks(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/templates/${activeTemplate.id}/sections/${activeSection.id}/blocks`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(nextBlock),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !payload?.data?.id) {
+          pushToast({
+            tone: "error",
+            title: "模板场景块创建失败",
+            detail: payload?.error?.message ?? "模板场景块创建请求失败",
+          });
+          return;
+        }
+        replaceTemplateBlocks([...sceneBlocks, payload.data as LoraTrainingSectionBlock]);
+      } catch (error) {
+        pushToast({
+          tone: "error",
+          title: "模板场景块创建失败",
+          detail: error instanceof Error ? error.message : "模板场景块创建请求失败",
+        });
+      } finally {
+        setIsMutatingTemplateBlocks(false);
+      }
+    })();
   }
 
   function handleImportTemplatePresetBlock(preset: LoraTrainingPreset | null) {
     if (!preset) return;
-    updateTemplateBlocks((current) => {
-      const prefix = `${activeSection.id}-template-preset-block-${preset.id}-`;
-      const ordinal = nextTemplateSceneBlockOrdinal(current, `${activeSection.id}-template-preset-block-${preset.id}-`);
-      return [
-        ...current,
-        {
-          id: `${prefix}${ordinal}`,
-          source: "预制",
-          title: preset.title,
-          text: preset.sceneDescriptionText,
-        },
-      ];
-    });
-    setTemplatePresetImportOpen(false);
+    const nextBlock = {
+      source: "预制" as const,
+      title: preset.title,
+      text: preset.sceneDescriptionText,
+    };
+
+    if (!isProductionTrainingRoute) {
+      updateTemplateBlocks((current) => {
+        const prefix = `${activeSection.id}-template-preset-block-${preset.id}-`;
+        const ordinal = nextTemplateSceneBlockOrdinal(current, `${activeSection.id}-template-preset-block-${preset.id}-`);
+        return [
+          ...current,
+          {
+            id: `${prefix}${ordinal}`,
+            ...nextBlock,
+          },
+        ];
+      });
+      setTemplatePresetImportOpen(false);
+      return;
+    }
+
+    if (isMutatingTemplateBlocks) return;
+
+    setIsMutatingTemplateBlocks(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/templates/${activeTemplate.id}/sections/${activeSection.id}/blocks`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(nextBlock),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !payload?.data?.id) {
+          pushToast({
+            tone: "error",
+            title: "模板场景块创建失败",
+            detail: payload?.error?.message ?? "模板场景块创建请求失败",
+          });
+          return;
+        }
+        replaceTemplateBlocks([...sceneBlocks, payload.data as LoraTrainingSectionBlock]);
+        setTemplatePresetImportOpen(false);
+      } catch (error) {
+        pushToast({
+          tone: "error",
+          title: "模板场景块创建失败",
+          detail: error instanceof Error ? error.message : "模板场景块创建请求失败",
+        });
+      } finally {
+        setIsMutatingTemplateBlocks(false);
+      }
+    })();
   }
 
   function handleMoveTemplateBlock(index: number, direction: -1 | 1) {
-    updateTemplateBlocks((current) => moveTemplateBlock(current, index, direction));
+    const reorderedBlocks = moveTemplateBlock(sceneBlocks, index, direction);
+
+    if (!isProductionTrainingRoute) {
+      updateTemplateBlocks((current) => moveTemplateBlock(current, index, direction));
+      return;
+    }
+
+    if (isMutatingTemplateBlocks) return;
+
+    const previousBlocks = sceneBlocks;
+    replaceTemplateBlocks(reorderedBlocks);
+    setIsMutatingTemplateBlocks(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/templates/${activeTemplate.id}/sections/${activeSection.id}/blocks/reorder`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            ids: reorderedBlocks.map((block) => block.id),
+          }),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !Array.isArray(payload?.data)) {
+          replaceTemplateBlocks(previousBlocks);
+          pushToast({
+            tone: "error",
+            title: "模板场景块排序失败",
+            detail: payload?.error?.message ?? "模板场景块排序请求失败",
+          });
+          return;
+        }
+        replaceTemplateBlocks(payload.data as LoraTrainingSectionBlock[]);
+      } catch (error) {
+        replaceTemplateBlocks(previousBlocks);
+        pushToast({
+          tone: "error",
+          title: "模板场景块排序失败",
+          detail: error instanceof Error ? error.message : "模板场景块排序请求失败",
+        });
+      } finally {
+        setIsMutatingTemplateBlocks(false);
+      }
+    })();
   }
 
   function handleUpdateTemplateBlock(blockId: string, patch: TemplateSceneBlockPatch) {
-    updateTemplateBlocks((current) => current.map((block) => (block.id === blockId ? { ...block, ...patch } : block)));
+    if (!isProductionTrainingRoute) {
+      updateTemplateBlocks((current) => current.map((block) => (block.id === blockId ? { ...block, ...patch } : block)));
+      return;
+    }
+
+    if (isMutatingTemplateBlocks) return;
+
+    const previousBlocks = sceneBlocks;
+    const nextBlocks = sceneBlocks.map((block) => (block.id === blockId ? { ...block, ...patch } : block));
+    replaceTemplateBlocks(nextBlocks);
+    setIsMutatingTemplateBlocks(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/templates/${activeTemplate.id}/blocks/${blockId}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(patch),
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !payload?.data?.id) {
+          replaceTemplateBlocks(previousBlocks);
+          pushToast({
+            tone: "error",
+            title: "模板场景块保存失败",
+            detail: payload?.error?.message ?? "模板场景块保存请求失败",
+          });
+          return;
+        }
+        replaceTemplateBlocks(nextBlocks.map((block) => block.id === blockId ? payload.data as LoraTrainingSectionBlock : block));
+      } catch (error) {
+        replaceTemplateBlocks(previousBlocks);
+        pushToast({
+          tone: "error",
+          title: "模板场景块保存失败",
+          detail: error instanceof Error ? error.message : "模板场景块保存请求失败",
+        });
+      } finally {
+        setIsMutatingTemplateBlocks(false);
+      }
+    })();
   }
 
   function handleDeleteTemplateBlock(blockId: string) {
+    if (!isProductionTrainingRoute) {
+      if (visibleEditingTemplateBlockId === blockId) setEditingTemplateBlockId(null);
+      updateTemplateBlocks((current) => current.filter((block) => block.id !== blockId));
+      return;
+    }
+
+    if (isMutatingTemplateBlocks) return;
+
+    const previousBlocks = sceneBlocks;
     if (visibleEditingTemplateBlockId === blockId) setEditingTemplateBlockId(null);
-    updateTemplateBlocks((current) => current.filter((block) => block.id !== blockId));
+    replaceTemplateBlocks(sceneBlocks.filter((block) => block.id !== blockId));
+    setIsMutatingTemplateBlocks(true);
+    void (async () => {
+      try {
+        const response = await fetch(`/api/training/templates/${activeTemplate.id}/blocks/${blockId}`, {
+          method: "DELETE",
+        });
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok) {
+          replaceTemplateBlocks(previousBlocks);
+          pushToast({
+            tone: "error",
+            title: "模板场景块删除失败",
+            detail: payload?.error?.message ?? "模板场景块删除请求失败",
+          });
+          return;
+        }
+      } catch (error) {
+        replaceTemplateBlocks(previousBlocks);
+        pushToast({
+          tone: "error",
+          title: "模板场景块删除失败",
+          detail: error instanceof Error ? error.message : "模板场景块删除请求失败",
+        });
+      } finally {
+        setIsMutatingTemplateBlocks(false);
+      }
+    })();
   }
 
   async function handleSaveTemplateSection() {
