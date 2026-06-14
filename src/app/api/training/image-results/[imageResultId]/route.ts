@@ -1,5 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
-import { updateManagedTrainingImageResult } from "@/server/services/training/project-service";
+import {
+  deleteManagedTrainingImageResult,
+  mapTrainingProjectError,
+  updateManagedTrainingImageResult,
+} from "@/server/services/training/project-service";
 import {
   mapCharacterLoraPhase3Error,
   reviewCharacterLoraImages,
@@ -58,6 +62,23 @@ export async function PATCH(
     return ok(data.length === 1 ? data[0] : data);
   } catch (error) {
     const mapped = mapCharacterLoraPhase3Error(error);
+    return fail(mapped.message, mapped.status, mapped.details);
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ imageResultId: string }> },
+) {
+  try {
+    const { imageResultId } = await params;
+    const data = await deleteManagedTrainingImageResult(imageResultId);
+    if (!data) {
+      return fail("Training image result not found", 404, { imageResultId });
+    }
+    return ok(data);
+  } catch (error) {
+    const mapped = mapTrainingProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

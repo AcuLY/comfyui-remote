@@ -67,6 +67,21 @@ export async function getTrainingProject(projectId: string) {
   return project;
 }
 
+export async function getTrainingDatasetRevision(revisionId: string) {
+  const snapshot = await loadTrainingSnapshot();
+  for (const project of snapshot.projects) {
+    const revision = project.datasetRevisions.find((item) => item.id === revisionId);
+    if (revision) {
+      return {
+        ...revision,
+        projectId: project.id,
+      };
+    }
+  }
+
+  throw new TrainingReadServiceError("Training dataset revision not found", 404, { revisionId });
+}
+
 export async function getTrainingDatasetReadiness(projectId: string) {
   const project = await getTrainingProject(projectId);
   return {

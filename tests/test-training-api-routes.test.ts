@@ -157,6 +157,7 @@ test("GET project-scoped training resources expose sections, results, dataset re
   const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
   const resultsRoute = await import("../src/app/api/training/projects/[projectId]/image-results/route");
   const readinessRoute = await import("../src/app/api/training/projects/[projectId]/dataset-readiness/route");
+  const revisionDetailRoute = await import("../src/app/api/training/dataset-revisions/[revisionId]/route");
   const revisionsRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
   const trainingRunsRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
   const generationTasksRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
@@ -201,6 +202,15 @@ test("GET project-scoped training resources expose sections, results, dataset re
   assert.equal(typeof readinessPayload.data.readyForTraining, "boolean");
   assert.ok(Array.isArray(revisionsPayload.data));
   assert.ok(revisionsPayload.data.length > 0);
+  const revisionId = revisionsPayload.data[0].id as string;
+  const revisionDetailResponse = await revisionDetailRoute.GET(
+    new Request(`http://localhost/api/training/dataset-revisions/${revisionId}`),
+    { params: Promise.resolve({ revisionId }) },
+  );
+  const revisionDetailPayload = await revisionDetailResponse.json();
+  assert.equal(revisionDetailResponse.status, 200);
+  assert.equal(revisionDetailPayload.ok, true);
+  assert.equal(revisionDetailPayload.data.id, revisionId);
   assert.ok(trainingRunsPayload.data.every((run: { kind: string; projectId: string }) => run.kind === "training" && run.projectId === projectId));
   assert.ok(generationTasksPayload.data.every((run: { kind: string; projectId: string }) => run.kind === "generation" && run.projectId === projectId));
 });
@@ -1263,6 +1273,7 @@ test("managed training project updates through /api/training/projects/:projectId
 test("managed training project references flow into result review through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const referenceDetailRoute = await import("../src/app/api/training/character-images/[imageId]/route");
   const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
   const reviewRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
   const patchResultRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
@@ -1327,6 +1338,25 @@ test("managed training project references flow into result review through /api/t
   assert.ok(beforePayload.data.length > 0);
   const imageId = beforePayload.data[0].id as string;
 
+  const patchReferenceResponse = await referenceDetailRoute.PATCH(
+    new Request(`http://localhost/api/training/character-images/${imageId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        label: "已更新参考图",
+        note: "已更新参考图备注",
+        kind: "generated",
+      }),
+    }),
+    { params: Promise.resolve({ imageId }) },
+  );
+  const patchReferencePayload = await patchReferenceResponse.json();
+  assert.equal(patchReferenceResponse.status, 200);
+  assert.equal(patchReferencePayload.ok, true);
+  assert.equal(patchReferencePayload.data.id, imageId);
+  assert.equal(patchReferencePayload.data.label, "已更新参考图");
+  assert.equal(patchReferencePayload.data.note, "已更新参考图备注");
+  assert.equal(patchReferencePayload.data.kind, "generated");
+
   const addToResultsResponse = await addToResultsRoute.POST(
     new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
       method: "POST",
@@ -1366,6 +1396,28 @@ test("managed training project references flow into result review through /api/t
   assert.equal(patchResultPayload.ok, true);
   assert.equal(patchResultPayload.data.caption, "更新后的说明文本");
   assert.equal(patchResultPayload.data.reviewStatus, "pending");
+
+  const deleteResultResponse = await patchResultRoute.DELETE(
+    new Request(`http://localhost/api/training/image-results/${imageResultId}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ imageResultId }) },
+  );
+  const deleteResultPayload = await deleteResultResponse.json();
+  assert.equal(deleteResultResponse.status, 200);
+  assert.equal(deleteResultPayload.ok, true);
+  assert.equal(deleteResultPayload.data.id, imageResultId);
+
+  const deleteReferenceResponse = await referenceDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/character-images/${imageId}`, {
+      method: "DELETE",
+    }),
+    { params: Promise.resolve({ imageId }) },
+  );
+  const deleteReferencePayload = await deleteReferenceResponse.json();
+  assert.equal(deleteReferenceResponse.status, 200);
+  assert.equal(deleteReferencePayload.ok, true);
+  assert.equal(deleteReferencePayload.data.id, imageId);
 });
 
 test("managed training project can enqueue generation, freeze dataset, and start training through /api/training", async () => {

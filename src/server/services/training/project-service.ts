@@ -607,6 +607,79 @@ async function findManagedResultOwner(imageResultId: string) {
   return null;
 }
 
+function normalizeManagedReferenceKind(value: string | undefined, fallback: LoraTrainingReferenceImage["kind"]) {
+  if (value === "original" || value === "generated" || value === "auxiliary") {
+    return value;
+  }
+  return fallback;
+}
+
+export async function updateManagedTrainingReferenceImage(
+  imageId: string,
+  input: {
+    kind?: string | null;
+    label?: string | null;
+    note?: string | null;
+  },
+) {
+  const owner = await findManagedReferenceOwner(imageId);
+  if (!owner) return null;
+
+  return withProjectStoreWriteLock(async () => {
+    const refreshed = await findManagedReferenceOwner(imageId);
+    if (!refreshed) return null;
+
+    const nextProjects = refreshed.projects.map((project) => {
+      if (project.id !== refreshed.project.id) return project;
+
+      return recomputeManagedProject({
+        ...project,
+        updatedAt: formatUpdatedAt(),
+        referenceImages: project.referenceImages.map((reference) => reference.id === imageId
+          ? {
+            ...reference,
+            kind: normalizeManagedReferenceKind(typeof input.kind === "string" ? input.kind : undefined, reference.kind),
+            label: typeof input.label === "string" && input.label.trim() ? input.label.trim() : reference.label,
+            note: typeof input.note === "string" && input.note.trim() ? input.note.trim() : reference.note,
+          }
+          : reference),
+      });
+    });
+
+    await writeFallbackTrainingProjects(nextProjects);
+
+    return nextProjects
+      .find((project) => project.id === refreshed.project.id)
+      ?.referenceImages.find((reference) => reference.id === imageId) ?? null;
+  });
+}
+
+export async function deleteManagedTrainingReferenceImage(imageId: string) {
+  const owner = await findManagedReferenceOwner(imageId);
+  if (!owner) return null;
+
+  return withProjectStoreWriteLock(async () => {
+    const refreshed = await findManagedReferenceOwner(imageId);
+    if (!refreshed) return null;
+
+    const nextProjects = refreshed.projects.map((project) => {
+      if (project.id !== refreshed.project.id) return project;
+
+      return recomputeManagedProject({
+        ...project,
+        updatedAt: formatUpdatedAt(),
+        referenceImages: project.referenceImages.filter((reference) => reference.id !== imageId),
+      });
+    });
+    await writeFallbackTrainingProjects(nextProjects);
+
+    return {
+      id: imageId,
+      success: true,
+    };
+  });
+}
+
 export async function addManagedTrainingReferenceImageToResults(
   imageId: string,
   input: { reviewStatus?: string; captionDraft?: string | null } = {},
@@ -681,6 +754,32 @@ export async function updateManagedTrainingImageResult(
     return nextProjects
       .find((project) => project.id === refreshed.project.id)
       ?.resultPool.find((result) => result.id === imageResultId) ?? null;
+  });
+}
+
+export async function deleteManagedTrainingImageResult(imageResultId: string) {
+  const owner = await findManagedResultOwner(imageResultId);
+  if (!owner) return null;
+
+  return withProjectStoreWriteLock(async () => {
+    const refreshed = await findManagedResultOwner(imageResultId);
+    if (!refreshed) return null;
+
+    const nextProjects = refreshed.projects.map((project) => {
+      if (project.id !== refreshed.project.id) return project;
+
+      return recomputeManagedProject({
+        ...project,
+        updatedAt: formatUpdatedAt(),
+        resultPool: project.resultPool.filter((result) => result.id !== imageResultId),
+      });
+    });
+    await writeFallbackTrainingProjects(nextProjects);
+
+    return {
+      id: imageResultId,
+      success: true,
+    };
   });
 }
 
