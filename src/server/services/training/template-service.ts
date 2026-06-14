@@ -161,27 +161,39 @@ function nextTemplateUpdatedAt() {
 }
 
 export async function listManagedTrainingTemplates() {
+  const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
+
   try {
     const summaries = await listCharacterLoraTrainingTemplates();
     const snapshots = await Promise.all(summaries.map((template) => getCharacterLoraTrainingTemplateSnapshot({ id: template.id })));
-    return snapshots.map(mapTemplateSnapshot);
+    const databaseTemplates = snapshots.map(mapTemplateSnapshot);
+    const databaseIds = new Set(databaseTemplates.map((template) => template.id));
+    return [
+      ...fallbackTemplates.filter((template) => !databaseIds.has(template.id)),
+      ...databaseTemplates,
+    ];
   } catch (error) {
     if (!shouldUseTrainingTemplateFileFallback(error)) throw error;
-    return readFallbackTrainingTemplates();
+    return fallbackTemplates;
   }
 }
 
 export async function getManagedTrainingTemplate(templateId: string) {
+  const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
+  const fallbackTemplate = fallbackTemplates.find((item) => item.id === templateId);
+  if (fallbackTemplate) {
+    return fallbackTemplate;
+  }
+
   try {
     const snapshot = await getCharacterLoraTrainingTemplateSnapshot({ id: templateId });
     return mapTemplateSnapshot(snapshot);
   } catch (error) {
+    const mapped = mapCharacterLoraSectionTemplateError(error);
     if (!shouldUseTrainingTemplateFileFallback(error)) {
-      const mapped = mapCharacterLoraSectionTemplateError(error);
       throw new TrainingTemplateServiceError(mapped.message, mapped.status, mapped.details);
     }
-    const templates = await readFallbackTrainingTemplates();
-    const template = templates.find((item) => item.id === templateId);
+    const template = fallbackTemplates.find((item) => item.id === templateId);
     if (!template) {
       throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
     }
@@ -233,6 +245,38 @@ export async function createManagedTrainingTemplate(input: unknown) {
 
 export async function updateManagedTrainingTemplate(templateId: string, input: unknown) {
   const parsed = parseTrainingTemplateInput(input);
+  const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
+  const fallbackIndex = fallbackTemplates.findIndex((template) => template.id === templateId);
+
+  if (fallbackIndex !== -1) {
+    const updated: LoraTrainingTemplate = {
+      ...fallbackTemplates[fallbackIndex],
+      title: parsed.title,
+      updatedAt: nextTemplateUpdatedAt(),
+      description: parsed.description ?? "",
+      imageGuidance: parsed.imageGuidance ?? "",
+      captionGuidance: parsed.captionGuidance ?? "",
+      sectionCount: parsed.sections.length,
+      sections: parsed.sections.map((section, index) => ({
+        id: section.id ?? `${templateId}-section-${index + 1}`,
+        title: section.title,
+        enabled: section.enabled,
+        blockCount: section.blockCount ?? section.blocks.length,
+        blocks: section.blocks.map((block, blockIndex) => ({
+          id: block.id ?? `${templateId}-section-${index + 1}-block-${blockIndex + 1}`,
+          source: block.source ?? "本地",
+          title: block.title,
+          text: block.text,
+        })),
+        resolvedScene: section.resolvedScene ?? section.scenePreview ?? section.title,
+        scenePreview: section.scenePreview ?? section.resolvedScene ?? section.title,
+      })),
+    };
+    const next = [...fallbackTemplates];
+    next[fallbackIndex] = updated;
+    await writeFallbackTrainingTemplates(next);
+    return updated;
+  }
 
   try {
     const snapshot = await updateCharacterLoraTrainingTemplate(templateId, normalizeTemplatePayload(parsed));
@@ -278,6 +322,16 @@ export async function updateManagedTrainingTemplate(templateId: string, input: u
 }
 
 export async function deleteManagedTrainingTemplate(templateId: string) {
+  const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
+  const fallbackIndex = fallbackTemplates.findIndex((template) => template.id === templateId);
+
+  if (fallbackIndex !== -1) {
+    const next = [...fallbackTemplates];
+    next.splice(fallbackIndex, 1);
+    await writeFallbackTrainingTemplates(next);
+    return { success: true };
+  }
+
   try {
     const snapshot = await getCharacterLoraTrainingTemplateSnapshot({ id: templateId });
     await upsertCharacterLoraTrainingTemplates([{
@@ -300,12 +354,11 @@ export async function deleteManagedTrainingTemplate(templateId: string) {
       const mapped = mapCharacterLoraSectionTemplateError(error);
       throw new TrainingTemplateServiceError(mapped.message, mapped.status, mapped.details);
     }
-    const templates = await readFallbackTrainingTemplates();
-    const currentIndex = templates.findIndex((template) => template.id === templateId);
+    const currentIndex = fallbackTemplates.findIndex((template) => template.id === templateId);
     if (currentIndex === -1) {
       throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
     }
-    const next = [...templates];
+    const next = [...fallbackTemplates];
     next.splice(currentIndex, 1);
     await writeFallbackTrainingTemplates(next);
     return { success: true };

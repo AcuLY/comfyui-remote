@@ -727,6 +727,50 @@ test("training template routes create, update, read, and delete templates throug
   assert.equal(deletePayload.ok, true);
 });
 
+test("training template route can create a project from an existing template through /api/training", async () => {
+  const templatesRoute = await import("../src/app/api/training/templates/route");
+  const templateDetailRoute = await import("../src/app/api/training/templates/[templateId]/route");
+  const templateProjectsRoute = await import("../src/app/api/training/templates/[templateId]/projects/route");
+  const templatesResponse = await templatesRoute.GET(new Request("http://localhost/api/training/templates"));
+  const templatesPayload = await templatesResponse.json();
+
+  assert.equal(templatesResponse.status, 200);
+  assert.equal(templatesPayload.ok, true);
+
+  const template = (templatesPayload.data as Array<{ id: string; sectionCount: number; title: string }>).find((item) => item.sectionCount > 0)
+    ?? templatesPayload.data[0];
+  const templateDetailResponse = await templateDetailRoute.GET(
+    new Request(`http://localhost/api/training/templates/${template.id}`),
+    { params: Promise.resolve({ templateId: template.id }) },
+  );
+  const templateDetailPayload = await templateDetailResponse.json();
+
+  assert.equal(templateDetailResponse.status, 200);
+  assert.equal(templateDetailPayload.ok, true);
+
+  const projectTitle = `模板建项目 ${Date.now()}`;
+  const createResponse = await templateProjectsRoute.POST(
+    new Request(`http://localhost/api/training/templates/${template.id}/projects`, {
+      method: "POST",
+      body: JSON.stringify({
+        title: projectTitle,
+        characterName: projectTitle,
+        triggerToken: `template_to_project_${Date.now()}`,
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        usagePrompt: "模板建项目测试",
+        detailPrompt: "模板建项目详情",
+      }),
+    }),
+    { params: Promise.resolve({ templateId: template.id }) },
+  );
+  const createPayload = await createResponse.json();
+
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  assert.equal(createPayload.data.title, projectTitle);
+  assert.equal(createPayload.data.sections.length, templateDetailPayload.data.sections.length);
+});
+
 test("training project route creates a project from the product payload through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const beforeResponse = await projectsRoute.GET(new Request("http://localhost/api/training/projects"));
@@ -874,6 +918,50 @@ test("training project detail route deletes a managed project through /api/train
   const detailAfterDeletePayload = await detailAfterDeleteResponse.json();
   assert.equal(detailAfterDeleteResponse.status, 404);
   assert.equal(detailAfterDeletePayload.ok, false);
+});
+
+test("training project route can save a project as a template through /api/training", async () => {
+  const projectDetailRoute = await import("../src/app/api/training/projects/[projectId]/route");
+  const saveAsTemplateRoute = await import("../src/app/api/training/projects/[projectId]/save-as-template/route");
+  const templatesRoute = await import("../src/app/api/training/templates/route");
+  const projects = await listProjects();
+  const projectId = (
+    projects.find((project) => (project.sectionCount ?? 0) > 0)
+    ?? projects[0]
+  ).id;
+
+  const projectDetailResponse = await projectDetailRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}`),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const projectDetailPayload = await projectDetailResponse.json();
+
+  assert.equal(projectDetailResponse.status, 200);
+  assert.equal(projectDetailPayload.ok, true);
+
+  const templateTitle = `项目存模板 ${Date.now()}`;
+  const saveResponse = await saveAsTemplateRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/save-as-template`, {
+      method: "POST",
+      body: JSON.stringify({
+        title: templateTitle,
+        description: "从项目保存为模板的测试描述。",
+      }),
+    }),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const savePayload = await saveResponse.json();
+
+  assert.equal(saveResponse.status, 201);
+  assert.equal(savePayload.ok, true);
+  assert.equal(savePayload.data.title, templateTitle);
+  assert.equal(savePayload.data.sections.length, projectDetailPayload.data.sections.length);
+
+  const templatesResponse = await templatesRoute.GET(new Request("http://localhost/api/training/templates"));
+  const templatesPayload = await templatesResponse.json();
+  assert.equal(templatesResponse.status, 200);
+  assert.equal(templatesPayload.ok, true);
+  assert.ok((templatesPayload.data as Array<{ id: string; title: string }>).some((template) => template.id === savePayload.data.id && template.title === templateTitle));
 });
 
 test("managed training project profile reads and updates through /api/training", async () => {

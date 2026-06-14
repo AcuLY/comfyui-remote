@@ -476,10 +476,11 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
   try {
     const loraTraining = await mapRealTrainingProjects(baseData);
     if (!loraTraining) {
-      const [managedProjects, managedRuns, fallbackPresets, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds] = await Promise.all([
+      const [managedProjects, managedRuns, fallbackPresets, fallbackTemplates, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds] = await Promise.all([
         listManagedTrainingProjects().catch(() => []),
         listManagedTrainingRuns().catch(() => []),
         listTrainingSceneDescriptionPresets().catch(() => baseTraining.presets),
+        listManagedTrainingTemplates().catch(() => baseTraining.templates),
         listTrainingProjectSectionCollections().catch(() => ({})),
         listTrainingProjectSectionOverrides().catch(() => ({})),
         listHiddenTrainingProjectIds().catch(() => []),
@@ -494,6 +495,7 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
         ],
         runs: [...managedRuns, ...baseTraining.runs],
         presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
+        templates: fallbackTemplates.length ? fallbackTemplates : baseTraining.templates,
       }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds);
       return {
         ...baseData,
@@ -515,10 +517,11 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
       },
     };
   } catch {
-    const [managedProjects, managedRuns, fallbackPresets, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds] = await Promise.all([
+    const [managedProjects, managedRuns, fallbackPresets, fallbackTemplates, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds] = await Promise.all([
       listManagedTrainingProjects().catch(() => []),
       listManagedTrainingRuns().catch(() => []),
       listTrainingSceneDescriptionPresets().catch(() => baseTraining.presets),
+      listManagedTrainingTemplates().catch(() => baseTraining.templates),
       listTrainingProjectSectionCollections().catch(() => ({})),
       listTrainingProjectSectionOverrides().catch(() => ({})),
       listHiddenTrainingProjectIds().catch(() => []),
@@ -533,6 +536,7 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
       ],
       runs: [...managedRuns, ...baseTraining.runs],
       presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
+      templates: fallbackTemplates.length ? fallbackTemplates : baseTraining.templates,
     }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds);
     return {
       ...baseData,
