@@ -957,6 +957,80 @@ test("managed training project can enqueue generation, freeze dataset, and start
   assert.equal(cancelTrainingPayload.data.id, trainingRunId);
 });
 
+test("managed training project archives and restores through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const archiveRoute = await import("../src/app/api/training/projects/[projectId]/archive/route");
+  const restoreRoute = await import("../src/app/api/training/projects/[projectId]/restore/route");
+  const title = `测试归档项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_archive_project_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        baseModel: "继承训练默认模型",
+        captionStrategy: "先触发词后描述",
+        usagePrompt: "测试角色触发词",
+        detailPrompt: "测试角色细节描述",
+        perSectionImageCount: "4",
+        trainingSteps: "2400",
+        selectedReferenceIds: [],
+        sections: [
+          {
+            id: "seed-1",
+            title: "新小节 1",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "block-1",
+                source: "本地",
+                title: "本地场景描述",
+                text: "测试场景描述",
+              },
+            ],
+            resolvedScene: "测试场景描述",
+            scenePreview: "测试场景描述",
+          },
+        ],
+        trainingDefaults: {
+          autoGenerateSamples: true,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  const projectId = createPayload.data.id as string;
+  const params = { params: Promise.resolve({ projectId }) };
+
+  const archiveResponse = await archiveRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/archive`, { method: "POST" }),
+    params,
+  );
+  const archivePayload = await archiveResponse.json();
+  assert.equal(archiveResponse.status, 200);
+  assert.equal(archivePayload.ok, true);
+  assert.equal(archivePayload.data.status, "archived");
+
+  const restoreResponse = await restoreRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/restore`, { method: "POST" }),
+    params,
+  );
+  const restorePayload = await restoreResponse.json();
+  assert.equal(restoreResponse.status, 200);
+  assert.equal(restorePayload.ok, true);
+  assert.notEqual(restorePayload.data.status, "archived");
+});
+
 test("GET /api/training/scheduler/status exposes a training scheduler snapshot", async () => {
   const { GET } = await import("../src/app/api/training/scheduler/status/route");
 

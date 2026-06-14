@@ -311,6 +311,42 @@ export async function getManagedTrainingProject(projectId: string) {
   return projects.find((project) => project.id === projectId) ?? null;
 }
 
+export async function archiveManagedTrainingProject(projectId: string) {
+  return withProjectStoreWriteLock(async () => {
+    const projects = await readFallbackTrainingProjects();
+    const currentIndex = projects.findIndex((project) => project.id === projectId);
+    if (currentIndex === -1) return null;
+    const current = projects[currentIndex];
+    const next = [...projects];
+    next[currentIndex] = {
+      ...current,
+      updatedAt: formatUpdatedAt(),
+      status: "archived",
+      recentTraining: current.recentTraining.includes("已归档") ? current.recentTraining : `${current.recentTraining} · 已归档`,
+    };
+    await writeFallbackTrainingProjects(next);
+    return next[currentIndex];
+  });
+}
+
+export async function restoreManagedTrainingProject(projectId: string) {
+  return withProjectStoreWriteLock(async () => {
+    const projects = await readFallbackTrainingProjects();
+    const currentIndex = projects.findIndex((project) => project.id === projectId);
+    if (currentIndex === -1) return null;
+    const current = projects[currentIndex];
+    const next = [...projects];
+    next[currentIndex] = recomputeManagedProject({
+      ...current,
+      updatedAt: formatUpdatedAt(),
+      status: "ready",
+      recentTraining: current.recentTraining.replace(/\s*·\s*已归档$/, ""),
+    });
+    await writeFallbackTrainingProjects(next);
+    return next[currentIndex];
+  });
+}
+
 async function findManagedProjectBySectionId(sectionId: string) {
   const projects = await readFallbackTrainingProjects();
   for (const project of projects) {
