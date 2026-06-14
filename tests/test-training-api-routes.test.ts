@@ -2334,6 +2334,8 @@ test("production generation task draft lifecycle works through /api/training whe
   assert.equal(runDetailPayload.ok, true);
   assert.equal(runDetailPayload.data.id, runId);
   assert.equal(runDetailPayload.data.kind, "generation");
+  assert.ok(Array.isArray(runDetailPayload.data.inputImages));
+  assert.ok(runDetailPayload.data.inputImages.length >= 2);
 });
 
 test("training project detail route deletes a managed project through /api/training", async () => {

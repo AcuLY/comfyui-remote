@@ -428,6 +428,22 @@ test("generation compose manages supplemental image attachments in local state",
   assert.match(cssSource, /\.supplementalImageList\b/, "supplemental image attachments should have a dedicated compact list style");
 });
 
+test("generation compose uploads supplemental images through the formal HTTP API on production routes", () => {
+  const composePage = sourceBetween(
+    "export function LoraTrainingGenerationComposePage",
+    "export function LoraTrainingProjectResultsPage",
+  );
+
+  assert.match(composePage, /supplementalImageInputRef/, "compose page should keep a ref to the supplemental image input");
+  assert.match(composePage, /handleUploadSupplementalImage/, "compose page should expose an explicit upload entrypoint");
+  assert.match(composePage, /handleSupplementalImageFileChange/, "compose page should handle file uploads explicitly");
+  assert.match(composePage, /type="file"/, "compose page should render a real file input for supplemental image uploads");
+  assert.match(composePage, /fetch\(`\/api\/training\/generation-tasks\/\$\{ensuredDraftTaskId\}\/supplemental-images`/, "supplemental image upload should call the formal draft supplemental-image API");
+  assert.match(composePage, /new FormData\(\)/, "supplemental image upload should send a multipart form payload");
+  assert.match(composePage, /buildUploadedSupplementalImage/, "uploaded supplemental images should resolve through a dedicated preview helper");
+  assert.match(pagesSource, /function buildUploadedSupplementalImage/, "compose upload flow should define a helper for uploaded supplemental previews");
+});
+
 test("generation compose task draft stays scoped to the active project section", () => {
   const composePage = sourceBetween(
     "export function LoraTrainingGenerationComposePage",

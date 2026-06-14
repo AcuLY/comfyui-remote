@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import type { ReactNode } from "react";
+import type { ChangeEvent, ReactNode } from "react";
 import { useCallback, useRef, useState } from "react";
 import {
   Archive,
@@ -22,6 +22,7 @@ import {
   Save,
   Snowflake,
   Trash2,
+  Upload,
 } from "lucide-react";
 
 import type { DemoData, DemoImage } from "../../data";
@@ -226,6 +227,34 @@ function buildUploadedReferenceImage(
       width: null,
       height: null,
     },
+  };
+}
+
+function buildUploadedSupplementalImage(input: {
+  detail: string;
+  id: string;
+  relativePath: string;
+  title: string;
+}): SupplementalImageAttachment | null {
+  const url = toImageUrl(input.relativePath);
+  if (!url) return null;
+  return {
+    detail: input.detail,
+    id: input.id,
+    image: {
+      id: `${input.id}-image`,
+      src: url,
+      full: url,
+      label: input.title,
+      status: "pending",
+      featured: false,
+      featured2: false,
+      cover: false,
+      width: null,
+      height: null,
+    },
+    source: "上传",
+    title: input.title,
   };
 }
 
@@ -2455,6 +2484,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
   const pathname = usePathname();
   const router = useRouter();
   const { pushToast } = useDemoFeedback();
+  const supplementalImageInputRef = useRef<HTMLInputElement | null>(null);
   const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
   const referenceSourceTree: ReferenceSourceGroup[] = project && section ? [
@@ -2513,6 +2543,11 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     supplementalPrompt: DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT,
     taskType: "训练集图片生成",
   }));
+  const [generationTaskDraftTransportState, setGenerationTaskDraftTransportState] = useState(() => ({
+    projectId: project?.id ?? null,
+    sectionId: section?.id ?? null,
+    taskId: null as string | null,
+  }));
   const [supplementalImageAttachmentState, setSupplementalImageAttachments] = useState(() => ({
     attachments: [] as SupplementalImageAttachment[],
     projectId: project?.id ?? null,
@@ -2527,9 +2562,10 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     supplementalImageCount: number;
     supplementalImageTitles: string[];
     supplementalPrompt: string;
-    taskType: string;
+      taskType: string;
   } | null>(null);
   const [isQueueingGenerationTask, setIsQueueingGenerationTask] = useState(false);
+  const [isUploadingSupplementalImage, setIsUploadingSupplementalImage] = useState(false);
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   if (!project || !section) return <EmptyPage title="没有生成任务上下文" />;
@@ -2549,6 +2585,9 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     supplementalPrompt: DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT,
     taskType: "训练集图片生成",
   };
+  const draftTaskId = generationTaskDraftTransportState.projectId === activeProject.id && generationTaskDraftTransportState.sectionId === activeSection.id
+    ? generationTaskDraftTransportState.taskId
+    : null;
   const supplementalImageAttachments = supplementalImageAttachmentState.projectId === activeProject.id && supplementalImageAttachmentState.sectionId === activeSection.id
     ? supplementalImageAttachmentState.attachments
     : [];
@@ -2603,6 +2642,47 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     });
   }
 
+  async function ensureGenerationDraftTaskId() {
+    if (draftTaskId) {
+      const patchResponse = await fetch(`/api/training/generation-tasks/${draftTaskId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          supplementalPrompt: generationForm.supplementalPrompt,
+          taskType: generationForm.taskType,
+        }),
+      });
+      const patchPayload = await patchResponse.json().catch(() => null);
+      if (!patchResponse.ok || !patchPayload?.ok) {
+        throw new Error(patchPayload?.error?.message ?? "生成任务草稿更新失败");
+      }
+      return draftTaskId;
+    }
+
+    const createDraftResponse = await fetch(`/api/training/projects/${activeProject.id}/generation-tasks`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        sectionId: activeSection.id,
+        supplementalPrompt: generationForm.supplementalPrompt,
+        taskType: generationForm.taskType,
+      }),
+    });
+    const createDraftPayload = await createDraftResponse.json().catch(() => null);
+
+    if (!createDraftResponse.ok || !createDraftPayload?.ok || !createDraftPayload?.data?.id) {
+      throw new Error(createDraftPayload?.error?.message ?? "生成任务草稿创建失败");
+    }
+
+    const nextTaskId = createDraftPayload.data.id as string;
+    setGenerationTaskDraftTransportState({
+      projectId: activeProject.id,
+      sectionId: activeSection.id,
+      taskId: nextTaskId,
+    });
+    return nextTaskId;
+  }
+
   function handlePreviewTaskReference(candidate: ReferenceCandidate) {
     setReferenceSelectionState((current) => {
       const selectedReferenceIds = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.selectedReferenceIds : new Set<string>();
@@ -2655,6 +2735,104 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     }));
   }
 
+  function handleUploadSupplementalImage() {
+    supplementalImageInputRef.current?.click();
+  }
+
+  async function handleSupplementalImageFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+    if (isUploadingSupplementalImage) return;
+
+    if (!isProductionTrainingRoute) {
+      const previewImage = activeProject.referenceImages[0]?.image ?? activeProject.resultPool[0]?.image ?? activeProject.images[0];
+      if (previewImage) {
+        setSupplementalImageAttachments((current) => {
+          const activeAttachments = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.attachments : [];
+          return {
+            attachments: [
+              ...activeAttachments,
+              {
+                detail: "页面内本地上传草稿，可继续作为补充图片使用。",
+                id: `uploaded-supplemental-${Date.now()}`,
+                image: previewImage,
+                source: "上传",
+                title: file.name.replace(/\.[^.]+$/, "") || "补充图片",
+              },
+            ],
+            projectId: activeProject.id,
+            sectionId: activeSection.id,
+          };
+        });
+      }
+      event.currentTarget.value = "";
+      return;
+    }
+
+    setIsUploadingSupplementalImage(true);
+    try {
+      const ensuredDraftTaskId = await ensureGenerationDraftTaskId();
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("title", file.name.replace(/\.[^.]+$/, "") || "补充图片");
+      formData.append("detail", "上传补充图片");
+
+      const response = await fetch(`/api/training/generation-tasks/${ensuredDraftTaskId}/supplemental-images`, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id || !payload?.data?.relativePath) {
+        pushToast({
+          tone: "error",
+          title: "补充图片上传失败",
+          detail: payload?.error?.message ?? "补充图片上传请求失败",
+        });
+        return;
+      }
+
+      const uploadedAttachment = buildUploadedSupplementalImage({
+        detail: payload.data.detail ?? "上传补充图片",
+        id: payload.data.id,
+        relativePath: payload.data.relativePath,
+        title: payload.data.title ?? file.name.replace(/\.[^.]+$/, "") || "补充图片",
+      });
+
+      if (!uploadedAttachment) {
+        pushToast({
+          tone: "error",
+          title: "补充图片上传失败",
+          detail: "上传成功，但无法解析补充图片地址。",
+        });
+        return;
+      }
+
+      setSupplementalImageAttachments((current) => {
+        const activeAttachments = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.attachments : [];
+        return {
+          attachments: [...activeAttachments, uploadedAttachment],
+          projectId: activeProject.id,
+          sectionId: activeSection.id,
+        };
+      });
+      pushToast({
+        tone: "success",
+        title: "补充图片已上传",
+        detail: uploadedAttachment.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "补充图片上传失败",
+        detail: error instanceof Error ? error.message : "补充图片上传请求失败",
+      });
+    } finally {
+      setIsUploadingSupplementalImage(false);
+      event.currentTarget.value = "";
+    }
+  }
+
   async function handleQueueGenerationTask() {
     const nextDraft = {
       finalInput: finalInputText,
@@ -2684,30 +2862,10 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
 
     setIsQueueingGenerationTask(true);
     try {
-      const createDraftResponse = await fetch(`/api/training/projects/${activeProject.id}/generation-tasks`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          sectionId: activeSection.id,
-          supplementalPrompt: generationForm.supplementalPrompt,
-          taskType: generationForm.taskType,
-        }),
-      });
-      const createDraftPayload = await createDraftResponse.json().catch(() => null);
+        const draftTaskId = await ensureGenerationDraftTaskId();
 
-      if (!createDraftResponse.ok || !createDraftPayload?.ok || !createDraftPayload?.data?.id) {
-        pushToast({
-          tone: "error",
-          title: "生成任务创建失败",
-          detail: createDraftPayload?.error?.message ?? "生成任务草稿创建请求失败",
-        });
-        return;
-      }
-
-      const draftTaskId = createDraftPayload.data.id as string;
-
-      for (const referenceId of explicitReferenceIds) {
-        const inputResponse = await fetch(`/api/training/generation-tasks/${draftTaskId}/inputs`, {
+          for (const referenceId of explicitReferenceIds) {
+            const inputResponse = await fetch(`/api/training/generation-tasks/${draftTaskId}/inputs`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -2778,6 +2936,11 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
         ...nextDraft,
         finalInput: previewPayload.data.finalInput,
       });
+      setGenerationTaskDraftTransportState({
+        projectId: activeProject.id,
+        sectionId: activeSection.id,
+        taskId: null,
+      });
       pushToast({
         tone: "success",
         title: "生成任务已创建",
@@ -2833,7 +2996,15 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
                   <strong>补充图片附件</strong>
                   <span>{supplementalImageAttachments.length ? `${supplementalImageAttachments.length} 张已附加` : "点击下方参考图或结果池图片附加"}</span>
                 </div>
+                <Button size="sm" icon={Upload} pending={isUploadingSupplementalImage} onClick={handleUploadSupplementalImage}>上传图片</Button>
               </div>
+              <input
+                ref={supplementalImageInputRef}
+                hidden
+                accept="image/png,image/jpeg,image/webp"
+                type="file"
+                onChange={handleSupplementalImageFileChange}
+              />
               <div className={s.supplementalImageCandidateList}>
                 {supplementalImageCandidates.map((candidate) => {
                   const alreadyAttached = supplementalImageAttachments.some((attachment) => attachment.id === candidate.id);
