@@ -99,4 +99,14 @@ test("training routes render a production shell without the /design-demos prefix
     /DesignDemoShell[\s\S]*?hrefForRoute=\{\(route\) => route\}/,
     "production training app should keep product routes untouched instead of re-prefixing them with /design-demos",
   );
+  assert.match(
+    trainingAppClientSource,
+    /from "@\/features\/training\/ui"/,
+    "production training app should read training pages through a dedicated feature-layer entry point",
+  );
+  assert.doesNotMatch(
+    trainingAppClientSource,
+    /from "@\/app\/design-demos\/features\/lora-training"/,
+    "production training app should not import training pages directly from the design-demos app path anymore",
+  );
 });

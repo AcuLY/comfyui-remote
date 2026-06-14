@@ -23,7 +23,7 @@ import {
   LoraTrainingTemplateFormPage,
   LoraTrainingTemplatesPage,
   LoraTrainingTemplateSectionPage,
-} from "@/app/design-demos/features/lora-training";
+} from "@/features/training/ui";
 import { NotFoundPage } from "@/app/design-demos/features/settings";
 import { matchRoute } from "@/app/design-demos/routing";
 import type { DemoTheme, Match } from "@/app/design-demos/routing";
