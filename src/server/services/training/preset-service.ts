@@ -552,6 +552,55 @@ export async function getTrainingSceneDescriptionPreset(presetId: string) {
   }
 }
 
+export async function getTrainingSceneDescriptionPresetUsage(presetId: string) {
+  const preset = await getTrainingSceneDescriptionPreset(presetId);
+  return {
+    presetId: preset.id,
+    projectUsage: preset.projectUsage,
+    templateUsage: preset.templateUsage,
+  };
+}
+
+export async function listTrainingSceneDescriptionTree() {
+  const presets = await listTrainingSceneDescriptionPresets();
+  const categoryMap = new Map<string, {
+    id: string;
+    name: string;
+    folders: Array<{ id: string; name: string; presets: LoraTrainingPreset[] }>;
+    presets: LoraTrainingPreset[];
+  }>();
+
+  for (const preset of presets) {
+    const categoryEntry = categoryMap.get(preset.category) ?? {
+      id: `training-scene-category-${preset.category}`,
+      name: preset.category,
+      folders: [],
+      presets: [],
+    };
+
+    if (preset.folder && preset.folder !== "未归档") {
+      let folderEntry = categoryEntry.folders.find((folder) => folder.name === preset.folder);
+      if (!folderEntry) {
+        folderEntry = {
+          id: `training-scene-folder-${preset.category}-${preset.folder}`,
+          name: preset.folder,
+          presets: [],
+        };
+        categoryEntry.folders.push(folderEntry);
+      }
+      folderEntry.presets.push(preset);
+    } else {
+      categoryEntry.presets.push(preset);
+    }
+
+    categoryMap.set(preset.category, categoryEntry);
+  }
+
+  return {
+    categories: [...categoryMap.values()],
+  };
+}
+
 export async function createTrainingSceneDescriptionPreset(input: unknown) {
   const parsed = parseTrainingPresetInput(input);
   try {
@@ -726,6 +775,25 @@ export async function deleteTrainingSceneDescriptionPreset(presetId: string) {
     revalidateTrainingPresetPaths(presetId);
     return { success: true };
   }
+}
+
+export async function cascadeDeleteTrainingSceneDescriptionPreset(
+  presetId: string,
+  input: { confirm?: boolean } = {},
+) {
+  if (input.confirm !== true) {
+    throw new TrainingPresetServiceError("confirm must be true", 400, { presetId });
+  }
+
+  const usage = await getTrainingSceneDescriptionPresetUsage(presetId);
+  const result = await deleteTrainingSceneDescriptionPreset(presetId);
+
+  return {
+    ...result,
+    presetId,
+    removedProjectUsage: usage.projectUsage.length,
+    removedTemplateUsage: usage.templateUsage.length,
+  };
 }
 
 export async function saveTrainingSceneDescriptionPresetSortRules(input: unknown) {

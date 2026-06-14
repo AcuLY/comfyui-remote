@@ -764,14 +764,17 @@ test("DELETE /api/training run detail routes hide managed runs from global and p
 
 test("GET /api/training/presets and /api/training/templates expose training resource libraries", async () => {
   const presetsRoute = await import("../src/app/api/training/presets/route");
+  const sceneDescriptionTreeRoute = await import("../src/app/api/training/scene-description/categories/route");
   const templatesRoute = await import("../src/app/api/training/templates/route");
 
-  const [presetsResponse, templatesResponse] = await Promise.all([
+  const [presetsResponse, sceneDescriptionTreeResponse, templatesResponse] = await Promise.all([
     presetsRoute.GET(new Request("http://localhost/api/training/presets")),
+    sceneDescriptionTreeRoute.GET(new Request("http://localhost/api/training/scene-description/categories")),
     templatesRoute.GET(new Request("http://localhost/api/training/templates")),
   ]);
-  const [presetsPayload, templatesPayload] = await Promise.all([
+  const [presetsPayload, sceneDescriptionTreePayload, templatesPayload] = await Promise.all([
     presetsResponse.json(),
+    sceneDescriptionTreeResponse.json(),
     templatesResponse.json(),
   ]);
 
@@ -779,6 +782,17 @@ test("GET /api/training/presets and /api/training/templates expose training reso
   assert.equal(presetsPayload.ok, true);
   assert.ok(Array.isArray(presetsPayload.data));
   assert.ok(presetsPayload.data.some((preset: { id: string }) => preset.id === "rainy-street"));
+  assert.equal(sceneDescriptionTreeResponse.status, 200);
+  assert.equal(sceneDescriptionTreePayload.ok, true);
+  assert.ok(Array.isArray(sceneDescriptionTreePayload.data.categories));
+  assert.ok(sceneDescriptionTreePayload.data.categories.length > 0);
+  assert.ok(sceneDescriptionTreePayload.data.categories.some((category: {
+    folders?: Array<{ presets: Array<{ id: string }> }>;
+    presets: Array<{ id: string }>;
+  }) =>
+    category.presets.some((preset) => preset.id === "rainy-street")
+    || (category.folders ?? []).some((folder) => folder.presets.some((preset) => preset.id === "rainy-street"))),
+  );
 
   assert.equal(templatesResponse.status, 200);
   assert.equal(templatesPayload.ok, true);
@@ -816,6 +830,8 @@ test("training preset routes create, update, read, and delete presets through /a
 
   const presetId = createPayload.data.id as string;
   const detailParams = { params: Promise.resolve({ presetId }) };
+  const presetUsageRoute = await import("../src/app/api/training/scene-description/presets/[presetId]/usage/route");
+  const presetCascadeRoute = await import("../src/app/api/training/scene-description/presets/[presetId]/cascade/route");
 
   const updateResponse = await presetDetailRoute.PATCH(
     new Request(`http://localhost/api/training/presets/${presetId}`, {
@@ -847,8 +863,22 @@ test("training preset routes create, update, read, and delete presets through /a
   assert.equal(getPayload.data.id, presetId);
   assert.equal(getPayload.data.title, `${presetName} 已更新`);
 
-  const deleteResponse = await presetDetailRoute.DELETE(
-    new Request(`http://localhost/api/training/presets/${presetId}`, { method: "DELETE" }),
+  const usageResponse = await presetUsageRoute.GET(
+    new Request(`http://localhost/api/training/scene-description/presets/${presetId}/usage`),
+    detailParams,
+  );
+  const usagePayload = await usageResponse.json();
+
+  assert.equal(usageResponse.status, 200);
+  assert.equal(usagePayload.ok, true);
+  assert.ok(Array.isArray(usagePayload.data.projectUsage));
+  assert.ok(Array.isArray(usagePayload.data.templateUsage));
+
+  const deleteResponse = await presetCascadeRoute.DELETE(
+    new Request(`http://localhost/api/training/scene-description/presets/${presetId}/cascade`, {
+      method: "DELETE",
+      body: JSON.stringify({ confirm: true }),
+    }),
     detailParams,
   );
   const deletePayload = await deleteResponse.json();
