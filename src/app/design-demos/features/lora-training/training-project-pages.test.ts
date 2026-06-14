@@ -5,10 +5,21 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const pagesSource = readFileSync(resolve(testDir, "training-project-pages.tsx"), "utf8");
-const cssSource = readFileSync(resolve(testDir, "training-project-pages.module.css"), "utf8");
-const fixtureSource = readFileSync(resolve(testDir, "../../data/lora-training.ts"), "utf8");
-const typesSource = readFileSync(resolve(testDir, "../../data/lora-training-types.ts"), "utf8");
+const featureUiDir = resolve(testDir, "../../../../features/training/ui");
+const featureRoot = resolve(testDir, "../../../../features/training");
+const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
+const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
+const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
+const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
+const legacyPagesSource = readFileSync(resolve(testDir, "training-project-pages.tsx"), "utf8");
+
+test("training project page implementation is owned by the training feature layer", () => {
+  assert.match(
+    legacyPagesSource,
+    /from "@\/features\/training\/ui\/training-project-pages"/,
+    "design-demos project pages file should re-export the feature-layer project pages",
+  );
+});
 
 test("training project fixtures model reference images, result pool captions, and dataset snapshots", () => {
   for (const typeName of [

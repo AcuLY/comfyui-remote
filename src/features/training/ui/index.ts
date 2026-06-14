@@ -9,7 +9,7 @@ export {
   LoraTrainingProjectScopedRunsPage,
   LoraTrainingProjectSectionDetailPage,
   LoraTrainingProjectSectionsPage,
-} from "@/app/design-demos/features/lora-training";
+} from "./training-project-pages";
 export { LoraTrainingProjectsPage } from "./training-projects-page";
 export { LoraTrainingRunDetailPage } from "./training-run-detail-page";
 export { LoraTrainingRunsPage } from "./training-runs-page";

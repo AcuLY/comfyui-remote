@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../../../../features/training/ui");
+const featureProjectPagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
 const featureRoot = resolve(testDir, "../../../../features/training");
 const detailSource = readFileSync(resolve(featureUiDir, "training-run-detail-page.tsx"), "utf8");
 const detailCss = readFileSync(resolve(featureUiDir, "training-run-detail-page.module.css"), "utf8");
@@ -201,7 +202,7 @@ test("image generation detail header links back to its training section and sect
   assert.doesNotMatch(detailSource, /\/sections\/\$\{generationOutputSection\.sectionId\}\/results/, "section results should not link to a removed independent route");
   assert.match(detailSource, /<ButtonLink[\s\S]*?>\s*跳转小节\s*<\/ButtonLink>/, "generation detail should expose the same section jump as generation run review pages");
   assert.match(detailSource, /<ButtonLink[\s\S]*?>\s*查看结果\s*<\/ButtonLink>/, "generation detail should expose the result surface linked from the output");
-  assert.match(readFileSync(resolve(testDir, "training-project-pages.tsx"), "utf8"), /id="section-results"/, "section detail should expose a stable result anchor");
+  assert.match(featureProjectPagesSource, /id="section-results"/, "section detail should expose a stable result anchor");
 });
 
 test("image generation detail renders task input attachments instead of project reference images", () => {

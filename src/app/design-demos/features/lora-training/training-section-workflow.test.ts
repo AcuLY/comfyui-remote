@@ -5,8 +5,9 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const pagesSource = readFileSync(resolve(testDir, "training-project-pages.tsx"), "utf8");
-const cssSource = readFileSync(resolve(testDir, "training-project-pages.module.css"), "utf8");
+const featureUiDir = resolve(testDir, "../../../../features/training/ui");
+const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
+const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 
 function sourceBetween(startMarker: string, endMarker: string) {
   const start = pagesSource.indexOf(startMarker);
