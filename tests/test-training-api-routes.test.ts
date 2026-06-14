@@ -136,6 +136,7 @@ test("GET /api/training/projects/:projectId returns one project detail", async (
 test("GET project-scoped training resources expose sections, results, dataset revisions, and scoped run lists", async () => {
   const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
   const resultsRoute = await import("../src/app/api/training/projects/[projectId]/image-results/route");
+  const readinessRoute = await import("../src/app/api/training/projects/[projectId]/dataset-readiness/route");
   const revisionsRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
   const trainingRunsRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
   const generationTasksRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
@@ -147,17 +148,19 @@ test("GET project-scoped training resources expose sections, results, dataset re
   ).id;
 
   const params = { params: Promise.resolve({ projectId }) };
-  const [sectionsResponse, resultsResponse, revisionsResponse, trainingRunsResponse, generationTasksResponse] = await Promise.all([
+  const [sectionsResponse, resultsResponse, readinessResponse, revisionsResponse, trainingRunsResponse, generationTasksResponse] = await Promise.all([
     sectionsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/sections`), params),
     resultsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/image-results`), params),
+    readinessRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/dataset-readiness`), params),
     revisionsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/dataset-revisions`), params),
     trainingRunsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/training-runs`), params),
     generationTasksRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/generation-tasks`), params),
   ]);
 
-  const [sectionsPayload, resultsPayload, revisionsPayload, trainingRunsPayload, generationTasksPayload] = await Promise.all([
+  const [sectionsPayload, resultsPayload, readinessPayload, revisionsPayload, trainingRunsPayload, generationTasksPayload] = await Promise.all([
     sectionsResponse.json(),
     resultsResponse.json(),
+    readinessResponse.json(),
     revisionsResponse.json(),
     trainingRunsResponse.json(),
     generationTasksResponse.json(),
@@ -165,6 +168,7 @@ test("GET project-scoped training resources expose sections, results, dataset re
 
   assert.equal(sectionsResponse.status, 200);
   assert.equal(resultsResponse.status, 200);
+  assert.equal(readinessResponse.status, 200);
   assert.equal(revisionsResponse.status, 200);
   assert.equal(trainingRunsResponse.status, 200);
   assert.equal(generationTasksResponse.status, 200);
@@ -173,10 +177,45 @@ test("GET project-scoped training resources expose sections, results, dataset re
   assert.ok(sectionsPayload.data.length > 0);
   assert.ok(Array.isArray(resultsPayload.data));
   assert.ok(resultsPayload.data.length > 0);
+  assert.equal(readinessPayload.data.projectId, projectId);
+  assert.equal(typeof readinessPayload.data.readyForTraining, "boolean");
   assert.ok(Array.isArray(revisionsPayload.data));
   assert.ok(revisionsPayload.data.length > 0);
   assert.ok(trainingRunsPayload.data.every((run: { kind: string; projectId: string }) => run.kind === "training" && run.projectId === projectId));
   assert.ok(generationTasksPayload.data.every((run: { kind: string; projectId: string }) => run.kind === "generation" && run.projectId === projectId));
+});
+
+test("GET /api/training/sections/:sectionId/scene-description returns the resolved training scene text and source blocks", async () => {
+  const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
+  const sceneDescriptionRoute = await import("../src/app/api/training/sections/[sectionId]/scene-description/route");
+  const projects = await listProjects();
+  const projectId = (
+    projects.find((project) => (project.sectionCount ?? 0) > 0)
+    ?? projects[0]
+  ).id;
+
+  const sectionsResponse = await sectionsRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections`),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const sectionsPayload = await sectionsResponse.json();
+
+  assert.equal(sectionsResponse.status, 200);
+  assert.equal(sectionsPayload.ok, true);
+
+  const sectionId = sectionsPayload.data[0].id as string;
+  const sceneDescriptionResponse = await sceneDescriptionRoute.GET(
+    new Request(`http://localhost/api/training/sections/${sectionId}/scene-description`),
+    { params: Promise.resolve({ sectionId }) },
+  );
+  const sceneDescriptionPayload = await sceneDescriptionResponse.json();
+
+  assert.equal(sceneDescriptionResponse.status, 200);
+  assert.equal(sceneDescriptionPayload.ok, true);
+  assert.equal(typeof sceneDescriptionPayload.data.text, "string");
+  assert.ok(sceneDescriptionPayload.data.text.length > 0);
+  assert.ok(Array.isArray(sceneDescriptionPayload.data.blocks));
+  assert.ok(sceneDescriptionPayload.data.blocks.length > 0);
 });
 
 test("training project section route reads and updates a saved section through /api/training", async () => {

@@ -65,6 +65,37 @@ export async function getTrainingProject(projectId: string) {
   return project;
 }
 
+export async function getTrainingDatasetReadiness(projectId: string) {
+  const project = await getTrainingProject(projectId);
+  return {
+    projectId: project.id,
+    readiness: project.readiness,
+    readyForTraining: project.status !== "archived" && project.keptCount > 0 && project.captionMissingCount === 0,
+    keptCount: project.keptCount,
+    captionMissingCount: project.captionMissingCount,
+    datasetVersion: project.datasetVersion,
+    referenceImageCount: project.referenceImages.length,
+    sectionCount: project.sections.length,
+  };
+}
+
+export async function getTrainingSectionSceneDescription(sectionId: string) {
+  const snapshot = await loadTrainingSnapshot();
+  for (const project of snapshot.projects) {
+    const section = project.sections.find((item) => item.id === sectionId);
+    if (section) {
+      return {
+        projectId: project.id,
+        sectionId,
+        text: section.resolvedScene,
+        blocks: section.blocks,
+      };
+    }
+  }
+
+  throw new TrainingReadServiceError("Training section not found", 404, { sectionId });
+}
+
 export async function listTrainingRuns(filters: {
   kind?: LoraTrainingTaskKind;
   projectId?: string;
