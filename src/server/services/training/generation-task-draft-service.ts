@@ -493,6 +493,7 @@ export async function runManagedGenerationTask(taskId: string) {
 
   let run = await enqueueManagedTrainingSectionGenerationRun(section.id, {
     previousCandidateImageIds,
+    projectId: draft.projectId,
     sourceImageIds,
     supplementalImages,
     userInstruction: `${draft.taskType}\n\n${preview.finalInput}`,

@@ -421,9 +421,12 @@ export async function deleteManagedTrainingProject(projectId: string) {
   });
 }
 
-async function findManagedProjectBySectionId(sectionId: string) {
+async function findManagedProjectBySectionId(sectionId: string, projectId?: string | null) {
   const projects = await readFallbackTrainingProjects();
-  for (const project of projects) {
+  const scopedProjects = projectId
+    ? projects.filter((project) => project.id === projectId)
+    : projects;
+  for (const project of scopedProjects) {
     const section = project.sections.find((item) => item.id === sectionId);
     if (section) {
       return { project, section };
@@ -1008,7 +1011,10 @@ export async function enqueueManagedTrainingSectionGenerationRun(
   sectionId: string,
   input: Record<string, unknown> = {},
 ) {
-  const match = await findManagedProjectBySectionId(sectionId);
+  const scopedProjectId = typeof input.projectId === "string" && input.projectId.trim()
+    ? input.projectId.trim()
+    : null;
+  const match = await findManagedProjectBySectionId(sectionId, scopedProjectId);
   if (!match) return null;
 
   const selectedSourceIds = Array.isArray(input.sourceImageIds) ? input.sourceImageIds.filter((id): id is string => typeof id === "string") : [];

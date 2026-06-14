@@ -3580,6 +3580,7 @@ test("managed training project generation task draft lifecycle works through /ap
   assert.equal(runResponse.status, 201);
   assert.equal(runPayload.ok, true);
   assert.equal(runPayload.data.kind, "generation");
+  assert.equal(runPayload.data.projectId, projectId);
   assert.ok(Array.isArray(runPayload.data.inputImages));
   assert.ok(runPayload.data.inputImages.length >= 1);
 
@@ -3590,6 +3591,78 @@ test("managed training project generation task draft lifecycle works through /ap
   const getAfterRunPayload = await getAfterRunResponse.json();
   assert.equal(getAfterRunResponse.status, 404);
   assert.equal(getAfterRunPayload.ok, false);
+});
+
+test("managed section run route honors project scope when section ids overlap", async () => {
+  await withTrainingManagedStoreSnapshot(async () => {
+    const projectsRoute = await import("../src/app/api/training/projects/route");
+    const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
+
+    const createProject = async (title: string) => {
+      const response = await projectsRoute.POST(
+        new Request("http://localhost/api/training/projects", {
+          method: "POST",
+          body: JSON.stringify({
+            title,
+            characterName: title,
+            projectName: title,
+            triggerToken: `duplicate_section_scope_${Date.now()}_${title}`,
+            templateId: "character_identity_default",
+            trainingTemplateId: "character_identity_default",
+            checkpointRelativePath: "models/checkpoints/mock.safetensors",
+            usagePrompt: `${title} usage`,
+            detailPrompt: `${title} detail`,
+            sections: [
+              {
+                id: "seed-1",
+                title: `${title} 小节`,
+                enabled: true,
+                blockCount: 1,
+                blocks: [
+                  {
+                    id: `${title}-block`,
+                    source: "本地",
+                    title: `${title} block`,
+                    text: `${title} scene`,
+                  },
+                ],
+                resolvedScene: `${title} scene`,
+                scenePreview: `${title} scene`,
+              },
+            ],
+            trainingDefaults: {
+              autoGenerateSamples: false,
+              autoFreezeDataset: false,
+            },
+          }),
+        }),
+      );
+      const payload = await response.json();
+      assert.equal(response.status, 201);
+      assert.equal(payload.ok, true);
+      return payload.data as { id: string; title: string };
+    };
+
+    const firstProject = await createProject(`重复小节项目 A ${Date.now()}`);
+    const secondProject = await createProject(`重复小节项目 B ${Date.now()}`);
+
+    const runResponse = await sectionRunRoute.POST(
+      new Request("http://localhost/api/training/sections/seed-1/runs", {
+        method: "POST",
+        body: JSON.stringify({
+          projectId: secondProject.id,
+          userInstruction: "重复小节作用域测试",
+        }),
+      }),
+      { params: Promise.resolve({ sectionId: "seed-1" }) },
+    );
+    const runPayload = await runResponse.json();
+    assert.equal(runResponse.status, 201);
+    assert.equal(runPayload.ok, true);
+    assert.equal(runPayload.data.projectId, secondProject.id);
+    assert.equal(runPayload.data.projectTitle, secondProject.title);
+    assert.notEqual(runPayload.data.projectId, firstProject.id);
+  });
 });
 
 test("managed scheduler and worker endpoints can advance generation and training runs through completion", async () => {

@@ -2796,7 +2796,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
         detail: payload.data.detail ?? "上传补充图片",
         id: payload.data.id,
         relativePath: payload.data.relativePath,
-        title: payload.data.title ?? file.name.replace(/\.[^.]+$/, "") || "补充图片",
+        title: payload.data.title ?? (file.name.replace(/\.[^.]+$/, "") || "补充图片"),
       });
 
       if (!uploadedAttachment) {
@@ -3854,6 +3854,7 @@ export function LoraTrainingProjectScopedRunsPage({
               headers: { "content-type": "application/json" },
               body: JSON.stringify({
                 parentRunId: run.id,
+                projectId: project.id,
               }),
             });
           })()
