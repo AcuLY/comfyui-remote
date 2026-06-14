@@ -2827,6 +2827,215 @@ test("training text revisions can checkpoint and restore production image-result
   assert.equal(restoredResult.caption, "checkpoint 前 caption");
 });
 
+test("training image caption route can generate a managed caption task result through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const patchImageRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
+  const imageCaptionRoute = await import("../src/app/api/training/image-results/[imageResultId]/caption/route");
+  const title = `managed caption task 项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_caption_task_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        selectedReferenceIds: [],
+        sections: [],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  const projectId = createPayload.data.id as string;
+  const projectParams = { params: Promise.resolve({ projectId }) };
+
+  const uploadReferenceFormData = new FormData();
+  uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "caption-task-source.png", { type: "image/png" }));
+  uploadReferenceFormData.append("role", "source");
+  const uploadReferenceResponse = await referenceRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+      method: "POST",
+      body: uploadReferenceFormData,
+    }),
+    projectParams,
+  );
+  const uploadReferencePayload = await uploadReferenceResponse.json();
+  assert.equal(uploadReferenceResponse.status, 201);
+  assert.equal(uploadReferencePayload.ok, true);
+  const imageId = uploadReferencePayload.data.id as string;
+
+  const addToResultsResponse = await addToResultsRoute.POST(
+    new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+      method: "POST",
+      body: JSON.stringify({
+        reviewStatus: "pending",
+        captionDraft: "旧 caption",
+      }),
+    }),
+    { params: Promise.resolve({ imageId }) },
+  );
+  const addToResultsPayload = await addToResultsResponse.json();
+  assert.equal(addToResultsResponse.status, 201);
+  assert.equal(addToResultsPayload.ok, true);
+  const imageResultId = addToResultsPayload.data.id as string;
+
+  const clearCaptionResponse = await patchImageRoute.PATCH(
+    new Request(`http://localhost/api/training/image-results/${imageResultId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        captionDraft: "",
+      }),
+    }),
+    { params: Promise.resolve({ imageResultId }) },
+  );
+  const clearCaptionPayload = await clearCaptionResponse.json();
+  assert.equal(clearCaptionResponse.status, 200);
+  assert.equal(clearCaptionPayload.ok, true);
+
+  const captionResponse = await imageCaptionRoute.POST(
+    new Request(`http://localhost/api/training/image-results/${imageResultId}/caption`, {
+      method: "POST",
+      body: JSON.stringify({
+        taskInput: {
+          captionDraft: "重新生成的 caption 文本",
+        },
+      }),
+    }),
+    { params: Promise.resolve({ imageResultId }) },
+  );
+  const captionPayload = await captionResponse.json();
+  assert.equal(captionResponse.status, 200);
+  assert.equal(captionPayload.ok, true);
+  assert.equal(captionPayload.data.imageResult.id, imageResultId);
+  assert.equal(captionPayload.data.imageResult.caption, "重新生成的 caption 文本");
+  assert.equal(captionPayload.data.task.imageResultId, imageResultId);
+  assert.equal(captionPayload.data.task.status, "completed");
+  assert.equal(captionPayload.data.task.taskType, "caption_generation");
+  assert.equal(captionPayload.data.task.outputText, "重新生成的 caption 文本");
+});
+
+test("training bulk caption route supports kept_without_captions mode through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const patchImageRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
+  const resultsRoute = await import("../src/app/api/training/projects/[projectId]/image-results/route");
+  const bulkCaptionsRoute = await import("../src/app/api/training/projects/[projectId]/captions/generate/route");
+  const title = `managed bulk caption 项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_bulk_caption_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        selectedReferenceIds: [],
+        sections: [],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  const projectId = createPayload.data.id as string;
+  const projectParams = { params: Promise.resolve({ projectId }) };
+
+  const uploadReferenceFormData = new FormData();
+  uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "bulk-caption-source.png", { type: "image/png" }));
+  uploadReferenceFormData.append("role", "source");
+  const uploadReferenceResponse = await referenceRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+      method: "POST",
+      body: uploadReferenceFormData,
+    }),
+    projectParams,
+  );
+  const uploadReferencePayload = await uploadReferenceResponse.json();
+  assert.equal(uploadReferenceResponse.status, 201);
+  assert.equal(uploadReferencePayload.ok, true);
+  const imageId = uploadReferencePayload.data.id as string;
+
+  const addToResultsResponse = await addToResultsRoute.POST(
+    new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+      method: "POST",
+      body: JSON.stringify({
+        reviewStatus: "keep",
+        captionDraft: "旧 caption",
+      }),
+    }),
+    { params: Promise.resolve({ imageId }) },
+  );
+  const addToResultsPayload = await addToResultsResponse.json();
+  assert.equal(addToResultsResponse.status, 201);
+  assert.equal(addToResultsPayload.ok, true);
+  const imageResultId = addToResultsPayload.data.id as string;
+
+  const clearCaptionResponse = await patchImageRoute.PATCH(
+    new Request(`http://localhost/api/training/image-results/${imageResultId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        captionDraft: "",
+        reviewStatus: "keep",
+      }),
+    }),
+    { params: Promise.resolve({ imageResultId }) },
+  );
+  const clearCaptionPayload = await clearCaptionResponse.json();
+  assert.equal(clearCaptionResponse.status, 200);
+  assert.equal(clearCaptionPayload.ok, true);
+
+  const bulkCaptionResponse = await bulkCaptionsRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/captions/generate`, {
+      method: "POST",
+      body: JSON.stringify({
+        mode: "kept_without_captions",
+      }),
+    }),
+    projectParams,
+  );
+  const bulkCaptionPayload = await bulkCaptionResponse.json();
+  assert.equal(bulkCaptionResponse.status, 200);
+  assert.equal(bulkCaptionPayload.ok, true);
+  assert.equal(bulkCaptionPayload.data.projectId, projectId);
+  assert.equal(bulkCaptionPayload.data.mode, "kept_without_captions");
+  assert.equal(bulkCaptionPayload.data.taskCount, 1);
+  assert.equal(bulkCaptionPayload.data.tasks[0].imageResultId, imageResultId);
+  assert.equal(bulkCaptionPayload.data.tasks[0].status, "completed");
+  assert.equal(bulkCaptionPayload.data.tasks[0].taskType, "caption_generation");
+
+  const resultsResponse = await resultsRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/image-results`),
+    projectParams,
+  );
+  const resultsPayload = await resultsResponse.json();
+  assert.equal(resultsResponse.status, 200);
+  assert.equal(resultsPayload.ok, true);
+  const updatedResult = resultsPayload.data.find((result: { id: string }) => result.id === imageResultId);
+  assert.equal(typeof updatedResult.caption, "string");
+  assert.ok(updatedResult.caption.length > 0);
+});
+
 test("managed training project generation task draft lifecycle works through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const projectGenerationTasksRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
