@@ -9,7 +9,6 @@ export {
   LoraTrainingProjectFormPage,
   LoraTrainingProjectProfilePage,
   LoraTrainingProjectResultsPage,
-  LoraTrainingProjectsPage,
   LoraTrainingProjectScopedRunsPage,
   LoraTrainingProjectSectionDetailPage,
   LoraTrainingProjectSectionsPage,
@@ -19,3 +18,4 @@ export {
   LoraTrainingTemplatesPage,
   LoraTrainingTemplateSectionPage,
 } from "@/app/design-demos/features/lora-training";
+export { LoraTrainingProjectsPage } from "./training-projects-page";

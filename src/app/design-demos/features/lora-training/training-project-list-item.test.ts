@@ -5,10 +5,13 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const itemSource = readFileSync(resolve(testDir, "training-project-list-item.tsx"), "utf8");
-const itemCss = readFileSync(resolve(testDir, "training-project-list-item.module.css"), "utf8");
-const projectsPageSource = readFileSync(resolve(testDir, "training-projects-page.tsx"), "utf8");
-const projectsCss = readFileSync(resolve(testDir, "training-projects-page.module.css"), "utf8");
+const featureUiDir = resolve(testDir, "../../../../features/training/ui");
+const itemSource = readFileSync(resolve(featureUiDir, "training-project-list-item.tsx"), "utf8");
+const itemCss = readFileSync(resolve(featureUiDir, "training-project-list-item.module.css"), "utf8");
+const projectsPageSource = readFileSync(resolve(featureUiDir, "training-projects-page.tsx"), "utf8");
+const projectsCss = readFileSync(resolve(featureUiDir, "training-projects-page.module.css"), "utf8");
+const legacyItemSource = readFileSync(resolve(testDir, "training-project-list-item.tsx"), "utf8");
+const legacyProjectsPageSource = readFileSync(resolve(testDir, "training-projects-page.tsx"), "utf8");
 
 test("training project list keeps the project-demo header hierarchy", () => {
   const headerStart = projectsPageSource.indexOf("<PageHeader");
@@ -27,6 +30,19 @@ test("training project list keeps the project-demo header hierarchy", () => {
   assert.doesNotMatch(headerRegion, /eyebrow=/, "Project list should not add a redundant LoRA Training eyebrow");
   assert.doesNotMatch(headerRegion, /subtitle=/, "Project list should not duplicate counts above the scope tabs");
   assert.doesNotMatch(toolbarRegion, /\/training\/projects\/new/, "Project workspace toolbar should not duplicate the primary create action");
+});
+
+test("training project list implementation is owned by the training feature layer", () => {
+  assert.match(
+    legacyProjectsPageSource,
+    /export \{ LoraTrainingProjectsPage \} from "@\/features\/training\/ui\/training-projects-page";/,
+    "design-demos project page file should re-export the feature-layer project page",
+  );
+  assert.match(
+    legacyItemSource,
+    /export \{ TrainingProjectCardShell, TrainingProjectListItem \} from "@\/features\/training\/ui\/training-project-list-item";/,
+    "design-demos project item file should re-export the feature-layer item implementation",
+  );
 });
 
 test("training project card keeps the design-demo management controls first", () => {
