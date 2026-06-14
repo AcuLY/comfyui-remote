@@ -126,11 +126,12 @@ test("failed training runs retry through the formal HTTP API on production route
 });
 
 test("queued or running training rows cancel through the formal HTTP API on production routes", () => {
-  assert.match(pageSource, /fetch\(`\/api\/training\/training-runs\/\$\{run\.id\}\/cancel`/, "training rows should call the formal training cancel API");
+  assert.match(pageSource, /`\/api\/training\/generation-tasks\/\$\{run\.id\}\/cancel`/, "generation rows should call the formal generation cancel API");
+  assert.match(pageSource, /`\/api\/training\/training-runs\/\$\{run\.id\}\/cancel`/, "training rows should call the formal training cancel API");
   assert.match(pageSource, /requestedBy:/, "training row cancel requests should identify the request source");
   assert.match(pageSource, /cancelRuns/, "runs page should define a shared cancel handler");
   assert.match(pageSource, /cancelledRunIds/, "runs page should track locally cancelled run ids");
-  assert.match(pageSource, /run\.kind === "training"/, "cancel actions should stay scoped to training runs");
+  assert.match(pageSource, /status === "queued" \|\| status === "running"/, "cancel actions should stay scoped to queued or running rows");
   assert.match(pageSource, /pushToast/, "runs page should surface cancel API success or failure through the shared feedback system");
 });
 

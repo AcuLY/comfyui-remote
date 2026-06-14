@@ -223,7 +223,8 @@ test("failed run detail retries through the formal HTTP API on production routes
 });
 
 test("queued or running training detail cancels through the formal HTTP API on production routes", () => {
-  assert.match(detailSource, /fetch\(`\/api\/training\/training-runs\/\$\{currentRun\.id\}\/cancel`/, "training detail should call the formal training cancel API");
+  assert.match(detailSource, /`\/api\/training\/generation-tasks\/\$\{currentRun\.id\}\/cancel`/, "generation detail should call the formal generation cancel API");
+  assert.match(detailSource, /`\/api\/training\/training-runs\/\$\{currentRun\.id\}\/cancel`/, "training detail should call the formal training cancel API");
   assert.match(detailSource, /method:\s*"POST"/, "training detail should cancel runs through POST");
   assert.match(detailSource, /requestedBy:/, "training detail should identify the request source when cancelling");
   assert.match(detailSource, /pushToast/, "training detail should surface cancel API success or failure through the shared feedback system");

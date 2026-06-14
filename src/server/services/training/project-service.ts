@@ -854,6 +854,29 @@ export async function cancelManagedTrainingRun(trainingRunId: string) {
   });
 }
 
+export async function cancelManagedGenerationRun(taskId: string) {
+  const runs = await readFallbackTrainingRuns();
+  const currentRun = runs.find((run) => run.id === taskId && run.kind === "generation");
+  if (!currentRun) return null;
+
+  return withRunStoreWriteLock(async () => {
+    const refreshedRuns = await readFallbackTrainingRuns();
+    const nextRuns = refreshedRuns.map((run) => (
+      run.id === taskId && run.kind === "generation"
+        ? {
+          ...run,
+          status: "failed" as const,
+          errorMessage: "生成任务已取消",
+          schedulerMessage: "生成任务已取消",
+          timestamp: formatTimestamp(new Date(), "失败于"),
+        }
+        : run
+    ));
+    await writeFallbackTrainingRuns(nextRuns);
+    return nextRuns.find((run) => run.id === taskId) ?? null;
+  });
+}
+
 export async function createManagedTrainingProject(input: unknown) {
   const parsed = parseManagedProjectCreateInput(input);
   const title = normalizeTrainingProjectTitle(parsed);

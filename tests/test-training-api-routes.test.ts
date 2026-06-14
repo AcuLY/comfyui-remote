@@ -827,6 +827,7 @@ test("managed training project can enqueue generation, freeze dataset, and start
   const datasetRevisionRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
   const trainingRunRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
   const generationTaskDetailRoute = await import("../src/app/api/training/generation-tasks/[taskId]/route");
+  const cancelGenerationTaskRoute = await import("../src/app/api/training/generation-tasks/[taskId]/cancel/route");
   const cancelTrainingRunRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/cancel/route");
   const trainingRunDetailRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
   const title = `测试运行链项目 ${Date.now()}`;
@@ -929,6 +930,18 @@ test("managed training project can enqueue generation, freeze dataset, and start
   assert.equal(generationDetailResponse.status, 200);
   assert.equal(generationDetailPayload.ok, true);
   assert.equal(generationDetailPayload.data.id, generationRunId);
+
+  const cancelGenerationResponse = await cancelGenerationTaskRoute.POST(
+    new Request(`http://localhost/api/training/generation-tasks/${generationRunId}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({ requestedBy: "test" }),
+    }),
+    { params: Promise.resolve({ taskId: generationRunId }) },
+  );
+  const cancelGenerationPayload = await cancelGenerationResponse.json();
+  assert.equal(cancelGenerationResponse.status, 200);
+  assert.equal(cancelGenerationPayload.ok, true);
+  assert.equal(cancelGenerationPayload.data.id, generationRunId);
 
   const revisionResponse = await datasetRevisionRoute.POST(
     new Request(`http://localhost/api/training/projects/${projectId}/dataset-revisions`, {

@@ -365,7 +365,7 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
 
   async function cancelRuns(runIds: Iterable<string>) {
     const ids = new Set(runIds);
-    const runs = runsForKind.filter((run) => ids.has(run.id) && run.kind === "training");
+    const runs = runsForKind.filter((run) => ids.has(run.id) && (run.status === "queued" || run.status === "running"));
 
     const applyLocalCancelledRuns = (appliedIds: Set<string>) => {
       setCancelledRunIds((current) => new Set([...current, ...appliedIds]));
@@ -389,13 +389,18 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
     try {
       const responses = await Promise.all(
         runs.map(async (run) => {
-          const response = await fetch(`/api/training/training-runs/${run.id}/cancel`, {
+          const response = await fetch(
+            run.kind === "generation"
+              ? `/api/training/generation-tasks/${run.id}/cancel`
+              : `/api/training/training-runs/${run.id}/cancel`,
+            {
             method: "POST",
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
-              requestedBy: "training_runs_page",
+              requestedBy: run.kind === "generation" ? "training_generation_runs_page" : "training_runs_page",
             }),
-          });
+            },
+          );
           const payload = await response.json().catch(() => null);
           return { payload, response, run };
         }),
@@ -639,16 +644,16 @@ export function LoraTrainingRunsPage({ data }: { data: DemoData }) {
                                   ) : (
                                     <div className={s.rowActions}>
                                       {statusBadge(run)}
-                                      {kind === "training" && (status === "queued" || status === "running") ? (
+                                      {(status === "queued" || status === "running") ? (
                                         <Button
                                           icon={X}
                                           size="sm"
                                           tone="danger"
                                           pending={isCancellingRuns}
-                                          ariaLabel={`取消训练任务：${run.title}`}
+                                          ariaLabel={`${kind === "generation" ? "取消生成任务" : "取消训练任务"}：${run.title}`}
                                           onClick={() => cancelRuns([run.id])}
                                         >
-                                          取消
+                                          {kind === "generation" ? "终止" : "取消"}
                                         </Button>
                                       ) : (
                                         <Button

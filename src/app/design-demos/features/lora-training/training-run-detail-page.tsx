@@ -244,7 +244,7 @@ export function LoraTrainingRunDetailPage({
   const [copiedCaption, setCopiedCaption] = useState<CopiedCaptionState | null>(null);
   const [resultReviewState, setResultReviewState] = useState<Record<string, LoraTrainingReviewStatus>>({});
   const [retryDraft, setRetryDraft] = useState<RetryDraft | null>(null);
-  const [cancelledTrainingRunId, setCancelledTrainingRunId] = useState<string | null>(null);
+  const [cancelledRunId, setCancelledRunId] = useState<string | null>(null);
   const [isQueueingRetry, setIsQueueingRetry] = useState(false);
   const [isCancellingTrainingRun, setIsCancellingTrainingRun] = useState(false);
   const [isReviewingGenerationOutput, setIsReviewingGenerationOutput] = useState(false);
@@ -259,7 +259,7 @@ export function LoraTrainingRunDetailPage({
   const isGeneration = currentRun.kind === "generation";
   const currentRetryDraft = currentRun.status === "failed" && retryDraft?.runId === currentRun.id ? retryDraft : null;
   const isRetryQueued = Boolean(currentRetryDraft);
-  const isTrainingCancelled = !isGeneration && cancelledTrainingRunId === currentRun.id;
+  const isRunCancelled = cancelledRunId === currentRun.id;
   const projectHref = `/training/projects/${currentRun.projectId}`;
   const datasetHref = currentRun.datasetRevisionId ? `${projectHref}/dataset/revisions/${currentRun.datasetRevisionId}` : `${projectHref}/dataset`;
   const datasetSamples = isGeneration ? [] : currentRun.datasetSamples ?? [];
@@ -430,13 +430,13 @@ export function LoraTrainingRunDetailPage({
   }
 
   async function handleCancelTrainingRun() {
-    if (isGeneration || isTrainingCancelled) return;
+    if (isRunCancelled) return;
 
     if (!isProductionTrainingRoute) {
-      setCancelledTrainingRunId(currentRun.id);
+      setCancelledRunId(currentRun.id);
       pushToast({
         tone: "warning",
-        title: "训练任务已取消",
+        title: isGeneration ? "生成任务已取消" : "训练任务已取消",
         detail: currentRun.title,
       });
       return;
@@ -446,13 +446,18 @@ export function LoraTrainingRunDetailPage({
 
     setIsCancellingTrainingRun(true);
     try {
-      const response = await fetch(`/api/training/training-runs/${currentRun.id}/cancel`, {
+      const response = await fetch(
+        isGeneration
+          ? `/api/training/generation-tasks/${currentRun.id}/cancel`
+          : `/api/training/training-runs/${currentRun.id}/cancel`,
+        {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          requestedBy: "training_run_detail",
+          requestedBy: isGeneration ? "training_generation_run_detail" : "training_run_detail",
         }),
-      });
+        },
+      );
       const payload = await response.json().catch(() => null);
 
       if (!response.ok || !payload?.ok) {
@@ -464,10 +469,10 @@ export function LoraTrainingRunDetailPage({
         return;
       }
 
-      setCancelledTrainingRunId(currentRun.id);
+      setCancelledRunId(currentRun.id);
       pushToast({
         tone: "warning",
-        title: "训练任务已取消",
+        title: isGeneration ? "生成任务已取消" : "训练任务已取消",
         detail: currentRun.title,
       });
     } catch (error) {
@@ -506,7 +511,17 @@ export function LoraTrainingRunDetailPage({
                   数据集版本
                 </ButtonLink>
               ) : null}
-                    {!isGeneration && !isTrainingCancelled && (currentRun.status === "queued" || currentRun.status === "running") ? <Button tone="danger" icon={Trash2} pending={isCancellingTrainingRun} ariaLabel={`取消训练任务：${currentRun.title}`} onClick={handleCancelTrainingRun}>取消训练</Button> : null}
+                    {!isRunCancelled && (currentRun.status === "queued" || currentRun.status === "running") ? (
+                      <Button
+                        tone="danger"
+                        icon={Trash2}
+                        pending={isCancellingTrainingRun}
+                        ariaLabel={`${isGeneration ? "取消生成任务" : "取消训练任务"}：${currentRun.title}`}
+                        onClick={handleCancelTrainingRun}
+                      >
+                        {isGeneration ? "取消生成" : "取消训练"}
+                      </Button>
+                    ) : null}
                     {currentRun.status === "failed" && !isRetryQueued ? <Button tone="primary" icon={RotateCcw} pending={isQueueingRetry} ariaLabel={`重试任务：${currentRun.title}`} onClick={handleQueueRetry}>重试</Button> : null}
                     {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : null}
               </>
@@ -515,9 +530,9 @@ export function LoraTrainingRunDetailPage({
 
           <section className={s.statusSurface} aria-label="任务状态">
             <div>
-              {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : isTrainingCancelled ? <StatusBadge status="failed" label="已取消" /> : runStatusBadge(currentRun)}
+              {isRetryQueued ? <StatusBadge status="pending" label="已排队重试" /> : isRunCancelled ? <StatusBadge status="failed" label="已取消" /> : runStatusBadge(currentRun)}
               <strong>{currentRun.provider ?? (isGeneration ? "生成服务" : "本地训练")}</strong>
-              <span>{isRetryQueued ? "已加入重试队列，等待训练服务重新调度。" : isTrainingCancelled ? "训练任务已取消，等待状态同步。" : currentRun.schedulerMessage ?? currentRun.waitReason ?? currentRun.errorMessage ?? currentRun.outputLabel ?? "任务记录已同步"}</span>
+              <span>{isRetryQueued ? "已加入重试队列，等待训练服务重新调度。" : isRunCancelled ? `${isGeneration ? "生成任务" : "训练任务"}已取消，等待状态同步。` : currentRun.schedulerMessage ?? currentRun.waitReason ?? currentRun.errorMessage ?? currentRun.outputLabel ?? "任务记录已同步"}</span>
             </div>
         <div className={s.progressBlock}>
           <span>{percent}%</span>
