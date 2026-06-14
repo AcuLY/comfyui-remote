@@ -195,6 +195,10 @@ function buildManagedScopedId(prefix: string) {
   return `${prefix}-${Date.now()}-${randomUUID()}`;
 }
 
+function buildManagedUploadStem(safeName: string) {
+  return `${Date.now()}-${randomUUID()}-${safeName}`;
+}
+
 function imageUrlToRelativePath(url: string | null | undefined) {
   if (!url) return null;
   const normalized = url.split(/[?#]/, 1)[0] ?? url;
@@ -601,12 +605,12 @@ function isFileLike(
 function buildManagedReferenceImage(relativePath: string, label: string, note: string, index: number): LoraTrainingReferenceImage {
   const url = toImageUrl(relativePath) ?? "";
   return {
-    id: `managed-reference-${Date.now()}-${index + 1}`,
+    id: buildManagedScopedId(`managed-reference-${index + 1}`),
     kind: index === 0 ? "original" : "auxiliary",
     label,
     note,
     image: {
-      id: `managed-reference-image-${Date.now()}-${index + 1}`,
+      id: buildManagedScopedId(`managed-reference-image-${index + 1}`),
       src: url,
       full: url,
       label,
@@ -623,7 +627,7 @@ function buildManagedReferenceImage(relativePath: string, label: string, note: s
 function buildManagedResultImage(relativePath: string, label: string) {
   const url = toImageUrl(relativePath) ?? "";
   return {
-    id: `managed-result-image-${Date.now()}`,
+    id: buildManagedScopedId("managed-result-image"),
     src: url,
     full: url,
     label,
@@ -639,7 +643,7 @@ function buildManagedResultImage(relativePath: string, label: string) {
 function buildManagedRunInputImage(relativePath: string, label: string, index: number): DemoImage {
   const url = toImageUrl(relativePath) ?? "";
   return {
-    id: `managed-run-input-${Date.now()}-${index + 1}`,
+    id: buildManagedScopedId(`managed-run-input-${index + 1}`),
     src: url,
     full: url,
     label,
@@ -668,8 +672,9 @@ export async function uploadManagedTrainingImageResult(projectId: string, formDa
 
   const safeName = sanitizeManagedUploadName(file.name);
   const extension = extname(file.name).toLowerCase() || ".png";
-  const relativePath = `data/images/training-managed/${projectId}/results/${Date.now()}-${safeName}${extension}`;
-  const absolutePath = join(MANAGED_PROJECT_IMAGE_ROOT, projectId, "results", `${Date.now()}-${safeName}${extension}`);
+  const uploadStem = buildManagedUploadStem(safeName);
+  const relativePath = `data/images/training-managed/${projectId}/results/${uploadStem}${extension}`;
+  const absolutePath = join(MANAGED_PROJECT_IMAGE_ROOT, projectId, "results", `${uploadStem}${extension}`);
   const buffer = Buffer.from(await file.arrayBuffer());
   await mkdir(dirname(absolutePath), { recursive: true });
   await writeFile(absolutePath, buffer);
@@ -684,7 +689,7 @@ export async function uploadManagedTrainingImageResult(projectId: string, formDa
       : "";
   const label = file.name.replace(/\.[^.]+$/, "") || `上传结果 ${project.resultPool.length + 1}`;
   const nextResult: LoraTrainingImageResult = {
-    id: `managed-upload-result-${Date.now()}`,
+    id: buildManagedScopedId("managed-upload-result"),
     sectionId: matchedSection?.id ?? "manual-upload",
     sectionTitle: matchedSection?.title ?? "手动上传",
     image: buildManagedResultImage(relativePath, label),
@@ -720,8 +725,9 @@ export async function uploadManagedTrainingProjectReferenceImage(projectId: stri
   const role = typeof formData.get("role") === "string" ? String(formData.get("role")) : "source";
   const safeName = sanitizeManagedUploadName(file.name);
   const extension = extname(file.name).toLowerCase() || ".png";
-  const relativePath = `data/images/training-managed/${projectId}/references/${Date.now()}-${safeName}${extension}`;
-  const absolutePath = join(MANAGED_PROJECT_IMAGE_ROOT, projectId, "references", `${Date.now()}-${safeName}${extension}`);
+  const uploadStem = buildManagedUploadStem(safeName);
+  const relativePath = `data/images/training-managed/${projectId}/references/${uploadStem}${extension}`;
+  const absolutePath = join(MANAGED_PROJECT_IMAGE_ROOT, projectId, "references", `${uploadStem}${extension}`);
   const buffer = Buffer.from(await file.arrayBuffer());
   await mkdir(dirname(absolutePath), { recursive: true });
   await writeFile(absolutePath, buffer);
