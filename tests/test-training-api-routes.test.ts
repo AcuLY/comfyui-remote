@@ -549,6 +549,45 @@ test("POST /api/training/training-runs/:trainingRunId/create-preset creates a tr
   assert.equal(duplicatePayload.ok, false);
 });
 
+test("POST /api/training/training-runs/:trainingRunId/poll returns the current training run snapshot", async () => {
+  const pollRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/poll/route");
+  const trainingRuns = await listRuns("?kind=training");
+  const trainingRunId = trainingRuns[0].id;
+
+  const response = await pollRoute.POST(
+    new Request(`http://localhost/api/training/training-runs/${trainingRunId}/poll`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ trainingRunId }) },
+  );
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.data.id, trainingRunId);
+  assert.equal(payload.data.kind, "training");
+});
+
+test("POST /api/training/training-runs/:trainingRunId/cleanup returns an idempotent cleanup summary", async () => {
+  const cleanupRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/cleanup/route");
+  const completedRuns = await listRuns("?kind=training&status=completed");
+  const trainingRunId = completedRuns[0].id;
+
+  const response = await cleanupRoute.POST(
+    new Request(`http://localhost/api/training/training-runs/${trainingRunId}/cleanup`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ trainingRunId }) },
+  );
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.data.trainingRunId, trainingRunId);
+  assert.equal(typeof payload.data.cleaned, "boolean");
+  assert.ok(Array.isArray(payload.data.cleanedArtifacts));
+});
+
 test("GET /api/training/generation-tasks/:taskId returns generation task detail", async () => {
   const { GET } = await import("../src/app/api/training/generation-tasks/[taskId]/route");
   const taskId = (await listRuns("?kind=generation"))[0].id;
@@ -563,6 +602,23 @@ test("GET /api/training/generation-tasks/:taskId returns generation task detail"
   assert.equal(payload.ok, true);
   assert.equal(payload.data.id, taskId);
   assert.equal(payload.data.kind, "generation");
+});
+
+test("GET /api/training/generation-tasks/:taskId/outputs returns generation outputs mapped into project results", async () => {
+  const outputsRoute = await import("../src/app/api/training/generation-tasks/[taskId]/outputs/route");
+  const completedRuns = await listRuns("?kind=generation&status=completed");
+  const taskId = completedRuns[0].id;
+
+  const response = await outputsRoute.GET(
+    new Request(`http://localhost/api/training/generation-tasks/${taskId}/outputs`),
+    { params: Promise.resolve({ taskId }) },
+  );
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(Array.isArray(payload.data));
+  assert.ok(payload.data.every((result: { id: string; sourceLabel: string }) => typeof result.id === "string" && typeof result.sourceLabel === "string"));
 });
 
 test("GET /api/training/section-runs/:runId reads generation run detail and POST cancel updates it through the section-run alias", async () => {
@@ -1418,6 +1474,86 @@ test("managed training project references flow into result review through /api/t
   assert.equal(deleteReferenceResponse.status, 200);
   assert.equal(deleteReferencePayload.ok, true);
   assert.equal(deleteReferencePayload.data.id, imageId);
+});
+
+test("managed training project can upload result images through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const resultsUploadRoute = await import("../src/app/api/training/projects/[projectId]/image-results/upload/route");
+  const resultsRoute = await import("../src/app/api/training/projects/[projectId]/image-results/route");
+  const title = `测试结果上传项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_result_upload_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        usagePrompt: "测试结果上传提示词",
+        detailPrompt: "测试结果上传细节",
+        sections: [
+          {
+            id: "upload-section",
+            title: "上传结果小节",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "upload-block",
+                source: "本地",
+                title: "上传场景块",
+                text: "上传结果场景描述",
+              },
+            ],
+            resolvedScene: "上传结果场景描述",
+            scenePreview: "上传结果场景描述",
+          },
+        ],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+
+  const projectId = createPayload.data.id as string;
+  const sectionId = createPayload.data.sections[0].id as string;
+  const formData = new FormData();
+  formData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "upload-result.png", { type: "image/png" }));
+  formData.append("sectionId", sectionId);
+  formData.append("captionDraft", "上传结果说明文本");
+  formData.append("reviewStatus", "pending");
+
+  const uploadResponse = await resultsUploadRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/image-results/upload`, {
+      method: "POST",
+      body: formData,
+    }),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const uploadPayload = await uploadResponse.json();
+
+  assert.equal(uploadResponse.status, 201);
+  assert.equal(uploadPayload.ok, true);
+  assert.equal(uploadPayload.data.sectionId, sectionId);
+  assert.equal(uploadPayload.data.caption, "上传结果说明文本");
+
+  const listResponse = await resultsRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/image-results`),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const listPayload = await listResponse.json();
+  assert.equal(listResponse.status, 200);
+  assert.equal(listPayload.ok, true);
+  assert.ok((listPayload.data as Array<{ id: string }>).some((result) => result.id === uploadPayload.data.id));
 });
 
 test("managed training project can enqueue generation, freeze dataset, and start training through /api/training", async () => {

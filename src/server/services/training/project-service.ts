@@ -532,9 +532,76 @@ function buildManagedReferenceImage(relativePath: string, label: string, note: s
   };
 }
 
+function buildManagedResultImage(relativePath: string, label: string) {
+  const url = toImageUrl(relativePath) ?? "";
+  return {
+    id: `managed-result-image-${Date.now()}`,
+    src: url,
+    full: url,
+    label,
+    status: "pending" as const,
+    featured: false,
+    featured2: false,
+    cover: false,
+    width: null,
+    height: null,
+  };
+}
+
 export async function listManagedTrainingProjectReferenceImages(projectId: string) {
   const project = await getManagedTrainingProject(projectId);
   return project ? project.referenceImages : null;
+}
+
+export async function uploadManagedTrainingImageResult(projectId: string, formData: FormData) {
+  const project = await getManagedTrainingProject(projectId);
+  if (!project) return null;
+
+  const file = formData.get("file");
+  if (!isFileLike(file)) {
+    throw new TrainingProjectServiceError("file is required", 400);
+  }
+
+  const safeName = sanitizeManagedUploadName(file.name);
+  const extension = extname(file.name).toLowerCase() || ".png";
+  const relativePath = `data/images/training-managed/${projectId}/results/${Date.now()}-${safeName}${extension}`;
+  const absolutePath = join(MANAGED_PROJECT_IMAGE_ROOT, projectId, "results", `${Date.now()}-${safeName}${extension}`);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await mkdir(dirname(absolutePath), { recursive: true });
+  await writeFile(absolutePath, buffer);
+
+  const sectionIdInput = typeof formData.get("sectionId") === "string" ? String(formData.get("sectionId")).trim() : "";
+  const matchedSection = project.sections.find((section) => section.id === sectionIdInput) ?? project.sections[0] ?? null;
+  const reviewStatus = typeof formData.get("reviewStatus") === "string" ? String(formData.get("reviewStatus")) : "pending";
+  const captionDraft = typeof formData.get("captionDraft") === "string"
+    ? String(formData.get("captionDraft")).trim()
+    : typeof formData.get("supplementalPrompt") === "string"
+      ? String(formData.get("supplementalPrompt")).trim()
+      : "";
+  const label = file.name.replace(/\.[^.]+$/, "") || `上传结果 ${project.resultPool.length + 1}`;
+  const nextResult: LoraTrainingImageResult = {
+    id: `managed-upload-result-${Date.now()}`,
+    sectionId: matchedSection?.id ?? "manual-upload",
+    sectionTitle: matchedSection?.title ?? "手动上传",
+    image: buildManagedResultImage(relativePath, label),
+    reviewStatus: reviewStatus === "keep" ? "kept" : reviewStatus === "reject" ? "rejected" : "pending",
+    caption: captionDraft || "未填写说明文本",
+    sourceLabel: label,
+  };
+
+  return withProjectStoreWriteLock(async () => {
+    const projects = await readFallbackTrainingProjects();
+    const currentIndex = projects.findIndex((item) => item.id === projectId);
+    if (currentIndex === -1) return null;
+    const next = [...projects];
+    next[currentIndex] = recomputeManagedProject({
+      ...projects[currentIndex],
+      updatedAt: formatUpdatedAt(),
+      resultPool: [nextResult, ...projects[currentIndex].resultPool],
+    });
+    await writeFallbackTrainingProjects(next);
+    return next[currentIndex].resultPool.find((result) => result.id === nextResult.id) ?? null;
+  });
 }
 
 export async function uploadManagedTrainingProjectReferenceImage(projectId: string, formData: FormData) {

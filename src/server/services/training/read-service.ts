@@ -132,6 +132,16 @@ export async function getTrainingRun(runId: string, kind?: LoraTrainingTaskKind)
   return run;
 }
 
+export async function listTrainingGenerationOutputs(taskId: string) {
+  const run = await getTrainingRun(taskId, "generation");
+  const project = await getTrainingProject(run.projectId);
+  const outputIds = run.outputResultIds ?? [];
+  if (outputIds.length === 0) return [];
+  return outputIds
+    .map((outputId) => project.resultPool.find((result) => result.id === outputId))
+    .filter((result): result is NonNullable<typeof result> => Boolean(result));
+}
+
 export async function listTrainingPresets() {
   return listTrainingSceneDescriptionPresets();
 }
