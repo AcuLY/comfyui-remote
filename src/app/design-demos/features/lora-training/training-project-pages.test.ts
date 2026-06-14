@@ -1037,6 +1037,10 @@ test("training project create page posts through the formal HTTP API on producti
   assert.match(formSource, /templateId:\s*sourceTemplate\.id/, "production project creation should submit the selected template id in product payload");
   assert.match(formSource, /trainingTemplateId:\s*sourceTemplate\.id/, "production project creation should pass the selected training template id");
   assert.match(formSource, /checkpointRelativePath/, "production project creation should send a checkpoint path instead of a demo-only model label");
+  assert.match(formSource, /fetch\("\/api\/training\/models\?kind=checkpoint"\)/, "production project creation should discover checkpoint options through the training models API");
+  assert.match(formSource, /availableCheckpointModels/, "production project creation should keep a dedicated checkpoint option list");
+  assert.match(formSource, /setAvailableCheckpointModels/, "production project creation should update checkpoint options after loading them");
+  assert.match(formSource, /const checkpointAsset = availableCheckpointModels\.find/, "project creation should resolve checkpoint paths from the training model catalog");
   assert.match(formSource, /selectedReferenceIds:\s*persistedSelectedReferenceIds/, "production project creation should submit persisted reference ids and exclude staged uploads from the initial create request");
   assert.match(formSource, /sections:\s*sectionSeeds/, "production project creation should submit the current seed sections");
   assert.match(formSource, /trainingDefaults:\s*\{/, "production project creation should submit dataset and sample defaults");

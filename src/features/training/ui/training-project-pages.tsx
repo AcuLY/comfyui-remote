@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ChangeEvent, ReactNode } from "react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Archive,
   ArrowDown,
@@ -44,7 +44,7 @@ import { StatusBadge } from "@/app/design-demos/shared/primitives/status-badge";
 import { SwitchRow } from "@/app/design-demos/shared/primitives/switch-row";
 import { SelectionBatchBar } from "@/app/design-demos/shared/patterns";
 import { buildLoraTrainingDemoData } from "@/features/training/build";
-import type { TrainingAppData } from "@/features/training/data";
+import type { TrainingAppData, TrainingModelOption } from "@/features/training/data";
 import type { TrainingImage as DemoImage, LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "@/features/training/types";
 import s from "./training-project-pages.module.css";
 
@@ -879,7 +879,9 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
   const initialTemplate = sourceTemplate;
   const initialSectionSeeds = sourceTemplate?.sections ?? [];
   const projectTemplateContextId = initialTemplate?.id ?? "no-template";
-  const baseModelOptions = data.models.filter((model) => model.modelType === "checkpoint").map((model) => model.name);
+  const fallbackCheckpointModels = data.models.filter((model) => model.modelType === "checkpoint");
+  const [availableCheckpointModels, setAvailableCheckpointModels] = useState<TrainingModelOption[]>(fallbackCheckpointModels);
+  const baseModelOptions = availableCheckpointModels.map((model) => model.name);
   const defaultProjectForm = {
     baseModel: baseModelOptions[0] ?? "继承训练默认模型",
     captionStrategy: "先触发词后描述",
@@ -999,6 +1001,44 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
   const selectedStagedProjectReferenceUploads = stagedProjectReferenceUploads.filter((upload) => selectedReferenceIds.has(upload.id));
   const selectedReferenceTitles = selectedProjectReferences.map((reference) => reference.title);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
+
+  useEffect(() => {
+    if (!isProductionTrainingRoute) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const response = await fetch("/api/training/models?kind=checkpoint");
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.ok || !Array.isArray(payload.data)) return;
+
+        const nextModels = payload.data
+          .filter((item): item is TrainingModelOption => (
+            Boolean(item)
+            && typeof item === "object"
+            && item.modelType === "checkpoint"
+            && typeof item.name === "string"
+            && typeof item.relativePath === "string"
+          ))
+          .map((item) => ({
+            modelType: item.modelType,
+            name: item.name,
+            relativePath: item.relativePath,
+          }));
+
+        if (!cancelled && nextModels.length > 0) {
+          setAvailableCheckpointModels(nextModels);
+        }
+      } catch {
+        // Keep the build-time fallback model list when the training model catalog is unavailable.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isProductionTrainingRoute]);
 
   function setProjectForm(updater: (current: typeof projectForm) => typeof projectForm) {
     setProjectFormState((current) => updater(current.templateContextId === projectTemplateContextId ? current : projectForm));
@@ -1223,7 +1263,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
       return;
     }
 
-    const checkpointAsset = data.models.find((model) => (
+    const checkpointAsset = availableCheckpointModels.find((model) => (
       model.modelType === "checkpoint"
       && (projectForm.baseModel === "继承训练默认模型" || model.name === projectForm.baseModel)
     ));
