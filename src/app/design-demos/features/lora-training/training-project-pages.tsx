@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -20,11 +20,12 @@ import {
   Play,
   Plus,
   Save,
+  Snowflake,
   Trash2,
 } from "lucide-react";
 
 import type { DemoData, DemoImage } from "../../data";
-import { cx, demoHref } from "../../routing";
+import { cx, useRouteHref } from "../../routing";
 import { ImageListSmall } from "../../shared/media/image-list-small";
 import { ImagePreviewFrame } from "../../shared/media/image-preview-frame";
 import { ImagePreviewLarge } from "../../shared/media/image-preview-large";
@@ -43,6 +44,8 @@ import { SelectionBatchBar } from "../../shared/patterns";
 import { buildLoraTrainingDemoData } from "./fixtures";
 import type { LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "./types";
 import s from "./training-project-pages.module.css";
+import { useDemoFeedback } from "../../shared/feedback/context";
+import { toImageUrl } from "@/lib/image-url";
 
 const PROJECT_TABS = [
   { key: "overview", label: "总览", path: "" },
@@ -176,14 +179,65 @@ function readNewProjectTemplateHints(search: string): NewProjectTemplateHints {
   };
 }
 
+function isProductionTrainingPath(pathname: string | null | undefined) {
+  return pathname === "/training" || pathname?.startsWith("/training/") === true;
+}
+
+function buildTrainingProjectTriggerToken(title: string) {
+  const normalized = title.trim().replace(/\s+/g, "_");
+  return normalized || "training_project";
+}
+
+function toTrainingImageReviewApiStatus(reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+  if (reviewStatus === "kept") return "keep";
+  if (reviewStatus === "rejected") return "reject";
+  return "pending";
+}
+
+function reviewResultToastTitle(reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+  return reviewStatus === "kept" ? "图片已保留" : reviewStatus === "rejected" ? "图片已拒绝" : "图片已标记为待审核";
+}
+
+function buildUploadedReferenceImage(
+  input: {
+    id: string;
+    index: number;
+    label: string;
+    note: string;
+    relativePath: string;
+  },
+): LoraTrainingReferenceImage | null {
+  const url = toImageUrl(input.relativePath);
+  if (!url) return null;
+  return {
+    id: input.id,
+    kind: input.index === 0 ? "original" : "auxiliary",
+    label: input.label,
+    note: input.note,
+    image: {
+      id: `${input.id}-image`,
+      src: url,
+      full: url,
+      label: input.label,
+      status: "pending",
+      featured: input.index === 0,
+      featured2: false,
+      cover: input.index === 0,
+      width: null,
+      height: null,
+    },
+  };
+}
+
 function ProjectNav({ active, project }: { active: (typeof PROJECT_TABS)[number]["key"]; project: LoraTrainingProject }) {
+  const hrefForRoute = useRouteHref();
   return (
     <nav className={s.projectNav} aria-label="训练项目页面">
       {PROJECT_TABS.map((item) => (
         <Link
           aria-current={item.key === active ? "page" : undefined}
           className={cx(s.projectNavItem, item.key === active && s.projectNavItemActive)}
-          href={demoHref(`/training/projects/${project.id}${item.path}`)}
+          href={hrefForRoute(`/training/projects/${project.id}${item.path}`)}
           key={item.key}
         >
           {item.label}
@@ -236,6 +290,53 @@ function referenceKindLabel(kind: LoraTrainingReferenceImage["kind"]) {
   if (kind === "original") return "原始";
   if (kind === "generated") return "生成";
   return "辅助";
+}
+
+function nextDatasetVersionLabel(currentVersion: string) {
+  const match = /^v(\d+)$/i.exec(currentVersion.trim());
+  if (!match) return "v1";
+  return `v${Number(match[1]) + 1}`;
+}
+
+function normalizeGenerationDraftReferenceId(referenceId: string) {
+  if (referenceId.startsWith("reference-")) return referenceId.slice("reference-".length);
+  if (referenceId.startsWith("result-")) return referenceId.slice("result-".length);
+  return referenceId;
+}
+
+function captionMissing(caption: string) {
+  const normalized = caption.trim();
+  return normalized.length === 0 || normalized === "未填写说明文本";
+}
+
+function deriveDatasetCaption(result: LoraTrainingImageResult) {
+  if (!captionMissing(result.caption)) return result.caption;
+  return `${result.sourceLabel}，训练说明`;
+}
+
+function buildLocalDatasetRevision(projectId: string, results: LoraTrainingImageResult[], version: string) {
+  const keptResults = results.filter((result) => result.reviewStatus === "kept");
+  const samples = keptResults.slice(0, 6).map((result, index) => ({
+    id: `${projectId}-dataset-${version}-${index + 1}`,
+    label: String(index + 1).padStart(3, "0"),
+    sectionTitle: result.sectionTitle,
+    image: result.image,
+    captionSnapshot: result.caption,
+    filePathSnapshot: `datasets/${projectId}/${version}/${String(index + 1).padStart(3, "0")}.png`,
+  }));
+
+  return {
+    id: `${projectId}-dataset-${version}`,
+    version,
+    status: keptResults.some((result) => captionMissing(result.caption)) ? "draft" as const : "ready" as const,
+    createdAt: "刚刚",
+    itemCount: keptResults.length,
+    captionMissingCount: keptResults.filter((result) => captionMissing(result.caption)).length,
+    manifestName: `dataset_${version}.jsonl`,
+    samples,
+    manifestRows: samples.slice(0, 4).map((sample) => `${sample.filePathSnapshot} | ${sample.captionSnapshot}`),
+    relatedTrainingRunIds: [],
+  };
 }
 
 function TrainingResultGrid({
@@ -317,8 +418,8 @@ function TrainingResultGrid({
           onPrevious={activeResultIndex >= 0 ? () => moveActiveResult(-1) : undefined}
           actions={(
             <>
-              <Button icon={Check} ariaLabel={`保留训练结果：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange?.(activeResult.id, "kept")} feedback={{ title: "图片已保留", detail: activeResult.sourceLabel }}>保留</Button>
-              <Button tone="danger" icon={Trash2} ariaLabel={`拒绝训练结果：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange?.(activeResult.id, "rejected")} feedback={{ tone: "warning", title: "图片已拒绝", detail: activeResult.sourceLabel }}>拒绝</Button>
+              <Button icon={Check} ariaLabel={`保留训练结果：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange?.(activeResult.id, "kept")}>保留</Button>
+              <Button tone="danger" icon={Trash2} ariaLabel={`拒绝训练结果：${activeResult.sourceLabel}`} onClick={() => onReviewStatusChange?.(activeResult.id, "rejected")}>拒绝</Button>
             </>
           )}
         />
@@ -419,18 +520,21 @@ async function copyProjectRunMessage(message: string) {
 }
 
 function RunRows({
-  onHideRun,
+  onDeleteRun,
+  isDeletingRuns = false,
   onRetryRun,
   project,
   retriedRunIds = new Set<string>(),
   runs,
 }: {
-  onHideRun?: (runId: string) => void;
+  onDeleteRun?: (runId: string) => void;
+  isDeletingRuns?: boolean;
   onRetryRun?: (runId: string) => void;
   project: LoraTrainingProject;
   retriedRunIds?: Set<string>;
   runs: LoraTrainingRun[];
 }) {
+  const hrefForRoute = useRouteHref();
   if (runs.length === 0) return <div className={s.emptyInline}>没有任务记录</div>;
 
   return (
@@ -444,7 +548,7 @@ function RunRows({
           const failureMessage = run.errorMessage ?? "任务失败，请打开详情查看日志。";
           return (
             <article className={cx(s.projectRunRow, failed && s.projectRunRowFailed)} key={run.id}>
-              <Link className={s.projectRunMain} href={demoHref(`/training/runs/${type}/${run.id}`)}>
+              <Link className={s.projectRunMain} href={hrefForRoute(`/training/runs/${type}/${run.id}`)}>
                 <span className={s.projectRunText}>
                   <strong>{run.title}</strong>
                   <span>{run.summary} · {run.timestamp}</span>
@@ -469,13 +573,13 @@ function RunRows({
                   <ProjectRunFailureBlock message={failureMessage} />
                   <div className={s.projectRunFailureToolbar}>
                     <Button size="sm" tone="subtle" icon={Copy} ariaLabel={`复制任务报错：${run.title}`} onClick={() => copyProjectRunMessage(failureMessage)} feedback={{ title: "报错已复制", detail: failureMessage }}>复制</Button>
-                    <Button size="sm" tone="subtle" icon={Play} ariaLabel={`重试任务：${run.title}`} onClick={() => onRetryRun?.(run.id)} feedback={{ title: "已排队重试", detail: run.title }}>重试</Button>
-                    <Button size="sm" tone="danger" icon={Trash2} ariaLabel={`移除任务：${run.title}`} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+                    <Button size="sm" tone="subtle" icon={Play} ariaLabel={`重试任务：${run.title}`} onClick={() => onRetryRun?.(run.id)}>重试</Button>
+                    <Button size="sm" tone="danger" icon={Trash2} pending={isDeletingRuns} ariaLabel={`移除任务：${run.title}`} onClick={() => onDeleteRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
                   </div>
                 </div>
               ) : (
                 <span className={s.projectRunActions}>
-                  <Button tone="danger" icon={Trash2} ariaLabel={`移除任务：${run.title}`} onClick={() => onHideRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+                  <Button tone="danger" icon={Trash2} pending={isDeletingRuns} ariaLabel={`移除任务：${run.title}`} onClick={() => onDeleteRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
                 </span>
               )}
             </article>
@@ -518,6 +622,7 @@ function TrainingSectionRail({
   project: LoraTrainingProject;
   sections?: LoraTrainingSection[];
 }) {
+  const hrefForRoute = useRouteHref();
   return (
     <nav className={s.trainingSectionRail} aria-label="训练小节导航">
       <div className={s.trainingSectionRailHeader}>
@@ -531,7 +636,7 @@ function TrainingSectionRail({
             <Link
               aria-current={activeSectionId === section.id ? "page" : undefined}
               className={cx(s.trainingSectionRailItem, activeSectionId === section.id && s.trainingSectionRailItemActive)}
-              href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}
+              href={hrefForRoute(`/training/projects/${project.id}/sections/${section.id}`)}
               key={section.id}
             >
               <strong>{section.title}</strong>
@@ -702,6 +807,9 @@ function ReferencePicker({
 }
 
 export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { pushToast } = useDemoFeedback();
   const training = useTraining(data);
   const urlSearch = useUrlSearch();
   const newProjectTemplateHints = readNewProjectTemplateHints(urlSearch);
@@ -814,6 +922,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     .flatMap((group) => group.items)
     .filter((candidate) => selectedReferenceIds.has(candidate.id));
   const selectedReferenceTitles = selectedProjectReferences.map((reference) => reference.title);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const isProductionTrainingRoute = pathname === "/training" || pathname.startsWith("/training/");
 
   function setProjectForm(updater: (current: typeof projectForm) => typeof projectForm) {
     setProjectFormState((current) => updater(current.templateContextId === projectTemplateContextId ? current : projectForm));
@@ -904,8 +1014,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     setSelectedReferenceIds((current) => new Set([...current, candidate.id]));
   }
 
-  function handleCreateProjectDraft() {
-    setCreatedProjectDraft({
+  async function handleCreateProjectDraft() {
+    const nextDraft = {
       autoFreezeDataset: trainingDefaults.autoFreezeDataset,
       autoGenerateSamples: trainingDefaults.autoGenerateSamples,
       baseModel: projectForm.baseModel,
@@ -920,7 +1030,96 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
       title: projectForm.title,
       trainingSteps: projectForm.trainingSteps,
       usagePrompt: projectForm.usagePrompt,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setCreatedProjectDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: createdProjectDraft ? "项目草稿已更新" : "训练项目草稿已创建",
+        detail: projectForm.title,
+      });
+      return;
+    }
+
+    if (!sourceTemplate) {
+      pushToast({
+        tone: "error",
+        title: "训练项目创建失败",
+        detail: "请选择一个训练模板后再创建项目。",
+      });
+      return;
+    }
+
+    const checkpointAsset = data.models.find((model) => (
+      model.modelType === "checkpoint"
+      && (projectForm.baseModel === "继承训练默认模型" || model.name === projectForm.baseModel)
+    ));
+
+    if (!checkpointAsset) {
+      pushToast({
+        tone: "error",
+        title: "训练项目创建失败",
+        detail: "没有可用的 checkpoint 路径，请先选择基础模型。",
+      });
+      return;
+    }
+
+    if (isCreatingProject) return;
+
+    setIsCreatingProject(true);
+    try {
+      const response = await fetch("/api/training/projects", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: projectForm.title.trim(),
+          characterName: projectForm.title.trim(),
+          projectName: projectForm.title.trim(),
+          triggerToken: buildTrainingProjectTriggerToken(projectForm.title),
+          templateId: sourceTemplate.id,
+          checkpointRelativePath: checkpointAsset.relativePath,
+          baseModel: projectForm.baseModel,
+          captionStrategy: projectForm.captionStrategy,
+          usagePrompt: projectForm.usagePrompt,
+          detailPrompt: projectForm.detailPrompt,
+          perSectionImageCount: projectForm.perSectionImageCount,
+          trainingSteps: projectForm.trainingSteps,
+          selectedReferenceIds: [...selectedReferenceIds],
+          sections: sectionSeeds,
+          trainingDefaults: {
+            autoGenerateSamples: trainingDefaults.autoGenerateSamples,
+            autoFreezeDataset: trainingDefaults.autoFreezeDataset,
+          },
+          trainingTemplateId: sourceTemplate.id,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "训练项目创建失败",
+          detail: payload?.error?.message ?? "训练项目创建请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "success",
+        title: "训练项目已创建",
+        detail: projectForm.title,
+      });
+      router.push(`/training/projects/${payload.data.id}`);
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "训练项目创建失败",
+        detail: error instanceof Error ? error.message : "训练项目创建请求失败",
+      });
+    } finally {
+      setIsCreatingProject(false);
+    }
   }
 
   return (
@@ -934,8 +1133,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
           <Button
             tone="primary"
             icon={Save}
+            pending={isCreatingProject}
             onClick={handleCreateProjectDraft}
-            feedback={{ title: createdProjectDraft ? "项目草稿已更新" : "训练项目草稿已创建", detail: projectForm.title }}
           >
             {createdProjectDraft ? "更新项目草稿" : "创建项目"}
           </Button>
@@ -1033,13 +1232,18 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
 }
 
 export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoData; projectId?: string }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { pushToast } = useDemoFeedback();
   const training = useTraining(data);
   const project = findProject(data, projectId);
   const [projectArchiveState, setProjectArchiveState] = useState(() => ({
     archived: project?.status === "archived",
     projectId: project?.id ?? null,
   }));
+  const [isUpdatingProjectArchive, setIsUpdatingProjectArchive] = useState(false);
   if (!project) return <EmptyPage title="没有训练项目数据" />;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const isProjectArchived = projectArchiveState.projectId === project.id ? projectArchiveState.archived : project.status === "archived";
   const activeProject: LoraTrainingProject = isProjectArchived
     ? { ...project, status: "archived" }
@@ -1050,11 +1254,61 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
   const recentResults = project.resultPool.filter((result) => result.reviewStatus === "kept").slice(0, 4);
   const latestRevision = project.datasetRevisions[0];
 
-  function handleToggleProjectArchive() {
-    setProjectArchiveState((current) => {
-      const currentArchived = current.projectId === project.id ? current.archived : project.status === "archived";
-      return { archived: !currentArchived, projectId: project.id };
-    });
+  async function handleToggleProjectArchive() {
+    const currentArchived = projectArchiveState.projectId === project.id ? projectArchiveState.archived : project.status === "archived";
+    const nextArchived = !currentArchived;
+
+    const applyLocalArchiveState = () => {
+      setProjectArchiveState({
+        archived: nextArchived,
+        projectId: project.id,
+      });
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalArchiveState();
+      pushToast({
+        tone: nextArchived ? "warning" : "success",
+        title: nextArchived ? "训练项目已归档" : "训练项目已恢复",
+        detail: project.title,
+      });
+      return;
+    }
+
+    if (isUpdatingProjectArchive) return;
+
+    setIsUpdatingProjectArchive(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/${currentArchived ? "restore" : "archive"}`, {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: currentArchived ? "恢复失败" : "归档失败",
+          detail: payload?.error?.message ?? "训练项目状态更新请求失败",
+        });
+        return;
+      }
+
+      applyLocalArchiveState();
+      pushToast({
+        tone: nextArchived ? "warning" : "success",
+        title: nextArchived ? "训练项目已归档" : "训练项目已恢复",
+        detail: project.title,
+      });
+      router.refresh();
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: currentArchived ? "恢复失败" : "归档失败",
+        detail: error instanceof Error ? error.message : "训练项目状态更新请求失败",
+      });
+    } finally {
+      setIsUpdatingProjectArchive(false);
+    }
   }
 
   return (
@@ -1067,8 +1321,8 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
           <Button
             tone={isProjectArchived ? "subtle" : "danger"}
             icon={Archive}
+            pending={isUpdatingProjectArchive}
             onClick={handleToggleProjectArchive}
-            feedback={{ tone: isProjectArchived ? "success" : "warning", title: isProjectArchived ? "训练项目已恢复" : "训练项目已归档", detail: project.title }}
           >
             {isProjectArchived ? "恢复" : "归档"}
           </Button>
@@ -1108,6 +1362,9 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
 }
 
 export function LoraTrainingProjectProfilePage({ data, projectId }: { data: DemoData; projectId?: string }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
+  const referenceUploadInputRef = useRef<HTMLInputElement | null>(null);
   const project = findProject(data, projectId);
   const [referenceImageState, setLocalReferenceImages] = useState(() => ({
     images: project?.referenceImages ?? [],
@@ -1126,6 +1383,16 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
     referenceImageCount: number;
     usagePrompt: string;
   } | null>(null);
+  const [referenceResultState, setReferenceResultState] = useState(() => ({
+    addedReferenceResultIds: new Set<string>(),
+    projectId: project?.id ?? null,
+  }));
+  const [referenceResultRequestState, setReferenceResultRequestState] = useState(() => ({
+    pendingReferenceIds: new Set<string>(),
+    projectId: project?.id ?? null,
+  }));
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUploadingReferenceImage, setIsUploadingReferenceImage] = useState(false);
   if (!project) return <EmptyPage title="没有角色资料数据" />;
   const localReferenceImages = referenceImageState.projectId === project.id ? referenceImageState.images : project.referenceImages;
   const profileForm = profileFormState.projectId === project.id ? profileFormState : {
@@ -1135,15 +1402,64 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
     usagePrompt: project.usagePrompt,
   };
   const visibleProfileDraft = profileDraft?.projectId === project.id ? profileDraft : null;
+  const isProductionTrainingRoute = pathname === "/training" || pathname.startsWith("/training/");
+  const addedReferenceResultIds = referenceResultState.projectId === project.id ? referenceResultState.addedReferenceResultIds : new Set<string>();
+  const pendingReferenceIds = referenceResultRequestState.projectId === project.id ? referenceResultRequestState.pendingReferenceIds : new Set<string>();
 
-  function handleSaveProfile() {
-    setProfileDraft({
+  async function handleSaveProfile() {
+    const nextDraft = {
       detailPrompt: profileForm.detailPrompt,
       profileSummary: profileForm.profileSummary,
       projectId: project.id,
       referenceImageCount: localReferenceImages.length,
       usagePrompt: profileForm.usagePrompt,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setProfileDraft(nextDraft);
+      pushToast({ tone: "success", title: visibleProfileDraft ? "资料保存草稿已更新" : "资料保存草稿已记录", detail: project.title });
+      return;
+    }
+
+    if (isSavingProfile) return;
+
+    setIsSavingProfile(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/profile`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          loraUsagePrompt: profileForm.usagePrompt,
+          characterDetailPrompt: profileForm.detailPrompt,
+          profileSummary: profileForm.profileSummary,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "资料保存失败",
+          detail: payload?.error?.message ?? "训练资料保存请求失败",
+        });
+        return;
+      }
+
+      setProfileDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: visibleProfileDraft ? "资料已更新" : "资料已保存",
+        detail: project.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "资料保存失败",
+        detail: error instanceof Error ? error.message : "训练资料保存请求失败",
+      });
+    } finally {
+      setIsSavingProfile(false);
+    }
   }
 
   function handleUpdateProfileForm(field: "detailPrompt" | "profileSummary" | "usagePrompt", value: string) {
@@ -1163,6 +1479,11 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
   }
 
   function handleUploadReferenceImage() {
+    if (isProductionTrainingRoute) {
+      referenceUploadInputRef.current?.click();
+      return;
+    }
+
     setLocalReferenceImages((current) => {
       const currentImages = current.projectId === project.id ? current.images : project.referenceImages;
       const draftIndex = currentImages.length + 1;
@@ -1184,6 +1505,154 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
     });
   }
 
+  async function handleReferenceImageFileChange() {
+    const input = referenceUploadInputRef.current;
+    const file = input?.files?.[0];
+    if (!file) return;
+    if (isUploadingReferenceImage) return;
+
+    setIsUploadingReferenceImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("role", "source");
+      formData.append("sortOrder", String(localReferenceImages.length));
+      formData.append("provenance", JSON.stringify({ origin: "training_profile_upload" }));
+
+      const response = await fetch(`/api/training/projects/${project.id}/character-images`, {
+        method: "POST",
+        body: formData,
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id || !payload?.data?.relativePath) {
+        pushToast({
+          tone: "error",
+          title: "参考图上传失败",
+          detail: payload?.error?.message ?? "参考图上传请求失败",
+        });
+        return;
+      }
+
+      const nextIndex = localReferenceImages.length;
+      const uploadedReference = buildUploadedReferenceImage({
+        id: payload.data.id,
+        index: nextIndex,
+        label: payload.data.provenance?.originalName ?? `参考图 ${nextIndex + 1}`,
+        note: typeof payload.data.role === "string" ? payload.data.role : "source",
+        relativePath: payload.data.relativePath,
+      });
+
+      if (!uploadedReference) {
+        pushToast({
+          tone: "error",
+          title: "参考图上传失败",
+          detail: "上传成功，但无法解析参考图地址。",
+        });
+        return;
+      }
+
+      setLocalReferenceImages((current) => {
+        const currentImages = current.projectId === project.id ? current.images : project.referenceImages;
+        return {
+          images: [...currentImages, uploadedReference],
+          projectId: project.id,
+        };
+      });
+      pushToast({
+        tone: "success",
+        title: "参考图已上传",
+        detail: uploadedReference.label,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "参考图上传失败",
+        detail: error instanceof Error ? error.message : "参考图上传请求失败",
+      });
+    } finally {
+      if (input) {
+        input.value = "";
+      }
+      setIsUploadingReferenceImage(false);
+    }
+  }
+
+  async function handleAddReferenceImageToResults(referenceId: string, label: string) {
+    const applyLocalAddedState = () => {
+      setReferenceResultState((current) => ({
+        addedReferenceResultIds: new Set([
+          ...(current.projectId === project.id ? current.addedReferenceResultIds : new Set<string>()),
+          referenceId,
+        ]),
+        projectId: project.id,
+      }));
+    };
+
+    if (addedReferenceResultIds.has(referenceId) || pendingReferenceIds.has(referenceId)) {
+      return;
+    }
+
+    if (!isProductionTrainingRoute) {
+      applyLocalAddedState();
+      pushToast({
+        tone: "success",
+        title: "参考图已加入结果池",
+        detail: label,
+      });
+      return;
+    }
+
+    setReferenceResultRequestState((current) => ({
+      pendingReferenceIds: new Set([
+        ...(current.projectId === project.id ? current.pendingReferenceIds : new Set<string>()),
+        referenceId,
+      ]),
+      projectId: project.id,
+    }));
+    try {
+      const response = await fetch(`/api/training/character-images/${referenceId}/add-to-results`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          reviewStatus: "pending",
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "加入结果池失败",
+          detail: payload?.error?.message ?? "参考图入池请求失败",
+        });
+        return;
+      }
+
+      applyLocalAddedState();
+      pushToast({
+        tone: "success",
+        title: "参考图已加入结果池",
+        detail: label,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "加入结果池失败",
+        detail: error instanceof Error ? error.message : "参考图入池请求失败",
+      });
+    } finally {
+      setReferenceResultRequestState((current) => {
+        const nextPending = new Set(current.projectId === project.id ? current.pendingReferenceIds : new Set<string>());
+        nextPending.delete(referenceId);
+        return {
+          pendingReferenceIds: nextPending,
+          projectId: project.id,
+        };
+      });
+    }
+  }
+
   return (
     <div className={s.page}>
       <ProjectHeader
@@ -1193,10 +1662,10 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
           <Button
             tone="primary"
             icon={Save}
+            pending={isSavingProfile}
             onClick={handleSaveProfile}
-            feedback={{ title: visibleProfileDraft ? "资料保存草稿已更新" : "资料保存草稿已记录", detail: project.title }}
           >
-            {visibleProfileDraft ? "更新资料草稿" : "保存资料"}
+            {visibleProfileDraft ? "更新资料" : "保存资料"}
           </Button>
         )}
       />
@@ -1218,11 +1687,28 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
                     <span>{referenceKindLabel(reference.kind)}</span>
                     <strong>{reference.label}</strong>
                     <p>{reference.note}</p>
+                    {addedReferenceResultIds.has(reference.id) ? <StatusBadge status="pending" label="已加入结果池" /> : null}
+                    <Button
+                      size="sm"
+                      tone="subtle"
+                      pending={pendingReferenceIds.has(reference.id)}
+                      disabled={addedReferenceResultIds.has(reference.id)}
+                      onClick={() => handleAddReferenceImageToResults(reference.id, reference.label)}
+                    >
+                      {addedReferenceResultIds.has(reference.id) ? "已加入结果池" : "加入结果池"}
+                    </Button>
                   </div>
                 </article>
               ))}
             </div>
-            <Button icon={ImagePlus} onClick={handleUploadReferenceImage} feedback={{ title: "参考图已加入本地草稿", detail: `${localReferenceImages.length + 1} 张参考图` }}>上传参考图</Button>
+            <input
+              ref={referenceUploadInputRef}
+              hidden
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={handleReferenceImageFileChange}
+            />
+            <Button icon={ImagePlus} pending={isUploadingReferenceImage} onClick={handleUploadReferenceImage}>上传参考图</Button>
           </div>
         </Panel>
       </div>
@@ -1253,6 +1739,7 @@ function SectionCard({
   project: LoraTrainingProject;
   section: LoraTrainingSection;
 }) {
+  const hrefForRoute = useRouteHref();
   const { ref, style, handleProps } = useDemoSortable(section.id);
 
   return (
@@ -1268,7 +1755,7 @@ function SectionCard({
         </button>
         <div className={s.sectionCardMain}>
           <div className={s.sectionCardHeader}>
-            <Link href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}>
+            <Link href={hrefForRoute(`/training/projects/${project.id}/sections/${section.id}`)}>
               <span>{String(index + 1).padStart(2, "0")}</span>
               <strong>{section.title}</strong>
             </Link>
@@ -1296,7 +1783,7 @@ function SectionCard({
             <Link
               aria-label={`打开第 ${index + 1} 个训练小节最近结果：${section.title}`}
               className={s.sectionImages}
-              href={demoHref(`/training/projects/${project.id}/sections/${section.id}`)}
+              href={hrefForRoute(`/training/projects/${project.id}/sections/${section.id}`)}
             >
               <ImageListSmall images={section.images} limit={4} showCounts wide />
             </Link>
@@ -1318,6 +1805,8 @@ function SectionCard({
 }
 
 export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const project = findProject(data, projectId);
   const [localSectionState, setLocalSections] = useState(() => ({
     projectId: project?.id ?? null,
@@ -1327,6 +1816,7 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
     ids: project?.sections.map((section) => section.id) ?? [],
     projectId: project?.id ?? null,
   }));
+  const [isMutatingSections, setIsMutatingSections] = useState(false);
   if (!project) return <EmptyPage title="没有训练小节数据" />;
   const localSections = localSectionState.projectId === project.id ? localSectionState.sections : project.sections;
   const orderedSectionIds = orderedSectionState.projectId === project.id ? orderedSectionState.ids : project.sections.map((section) => section.id);
@@ -1334,8 +1824,9 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
   const sections = orderedSectionIds
     .map((sectionId) => sectionMap.get(sectionId))
     .filter((section): section is LoraTrainingSection => Boolean(section));
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
-  function handleCopySection(section: LoraTrainingSection) {
+  async function handleCopySection(section: LoraTrainingSection) {
     const copyNumber = nextProjectSectionCopyNumber(localSections, section.id);
     const copyId = `${section.id}-copy-${copyNumber}`;
     const copy: LoraTrainingSection = {
@@ -1344,54 +1835,171 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
       title: `${section.title} (副本)`,
       updatedAt: "刚刚",
     };
-    setLocalSections((current) => {
-      const currentSections = current.projectId === project.id ? current.sections : project.sections;
-      const sourceIndex = currentSections.findIndex((item) => item.id === section.id);
-      const sections = sourceIndex === -1
-        ? [...currentSections, copy]
+    const currentSections = localSections;
+    const sourceIndex = currentSections.findIndex((item) => item.id === section.id);
+    const nextSections = sourceIndex === -1
+      ? [...currentSections, copy]
+      : [
+        ...currentSections.slice(0, sourceIndex + 1),
+        copy,
+        ...currentSections.slice(sourceIndex + 1),
+      ];
+    const currentIds = orderedSectionIds;
+    const sourceOrderIndex = currentIds.indexOf(section.id);
+    const nextIds = sourceOrderIndex === -1
+      ? [...currentIds, copyId]
+      : [
+        ...currentIds.slice(0, sourceOrderIndex + 1),
+        copyId,
+        ...currentIds.slice(sourceOrderIndex + 1),
+      ];
+
+    setLocalSections({ projectId: project.id, sections: nextSections });
+    setOrderedSectionIds({ ids: nextIds, projectId: project.id });
+
+    if (!isProductionTrainingRoute) return;
+    if (isMutatingSections) return;
+
+    setIsMutatingSections(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/sections`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sourceSectionId: section.id,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "复制小节失败",
+          detail: payload?.error?.message ?? "训练小节复制请求失败",
+        });
+        setLocalSections({ projectId: project.id, sections: localSections });
+        setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+        return;
+      }
+      const savedCopy = payload.data as LoraTrainingSection;
+      const savedSections = sourceIndex === -1
+        ? [...localSections, savedCopy]
         : [
-          ...currentSections.slice(0, sourceIndex + 1),
-          copy,
-          ...currentSections.slice(sourceIndex + 1),
+          ...localSections.slice(0, sourceIndex + 1),
+          savedCopy,
+          ...localSections.slice(sourceIndex + 1),
         ];
-      return { projectId: project.id, sections };
-    });
-    setOrderedSectionIds((current) => {
-      const currentIds = current.projectId === project.id ? current.ids : project.sections.map((item) => item.id);
-      const sourceIndex = currentIds.indexOf(section.id);
-      const ids = sourceIndex === -1
-        ? [...currentIds, copyId]
+      const savedIds = sourceOrderIndex === -1
+        ? [...orderedSectionIds, savedCopy.id]
         : [
-          ...currentIds.slice(0, sourceIndex + 1),
-          copyId,
-          ...currentIds.slice(sourceIndex + 1),
+          ...orderedSectionIds.slice(0, sourceOrderIndex + 1),
+          savedCopy.id,
+          ...orderedSectionIds.slice(sourceOrderIndex + 1),
         ];
-      return { ids, projectId: project.id };
-    });
+      setLocalSections({ projectId: project.id, sections: savedSections });
+      setOrderedSectionIds({ ids: savedIds, projectId: project.id });
+      pushToast({
+        tone: "success",
+        title: "小节已复制",
+        detail: section.title,
+      });
+    } catch (error) {
+      setLocalSections({ projectId: project.id, sections: localSections });
+      setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+      pushToast({
+        tone: "error",
+        title: "复制小节失败",
+        detail: error instanceof Error ? error.message : "训练小节复制请求失败",
+      });
+    } finally {
+      setIsMutatingSections(false);
+    }
   }
 
-  function handleDeleteSection(sectionId: string) {
-    setLocalSections((current) => {
-      const currentSections = current.projectId === project.id ? current.sections : project.sections;
-      return {
-        projectId: project.id,
-        sections: currentSections.filter((section) => section.id !== sectionId),
-      };
-    });
-    setOrderedSectionIds((current) => {
-      const currentIds = current.projectId === project.id ? current.ids : project.sections.map((section) => section.id);
-      return {
-        ids: currentIds.filter((id) => id !== sectionId),
-        projectId: project.id,
-      };
-    });
+  async function handleDeleteSection(sectionId: string) {
+    const nextSections = localSections.filter((section) => section.id !== sectionId);
+    const nextIds = orderedSectionIds.filter((id) => id !== sectionId);
+    setLocalSections({ projectId: project.id, sections: nextSections });
+    setOrderedSectionIds({ ids: nextIds, projectId: project.id });
+
+    if (!isProductionTrainingRoute) return;
+    if (isMutatingSections) return;
+
+    setIsMutatingSections(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/sections/${sectionId}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "删除小节失败",
+          detail: payload?.error?.message ?? "训练小节删除请求失败",
+        });
+        setLocalSections({ projectId: project.id, sections: localSections });
+        setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+        return;
+      }
+      pushToast({
+        tone: "warning",
+        title: "小节已移除",
+        detail: sectionId,
+      });
+    } catch (error) {
+      setLocalSections({ projectId: project.id, sections: localSections });
+      setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+      pushToast({
+        tone: "error",
+        title: "删除小节失败",
+        detail: error instanceof Error ? error.message : "训练小节删除请求失败",
+      });
+    } finally {
+      setIsMutatingSections(false);
+    }
   }
 
-  function handleReorderSections(nextSectionIds: string[]) {
+  async function handleReorderSections(nextSectionIds: string[]) {
     setOrderedSectionIds({ ids: nextSectionIds, projectId: project.id });
+
+    if (!isProductionTrainingRoute) return;
+    if (isMutatingSections) return;
+
+    const previousIds = orderedSectionIds;
+    setIsMutatingSections(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/sections/reorder`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          orderedSectionIds: nextSectionIds,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok || !Array.isArray(payload?.data)) {
+        pushToast({
+          tone: "error",
+          title: "排序小节失败",
+          detail: payload?.error?.message ?? "训练小节排序请求失败",
+        });
+        setOrderedSectionIds({ ids: previousIds, projectId: project.id });
+        return;
+      }
+      const savedSections = payload.data as LoraTrainingSection[];
+      setLocalSections({ projectId: project.id, sections: savedSections });
+      setOrderedSectionIds({ ids: savedSections.map((section) => section.id), projectId: project.id });
+    } catch (error) {
+      setOrderedSectionIds({ ids: previousIds, projectId: project.id });
+      pushToast({
+        tone: "error",
+        title: "排序小节失败",
+        detail: error instanceof Error ? error.message : "训练小节排序请求失败",
+      });
+    } finally {
+      setIsMutatingSections(false);
+    }
   }
 
-  function handleAddSection() {
+  async function handleAddSection() {
     const source = localSections[0];
     const draftNumber = nextProjectSectionDraftNumber(localSections);
     const draftId = `new-section-${draftNumber}`;
@@ -1416,14 +2024,49 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
       images: [],
       resultStatus: "pending",
     };
-    setLocalSections((current) => {
-      const currentSections = current.projectId === project.id ? current.sections : project.sections;
-      return { projectId: project.id, sections: [...currentSections, draft] };
-    });
-    setOrderedSectionIds((current) => {
-      const currentIds = current.projectId === project.id ? current.ids : project.sections.map((section) => section.id);
-      return { ids: [...currentIds, draft.id], projectId: project.id };
-    });
+    setLocalSections({ projectId: project.id, sections: [...localSections, draft] });
+    setOrderedSectionIds({ ids: [...orderedSectionIds, draft.id], projectId: project.id });
+
+    if (!isProductionTrainingRoute) return;
+    if (isMutatingSections) return;
+
+    setIsMutatingSections(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/sections`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "新建小节失败",
+          detail: payload?.error?.message ?? "训练小节创建请求失败",
+        });
+        setLocalSections({ projectId: project.id, sections: localSections });
+        setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+        return;
+      }
+      const savedSection = payload.data as LoraTrainingSection;
+      setLocalSections({ projectId: project.id, sections: [...localSections, savedSection] });
+      setOrderedSectionIds({ ids: [...orderedSectionIds, savedSection.id], projectId: project.id });
+      pushToast({
+        tone: "success",
+        title: "小节草稿已添加",
+        detail: savedSection.title,
+      });
+    } catch (error) {
+      setLocalSections({ projectId: project.id, sections: localSections });
+      setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+      pushToast({
+        tone: "error",
+        title: "新建小节失败",
+        detail: error instanceof Error ? error.message : "训练小节创建请求失败",
+      });
+    } finally {
+      setIsMutatingSections(false);
+    }
   }
 
   return (
@@ -1459,6 +2102,8 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Dem
 }
 
 export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionId }: { data: DemoData; projectId?: string; sectionId?: string }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
   const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
@@ -1476,6 +2121,9 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   const [presetImportOpen, setPresetImportOpen] = useState(false);
   const [selectedTrainingPresetId, setSelectedTrainingPresetId] = useState<string | null>(null);
   const [sectionDraftsByKey, setSectionDraftsByKey] = useState<Record<string, ProjectSectionDraftState>>({});
+  const [isReviewingSectionResult, setIsReviewingSectionResult] = useState(false);
+  const [isSavingSection, setIsSavingSection] = useState(false);
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   if (!project || !section) return <EmptyPage title="没有训练小节详情" />;
 
   const activeProject = project;
@@ -1550,29 +2198,136 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     updateSceneBlocks((current) => current.filter((block) => block.id !== blockId));
   }
 
-  function handleReviewSectionResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
-    setSectionResultsByProjectKey((current) => ({
-      ...current,
-      [activeProject.id]: (current[activeProject.id] ?? activeProject.resultPool).map((result) =>
-        result.id === resultId ? { ...result, reviewStatus } : result,
-      ),
-    }));
+  async function handleReviewSectionResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+    const reviewedResult = sectionResults.find((result) => result.id === resultId);
+
+    const applyLocalReview = () => {
+      setSectionResultsByProjectKey((current) => ({
+        ...current,
+        [activeProject.id]: (current[activeProject.id] ?? activeProject.resultPool).map((result) =>
+          result.id === resultId ? { ...result, reviewStatus } : result,
+        ),
+      }));
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalReview();
+      pushToast({
+        tone: reviewStatus === "kept" ? "success" : "warning",
+        title: reviewResultToastTitle(reviewStatus),
+        detail: reviewedResult?.sourceLabel ?? activeSection.title,
+      });
+      return;
+    }
+
+    if (isReviewingSectionResult) return;
+
+    setIsReviewingSectionResult(true);
+    try {
+      const response = await fetch(`/api/training/image-results/${resultId}/review`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          reviewStatus: toTrainingImageReviewApiStatus(reviewStatus),
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "结果审核失败",
+          detail: payload?.error?.message ?? "训练结果审核请求失败",
+        });
+        return;
+      }
+
+      applyLocalReview();
+      pushToast({
+        tone: reviewStatus === "kept" ? "success" : "warning",
+        title: reviewResultToastTitle(reviewStatus),
+        detail: reviewedResult?.sourceLabel ?? activeSection.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "结果审核失败",
+        detail: error instanceof Error ? error.message : "训练结果审核请求失败",
+      });
+    } finally {
+      setIsReviewingSectionResult(false);
+    }
   }
 
-  function handleSaveSection() {
-    setSectionDraftsByKey((current) => ({
-      ...current,
-      [projectSectionStateKey]: {
-        blockCount: sceneBlocks.length,
-        firstBlock: sceneBlocks[0]?.title ?? "无场景块",
-        imagePrompt: activeSection.imagePrompt,
-        projectId: activeProject.id,
-        projectTitle: activeProject.title,
-        scenePreview: scenePreview || activeSection.resolvedScene,
-        sectionId: activeSection.id,
-        sectionTitle: activeSection.title,
-      },
-    }));
+  async function handleSaveSection() {
+    const nextDraft = {
+      blockCount: sceneBlocks.length,
+      firstBlock: sceneBlocks[0]?.title ?? "无场景块",
+      imagePrompt: activeSection.imagePrompt,
+      projectId: activeProject.id,
+      projectTitle: activeProject.title,
+      scenePreview: scenePreview || activeSection.resolvedScene,
+      sectionId: activeSection.id,
+      sectionTitle: activeSection.title,
+    };
+
+    if (!isProductionTrainingRoute) {
+      setSectionDraftsByKey((current) => ({
+        ...current,
+        [projectSectionStateKey]: nextDraft,
+      }));
+      pushToast({
+        tone: "success",
+        title: visibleSectionDraft ? "小节保存草稿已更新" : "小节保存草稿已记录",
+        detail: section.title,
+      });
+      return;
+    }
+
+    if (isSavingSection) return;
+
+    setIsSavingSection(true);
+    try {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/sections/${activeSection.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: activeSection.title,
+          enabled: activeSection.enabled,
+          blocks: sceneBlocks,
+          resolvedScene: scenePreview || activeSection.resolvedScene,
+          imagePrompt: activeSection.imagePrompt,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "小节保存失败",
+          detail: payload?.error?.message ?? "训练小节保存请求失败",
+        });
+        return;
+      }
+
+      setSectionDraftsByKey((current) => ({
+        ...current,
+        [projectSectionStateKey]: nextDraft,
+      }));
+      pushToast({
+        tone: "success",
+        title: "训练小节已保存",
+        detail: activeSection.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "小节保存失败",
+        detail: error instanceof Error ? error.message : "训练小节保存请求失败",
+      });
+    } finally {
+      setIsSavingSection(false);
+    }
   }
 
   return (
@@ -1584,8 +2339,8 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
         actions={(
           <Button
             icon={Save}
+            pending={isSavingSection}
             onClick={handleSaveSection}
-            feedback={{ title: visibleSectionDraft ? "小节保存草稿已更新" : "小节保存草稿已记录", detail: section.title }}
           >
             {visibleSectionDraft ? "更新小节草稿" : "保存小节"}
           </Button>
@@ -1697,6 +2452,9 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
 }
 
 export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }: { data: DemoData; projectId?: string; sectionId?: string }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { pushToast } = useDemoFeedback();
   const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
   const referenceSourceTree: ReferenceSourceGroup[] = project && section ? [
@@ -1771,6 +2529,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     supplementalPrompt: string;
     taskType: string;
   } | null>(null);
+  const [isQueueingGenerationTask, setIsQueueingGenerationTask] = useState(false);
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   if (!project || !section) return <EmptyPage title="没有生成任务上下文" />;
   const activeProject = project;
@@ -1895,8 +2655,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     }));
   }
 
-  function handleQueueGenerationTask() {
-    setGenerationTaskDraft({
+  async function handleQueueGenerationTask() {
+    const nextDraft = {
       finalInput: finalInputText,
       projectId: activeProject.id,
       selectedReferenceTitles,
@@ -1906,7 +2666,133 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
       supplementalImageTitles: supplementalImageAttachments.map((attachment) => attachment.title),
       supplementalPrompt: generationForm.supplementalPrompt,
       taskType: generationForm.taskType,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setGenerationTaskDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: visibleGenerationTaskDraft ? "生成任务草稿已更新" : "生成任务草稿已排队",
+        detail: activeSection.title,
+      });
+      return;
+    }
+
+    if (isQueueingGenerationTask) return;
+    const explicitReferenceIds = [...new Set([...selectedReferenceIds].map(normalizeGenerationDraftReferenceId))];
+    const supplementalReferenceIds = [...new Set(supplementalImageAttachments.map((attachment) => normalizeGenerationDraftReferenceId(attachment.id)))];
+
+    setIsQueueingGenerationTask(true);
+    try {
+      const createDraftResponse = await fetch(`/api/training/projects/${activeProject.id}/generation-tasks`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sectionId: activeSection.id,
+          supplementalPrompt: generationForm.supplementalPrompt,
+          taskType: generationForm.taskType,
+        }),
+      });
+      const createDraftPayload = await createDraftResponse.json().catch(() => null);
+
+      if (!createDraftResponse.ok || !createDraftPayload?.ok || !createDraftPayload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "生成任务创建失败",
+          detail: createDraftPayload?.error?.message ?? "生成任务草稿创建请求失败",
+        });
+        return;
+      }
+
+      const draftTaskId = createDraftPayload.data.id as string;
+
+      for (const referenceId of explicitReferenceIds) {
+        const inputResponse = await fetch(`/api/training/generation-tasks/${draftTaskId}/inputs`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            referenceId,
+            role: "reference",
+          }),
+        });
+        const inputPayload = await inputResponse.json().catch(() => null);
+        if (!inputResponse.ok || !inputPayload?.ok) {
+          pushToast({
+            tone: "error",
+            title: "生成任务创建失败",
+            detail: inputPayload?.error?.message ?? "生成任务引用写入失败",
+          });
+          return;
+        }
+      }
+
+      for (const referenceId of supplementalReferenceIds) {
+        const inputResponse = await fetch(`/api/training/generation-tasks/${draftTaskId}/inputs`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            referenceId,
+            role: "supplemental_image",
+          }),
+        });
+        const inputPayload = await inputResponse.json().catch(() => null);
+        if (!inputResponse.ok || !inputPayload?.ok) {
+          pushToast({
+            tone: "error",
+            title: "生成任务创建失败",
+            detail: inputPayload?.error?.message ?? "补充图片写入失败",
+          });
+          return;
+        }
+      }
+
+      const previewResponse = await fetch(`/api/training/generation-tasks/${draftTaskId}/preview`, {
+        method: "POST",
+      });
+      const previewPayload = await previewResponse.json().catch(() => null);
+      if (!previewResponse.ok || !previewPayload?.ok || typeof previewPayload?.data?.finalInput !== "string") {
+        pushToast({
+          tone: "error",
+          title: "生成任务创建失败",
+          detail: previewPayload?.error?.message ?? "生成任务预览请求失败",
+        });
+        return;
+      }
+
+      const response = await fetch(`/api/training/generation-tasks/${draftTaskId}/run`, {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "生成任务创建失败",
+          detail: payload?.error?.message ?? "生成任务执行请求失败",
+        });
+        return;
+      }
+
+      setGenerationTaskDraft(nextDraft);
+      setGenerationTaskDraft({
+        ...nextDraft,
+        finalInput: previewPayload.data.finalInput,
+      });
+      pushToast({
+        tone: "success",
+        title: "生成任务已创建",
+        detail: activeSection.title,
+      });
+      router.push(`/training/runs/generation/${payload.data.id}`);
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "生成任务创建失败",
+        detail: error instanceof Error ? error.message : "生成任务创建请求失败",
+      });
+    } finally {
+      setIsQueueingGenerationTask(false);
+    }
   }
 
   return (
@@ -1920,8 +2806,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
           <Button
             tone="primary"
             icon={Play}
+            pending={isQueueingGenerationTask}
             onClick={handleQueueGenerationTask}
-            feedback={{ title: visibleGenerationTaskDraft ? "生成任务草稿已更新" : "生成任务草稿已排队", detail: section.title }}
           >
             {visibleGenerationTaskDraft ? "更新任务草稿" : "运行生成"}
           </Button>
@@ -2012,6 +2898,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
 }
 
 export function LoraTrainingProjectResultsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const project = findProject(data, projectId);
   const [resultInteractionState, setResultInteractionState] = useState(() => ({
     filter: "all" as TrainingResultFilter,
@@ -2022,6 +2910,8 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
     projectId: project?.id ?? null,
     results: project?.resultPool ?? [],
   }));
+  const [isReviewingResults, setIsReviewingResults] = useState(false);
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const localResults = resultState.projectId === project?.id ? resultState.results : project?.resultPool ?? [];
   if (!project) return <EmptyPage title="没有训练结果池数据" />;
   const activeProject = project;
@@ -2073,15 +2963,81 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
     }));
   }
 
-  function handleReviewResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+  function applyReviewedResults(reviewIds: Set<string>, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
     updateLocalResults((current) => current.map((result) =>
-      result.id === resultId ? { ...result, reviewStatus } : result,
+      reviewIds.has(result.id) ? { ...result, reviewStatus } : result,
     ));
-    updateResultSelection((current) => {
-      const next = new Set(current);
-      next.delete(resultId);
-      return next;
-    });
+    updateResultSelection((current) => new Set([...current].filter((resultId) => !reviewIds.has(resultId))));
+  }
+
+  async function persistReviewedResults(resultIds: string[], reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+    if (!resultIds.length) return;
+
+    const reviewedResults = localResults.filter((result) => resultIds.includes(result.id));
+    const reviewedResultTitles = reviewedResults.map((result) => result.sourceLabel);
+
+    if (!isProductionTrainingRoute) {
+      applyReviewedResults(new Set(resultIds), reviewStatus);
+      pushToast({
+        tone: reviewStatus === "kept" ? "success" : "warning",
+        title: reviewResultToastTitle(reviewStatus),
+        detail: resultIds.length === 1 ? (reviewedResultTitles[0] ?? activeProject.title) : `${resultIds.length} 张训练结果`,
+      });
+      return;
+    }
+
+    if (isReviewingResults) return;
+
+    setIsReviewingResults(true);
+    const completedIds = new Set<string>();
+    try {
+      for (const resultId of resultIds) {
+        const response = await fetch(`/api/training/image-results/${resultId}/review`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            reviewStatus: toTrainingImageReviewApiStatus(reviewStatus),
+          }),
+        });
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok || !payload?.ok) {
+          if (completedIds.size > 0) {
+            applyReviewedResults(completedIds, reviewStatus);
+          }
+          pushToast({
+            tone: "error",
+            title: "结果审核失败",
+            detail: payload?.error?.message ?? "训练结果审核请求失败",
+          });
+          return;
+        }
+
+        completedIds.add(resultId);
+      }
+
+      applyReviewedResults(completedIds, reviewStatus);
+      pushToast({
+        tone: reviewStatus === "kept" ? "success" : "warning",
+        title: reviewResultToastTitle(reviewStatus),
+        detail: completedIds.size === 1 ? (reviewedResultTitles[0] ?? activeProject.title) : `${completedIds.size} 张训练结果`,
+      });
+    } catch (error) {
+      if (completedIds.size > 0) {
+        applyReviewedResults(completedIds, reviewStatus);
+      }
+      pushToast({
+        tone: "error",
+        title: "结果审核失败",
+        detail: error instanceof Error ? error.message : "训练结果审核请求失败",
+      });
+    } finally {
+      setIsReviewingResults(false);
+    }
+  }
+
+  function handleReviewResult(resultId: string, reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
+    void persistReviewedResults([resultId], reviewStatus);
   }
 
   function toggleResultSelection(resultId: string) {
@@ -2105,11 +3061,7 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
   }
 
   function handleBatchReviewResults(reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
-    const selectedIds = new Set(selectedVisibleResultIds);
-    updateLocalResults((current) => current.map((result) =>
-      selectedIds.has(result.id) ? { ...result, reviewStatus } : result,
-    ));
-    updateResultSelection((current) => new Set([...current].filter((resultId) => !selectedIds.has(resultId))));
+    void persistReviewedResults([...selectedVisibleResultIds], reviewStatus);
   }
 
   return (
@@ -2135,10 +3087,10 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
               onClear={() => updateResultSelection(() => new Set())}
               actions={(
                 <>
-                  <Button icon={Check} tone="primary" onClick={() => handleBatchReviewResults("kept")} feedback={{ title: "已保留所选图片", detail: `${selectedVisibleCount} 张训练结果` }}>
+                  <Button icon={Check} tone="primary" onClick={() => handleBatchReviewResults("kept")}>
                     批量保留
                   </Button>
-                  <Button icon={Trash2} tone="danger" onClick={() => handleBatchReviewResults("rejected")} feedback={{ tone: "warning", title: "已拒绝所选图片", detail: `${selectedVisibleCount} 张训练结果` }}>
+                  <Button icon={Trash2} tone="danger" onClick={() => handleBatchReviewResults("rejected")}>
                     批量拒绝
                   </Button>
                 </>
@@ -2159,7 +3111,32 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Demo
 }
 
 export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: DemoData; projectId?: string }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { pushToast } = useDemoFeedback();
+  const hrefForRoute = useRouteHref();
+  const training = useTraining(data);
   const project = findProject(data, projectId);
+  const [datasetResultState, setDatasetResultState] = useState<{
+    hasOverride: boolean;
+    projectId: string | null;
+    results: LoraTrainingImageResult[] | null;
+  }>(() => ({
+    hasOverride: false,
+    projectId: project?.id ?? null,
+    results: null,
+  }));
+  const [datasetRevisionState, setDatasetRevisionState] = useState<{
+    datasetVersion: string | null;
+    hasOverride: boolean;
+    projectId: string | null;
+    revisions: LoraTrainingProject["datasetRevisions"] | null;
+  }>(() => ({
+    datasetVersion: null,
+    hasOverride: false,
+    projectId: project?.id ?? null,
+    revisions: null,
+  }));
   const [trainingDraftState, setTrainingDraft] = useState<{
     draft: {
       captionMissingCount: number;
@@ -2172,19 +3149,246 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
     draft: null,
     projectId: project?.id ?? null,
   }));
+  const [isGeneratingDatasetCaptions, setIsGeneratingDatasetCaptions] = useState(false);
+  const [isFreezingDataset, setIsFreezingDataset] = useState(false);
+  const [isStartingTraining, setIsStartingTraining] = useState(false);
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   if (!project) return <EmptyPage title="没有训练数据集数据" />;
+  const hasDatasetResultOverride = datasetResultState.projectId === project.id && datasetResultState.hasOverride;
+  const resultPool = hasDatasetResultOverride ? (datasetResultState.results ?? project.resultPool) : project.resultPool;
+  const keptResults = resultPool.filter((result) => result.reviewStatus === "kept");
+  const keptCount = hasDatasetResultOverride ? keptResults.length : project.keptCount;
+  const captionMissingCount = hasDatasetResultOverride
+    ? keptResults.filter((result) => captionMissing(result.caption)).length
+    : project.captionMissingCount;
+  const hasDatasetRevisionOverride = datasetRevisionState.projectId === project.id && datasetRevisionState.hasOverride;
+  const datasetVersion = hasDatasetRevisionOverride ? (datasetRevisionState.datasetVersion ?? project.datasetVersion) : project.datasetVersion;
+  const datasetRevisions = hasDatasetRevisionOverride ? (datasetRevisionState.revisions ?? project.datasetRevisions) : project.datasetRevisions;
   const trainingDraft = trainingDraftState.projectId === project.id ? trainingDraftState.draft : null;
+  const latestRevision = datasetRevisions[0] ?? null;
+  const activeTrainingRuns = training.runs.filter((run) =>
+    run.kind === "training"
+    && run.projectId === project.id
+    && (run.status === "queued" || run.status === "running"));
+  const activeTrainingRun = activeTrainingRuns[0] ?? null;
+  const hasActiveTrainingRun = activeTrainingRuns.length > 0;
+  const startTrainingBlockedReason = hasActiveTrainingRun
+    ? `同一训练项目不能同时存在多个进行中训练任务。当前任务：${activeTrainingRun?.title ?? "训练中"}`
+    : keptCount === 0
+      ? "至少保留 1 张训练图片后才能启动训练。"
+      : captionMissingCount > 0
+        ? `还有 ${captionMissingCount} 张保留图片缺少说明文本，请先补齐。`
+        : null;
+  const startTrainingActionLabel = hasActiveTrainingRun
+    ? "训练进行中"
+    : startTrainingBlockedReason
+      ? "准备数据集"
+      : trainingDraft
+        ? "更新训练草稿"
+        : "启动训练";
 
-  function handleOpenTrainingDraft() {
-    setTrainingDraft({
+  async function handleGenerateDatasetCaptions() {
+    if (isGeneratingDatasetCaptions || captionMissingCount === 0) return;
+
+    if (!isProductionTrainingRoute) {
+      const nextResults = resultPool.map((result) => {
+        if (result.reviewStatus !== "kept" || !captionMissing(result.caption)) return result;
+        return {
+          ...result,
+          caption: deriveDatasetCaption(result),
+        };
+      });
+      setDatasetResultState({
+        hasOverride: true,
+        projectId: project.id,
+        results: nextResults,
+      });
+      pushToast({
+        tone: "success",
+        title: "说明文本已批量生成",
+        detail: `${captionMissingCount} 张图片已补全`,
+      });
+      return;
+    }
+
+    setIsGeneratingDatasetCaptions(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/captions/generate`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          mode: "kept_without_captions",
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "批量生成说明文本失败",
+          detail: payload?.error?.message ?? "说明文本批量生成请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "success",
+        title: "说明文本已批量生成",
+        detail: typeof payload?.data?.taskCount === "number" ? `${payload.data.taskCount} 张图片已补全` : project.title,
+      });
+      setDatasetResultState({
+        hasOverride: false,
+        projectId: project.id,
+        results: null,
+      });
+      router.refresh();
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "批量生成说明文本失败",
+        detail: error instanceof Error ? error.message : "说明文本批量生成请求失败",
+      });
+    } finally {
+      setIsGeneratingDatasetCaptions(false);
+    }
+  }
+
+  async function handleFreezeDatasetRevision() {
+    if (isFreezingDataset) return;
+    const nextVersion = nextDatasetVersionLabel(datasetVersion);
+
+    if (!isProductionTrainingRoute) {
+      const nextRevision = buildLocalDatasetRevision(project.id, resultPool, nextVersion);
+      setDatasetRevisionState({
+        datasetVersion: nextVersion,
+        hasOverride: true,
+        projectId: project.id,
+        revisions: [nextRevision, ...datasetRevisions],
+      });
+      pushToast({
+        tone: "success",
+        title: "数据集版本已冻结",
+        detail: nextVersion,
+      });
+      return;
+    }
+
+    setIsFreezingDataset(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/dataset-revisions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "冻结数据集失败",
+          detail: payload?.error?.message ?? "数据集冻结请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "success",
+        title: "数据集版本已冻结",
+        detail: nextVersion,
+      });
+      setDatasetRevisionState({
+        datasetVersion: null,
+        hasOverride: false,
+        projectId: project.id,
+        revisions: null,
+      });
+      router.refresh();
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "冻结数据集失败",
+        detail: error instanceof Error ? error.message : "数据集冻结请求失败",
+      });
+    } finally {
+      setIsFreezingDataset(false);
+    }
+  }
+
+  async function handleOpenTrainingDraft() {
+    if (startTrainingBlockedReason) {
+      pushToast({
+        tone: "warning",
+        title: hasActiveTrainingRun ? "训练任务已在进行中" : "请先准备数据集",
+        detail: startTrainingBlockedReason,
+      });
+      return;
+    }
+
+    const nextDraft = {
       draft: {
-        captionMissingCount: project.captionMissingCount,
-        keptCount: project.keptCount,
+        captionMissingCount,
+        keptCount,
         stepCount: 2400,
-        version: project.datasetVersion,
+        version: datasetVersion,
       },
       projectId: project.id,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setTrainingDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: trainingDraft ? "训练配置草稿已更新" : "训练配置草稿已打开",
+        detail: datasetVersion,
+      });
+      return;
+    }
+
+    if (isStartingTraining) return;
+
+    setIsStartingTraining(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/training-runs`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          revisionId: latestRevision?.id,
+          config: {
+            overrides: {
+              ordinary: {
+                targetSteps: nextDraft.draft.stepCount,
+              },
+            },
+          },
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "训练任务创建失败",
+          detail: payload?.error?.message ?? "训练任务创建请求失败",
+        });
+        return;
+      }
+
+      setTrainingDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: "训练任务已创建",
+        detail: datasetVersion,
+      });
+      router.push(`/training/runs/training/${payload.data.id}`);
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "训练任务创建失败",
+        detail: error instanceof Error ? error.message : "训练任务创建请求失败",
+      });
+    } finally {
+      setIsStartingTraining(false);
+    }
   }
 
   return (
@@ -2193,30 +3397,42 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
         active="dataset"
         project={project}
         actions={(
-          <Button
-            tone="primary"
-            icon={Play}
-            onClick={handleOpenTrainingDraft}
-            feedback={{ title: trainingDraft ? "训练配置草稿已更新" : "训练配置草稿已打开", detail: project.datasetVersion }}
-          >
-            {trainingDraft ? "更新训练草稿" : "启动训练"}
-          </Button>
+          <>
+            <Button
+              icon={Snowflake}
+              disabled={keptCount === 0}
+              pending={isFreezingDataset}
+              onClick={handleFreezeDatasetRevision}
+            >
+              冻结当前版本
+            </Button>
+            <Button
+              tone="primary"
+              icon={Play}
+              disabled={Boolean(startTrainingBlockedReason) || isStartingTraining}
+              pending={!startTrainingBlockedReason && isStartingTraining}
+              onClick={handleOpenTrainingDraft}
+            >
+              {startTrainingActionLabel}
+            </Button>
+          </>
         )}
       />
       <div className={s.twoCol}>
         <Panel title="训练准备" subtitle="只有已保留图片进入冻结版本，后续编辑不会回写已冻结版本。">
           <div className={s.readinessSummary}>
-            <span><strong>{project.keptCount}</strong> 已保留图片</span>
-            <span><strong>{project.captionMissingCount}</strong> 缺说明文本</span>
-            <span><strong>{project.datasetVersion}</strong> 当前版本</span>
+            <span><strong>{keptCount}</strong> 已保留图片</span>
+            <span><strong>{captionMissingCount}</strong> 缺说明文本</span>
+            <span><strong>{datasetVersion}</strong> 当前版本</span>
           </div>
           <p className={s.bodyText}>准备信息保持在训练入口附近，完整样本与冻结快照继续由下方草稿和版本列表承载。</p>
+          {startTrainingBlockedReason ? <p className={s.bodyText}>{startTrainingBlockedReason}</p> : null}
         </Panel>
         <Panel title="冻结版本">
           <div className={s.entityRowsSurface}>
             <div className={s.entityRows}>
-              {project.datasetRevisions.map((revision) => (
-                <Link className={s.entityRow} href={demoHref(`/training/projects/${project.id}/dataset/revisions/${revision.id}`)} key={revision.id}>
+              {datasetRevisions.map((revision) => (
+                <Link className={s.entityRow} href={hrefForRoute(`/training/projects/${project.id}/dataset/revisions/${revision.id}`)} key={revision.id}>
                   <div>
                     <strong>{revision.version}</strong>
                     <span>{revision.itemCount} 张 · 缺说明文本 {revision.captionMissingCount} · {revision.manifestName}</span>
@@ -2238,8 +3454,20 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
           </dl>
         </Panel>
       ) : null}
-      <Panel title="已保留草稿">
-        <TrainingResultGrid results={project.resultPool.filter((result) => result.reviewStatus === "kept")} title="已保留草稿" />
+      <Panel
+        title="已保留草稿"
+        actions={(
+          <Button
+            icon={FileText}
+            disabled={captionMissingCount === 0}
+            pending={isGeneratingDatasetCaptions}
+            onClick={handleGenerateDatasetCaptions}
+          >
+            批量生成说明文本
+          </Button>
+        )}
+      >
+        <TrainingResultGrid results={keptResults} title="已保留草稿" />
       </Panel>
     </div>
   );
@@ -2300,6 +3528,8 @@ export function LoraTrainingProjectScopedRunsPage({
   kind: LoraTrainingTaskKind;
   projectId?: string;
 }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const training = useTraining(data);
   const project = findProject(data, projectId);
   const [projectRunInteractionState, setProjectRunInteractionState] = useState(() => ({
@@ -2309,7 +3539,10 @@ export function LoraTrainingProjectScopedRunsPage({
     retriedProjectRunIds: new Set<string>(),
     status: "completed" as LoraTrainingTaskStatus,
   }));
+  const [isRetryingProjectRuns, setIsRetryingProjectRuns] = useState(false);
+  const [isDeletingProjectRuns, setIsDeletingProjectRuns] = useState(false);
   if (!project) return <EmptyPage title="没有项目任务数据" />;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const projectRunInteraction = projectRunInteractionState.projectId === project.id && projectRunInteractionState.kind === kind ? projectRunInteractionState : {
     hiddenProjectRunIds: new Set<string>(),
     kind,
@@ -2347,7 +3580,7 @@ export function LoraTrainingProjectScopedRunsPage({
     }));
   }
 
-  function handleHideProjectRun(runId: string) {
+  function applyLocalProjectRunDelete(runId: string) {
     updateProjectRunInteraction((current) => {
       const retriedProjectRunIds = new Set(current.retriedProjectRunIds);
       retriedProjectRunIds.delete(runId);
@@ -2359,11 +3592,141 @@ export function LoraTrainingProjectScopedRunsPage({
     });
   }
 
-  function handleRetryProjectRun(runId: string) {
-    updateProjectRunInteraction((current) => ({
-      ...current,
-      retriedProjectRunIds: new Set([...current.retriedProjectRunIds, runId]),
-    }));
+  async function handleDeleteProjectRun(runId: string) {
+    const run = projectRuns.find((candidate) => candidate.id === runId);
+    if (!run) return;
+
+    if (!isProductionTrainingRoute) {
+      applyLocalProjectRunDelete(runId);
+      pushToast({
+        tone: "warning",
+        title: "任务已从项目列表移除",
+        detail: run.title,
+      });
+      return;
+    }
+
+    if (isDeletingProjectRuns) return;
+
+    setIsDeletingProjectRuns(true);
+    try {
+      const response = await fetch(
+        run.kind === "generation"
+          ? `/api/training/generation-tasks/${run.id}`
+          : `/api/training/training-runs/${run.id}`,
+        { method: "DELETE" },
+      );
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "删除失败",
+          detail: payload?.error?.message ?? "任务移除请求失败",
+        });
+        return;
+      }
+
+      applyLocalProjectRunDelete(runId);
+      pushToast({
+        tone: "warning",
+        title: "任务已从项目列表移除",
+        detail: run.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "删除失败",
+        detail: error instanceof Error ? error.message : "任务移除请求失败",
+      });
+    } finally {
+      setIsDeletingProjectRuns(false);
+    }
+  }
+
+  async function handleRetryProjectRun(runId: string) {
+    const run = projectRuns.find((candidate) => candidate.id === runId);
+    if (!run) return;
+
+    const applyLocalRetryState = () => {
+      updateProjectRunInteraction((current) => ({
+        ...current,
+        retriedProjectRunIds: new Set([...current.retriedProjectRunIds, runId]),
+      }));
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalRetryState();
+      pushToast({
+        tone: "success",
+        title: "重试已排队",
+        detail: run.title,
+      });
+      return;
+    }
+
+    if (isRetryingProjectRuns) return;
+
+    setIsRetryingProjectRuns(true);
+    try {
+      const response = run.kind === "generation"
+        ? await (async () => {
+            if (!run.sectionId) {
+              throw new Error("当前生成任务缺少小节上下文，无法重试。");
+            }
+            return fetch(`/api/training/sections/${run.sectionId}/runs`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                parentRunId: run.id,
+              }),
+            });
+          })()
+        : await (async () => {
+            if (!run.datasetRevisionId) {
+              throw new Error("当前训练任务缺少数据集版本，无法重试。");
+            }
+            return fetch(`/api/training/projects/${project.id}/training-runs`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                revisionId: run.datasetRevisionId,
+                config: {
+                  overrides: {
+                    ordinary: {
+                      targetSteps: run.targetSteps,
+                    },
+                  },
+                },
+              }),
+            });
+          })();
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "重试失败",
+          detail: payload?.error?.message ?? "重试请求失败",
+        });
+        return;
+      }
+
+      applyLocalRetryState();
+      pushToast({
+        tone: "success",
+        title: "重试已排队",
+        detail: run.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "重试失败",
+        detail: error instanceof Error ? error.message : "重试请求失败",
+      });
+    } finally {
+      setIsRetryingProjectRuns(false);
+    }
   }
 
   return (
@@ -2383,7 +3746,8 @@ export function LoraTrainingProjectScopedRunsPage({
       />
       <Panel title={kind === "generation" ? "项目生成任务" : "项目训练任务"}>
         <RunRows
-          onHideRun={handleHideProjectRun}
+          onDeleteRun={handleDeleteProjectRun}
+          isDeletingRuns={isDeletingProjectRuns}
           onRetryRun={handleRetryProjectRun}
           project={project}
           retriedRunIds={retriedProjectRunIds}

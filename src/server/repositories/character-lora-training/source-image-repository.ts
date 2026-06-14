@@ -112,6 +112,125 @@ export async function createCharacterLoraSourceImage(input: CharacterLoraSourceI
   return serializeSourceImage(sourceImage);
 }
 
+export async function registerCharacterLoraSourceImageFromArtifact(input: {
+  jobId: string;
+  artifactId: string;
+  role: string;
+  provenance?: Prisma.InputJsonValue | null;
+  sortOrder?: number;
+}) {
+  const sourceImage = await db.$transaction(async (tx) => {
+    const artifact = await tx.characterLoraArtifact.findUnique({
+      where: { id: input.artifactId },
+      select: ARTIFACT_REF_SELECT,
+    });
+
+    if (!artifact || artifact.jobId !== input.jobId) {
+      throw new Error("Artifact not found for this character LoRA job");
+    }
+
+    if (!["candidate_image", "source_image", "canonical_image"].includes(artifact.kind)) {
+      throw new Error("Artifact kind is not supported for source image registration");
+    }
+
+    if (!artifact.sha256) {
+      throw new Error("Artifact sha256 is required for source image registration");
+    }
+
+    const existingByArtifact = await tx.characterLoraSourceImage.findFirst({
+      where: {
+        jobId: input.jobId,
+        artifactId: input.artifactId,
+        role: input.role,
+      },
+      select: SOURCE_IMAGE_SELECT,
+    });
+    if (existingByArtifact) {
+      return existingByArtifact;
+    }
+
+    const existingBySha = await tx.characterLoraSourceImage.findUnique({
+      where: {
+        jobId_sha256_role: {
+          jobId: input.jobId,
+          sha256: artifact.sha256,
+          role: input.role,
+        },
+      },
+      select: SOURCE_IMAGE_SELECT,
+    });
+    if (existingBySha) {
+      return existingBySha;
+    }
+
+    const candidate = await tx.characterLoraCandidateImage.findFirst({
+      where: {
+        jobId: input.jobId,
+        artifactId: input.artifactId,
+      },
+      select: {
+        width: true,
+        height: true,
+      },
+    });
+
+    const source = await tx.characterLoraSourceImage.findFirst({
+      where: {
+        jobId: input.jobId,
+        artifactId: input.artifactId,
+      },
+      select: {
+        width: true,
+        height: true,
+      },
+    });
+
+    return tx.characterLoraSourceImage.create({
+      data: {
+        jobId: input.jobId,
+        role: input.role,
+        artifactId: input.artifactId,
+        filePath: artifact.relativePath,
+        sha256: artifact.sha256,
+        width: candidate?.width ?? source?.width ?? null,
+        height: candidate?.height ?? source?.height ?? null,
+        provenance: input.provenance ?? Prisma.DbNull,
+        sortOrder: input.sortOrder ?? 0,
+      },
+      select: SOURCE_IMAGE_SELECT,
+    });
+  });
+
+  return serializeSourceImage(sourceImage);
+}
+
+export async function updateCharacterLoraSourceImage(sourceImageId: string, input: {
+  role?: string;
+  provenance?: Prisma.InputJsonValue | null;
+  sortOrder?: number;
+}) {
+  const sourceImage = await db.characterLoraSourceImage.update({
+    where: { id: sourceImageId },
+    data: {
+      ...(input.role !== undefined ? { role: input.role } : {}),
+      ...(input.provenance !== undefined ? { provenance: input.provenance ?? Prisma.DbNull } : {}),
+      ...(input.sortOrder !== undefined ? { sortOrder: input.sortOrder } : {}),
+    },
+    select: SOURCE_IMAGE_SELECT,
+  });
+
+  return serializeSourceImage(sourceImage);
+}
+
+export async function deleteCharacterLoraSourceImage(sourceImageId: string) {
+  const sourceImage = await db.characterLoraSourceImage.delete({
+    where: { id: sourceImageId },
+    select: SOURCE_IMAGE_SELECT,
+  });
+
+  return serializeSourceImage(sourceImage);
+}
+
 export async function registerCharacterLoraSourceImageAsCandidate(input: {
   jobId: string;
   sourceImageId: string;
@@ -285,4 +404,61 @@ export async function getCharacterLoraGenerationRun(generationRunId: string) {
   });
 
   return run ? serializeGenerationRun(run) : null;
+}
+
+export async function cancelCharacterLoraGenerationRun(input: {
+  generationRunId: string;
+  reason?: string | null;
+  requestedBy?: string | null;
+}) {
+  const result = await db.$transaction(async (tx) => {
+    const run = await tx.characterLoraGenerationRun.findUnique({
+      where: { id: input.generationRunId },
+      select: GENERATION_RUN_SUMMARY_SELECT,
+    });
+
+    if (!run) {
+      return null;
+    }
+
+    const cancelSummary = {
+      cancelRequested: true,
+      reason: input.reason ?? null,
+      requestedBy: input.requestedBy ?? null,
+    };
+
+    await tx.characterLoraWorkerTask.updateMany({
+      where: {
+        targetType: "generationRun",
+        targetId: run.id,
+        status: { in: [CharacterLoraRunStatus.queued, CharacterLoraRunStatus.running] },
+      },
+      data: {
+        status: CharacterLoraRunStatus.cancelled,
+        leaseExpiresAt: null,
+        heartbeatAt: new Date(),
+        finishedAt: new Date(),
+        progressJson: toInputJsonValue(cancelSummary),
+        errorSummary: input.reason ?? "Generation run cancelled",
+      },
+    });
+
+    await tx.characterLoraGenerationRun.update({
+      where: { id: run.id },
+      data: {
+        status: CharacterLoraRunStatus.cancelled,
+        errorSummary: input.reason ?? "Generation run cancelled",
+        finishedAt: new Date(),
+        responseSummary: toInputJsonValue(cancelSummary),
+      },
+      select: { id: true },
+    });
+
+    return tx.characterLoraGenerationRun.findUnique({
+      where: { id: run.id },
+      select: GENERATION_RUN_SUMMARY_SELECT,
+    });
+  });
+
+  return result ? serializeGenerationRun(result) : null;
 }

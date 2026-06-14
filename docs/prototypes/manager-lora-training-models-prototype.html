@@ -4,11 +4,100 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
-    <title>共享模型 - 原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <title>共享模型</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
+    <style>
+      .models-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.22fr) minmax(280px, 0.78fr);
+        gap: 12px;
+      }
+
+      .search-shell {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 8px;
+        padding: 0 10px;
+        min-height: 38px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--field-bg);
+      }
+
+      .search-shell input {
+        width: 100%;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+        font-size: 12px;
+      }
+
+      .folder-path {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        min-width: 0;
+      }
+
+      .folder-path span {
+        min-height: 28px;
+        display: inline-flex;
+        align-items: center;
+        padding: 0 10px;
+        border: 1px solid var(--line-soft);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .folder-path span.active {
+        border-color: color-mix(in srgb, var(--emerald) 34%, transparent);
+        background: var(--emerald-soft);
+        color: var(--emerald);
+      }
+
+      .model-browser-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .model-row {
+        min-width: 0;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        border: 1px solid var(--line-soft);
+        border-radius: 10px;
+        background: color-mix(in srgb, var(--panel-soft) 54%, transparent);
+      }
+
+      .model-row.selected {
+        border-color: color-mix(in srgb, var(--emerald) 34%, transparent);
+        background: color-mix(in srgb, var(--emerald-soft) 88%, var(--surface));
+      }
+
+      .inspector-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      @media (max-width: 860px) {
+        .models-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
   </head>
   <body>
-    <main class="app-shell">
+    <a class="skip-link" href="#prototype-main">跳到主要内容</a>
+    <main class="app-shell" id="prototype-main">
       <div class="page">
         <header class="topbar">
           <div class="title-stack">
@@ -17,24 +106,105 @@
               <span class="state-line status-note blue"><span class="state-dot"></span>共享</span>
               <span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span>
             </div>
+            <p class="small muted">共享模型入口不随工作模式变化，训练完成的 LoRA 会在这里与生图模块共用。</p>
+          </div>
+          <div class="topbar-actions">
+            <button class="button" type="button"><i data-lucide="upload" aria-hidden="true"></i>上传模型</button>
           </div>
         </header>
-        <section class="panel">
-          <div class="panel-header"><h2>模型列表</h2></div>
-          <div class="panel-body entity-list">
-            <a class="entity-row" href="./manager-lora-training-training-detail-prototype.html?task=vela-completed">
+        <section class="models-grid">
+          <section class="panel">
+            <div class="panel-header">
               <div class="row-title">
-                <strong translate="no">vela_neon_v05.safetensors</strong>
-                <span>LoRA · 来自 Vela Neon Jacket · 可用于生图</span>
+                <h2>模型浏览</h2>
+                <span>切换 LoRA / 基础模型，按目录浏览共享模型文件。</span>
               </div>
-              <span class="status-note green">可用</span>
-            </a>
-          </div>
+              <div class="inline-row">
+                <span class="chip blue">LoRA</span>
+                <span class="chip">基础模型</span>
+              </div>
+            </div>
+            <div class="panel-body stack">
+              <div class="folder-path" aria-label="模型路径">
+                <span>共享模型</span>
+                <span class="active">角色</span>
+                <span>女角色</span>
+              </div>
+              <div class="search-shell">
+                <i data-lucide="search" aria-hidden="true"></i>
+                <input name="model_search" aria-label="搜索模型文件" autocomplete="off" value="vela" />
+                <button class="button" type="button"><i data-lucide="x" aria-hidden="true"></i>清除</button>
+              </div>
+              <div class="plain-meta">
+                <span>当前位置：共享模型 / 角色 / 女角色</span>
+                <span>筛选后 4 项</span>
+              </div>
+              <div class="model-browser-list">
+                <button class="model-row" type="button">
+                  <div class="row-title">
+                    <strong>写实角色</strong>
+                    <span>文件夹 · 8 个模型</span>
+                  </div>
+                  <i data-lucide="chevron-right" aria-hidden="true"></i>
+                </button>
+                <button class="model-row" type="button">
+                  <div class="row-title">
+                    <strong>风格实验</strong>
+                    <span>文件夹 · 4 个模型</span>
+                  </div>
+                  <i data-lucide="chevron-right" aria-hidden="true"></i>
+                </button>
+                <a class="model-row selected" href="./manager-lora-training-training-detail-prototype.html?task=vela-completed">
+                  <div class="row-title">
+                    <strong translate="no">vela_neon_v05.safetensors</strong>
+                    <span>LoRA · 142 MB · 来自 Vela Neon Jacket</span>
+                  </div>
+                  <span class="status-note green">可用</span>
+                </a>
+                <div class="model-row">
+                  <div class="row-title">
+                    <strong translate="no">mika_soft_v03.safetensors</strong>
+                    <span>LoRA · 138 MB · 手动上传</span>
+                  </div>
+                  <span class="status-note">仅存档</span>
+                </div>
+              </div>
+            </div>
+          </section>
+          <aside class="stack">
+            <section class="panel">
+              <div class="panel-header"><h2>模型详情</h2></div>
+              <div class="panel-body compact-kv">
+                <div><span>名称</span><span translate="no">vela_neon_v05.safetensors</span></div>
+                <div><span>类型</span><span>LoRA</span></div>
+                <div><span>来源</span><span>Vela Neon Jacket / 数据集版本 v5</span></div>
+                <div><span>大小</span><span>142 MB</span></div>
+                <div><span>状态</span><span>可用于生图</span></div>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header"><h2>补充信息</h2></div>
+              <div class="panel-body stack">
+                <div class="row-title">
+                  <strong>触发提示词</strong>
+                  <span translate="no">vela_neon_jacket</span>
+                </div>
+                <div class="row-title">
+                  <strong>备注</strong>
+                  <span>训练完成后自动入库，可直接在生图模型选择中使用。</span>
+                </div>
+                <div class="inspector-actions">
+                  <button class="button" type="button"><i data-lucide="move-right" aria-hidden="true"></i>移动目录</button>
+                  <button class="button red" type="button"><i data-lucide="trash-2" aria-hidden="true"></i>移出列表</button>
+                </div>
+              </div>
+            </section>
+          </aside>
         </section>
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
     <script>initLoraPrototype("models");</script>
   </body>
 </html>

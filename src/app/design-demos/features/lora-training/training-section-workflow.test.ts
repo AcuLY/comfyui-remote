@@ -105,8 +105,8 @@ test("training section copy inserts the duplicate directly after the source sect
 
   assert.match(sectionsPage, /const sourceIndex = currentSections\.findIndex\(\(item\) => item\.id === section\.id\)/, "copy should find the source section position");
   assert.match(sectionsPage, /\.\.\.currentSections\.slice\(0, sourceIndex \+ 1\),\s*copy,\s*\.\.\.currentSections\.slice\(sourceIndex \+ 1\)/, "local section copy should stay adjacent to the source");
-  assert.match(sectionsPage, /const sourceIndex = currentIds\.indexOf\(section\.id\)/, "copy should find the source id position in the visible order");
-  assert.match(sectionsPage, /\.\.\.currentIds\.slice\(0, sourceIndex \+ 1\),\s*copyId,\s*\.\.\.currentIds\.slice\(sourceIndex \+ 1\)/, "visible section order should insert the copy after the source");
+  assert.match(sectionsPage, /const sourceOrderIndex = currentIds\.indexOf\(section\.id\)/, "copy should find the source id position in the visible order");
+  assert.match(sectionsPage, /\.\.\.currentIds\.slice\(0, sourceOrderIndex \+ 1\),\s*copyId,\s*\.\.\.currentIds\.slice\(sourceOrderIndex \+ 1\)/, "visible section order should insert the copy after the source");
   assert.doesNotMatch(sectionsPage, /setOrderedSectionIds\(\(current\) => \[\.\.\.current, copyId\]\)/, "copy should not append to the end of the section order");
 });
 
@@ -271,7 +271,7 @@ test("training section detail saves a visible local section draft", () => {
   assert.match(detailPage, /scenePreview/, "saved section draft should use current composed scene text");
   assert.match(detailPage, /小节保存草稿/, "section detail should render a visible saved draft panel");
   assert.doesNotMatch(detailPage, /generation-tasks\/new/, "section detail should leave the generation CTA to the route header");
-  assert.doesNotMatch(detailPage, /小节已保存/, "section save should not remain feedback-only");
+  assert.doesNotMatch(detailPage, /feedback=\{\{\s*title:\s*"训练小节已保存"/, "section save should not remain feedback-only");
 });
 
 test("training section detail keeps local edits keyed by project and section", () => {
@@ -368,6 +368,27 @@ test("generation compose queues a local generation task draft instead of only sh
   assert.match(composePage, /activePreviewReference/, "task draft should include the currently previewed reference context");
   assert.match(composePage, /section\.resolvedScene/, "task draft should preserve the resolved section scene");
   assert.doesNotMatch(composePage, /生成任务已加入队列/, "run action should not remain a toast-only placeholder");
+});
+
+test("generation compose posts through the formal HTTP API on production routes", () => {
+  const composePage = sourceBetween(
+    "export function LoraTrainingGenerationComposePage",
+    "export function LoraTrainingProjectResultsPage",
+  );
+
+  assert.match(composePage, /usePathname/, "generation compose should detect whether it is running under production \\/training routes");
+  assert.match(composePage, /useRouter/, "generation compose should be able to navigate to the queued generation run on production routes");
+  assert.match(composePage, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/generation-tasks`/, "generation compose should create a formal generation-task draft first");
+  assert.match(composePage, /fetch\(`\/api\/training\/generation-tasks\/\$\{draftTaskId\}\/inputs`/, "generation compose should add selected references through the formal draft input API");
+  assert.match(composePage, /role:\s*"reference"/, "generation compose should classify explicit references when posting draft inputs");
+  assert.match(composePage, /role:\s*"supplemental_image"/, "generation compose should classify supplemental image attachments when posting draft inputs");
+  assert.match(composePage, /fetch\(`\/api\/training\/generation-tasks\/\$\{draftTaskId\}\/preview`/, "generation compose should preview the formal draft before running it");
+  assert.match(composePage, /fetch\(`\/api\/training\/generation-tasks\/\$\{draftTaskId\}\/run`/, "generation compose should run the formal generation-task draft");
+  assert.match(composePage, /sectionId:\s*activeSection\.id/, "generation compose should scope draft creation to the active section");
+  assert.match(composePage, /supplementalPrompt:\s*generationForm\.supplementalPrompt/, "generation compose should persist the current supplemental prompt into the draft");
+  assert.match(composePage, /taskType:\s*generationForm\.taskType/, "generation compose should persist the current task type into the draft");
+  assert.match(composePage, /router\.push\(`/, "generation compose should navigate to the queued generation run after a successful API response");
+  assert.match(composePage, /pushToast/, "generation compose should surface API success or failure through the shared feedback system");
 });
 
 test("generation compose saves editable task fields into final input and draft", () => {

@@ -1,3 +1,5 @@
+import type { LoraTrainingDemoData } from "./lora-training-types";
+
 export type DemoImage = {
   id: string;
   src: string;
@@ -244,4 +246,5 @@ export type DemoData = {
   models: DemoAsset[];
   auditLogs: DemoAuditLog[];
   images: DemoImage[];
+  loraTraining?: LoraTrainingDemoData;
 };

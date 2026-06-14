@@ -1,3 +1,29 @@
+function createDesktopNav(active) {
+  const items = [
+    ["运行", "play-circle", "./manager-lora-training-runs-prototype.html", "runs"],
+    ["项目", "folder-kanban", "./manager-lora-training-projects-prototype.html", "projects"],
+    ["预制", "layers", "./manager-lora-training-presets-prototype.html", "presets"],
+    ["模板", "layout-template", "./manager-lora-training-templates-prototype.html", "templates"],
+    ["模型", "box", "./manager-lora-training-models-prototype.html", "models"],
+    ["设置", "settings", "./manager-lora-training-settings-mode-prototype.html", "settings"],
+  ];
+  const links = items
+    .map(([label, icon, href, key]) => {
+      const current = key === active ? " active\" aria-current=\"page" : "";
+      return `<a class="desktop-nav-item${current}" href="${href}"><i data-lucide="${icon}" aria-hidden="true"></i><span>${label}</span></a>`;
+    })
+    .join("");
+
+  const main = document.querySelector(".app-shell");
+  if (main) {
+    main.classList.add("with-desktop-nav");
+    main.insertAdjacentHTML(
+      "beforebegin",
+      `<aside class="desktop-nav" aria-label="桌面导航"><div class="desktop-nav-head"><strong>ComfyUI Manager</strong><span>LoRA 训练原型</span></div><nav class="desktop-nav-list">${links}</nav><div class="desktop-nav-mode"><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div></aside>`,
+    );
+  }
+}
+
 function createBottomNav(active) {
   const items = [
     ["运行", "play-circle", "./manager-lora-training-runs-prototype.html", "runs"],
@@ -79,6 +105,7 @@ function setupLightbox() {
 }
 
 function initLoraPrototype(activeNav) {
+  createDesktopNav(activeNav);
   createBottomNav(activeNav);
   setupFilters();
   setupExpandableText();

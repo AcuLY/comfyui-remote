@@ -412,6 +412,23 @@ export async function archiveCharacterLoraTrainingJob(jobId: string) {
   });
 }
 
+export async function restoreCharacterLoraTrainingJob(jobId: string) {
+  const id = normalizeJobId(jobId);
+  const job = await getCharacterLoraTrainingJob(id);
+  if (job.status !== CharacterLoraJobStatus.archived) {
+    return job;
+  }
+
+  const overview = await getCharacterLoraTrainingJobOverview(id);
+  const restoredStatus = deriveRestoredJobStatus(overview);
+  const restoredPhase = deriveRestoredJobPhase(overview);
+
+  return updateJobInRepository(id, {
+    status: restoredStatus,
+    phase: restoredPhase,
+  });
+}
+
 export function mapCharacterLoraTrainingJobError(error: unknown) {
   if (error instanceof CharacterLoraTrainingJobServiceError) {
     return {
@@ -657,6 +674,54 @@ function hasOwn(value: object, key: string) {
 function deriveBaseCheckpointName(baseCheckpointPath: string) {
   const checkpointName = basename(baseCheckpointPath.replace(/\\/g, "/"));
   return checkpointName || baseCheckpointPath;
+}
+
+function deriveRestoredJobStatus(overview: Awaited<ReturnType<typeof getCharacterLoraTrainingJobOverview>>) {
+  switch (overview.currentStage.key) {
+    case "trained":
+      return CharacterLoraJobStatus.trained;
+    case "training":
+      return overview.training.latestTrainingRun?.status === "running"
+        ? CharacterLoraJobStatus.training_running
+        : CharacterLoraJobStatus.training_queued;
+    case "dataset":
+      return CharacterLoraJobStatus.dataset_ready;
+    case "review":
+      return CharacterLoraJobStatus.reviewing;
+    case "sections":
+      return CharacterLoraJobStatus.section_generating;
+    case "prompt_card":
+      return CharacterLoraJobStatus.prompt_pending;
+    case "persona_reference":
+      return CharacterLoraJobStatus.canonical_pending;
+    case "source_images":
+    case "created":
+    default:
+      return CharacterLoraJobStatus.draft;
+  }
+}
+
+function deriveRestoredJobPhase(overview: Awaited<ReturnType<typeof getCharacterLoraTrainingJobOverview>>) {
+  switch (overview.currentStage.key) {
+    case "trained":
+      return "trained";
+    case "training":
+      return "training";
+    case "dataset":
+      return "dataset";
+    case "review":
+      return "review";
+    case "sections":
+      return "sections";
+    case "prompt_card":
+      return "prompt_card";
+    case "persona_reference":
+      return "canonical";
+    case "source_images":
+    case "created":
+    default:
+      return "setup";
+  }
 }
 
 function normalizeCheckpointRelativePath(rawPath: string) {

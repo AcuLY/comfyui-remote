@@ -75,6 +75,7 @@ export type LoraTrainingRun = {
   kind: LoraTrainingTaskKind;
   status: LoraTrainingTaskStatus;
   projectId: string;
+  sectionId?: string;
   projectTitle: string;
   title: string;
   summary: string;
@@ -93,6 +94,8 @@ export type LoraTrainingRun = {
   datasetRevisionId?: string;
   waitReason?: string;
   schedulerMessage?: string;
+  currentStep?: number;
+  targetSteps?: number;
   trainingConfig?: LoraTrainingConfigRow[];
   trainingLogArtifactName?: string;
   trainingLogLines?: string[];
@@ -149,6 +152,8 @@ export type LoraTrainingTemplate = {
   status: "active" | "archived";
   updatedAt: string;
   description: string;
+  imageGuidance: string;
+  captionGuidance: string;
   sectionCount: number;
   sections: Array<{
     id: string;

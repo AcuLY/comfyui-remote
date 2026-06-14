@@ -6,10 +6,14 @@ import { CharacterLoraImageReviewStatus, CharacterLoraJobStatus } from "@/genera
 import { normalizeSourceImageUploadRole } from "@/lib/character-lora-source-images";
 import {
   createCharacterLoraSourceImage as createSourceImageInRepository,
+  deleteCharacterLoraSourceImage as deleteSourceImageInRepository,
   findCharacterLoraSourceImageDuplicate,
+  getCharacterLoraSourceImage as getSourceImageFromRepository,
+  registerCharacterLoraSourceImageFromArtifact as registerSourceImageFromArtifactInRepository,
   registerCharacterLoraSourceImageAsCandidate as registerSourceImageAsCandidateInRepository,
   getCharacterLoraTrainingJob as getJobFromRepository,
   listCharacterLoraSourceImages as listSourceImagesFromRepository,
+  updateCharacterLoraSourceImage as updateSourceImageInRepository,
 } from "@/server/repositories/character-lora-training-repository";
 import {
   computeCharacterLoraBufferSha256,
@@ -39,6 +43,21 @@ type ParsedRegisterCandidateInput = {
   sourceImageId: string;
   reviewStatus?: CharacterLoraImageReviewStatus;
   captionDraft?: string | null;
+};
+
+type ParsedRegisterArtifactInput = {
+  artifactId: string;
+  imageType: string;
+  label?: string | null;
+  note?: string | null;
+  sortOrder?: number;
+};
+
+type ParsedSourceImagePatchInput = {
+  kind?: string | null;
+  label?: string | null;
+  note?: string | null;
+  sortOrder?: number;
 };
 
 export class CharacterLoraSourceImageServiceError extends Error {
@@ -174,6 +193,72 @@ export async function registerCharacterLoraSourceImageAsCandidate(jobId: string,
   }
 }
 
+export async function registerCharacterLoraSourceImageFromArtifact(jobId: string, input: unknown) {
+  const id = normalizeJobId(jobId);
+  const job = await getExistingJob(id);
+
+  if (SOURCE_IMAGE_UPLOAD_BLOCKED_STATUSES.has(job.status)) {
+    throw new CharacterLoraSourceImageServiceError(
+      "Archived or promoted character LoRA training jobs cannot register reference images from artifacts",
+      409,
+      { status: job.status },
+    );
+  }
+
+  const parsed = parseRegisterArtifactInput(input);
+  const existingImages = await listSourceImagesFromRepository(id);
+  return registerSourceImageFromArtifactInRepository({
+    jobId: id,
+    artifactId: parsed.artifactId,
+    role: parseSourceImageRole(parsed.imageType),
+    sortOrder: parsed.sortOrder ?? existingImages.length,
+    provenance: toInputJsonValue({
+      origin: "training_reference_artifact_registration",
+      kind: parsed.imageType,
+      label: parsed.label ?? null,
+      note: parsed.note ?? null,
+      sourceArtifactId: parsed.artifactId,
+    }),
+  });
+}
+
+export async function updateCharacterLoraSourceImage(jobId: string, sourceImageId: string, input: unknown) {
+  const id = normalizeJobId(jobId);
+  const parsed = parseSourceImagePatchInput(input);
+  const sourceImage = await getSourceImageFromRepository(sourceImageId);
+  if (!sourceImage || sourceImage.jobId !== id) {
+    throw new CharacterLoraSourceImageServiceError("Character LoRA source image not found", 404, {
+      sourceImageId,
+      jobId: id,
+    });
+  }
+
+  const currentProvenance = isPlainObject(sourceImage.provenance) ? sourceImage.provenance as Record<string, unknown> : {};
+  return updateSourceImageInRepository(sourceImageId, {
+    role: parsed.kind ? parseSourceImageRole(parsed.kind) : undefined,
+    sortOrder: parsed.sortOrder,
+    provenance: toInputJsonValue({
+      ...currentProvenance,
+      ...(parsed.kind ? { kind: parsed.kind } : {}),
+      ...(parsed.label !== undefined ? { label: parsed.label } : {}),
+      ...(parsed.note !== undefined ? { note: parsed.note } : {}),
+    }),
+  });
+}
+
+export async function deleteCharacterLoraSourceImage(jobId: string, sourceImageId: string) {
+  const id = normalizeJobId(jobId);
+  const sourceImage = await getSourceImageFromRepository(sourceImageId);
+  if (!sourceImage || sourceImage.jobId !== id) {
+    throw new CharacterLoraSourceImageServiceError("Character LoRA source image not found", 404, {
+      sourceImageId,
+      jobId: id,
+    });
+  }
+
+  return deleteSourceImageInRepository(sourceImageId);
+}
+
 export function mapCharacterLoraSourceImageError(error: unknown) {
   if (error instanceof CharacterLoraSourceImageServiceError) {
     return {
@@ -250,6 +335,56 @@ function parseRegisterCandidateInput(input: unknown): ParsedRegisterCandidateInp
     sourceImageId,
     reviewStatus,
     captionDraft: captionDraft ?? null,
+  };
+}
+
+function parseRegisterArtifactInput(input: unknown): ParsedRegisterArtifactInput {
+  if (!isPlainObject(input)) {
+    throw new CharacterLoraSourceImageServiceError("Invalid source image artifact registration request", 400);
+  }
+
+  const artifactId = parseRequiredString(input.artifactId, "artifactId");
+  const imageType = parseRequiredString(input.imageType, "imageType");
+  const label = parseOptionalTrimmedString(input.label) ?? null;
+  const note = parseOptionalTrimmedString(input.note) ?? null;
+  const sortOrder = parseOptionalInteger(input.sortOrder, "sortOrder");
+
+  return {
+    artifactId,
+    imageType,
+    label,
+    note,
+    sortOrder,
+  };
+}
+
+function parseSourceImagePatchInput(input: unknown): ParsedSourceImagePatchInput {
+  if (!isPlainObject(input)) {
+    throw new CharacterLoraSourceImageServiceError("Invalid source image patch request", 400);
+  }
+
+  const kind = Object.prototype.hasOwnProperty.call(input, "kind")
+    ? parseOptionalTrimmedString(input.kind) ?? null
+    : undefined;
+  const label = Object.prototype.hasOwnProperty.call(input, "label")
+    ? parseOptionalTrimmedString(input.label) ?? null
+    : undefined;
+  const note = Object.prototype.hasOwnProperty.call(input, "note")
+    ? parseOptionalTrimmedString(input.note) ?? null
+    : undefined;
+  const sortOrder = parseOptionalInteger(input.sortOrder, "sortOrder");
+
+  if (kind === undefined && label === undefined && note === undefined && sortOrder === undefined) {
+    throw new CharacterLoraSourceImageServiceError("At least one source image field is required", 400, {
+      supportedFields: ["kind", "label", "note", "sortOrder"],
+    });
+  }
+
+  return {
+    kind,
+    label,
+    note,
+    sortOrder,
   };
 }
 

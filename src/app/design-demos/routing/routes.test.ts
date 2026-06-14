@@ -181,11 +181,8 @@ test("LoRA training run route headers use the matched run context", () => {
   const completedTraining = findHeaderSpecForRoute(data, "/training/runs/training/train-vela-v5");
   assert.ok(completedTraining, "completed training run should resolve a header spec");
   assert.equal(completedTraining.title, "Vela Neon Jacket / 数据集 v5");
-  assert.deepEqual(completedTraining.actions?.map((action) => action.label), ["数据集版本", "创建预制"]);
+  assert.deepEqual(completedTraining.actions?.map((action) => action.label), ["数据集版本"]);
   assert.equal(completedTraining.actions?.[0]?.href, "/training/projects/vela-neon/dataset/revisions/v5-current");
-  assert.match(completedTraining.actions?.[1]?.href ?? "", /\/training\/presets\/new\?/);
-  assert.match(completedTraining.actions?.[1]?.href ?? "", /sourceRun=train-vela-v5/);
-  assert.match(completedTraining.actions?.[1]?.href ?? "", /artifact=vela_neon_v05\.safetensors/);
 
   const runningTraining = findHeaderSpecForRoute(data, "/training/runs/training/train-azure-v4");
   assert.ok(runningTraining, "running training run should resolve a header spec");

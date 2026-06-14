@@ -931,21 +931,6 @@ function trainingDatasetHref(run: LoraTrainingRun) {
   return run.datasetRevisionId ? `${projectHref}/dataset/revisions/${run.datasetRevisionId}` : `${projectHref}/dataset`;
 }
 
-function trainingPresetHref(run: LoraTrainingRun) {
-  const params = new URLSearchParams({
-    category: "训练产物",
-    folder: "LoRA 产物",
-    sourceRun: run.id,
-    project: run.projectTitle,
-  });
-  params.set("artifact", run.artifactName ?? run.finalLoraArtifactId ?? "");
-  return `/training/presets/new?${params.toString()}`;
-}
-
-function canCreateTrainingPreset(run: LoraTrainingRun) {
-  return run.kind === "training" && run.status === "completed" && Boolean(run.finalLoraArtifactId) && !run.presetCreatedAt;
-}
-
 function findLoraTrainingRun(data: DemoData, kind: LoraTrainingTaskKind, runId: string | undefined) {
   if (!runId) return undefined;
   return buildLoraTrainingDemoData(data).runs.find((run) => run.kind === kind && run.id === runId);
@@ -1160,13 +1145,9 @@ function loraTrainingRunDetailHeader(data: DemoData, spec: HeaderSpec, matched: 
     const run = findLoraTrainingRun(data, "training", matched.params.trainingRunId);
     if (!run) return missingLoraTrainingRunHeader(spec);
     const project = findLoraTrainingProject(data, run.projectId);
-    const actions = [headerAction("数据集版本", History, "default", trainingDatasetHref(run))];
-    if (canCreateTrainingPreset(run)) {
-      actions.push(headerAction("创建预制", Plus, "primary", trainingPresetHref(run)));
-    }
     return {
       ...spec,
-      actions,
+      actions: [headerAction("数据集版本", History, "default", trainingDatasetHref(run))],
       title: trainingRunTitle(run, project),
     };
   }

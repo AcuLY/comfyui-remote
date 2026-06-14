@@ -35,7 +35,7 @@ test("training resource route helpers do not replace invalid route ids with firs
 });
 
 test("training resource query hints use Next search params instead of a manual location store", () => {
-  assert.match(pageSource, /import \{ useSearchParams \} from "next\/navigation";/, "resource pages should subscribe to Next-managed query changes");
+  assert.match(pageSource, /import \{[^}]*useSearchParams[^}]*\} from "next\/navigation";/, "resource pages should subscribe to Next-managed query changes");
   assert.match(pageSource, /const searchParams = useSearchParams\(\)/, "resource pages should read current query params through Next navigation state");
   assert.match(pageSource, /searchParams\.toString\(\)/, "resource pages should pass the live query string into hint parsers");
   assert.doesNotMatch(pageSource, /useSyncExternalStore/, "resource query hints should not depend on a manual window.location.search store");
@@ -305,8 +305,6 @@ test("training preset detail saves a visible local preset draft instead of only 
   assert.match(detailSource, /预制保存草稿/, "preset detail should render a visible saved draft panel");
   assert.match(detailSource, /preset\.sceneDescriptionText/, "saved draft should preserve the scene description");
   assert.match(detailSource, /usages\.length/, "saved draft should include current usage impact");
-  assert.doesNotMatch(detailSource, /训练预制已创建/, "new preset save should not remain feedback-only");
-  assert.doesNotMatch(detailSource, /训练预制已保存/, "preset save should not remain feedback-only");
 });
 
 test("training preset detail state stays scoped to the active preset context", () => {
@@ -326,6 +324,22 @@ test("training preset detail state stays scoped to the active preset context", (
   assert.match(detailSource, /newPresetHints\.artifact/, "new preset context should include the source artifact hint");
   assert.doesNotMatch(detailSource, /const \[presetForm, setPresetForm\] = useState\(/, "preset form should not be stored without preset context");
   assert.doesNotMatch(detailSource, /const \[presetDraft, setPresetDraft\] = useState/, "preset draft should not be stored without preset context");
+});
+
+test("training preset detail saves through the formal HTTP API on production routes", () => {
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  assert.notEqual(detailStart, -1);
+  assert.notEqual(sortStart, -1);
+
+  const detailSource = pageSource.slice(detailStart, sortStart);
+
+  assert.match(detailSource, /usePathname/, "preset detail should detect whether it is running under production \\/training routes");
+  assert.match(detailSource, /fetch\(isNew \? "\/api\/training\/presets" : `\/api\/training\/presets\/\$\{preset\.id\}`/, "preset detail should save through the formal training preset API");
+  assert.match(detailSource, /method:\s*isNew \? "POST" : "PATCH"/, "preset detail should choose POST or PATCH based on create vs edit mode");
+  assert.match(detailSource, /sceneDescriptionText:\s*presetForm\.sceneDescriptionText/, "preset save should submit the current scene description text");
+  assert.match(detailSource, /router\.push\(`\/training\/presets\/\$\{payload\.data\.id\}`\)/, "new presets should navigate to the created training preset route");
+  assert.match(detailSource, /pushToast/, "preset detail should surface API success or failure through shared feedback");
 });
 
 test("training template form uses the shared template editor workspace model", () => {
@@ -455,8 +469,43 @@ test("training template form saves a visible local template draft instead of onl
   assert.match(formSource, /onClick=\{handleSaveTemplate\}/, "template save button should call the local save handler");
   assert.match(formSource, /模板保存草稿/, "template form should render a visible saved draft panel");
   assert.match(formSource, /templateSections\.length/, "saved draft should include the current section count");
-  assert.doesNotMatch(formSource, /训练模板已创建/, "new template save should not remain feedback-only");
-  assert.doesNotMatch(formSource, /训练模板已保存/, "template save should not remain feedback-only");
+  assert.doesNotMatch(formSource, /feedback=\{\{ title: "训练模板已创建"/, "new template save should not remain feedback-only");
+  assert.doesNotMatch(formSource, /feedback=\{\{ title: "训练模板已保存"/, "template save should not remain feedback-only");
+});
+
+test("training template form saves through the formal HTTP API on production routes", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(formSource, /usePathname/, "template form should detect whether it is running under production \\/training routes");
+  assert.match(formSource, /useRouter/, "template form should be able to navigate to the saved training template on production routes");
+  assert.match(formSource, /saveTemplateEndpoint/, "template form should derive the formal save endpoint before posting");
+  assert.match(formSource, /fetch\(saveTemplateEndpoint/, "template form should call the resolved formal save endpoint");
+  assert.match(formSource, /method:\s*saveTemplateMethod/, "template form should save through the resolved HTTP method");
+  assert.match(formSource, /imageGuidance:/, "template form should send image guidance through the HTTP request");
+  assert.match(formSource, /captionGuidance:/, "template form should send caption guidance through the HTTP request");
+  assert.match(formSource, /sections:/, "template form should send the editable section list through the HTTP request");
+  assert.match(formSource, /pushToast/, "template form should surface API success or failure through the shared feedback system");
+});
+
+test("project-sourced template creation saves through the formal save-as-template API", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(formSource, /const sourceProject = mode === "new"/, "project-backed template creation should resolve the source project explicitly");
+  assert.match(formSource, /sourceProject && mode === "new"/, "save endpoint should branch when the template is sourced from a project");
+  assert.match(formSource, /`\/api\/training\/projects\/\$\{sourceProject\.id\}\/save-as-template`/, "project-backed template creation should call the formal save-as-template route");
+  assert.match(formSource, /const saveTemplateMethod = sourceProject && mode === "new"[\s\S]*?"POST"/, "project-backed template creation should submit through POST");
+  assert.match(formSource, /const saveTemplateSections = orderedTemplateSectionIds/, "project-backed template save should derive payload sections from the current edited order");
+  assert.match(formSource, /sections:\s*saveTemplateSections/, "project-backed template save should include the current edited section list");
 });
 
 test("training template form state stays scoped to the active template context", () => {
@@ -532,6 +581,20 @@ test("training template form scans existing section ids for local copy and draft
   assert.doesNotMatch(formSource, /id:\s*`new-template-section-\$\{Date\.now\(\)\}`/, "new template section ids should not depend on Date.now");
 });
 
+test("training template section page saves through the formal HTTP API on production routes", () => {
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(sectionStart, -1);
+
+  const sectionSource = pageSource.slice(sectionStart);
+
+  assert.match(sectionSource, /usePathname/, "template section page should detect whether it is running under production \\/training routes");
+  assert.match(sectionSource, /fetch\(`\/api\/training\/templates\/\$\{activeTemplate\.id\}\/sections\/\$\{activeSection\.id\}`/, "template section page should call the formal training template section API");
+  assert.match(sectionSource, /method:\s*"PATCH"/, "template section page should save through PATCH");
+  assert.match(sectionSource, /enabled:/, "template section page should send the enabled state through the HTTP request");
+  assert.match(sectionSource, /blocks:/, "template section page should send the editable scene blocks through the HTTP request");
+  assert.match(sectionSource, /pushToast/, "template section page should surface API success or failure through the shared feedback system");
+});
+
 test("training template form section rows are actually sortable", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const rowStart = pageSource.indexOf("function TemplateEditorSectionRow");
@@ -577,6 +640,21 @@ test("training template list follows the template-list surface with local delete
     "template list should wait for desktop workspace width before expanding to two columns",
   );
   assert.match(cssSource, /\.trainingTemplateListItem\b/, "template cards should use a dedicated list-item class");
+});
+
+test("training template list deletes through the formal HTTP API on production routes", () => {
+  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  assert.notEqual(templatesStart, -1);
+  assert.notEqual(formStart, -1);
+
+  const templatesSource = pageSource.slice(templatesStart, formStart);
+
+  assert.match(templatesSource, /usePathname/, "template list should detect whether it is running under production \\/training routes");
+  assert.match(templatesSource, /fetch\(`\/api\/training\/templates\/\$\{templateId\}`/, "template delete should call the formal training template API");
+  assert.match(templatesSource, /method:\s*"DELETE"/, "template delete should use DELETE");
+  assert.match(templatesSource, /Promise\.all/, "batch template delete should persist all selected templates before hiding them");
+  assert.match(templatesSource, /pushToast/, "template delete should surface API success or failure through the shared feedback system");
 });
 
 test("training template list exposes managed object controls and local ordering", () => {
@@ -650,8 +728,22 @@ test("training preset sort rules keep local order state and save a visible draft
   assert.match(panelSource, /SortableList/, "sort panels should use the shared sortable list wrapper");
   assert.match(panelSource, /useDemoSortable/, "sort rows should expose sortable handles");
   assert.match(panelSource, /onReorder/, "sort panels should receive a reorder callback");
-  assert.doesNotMatch(sortSource, /feedback="排序规则已保存"/, "save-all should not remain feedback-only");
-  assert.doesNotMatch(panelSource, /排序已保存/, "group save should not remain feedback-only");
+});
+
+test("training preset sort rules save through the formal HTTP API on production routes", () => {
+  const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
+  const templatesStart = pageSource.indexOf("function templateStatus");
+  assert.notEqual(sortStart, -1);
+  assert.notEqual(templatesStart, -1);
+
+  const sortSource = pageSource.slice(sortStart, templatesStart);
+
+  assert.match(sortSource, /usePathname/, "training preset sort rules should detect whether they are running under production \\/training routes");
+  assert.match(sortSource, /fetch\("\/api\/training\/presets\/sort-rules"/, "training preset sort rules should save through the formal HTTP API");
+  assert.match(sortSource, /method:\s*"POST"/, "training preset sort rules should POST the sort payload");
+  assert.match(sortSource, /categoryOrder:\s*orderedCategoryIds/, "training preset sort rules should submit the category order");
+  assert.match(sortSource, /presetOrder:\s*orderedPresetIds/, "training preset sort rules should submit the preset order");
+  assert.match(sortSource, /pushToast/, "training preset sort rules should surface API success or failure through the shared feedback system");
 });
 
 test("training preset sort mobile footer keeps save actions compact", () => {

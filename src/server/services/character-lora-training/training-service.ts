@@ -72,6 +72,14 @@ export async function enqueueCharacterLoraTrainingRun(datasetRevisionId: string,
   }
 
   const job = await getExistingJob(revision.jobId);
+  const activeRun = (await listTrainingRunsFromRepository(job.id)).find((run) => run.status === "queued" || run.status === "running");
+  if (activeRun) {
+    throw new CharacterLoraTrainingServiceError("Training project already has an active training run", 409, {
+      jobId: job.id,
+      trainingRunId: activeRun.id,
+      status: activeRun.status,
+    });
+  }
   if (!job.baseCheckpointPath) {
     throw new CharacterLoraTrainingServiceError("Training job is missing baseCheckpointPath", 409, {
       jobId: job.id,
@@ -987,4 +995,3 @@ function parseWithSchema<T>(schema: z.ZodType<T>, input: unknown) {
     })),
   });
 }
-

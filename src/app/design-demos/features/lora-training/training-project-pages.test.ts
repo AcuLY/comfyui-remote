@@ -111,7 +111,7 @@ test("training dataset revision detail does not replace invalid revision ids wit
 });
 
 test("training project query hints use Next search params instead of a manual location store", () => {
-  assert.match(pagesSource, /import \{ useSearchParams \} from "next\/navigation";/, "project pages should subscribe to Next-managed query changes");
+  assert.match(pagesSource, /import \{[^}]*useSearchParams[^}]*\} from "next\/navigation";/, "project pages should subscribe to Next-managed query changes");
   assert.match(pagesSource, /const searchParams = useSearchParams\(\)/, "project pages should read current query params through Next navigation state");
   assert.match(pagesSource, /searchParams\.toString\(\)/, "project pages should pass the live query string into hint parsers");
   assert.doesNotMatch(pagesSource, /useSyncExternalStore/, "project query hints should not depend on a manual window.location.search store");
@@ -177,6 +177,20 @@ test("training project overview archives and restores the project locally", () =
   assert.doesNotMatch(overviewSource, /归档项目需要确认/, "archive action should not stay as a confirmation-only placeholder");
 });
 
+test("training project overview archives and restores through the formal HTTP API on production routes", () => {
+  const overviewStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  assert.notEqual(overviewStart, -1);
+  assert.notEqual(profileStart, -1);
+
+  const overviewSource = pagesSource.slice(overviewStart, profileStart);
+
+  assert.match(overviewSource, /usePathname/, "project overview should detect whether it is running under production \\/training routes");
+  assert.match(overviewSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/\$\{currentArchived \? "restore" : "archive"\}`/, "project overview should call the formal archive or restore API");
+  assert.match(overviewSource, /method:\s*"POST"/, "project overview should archive and restore through POST");
+  assert.match(overviewSource, /pushToast/, "project overview should surface API success or failure through the shared feedback system");
+});
+
 test("training profile page renders reference image cards with kind, label, and note", () => {
   const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const sectionsStart = pagesSource.indexOf("function SectionCard");
@@ -210,6 +224,38 @@ test("training profile page uploads reference images into local front-end state"
   assert.doesNotMatch(profileSource, /后续接入文件选择和后端存储/, "reference upload should not expose backend wiring gaps in the UI");
 });
 
+test("training profile page uploads reference images through the formal HTTP API on production routes", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /usePathname/, "profile upload should detect whether it is running under production \\/training routes");
+  assert.match(profileSource, /useRef<HTMLInputElement \| null>/, "profile upload should keep a real file input ref for production uploads");
+  assert.match(profileSource, /new FormData\(\)/, "profile upload should use multipart form data");
+  assert.match(profileSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/character-images`/, "profile upload should call the formal training character image API");
+  assert.match(profileSource, /method:\s*"POST"/, "profile upload should send uploads through POST");
+  assert.match(profileSource, /formData\.append\("file", file\)/, "profile upload should append the selected file to form data");
+  assert.match(profileSource, /pushToast/, "profile upload should surface API success or failure through the shared feedback system");
+});
+
+test("training profile page adds reference images to the result pool through the formal HTTP API on production routes", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /fetch\(`\/api\/training\/character-images\/\$\{referenceId\}\/add-to-results`/, "profile reference cards should call the formal add-to-results API");
+  assert.match(profileSource, /method:\s*"POST"/, "profile add-to-results action should use POST");
+  assert.match(profileSource, /addedReferenceResultIds/, "profile page should keep a visible local state for references that were added to the result pool");
+  assert.match(profileSource, /已加入结果池/, "profile page should render a visible added-to-result-pool state");
+  assert.match(profileSource, /pushToast/, "profile add-to-results action should surface API success or failure through the shared feedback system");
+});
+
 test("training profile page saves a visible local profile draft instead of only showing feedback", () => {
   const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const sectionsStart = pagesSource.indexOf("function SectionCard");
@@ -226,6 +272,21 @@ test("training profile page saves a visible local profile draft instead of only 
   assert.match(profileSource, /localReferenceImages\.length/, "saved draft should include the current reference image count");
   assert.match(profileSource, /project\.usagePrompt/, "saved draft should preserve the current usage prompt");
   assert.doesNotMatch(profileSource, /feedback="角色资料已保存"/, "profile save should not remain a feedback-only placeholder");
+});
+
+test("training profile page saves through the formal HTTP API on production routes", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /usePathname/, "profile page should detect whether it is running under production /training routes");
+  assert.match(profileSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/profile`/, "production profile save should call the formal training profile API");
+  assert.match(profileSource, /method:\s*"PATCH"/, "production profile save should update profile data through PATCH");
+  assert.match(profileSource, /profileSummary:\s*profileForm\.profileSummary/, "production profile save should submit the edited profile summary");
+  assert.match(profileSource, /pushToast/, "production profile save should surface API success or failure through the shared feedback system");
 });
 
 test("training profile page saves editable profile fields into the local draft", () => {
@@ -299,6 +360,66 @@ test("training result review actions update local front-end review state", () =>
   assert.match(resultsPageSource, /onReviewStatusChange=\{handleReviewResult\}/, "project results grid should be wired to the review handler");
   assert.match(sectionDetailSource, /sectionResults/, "section detail results should render from local review state");
   assert.match(sectionDetailSource, /onReviewStatusChange=\{handleReviewSectionResult\}/, "section detail result grid should be wired to a review handler");
+});
+
+test("training result review posts through the formal HTTP API on production routes", () => {
+  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
+  const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
+  const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  assert.notEqual(sectionDetailStart, -1);
+  assert.notEqual(composeStart, -1);
+  assert.notEqual(resultsPageStart, -1);
+  assert.notEqual(datasetPageStart, -1);
+
+  const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
+  const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
+
+  assert.match(sectionDetailSource, /usePathname/, "section detail review should detect whether it is running under production \\/training routes");
+  assert.match(sectionDetailSource, /fetch\(`\/api\/training\/image-results\/\$\{resultId\}\/review`/, "section detail review should call the formal training image review API");
+  assert.match(sectionDetailSource, /method:\s*"POST"/, "section detail review should post review decisions");
+  assert.match(sectionDetailSource, /reviewStatus === "kept" \? "keep" : "reject"|toTrainingImageReviewApiStatus\(reviewStatus\)/, "section detail review should map UI review states to the HTTP contract");
+  assert.match(sectionDetailSource, /pushToast/, "section detail review should surface API success or failure through the shared feedback system");
+
+  assert.match(resultsPageSource, /usePathname/, "project result review should detect whether it is running under production \\/training routes");
+  assert.match(resultsPageSource, /fetch\(`\/api\/training\/image-results\/\$\{resultId\}\/review`/, "project result review should call the formal training image review API");
+  assert.match(resultsPageSource, /reviewStatus === "kept" \? "keep" : "reject"|toTrainingImageReviewApiStatus\(reviewStatus\)/, "project result review should map UI review states to the HTTP contract");
+  assert.match(resultsPageSource, /handleBatchReviewResults/, "project result review should keep the shared batch review entrypoint");
+  assert.match(resultsPageSource, /pushToast/, "project result review should surface API success or failure through the shared feedback system");
+});
+
+test("training section detail saves through the formal HTTP API on production routes", () => {
+  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
+  const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
+  assert.notEqual(sectionDetailStart, -1);
+  assert.notEqual(composeStart, -1);
+
+  const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
+
+  assert.match(sectionDetailSource, /usePathname/, "section detail save should detect whether it is running under production \\/training routes");
+  assert.match(sectionDetailSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/sections\/\$\{activeSection\.id\}`/, "section detail save should call the formal section save API");
+  assert.match(sectionDetailSource, /method:\s*"PATCH"/, "section detail save should PATCH the current training section");
+  assert.match(sectionDetailSource, /blocks:\s*sceneBlocks/, "section detail save should submit the edited scene blocks");
+  assert.match(sectionDetailSource, /resolvedScene:\s*scenePreview \|\| activeSection\.resolvedScene/, "section detail save should submit the resolved scene preview");
+  assert.match(sectionDetailSource, /pushToast/, "section detail save should surface API success or failure through the shared feedback system");
+});
+
+test("training section list mutations use the formal HTTP APIs on production routes", () => {
+  const sectionsPageStart = pagesSource.indexOf("export function LoraTrainingProjectSectionsPage");
+  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
+  assert.notEqual(sectionsPageStart, -1);
+  assert.notEqual(sectionDetailStart, -1);
+
+  const sectionsPageSource = pagesSource.slice(sectionsPageStart, sectionDetailStart);
+
+  assert.match(sectionsPageSource, /usePathname/, "section list should detect whether it is running under production \\/training routes");
+  assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/sections`/, "section add and copy should call the formal project sections API");
+  assert.match(sectionsPageSource, /sourceSectionId:\s*section\.id/, "section copy should pass the copied source section id");
+  assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/sections\/\$\{sectionId\}`/, "section delete should call the formal section delete API");
+  assert.match(sectionsPageSource, /method:\s*"DELETE"/, "section delete should use DELETE");
+  assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/sections\/reorder`/, "section reorder should call the formal section reorder API");
+  assert.match(sectionsPageSource, /orderedSectionIds:\s*nextSectionIds/, "section reorder should submit the visible section order");
+  assert.match(sectionsPageSource, /pushToast/, "section list mutation requests should surface API success or failure through the shared feedback system");
 });
 
 test("training project repeated object actions include the acted-on object name", () => {
@@ -421,6 +542,76 @@ test("training dataset page opens a local training draft instead of only preview
   assert.doesNotMatch(datasetPageSource, /启动训练配置已打开/, "start training should not remain a toast-only placeholder");
 });
 
+test("training dataset page starts training through the formal HTTP API on production routes", () => {
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(revisionPageStart, -1);
+
+  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+
+  assert.match(datasetPageSource, /usePathname/, "dataset page should detect whether it is running under production \\/training routes");
+  assert.match(datasetPageSource, /useRouter/, "dataset page should be able to navigate to the queued training run on production routes");
+  assert.match(datasetPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/training-runs`/, "dataset page should call the formal project training run API");
+  assert.match(datasetPageSource, /method:\s*"POST"/, "dataset page should enqueue training runs through POST");
+  assert.match(datasetPageSource, /revisionId:/, "dataset page should pass the selected dataset revision when available");
+  assert.match(datasetPageSource, /targetSteps:/, "dataset page should map the draft training step count into the HTTP request config");
+  assert.match(datasetPageSource, /router\.push\(`/, "dataset page should navigate to the queued training run after a successful API response");
+  assert.match(datasetPageSource, /pushToast/, "dataset page should surface API success or failure through the shared feedback system");
+});
+
+test("training dataset page gates start-training behind readiness and active-run checks", () => {
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(revisionPageStart, -1);
+
+  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+
+  assert.match(datasetPageSource, /const training = useTraining\(data\)/, "dataset page should inspect the full training run list for gating");
+  assert.match(datasetPageSource, /run\.kind === "training"/, "dataset gating should only consider training runs");
+  assert.match(datasetPageSource, /run\.projectId === project\.id/, "dataset gating should stay scoped to the active project");
+  assert.match(datasetPageSource, /run\.status === "queued" \|\| run\.status === "running"/, "dataset gating should block when a training run is queued or running");
+  assert.match(datasetPageSource, /const startTrainingBlockedReason =/, "dataset page should define a shared blocked-start reason");
+  assert.match(datasetPageSource, /同一训练项目不能同时存在多个进行中训练任务/, "dataset page should explain why concurrent training is blocked");
+  assert.match(datasetPageSource, /至少保留 1 张训练图片后才能启动训练/, "dataset page should explain the missing-kept-results gate");
+  assert.match(datasetPageSource, /请先补齐/, "dataset page should explain the missing-caption gate");
+  assert.match(datasetPageSource, /disabled=\{Boolean\(startTrainingBlockedReason\) \|\| isStartingTraining\}/, "start training button should disable when readiness gating blocks it");
+});
+
+test("training dataset page freezes the current dataset version through the formal HTTP API on production routes", () => {
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(revisionPageStart, -1);
+
+  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+
+  assert.match(datasetPageSource, /datasetRevisionState/, "dataset page should keep revision state scoped to the active project");
+  assert.match(datasetPageSource, /setDatasetRevisionState/, "freeze actions should update project-scoped dataset revision state");
+  assert.match(datasetPageSource, /handleFreezeDatasetRevision/, "dataset page should define an explicit freeze-version handler");
+  assert.match(datasetPageSource, /冻结当前版本/, "dataset page should expose a visible freeze-current-version action");
+  assert.match(datasetPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/dataset-revisions`/, "dataset page should call the formal dataset revision API");
+  assert.match(datasetPageSource, /router\.refresh\(\)/, "dataset freeze should refresh project data after a successful API response");
+  assert.match(datasetPageSource, /pushToast/, "dataset freeze should surface API success or failure through the shared feedback system");
+});
+
+test("training dataset page bulk-generates captions through the formal HTTP API on production routes", () => {
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(revisionPageStart, -1);
+
+  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+
+  assert.match(datasetPageSource, /handleGenerateDatasetCaptions/, "dataset page should define an explicit bulk caption-generation handler");
+  assert.match(datasetPageSource, /批量生成说明文本/, "dataset page should expose a visible bulk caption-generation action");
+  assert.match(datasetPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/captions\/generate`/, "dataset page should call the formal bulk caption-generation API");
+  assert.match(datasetPageSource, /mode:\s*"kept_without_captions"/, "dataset page should request caption generation for kept images missing captions");
+  assert.match(datasetPageSource, /router\.refresh\(\)/, "dataset caption generation should refresh project data after a successful API response");
+  assert.match(datasetPageSource, /pushToast/, "dataset caption generation should surface API success or failure through the shared feedback system");
+});
+
 test("training dataset draft stays scoped to the active project", () => {
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
   const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
@@ -531,7 +722,7 @@ test("project-scoped run rows use task cards with recent output thumbnails", () 
   assert.match(cssSource, /\.projectRunThumbs\b/, "project run rows should style thumbnail strips separately");
 });
 
-test("project-scoped run rows manage local delete and failed retry state", () => {
+test("project-scoped run rows manage local visibility and failed retry state", () => {
   const runRowsStart = pagesSource.indexOf("function RunRows");
   const referenceSourceStart = pagesSource.indexOf("type ReferenceCandidate");
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
@@ -544,16 +735,42 @@ test("project-scoped run rows manage local delete and failed retry state", () =>
 
   assert.match(scopedPageSource, /hiddenProjectRunIds/, "project task page should track locally removed run ids");
   assert.match(scopedPageSource, /retriedProjectRunIds/, "project task page should track locally retried failed run ids");
-  assert.match(scopedPageSource, /handleHideProjectRun/, "project task page should define a local delete handler");
+  assert.match(scopedPageSource, /handleDeleteProjectRun/, "project task page should define a delete handler");
   assert.match(scopedPageSource, /handleRetryProjectRun/, "project task page should define a local retry handler");
   assert.match(scopedPageSource, /!hiddenProjectRunIds\.has\(run\.id\)/, "visible project runs should exclude locally removed runs");
-  assert.match(scopedPageSource, /onHideRun=\{handleHideProjectRun\}/, "project task rows should receive the delete handler");
+  assert.match(scopedPageSource, /onDeleteRun=\{handleDeleteProjectRun\}/, "project task rows should receive the delete handler");
   assert.match(scopedPageSource, /onRetryRun=\{handleRetryProjectRun\}/, "failed project task rows should receive the retry handler");
   assert.match(scopedPageSource, /retriedRunIds=\{retriedProjectRunIds\}/, "project task rows should receive retry state");
-  assert.match(runRowsSource, /onHideRun\?\.\(run\.id\)/, "row delete button should remove the run locally");
+  assert.match(runRowsSource, /onDeleteRun\?\.\(run\.id\)/, "row delete button should remove the run locally");
   assert.match(runRowsSource, /onRetryRun\?\.\(run\.id\)/, "row retry button should queue a failed run locally");
   assert.match(runRowsSource, /retriedRunIds\.has\(run\.id\)/, "rows should derive retry state per run");
   assert.match(runRowsSource, /已排队重试/, "retried failed rows should show queued retry state");
+});
+
+test("project-scoped run rows delete through the formal HTTP API on production routes", () => {
+  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
+  assert.notEqual(scopedPageStart, -1);
+
+  const scopedPageSource = pagesSource.slice(scopedPageStart);
+
+  assert.match(scopedPageSource, /usePathname/, "project-scoped delete should detect whether it is running under production \\/training routes");
+  assert.match(scopedPageSource, /fetch\(\s*run\.kind === "generation"\s*\?\s*`\/api\/training\/generation-tasks\/\$\{run\.id\}`\s*:\s*`\/api\/training\/training-runs\/\$\{run\.id\}`/, "project-scoped delete should call the formal task detail routes");
+  assert.match(scopedPageSource, /method:\s*"DELETE"/, "project-scoped delete should use DELETE requests");
+  assert.match(scopedPageSource, /pushToast/, "project-scoped delete should surface API success or failure through the shared feedback system");
+});
+
+test("project-scoped run rows retry through the formal HTTP API on production routes", () => {
+  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
+  assert.notEqual(scopedPageStart, -1);
+
+  const scopedPageSource = pagesSource.slice(scopedPageStart);
+
+  assert.match(scopedPageSource, /usePathname/, "project-scoped retry should detect whether it is running under production \\/training routes");
+  assert.match(scopedPageSource, /fetch\(`\/api\/training\/sections\/\$\{run\.sectionId\}\/runs`/, "project-scoped generation retry should call the formal section run API");
+  assert.match(scopedPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/training-runs`/, "project-scoped training retry should call the formal project training run API");
+  assert.match(scopedPageSource, /parentRunId:\s*run\.id/, "project-scoped generation retry should pass the failed run id as the parent run");
+  assert.match(scopedPageSource, /revisionId:\s*run\.datasetRevisionId/, "project-scoped training retry should pass the original dataset revision id");
+  assert.match(scopedPageSource, /pushToast/, "project-scoped retry should surface API success or failure through the shared feedback system");
 });
 
 test("project-scoped run page interactions stay scoped to project and task kind", () => {
@@ -791,6 +1008,29 @@ test("training project create page creates a local front-end draft instead of pr
   assert.match(formSource, /创建结果/, "project creation should render a visible created-draft result panel");
   assert.match(formSource, /sectionSeeds\.length/, "created draft should reflect the current local seed section count");
   assert.doesNotMatch(formSource, /POST \/api\/training\/projects/, "project creation should not advertise missing backend wiring in the UI");
+});
+
+test("training project create page posts through the formal HTTP API on production routes", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /useRouter/, "project creation should be able to navigate to the created training project on production routes");
+  assert.match(formSource, /usePathname/, "project creation should detect whether it is running under production \\/training routes");
+  assert.match(formSource, /fetch\("\/api\/training\/projects"/, "production project creation should call the formal training projects API");
+  assert.match(formSource, /method:\s*"POST"/, "production project creation should create projects through POST");
+  assert.match(formSource, /title:\s*projectForm\.title\.trim\(\)/, "production project creation should submit the product title");
+  assert.match(formSource, /templateId:\s*sourceTemplate\.id/, "production project creation should submit the selected template id in product payload");
+  assert.match(formSource, /trainingTemplateId:\s*sourceTemplate\.id/, "production project creation should pass the selected training template id");
+  assert.match(formSource, /checkpointRelativePath/, "production project creation should send a checkpoint path instead of a demo-only model label");
+  assert.match(formSource, /selectedReferenceIds:\s*\[\.\.\.selectedReferenceIds\]/, "production project creation should submit explicitly selected reference ids");
+  assert.match(formSource, /sections:\s*sectionSeeds/, "production project creation should submit the current seed sections");
+  assert.match(formSource, /trainingDefaults:\s*\{/, "production project creation should submit dataset and sample defaults");
+  assert.match(formSource, /router\.push\(`/, "production project creation should navigate to the created training project");
+  assert.match(formSource, /pushToast/, "production project creation should surface API success or failure through the shared feedback system");
 });
 
 test("training project create page carries selected references into the local draft", () => {

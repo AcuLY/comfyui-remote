@@ -3,38 +3,147 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>设置 - 工作模式原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <meta name="theme-color" content="#09090b" />
+    <title>设置 - 工作模式</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
+    <style>
+      .settings-link-list {
+        display: grid;
+        gap: 0;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        backdrop-filter: var(--blur);
+        box-shadow: var(--shadow);
+      }
+
+      .settings-link-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 30px;
+        gap: 12px;
+        align-items: center;
+        min-height: 56px;
+        border-bottom: 1px solid var(--line-soft);
+        padding: 10px 12px;
+      }
+
+      .settings-link-row:last-child {
+        border-bottom: 0;
+      }
+
+      .settings-link-main {
+        display: flex;
+        min-width: 0;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .settings-link-text {
+        display: grid;
+        min-width: 0;
+        gap: 3px;
+      }
+
+      .settings-link-text strong {
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 560;
+      }
+
+      .settings-link-text span {
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.4;
+      }
+
+      .settings-link-arrow {
+        display: grid;
+        width: 28px;
+        height: 28px;
+        place-items: center;
+        border: 1px solid var(--line-soft);
+        border-radius: 8px;
+        background: var(--field-bg);
+        color: var(--muted);
+      }
+    </style>
   </head>
   <body>
-    <main class="app-shell">
+    <a class="skip-link" href="#prototype-main">跳到主要内容</a>
+    <main class="app-shell" id="prototype-main">
       <div class="page">
         <header class="topbar">
-          <div class="title-row"><h1>设置</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i> LoRA 训练</span></div>
+          <div class="title-stack">
+            <div class="title-row"><h1>设置</h1><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i> LoRA 训练</span></div>
+            <p class="small muted">共享系统入口；工作模式只在这里切换，不和底部导航混在一起。</p>
+          </div>
         </header>
-        <section class="layout">
+        <section class="stack">
+          <section class="settings-link-list" aria-label="共享设置入口">
+            <a class="settings-link-row" href="./manager-lora-training-models-prototype.html">
+              <div class="settings-link-main">
+                <i data-lucide="box" aria-hidden="true"></i>
+                <div class="settings-link-text">
+                  <strong>共享模型</strong>
+                  <span>浏览 LoRA 与 checkpoint，共享给生图与训练两个工作模式。</span>
+                </div>
+              </div>
+              <span class="settings-link-arrow"><i data-lucide="arrow-right" aria-hidden="true"></i></span>
+            </a>
+            <div class="settings-link-row">
+              <div class="settings-link-main">
+                <i data-lucide="activity" aria-hidden="true"></i>
+                <div class="settings-link-text">
+                  <strong>ComfyUI 监控</strong>
+                  <span>进程状态、健康检查、启停控制。</span>
+                </div>
+              </div>
+              <span class="settings-link-arrow"><i data-lucide="arrow-right" aria-hidden="true"></i></span>
+            </div>
+            <div class="settings-link-row">
+              <div class="settings-link-main">
+                <i data-lucide="history" aria-hidden="true"></i>
+                <div class="settings-link-text">
+                  <strong>后端日志</strong>
+                  <span>查看项目执行、训练错误和队列状态日志。</span>
+                </div>
+              </div>
+              <span class="settings-link-arrow"><i data-lucide="arrow-right" aria-hidden="true"></i></span>
+            </div>
+          </section>
+
+          <section class="layout">
           <section class="panel">
             <div class="panel-header"><h2>工作模式</h2></div>
             <div class="panel-body stack">
               <div class="status-tabs" role="tablist" aria-label="工作模式">
-                <button type="button" role="tab" aria-selected="false" data-mode-option="generation"><i data-lucide="image" aria-hidden="true"></i> 生图</button>
+                <button type="button" role="tab" aria-selected="false" data-mode-option="generation"><i data-lucide="image" aria-hidden="true"></i> 生图模式</button>
                 <button type="button" role="tab" aria-selected="true" data-mode-option="training"><i data-lucide="flask-conical" aria-hidden="true"></i> LoRA 训练</button>
               </div>
-              <div class="kv"><div>storage key</div><div>comfyui-manager:work-mode</div><div>current</div><div data-mode-current>lora_training</div><div>navigation</div><div>不跳转，仅切换资源路由解析</div></div>
+              <div class="kv"><div>当前模式</div><div data-mode-current aria-live="polite">LoRA 训练</div><div>切换位置</div><div>仅在设置页切换</div><div>切换效果</div><div>不跳转，只切换资源入口解析</div></div>
             </div>
           </section>
-          <aside class="panel"><div class="panel-header"><h2>当前状态图标</h2></div><div class="panel-body"><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i> LoRA 训练</span></div></aside>
+          <aside class="panel">
+            <div class="panel-header"><h2>影响的资源入口</h2></div>
+            <div class="panel-body entity-list">
+              <div class="entity-row"><div class="row-title"><strong>运行</strong><span>切到训练任务与生成任务列表</span></div><span class="status-note blue">跟随模式</span></div>
+              <div class="entity-row"><div class="row-title"><strong>项目 / 预制 / 模板</strong><span>进入 LoRA 训练对应资源空间</span></div><span class="status-note blue">跟随模式</span></div>
+              <div class="entity-row"><div class="row-title"><strong>模型 / 设置</strong><span>保持共享入口，不随模式变化</span></div><span class="status-note">共享</span></div>
+            </div>
+          </aside>
+        </section>
         </section>
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
     <script>
       initLoraPrototype("settings");
       document.querySelectorAll("[data-mode-option]").forEach((button) => {
         button.addEventListener("click", () => {
           document.querySelectorAll("[data-mode-option]").forEach((item) => item.setAttribute("aria-selected", String(item === button)));
-          document.querySelector("[data-mode-current]").textContent = button.dataset.modeOption === "training" ? "lora_training" : "generation";
+          document.querySelector("[data-mode-current]").textContent = button.dataset.modeOption === "training" ? "LoRA 训练" : "生图模式";
         });
       });
     </script>

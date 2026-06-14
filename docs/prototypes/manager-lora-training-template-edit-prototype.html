@@ -4,41 +4,67 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
-    <title>LoRA 训练模式 - 模板编辑原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-rewrite-2" />
+    <title>LoRA 训练模式 - 模板编辑</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
   </head>
   <body>
-    <main class="app-shell">
+    <a class="skip-link" href="#prototype-main">跳到主要内容</a>
+    <main class="app-shell" id="prototype-main">
       <div class="page">
         <header class="topbar">
           <div class="title-stack">
             <a class="back-link" href="./manager-lora-training-templates-prototype.html"><i data-lucide="arrow-left" aria-hidden="true"></i>返回模板</a>
             <div class="title-row"><h1>角色 LoRA 基础模板</h1><span class="status-note green">启用</span><span class="mode-pill"><i data-lucide="flask-conical" aria-hidden="true"></i>LoRA 训练</span></div>
           </div>
-          <div class="topbar-actions"><button class="button" type="button"><i data-lucide="copy-plus" aria-hidden="true"></i>创建项目</button><button class="button primary" type="button">保存</button></div>
+          <div class="topbar-actions"><a class="button" href="./manager-lora-training-project-new-prototype.html?template=character-lora-base"><i data-lucide="copy-plus" aria-hidden="true"></i>从此模板创建项目</a><button class="button primary" type="button">保存模板</button></div>
         </header>
         <section class="layout wide-left">
           <div class="stack">
-            <section class="panel"><div class="panel-header"><h2>基础</h2></div><div class="panel-body form-grid"><div class="field"><label>name</label><input class="input" value="角色 LoRA 基础模板" /></div><div class="field"><label>slug</label><input class="input" value="character-lora-base" /></div><div class="field full"><label>description</label><textarea class="textarea">Default project seed for character LoRA training.</textarea></div></div></section>
-            <section class="panel"><div class="panel-header"><h2>Guidance</h2></div><div class="panel-body form-grid"><div class="field full"><label>imagePromptFormat</label><textarea class="textarea">Character: {{characterDetailPrompt}}
-Scene: {{sceneDescriptionText}}
-Output: single character, full clean portrait, opaque background.</textarea></div><div class="field full"><label>trainingCaptionFormat</label><textarea class="textarea">{{loraUsagePrompt}}, {{visualIdentity}}, {{scene}}, {{camera}}, {{lighting}}</textarea></div></div></section>
+            <section class="panel"><div class="panel-header"><h2>模板信息</h2></div><div class="panel-body form-grid"><div class="field full"><label>模板名称</label><input class="input" name="template_name" aria-label="模板名称" autocomplete="off" value="角色 LoRA 基础模板" /></div><div class="field full"><label>描述</label><textarea class="textarea" name="template_description" aria-label="模板描述" autocomplete="off">用于角色 LoRA 训练的默认项目模板，包含常用小节、提示词规则与训练默认值。</textarea></div><div class="field full"><div class="list-row subtle"><div class="row-title"><strong>模板行为</strong><span>从模板创建项目时，会把当前规则和小节配置镜像复制到项目；后续项目内编辑不会回写模板。</span></div></div></div></div></section>
+            <section class="panel"><div class="panel-header"><h2>生成规则</h2></div><div class="panel-body form-grid"><div class="field full"><label>图片提示词模板</label><textarea class="textarea" name="image_prompt_format" aria-label="图片提示词模板" autocomplete="off" spellcheck="false">生成一张可直接进入角色 LoRA 训练的数据集图片。
+
+角色信息：
+{characterDetailPrompt}
+
+场景描述：
+{sceneDescription}
+
+补充提示：
+{supplementalPrompt}
+
+生成要求：
+{imagePromptGuidance}</textarea></div><div class="field full"><div class="plain-meta"><span>自动注入字段</span><span>{characterDetailPrompt}</span><span>{sceneDescription}</span><span>{supplementalPrompt}</span><span>{imagePromptGuidance}</span></div></div><div class="field full"><label>训练 caption 模板</label><textarea class="textarea" name="training_caption_format" aria-label="训练 caption 模板" autocomplete="off" spellcheck="false">为这张角色 LoRA 数据集图片生成 1 条训练 caption。
+
+必须以前缀开头：
+{loraUsagePrompt}
+
+场景上下文：
+{sceneDescription}
+
+图片补充提示：
+{imageSupplementalPrompt}
+
+任务补充提示：
+{supplementalPrompt}
+
+生成要求：
+{captioningGuidance}</textarea></div><div class="field full"><div class="plain-meta"><span>自动注入字段</span><span>{loraUsagePrompt}</span><span>{sceneDescription}</span><span>{imageSupplementalPrompt}</span><span>{supplementalPrompt}</span><span>{captioningGuidance}</span></div></div></div></section>
           </div>
           <aside class="stack">
             <section class="panel">
-              <div class="panel-header"><h2>小节</h2><button class="button" type="button"><i data-lucide="plus" aria-hidden="true"></i>添加</button></div>
+              <div class="panel-header"><h2>小节</h2><button class="button" type="button"><i data-lucide="plus" aria-hidden="true"></i>添加小节</button></div>
               <div class="panel-body entity-list">
-                <a class="entity-row" href="./manager-lora-training-template-section-prototype.html"><div class="row-title"><strong>stage portrait</strong><span>启用 · 2 blocks</span></div><span class="status-note green">启用</span></a>
-                <a class="entity-row" href="./manager-lora-training-template-section-prototype.html?section=street"><div class="row-title"><strong>night street</strong><span>启用 · 3 blocks</span></div><span class="status-note green">启用</span></a>
+                <a class="entity-row" href="./manager-lora-training-template-section-prototype.html"><div class="row-title"><strong>舞台肖像</strong><span>启用 · 2 个场景块</span></div><span class="status-note green">启用</span></a>
+                <a class="entity-row" href="./manager-lora-training-template-section-prototype.html?section=street"><div class="row-title"><strong>街角夜景</strong><span>启用 · 3 个场景块</span></div><span class="status-note green">启用</span></a>
               </div>
             </section>
-            <section class="panel"><div class="panel-header"><h2>默认训练参数</h2></div><div class="panel-body compact-kv"><div><span>networkDim</span><span>16</span></div><div><span>alpha</span><span>8</span></div><div><span>steps</span><span>2400</span></div><div><span>resolution</span><span>1024</span></div></div></section>
+            <section class="panel"><div class="panel-header"><h2>默认训练参数</h2></div><div class="panel-body compact-kv"><div><span>网络维度</span><span>16</span></div><div><span>alpha</span><span>8</span></div><div><span>训练步数</span><span>2400</span></div><div><span>训练分辨率</span><span>1024</span></div></div></section>
           </aside>
         </section>
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
     <script>initLoraPrototype("templates");</script>
   </body>
 </html>

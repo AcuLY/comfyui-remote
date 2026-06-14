@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, CheckSquare, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle, Trash2 } from "lucide-react";
 
 import type { DemoData } from "../../data";
-import { cx, demoHref } from "../../routing";
+import { cx, useRouteHref } from "../../routing";
+import { useDemoFeedback } from "../../shared/feedback/context";
 import { OperationStateStrip } from "../../shared/feedback/operation-state-strip";
 import { Button, ButtonLink } from "../../shared/primitives/button";
 import { Checkbox } from "../../shared/primitives/checkbox";
@@ -139,6 +140,10 @@ function presetUsageLabel(preset: LoraTrainingPreset) {
 function useUrlSearch() {
   const searchParams = useSearchParams();
   return searchParams.toString();
+}
+
+function isProductionTrainingPath(pathname: string | null | undefined) {
+  return pathname === "/training" || pathname?.startsWith("/training/") === true;
 }
 
 type NewPresetHints = {
@@ -337,6 +342,7 @@ function TrainingPresetLibraryItemRow({
   preset: LoraTrainingPreset;
   selected: boolean;
 }) {
+  const hrefForRoute = useRouteHref();
   const { ref, style, handleProps } = useDemoSortable(preset.id);
 
   return (
@@ -354,8 +360,8 @@ function TrainingPresetLibraryItemRow({
             variant="compact"
           />
         )}
-        title={<Link className={s.trainingPresetTitleLink} href={demoHref(`/training/presets/${preset.id}`)}>{preset.title}</Link>}
-        description={<Link className={s.trainingPresetDescriptionLink} href={demoHref(`/training/presets/${preset.id}`)}>{preset.sceneDescriptionText}</Link>}
+        title={<Link className={s.trainingPresetTitleLink} href={hrefForRoute(`/training/presets/${preset.id}`)}>{preset.title}</Link>}
+        description={<Link className={s.trainingPresetDescriptionLink} href={hrefForRoute(`/training/presets/${preset.id}`)}>{preset.sceneDescriptionText}</Link>}
         body={(
           <div className={s.trainingPresetUsageChips}>
             <span>{String(index + 1).padStart(2, "0")}</span>
@@ -574,6 +580,9 @@ function LoraTrainingPresetDetailContent({
   newPresetHints: NewPresetHints;
   preset: LoraTrainingPreset;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { pushToast } = useDemoFeedback();
   const usages = [...preset.projectUsage, ...preset.templateUsage];
   const presetFormContextId = [
     isNew ? "new" : preset.id,
@@ -599,8 +608,10 @@ function LoraTrainingPresetDetailContent({
     contextId: presetFormContextId,
     draft: null,
   }));
+  const [isSavingPreset, setIsSavingPreset] = useState(false);
   const presetForm = presetFormState.contextId === presetFormContextId ? presetFormState.form : initialPresetForm;
   const presetDraft = presetDraftState.contextId === presetFormContextId ? presetDraftState.draft : null;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   function setPresetForm(updater: (current: typeof initialPresetForm) => typeof initialPresetForm) {
     setPresetFormState((current) => ({
@@ -620,11 +631,63 @@ function LoraTrainingPresetDetailContent({
     setPresetForm((current) => ({ ...current, [field]: value }));
   }
 
-  function handleSavePreset() {
-    setPresetDraft({
+  async function handleSavePreset() {
+    const nextDraft = {
       ...presetForm,
       usageCount: usages.length,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setPresetDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: presetDraft ? "预制保存草稿已更新" : "预制保存草稿已记录",
+        detail: presetForm.title,
+      });
+      return;
+    }
+
+    if (isSavingPreset) return;
+
+    setIsSavingPreset(true);
+    try {
+      const response = await fetch(isNew ? "/api/training/presets" : `/api/training/presets/${preset.id}`, {
+        method: isNew ? "POST" : "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: presetForm.title,
+          category: presetForm.category,
+          folder: presetForm.folder,
+          sceneDescriptionText: presetForm.sceneDescriptionText,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: isNew ? "训练预制创建失败" : "训练预制保存失败",
+          detail: payload?.error?.message ?? "训练预制保存请求失败",
+        });
+        return;
+      }
+
+      setPresetDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: isNew ? "训练预制已创建" : "训练预制已保存",
+        detail: presetForm.title,
+      });
+      router.push(`/training/presets/${payload.data.id}`);
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: isNew ? "训练预制创建失败" : "训练预制保存失败",
+        detail: error instanceof Error ? error.message : "训练预制保存请求失败",
+      });
+    } finally {
+      setIsSavingPreset(false);
+    }
   }
 
   return (
@@ -638,8 +701,8 @@ function LoraTrainingPresetDetailContent({
           <Button
             tone="primary"
             icon={Save}
+            pending={isSavingPreset}
             onClick={handleSavePreset}
-            feedback={{ title: presetDraft ? "预制保存草稿已更新" : "预制保存草稿已记录", detail: presetForm.title }}
           >
             {presetDraft ? "更新草稿" : isNew ? "创建预制" : "保存"}
           </Button>
@@ -711,6 +774,8 @@ function LoraTrainingPresetDetailContent({
 }
 
 export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
   const categories = [...new Set(training.presets.map((preset) => preset.category))];
   const categoryItems = categories.map((category) => ({
@@ -732,28 +797,99 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
     presetCount: number;
     scope: string;
   } | null>(null);
+  const [isSavingSortRules, setIsSavingSortRules] = useState(false);
   const orderedCategoryItems = orderTrainingPresetSortItems(categoryItems, orderedCategoryIds);
   const orderedPresetItems = orderTrainingPresetSortItems(presetItems, orderedPresetIds);
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
-  function handleSaveSortRules() {
-    setSortRulesDraft({
+  function buildSortRulesDraft(scope: string) {
+    return {
       categoryCount: orderedCategoryIds.length,
       firstCategory: orderedCategoryItems[0]?.title ?? "无",
       firstPreset: orderedPresetItems[0]?.title ?? "无",
       presetCount: orderedPresetIds.length,
-      scope: "全部排序",
-    });
+      scope,
+    };
   }
 
-  function handleSaveSortGroup(scope: string, ids: string[], items: TrainingPresetSortItem[]) {
+  async function persistTrainingPresetSortRules(scope: string) {
+    const nextDraft = buildSortRulesDraft(scope);
+
+    if (!isProductionTrainingRoute) {
+      setSortRulesDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: sortRulesDraft ? "排序保存草稿已更新" : "排序保存草稿已记录",
+        detail: scope,
+      });
+      return;
+    }
+
+    if (isSavingSortRules) return;
+
+    setIsSavingSortRules(true);
+    try {
+      const response = await fetch("/api/training/presets/sort-rules", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          categoryOrder: orderedCategoryIds,
+          presetOrder: orderedPresetIds,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "排序保存失败",
+          detail: payload?.error?.message ?? "训练预制排序保存请求失败",
+        });
+        return;
+      }
+
+      setSortRulesDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: "训练预制排序已保存",
+        detail: scope,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "排序保存失败",
+        detail: error instanceof Error ? error.message : "训练预制排序保存请求失败",
+      });
+    } finally {
+      setIsSavingSortRules(false);
+    }
+  }
+
+  async function handleSaveSortRules() {
+    await persistTrainingPresetSortRules("全部排序");
+  }
+
+  async function handleSaveSortGroup(scope: string, ids: string[], items: TrainingPresetSortItem[]) {
     const orderedItems = orderTrainingPresetSortItems(items, ids);
-    setSortRulesDraft({
+    const nextDraft = {
       categoryCount: scope === "合成顺序" ? ids.length : orderedCategoryIds.length,
       firstCategory: scope === "合成顺序" ? orderedItems[0]?.title ?? "无" : orderedCategoryItems[0]?.title ?? "无",
       firstPreset: scope === "分类内顺序" ? orderedItems[0]?.title ?? "无" : orderedPresetItems[0]?.title ?? "无",
       presetCount: scope === "分类内顺序" ? ids.length : orderedPresetIds.length,
       scope,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setSortRulesDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: sortRulesDraft ? "排序保存草稿已更新" : "排序保存草稿已记录",
+        detail: scope,
+      });
+      return;
+    }
+
+    await persistTrainingPresetSortRules(scope);
   }
 
   return (
@@ -767,8 +903,8 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: DemoData }) {
           <Button
             tone="primary"
             icon={Save}
+            pending={isSavingSortRules}
             onClick={handleSaveSortRules}
-            feedback={{ title: sortRulesDraft ? "排序保存草稿已更新" : "排序保存草稿已记录", detail: sortRulesDraft?.scope ?? "全部排序" }}
           >
             {sortRulesDraft ? "更新排序草稿" : "保存全部"}
           </Button>
@@ -851,6 +987,7 @@ function TrainingTemplateListItem({
   selected: boolean;
   template: LoraTrainingTemplate;
 }) {
+  const hrefForRoute = useRouteHref();
   const { ref, style, handleProps } = useDemoSortable(template.id);
 
   return (
@@ -875,7 +1012,7 @@ function TrainingTemplateListItem({
         </div>
         <div className={s.trainingTemplateListMain}>
           <div className={s.trainingTemplateListTitle}>
-            <Link href={demoHref(`/training/templates/${template.id}/edit`)} onClick={() => rememberTrainingTemplateListAnchor(template.id)}>
+            <Link href={hrefForRoute(`/training/templates/${template.id}/edit`)} onClick={() => rememberTrainingTemplateListAnchor(template.id)}>
               <strong>{template.title}</strong>
             </Link>
             <span>{template.description}</span>
@@ -883,7 +1020,7 @@ function TrainingTemplateListItem({
           <div className={s.trainingTemplateSectionSummary}>
             {template.sections.slice(0, 5).map((section, index) => (
               <Link
-                href={demoHref(`/training/templates/${template.id}/sections/${index}`)}
+                href={hrefForRoute(`/training/templates/${template.id}/sections/${index}`)}
                 key={section.id}
                 onClick={() => rememberTrainingTemplateListAnchor(template.id)}
               >
@@ -921,6 +1058,7 @@ function TemplateEditorSectionRow({
   section: LoraTrainingTemplateSection;
   templateId?: string;
 }) {
+  const hrefForRoute = useRouteHref();
   const href = templateId ? `/training/templates/${templateId}/sections/${index}` : "/training/templates/new";
   const { ref, style, handleProps } = useDemoSortable(section.id);
 
@@ -935,7 +1073,7 @@ function TemplateEditorSectionRow({
         >
           <GripVertical aria-hidden="true" />
         </button>
-        <Link className={s.trainingTemplateSectionMain} href={demoHref(href)}>
+        <Link className={s.trainingTemplateSectionMain} href={hrefForRoute(href)}>
           <span className={s.trainingTemplateSectionTitleLine}>
             <span>{String(index + 1).padStart(2, "0")}</span>
             <strong>{section.title}</strong>
@@ -958,12 +1096,15 @@ function TemplateEditorSectionRow({
 }
 
 export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
   const listRef = useRef<HTMLDivElement>(null);
   const [fromTemplateId] = useState(readAndClearTrainingTemplateListAnchor);
   const [orderedTemplateIds, setOrderedTemplateIds] = useState(() => training.templates.reduce<string[]>((ids, template) => [...ids, template.id], []));
   const [selectedTemplateIds, setSelectedTemplateIds] = useState<Set<string>>(() => new Set());
   const [hiddenTemplateIds, setHiddenTemplateIds] = useState<Set<string>>(() => new Set());
+  const [isDeletingTemplates, setIsDeletingTemplates] = useState(false);
   const orderedTemplates = orderTrainingTemplatesByIds(training.templates, orderedTemplateIds);
   const visibleTemplates = orderedTemplates.filter((template) => !hiddenTemplateIds.has(template.id));
   const visibleTemplateIds = visibleTemplates.map((template) => template.id);
@@ -971,6 +1112,7 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
   const selectedVisibleCount = selectedVisibleTemplates.length;
   const allVisibleSelected = visibleTemplates.length > 0 && selectedVisibleCount === visibleTemplates.length;
   const projectTemplateSource = selectedVisibleTemplates.length === 1 ? selectedVisibleTemplates[0] : null;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   useLayoutEffect(() => {
     if (!fromTemplateId) return;
@@ -978,13 +1120,49 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
     target?.scrollIntoView({ block: "center", behavior: "instant" });
   }, [fromTemplateId]);
 
-  function hideTemplate(templateId: string) {
-    setHiddenTemplateIds((current) => new Set(current).add(templateId));
-    setSelectedTemplateIds((current) => {
-      const next = new Set(current);
-      next.delete(templateId);
-      return next;
-    });
+  async function hideTemplate(templateId: string) {
+    const applyLocalDelete = (ids: Iterable<string>) => {
+      const removed = new Set(ids);
+      setHiddenTemplateIds((current) => new Set([...current, ...removed]));
+      setSelectedTemplateIds((current) => new Set([...current].filter((id) => !removed.has(id))));
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalDelete([templateId]);
+      return;
+    }
+
+    if (isDeletingTemplates) return;
+
+    setIsDeletingTemplates(true);
+    try {
+      const response = await fetch(`/api/training/templates/${templateId}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "训练模板删除失败",
+          detail: payload?.error?.message ?? "训练模板删除请求失败",
+        });
+        return;
+      }
+      applyLocalDelete([templateId]);
+      pushToast({
+        tone: "warning",
+        title: "训练模板已移除",
+        detail: templateId,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "训练模板删除失败",
+        detail: error instanceof Error ? error.message : "训练模板删除请求失败",
+      });
+    } finally {
+      setIsDeletingTemplates(false);
+    }
   }
 
   function toggleTemplateSelection(templateId: string) {
@@ -1007,10 +1185,64 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
     });
   }
 
-  function handleRemoveSelectedTemplates() {
+  async function handleRemoveSelectedTemplates() {
     const selectedVisibleIds = new Set(visibleTemplates.filter((template) => selectedTemplateIds.has(template.id)).map((template) => template.id));
-    setHiddenTemplateIds((current) => new Set([...current, ...selectedVisibleIds]));
-    setSelectedTemplateIds((current) => new Set([...current].filter((id) => !selectedVisibleIds.has(id))));
+
+    const applyLocalDelete = (ids: Iterable<string>) => {
+      const removed = new Set(ids);
+      setHiddenTemplateIds((current) => new Set([...current, ...removed]));
+      setSelectedTemplateIds((current) => new Set([...current].filter((id) => !removed.has(id))));
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalDelete(selectedVisibleIds);
+      return;
+    }
+
+    if (isDeletingTemplates || selectedVisibleIds.size === 0) return;
+
+    setIsDeletingTemplates(true);
+    try {
+      const responses = await Promise.all(
+        [...selectedVisibleIds].map(async (templateId) => {
+          const response = await fetch(`/api/training/templates/${templateId}`, {
+            method: "DELETE",
+          });
+          const payload = await response.json().catch(() => null);
+          return { templateId, response, payload };
+        }),
+      );
+      const completedIds = new Set(
+        responses
+          .filter(({ response, payload }) => response.ok && payload?.ok)
+          .map(({ templateId }) => templateId),
+      );
+      if (completedIds.size > 0) {
+        applyLocalDelete(completedIds);
+      }
+      const failedResponse = responses.find(({ response, payload }) => !response.ok || !payload?.ok);
+      if (failedResponse) {
+        pushToast({
+          tone: "error",
+          title: "训练模板删除失败",
+          detail: failedResponse.payload?.error?.message ?? "训练模板删除请求失败",
+        });
+        return;
+      }
+      pushToast({
+        tone: "warning",
+        title: "训练模板已移除",
+        detail: `${completedIds.size} 个训练模板`,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "训练模板删除失败",
+        detail: error instanceof Error ? error.message : "训练模板删除请求失败",
+      });
+    } finally {
+      setIsDeletingTemplates(false);
+    }
   }
 
   function handleReorderTemplates(nextVisibleIds: string[]) {
@@ -1091,6 +1323,9 @@ export function LoraTrainingTemplatesPage({ data }: { data: DemoData }) {
 }
 
 export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data: DemoData; mode: "new" | "edit"; templateId?: string }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
   const urlSearch = useUrlSearch();
   const newTemplateHints = mode === "new" ? readNewTemplateHints(urlSearch) : { projectId: "", sections: "", sourceProject: "" };
@@ -1113,9 +1348,9 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
     newTemplateHints.sections,
   ].join(":");
   const initialTemplateForm = {
-    captionGuidance: "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。",
+    captionGuidance: seedTemplate?.captionGuidance ?? "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。",
     description: seedTemplate?.description ?? "用于新角色 LoRA 训练项目的起始模板。",
-    imageGuidance: "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。",
+    imageGuidance: seedTemplate?.imageGuidance ?? "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。",
     title: newTemplateHints.sourceProject ? `${newTemplateHints.sourceProject} 训练模板` : seedTemplate?.title ?? "新角色 LoRA 模板",
   };
   const [templateSectionState, setTemplateSectionState] = useState(() => ({
@@ -1134,11 +1369,13 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
     contextId: templateFormContextId,
     draft: null,
   }));
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   const templateSections = templateSectionState.contextId === templateFormContextId ? templateSectionState.sections : templateSeedSections;
   const orderedTemplateSectionIds = templateSectionState.contextId === templateFormContextId ? templateSectionState.orderedIds : templateSeedSectionIds;
   const templateForm = templateFormState.contextId === templateFormContextId ? templateFormState.form : initialTemplateForm;
   const templateDraft = templateDraftState.contextId === templateFormContextId ? templateDraftState.draft : null;
   const templateSectionMap = Object.fromEntries(templateSections.map((section) => [section.id, section]));
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   function activeTemplateSectionState(current: typeof templateSectionState) {
     return current.contextId === templateFormContextId ? current : {
@@ -1191,13 +1428,79 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
     setTemplateForm((current) => ({ ...current, [field]: value }));
   }
 
-  function handleSaveTemplate() {
-    setTemplateDraft({
+  async function handleSaveTemplate() {
+    const nextDraft = {
       ...templateForm,
       mode,
       sectionCount: templateSections.length,
       sourceProject: newTemplateHints.sourceProject,
-    });
+    };
+
+    if (!isProductionTrainingRoute) {
+      setTemplateDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: templateDraft ? "模板保存草稿已更新" : "模板保存草稿已记录",
+        detail: templateForm.title,
+      });
+      return;
+    }
+
+    if (isSavingTemplate) return;
+
+    setIsSavingTemplate(true);
+    try {
+      const saveTemplateSections = orderedTemplateSectionIds
+        .map((sectionId) => templateSectionMap[sectionId])
+        .filter((section): section is LoraTrainingTemplate["sections"][number] => Boolean(section));
+      const saveTemplateEndpoint = sourceProject && mode === "new"
+        ? `/api/training/projects/${sourceProject.id}/save-as-template`
+        : mode === "new"
+          ? "/api/training/templates"
+          : `/api/training/templates/${template?.id}`;
+      const saveTemplateMethod = sourceProject && mode === "new"
+        ? "POST"
+        : mode === "new"
+          ? "POST"
+          : "PATCH";
+      const response = await fetch(saveTemplateEndpoint, {
+        method: saveTemplateMethod,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: templateForm.title,
+          description: templateForm.description,
+          imageGuidance: templateForm.imageGuidance,
+          captionGuidance: templateForm.captionGuidance,
+          sections: saveTemplateSections,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: mode === "new" ? "训练模板创建失败" : "训练模板保存失败",
+          detail: payload?.error?.message ?? "训练模板保存请求失败",
+        });
+        return;
+      }
+
+      setTemplateDraft(nextDraft);
+      pushToast({
+        tone: "success",
+        title: mode === "new" ? "训练模板已创建" : "训练模板已保存",
+        detail: templateForm.title,
+      });
+      router.push(`/training/templates/${payload.data.id}/edit`);
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: mode === "new" ? "训练模板创建失败" : "训练模板保存失败",
+        detail: error instanceof Error ? error.message : "训练模板保存请求失败",
+      });
+    } finally {
+      setIsSavingTemplate(false);
+    }
   }
 
   function createDraftTemplateSection(current: LoraTrainingTemplateSection[], titleSuffix: string): LoraTrainingTemplateSection {
@@ -1280,8 +1583,8 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
           <Button
             tone="primary"
             icon={Save}
+            pending={isSavingTemplate}
             onClick={handleSaveTemplate}
-            feedback={{ title: templateDraft ? "模板保存草稿已更新" : "模板保存草稿已记录", detail: templateForm.title }}
           >
             {templateDraft ? "更新草稿" : mode === "new" ? "创建模板" : "保存模板"}
           </Button>
@@ -1366,6 +1669,8 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
 }
 
 export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex }: { data: DemoData; templateId?: string; sectionIndex?: string }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
   const template = findTemplate(data, templateId);
   const index = Number(sectionIndex);
@@ -1389,10 +1694,12 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   const [templatePresetImportOpen, setTemplatePresetImportOpen] = useState(false);
   const [selectedTemplatePresetId, setSelectedTemplatePresetId] = useState<string | null>(null);
   const [templateSectionDraftsByKey, setTemplateSectionDraftsByKey] = useState<Record<string, TemplateSectionDraftState>>({});
+  const [isSavingTemplateSection, setIsSavingTemplateSection] = useState(false);
   if (!template || !section) return <EmptyPage title="没有模板小节数据" />;
 
   const activeTemplate = template;
   const activeSection = section;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const templateSectionStateKey = buildTemplateSectionStateKey(activeTemplate.id, activeSection.id);
   const sceneBlocks = templateSectionSceneBlocksByKey[templateSectionStateKey] ?? activeSection.blocks;
   const visibleTemplateSectionDraft = templateSectionDraftsByKey[templateSectionStateKey] ?? null;
@@ -1475,20 +1782,75 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
     updateTemplateBlocks((current) => current.filter((block) => block.id !== blockId));
   }
 
-  function handleSaveTemplateSection() {
-    setTemplateSectionDraftsByKey((current) => ({
-      ...current,
-      [templateSectionStateKey]: {
-        blockCount: sceneBlocks.length,
-        enabledLabel: templateSectionForm.enabledLabel,
-        firstBlock: sceneBlocks[0]?.title ?? "无场景块",
-        resolvedScene: resolvedTemplateScene || section.resolvedScene,
-        sectionId: activeSection.id,
-        sectionTitle: templateSectionForm.title,
-        templateId: activeTemplate.id,
-        templateTitle: activeTemplate.title,
-      },
-    }));
+  async function handleSaveTemplateSection() {
+    const nextDraft = {
+      blockCount: sceneBlocks.length,
+      enabledLabel: templateSectionForm.enabledLabel,
+      firstBlock: sceneBlocks[0]?.title ?? "无场景块",
+      resolvedScene: resolvedTemplateScene || section.resolvedScene,
+      sectionId: activeSection.id,
+      sectionTitle: templateSectionForm.title,
+      templateId: activeTemplate.id,
+      templateTitle: activeTemplate.title,
+    };
+
+    if (!isProductionTrainingRoute) {
+      setTemplateSectionDraftsByKey((current) => ({
+        ...current,
+        [templateSectionStateKey]: nextDraft,
+      }));
+      pushToast({
+        tone: "success",
+        title: visibleTemplateSectionDraft ? "模板小节保存草稿已更新" : "模板小节保存草稿已记录",
+        detail: templateSectionForm.title,
+      });
+      return;
+    }
+
+    if (isSavingTemplateSection) return;
+
+    setIsSavingTemplateSection(true);
+    try {
+      const response = await fetch(`/api/training/templates/${activeTemplate.id}/sections/${activeSection.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: templateSectionForm.title,
+          enabled: templateSectionForm.enabledLabel === "启用",
+          blocks: sceneBlocks,
+          resolvedScene: resolvedTemplateScene || section.resolvedScene,
+          scenePreview: resolvedTemplateScene || section.scenePreview,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "模板小节保存失败",
+          detail: payload?.error?.message ?? "模板小节保存请求失败",
+        });
+        return;
+      }
+
+      setTemplateSectionDraftsByKey((current) => ({
+        ...current,
+        [templateSectionStateKey]: nextDraft,
+      }));
+      pushToast({
+        tone: "success",
+        title: "模板小节已保存",
+        detail: templateSectionForm.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "模板小节保存失败",
+        detail: error instanceof Error ? error.message : "模板小节保存请求失败",
+      });
+    } finally {
+      setIsSavingTemplateSection(false);
+    }
   }
 
   return (
@@ -1502,8 +1864,8 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
           <Button
             tone="primary"
             icon={Save}
+            pending={isSavingTemplateSection}
             onClick={handleSaveTemplateSection}
-            feedback={{ title: visibleTemplateSectionDraft ? "模板小节保存草稿已更新" : "模板小节保存草稿已记录", detail: templateSectionForm.title }}
           >
             {visibleTemplateSectionDraft ? "更新小节草稿" : "保存小节"}
           </Button>

@@ -16,18 +16,19 @@ import { DemoFeedbackProvider } from "../shared/feedback";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
   DESIGN_DEMO_THEME_STORAGE_KEY,
+  RouteHrefProvider,
   WORK_MODE_CHANGE_EVENT,
   WORK_MODE_STORAGE_KEY,
   applyDesignDemoTheme,
   applyDesignDemoSfwMode,
   buildWorkModeNavLinks,
   cx,
-  demoHref,
   isDesignDemoWorkModeValue,
   isDemoThemeValue,
   isNavActive,
   isSfwEnabledValue,
   resolveWorkModeForRoute,
+  useRouteHref,
 } from "../routing";
 import type { DemoTheme, DesignDemoWorkMode, NavLinkDef } from "../routing";
 
@@ -66,6 +67,7 @@ function Sidebar({
   onToggleSfwMode: () => void;
   navLinks: NavLinkDef[];
 }) {
+  const hrefForRoute = useRouteHref();
   const isLightTheme = theme === "light";
   const isDarkTheme = !isLightTheme;
   const ThemeIcon = isDarkTheme ? Sun : Moon;
@@ -107,7 +109,7 @@ function Sidebar({
             return (
               <Link
                 className={cx(s.navLink, active && s.navLinkActive)}
-                href={demoHref(link.href)}
+                href={hrefForRoute(link.href)}
                 key={link.href}
                 onClick={onClose}
               >
@@ -164,6 +166,7 @@ function MobileBottomNav({
   links: NavLinkDef[];
   workMode: DesignDemoWorkMode;
 }) {
+  const hrefForRoute = useRouteHref();
   const isTrainingMode = workMode === "lora_training";
   const ModeIcon = isTrainingMode ? FlaskConical : ImageIcon;
   const modeText = isTrainingMode ? "LoRA 训练" : "生图模式";
@@ -177,7 +180,7 @@ function MobileBottomNav({
         return (
           <Link
             className={cx(s.mobileBottomItem, active && s.mobileBottomItemActive)}
-            href={demoHref(link.href)}
+            href={hrefForRoute(link.href)}
             key={link.href}
           >
             <Icon className={s.iconMd} />
@@ -290,11 +293,13 @@ export function DesignDemoShell({
   children,
   currentRoute,
   data,
+  hrefForRoute,
   initialTheme,
 }: {
   children: ReactNode;
   currentRoute: string;
   data: DemoData;
+  hrefForRoute?: (route: string) => string;
   initialTheme: DemoTheme;
 }) {
   const contentFrameRef = useRef<HTMLDivElement>(null);
@@ -503,84 +508,86 @@ export function DesignDemoShell({
   }
 
   return (
-    <div className={cx(s.shell, isLightTheme && s.shellLight)} data-app-shell data-demo-font="harmonyos" data-theme={theme}>
-      <DemoFeedbackProvider>
-        {!hasRouteHeader ? (
-          <MobileTopbar
-            activeLabel={activeNav?.label ?? "工作台"}
-            toolsOpen={toolsOpen}
-            onToggleTools={() => {
-              setToolsOpen((open) => !open);
-              setMenuOpen(false);
-            }}
-            theme={theme}
-            onToggleTheme={toggleTheme}
-            sfwMode={sfwMode}
-            onToggleSfwMode={toggleSfwMode}
-          />
-        ) : null}
-        {menuOpen ? (
-          <button
-            className={s.mobileNavBackdrop}
-            type="button"
-            onClick={() => setMenuOpen(false)}
-            aria-label="关闭导航菜单"
-          />
-        ) : null}
-        <div className={cx(
-          s.workspace,
-          sidebarLayoutReady && s.workspaceSidebarReady,
-          sidebarCollapsed && s.workspaceCollapsed,
-          hasRouteHeader && s.workspaceWithRouteHeader,
-        )}>
-          <Sidebar
-            collapsed={sidebarCollapsed && !menuOpen}
+    <RouteHrefProvider hrefForRoute={hrefForRoute}>
+      <div className={cx(s.shell, isLightTheme && s.shellLight)} data-app-shell data-demo-font="harmonyos" data-theme={theme}>
+        <DemoFeedbackProvider>
+          {!hasRouteHeader ? (
+            <MobileTopbar
+              activeLabel={activeNav?.label ?? "工作台"}
+              toolsOpen={toolsOpen}
+              onToggleTools={() => {
+                setToolsOpen((open) => !open);
+                setMenuOpen(false);
+              }}
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              sfwMode={sfwMode}
+              onToggleSfwMode={toggleSfwMode}
+            />
+          ) : null}
+          {menuOpen ? (
+            <button
+              className={s.mobileNavBackdrop}
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              aria-label="关闭导航菜单"
+            />
+          ) : null}
+          <div className={cx(
+            s.workspace,
+            sidebarLayoutReady && s.workspaceSidebarReady,
+            sidebarCollapsed && s.workspaceCollapsed,
+            hasRouteHeader && s.workspaceWithRouteHeader,
+          )}>
+            <Sidebar
+              collapsed={sidebarCollapsed && !menuOpen}
+              data={data}
+              currentRoute={currentRoute}
+              open={menuOpen}
+              onClose={() => setMenuOpen(false)}
+              onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
+              theme={theme}
+              onToggleTheme={toggleTheme}
+              sfwMode={sfwMode}
+              onToggleSfwMode={toggleSfwMode}
+              navLinks={navLinks}
+            />
+            <div className={cx(s.contentFrame, hasRouteHeader && s.contentFrameWithRouteHeader)} ref={contentFrameRef}>
+              {routeHeaderConfig ? (
+                <DemoRouteHeader
+                  config={routeHeaderConfig}
+                  compact={routeHeaderCompact}
+                  data={data}
+                  hidden={routeHeaderHidden}
+                  surfaceRef={setRouteHeaderNode}
+                />
+              ) : null}
+              <main className={cx(s.main, hasRouteHeader && s.mainWithRouteHeader)} ref={mainRef}>
+                {children}
+              </main>
+            </div>
+          </div>
+          <MobileBottomNav
             data={data}
             currentRoute={currentRoute}
-            open={menuOpen}
-            onClose={() => setMenuOpen(false)}
-            onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
-            theme={theme}
-            onToggleTheme={toggleTheme}
-            sfwMode={sfwMode}
-            onToggleSfwMode={toggleSfwMode}
-            navLinks={navLinks}
+            links={navLinks}
+            workMode={workMode}
           />
-          <div className={cx(s.contentFrame, hasRouteHeader && s.contentFrameWithRouteHeader)} ref={contentFrameRef}>
-            {routeHeaderConfig ? (
-              <DemoRouteHeader
-                config={routeHeaderConfig}
-                compact={routeHeaderCompact}
-                data={data}
-                hidden={routeHeaderHidden}
-                surfaceRef={setRouteHeaderNode}
-              />
-            ) : null}
-            <main className={cx(s.main, hasRouteHeader && s.mainWithRouteHeader)} ref={mainRef}>
-              {children}
-            </main>
-          </div>
-        </div>
-        <MobileBottomNav
-          data={data}
-          currentRoute={currentRoute}
-          links={navLinks}
-          workMode={workMode}
-        />
-        <button
-          className={cx(s.mobileNavDrawerButton, menuOpen && s.mobileNavDrawerButtonActive)}
-          type="button"
-          onClick={() => {
-            setMenuOpen((open) => !open);
-            setToolsOpen(false);
-          }}
-          aria-expanded={menuOpen}
-          aria-label={menuOpen ? "关闭更多页面" : "打开更多页面"}
-          title={menuOpen ? "关闭更多页面" : "打开更多页面"}
-        >
-          <Menu className={s.iconMd} aria-hidden="true" />
-        </button>
-      </DemoFeedbackProvider>
-    </div>
+          <button
+            className={cx(s.mobileNavDrawerButton, menuOpen && s.mobileNavDrawerButtonActive)}
+            type="button"
+            onClick={() => {
+              setMenuOpen((open) => !open);
+              setToolsOpen(false);
+            }}
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? "关闭更多页面" : "打开更多页面"}
+            title={menuOpen ? "关闭更多页面" : "打开更多页面"}
+          >
+            <Menu className={s.iconMd} aria-hidden="true" />
+          </button>
+        </DemoFeedbackProvider>
+      </div>
+    </RouteHrefProvider>
   );
 }

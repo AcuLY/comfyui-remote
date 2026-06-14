@@ -233,6 +233,10 @@ const defaultTrainingConfig = [
 ];
 
 export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData {
+  if (data.loraTraining) {
+    return data.loraTraining;
+  }
+
   const images = imagePool(data);
 
   const projects: LoraTrainingProject[] = [
@@ -349,6 +353,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       kind: "generation",
       status: "completed",
       projectId: "vela-neon",
+      sectionId: "stage-light",
       projectTitle: "Vela Neon Jacket",
       title: "训练集图片生成",
       summary: "图片 · 小节 舞台灯光",
@@ -365,6 +370,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       kind: "generation",
       status: "completed",
       projectId: "luna-editorial",
+      sectionId: "stage-light",
       projectTitle: "Luna Editorial",
       title: "角色描述生成",
       summary: "文本 · 来自角色档案",
@@ -379,6 +385,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       kind: "generation",
       status: "running",
       projectId: "vela-neon",
+      sectionId: "night-corner",
       projectTitle: "Vela Neon Jacket",
       title: "街角夜景图片生成",
       summary: "图片 · gpt-image-2",
@@ -393,6 +400,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       kind: "generation",
       status: "running",
       projectId: "mika-soft",
+      sectionId: "portrait-soft",
       projectTitle: "Mika Soft Portrait",
       title: "角色细节补全",
       summary: "文本 · Qwen2.5-VL",
@@ -406,6 +414,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       kind: "generation",
       status: "queued",
       projectId: "noir-runner",
+      sectionId: "night-corner",
       projectTitle: "Noir Runner",
       title: "雨夜背光图片生成",
       summary: "图片 · gpt-image-2",
@@ -420,6 +429,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       kind: "generation",
       status: "queued",
       projectId: "vela-neon",
+      sectionId: "clean-studio",
       projectTitle: "Vela Neon Jacket",
       title: "白底棚拍图片生成",
       summary: "图片 · gpt-image-2",
@@ -434,6 +444,7 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       kind: "generation",
       status: "failed",
       projectId: "azure-idol",
+      sectionId: "portrait-soft",
       projectTitle: "Azure Idol",
       title: "发饰参考图生成",
       summary: "图片 · gpt-image-2",
@@ -590,6 +601,8 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       status: "active",
       updatedAt: "16:04",
       description: "用于新角色 LoRA 训练项目的默认模板，包含舞台、街景和白底净图。",
+      imageGuidance: "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。",
+      captionGuidance: "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。",
       sectionCount: 6,
       sections: [
         {
@@ -666,6 +679,8 @@ export function buildLoraTrainingDemoData(data: DemoData): LoraTrainingDemoData 
       status: "active",
       updatedAt: "15:44",
       description: "偏轻量的人像模板，适合资料较完整的角色快速生成训练集。",
+      imageGuidance: "以半身和特写为主，优先保证脸部、发型和上身服装细节稳定。",
+      captionGuidance: "先写角色触发词，再补充脸部特征、镜头距离和背景控制。",
       sectionCount: 4,
       sections: [
         {

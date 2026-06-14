@@ -1,10 +1,12 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Archive, CheckSquare, Grid2X2, List, Plus, X } from "lucide-react";
 
 import type { DemoData } from "../../data";
 import { cx } from "../../routing";
+import { useDemoFeedback } from "../../shared/feedback/context";
 import { PageHeader } from "../../shared/primitives/page-header";
 import { Button, ButtonLink } from "../../shared/primitives/button";
 import { SegmentedControl } from "../../shared/primitives/segmented-control";
@@ -18,6 +20,10 @@ import s from "./training-projects-page.module.css";
 type ProjectScope = "current" | "archived";
 type ProjectViewMode = "card" | "compact";
 
+function isProductionTrainingPath(pathname: string | null | undefined) {
+  return pathname === "/training" || pathname?.startsWith("/training/") === true;
+}
+
 function scopeForProject(project: LoraTrainingProject): ProjectScope {
   return project.status === "archived" ? "archived" : "current";
 }
@@ -30,6 +36,8 @@ function orderTrainingProjectsByIds(projects: LoraTrainingProject[], orderedIds:
 }
 
 export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
   const [scope, setScope] = useState<ProjectScope>("current");
   const [viewMode, setViewMode] = useState<ProjectViewMode>("card");
@@ -37,6 +45,8 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
   const [localProjects, setLocalProjects] = useState(training.projects);
   const [orderedProjectIds, setOrderedProjectIds] = useState(() => training.projects.map((project) => project.id));
   const [hiddenProjectIds, setHiddenProjectIds] = useState<Set<string>>(new Set());
+  const [isDeletingProjects, setIsDeletingProjects] = useState(false);
+  const [isPersistingProjectArchive, setIsPersistingProjectArchive] = useState(false);
   const orderedProjects = orderTrainingProjectsByIds(localProjects, orderedProjectIds);
   const visibleProjects = orderedProjects.filter((project) => scopeForProject(project) === scope && !hiddenProjectIds.has(project.id));
   const visibleProjectIds = visibleProjects.map((project) => project.id);
@@ -44,6 +54,7 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
   const archivedCount = localProjects.filter((project) => scopeForProject(project) === "archived" && !hiddenProjectIds.has(project.id)).length;
   const selectedVisibleCount = visibleProjects.filter((project) => selectedIds.has(project.id)).length;
   const allVisibleSelected = visibleProjects.length > 0 && selectedVisibleCount === visibleProjects.length;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   function toggleProjectSelection(projectId: string) {
     setSelectedIds((current) => {
@@ -73,29 +84,143 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
     );
   }
 
-  function removeProject(projectId: string) {
-    setHiddenProjectIds((current) => new Set([...current, projectId]));
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      next.delete(projectId);
-      return next;
-    });
+  function applyLocalDelete(projectIds: Iterable<string>) {
+    const ids = new Set(projectIds);
+    setHiddenProjectIds((current) => new Set([...current, ...ids]));
+    setSelectedIds((current) => new Set([...current].filter((id) => !ids.has(id))));
   }
 
-  function handleToggleSelectedProjectArchive() {
+  async function handleToggleSelectedProjectArchive() {
     const selectedVisibleIds = new Set(visibleProjects.filter((project) => selectedIds.has(project.id)).map((project) => project.id));
-    setLocalProjects((current) => current.map((project) =>
-      selectedVisibleIds.has(project.id)
-        ? { ...project, status: scope === "current" ? "archived" : "ready" }
-        : project,
-    ));
-    setSelectedIds(new Set());
+    const applyLocalArchiveState = (projectIds: Set<string>) => {
+      setLocalProjects((current) => current.map((project) =>
+        projectIds.has(project.id)
+          ? { ...project, status: scope === "current" ? "archived" : "ready" }
+          : project,
+      ));
+      setSelectedIds((current) => new Set([...current].filter((id) => !projectIds.has(id))));
+    };
+
+    if (!isProductionTrainingRoute) {
+      applyLocalArchiveState(selectedVisibleIds);
+      pushToast({
+        tone: scope === "current" ? "warning" : "success",
+        title: scope === "current" ? "训练项目已归档" : "训练项目已恢复",
+        detail: `${selectedVisibleIds.size} 个训练项目`,
+      });
+      return;
+    }
+
+    if (isPersistingProjectArchive || selectedVisibleIds.size === 0) return;
+
+    setIsPersistingProjectArchive(true);
+    try {
+      const responses = await Promise.all(
+        [...selectedVisibleIds].map(async (projectId) => {
+          const response = await fetch(`/api/training/projects/${projectId}/${scope === "current" ? "archive" : "restore"}`, {
+            method: "POST",
+          });
+          const payload = await response.json().catch(() => null);
+          return { payload, projectId, response };
+        }),
+      );
+
+      const completedIds = new Set(
+        responses
+          .filter(({ payload, response }) => response.ok && payload?.ok)
+          .map(({ projectId }) => projectId),
+      );
+      if (completedIds.size > 0) {
+        applyLocalArchiveState(completedIds);
+      }
+
+      const failedResponse = responses.find(({ payload, response }) => !response.ok || !payload?.ok);
+      if (failedResponse) {
+        pushToast({
+          tone: "error",
+          title: scope === "current" ? "归档失败" : "恢复失败",
+          detail: failedResponse.payload?.error?.message ?? "训练项目状态更新请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: scope === "current" ? "warning" : "success",
+        title: scope === "current" ? "训练项目已归档" : "训练项目已恢复",
+        detail: `${completedIds.size} 个训练项目`,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: scope === "current" ? "归档失败" : "恢复失败",
+        detail: error instanceof Error ? error.message : "训练项目状态更新请求失败",
+      });
+    } finally {
+      setIsPersistingProjectArchive(false);
+    }
   }
 
-  function handleRemoveSelectedProjects() {
-    const selectedVisibleIds = new Set(visibleProjects.filter((project) => selectedIds.has(project.id)).map((project) => project.id));
-    setHiddenProjectIds((current) => new Set([...current, ...selectedVisibleIds]));
-    setSelectedIds((current) => new Set([...current].filter((id) => !selectedVisibleIds.has(id))));
+  async function handleDeleteProjects(projectIds: Iterable<string>) {
+    const ids = new Set(projectIds);
+    const projects = visibleProjects.filter((project) => ids.has(project.id));
+
+    if (!isProductionTrainingRoute) {
+      applyLocalDelete(ids);
+      pushToast({
+        tone: "warning",
+        title: "训练项目已从列表移除",
+        detail: projects.length === 1 ? (projects[0]?.title ?? "训练项目") : `${projects.length} 个训练项目`,
+      });
+      return;
+    }
+
+    if (isDeletingProjects || projects.length === 0) return;
+
+    setIsDeletingProjects(true);
+    try {
+      const responses = await Promise.all(
+        projects.map(async (project) => {
+          const response = await fetch(`/api/training/projects/${project.id}`, {
+            method: "DELETE",
+          });
+          const payload = await response.json().catch(() => null);
+          return { payload, project, response };
+        }),
+      );
+
+      const completedIds = new Set(
+        responses
+          .filter(({ payload, response }) => response.ok && payload?.ok)
+          .map(({ project }) => project.id),
+      );
+      if (completedIds.size > 0) {
+        applyLocalDelete(completedIds);
+      }
+
+      const failedResponse = responses.find(({ payload, response }) => !response.ok || !payload?.ok);
+      if (failedResponse) {
+        pushToast({
+          tone: "error",
+          title: "删除失败",
+          detail: failedResponse.payload?.error?.message ?? "训练项目删除请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "warning",
+        title: "训练项目已从列表移除",
+        detail: completedIds.size === 1 ? (projects[0]?.title ?? "训练项目") : `${completedIds.size} 个训练项目`,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "删除失败",
+        detail: error instanceof Error ? error.message : "训练项目删除请求失败",
+      });
+    } finally {
+      setIsDeletingProjects(false);
+    }
   }
 
   return (
@@ -152,14 +277,15 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
             onClear={() => setSelectedIds(new Set())}
             actions={(
               <>
-                <Button icon={Archive} onClick={handleToggleSelectedProjectArchive} feedback={{ title: scope === "current" ? "训练项目已归档" : "训练项目已恢复", detail: `${selectedVisibleCount} 个训练项目` }}>
+                <Button icon={Archive} pending={isPersistingProjectArchive} onClick={handleToggleSelectedProjectArchive}>
                   {scope === "current" ? "归档" : "恢复"}
                 </Button>
                 <Button
                   tone="danger"
                   icon={X}
+                  pending={isDeletingProjects}
                   feedback={{ tone: "warning", title: "训练项目已从列表移除", detail: `${selectedVisibleCount} 个训练项目` }}
-                  onClick={handleRemoveSelectedProjects}
+                  onClick={() => handleDeleteProjects(selectedIds)}
                 >
                   删除
                 </Button>
@@ -176,7 +302,7 @@ export function LoraTrainingProjectsPage({ data }: { data: DemoData }) {
                   <div data-training-project-id={project.id} key={project.id}>
                     <TrainingProjectListItem
                       compact={viewMode === "compact"}
-                      onDelete={() => removeProject(project.id)}
+                      onDelete={() => handleDeleteProjects([project.id])}
                       onToggleSelected={() => toggleProjectSelection(project.id)}
                       project={project}
                       selected={selectedIds.has(project.id)}

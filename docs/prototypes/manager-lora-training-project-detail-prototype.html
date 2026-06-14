@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
-    <title>LoRA 训练模式 - 项目总览原型</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260611-lora-tags-2" />
+    <title>LoRA 训练模式 - 项目总览</title>
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
     <style>
       .overview-page {
         --overview-line: rgba(255, 255, 255, 0.09);
@@ -58,28 +58,26 @@
         background: currentColor;
       }
 
-      .summary-strip {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 1px;
-        overflow: hidden;
-        margin-bottom: 12px;
-        border: 1px solid var(--overview-line);
-        border-radius: 10px;
-        background: var(--overview-line);
-      }
-
-      .summary-item {
-        min-width: 0;
+      .summary-band {
         display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 10px 12px;
-        background: rgba(255, 255, 255, 0.035);
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 12px;
       }
 
-      .summary-item span {
+      .summary-band-item {
+        min-width: 0;
+        flex: 1 1 180px;
+        display: grid;
+        gap: 4px;
+        align-content: start;
+        padding: 10px 12px;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--panel-soft) 54%, transparent);
+      }
+
+      .summary-band-item span {
         overflow: hidden;
         color: var(--muted);
         font-size: 11px;
@@ -87,9 +85,9 @@
         white-space: nowrap;
       }
 
-      .summary-item strong {
+      .summary-band-item strong {
         overflow: hidden;
-        color: #e4e4e7;
+        color: var(--text);
         font-size: 13px;
         font-weight: 650;
         font-variant-numeric: tabular-nums;
@@ -104,7 +102,7 @@
 
       .profile-card {
         grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
+        align-items: start;
         text-decoration: none;
       }
 
@@ -145,7 +143,7 @@
         border: 1px solid var(--line);
         border-radius: 8px;
         object-fit: cover;
-        background: #18181b;
+        background: #050507;
       }
 
       .task-list {
@@ -154,7 +152,7 @@
         overflow: hidden;
         border: 1px solid var(--line-soft);
         border-radius: 10px;
-        background: var(--line-soft);
+        background: rgba(255, 255, 255, 0.045);
       }
 
       .task-row {
@@ -163,11 +161,12 @@
         align-items: center;
         gap: 10px;
         padding: 11px 12px;
-        background: rgba(255, 255, 255, 0.025);
+        background: color-mix(in srgb, var(--panel-soft) 54%, transparent);
+        transition: background 140ms ease;
       }
 
       .task-row:hover {
-        background: rgba(255, 255, 255, 0.045);
+        background: var(--surface-hover);
       }
 
       .task-kind {
@@ -208,7 +207,7 @@
         grid-template-columns: minmax(90px, 0.42fr) minmax(0, 1fr);
         gap: 10px;
         padding: 9px 10px;
-        background: rgba(255, 255, 255, 0.025);
+        background: color-mix(in srgb, var(--panel-soft) 54%, transparent);
         font-size: 12px;
       }
 
@@ -218,7 +217,7 @@
 
       .compact-kv span:last-child {
         overflow: hidden;
-        color: #e4e4e7;
+        color: var(--text);
         font-weight: 560;
         text-overflow: ellipsis;
         white-space: nowrap;
@@ -249,11 +248,13 @@
           gap: 6px;
         }
 
-        .summary-item {
-          align-items: flex-start;
-          flex-direction: column;
-          gap: 3px;
-          padding: 8px 9px;
+        .summary-band {
+          gap: 8px;
+        }
+
+        .task-row,
+        .artifact-row {
+          grid-template-columns: 1fr;
         }
 
         .profile-card {
@@ -267,11 +268,6 @@
         .profile-thumbs img {
           width: 56px;
           height: 74px;
-        }
-
-        .task-row,
-        .artifact-row {
-          grid-template-columns: 1fr;
         }
       }
     </style>
@@ -291,6 +287,7 @@
           </div>
           <div class="topbar-actions" aria-label="项目操作">
             <a class="button" href="./manager-lora-training-project-profile-prototype.html"><i data-lucide="pencil" aria-hidden="true"></i> 编辑资料</a>
+            <button class="button" type="button"><i data-lucide="copy-plus" aria-hidden="true"></i> 保存为模板</button>
             <a class="button primary" href="./manager-lora-training-project-dataset-prototype.html"><i data-lucide="play" aria-hidden="true"></i> 启动训练</a>
           </div>
         </header>
@@ -305,11 +302,11 @@
 
         <section class="layout wide-left" aria-label="项目总览">
           <div class="stack">
-            <section class="summary-strip" aria-label="项目摘要">
-              <div class="summary-item"><span>资料</span><strong>完整</strong></div>
-              <div class="summary-item"><span>小节</span><strong>6 个启用</strong></div>
-              <div class="summary-item"><span>结果池</span><strong>42 已保留</strong></div>
-            </section>
+            <div class="summary-band" aria-label="项目摘要">
+              <div class="summary-band-item"><span>资料</span><strong>完整</strong></div>
+              <div class="summary-band-item"><span>小节</span><strong>6 个启用</strong></div>
+              <div class="summary-band-item"><span>结果池</span><strong>42 已保留</strong></div>
+            </div>
 
             <a class="card overview-card profile-card" href="./manager-lora-training-project-profile-prototype.html">
               <div class="profile-copy">
@@ -321,8 +318,8 @@
                   <span class="status-note green">完整</span>
                 </div>
                 <p class="field-line" aria-label="资料字段">
-                  <span translate="no">loraUsagePrompt</span>
-                  <span translate="no">characterDetailPrompt</span>
+                  <span>LoRA 触发提示词</span>
+                  <span>角色细节文本</span>
                   <span>参考图 3 张</span>
                 </p>
               </div>
@@ -349,8 +346,8 @@
                   </a>
                   <a class="task-row" href="./manager-lora-training-project-training-runs-prototype.html">
                     <div class="row-title">
-                      <strong>dataset v5 / LoRA 训练</strong>
-                      <span>完成于 16:21 · final LoRA 已保存</span>
+                      <strong>数据集版本 v5 / LoRA 训练</strong>
+                      <span>完成于 16:21 · 最终 LoRA 已保存</span>
                     </div>
                     <span class="task-kind">训练任务 · 完成</span>
                   </a>
@@ -365,15 +362,15 @@
               <div class="panel-body readiness">
                 <div class="readiness-head">
                   <div class="row-title">
-                    <strong>dataset v5</strong>
+                    <strong>数据集版本 v5</strong>
                     <span>42 张图片 · 0 个 caption 缺失</span>
                   </div>
                   <span class="readiness-status">可训练</span>
                 </div>
                 <div class="compact-kv" aria-label="训练准备状态">
-                  <div><span>revision</span><span translate="no">dataset v5</span></div>
-                  <div><span>itemCount</span><span>42</span></div>
-                  <div><span>caption</span><span>0 缺失</span></div>
+                  <div><span>当前版本</span><span>数据集版本 v5</span></div>
+                  <div><span>图片数</span><span>42</span></div>
+                  <div><span>caption 缺失</span><span>0</span></div>
                   <div><span>进行中训练</span><span>无</span></div>
                 </div>
                 <a class="button primary" href="./manager-lora-training-project-dataset-prototype.html"><i data-lucide="play" aria-hidden="true"></i> 前往数据集</a>
@@ -385,10 +382,36 @@
                 <a class="list-row artifact-row" href="./manager-lora-training-training-detail-prototype.html">
                   <div class="row-title">
                     <strong translate="no">vela_neon_v05.safetensors</strong>
-                    <span>final LoRA · 训练完成</span>
+                    <span>最终 LoRA · 训练完成</span>
                   </div>
                   <span class="artifact-meta">142 MB</span>
                 </a>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-header"><h2>项目管理</h2></div>
+              <div class="panel-body stack">
+                <div class="row-title">
+                  <strong>保存为模板</strong>
+                  <span>把当前项目的小节结构、规则和预制绑定镜像复制成一个新模板。</span>
+                </div>
+                <div class="row-title">
+                  <strong>归档前检查</strong>
+                  <span>至少已有 1 次成功训练，最终 LoRA、训练配置、数据集快照、训练摘要和必要日志都已保存。</span>
+                </div>
+                <div class="compact-kv">
+                  <div><span>成功训练</span><span>已满足</span></div>
+                  <div><span>最终 LoRA</span><span>已保存</span></div>
+                  <div><span>训练配置</span><span>已保存</span></div>
+                  <div><span>数据集快照</span><span>已保存</span></div>
+                  <div><span>训练摘要</span><span>已保存</span></div>
+                  <div><span>必要日志</span><span>已保存</span></div>
+                </div>
+                <div class="action-strip">
+                  <button class="button" type="button"><i data-lucide="copy-plus" aria-hidden="true"></i>保存为模板</button>
+                  <button class="button" type="button"><i data-lucide="archive" aria-hidden="true"></i>归档项目</button>
+                  <button class="button red" type="button"><i data-lucide="trash-2" aria-hidden="true"></i>彻底删除项目</button>
+                </div>
               </div>
             </section>
           </aside>
@@ -396,7 +419,7 @@
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260611-lora-rewrite-2"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
     <script>initLoraPrototype("projects");</script>
   </body>
 </html>

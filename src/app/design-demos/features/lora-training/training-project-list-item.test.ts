@@ -115,15 +115,32 @@ test("training project list archives and restores selected projects locally", ()
   assert.match(projectsPageSource, /scope === "current" \? "归档" : "恢复"/, "Batch action label should match the active scope");
 });
 
+test("training project list archives and restores selected projects through the formal HTTP API on production routes", () => {
+  assert.match(projectsPageSource, /usePathname/, "Project list should detect whether it is running under production \\/training routes");
+  assert.match(projectsPageSource, /fetch\(`\/api\/training\/projects\/\$\{projectId\}\/\$\{scope === "current" \? "archive" : "restore"\}`/, "Batch archive and restore should call the formal project archive API");
+  assert.match(projectsPageSource, /method:\s*"POST"/, "Batch archive and restore should use POST");
+  assert.match(projectsPageSource, /Promise\.all/, "Batch archive and restore should persist all selected projects before updating local state");
+  assert.match(projectsPageSource, /pushToast/, "Project list should surface batch archive API success or failure through the shared feedback system");
+});
+
 test("training project list deletes selected projects from local front-end state", () => {
   assert.match(projectsPageSource, /hiddenProjectIds/, "Project list should track locally removed project ids");
   assert.match(projectsPageSource, /setHiddenProjectIds/, "Project list delete actions should update hidden project state");
-  assert.match(projectsPageSource, /handleRemoveSelectedProjects/, "Project list should define a shared selected delete handler");
+  assert.match(projectsPageSource, /applyLocalDelete/, "Project list should define a shared local delete helper");
   assert.match(projectsPageSource, /selectedVisibleIds/, "Batch delete should only remove selected projects visible in the active scope");
-  assert.match(projectsPageSource, /onClick=\{handleRemoveSelectedProjects\}/, "Batch delete button should call the local delete handler");
+  assert.match(projectsPageSource, /onClick=\{\(\) => handleDeleteProjects\(selectedIds\)\}/, "Batch delete button should call the shared delete handler");
   assert.match(projectsPageSource, /训练项目已从列表移除/, "Batch delete feedback should describe the local state change");
   assert.doesNotMatch(itemSource, /删除训练项目需要确认/, "Single project delete feedback should describe the local removal, not a confirmation placeholder");
   assert.doesNotMatch(projectsPageSource, /删除动作已预览/, "Project delete actions should not remain preview-only placeholders");
+});
+
+test("training project list deletes projects through the formal HTTP API on production routes", () => {
+  assert.match(projectsPageSource, /usePathname/, "Project list should detect whether it is running under production \\/training routes");
+  assert.match(projectsPageSource, /isDeletingProjects/, "Project list should track the delete request state");
+  assert.match(projectsPageSource, /handleDeleteProjects/, "Project list should define a shared delete handler");
+  assert.match(projectsPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}`,\s*\{\s*method:\s*"DELETE"/, "Project delete should call the formal project detail API");
+  assert.match(projectsPageSource, /Promise\.all/, "Project delete should wait for every selected project request before updating local state");
+  assert.match(projectsPageSource, /pushToast/, "Project list should surface delete API success or failure through the shared feedback system");
 });
 
 test("training project drag handles are wired to a local sortable project order", () => {

@@ -114,6 +114,27 @@ test("failed training runs can be retried in local front-end state", () => {
   assert.match(pageSource, /已排队重试/, "retried rows should show queued-retry status");
 });
 
+test("failed training runs retry through the formal HTTP API on production routes", () => {
+  assert.match(pageSource, /usePathname/, "runs page should detect whether it is running under production \\/training routes");
+  assert.match(pageSource, /fetch\(`\/api\/training\/sections\/\$\{run\.sectionId\}\/runs`/, "failed generation rows should call the formal section run retry API");
+  assert.match(pageSource, /fetch\(`\/api\/training\/projects\/\$\{run\.projectId\}\/training-runs`/, "failed training rows should call the formal project training retry API");
+  assert.match(pageSource, /parentRunId:\s*run\.id/, "failed generation retries should pass the original run id as parentRunId");
+  assert.match(pageSource, /revisionId:\s*run\.datasetRevisionId/, "failed training retries should pass the original dataset revision id");
+  assert.match(pageSource, /targetSteps:/, "failed training retries should map the original target step count into the HTTP request config");
+  assert.match(pageSource, /Promise\.all/, "runs page should persist all retry requests before updating local retry state");
+  assert.match(pageSource, /pushToast/, "runs page should surface retry API success or failure through the shared feedback system");
+});
+
+test("queued or running training rows cancel through the formal HTTP API on production routes", () => {
+  assert.match(pageSource, /`\/api\/training\/generation-tasks\/\$\{run\.id\}\/cancel`/, "generation rows should call the formal generation cancel API");
+  assert.match(pageSource, /`\/api\/training\/training-runs\/\$\{run\.id\}\/cancel`/, "training rows should call the formal training cancel API");
+  assert.match(pageSource, /requestedBy:/, "training row cancel requests should identify the request source");
+  assert.match(pageSource, /cancelRuns/, "runs page should define a shared cancel handler");
+  assert.match(pageSource, /cancelledRunIds/, "runs page should track locally cancelled run ids");
+  assert.match(pageSource, /status === "queued" \|\| status === "running"/, "cancel actions should stay scoped to queued or running rows");
+  assert.match(pageSource, /pushToast/, "runs page should surface cancel API success or failure through the shared feedback system");
+});
+
 test("failed training run rows use a structured failure block instead of single-line text", () => {
   assert.match(pageSource, /TrainingRunFailureBlock/, "failed run rows should render a dedicated failure block");
   assert.match(pageSource, /run\.errorMessage \?\?/, "failed run rows should derive a fallback error message");
@@ -172,11 +193,23 @@ test("failed training run toolbar keeps text buttons wider than row icon actions
   );
 });
 
-test("training run delete actions remove runs locally instead of previewing a placeholder", () => {
+test("training run rows stay visually separated instead of sharing one grouped card shell", () => {
+  assert.match(cssSource, /\.runRows\s*\{[\s\S]*?gap:\s*(?:8|9|10|11|12)px;/, "run row grids should keep real spacing between task cards");
+  assert.match(cssSource, /\.runRow\s*\{[\s\S]*?border:\s*1px solid var\(--demo-border\);/, "each run row should draw its own border");
+  assert.match(cssSource, /\.runRow\s*\{[\s\S]*?border-radius:\s*(?:10|11|12)px;/, "each run row should own its own rounded corners");
+  assert.doesNotMatch(cssSource, /\.runRows\s+\.runRow\s*\{[\s\S]*?border-right:/, "run rows should not share a table-like border grid");
+  assert.doesNotMatch(cssSource, /\.runRows\s+\.runRow:nth-child/, "run rows should not depend on nth-child border merging");
+});
+
+test("training run delete actions persist through the formal HTTP API on production routes", () => {
   assert.match(pageSource, /hiddenRunIds/, "runs page should track locally removed runs");
-  assert.match(pageSource, /hideRuns/, "runs page should define a shared local delete handler");
-  assert.match(pageSource, /onClick=\{\(\) => hideRuns\(selectedIds\)\}/, "batch delete should call the local delete handler");
-  assert.match(pageSource, /onClick=\{\(\) => hideRuns\(\[run\.id\]\)\}/, "row delete should call the local delete handler");
+  assert.match(pageSource, /isDeletingRuns/, "runs page should track the deletion request state");
+  assert.match(pageSource, /handleDeleteRuns/, "runs page should define a shared delete handler");
+  assert.match(pageSource, /fetch\(\s*run\.kind === "generation"\s*\?\s*`\/api\/training\/generation-tasks\/\$\{run\.id\}`\s*:\s*`\/api\/training\/training-runs\/\$\{run\.id\}`/, "delete actions should call the formal task detail routes");
+  assert.match(pageSource, /method:\s*"DELETE"/, "run deletion should use DELETE requests");
+  assert.match(pageSource, /Promise\.all/, "runs page should await every delete request before hiding rows locally");
+  assert.match(pageSource, /onClick=\{\(\) => handleDeleteRuns\(selectedIds\)\}/, "batch delete should call the shared delete handler");
+  assert.match(pageSource, /onClick=\{\(\) => handleDeleteRuns\(\[run\.id\]\)\}/, "row delete should call the shared delete handler");
   assert.match(pageSource, /任务已从列表移除/, "delete feedback should describe the local state change");
   assert.doesNotMatch(pageSource, /删除动作已预览/, "delete actions should not remain preview-only placeholders");
 });

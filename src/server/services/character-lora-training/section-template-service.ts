@@ -21,6 +21,10 @@ import {
   type CharacterLoraSectionTemplateCopyCreateInput,
   type CharacterLoraSectionTemplateUpsertInput,
 } from "@/server/repositories/character-lora-training-repository";
+import {
+  asJsonRecord,
+  toInputJsonValue,
+} from "@/server/services/character-lora-training/shared/service-utils";
 import { z } from "zod";
 
 const DEFAULT_NEGATIVE_TEMPLATE =
@@ -259,6 +263,8 @@ function buildTrainingTemplateSnapshot(
     key: template.key,
     name: template.name,
     description: template.description,
+    sortOrder: template.sortOrder,
+    isActive: template.isActive,
     baseFamily: template.baseFamily,
     captionStrategyDefault: template.captionStrategyDefault,
     canonicalDefaults: template.canonicalDefaults,
@@ -324,6 +330,29 @@ const copySectionTemplateSchema = z
     path: ["sourceTemplateId"],
   });
 
+const templateEditorSectionSchema = z.object({
+  id: optionalTextSchema.optional(),
+  title: z.string().trim().min(1),
+  enabled: z.boolean(),
+  blockCount: z.coerce.number().int().min(0).optional(),
+  blocks: z.array(
+    z.object({
+      title: z.string().trim().min(1),
+      text: z.string().trim().min(1),
+    }).strict(),
+  ).default([]),
+  resolvedScene: optionalNullableTextSchema,
+  scenePreview: optionalNullableTextSchema,
+}).strict();
+
+const saveTrainingTemplateSchema = z.object({
+  title: z.string().trim().min(1),
+  description: optionalNullableTextSchema,
+  imageGuidance: optionalNullableTextSchema,
+  captionGuidance: optionalNullableTextSchema,
+  sections: z.array(templateEditorSectionSchema).default([]),
+}).strict();
+
 export class CharacterLoraSectionTemplateServiceError extends Error {
   constructor(
     message: string,
@@ -386,6 +415,67 @@ export async function getCharacterLoraTrainingTemplateSnapshot(input: { id?: str
   const sectionTemplates = await listActiveSectionTemplatesFromRepository(undefined, template.id);
 
   return buildTrainingTemplateSnapshot(template, sectionTemplates);
+}
+
+export async function createCharacterLoraTrainingTemplate(input: unknown) {
+  const parsed = parseWithSchema(saveTrainingTemplateSchema, input ?? {});
+  const baseTemplate = await ensureDefaultCharacterLoraTrainingTemplate();
+  const baseSnapshot = await getCharacterLoraTrainingTemplateSnapshot({ id: baseTemplate.id });
+  const key = await generateUniqueTrainingTemplateKey(parsed.title);
+  const [createdTemplate] = await upsertTrainingTemplatesInRepository([{
+    key,
+    name: parsed.title,
+    description: parsed.description ?? null,
+    baseFamily: baseSnapshot.baseFamily ?? null,
+    captionStrategyDefault: baseSnapshot.captionStrategyDefault,
+    canonicalDefaults: toInputJsonValue(baseSnapshot.canonicalDefaults),
+    promptCardDefaults: toInputJsonValue({
+      ...asJsonRecord(baseSnapshot.promptCardDefaults),
+      captionGuidance: parsed.captionGuidance ?? null,
+    }),
+    trainingDefaults: toInputJsonValue({
+      ...asJsonRecord(baseSnapshot.trainingDefaults),
+      imageGuidance: parsed.imageGuidance ?? null,
+    }),
+    benchmarkDefaults: toInputJsonValue(baseSnapshot.benchmarkDefaults),
+    promotionDefaults: toInputJsonValue(baseSnapshot.promotionDefaults),
+    isActive: true,
+    sortOrder: Date.now(),
+  }]);
+
+  await saveTrainingTemplateSections(createdTemplate.id, createdTemplate.key, parsed.sections, []);
+
+  return getCharacterLoraTrainingTemplateSnapshot({ id: createdTemplate.id });
+}
+
+export async function updateCharacterLoraTrainingTemplate(templateId: string, input: unknown) {
+  const id = normalizeId(templateId, "templateId");
+  const parsed = parseWithSchema(saveTrainingTemplateSchema, input ?? {});
+  const existingSnapshot = await getCharacterLoraTrainingTemplateSnapshot({ id });
+  const [updatedTemplate] = await upsertTrainingTemplatesInRepository([{
+    key: existingSnapshot.key,
+    name: parsed.title,
+    description: parsed.description ?? null,
+    baseFamily: existingSnapshot.baseFamily ?? null,
+    captionStrategyDefault: existingSnapshot.captionStrategyDefault,
+    canonicalDefaults: toInputJsonValue(existingSnapshot.canonicalDefaults),
+    promptCardDefaults: toInputJsonValue({
+      ...asJsonRecord(existingSnapshot.promptCardDefaults),
+      captionGuidance: parsed.captionGuidance ?? null,
+    }),
+    trainingDefaults: toInputJsonValue({
+      ...asJsonRecord(existingSnapshot.trainingDefaults),
+      imageGuidance: parsed.imageGuidance ?? null,
+    }),
+    benchmarkDefaults: toInputJsonValue(existingSnapshot.benchmarkDefaults),
+    promotionDefaults: toInputJsonValue(existingSnapshot.promotionDefaults),
+    isActive: true,
+    sortOrder: existingSnapshot.sortOrder ?? 10,
+  }]);
+
+  await saveTrainingTemplateSections(updatedTemplate.id, updatedTemplate.key, parsed.sections, existingSnapshot.sectionTemplates);
+
+  return getCharacterLoraTrainingTemplateSnapshot({ id: updatedTemplate.id });
 }
 
 export async function copyCharacterLoraSectionTemplate(input: unknown) {
@@ -660,6 +750,100 @@ function normalizeTemplateName(value: string) {
   }
 
   return normalized;
+}
+
+async function saveTrainingTemplateSections(
+  trainingTemplateId: string,
+  trainingTemplateKey: string,
+  sections: Array<z.infer<typeof templateEditorSectionSchema>>,
+  existingSections: Awaited<ReturnType<typeof getCharacterLoraTrainingTemplateSnapshot>>["sectionTemplates"],
+) {
+  const existingSectionsById = new Map(existingSections.map((section) => [section.id, section]));
+  const retainedKeys = new Set<string>();
+  const usedKeys = new Set(existingSections.map((section) => section.key));
+  const upserts: CharacterLoraSectionTemplateUpsertInput[] = [];
+
+  for (const [index, section] of sections.entries()) {
+    const existing = section.id ? existingSectionsById.get(section.id) : null;
+    const key = existing?.key ?? await generateUniqueSectionTemplateKey(trainingTemplateKey, section.title, usedKeys);
+    usedKeys.add(key);
+    retainedKeys.add(key);
+
+    const promptTemplate = section.blocks.length > 0
+      ? section.blocks.map((block) => block.text.trim()).filter(Boolean).join("\n\n")
+      : section.resolvedScene?.trim() || section.scenePreview?.trim() || section.title;
+
+    upserts.push({
+      trainingTemplateId,
+      key,
+      name: section.title,
+      description: section.scenePreview ?? section.resolvedScene ?? null,
+      angleTag: existing?.angleTag ?? null,
+      promptTemplate,
+      negativeTemplate: existing?.negativeTemplate ?? DEFAULT_NEGATIVE_TEMPLATE,
+      targetCandidateCount: Math.max(1, (section.blockCount ?? section.blocks.length) || 1),
+      targetKeepCount: existing?.targetKeepCount ?? 1,
+      sortOrder: (index + 1) * 10,
+      isActive: section.enabled,
+    });
+  }
+
+  for (const existing of existingSections) {
+    if (retainedKeys.has(existing.key)) continue;
+    upserts.push({
+      trainingTemplateId,
+      key: existing.key,
+      name: existing.name,
+      description: existing.description ?? null,
+      angleTag: existing.angleTag ?? null,
+      promptTemplate: existing.promptTemplate,
+      negativeTemplate: existing.negativeTemplate ?? null,
+      targetCandidateCount: existing.targetCandidateCount,
+      targetKeepCount: existing.targetKeepCount,
+      sortOrder: existing.sortOrder,
+      isActive: false,
+    });
+  }
+
+  if (upserts.length > 0) {
+    await upsertSectionTemplatesInRepository(upserts);
+  }
+}
+
+async function generateUniqueTrainingTemplateKey(title: string) {
+  const baseKey = normalizeTemplateKeyCandidate(title) || "training_template";
+  let candidate = baseKey;
+  let suffix = 2;
+
+  while (await getTrainingTemplateFromRepository({ key: candidate })) {
+    candidate = `${baseKey}_${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
+}
+
+async function generateUniqueSectionTemplateKey(templateKey: string, title: string, usedKeys: Set<string>) {
+  const baseKey = normalizeTemplateKeyCandidate(`${templateKey}_${title}`) || `${templateKey}_section`;
+  let candidate = baseKey;
+  let suffix = 2;
+
+  while (usedKeys.has(candidate) || await getSectionTemplateFromRepository({ key: candidate })) {
+    candidate = `${baseKey}_${suffix}`;
+    suffix += 1;
+  }
+
+  return candidate;
+}
+
+function normalizeTemplateKeyCandidate(value: string) {
+  return value
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/['"]/g, "")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
 }
 
 function dedupeTemplateKeys(templateKeys: string[] | undefined) {

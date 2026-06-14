@@ -179,6 +179,7 @@ export type PresetFull = PresetItem & {
 
 export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFull[]> {
   const categories = await prisma.presetCategory.findMany({
+    where: { type: "preset" },
     orderBy: { sortOrder: "asc" },
     include: {
       _count: {
@@ -342,6 +343,7 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
 
   const [categories, contentVariants] = await Promise.all([
     prisma.presetCategory.findMany({
+      where: { type: "preset" },
       orderBy: { sortOrder: "asc" },
       include: {
         _count: {
@@ -579,6 +581,7 @@ export type PresetLibraryV2 = {
 
 export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
   const categories = await prisma.presetCategory.findMany({
+    where: { type: "preset" },
     orderBy: { sortOrder: "asc" },
     include: {
       ownedSlots: {

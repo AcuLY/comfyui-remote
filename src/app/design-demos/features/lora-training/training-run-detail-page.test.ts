@@ -109,7 +109,7 @@ test("training detail distinguishes missing artifacts by run lifecycle", () => {
   assert.match(helperSource, /不可创建/, "failed runs without artifacts should not imply preset creation is waiting");
   assert.match(helperSource, /等待模型文件/, "queued or running runs should keep a waiting-for-model preset state");
   assert.match(detailPageSource, /trainingArtifactLabel\(currentRun\)/, "artifact stat should use the lifecycle-aware helper");
-  assert.match(detailPageSource, /trainingPresetStatusLabel\(currentRun, canCreatePreset\)/, "preset stat should use the lifecycle-aware helper");
+  assert.match(detailPageSource, /trainingPresetStatusLabel\(currentRun, canCreatePreset, presetCreatedAt\)/, "preset stat should use the lifecycle-aware helper");
   assert.doesNotMatch(detailPageSource, /等待 LoRA 文件/, "training detail should not use one generic missing-artifact preset state");
   assert.doesNotMatch(detailPageSource, /尚未生成 LoRA 文件/, "training detail should not use one generic missing-artifact model state");
 });
@@ -126,6 +126,24 @@ test("completed image generation detail renders result thumbnails with review ac
   assert.match(detailSource, /onReviewStatusChange=\{handleReviewGenerationOutput\}/, "generation output cards should wire keep/reject actions");
   assert.match(detailCss, /\.generationOutputGrid\b/, "generation outputs should have a dedicated thumbnail grid");
   assert.match(detailCss, /\.generationOutputCaption\b/, "generation output captions should be compact text below thumbnails");
+});
+
+test("completed image generation detail reviews outputs through the formal HTTP API on production routes", () => {
+  assert.match(detailSource, /usePathname/, "generation output review should detect whether it is running under production \\/training routes");
+  assert.match(detailSource, /fetch\(`\/api\/training\/image-results\/\$\{resultId\}\/review`/, "generation output review should call the formal training image review API");
+  assert.match(detailSource, /method:\s*"POST"/, "generation output review should post review decisions");
+  assert.match(detailSource, /reviewStatus === "kept" \? "keep" : "reject"|toTrainingImageReviewApiStatus\(reviewStatus\)/, "generation output review should map UI review states to the HTTP contract");
+  assert.match(detailSource, /pushToast/, "generation output review should surface API success or failure through the shared feedback system");
+});
+
+test("completed image generation detail can apply outputs to project reference images through the formal HTTP API", () => {
+  assert.match(detailSource, /appliedGenerationOutputState/, "generation detail should keep local state for outputs applied to reference images");
+  assert.match(detailSource, /handleApplyGenerationOutput/, "generation detail should define an explicit apply-output handler");
+  assert.match(detailSource, /fetch\(`\/api\/training\/generation-outputs\/\$\{resultId\}\/apply`/, "generation output apply should call the formal training generation-output API");
+  assert.match(detailSource, /targetEntityType:\s*"reference_image"/, "generation output apply should target reference-image application");
+  assert.match(detailSource, /targetEntityId:\s*currentRun\.projectId/, "generation output apply should scope the target to the current project");
+  assert.match(detailSource, /已加入资料图/, "generation output apply should expose a visible applied state");
+  assert.match(detailSource, /pushToast/, "generation output apply should surface API success or failure through the shared feedback system");
 });
 
 test("image generation detail prioritizes output before final input", () => {
@@ -154,6 +172,7 @@ test("training run detail repeated object actions include the acted-on object na
 
   assert.match(outputGridSource, /ariaLabel=\{`保留生成输出：\$\{activeResult\.sourceLabel\}`\}/, "keep action should name the active output");
   assert.match(outputGridSource, /ariaLabel=\{`拒绝生成输出：\$\{activeResult\.sourceLabel\}`\}/, "reject action should name the active output");
+  assert.match(outputGridSource, /ariaLabel=\{`加入资料图：\$\{activeResult\.sourceLabel\}`\}/, "apply-to-reference action should name the active output");
   assert.match(detailPageSource, /ariaLabel=\{`打开生成任务小节：\$\{currentRun\.title\}`\}/, "section jump should name the run context");
   assert.match(detailPageSource, /ariaLabel=\{`查看生成任务结果：\$\{currentRun\.title\}`\}/, "results jump should name the run context");
   assert.match(detailPageSource, /ariaLabel=\{`打开任务项目：\$\{currentRun\.projectTitle\}`\}/, "project jump should name the target project");
@@ -184,11 +203,14 @@ test("image generation detail renders task input attachments instead of project 
 });
 
 test("completed training run creates presets through the real training preset form route", () => {
-  assert.match(detailSource, /function createTrainingPresetHref/, "run detail should build a concrete preset creation href");
-  assert.match(detailSource, /\/training\/presets\/new/, "preset creation should navigate to the new training preset route");
-  assert.match(detailSource, /sourceRun/, "preset creation should pass the source training run id");
-  assert.match(detailSource, /artifact/, "preset creation should pass the final LoRA artifact name");
-  assert.match(detailSource, /<ButtonLink[\s\S]*?href=\{createTrainingPresetHref\(currentRun\)\}[\s\S]*?>\s*创建预制\s*<\/ButtonLink>/, "create preset action should be a link, not feedback-only UI");
+  assert.match(detailSource, /createdPresetState/, "run detail should keep local created-preset state");
+  assert.match(detailSource, /handleCreateTrainingPreset/, "run detail should define an explicit create-preset handler");
+  assert.match(detailSource, /fetch\(`\/api\/training\/training-runs\/\$\{currentRun\.id\}\/create-preset`/, "preset creation should call the formal training run preset API");
+  assert.match(detailSource, /presetName:\s*`\$\{currentRun\.projectTitle\} 训练预制`/, "preset creation should derive a default preset title from the source project");
+  assert.match(detailSource, /category:\s*"训练产物"/, "preset creation should default the training preset category");
+  assert.match(detailSource, /folder:\s*"LoRA 产物"/, "preset creation should default the training preset folder");
+  assert.match(detailSource, /router\.push\(`\/training\/presets\/\$\{payload\.data\.id\}`\)/, "preset creation should navigate to the created preset detail after success");
+  assert.match(detailSource, /pushToast/, "preset creation should surface API success or failure through the shared feedback system");
   assert.doesNotMatch(detailSource, /创建预制入口已预览/, "create preset action should not remain a preview-only placeholder");
 });
 
@@ -200,6 +222,26 @@ test("failed training run detail retry creates a visible local queued-retry draf
   assert.match(detailSource, /queuedAt/, "retry draft should expose when the retry was queued");
   assert.doesNotMatch(detailSource, /onClick=\{\(\) => setRetryQueued\(true\)\}/, "retry should not remain a boolean-only inline action");
   assert.match(detailSource, /!isRetryQueued/, "retry button should hide once the run is queued for retry");
+});
+
+test("failed run detail retries through the formal HTTP API on production routes", () => {
+  assert.match(detailSource, /usePathname/, "retry flow should detect whether it is running under production \\/training routes");
+  assert.match(detailSource, /useRouter/, "retry flow should be able to navigate to the queued retry run on production routes");
+  assert.match(detailSource, /fetch\(`\/api\/training\/sections\/\$\{currentRun\.sectionId\}\/runs`/, "generation retry should call the formal section run API");
+  assert.match(detailSource, /fetch\(`\/api\/training\/projects\/\$\{currentRun\.projectId\}\/training-runs`/, "training retry should call the formal project training run API");
+  assert.match(detailSource, /parentRunId:\s*currentRun\.id/, "generation retry should pass the failed run id as the parent run");
+  assert.match(detailSource, /revisionId:\s*currentRun\.datasetRevisionId/, "training retry should pass the original dataset revision id");
+  assert.match(detailSource, /targetSteps:/, "training retry should map the existing target step count into the HTTP request config");
+  assert.match(detailSource, /router\.push\(`/, "retry flow should navigate to the newly queued run after a successful API response");
+  assert.match(detailSource, /pushToast/, "retry flow should surface API success or failure through the shared feedback system");
+});
+
+test("queued or running training detail cancels through the formal HTTP API on production routes", () => {
+  assert.match(detailSource, /`\/api\/training\/generation-tasks\/\$\{currentRun\.id\}\/cancel`/, "generation detail should call the formal generation cancel API");
+  assert.match(detailSource, /`\/api\/training\/training-runs\/\$\{currentRun\.id\}\/cancel`/, "training detail should call the formal training cancel API");
+  assert.match(detailSource, /method:\s*"POST"/, "training detail should cancel runs through POST");
+  assert.match(detailSource, /requestedBy:/, "training detail should identify the request source when cancelling");
+  assert.match(detailSource, /pushToast/, "training detail should surface cancel API success or failure through the shared feedback system");
 });
 
 test("training sample lightbox copies captions through a real local action", () => {
