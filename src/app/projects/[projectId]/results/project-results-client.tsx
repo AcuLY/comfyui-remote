@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   ArrowLeft,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -21,13 +22,20 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import type { ProjectResultsData } from "@/lib/server-data";
+import { QuickCensorCanvas } from "@/components/quick-censor-canvas";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { getPreferredScrollContainer } from "@/lib/scroll-container";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
+import { censorImage } from "@/lib/actions";
+import {
+  submitReviewMutation,
+  type ReviewMutationAction,
+} from "@/lib/client-review-mutation";
 import {
   SidebarSectionNav,
   useSyncedSidebarContent,
@@ -63,6 +71,18 @@ type ProjectResultFilterCounts = Record<ProjectResultFilter, number>;
 
 type ProjectResultsImageWithRun = ProjectResultsImage & {
   runIndex: number;
+};
+
+type ManualCensorUploadResponse = {
+  ok?: boolean;
+  data?: {
+    censoredAt?: string;
+    censoredFull?: string | null;
+    censoredSrc?: string | null;
+  };
+  error?: {
+    message?: string;
+  };
 };
 
 function summarizeSectionReviewCounts(runs: ProjectResultsSection["runs"]) {
@@ -534,6 +554,7 @@ export function ProjectResultsClient({
 }: {
   project: ProjectResultsData;
 }) {
+  const router = useRouter();
   const [sections, setSections] = useState(project.sections);
   const [expandedSectionIds, setExpandedSectionIds] = useState<Set<string>>(
     new Set(),
@@ -545,6 +566,9 @@ export function ProjectResultsClient({
   const [isTrashingAll, setIsTrashingAll] = useState(false);
   const [lightboxImageId, setLightboxImageId] = useState<string | null>(null);
   const [showCensoredMode, setShowCensoredMode] = useState(false);
+  const [quickCensorMode, setQuickCensorMode] = useState(false);
+  const [reviewingImageId, setReviewingImageId] = useState<string | null>(null);
+  const [reviewingAction, setReviewingAction] = useState<ReviewMutationAction | null>(null);
   const [resultFilter, setResultFilter] = useState<ProjectResultFilter>("all");
   const [, startTransition] = useTransition();
   const filteredSections = useMemo(() =>
@@ -570,6 +594,11 @@ export function ProjectResultsClient({
     ? filteredImages.findIndex((image) => image.id === lightboxImageId)
     : -1;
   const lightboxImage = lightboxIndex >= 0 ? filteredImages[lightboxIndex] : null;
+  const lightboxCurrentReviewBusy =
+    lightboxImage !== null && reviewingImageId === lightboxImage.id;
+  const lightboxBusy =
+    lightboxCurrentReviewBusy ||
+    (lightboxImage !== null && togglingImageId === lightboxImage.id);
 
   const totalImages = sections.reduce(
     (sum, section) => sum + section.imageCount,
@@ -646,21 +675,36 @@ export function ProjectResultsClient({
   }, [filteredImages, lightboxImageId]);
 
   useEffect(() => {
+    setQuickCensorMode(false);
+  }, [lightboxImageId]);
+
+  useEffect(() => {
     if (!lightboxImage) return;
+    const currentLightboxImage = lightboxImage;
 
     function handleKeyDown(event: KeyboardEvent) {
+      if (quickCensorMode) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          setQuickCensorMode(false);
+        }
+        return;
+      }
+
       if (event.key === "Escape") closeLightbox();
       if (event.key === "ArrowLeft") goLightboxPrev();
       if (event.key === "ArrowRight") goLightboxNext();
       if (event.key === "h" || event.key === "H") {
         event.preventDefault();
-        setShowCensoredMode((prev) => !prev);
+        if (currentLightboxImage.censoredFull) {
+          setShowCensoredMode((prev) => !prev);
+        }
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closeLightbox, goLightboxNext, goLightboxPrev, lightboxImage]);
+  }, [closeLightbox, goLightboxNext, goLightboxPrev, lightboxImage, quickCensorMode]);
 
   const toggleExpandedSection = useCallback((sectionId: string) => {
     setExpandedSectionIds((current) => {
@@ -746,6 +790,83 @@ export function ProjectResultsClient({
       }),
     );
   }, []);
+
+  const setImageReviewStatus = useCallback(
+    (imageId: string, status: ProjectResultsImage["status"]) => {
+      setSections((currentSections) =>
+        currentSections.map((section) => {
+          let sectionChanged = false;
+          const runs = section.runs.map((run) => {
+            let runChanged = false;
+            const images = run.images.map((image) => {
+              if (image.id !== imageId) return image;
+              sectionChanged = true;
+              runChanged = true;
+              return { ...image, status };
+            });
+            return runChanged ? { ...run, images } : run;
+          });
+
+          if (!sectionChanged) return section;
+          return { ...section, runs, ...summarizeSectionReviewCounts(runs) };
+        }),
+      );
+    },
+    [],
+  );
+
+  const removeProjectResultImage = useCallback((imageId: string) => {
+    setSections((currentSections) =>
+      currentSections.map((section) => {
+        let sectionChanged = false;
+        const runs = section.runs.map((run) => {
+          const images = run.images.filter((image) => image.id !== imageId);
+          if (images.length === run.images.length) return run;
+          sectionChanged = true;
+          return { ...run, images };
+        });
+
+        if (!sectionChanged) return section;
+        return { ...section, runs, ...summarizeSectionReviewCounts(runs) };
+      }),
+    );
+  }, []);
+
+  const setImageCensoredResult = useCallback(
+    (
+      imageId: string,
+      result: {
+        censoredAt: string;
+        censoredFull: string | null;
+        censoredSrc: string | null;
+      },
+    ) => {
+      setSections((currentSections) =>
+        currentSections.map((section) => {
+          let sectionChanged = false;
+          const runs = section.runs.map((run) => {
+            let runChanged = false;
+            const images = run.images.map((image) => {
+              if (image.id !== imageId) return image;
+              sectionChanged = true;
+              runChanged = true;
+              return {
+                ...image,
+                censoredAt: result.censoredAt,
+                censoredFull: result.censoredFull,
+                censoredSrc: result.censoredSrc,
+              };
+            });
+            return runChanged ? { ...run, images } : run;
+          });
+
+          if (!sectionChanged) return section;
+          return { ...section, runs };
+        }),
+      );
+    },
+    [],
+  );
 
   const handleToggleFeatured = useCallback(
     (imageId: string, featured: boolean) => {
@@ -853,6 +974,93 @@ export function ProjectResultsClient({
       });
     },
     [allImages, sections, setImageCover, togglingImageId],
+  );
+
+  const finishQuickCensor = useCallback(
+    async (blob: Blob) => {
+      if (!lightboxImage) return;
+
+      const formData = new FormData();
+      formData.set("file", blob, `${lightboxImage.id}-manual-censor.jpg`);
+
+      const response = await fetch(
+        `/api/images/${encodeURIComponent(lightboxImage.id)}/manual-censor`,
+        {
+          method: "POST",
+          body: formData,
+        },
+      );
+      const payload = (await response.json().catch(() => null)) as ManualCensorUploadResponse | null;
+
+      if (!response.ok || payload?.ok === false || !payload?.data) {
+        throw new Error(payload?.error?.message ?? "保存快速打码失败");
+      }
+
+      setImageCensoredResult(lightboxImage.id, {
+        censoredAt: payload.data.censoredAt ?? new Date().toISOString(),
+        censoredFull: payload.data.censoredFull ?? lightboxImage.censoredFull,
+        censoredSrc: payload.data.censoredSrc ?? lightboxImage.censoredSrc,
+      });
+      setQuickCensorMode(false);
+      setShowCensoredMode(true);
+      toast.success("快速打码已保存");
+      router.refresh();
+    },
+    [lightboxImage, router, setImageCensoredResult],
+  );
+
+  const reviewLightboxImage = useCallback(
+    (action: ReviewMutationAction, autoNext = false) => {
+      if (!lightboxImage || reviewingImageId || quickCensorMode) return;
+
+      const imageId = lightboxImage.id;
+      const previousSections = sections;
+      const imageCount = filteredImages.length;
+      const removedIndex = lightboxIndex;
+      const nextImageAfterRemoval =
+        filteredImages[removedIndex + 1] ?? filteredImages[removedIndex - 1] ?? null;
+
+      setReviewingImageId(imageId);
+      setReviewingAction(action);
+
+      if (action === "keep") {
+        setImageReviewStatus(imageId, "kept");
+        if (autoNext && imageCount > 1) {
+          goLightboxNext();
+        }
+      } else {
+        removeProjectResultImage(imageId);
+        if (imageCount <= 1 || !nextImageAfterRemoval) {
+          setLightboxImageId(null);
+        } else {
+          setLightboxImageId(nextImageAfterRemoval.id);
+        }
+      }
+
+      void submitReviewMutation(action, [imageId])
+        .catch((error) => {
+          setSections(previousSections);
+          if (action === "trash") {
+            setLightboxImageId(imageId);
+          }
+          toast.error(error instanceof Error ? error.message : "审核失败");
+        })
+        .finally(() => {
+          setReviewingImageId(null);
+          setReviewingAction(null);
+        });
+    },
+    [
+      filteredImages,
+      goLightboxNext,
+      lightboxImage,
+      lightboxIndex,
+      quickCensorMode,
+      removeProjectResultImage,
+      reviewingImageId,
+      sections,
+      setImageReviewStatus,
+    ],
   );
 
   const handleTrashAllImages = useCallback(() => {
@@ -1004,114 +1212,238 @@ export function ProjectResultsClient({
       </SidebarInset>
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-[140] flex items-center justify-center bg-black/90 p-3 backdrop-blur-sm sm:p-4"
+          data-project-results-lightbox
+          className="fixed inset-0 z-[140] flex flex-col bg-black/90 backdrop-blur-sm"
           onClick={closeLightbox}
         >
-          <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+          <div className="z-10 flex items-center justify-between gap-3 px-3 py-3 sm:px-4">
+            <div className="flex min-w-0 items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs text-zinc-300">
+              <span className="truncate">
+                Run #{lightboxImage.runIndex} · {lightboxIndex + 1}/{filteredImages.length}
+              </span>
+              {lightboxImage.status === "pending" && (
+                <span className="rounded bg-amber-500/80 px-1.5 py-0.5 text-[10px] text-white">
+                  待审
+                </span>
+              )}
+              {lightboxImage.status === "kept" && (
+                <span className="rounded bg-emerald-500/80 px-1.5 py-0.5 text-[10px] text-white">
+                  保留
+                </span>
+              )}
+              {lightboxImage.featured && (
+                <span className="rounded bg-amber-400/80 px-1.5 py-0.5 text-[10px] text-white">
+                  p站
+                </span>
+              )}
+              {lightboxImage.featured2 && (
+                <span className="rounded bg-cyan-400/80 px-1.5 py-0.5 text-[10px] text-white">
+                  预览
+                </span>
+              )}
+              {lightboxImage.cover && (
+                <span className="rounded bg-violet-400/80 px-1.5 py-0.5 text-[10px] text-white">
+                  封面
+                </span>
+              )}
+              {showCensoredMode && lightboxImage.censoredFull && (
+                <span className="rounded bg-amber-500/80 px-1.5 py-0.5 text-[10px] text-white">
+                  打码版
+                </span>
+              )}
+            </div>
+
             <button
               type="button"
-              disabled={togglingImageId === lightboxImage.id || lightboxImage.cover}
+              className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
               onClick={(event) => {
                 event.stopPropagation();
-                handleSetCover(lightboxImage.id);
+                closeLightbox();
               }}
-              className={`rounded-full p-2 transition disabled:opacity-50 ${
-                lightboxImage.cover
-                  ? "bg-violet-500/30 text-violet-200"
-                  : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-violet-100"
-              }`}
-              title={lightboxImage.cover ? "当前封面" : "设为封面"}
-            >
-              <ImageIcon className="size-5" />
-            </button>
-            <button
-              type="button"
-              disabled={togglingImageId === lightboxImage.id}
-              onClick={(event) => {
-                event.stopPropagation();
-                handleToggleFeatured2(lightboxImage.id, !lightboxImage.featured2);
-              }}
-              className={`rounded-full px-3 py-2 text-sm font-semibold transition disabled:opacity-50 ${
-                lightboxImage.featured2
-                  ? "bg-cyan-500/30 text-cyan-200 hover:bg-cyan-500/40"
-                  : "bg-white/10 text-white/70 hover:bg-white/20 hover:text-cyan-100"
-              }`}
-              title={lightboxImage.featured2 ? "取消预览" : "标记预览"}
-            >
-              <Eye className="size-5" />
-            </button>
-            <button
-              type="button"
-              disabled={togglingImageId === lightboxImage.id}
-              onClick={(event) => {
-                event.stopPropagation();
-                handleToggleFeatured(lightboxImage.id, !lightboxImage.featured);
-              }}
-              className={`rounded-full p-2 transition disabled:opacity-50 ${
-                lightboxImage.featured
-                  ? "bg-amber-500/30 text-amber-300 hover:bg-amber-500/40"
-                  : "bg-white/10 text-white/70 hover:bg-white/20"
-              }`}
-              title={lightboxImage.featured ? "取消p站" : "标记p站"}
-            >
-              <Star
-                className="size-5"
-                fill={lightboxImage.featured ? "currentColor" : "none"}
-              />
-            </button>
-            <button
-              type="button"
-              className="rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
-              onClick={closeLightbox}
               title="关闭"
             >
               <X className="size-5" />
             </button>
           </div>
 
-          <div className="absolute left-4 top-4 z-10 rounded-full bg-white/10 px-3 py-1.5 text-xs text-zinc-300">
-            Run #{lightboxImage.runIndex} · {lightboxIndex + 1}/{filteredImages.length}
-          </div>
-
-          {filteredImages.length > 1 && (
+          <div className="grid h-[calc(100dvh-8.5rem)] min-h-0 flex-1 grid-cols-[3rem_minmax(0,1fr)_3rem] sm:grid-cols-[4.5rem_minmax(0,1fr)_4.5rem]">
             <button
               type="button"
-              className="absolute left-3 z-10 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+              disabled={quickCensorMode || filteredImages.length <= 1}
+              className="flex h-full items-center justify-center border-r border-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:text-white/10"
               onClick={(event) => {
                 event.stopPropagation();
                 goLightboxPrev();
               }}
               title="上一张"
             >
-              <ChevronLeft className="size-6" />
+              <ChevronLeft className="size-7" />
             </button>
-          )}
 
-          <div
-            className="relative flex h-[100dvh] w-[100dvw] items-center justify-center px-2 py-16 sm:px-12"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={showCensoredMode && lightboxImage.censoredFull ? lightboxImage.censoredFull : lightboxImage.full}
-              alt=""
-              className="max-h-full max-w-full rounded-lg object-contain"
-            />
-          </div>
+            <div
+              className="relative flex min-w-0 items-center justify-center px-1 py-3"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {quickCensorMode ? (
+                <QuickCensorCanvas
+                  source={lightboxImage.full}
+                  disabled={lightboxBusy}
+                  onCancel={() => setQuickCensorMode(false)}
+                  onComplete={finishQuickCensor}
+                />
+              ) : (
+                <>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    key={lightboxImage.id}
+                    src={showCensoredMode && lightboxImage.censoredFull ? lightboxImage.censoredFull : lightboxImage.full}
+                    alt=""
+                    loading="eager"
+                    fetchPriority="high"
+                    draggable={false}
+                    className="max-h-[calc(100dvh-11rem)] max-w-full rounded-lg object-contain"
+                  />
+                </>
+              )}
+            </div>
 
-          {filteredImages.length > 1 && (
             <button
               type="button"
-              className="absolute right-3 z-10 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+              disabled={quickCensorMode || filteredImages.length <= 1}
+              className="flex h-full items-center justify-center border-l border-white/5 text-white/70 transition hover:bg-white/10 hover:text-white disabled:pointer-events-none disabled:text-white/10"
               onClick={(event) => {
                 event.stopPropagation();
                 goLightboxNext();
               }}
               title="下一张"
             >
-              <ChevronRight className="size-6" />
+              <ChevronRight className="size-7" />
             </button>
-          )}
+          </div>
+
+          <div
+            className="z-10 grid grid-cols-2 gap-2 border-t border-white/10 bg-black/50 p-3 sm:grid-cols-8 sm:px-4"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              disabled={quickCensorMode || lightboxBusy}
+              onClick={() => reviewLightboxImage("keep", true)}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-emerald-400/25 bg-emerald-500/12 px-3 text-sm font-medium text-emerald-200 transition hover:bg-emerald-500/20 disabled:opacity-45"
+            >
+              <Check className="size-4" />
+              {reviewingAction === "keep" ? "处理中..." : "保留"}
+            </button>
+            <button
+              type="button"
+              disabled={quickCensorMode || lightboxBusy}
+              onClick={() => reviewLightboxImage("trash", true)}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-rose-400/25 bg-rose-500/12 px-3 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20 disabled:opacity-45"
+            >
+              <Trash2 className="size-4" />
+              {reviewingAction === "trash" ? "处理中..." : "删除"}
+            </button>
+            <button
+              type="button"
+              disabled={quickCensorMode || lightboxBusy}
+              onClick={() => handleToggleFeatured(lightboxImage.id, !lightboxImage.featured)}
+              className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-45 ${
+                lightboxImage.featured
+                  ? "border-amber-300/35 bg-amber-400/25 text-amber-100 hover:bg-amber-400/30"
+                  : "border-white/15 bg-white/10 text-white/80 hover:bg-white/15 hover:text-amber-100"
+              }`}
+            >
+              <Star
+                className="size-4"
+                fill={lightboxImage.featured ? "currentColor" : "none"}
+              />
+              {lightboxImage.featured ? "取消p站" : "p站"}
+            </button>
+            <button
+              type="button"
+              disabled={quickCensorMode || lightboxBusy}
+              onClick={() => handleToggleFeatured2(lightboxImage.id, !lightboxImage.featured2)}
+              className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-45 ${
+                lightboxImage.featured2
+                  ? "border-cyan-300/35 bg-cyan-400/25 text-cyan-100 hover:bg-cyan-400/30"
+                  : "border-white/15 bg-white/10 text-white/80 hover:bg-white/15 hover:text-cyan-100"
+              }`}
+            >
+              <Eye className="size-4" />
+              {lightboxImage.featured2 ? "取消预览" : "预览"}
+            </button>
+            <button
+              type="button"
+              disabled={quickCensorMode || lightboxBusy || lightboxImage.cover}
+              onClick={() => handleSetCover(lightboxImage.id)}
+              className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-45 ${
+                lightboxImage.cover
+                  ? "border-violet-300/35 bg-violet-400/25 text-violet-100"
+                  : "border-white/15 bg-white/10 text-white/80 hover:bg-white/15 hover:text-violet-100"
+              }`}
+            >
+              <ImageIcon className="size-4" />
+              {lightboxImage.cover ? "封面" : "设为封面"}
+            </button>
+            <button
+              type="button"
+              disabled={quickCensorMode || !lightboxImage.censoredFull}
+              onClick={() => lightboxImage.censoredFull && setShowCensoredMode((prev) => !prev)}
+              className={`inline-flex h-11 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-medium transition disabled:opacity-45 ${
+                showCensoredMode && lightboxImage.censoredFull
+                  ? "border-amber-300/35 bg-amber-400/25 text-amber-100 hover:bg-amber-400/30"
+                  : lightboxImage.censoredFull
+                    ? "border-white/15 bg-white/10 text-white/80 hover:bg-white/15 hover:text-amber-100"
+                    : "border-white/10 bg-white/5 text-zinc-600"
+              }`}
+            >
+              <Shield className="size-4" />
+              {showCensoredMode && lightboxImage.censoredFull
+                ? "显示原图"
+                : lightboxImage.censoredFull
+                  ? "查看打码"
+                  : "暂未打码"}
+            </button>
+            {(lightboxImage.status === "kept" || lightboxImage.status === "pending") && (
+              <button
+                type="button"
+                disabled={quickCensorMode || lightboxBusy}
+                onClick={() => {
+                  setShowCensoredMode(false);
+                  setQuickCensorMode(true);
+                }}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-amber-400/25 bg-amber-500/12 px-3 text-sm font-medium text-amber-100 transition hover:bg-amber-500/20 disabled:opacity-45"
+              >
+                <Shield className="size-4" />
+                开始打码
+              </button>
+            )}
+            {(lightboxImage.status === "kept" || lightboxImage.status === "pending") && !lightboxImage.censoredAt && (
+              <button
+                type="button"
+                disabled={quickCensorMode || lightboxBusy}
+                onClick={() => {
+                  startTransition(async () => {
+                    try {
+                      const result = await censorImage(lightboxImage.id);
+                      if (result.success) {
+                        toast.success(result.message);
+                        router.refresh();
+                      } else {
+                        toast.error(result.message);
+                      }
+                    } catch {
+                      toast.error("打码失败");
+                    }
+                  });
+                }}
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/12 px-3 text-sm font-medium text-amber-200 transition hover:bg-amber-500/20 disabled:opacity-45"
+              >
+                <Shield className="size-4" />
+                执行打码
+              </button>
+            )}
+          </div>
         </div>
       )}
     </SidebarProvider>
