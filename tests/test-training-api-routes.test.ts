@@ -633,6 +633,81 @@ test("training project sections create, copy, delete, and reorder through /api/t
   );
 });
 
+test("training section alias route reads, updates, and deletes by /api/training/sections/:sectionId", async () => {
+  const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
+  const sectionAliasRoute = await import("../src/app/api/training/sections/[sectionId]/route");
+  const projects = await listProjects();
+  const projectId = projects[0].id;
+
+  const createSectionResponse = await sectionsRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/sections`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const createSectionPayload = await createSectionResponse.json();
+  assert.equal(createSectionResponse.status, 200);
+  assert.equal(createSectionPayload.ok, true);
+
+  const sectionId = createSectionPayload.data.id as string;
+  const sectionParams = { params: Promise.resolve({ sectionId }) };
+
+  const getResponse = await sectionAliasRoute.GET(
+    new Request(`http://localhost/api/training/sections/${sectionId}`),
+    sectionParams,
+  );
+  const getPayload = await getResponse.json();
+  assert.equal(getResponse.status, 200);
+  assert.equal(getPayload.ok, true);
+  assert.equal(getPayload.data.id, sectionId);
+
+  const updateResponse = await sectionAliasRoute.PATCH(
+    new Request(`http://localhost/api/training/sections/${sectionId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        title: "Section Alias 已更新",
+        enabled: true,
+        blocks: [
+          {
+            id: "section-alias-block",
+            source: "本地",
+            title: "Section Alias Block",
+            text: "section alias 更新后的场景描述",
+          },
+        ],
+        resolvedScene: "section alias 更新后的场景描述",
+        imagePrompt: "section alias 更新后的图片提示词",
+      }),
+    }),
+    sectionParams,
+  );
+  const updatePayload = await updateResponse.json();
+  assert.equal(updateResponse.status, 200);
+  assert.equal(updatePayload.ok, true);
+  assert.equal(updatePayload.data.title, "Section Alias 已更新");
+  assert.equal(updatePayload.data.resolvedScene, "section alias 更新后的场景描述");
+
+  const deleteResponse = await sectionAliasRoute.DELETE(
+    new Request(`http://localhost/api/training/sections/${sectionId}`, {
+      method: "DELETE",
+    }),
+    sectionParams,
+  );
+  const deletePayload = await deleteResponse.json();
+  assert.equal(deleteResponse.status, 200);
+  assert.equal(deletePayload.ok, true);
+  assert.equal(deletePayload.data.success, true);
+
+  const getAfterDeleteResponse = await sectionAliasRoute.GET(
+    new Request(`http://localhost/api/training/sections/${sectionId}`),
+    sectionParams,
+  );
+  const getAfterDeletePayload = await getAfterDeleteResponse.json();
+  assert.equal(getAfterDeleteResponse.status, 404);
+  assert.equal(getAfterDeletePayload.ok, false);
+});
+
 test("GET /api/training/runs filters the global training workspace by kind and status", async () => {
   const runs = await listRuns("?kind=generation&status=completed");
 
@@ -2610,6 +2685,7 @@ test("training write routes exist under /api/training and fail through HTTP cont
   const archiveProjectRoute = await import("../src/app/api/training/projects/[projectId]/archive/route");
   const restoreProjectRoute = await import("../src/app/api/training/projects/[projectId]/restore/route");
   const updateProjectSectionRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
+  const updateSectionAliasRoute = await import("../src/app/api/training/sections/[sectionId]/route");
   const createTrainingPresetRoute = await import("../src/app/api/training/presets/route");
   const saveTrainingPresetSortRulesRoute = await import("../src/app/api/training/presets/sort-rules/route");
   const updateTrainingPresetRoute = await import("../src/app/api/training/presets/[presetId]/route");
@@ -2631,12 +2707,13 @@ test("training write routes exist under /api/training and fail through HTTP cont
   const missingTemplateParams = { params: Promise.resolve({ templateId: "missing-template" }) };
   const missingTemplateSectionParams = { params: Promise.resolve({ templateId: "missing-template", sectionId: "missing-section" }) };
 
-  const [createResponse, updateResponse, archiveResponse, restoreResponse, updateProjectSectionResponse, createPresetResponse, savePresetSortRulesResponse, updatePresetResponse, createScenePresetAliasResponse, updateScenePresetAliasResponse, createTemplateResponse, updateTemplateResponse, updateTemplateSectionResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
+  const [createResponse, updateResponse, archiveResponse, restoreResponse, updateProjectSectionResponse, updateSectionAliasResponse, createPresetResponse, savePresetSortRulesResponse, updatePresetResponse, createScenePresetAliasResponse, updateScenePresetAliasResponse, createTemplateResponse, updateTemplateResponse, updateTemplateSectionResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
     createProjectRoute.POST(new Request("http://localhost/api/training/projects", { method: "POST", body: "{}" })),
     updateProjectRoute.PATCH(new Request("http://localhost/api/training/projects/missing-project", { method: "PATCH", body: "{}" }), missingProjectParams),
     archiveProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/archive", { method: "POST" }), missingProjectParams),
     restoreProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/restore", { method: "POST" }), missingProjectParams),
     updateProjectSectionRoute.PATCH(new Request("http://localhost/api/training/projects/missing-project/sections/missing-section", { method: "PATCH", body: "{}" }), missingProjectSectionParams),
+    updateSectionAliasRoute.PATCH(new Request("http://localhost/api/training/sections/missing-section", { method: "PATCH", body: "{}" }), missingSectionParams),
     createTrainingPresetRoute.POST(new Request("http://localhost/api/training/presets", { method: "POST", body: "{}" })),
     saveTrainingPresetSortRulesRoute.POST(new Request("http://localhost/api/training/presets/sort-rules", { method: "POST", body: "{}" })),
     updateTrainingPresetRoute.PATCH(new Request("http://localhost/api/training/presets/missing-preset", { method: "PATCH", body: "{}" }), missingPresetParams),
@@ -2657,6 +2734,7 @@ test("training write routes exist under /api/training and fail through HTTP cont
     archiveResponse.json(),
     restoreResponse.json(),
     updateProjectSectionResponse.json(),
+    updateSectionAliasResponse.json(),
     createPresetResponse.json(),
     savePresetSortRulesResponse.json(),
     updatePresetResponse.json(),
@@ -2681,30 +2759,32 @@ test("training write routes exist under /api/training and fail through HTTP cont
   assert.equal(payloads[3].ok, false);
   assert.ok(updateProjectSectionResponse.status >= 400);
   assert.equal(payloads[4].ok, false);
-  assert.ok(createPresetResponse.status >= 400);
+  assert.ok(updateSectionAliasResponse.status >= 400);
   assert.equal(payloads[5].ok, false);
-  assert.ok(savePresetSortRulesResponse.status >= 400);
+  assert.ok(createPresetResponse.status >= 400);
   assert.equal(payloads[6].ok, false);
-  assert.ok(updatePresetResponse.status >= 400);
+  assert.ok(savePresetSortRulesResponse.status >= 400);
   assert.equal(payloads[7].ok, false);
-  assert.ok(createScenePresetAliasResponse.status >= 400);
+  assert.ok(updatePresetResponse.status >= 400);
   assert.equal(payloads[8].ok, false);
-  assert.ok(updateScenePresetAliasResponse.status >= 400);
+  assert.ok(createScenePresetAliasResponse.status >= 400);
   assert.equal(payloads[9].ok, false);
-  assert.ok(createTemplateResponse.status >= 400);
+  assert.ok(updateScenePresetAliasResponse.status >= 400);
   assert.equal(payloads[10].ok, false);
-  assert.ok(updateTemplateResponse.status >= 400);
+  assert.ok(createTemplateResponse.status >= 400);
   assert.equal(payloads[11].ok, false);
-  assert.ok(updateTemplateSectionResponse.status >= 400);
+  assert.ok(updateTemplateResponse.status >= 400);
   assert.equal(payloads[12].ok, false);
-  assert.ok(freezeResponse.status >= 400);
+  assert.ok(updateTemplateSectionResponse.status >= 400);
   assert.equal(payloads[13].ok, false);
-  assert.ok(enqueueTrainingResponse.status >= 400);
+  assert.ok(freezeResponse.status >= 400);
   assert.equal(payloads[14].ok, false);
-  assert.ok(enqueueSectionResponse.status >= 400);
+  assert.ok(enqueueTrainingResponse.status >= 400);
   assert.equal(payloads[15].ok, false);
-  assert.ok(cancelResponse.status >= 400);
+  assert.ok(enqueueSectionResponse.status >= 400);
   assert.equal(payloads[16].ok, false);
+  assert.ok(cancelResponse.status >= 400);
+  assert.equal(payloads[17].ok, false);
 });
 
 test("training asset and review routes exist under /api/training and return JSON error contracts", async () => {
