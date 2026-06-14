@@ -11,8 +11,6 @@ import type {
   LoraTrainingRun,
   LoraTrainingSection,
 } from "@/app/design-demos/data/lora-training-types";
-import { buildLoraTrainingDemoData } from "@/app/design-demos/data/lora-training";
-import { loadDesignDemoData } from "@/app/design-demos/data/load-demo-data";
 import { toImageUrl } from "@/lib/image-url";
 import {
   getCharacterLoraCandidateImage,
@@ -243,7 +241,6 @@ function imageMimeTypeFromPath(relativePath: string) {
 async function deriveReferenceImages(
   selectedReferenceIds: string[],
   sourceProjects: LoraTrainingProject[],
-  fallbackImages: DemoImage[],
 ): Promise<LoraTrainingReferenceImage[]> {
   const results = sourceProjects.flatMap((project) => project.resultPool);
   const projects = sourceProjects;
@@ -319,18 +316,6 @@ async function deriveReferenceImages(
       } catch {
         return null;
       }
-    }
-
-    if (referenceId.startsWith("image-")) {
-      const image = fallbackImages.find((item) => item.id === referenceId.slice("image-".length));
-      if (!image) return null;
-      return {
-        id: `reference-${referenceId}`,
-        kind: "auxiliary" as const,
-        label: image.label,
-        note: "创建项目时从资料候选显式加入。",
-        image,
-      };
     }
 
     return null;
@@ -1574,15 +1559,7 @@ export async function createManagedTrainingProject(input: unknown) {
     throw new TrainingProjectServiceError("trainingTemplateId or templateId is required", 400);
   }
 
-  const demoData = await loadDesignDemoData();
-  const baseTraining = buildLoraTrainingDemoData(demoData);
-  const template = await getManagedTrainingTemplate(templateId).catch(() => (
-    baseTraining.templates.find((item) =>
-      item.id === templateId
-      || item.title === templateId
-      || (templateId === "character_identity_default" && item.title === "角色 LoRA 基础模板")
-    ) ?? null
-  ));
+  const template = await getManagedTrainingTemplate(templateId).catch(() => null);
   if (!template) {
     throw new TrainingProjectServiceError("Training template not found", 404, { templateId });
   }
@@ -1592,8 +1569,7 @@ export async function createManagedTrainingProject(input: unknown) {
   const managedReferenceSourceProjects = await listManagedTrainingProjects().catch(() => []);
   const selectedReferenceImages = await deriveReferenceImages(
     parsed.selectedReferenceIds,
-    managedReferenceSourceProjects.length ? managedReferenceSourceProjects : baseTraining.projects,
-    demoData.images,
+    managedReferenceSourceProjects,
   );
   const responseProject = buildFallbackTrainingProject(parsed, createdId ?? `training-project-${Date.now()}`, selectedReferenceImages);
 

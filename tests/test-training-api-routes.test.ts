@@ -1898,6 +1898,7 @@ test("generation output apply can add a managed output into project reference im
   const generationOutputApplyRoute = await import("../src/app/api/training/generation-outputs/[outputId]/apply/route");
 
   await withTrainingManagedStoreSnapshot(async () => {
+    const seedProject = await createManagedReferenceSeedProject();
     const title = `测试输出应用项目 ${Date.now()}`;
     const createResponse = await projectsRoute.POST(
       new Request("http://localhost/api/training/projects", {
@@ -1912,7 +1913,7 @@ test("generation output apply can add a managed output into project reference im
           checkpointRelativePath: "models/checkpoints/mock.safetensors",
           usagePrompt: "测试输出应用提示词",
           detailPrompt: "测试输出应用细节",
-          selectedReferenceIds: ["project-vela-neon"],
+          selectedReferenceIds: [seedProject.projectSelectionId],
           sections: [
             {
               id: "output-apply-section",
@@ -4314,6 +4315,7 @@ test("managed section run route honors project scope when section ids overlap", 
 
 test("managed scheduler and worker endpoints can advance generation and training runs through completion", async () => {
   await withTrainingManagedStoreSnapshot(async () => {
+    const seedProject = await createManagedReferenceSeedProject();
     const projectsRoute = await import("../src/app/api/training/projects/route");
     const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
     const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
@@ -4339,7 +4341,7 @@ test("managed scheduler and worker endpoints can advance generation and training
           checkpointRelativePath: "models/checkpoints/mock.safetensors",
           usagePrompt: "测试 worker 链提示词",
           detailPrompt: "测试 worker 链细节",
-          selectedReferenceIds: ["project-vela-neon"],
+          selectedReferenceIds: [seedProject.projectSelectionId],
           sections: [
             {
               id: "worker-section",
@@ -4507,6 +4509,7 @@ test("managed scheduler and worker endpoints can advance generation and training
 
 test("managed worker endpoints can mark generation and training runs as failed through /api/training", async () => {
   await withTrainingManagedStoreSnapshot(async () => {
+    const seedProject = await createManagedReferenceSeedProject();
     const projectsRoute = await import("../src/app/api/training/projects/route");
     const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
     const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
@@ -4531,7 +4534,7 @@ test("managed worker endpoints can mark generation and training runs as failed t
           checkpointRelativePath: "models/checkpoints/mock.safetensors",
           usagePrompt: "测试 worker fail 提示词",
           detailPrompt: "测试 worker fail 细节",
-          selectedReferenceIds: ["project-vela-neon"],
+          selectedReferenceIds: [seedProject.projectSelectionId],
           sections: [
             {
               id: "worker-fail-section",
@@ -4690,6 +4693,7 @@ test("managed training project can enqueue generation, freeze dataset, and start
   const cancelTrainingRunRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/cancel/route");
   const trainingRunDetailRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
   const title = `测试运行链项目 ${Date.now()}`;
+  const seedProject = await createManagedReferenceSeedProject();
 
   const createResponse = await projectsRoute.POST(
     new Request("http://localhost/api/training/projects", {
@@ -4708,7 +4712,7 @@ test("managed training project can enqueue generation, freeze dataset, and start
         detailPrompt: "测试角色细节描述",
         perSectionImageCount: "4",
         trainingSteps: "2400",
-        selectedReferenceIds: ["project-vela-neon"],
+        selectedReferenceIds: [seedProject.projectSelectionId],
         sections: [
           {
             id: "seed-1",

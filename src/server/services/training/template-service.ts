@@ -324,7 +324,11 @@ export async function listManagedTrainingTemplates() {
 
 export async function getManagedTrainingTemplate(templateId: string) {
   const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
-  const fallbackTemplate = fallbackTemplates.find((item) => item.id === templateId);
+  const fallbackTemplate = fallbackTemplates.find((item) =>
+    item.id === templateId
+    || item.title === templateId
+    || (templateId === "character_identity_default" && item.title === "角色 LoRA 基础模板")
+  );
   if (fallbackTemplate) {
     return fallbackTemplate;
   }
