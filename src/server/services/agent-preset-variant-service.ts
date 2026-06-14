@@ -15,8 +15,10 @@ export type SwitchVariantResult = SwitchVariantUpdate & {
 
 export type SyncPresetVariantsInput = {
   sourceProjectId: string;
-  sourcePresetName: string;
-  targetPresetName: string;
+  sourcePresetId: string | null;
+  sourcePresetName: string | null;
+  targetPresetId: string | null;
+  targetPresetName: string | null;
   matchSectionsBy?: "name";
   matchVariantsBy?: "name";
   dryRun?: boolean;
@@ -24,6 +26,16 @@ export type SyncPresetVariantsInput = {
 
 function normalizeKey(value: string | null | undefined) {
   return (value ?? "").trim().toLocaleLowerCase();
+}
+
+function optionalStringField(input: Record<string, unknown>, field: string): string | null {
+  const value = input[field];
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") {
+    throw new Error(`${field} must be a string`);
+  }
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
 
 function isRoleCategory(category: { name: string; slug: string }) {
@@ -123,18 +135,20 @@ function parseSyncInput(body: unknown): SyncPresetVariantsInput {
 
   const input = body as Record<string, unknown>;
   const sourceProjectId = input.sourceProjectId;
-  const sourcePresetName = input.sourcePresetName;
-  const targetPresetName = input.targetPresetName;
+  const sourcePresetId = optionalStringField(input, "sourcePresetId");
+  const sourcePresetName = optionalStringField(input, "sourcePresetName");
+  const targetPresetId = optionalStringField(input, "targetPresetId");
+  const targetPresetName = optionalStringField(input, "targetPresetName");
   const matchSectionsBy = input.matchSectionsBy ?? "name";
   const matchVariantsBy = input.matchVariantsBy ?? "name";
 
   if (typeof sourceProjectId !== "string" || !sourceProjectId.trim()) {
     throw new Error("sourceProjectId is required");
   }
-  if (typeof sourcePresetName !== "string" || !sourcePresetName.trim()) {
+  if (!sourcePresetId && !sourcePresetName) {
     throw new Error("sourcePresetName is required");
   }
-  if (typeof targetPresetName !== "string" || !targetPresetName.trim()) {
+  if (!targetPresetId && !targetPresetName) {
     throw new Error("targetPresetName is required");
   }
   if (matchSectionsBy !== "name") {
@@ -146,16 +160,38 @@ function parseSyncInput(body: unknown): SyncPresetVariantsInput {
 
   return {
     sourceProjectId: sourceProjectId.trim(),
-    sourcePresetName: sourcePresetName.trim(),
-    targetPresetName: targetPresetName.trim(),
+    sourcePresetId,
+    sourcePresetName,
+    targetPresetId,
+    targetPresetName,
     matchSectionsBy,
     matchVariantsBy,
     dryRun: input.dryRun !== false,
   };
 }
 
-async function findPresetByNameOrSlug(nameOrSlug: string, errorPrefix: "SOURCE" | "TARGET") {
-  const normalizedInput = nameOrSlug.trim();
+async function findPresetByReference(
+  reference: { presetId: string | null; nameOrSlug: string | null },
+  errorPrefix: "SOURCE" | "TARGET",
+) {
+  if (reference.presetId) {
+    return prisma.preset.findFirst({
+      where: {
+        id: reference.presetId,
+        isActive: true,
+      },
+      include: {
+        category: { select: { name: true, slug: true } },
+        variants: {
+          where: { isActive: true },
+          orderBy: { sortOrder: "asc" },
+          select: { id: true, name: true, slug: true },
+        },
+      },
+    });
+  }
+
+  const normalizedInput = reference.nameOrSlug?.trim() ?? "";
   const exactPreset = await prisma.preset.findFirst({
     where: {
       isActive: true,
@@ -233,8 +269,8 @@ export async function syncPresetVariants(targetProjectId: string, body: unknown)
   }
 
   const [sourcePreset, targetPreset, sourceProject, targetProject] = await Promise.all([
-    findPresetByNameOrSlug(input.sourcePresetName, "SOURCE"),
-    findPresetByNameOrSlug(input.targetPresetName, "TARGET"),
+    findPresetByReference({ presetId: input.sourcePresetId, nameOrSlug: input.sourcePresetName }, "SOURCE"),
+    findPresetByReference({ presetId: input.targetPresetId, nameOrSlug: input.targetPresetName }, "TARGET"),
     getProjectSectionsForSync(input.sourceProjectId),
     getProjectSectionsForSync(normalizedTargetProjectId),
   ]);

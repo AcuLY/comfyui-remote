@@ -3,8 +3,6 @@ export type SyncPresetVariantFlowFormValues = {
   targetProjectTitle: string;
   expectedSourceProjectId?: string;
   expectedTargetProjectId?: string;
-  sourcePresetName?: string;
-  targetPresetName?: string;
   sampleSectionNumbersText?: string;
   dryRun: boolean;
 };
@@ -14,8 +12,6 @@ export type SyncPresetVariantFlowPayload = {
   targetProjectTitle: string;
   expectedSourceProjectId?: string;
   expectedTargetProjectId?: string;
-  sourcePresetName?: string;
-  targetPresetName?: string;
   matchSectionsBy: "name";
   matchVariantsBy: "name";
   dryRun: boolean;
@@ -61,14 +57,10 @@ export function buildSyncPresetVariantFlowPayload(values: SyncPresetVariantFlowF
     dryRun: values.dryRun,
   };
 
-  const sourcePresetName = optionalTrimmed(values.sourcePresetName);
-  const targetPresetName = optionalTrimmed(values.targetPresetName);
   const expectedSourceProjectId = optionalTrimmed(values.expectedSourceProjectId);
   const expectedTargetProjectId = optionalTrimmed(values.expectedTargetProjectId);
   if (expectedSourceProjectId) payload.expectedSourceProjectId = expectedSourceProjectId;
   if (expectedTargetProjectId) payload.expectedTargetProjectId = expectedTargetProjectId;
-  if (sourcePresetName) payload.sourcePresetName = sourcePresetName;
-  if (targetPresetName) payload.targetPresetName = targetPresetName;
   if (sampleSectionNumbers?.length) payload.sampleSectionNumbers = sampleSectionNumbers;
 
   return payload;

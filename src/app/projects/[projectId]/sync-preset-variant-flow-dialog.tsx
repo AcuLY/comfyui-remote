@@ -107,8 +107,6 @@ export function SyncPresetVariantFlowDialog({ projectId, projectTitle }: { proje
   const [isOpen, setIsOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
   const [sourceProjectId, setSourceProjectId] = useState("");
-  const [sourcePresetName, setSourcePresetName] = useState("");
-  const [targetPresetName, setTargetPresetName] = useState("");
   const [sampleSectionNumbersText, setSampleSectionNumbersText] = useState("1,33,65");
   const [dryRunResult, setDryRunResult] = useState<FlowDryRunResult | null>(null);
   const [applyResult, setApplyResult] = useState<FlowApplyResult | null>(null);
@@ -160,8 +158,6 @@ export function SyncPresetVariantFlowDialog({ projectId, projectTitle }: { proje
       targetProjectTitle: projectTitle,
       expectedSourceProjectId: expectedIds.expectedSourceProjectId ?? sourceProjectId,
       expectedTargetProjectId: expectedIds.expectedTargetProjectId ?? projectId,
-      sourcePresetName,
-      targetPresetName,
       sampleSectionNumbersText,
       dryRun,
     });
@@ -239,7 +235,7 @@ export function SyncPresetVariantFlowDialog({ projectId, projectTitle }: { proje
         <div className="flex items-start justify-between gap-3 border-b border-white/10 p-3">
           <div className="min-w-0">
             <div className="text-sm font-medium text-zinc-100">参考项目同步角色变体</div>
-            <div className="mt-0.5 text-xs text-zinc-500">先 Dry Run 预览计划，再二次确认 Apply；目标为当前项目「{projectTitle}」。</div>
+            <div className="mt-0.5 text-xs text-zinc-500">读取两边项目的角色绑定，按同名变体同步；目标为当前项目「{projectTitle}」。</div>
           </div>
           <button
             type="button"
@@ -278,24 +274,6 @@ export function SyncPresetVariantFlowDialog({ projectId, projectTitle }: { proje
                 className="w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm text-zinc-500 outline-none"
               />
             </label>
-            <label className="space-y-1 text-xs text-zinc-400">
-              <span>参考角色预设名（可空自动推断）</span>
-              <input
-                value={sourcePresetName}
-                onChange={(event) => { setSourcePresetName(event.target.value); resetResults(); }}
-                placeholder="例如：西施"
-                className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 outline-none focus:border-sky-500/40"
-              />
-            </label>
-            <label className="space-y-1 text-xs text-zinc-400">
-              <span>目标角色预设名（可空自动推断）</span>
-              <input
-                value={targetPresetName}
-                onChange={(event) => { setTargetPresetName(event.target.value); resetResults(); }}
-                placeholder="例如：尼可·莱恩"
-                className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-100 outline-none focus:border-sky-500/40"
-              />
-            </label>
             <label className="space-y-1 text-xs text-zinc-400 sm:col-span-2">
               <span>抽查小节编号</span>
               <input
@@ -313,12 +291,12 @@ export function SyncPresetVariantFlowDialog({ projectId, projectTitle }: { proje
                 <div className="rounded-lg border border-white/10 bg-black/20 p-2">
                   <div className="text-zinc-500">参考项目 / 预设</div>
                   <div className="mt-1 truncate text-zinc-200">{formatProject((applyResult ?? dryRunResult)?.sourceProject)}</div>
-                  <div className="mt-0.5 text-zinc-400">{(applyResult ?? dryRunResult)?.sourcePresetName ?? "自动推断"}</div>
+                  <div className="mt-0.5 text-zinc-400">{(applyResult ?? dryRunResult)?.sourcePresetName ?? "项目角色绑定"}</div>
                 </div>
                 <div className="rounded-lg border border-white/10 bg-black/20 p-2">
                   <div className="text-zinc-500">目标项目 / 预设</div>
                   <div className="mt-1 truncate text-zinc-200">{formatProject((applyResult ?? dryRunResult)?.targetProject)}</div>
-                  <div className="mt-0.5 text-zinc-400">{(applyResult ?? dryRunResult)?.targetPresetName ?? "自动推断"}</div>
+                  <div className="mt-0.5 text-zinc-400">{(applyResult ?? dryRunResult)?.targetPresetName ?? "项目角色绑定"}</div>
                 </div>
               </div>
 

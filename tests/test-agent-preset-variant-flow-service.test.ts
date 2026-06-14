@@ -326,7 +326,7 @@ async function seedPresetVariantFlowFixture() {
   });
 }
 
-test("syncPresetVariantFlow infers role presets from normalized section binding rows instead of stale prompt blocks", async () => {
+test("syncPresetVariantFlow uses project role bindings instead of stale prompt blocks", async () => {
   const result = await syncPresetVariantFlow({
     sourceProjectTitle: "刻晴",
     targetProjectTitle: "七海麻美",
@@ -349,16 +349,16 @@ test("syncPresetVariantFlow infers role presets from normalized section binding 
   );
 });
 
-test("syncPresetVariantFlow accepts a unique partial role preset name entered manually", async () => {
+test("syncPresetVariantFlow ignores manual preset names and uses each project's role binding", async () => {
   const result = await syncPresetVariantFlow({
     sourceProjectTitle: "刻晴",
     targetProjectTitle: "七海麻美",
-    sourcePresetName: "刻晴",
-    targetPresetName: "七海麻美",
+    sourcePresetName: "笑",
+    targetPresetName: "刻晴-霓裾翩跹",
     dryRun: true,
   });
 
-  assert.equal(result.initialDryRun.sourcePreset.name, "刻晴-霓裾翩跹");
-  assert.equal(result.initialDryRun.targetPreset.name, "七海麻美");
+  assert.equal(result.sourcePresetName, "刻晴-霓裾翩跹");
+  assert.equal(result.targetPresetName, "七海麻美");
   assert.equal(result.initialDryRun.plannedUpdateCount, 2);
 });

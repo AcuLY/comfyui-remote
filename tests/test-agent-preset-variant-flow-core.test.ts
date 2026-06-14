@@ -6,7 +6,7 @@ import {
   pickLatestProjectByExactTitle,
 } from "../src/server/services/agent-preset-variant-flow-core";
 
-test("parseSyncPresetVariantFlowInput defaults to dry-run and can infer preset names", () => {
+test("parseSyncPresetVariantFlowInput defaults to dry-run and can omit preset names", () => {
   const input = parseSyncPresetVariantFlowInput({
     sourceProjectTitle: " 西施 ",
     targetProjectTitle: " 尼可莱恩 ",

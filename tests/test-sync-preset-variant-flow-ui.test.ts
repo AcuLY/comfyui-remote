@@ -7,14 +7,12 @@ import {
   summarizeSyncPresetVariantFlowPlan,
 } from "../src/lib/sync-preset-variant-flow-ui";
 
-test("buildSyncPresetVariantFlowPayload trims titles, omits blank optional presets, and keeps dryRun boolean", () => {
+test("buildSyncPresetVariantFlowPayload trims titles, omits preset override fields, and keeps dryRun boolean", () => {
   const payload = buildSyncPresetVariantFlowPayload({
     sourceProjectTitle: " 西施 ",
     targetProjectTitle: " 尼可莱恩 ",
     expectedSourceProjectId: " source-project-id ",
     expectedTargetProjectId: " target-project-id ",
-    sourcePresetName: " ",
-    targetPresetName: "尼可·莱恩",
     sampleSectionNumbersText: "1, 33，65 65",
     dryRun: true,
   });
@@ -24,7 +22,6 @@ test("buildSyncPresetVariantFlowPayload trims titles, omits blank optional prese
     targetProjectTitle: "尼可莱恩",
     expectedSourceProjectId: "source-project-id",
     expectedTargetProjectId: "target-project-id",
-    targetPresetName: "尼可·莱恩",
     matchSectionsBy: "name",
     matchVariantsBy: "name",
     dryRun: true,

@@ -30,6 +30,8 @@ type PresetRecord = {
 
 type PresetCandidate = PresetRecord & {
   count: number;
+  bindingKey: string;
+  bindingSortOrder: number;
 };
 
 function isRoleCategory(category: { name: string; slug: string }) {
@@ -60,9 +62,7 @@ async function findProjectByTitle(title: string, expectedProjectId: string | nul
   return pickLatestProjectByExactTitle(projects, title);
 }
 
-async function inferPresetNameFromProject(projectId: string, explicitPresetName: string | null, errorPrefix: "SOURCE" | "TARGET") {
-  if (explicitPresetName) return explicitPresetName;
-
+async function findProjectRolePreset(projectId: string, errorPrefix: "SOURCE" | "TARGET") {
   const sections = await prisma.projectSection.findMany({
     where: { projectId, enabled: true },
     select: {
@@ -81,6 +81,8 @@ async function inferPresetNameFromProject(projectId: string, explicitPresetName:
               isActive: true,
             },
           },
+          bindingKey: true,
+          sortOrder: true,
         },
       },
     },
@@ -91,12 +93,14 @@ async function inferPresetNameFromProject(projectId: string, explicitPresetName:
     for (const binding of section.presetBindingRows) {
       const preset = binding.preset;
       if (!preset?.isActive) continue;
+      if (!isRoleCategory(preset.category)) continue;
 
-      const existing = candidatesById.get(preset.id);
+      const candidateKey = `${binding.bindingKey}\u0000${preset.id}`;
+      const existing = candidatesById.get(candidateKey);
       if (existing) {
         existing.count += 1;
       } else {
-        candidatesById.set(preset.id, {
+        candidatesById.set(candidateKey, {
           id: preset.id,
           name: preset.name,
           slug: preset.slug,
@@ -104,39 +108,46 @@ async function inferPresetNameFromProject(projectId: string, explicitPresetName:
           createdAt: preset.createdAt,
           category: preset.category,
           count: 1,
+          bindingKey: binding.bindingKey,
+          bindingSortOrder: binding.sortOrder,
         });
       }
     }
   }
 
   const candidates = [...candidatesById.values()];
-  const roleCandidates = candidates.filter((candidate) => isRoleCategory(candidate.category));
-  const usableCandidates = roleCandidates.length > 0 ? roleCandidates : candidates;
-  if (usableCandidates.length === 0) {
+  if (candidates.length === 0) {
     throw new Error(`${errorPrefix}_ROLE_PRESET_NOT_INFERRED`);
   }
 
-  const sortedCandidates = [...usableCandidates].sort((left, right) => {
+  const sortedCandidates = [...candidates].sort((left, right) => {
     const byCount = right.count - left.count;
     if (byCount !== 0) return byCount;
+    const byBindingSortOrder = left.bindingSortOrder - right.bindingSortOrder;
+    if (byBindingSortOrder !== 0) return byBindingSortOrder;
     const bySortOrder = left.sortOrder - right.sortOrder;
     if (bySortOrder !== 0) return bySortOrder;
     return left.createdAt.getTime() - right.createdAt.getTime();
   });
 
   const [picked, runnerUp] = sortedCandidates;
-  if (runnerUp && runnerUp.count === picked.count && runnerUp.sortOrder === picked.sortOrder) {
+  if (
+    runnerUp &&
+    runnerUp.count === picked.count &&
+    runnerUp.bindingSortOrder === picked.bindingSortOrder &&
+    runnerUp.sortOrder === picked.sortOrder
+  ) {
     throw new Error(`${errorPrefix}_ROLE_PRESET_AMBIGUOUS`);
   }
 
-  return picked.name;
+  return picked;
 }
 
-async function findPresetForVerification(nameOrSlug: string): Promise<FlowTargetPreset> {
+async function findPresetForVerification(presetId: string): Promise<FlowTargetPreset> {
   const preset = await prisma.preset.findFirst({
     where: {
+      id: presetId,
       isActive: true,
-      OR: [{ name: nameOrSlug }, { slug: nameOrSlug }],
     },
     select: {
       id: true,
@@ -220,15 +231,17 @@ export async function syncPresetVariantFlow(body: unknown) {
     findProjectByTitle(input.sourceProjectTitle, input.expectedSourceProjectId, "SOURCE"),
     findProjectByTitle(input.targetProjectTitle, input.expectedTargetProjectId, "TARGET"),
   ]);
-  const [sourcePresetName, targetPresetName] = await Promise.all([
-    inferPresetNameFromProject(sourceProject.id, input.sourcePresetName, "SOURCE"),
-    inferPresetNameFromProject(targetProject.id, input.targetPresetName, "TARGET"),
+  const [sourceRolePreset, targetRolePreset] = await Promise.all([
+    findProjectRolePreset(sourceProject.id, "SOURCE"),
+    findProjectRolePreset(targetProject.id, "TARGET"),
   ]);
 
   const syncBody = {
     sourceProjectId: sourceProject.id,
-    sourcePresetName,
-    targetPresetName,
+    sourcePresetId: sourceRolePreset.id,
+    sourcePresetName: sourceRolePreset.name,
+    targetPresetId: targetRolePreset.id,
+    targetPresetName: targetRolePreset.name,
     matchSectionsBy: input.matchSectionsBy,
     matchVariantsBy: input.matchVariantsBy,
   };
@@ -253,7 +266,7 @@ export async function syncPresetVariantFlow(body: unknown) {
   const apply = await syncPresetVariants(targetProject.id, { ...resolvedSyncBody, dryRun: false });
   const verificationDryRun = await syncPresetVariants(targetProject.id, { ...resolvedSyncBody, dryRun: true });
   const [targetPreset, sections] = await Promise.all([
-    findPresetForVerification(resolvedSyncBody.targetPresetName),
+    findPresetForVerification(targetRolePreset.id),
     getSectionsForVerification(targetProject.id),
   ]);
   const verification = buildSyncPresetVariantFlowVerification({
