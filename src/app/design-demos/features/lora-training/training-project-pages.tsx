@@ -298,24 +298,34 @@ function nextDatasetVersionLabel(currentVersion: string) {
   return `v${Number(match[1]) + 1}`;
 }
 
-function buildLocalDatasetRevision(project: LoraTrainingProject, version: string) {
-  const keptResults = project.resultPool.filter((result) => result.reviewStatus === "kept");
+function captionMissing(caption: string) {
+  const normalized = caption.trim();
+  return normalized.length === 0 || normalized === "未填写说明文本";
+}
+
+function deriveDatasetCaption(result: LoraTrainingImageResult) {
+  if (!captionMissing(result.caption)) return result.caption;
+  return `${result.sourceLabel}，训练说明`;
+}
+
+function buildLocalDatasetRevision(projectId: string, results: LoraTrainingImageResult[], version: string) {
+  const keptResults = results.filter((result) => result.reviewStatus === "kept");
   const samples = keptResults.slice(0, 6).map((result, index) => ({
-    id: `${project.id}-dataset-${version}-${index + 1}`,
+    id: `${projectId}-dataset-${version}-${index + 1}`,
     label: String(index + 1).padStart(3, "0"),
     sectionTitle: result.sectionTitle,
     image: result.image,
     captionSnapshot: result.caption,
-    filePathSnapshot: `datasets/${project.id}/${version}/${String(index + 1).padStart(3, "0")}.png`,
+    filePathSnapshot: `datasets/${projectId}/${version}/${String(index + 1).padStart(3, "0")}.png`,
   }));
 
   return {
-    id: `${project.id}-dataset-${version}`,
+    id: `${projectId}-dataset-${version}`,
     version,
-    status: project.captionMissingCount > 0 ? "draft" as const : "ready" as const,
+    status: keptResults.some((result) => captionMissing(result.caption)) ? "draft" as const : "ready" as const,
     createdAt: "刚刚",
     itemCount: keptResults.length,
-    captionMissingCount: keptResults.filter((result) => !result.caption.trim()).length,
+    captionMissingCount: keptResults.filter((result) => captionMissing(result.caption)).length,
     manifestName: `dataset_${version}.jsonl`,
     samples,
     manifestRows: samples.slice(0, 4).map((sample) => `${sample.filePathSnapshot} | ${sample.captionSnapshot}`),
@@ -3065,6 +3075,15 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
   const { pushToast } = useDemoFeedback();
   const hrefForRoute = useRouteHref();
   const project = findProject(data, projectId);
+  const [datasetResultState, setDatasetResultState] = useState<{
+    hasOverride: boolean;
+    projectId: string | null;
+    results: LoraTrainingImageResult[] | null;
+  }>(() => ({
+    hasOverride: false,
+    projectId: project?.id ?? null,
+    results: null,
+  }));
   const [datasetRevisionState, setDatasetRevisionState] = useState<{
     datasetVersion: string | null;
     hasOverride: boolean;
@@ -3088,22 +3107,96 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
     draft: null,
     projectId: project?.id ?? null,
   }));
+  const [isGeneratingDatasetCaptions, setIsGeneratingDatasetCaptions] = useState(false);
   const [isFreezingDataset, setIsFreezingDataset] = useState(false);
   const [isStartingTraining, setIsStartingTraining] = useState(false);
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   if (!project) return <EmptyPage title="没有训练数据集数据" />;
+  const hasDatasetResultOverride = datasetResultState.projectId === project.id && datasetResultState.hasOverride;
+  const resultPool = hasDatasetResultOverride ? (datasetResultState.results ?? project.resultPool) : project.resultPool;
+  const keptResults = resultPool.filter((result) => result.reviewStatus === "kept");
+  const keptCount = hasDatasetResultOverride ? keptResults.length : project.keptCount;
+  const captionMissingCount = hasDatasetResultOverride
+    ? keptResults.filter((result) => captionMissing(result.caption)).length
+    : project.captionMissingCount;
   const hasDatasetRevisionOverride = datasetRevisionState.projectId === project.id && datasetRevisionState.hasOverride;
   const datasetVersion = hasDatasetRevisionOverride ? (datasetRevisionState.datasetVersion ?? project.datasetVersion) : project.datasetVersion;
   const datasetRevisions = hasDatasetRevisionOverride ? (datasetRevisionState.revisions ?? project.datasetRevisions) : project.datasetRevisions;
   const trainingDraft = trainingDraftState.projectId === project.id ? trainingDraftState.draft : null;
   const latestRevision = datasetRevisions[0] ?? null;
 
+  async function handleGenerateDatasetCaptions() {
+    if (isGeneratingDatasetCaptions || captionMissingCount === 0) return;
+
+    if (!isProductionTrainingRoute) {
+      const nextResults = resultPool.map((result) => {
+        if (result.reviewStatus !== "kept" || !captionMissing(result.caption)) return result;
+        return {
+          ...result,
+          caption: deriveDatasetCaption(result),
+        };
+      });
+      setDatasetResultState({
+        hasOverride: true,
+        projectId: project.id,
+        results: nextResults,
+      });
+      pushToast({
+        tone: "success",
+        title: "说明文本已批量生成",
+        detail: `${captionMissingCount} 张图片已补全`,
+      });
+      return;
+    }
+
+    setIsGeneratingDatasetCaptions(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/captions/generate`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          mode: "kept_without_captions",
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "批量生成说明文本失败",
+          detail: payload?.error?.message ?? "说明文本批量生成请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "success",
+        title: "说明文本已批量生成",
+        detail: typeof payload?.data?.taskCount === "number" ? `${payload.data.taskCount} 张图片已补全` : project.title,
+      });
+      setDatasetResultState({
+        hasOverride: false,
+        projectId: project.id,
+        results: null,
+      });
+      router.refresh();
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "批量生成说明文本失败",
+        detail: error instanceof Error ? error.message : "说明文本批量生成请求失败",
+      });
+    } finally {
+      setIsGeneratingDatasetCaptions(false);
+    }
+  }
+
   async function handleFreezeDatasetRevision() {
     if (isFreezingDataset) return;
     const nextVersion = nextDatasetVersionLabel(datasetVersion);
 
     if (!isProductionTrainingRoute) {
-      const nextRevision = buildLocalDatasetRevision(project, nextVersion);
+      const nextRevision = buildLocalDatasetRevision(project.id, resultPool, nextVersion);
       setDatasetRevisionState({
         datasetVersion: nextVersion,
         hasOverride: true,
@@ -3162,8 +3255,8 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
   async function handleOpenTrainingDraft() {
     const nextDraft = {
       draft: {
-        captionMissingCount: project.captionMissingCount,
-        keptCount: project.keptCount,
+        captionMissingCount,
+        keptCount,
         stepCount: 2400,
         version: datasetVersion,
       },
@@ -3236,7 +3329,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
           <>
             <Button
               icon={Snowflake}
-              disabled={project.keptCount === 0}
+              disabled={keptCount === 0}
               pending={isFreezingDataset}
               onClick={handleFreezeDatasetRevision}
             >
@@ -3256,8 +3349,8 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
       <div className={s.twoCol}>
         <Panel title="训练准备" subtitle="只有已保留图片进入冻结版本，后续编辑不会回写已冻结版本。">
           <div className={s.readinessSummary}>
-            <span><strong>{project.keptCount}</strong> 已保留图片</span>
-            <span><strong>{project.captionMissingCount}</strong> 缺说明文本</span>
+            <span><strong>{keptCount}</strong> 已保留图片</span>
+            <span><strong>{captionMissingCount}</strong> 缺说明文本</span>
             <span><strong>{datasetVersion}</strong> 当前版本</span>
           </div>
           <p className={s.bodyText}>准备信息保持在训练入口附近，完整样本与冻结快照继续由下方草稿和版本列表承载。</p>
@@ -3288,8 +3381,20 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
           </dl>
         </Panel>
       ) : null}
-      <Panel title="已保留草稿">
-        <TrainingResultGrid results={project.resultPool.filter((result) => result.reviewStatus === "kept")} title="已保留草稿" />
+      <Panel
+        title="已保留草稿"
+        actions={(
+          <Button
+            icon={FileText}
+            disabled={captionMissingCount === 0}
+            pending={isGeneratingDatasetCaptions}
+            onClick={handleGenerateDatasetCaptions}
+          >
+            批量生成说明文本
+          </Button>
+        )}
+      >
+        <TrainingResultGrid results={keptResults} title="已保留草稿" />
       </Panel>
     </div>
   );

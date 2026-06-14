@@ -577,6 +577,22 @@ test("training dataset page freezes the current dataset version through the form
   assert.match(datasetPageSource, /pushToast/, "dataset freeze should surface API success or failure through the shared feedback system");
 });
 
+test("training dataset page bulk-generates captions through the formal HTTP API on production routes", () => {
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(revisionPageStart, -1);
+
+  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+
+  assert.match(datasetPageSource, /handleGenerateDatasetCaptions/, "dataset page should define an explicit bulk caption-generation handler");
+  assert.match(datasetPageSource, /批量生成说明文本/, "dataset page should expose a visible bulk caption-generation action");
+  assert.match(datasetPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/captions\/generate`/, "dataset page should call the formal bulk caption-generation API");
+  assert.match(datasetPageSource, /mode:\s*"kept_without_captions"/, "dataset page should request caption generation for kept images missing captions");
+  assert.match(datasetPageSource, /router\.refresh\(\)/, "dataset caption generation should refresh project data after a successful API response");
+  assert.match(datasetPageSource, /pushToast/, "dataset caption generation should surface API success or failure through the shared feedback system");
+});
+
 test("training dataset draft stays scoped to the active project", () => {
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
   const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
