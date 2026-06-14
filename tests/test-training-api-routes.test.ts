@@ -20,6 +20,13 @@ async function listProjects() {
   return payload.data as Array<{ id: string; sectionCount?: number; imageCount?: number }>;
 }
 
+function pickProjectWithSections(projects: Array<{ id: string; sectionCount?: number; imageCount?: number }>) {
+  return (
+    projects.find((project) => (project.sectionCount ?? 0) > 0)
+    ?? projects[0]
+  );
+}
+
 async function clearTrainingRunPresetState(runId: string) {
   try {
     const raw = await readFile(TRAINING_RUN_PRESET_STATE_PATH, "utf8");
@@ -179,7 +186,7 @@ test("GET /api/training/projects lists training projects", async () => {
 test("GET /api/training/projects/:projectId returns one project detail", async () => {
   const { GET } = await import("../src/app/api/training/projects/[projectId]/route");
   const projects = await listProjects();
-  const projectId = projects[0].id;
+  const projectId = pickProjectWithSections(projects).id;
 
   const response = await GET(
     new Request(`http://localhost/api/training/projects/${projectId}`),
@@ -324,7 +331,7 @@ test("training project section route reads and updates a saved section through /
   const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
   const sectionDetailRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
   const projects = await listProjects();
-  const projectId = projects[0].id;
+  const projectId = pickProjectWithSections(projects).id;
   const params = { params: Promise.resolve({ projectId }) };
   const sectionsResponse = await sectionsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/sections`), params);
   const sectionsPayload = await sectionsResponse.json();
@@ -418,7 +425,7 @@ test("training scene block routes create, update, detach, reorder, and delete bl
   const blockDetachRoute = await import("../src/app/api/training/blocks/[blockId]/detach/route");
   const sectionDetailRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
   const projects = await listProjects();
-  const projectId = projects[0].id;
+  const projectId = pickProjectWithSections(projects).id;
   const sectionsResponse = await sectionsRoute.GET(
     new Request(`http://localhost/api/training/projects/${projectId}/sections`),
     { params: Promise.resolve({ projectId }) },
@@ -546,7 +553,7 @@ test("training project sections create, copy, delete, and reorder through /api/t
   const reorderRoute = await import("../src/app/api/training/projects/[projectId]/sections/reorder/route");
   const sectionDetailRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
   const projects = await listProjects();
-  const projectId = projects[0].id;
+  const projectId = pickProjectWithSections(projects).id;
   const params = { params: Promise.resolve({ projectId }) };
 
   const beforeResponse = await sectionsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/sections`), params);
@@ -637,7 +644,7 @@ test("training section alias route reads, updates, and deletes by /api/training/
   const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
   const sectionAliasRoute = await import("../src/app/api/training/sections/[sectionId]/route");
   const projects = await listProjects();
-  const projectId = projects[0].id;
+  const projectId = pickProjectWithSections(projects).id;
 
   const createSectionResponse = await sectionsRoute.POST(
     new Request(`http://localhost/api/training/projects/${projectId}/sections`, {
@@ -2127,6 +2134,206 @@ test("managed training project profile reads and updates through /api/training",
   assert.equal(patchPayload.data.profileSummary, "更新后的资料备注");
 });
 
+test("managed training text revisions can checkpoint, list, and restore profile fields through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const profileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");
+  const textRevisionsRoute = await import("../src/app/api/training/projects/[projectId]/text-revisions/route");
+  const restoreTextRevisionRoute = await import("../src/app/api/training/text-revisions/[revisionId]/restore/route");
+  const listResponse = await projectsRoute.GET(new Request("http://localhost/api/training/projects"));
+  const listPayload = await listResponse.json();
+  const managed = (listPayload.data as Array<{ id: string }>).find((project) => String(project.id).startsWith("training-project-"));
+  assert.ok(managed);
+  const projectId = managed!.id;
+  const params = { params: Promise.resolve({ projectId }) };
+
+  const initialProfileResponse = await profileRoute.PATCH(
+    new Request(`http://localhost/api/training/projects/${projectId}/profile`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        loraUsagePrompt: "checkpoint 前的使用提示词",
+        characterDetailPrompt: "checkpoint 前的角色细节",
+        profileSummary: "checkpoint 前的资料备注",
+      }),
+    }),
+    params,
+  );
+  const initialProfilePayload = await initialProfileResponse.json();
+  assert.equal(initialProfileResponse.status, 200);
+  assert.equal(initialProfilePayload.ok, true);
+
+  const createRevisionResponse = await textRevisionsRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/text-revisions`, {
+      method: "POST",
+      body: JSON.stringify({
+        entityType: "profile",
+        entityId: projectId,
+        fieldName: "loraUsagePrompt",
+        textValue: "checkpoint 前的使用提示词",
+        reason: "idle_checkpoint",
+      }),
+    }),
+    params,
+  );
+  const createRevisionPayload = await createRevisionResponse.json();
+  assert.equal(createRevisionResponse.status, 201);
+  assert.equal(createRevisionPayload.ok, true);
+  assert.equal(createRevisionPayload.data.fieldName, "loraUsagePrompt");
+  const revisionId = createRevisionPayload.data.id as string;
+
+  const listRevisionResponse = await textRevisionsRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/text-revisions?entityType=profile&entityId=${projectId}&fieldName=loraUsagePrompt`),
+    params,
+  );
+  const listRevisionPayload = await listRevisionResponse.json();
+  assert.equal(listRevisionResponse.status, 200);
+  assert.equal(listRevisionPayload.ok, true);
+  assert.ok(Array.isArray(listRevisionPayload.data));
+  assert.ok(listRevisionPayload.data.some((revision: { id: string }) => revision.id === revisionId));
+
+  const overwriteProfileResponse = await profileRoute.PATCH(
+    new Request(`http://localhost/api/training/projects/${projectId}/profile`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        loraUsagePrompt: "覆盖后的使用提示词",
+      }),
+    }),
+    params,
+  );
+  const overwriteProfilePayload = await overwriteProfileResponse.json();
+  assert.equal(overwriteProfileResponse.status, 200);
+  assert.equal(overwriteProfilePayload.ok, true);
+  assert.equal(overwriteProfilePayload.data.usagePrompt, "覆盖后的使用提示词");
+
+  const restoreResponse = await restoreTextRevisionRoute.POST(
+    new Request(`http://localhost/api/training/text-revisions/${revisionId}/restore`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ revisionId }) },
+  );
+  const restorePayload = await restoreResponse.json();
+  assert.equal(restoreResponse.status, 200);
+  assert.equal(restorePayload.ok, true);
+  assert.equal(restorePayload.data.restored, true);
+  assert.equal(restorePayload.data.fieldName, "loraUsagePrompt");
+  assert.equal(typeof restorePayload.data.beforeOverwriteRevisionId, "string");
+
+  const restoredProfileResponse = await profileRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/profile`),
+    params,
+  );
+  const restoredProfilePayload = await restoredProfileResponse.json();
+  assert.equal(restoredProfileResponse.status, 200);
+  assert.equal(restoredProfilePayload.ok, true);
+  assert.equal(restoredProfilePayload.data.loraUsagePrompt, "checkpoint 前的使用提示词");
+});
+
+test("production training text revisions can checkpoint and restore profile prompts through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const profileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");
+  const textRevisionsRoute = await import("../src/app/api/training/projects/[projectId]/text-revisions/route");
+  const restoreTextRevisionRoute = await import("../src/app/api/training/text-revisions/[revisionId]/restore/route");
+  const title = `真实 profile revision 项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_profile_revision_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        selectedReferenceIds: [],
+        sections: [],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  const projectId = createPayload.data.id as string;
+  const params = { params: Promise.resolve({ projectId }) };
+
+  const patchProfileResponse = await profileRoute.PATCH(
+    new Request(`http://localhost/api/training/projects/${projectId}/profile`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        loraUsagePrompt: "真实 profile checkpoint 前提示词",
+        characterDetailPrompt: JSON.stringify({
+          identityTraits: { hair: "silver" },
+          outfitTraits: { coat: "white" },
+          negativeTraits: ["blur"],
+        }),
+      }),
+    }),
+    params,
+  );
+  const patchProfilePayload = await patchProfileResponse.json();
+  assert.equal(patchProfileResponse.status, 200);
+  assert.equal(patchProfilePayload.ok, true);
+
+  const createRevisionResponse = await textRevisionsRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/text-revisions`, {
+      method: "POST",
+      body: JSON.stringify({
+        entityType: "profile",
+        entityId: projectId,
+        fieldName: "loraUsagePrompt",
+        textValue: "真实 profile checkpoint 前提示词",
+        reason: "idle_checkpoint",
+      }),
+    }),
+    params,
+  );
+  const createRevisionPayload = await createRevisionResponse.json();
+  assert.equal(createRevisionResponse.status, 201);
+  assert.equal(createRevisionPayload.ok, true);
+  const revisionId = createRevisionPayload.data.id as string;
+
+  const overwriteProfileResponse = await profileRoute.PATCH(
+    new Request(`http://localhost/api/training/projects/${projectId}/profile`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        loraUsagePrompt: "真实 profile 覆盖后提示词",
+      }),
+    }),
+    params,
+  );
+  const overwriteProfilePayload = await overwriteProfileResponse.json();
+  assert.equal(overwriteProfileResponse.status, 200);
+  assert.equal(overwriteProfilePayload.ok, true);
+
+  const restoreResponse = await restoreTextRevisionRoute.POST(
+    new Request(`http://localhost/api/training/text-revisions/${revisionId}/restore`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ revisionId }) },
+  );
+  const restorePayload = await restoreResponse.json();
+  assert.equal(restoreResponse.status, 200);
+  assert.equal(restorePayload.ok, true);
+  assert.equal(restorePayload.data.restored, true);
+
+  const restoredProfileResponse = await profileRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/profile`),
+    params,
+  );
+  const restoredProfilePayload = await restoredProfileResponse.json();
+  assert.equal(restoredProfileResponse.status, 200);
+  assert.equal(restoredProfilePayload.ok, true);
+  assert.equal(restoredProfilePayload.data.loraUsagePrompt, "真实 profile checkpoint 前提示词");
+});
+
 test("managed training project updates through /api/training/projects/:projectId", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const projectRoute = await import("../src/app/api/training/projects/[projectId]/route");
@@ -2387,6 +2594,123 @@ test("managed training project can upload result images through /api/training", 
   assert.equal(listResponse.status, 200);
   assert.equal(listPayload.ok, true);
   assert.ok((listPayload.data as Array<{ id: string }>).some((result) => result.id === uploadPayload.data.id));
+});
+
+test("training text revisions can checkpoint and restore production image-result captions through /api/training", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const imageResultRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
+  const resultsRoute = await import("../src/app/api/training/projects/[projectId]/image-results/route");
+  const textRevisionsRoute = await import("../src/app/api/training/projects/[projectId]/text-revisions/route");
+  const restoreTextRevisionRoute = await import("../src/app/api/training/text-revisions/[revisionId]/restore/route");
+  const title = `真实结果 revision 项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_result_revision_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        selectedReferenceIds: [],
+        sections: [],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  const projectId = createPayload.data.id as string;
+  const params = { params: Promise.resolve({ projectId }) };
+
+  const uploadReferenceFormData = new FormData();
+  uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "text-revision-source.png", { type: "image/png" }));
+  uploadReferenceFormData.append("role", "source");
+  const uploadReferenceResponse = await referenceRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+      method: "POST",
+      body: uploadReferenceFormData,
+    }),
+    params,
+  );
+  const uploadReferencePayload = await uploadReferenceResponse.json();
+  assert.equal(uploadReferenceResponse.status, 201);
+  assert.equal(uploadReferencePayload.ok, true);
+  const imageId = uploadReferencePayload.data.id as string;
+
+  const addToResultsResponse = await addToResultsRoute.POST(
+    new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+      method: "POST",
+      body: JSON.stringify({
+        reviewStatus: "pending",
+        captionDraft: "checkpoint 前 caption",
+      }),
+    }),
+    { params: Promise.resolve({ imageId }) },
+  );
+  const addToResultsPayload = await addToResultsResponse.json();
+  assert.equal(addToResultsResponse.status, 201);
+  assert.equal(addToResultsPayload.ok, true);
+  const imageResultId = addToResultsPayload.data.id as string;
+
+  const createRevisionResponse = await textRevisionsRoute.POST(
+    new Request(`http://localhost/api/training/projects/${projectId}/text-revisions`, {
+      method: "POST",
+      body: JSON.stringify({
+        entityType: "image_result",
+        entityId: imageResultId,
+        fieldName: "captionDraft",
+        textValue: "checkpoint 前 caption",
+        reason: "idle_checkpoint",
+      }),
+    }),
+    params,
+  );
+  const createRevisionPayload = await createRevisionResponse.json();
+  assert.equal(createRevisionResponse.status, 201);
+  assert.equal(createRevisionPayload.ok, true);
+  const revisionId = createRevisionPayload.data.id as string;
+
+  const overwriteCaptionResponse = await imageResultRoute.PATCH(
+    new Request(`http://localhost/api/training/image-results/${imageResultId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ captionDraft: "覆盖后的 caption" }),
+    }),
+    { params: Promise.resolve({ imageResultId }) },
+  );
+  const overwriteCaptionPayload = await overwriteCaptionResponse.json();
+  assert.equal(overwriteCaptionResponse.status, 200);
+  assert.equal(overwriteCaptionPayload.ok, true);
+
+  const restoreResponse = await restoreTextRevisionRoute.POST(
+    new Request(`http://localhost/api/training/text-revisions/${revisionId}/restore`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ revisionId }) },
+  );
+  const restorePayload = await restoreResponse.json();
+  assert.equal(restoreResponse.status, 200);
+  assert.equal(restorePayload.ok, true);
+  assert.equal(restorePayload.data.restored, true);
+
+  const resultsResponse = await resultsRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/image-results`),
+    params,
+  );
+  const resultsPayload = await resultsResponse.json();
+  assert.equal(resultsResponse.status, 200);
+  assert.equal(resultsPayload.ok, true);
+  const restoredResult = resultsPayload.data.find((result: { id: string }) => result.id === imageResultId);
+  assert.equal(restoredResult.caption, "checkpoint 前 caption");
 });
 
 test("managed training project generation task draft lifecycle works through /api/training", async () => {
@@ -3173,6 +3497,8 @@ test("training write routes exist under /api/training and fail through HTTP cont
   const restoreProjectRoute = await import("../src/app/api/training/projects/[projectId]/restore/route");
   const updateProjectSectionRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
   const updateSectionAliasRoute = await import("../src/app/api/training/sections/[sectionId]/route");
+  const textRevisionsRoute = await import("../src/app/api/training/projects/[projectId]/text-revisions/route");
+  const restoreTextRevisionRoute = await import("../src/app/api/training/text-revisions/[revisionId]/restore/route");
   const applyGenerationOutputRoute = await import("../src/app/api/training/generation-outputs/[outputId]/apply/route");
   const createSceneCategoryRoute = await import("../src/app/api/training/scene-description/categories/route");
   const updateSceneCategoryRoute = await import("../src/app/api/training/scene-description/categories/[categoryId]/route");
@@ -3199,16 +3525,20 @@ test("training write routes exist under /api/training and fail through HTTP cont
   const missingCategoryParams = { params: Promise.resolve({ categoryId: "missing-category" }) };
   const missingFolderParams = { params: Promise.resolve({ folderId: "missing-folder" }) };
   const missingOutputParams = { params: Promise.resolve({ outputId: "missing-output" }) };
+  const missingRevisionParams = { params: Promise.resolve({ revisionId: "missing-revision" }) };
   const missingTemplateParams = { params: Promise.resolve({ templateId: "missing-template" }) };
   const missingTemplateSectionParams = { params: Promise.resolve({ templateId: "missing-template", sectionId: "missing-section" }) };
 
-  const [createResponse, updateResponse, archiveResponse, restoreResponse, updateProjectSectionResponse, updateSectionAliasResponse, applyGenerationOutputResponse, createSceneCategoryResponse, updateSceneCategoryResponse, createSceneFolderResponse, updateSceneFolderResponse, createPresetResponse, savePresetSortRulesResponse, updatePresetResponse, createScenePresetAliasResponse, updateScenePresetAliasResponse, createTemplateResponse, updateTemplateResponse, updateTemplateSectionResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
+  const [createResponse, updateResponse, archiveResponse, restoreResponse, updateProjectSectionResponse, updateSectionAliasResponse, listTextRevisionsResponse, createTextRevisionResponse, restoreTextRevisionResponse, applyGenerationOutputResponse, createSceneCategoryResponse, updateSceneCategoryResponse, createSceneFolderResponse, updateSceneFolderResponse, createPresetResponse, savePresetSortRulesResponse, updatePresetResponse, createScenePresetAliasResponse, updateScenePresetAliasResponse, createTemplateResponse, updateTemplateResponse, updateTemplateSectionResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
     createProjectRoute.POST(new Request("http://localhost/api/training/projects", { method: "POST", body: "{}" })),
     updateProjectRoute.PATCH(new Request("http://localhost/api/training/projects/missing-project", { method: "PATCH", body: "{}" }), missingProjectParams),
     archiveProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/archive", { method: "POST" }), missingProjectParams),
     restoreProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/restore", { method: "POST" }), missingProjectParams),
     updateProjectSectionRoute.PATCH(new Request("http://localhost/api/training/projects/missing-project/sections/missing-section", { method: "PATCH", body: "{}" }), missingProjectSectionParams),
     updateSectionAliasRoute.PATCH(new Request("http://localhost/api/training/sections/missing-section", { method: "PATCH", body: "{}" }), missingSectionParams),
+    textRevisionsRoute.GET(new Request("http://localhost/api/training/projects/missing-project/text-revisions?entityType=profile&entityId=missing-project&fieldName=loraUsagePrompt"), missingProjectParams),
+    textRevisionsRoute.POST(new Request("http://localhost/api/training/projects/missing-project/text-revisions", { method: "POST", body: "{}" }), missingProjectParams),
+    restoreTextRevisionRoute.POST(new Request("http://localhost/api/training/text-revisions/missing-revision/restore", { method: "POST" }), missingRevisionParams),
     applyGenerationOutputRoute.POST(new Request("http://localhost/api/training/generation-outputs/missing-output/apply", { method: "POST", body: JSON.stringify({ targetEntityType: "reference_image" }) }), missingOutputParams),
     createSceneCategoryRoute.POST(new Request("http://localhost/api/training/scene-description/categories", { method: "POST", body: "{}" })),
     updateSceneCategoryRoute.PATCH(new Request("http://localhost/api/training/scene-description/categories/missing-category", { method: "PATCH", body: "{}" }), missingCategoryParams),
@@ -3235,6 +3565,9 @@ test("training write routes exist under /api/training and fail through HTTP cont
     restoreResponse.json(),
     updateProjectSectionResponse.json(),
     updateSectionAliasResponse.json(),
+    listTextRevisionsResponse.json(),
+    createTextRevisionResponse.json(),
+    restoreTextRevisionResponse.json(),
     applyGenerationOutputResponse.json(),
     createSceneCategoryResponse.json(),
     updateSceneCategoryResponse.json(),
@@ -3266,40 +3599,46 @@ test("training write routes exist under /api/training and fail through HTTP cont
   assert.equal(payloads[4].ok, false);
   assert.ok(updateSectionAliasResponse.status >= 400);
   assert.equal(payloads[5].ok, false);
-  assert.ok(applyGenerationOutputResponse.status >= 400);
+  assert.ok(listTextRevisionsResponse.status >= 400);
   assert.equal(payloads[6].ok, false);
-  assert.ok(createSceneCategoryResponse.status >= 400);
+  assert.ok(createTextRevisionResponse.status >= 400);
   assert.equal(payloads[7].ok, false);
-  assert.ok(updateSceneCategoryResponse.status >= 400);
+  assert.ok(restoreTextRevisionResponse.status >= 400);
   assert.equal(payloads[8].ok, false);
-  assert.ok(createSceneFolderResponse.status >= 400);
+  assert.ok(applyGenerationOutputResponse.status >= 400);
   assert.equal(payloads[9].ok, false);
-  assert.ok(updateSceneFolderResponse.status >= 400);
+  assert.ok(createSceneCategoryResponse.status >= 400);
   assert.equal(payloads[10].ok, false);
-  assert.ok(createPresetResponse.status >= 400);
+  assert.ok(updateSceneCategoryResponse.status >= 400);
   assert.equal(payloads[11].ok, false);
-  assert.ok(savePresetSortRulesResponse.status >= 400);
+  assert.ok(createSceneFolderResponse.status >= 400);
   assert.equal(payloads[12].ok, false);
-  assert.ok(updatePresetResponse.status >= 400);
+  assert.ok(updateSceneFolderResponse.status >= 400);
   assert.equal(payloads[13].ok, false);
-  assert.ok(createScenePresetAliasResponse.status >= 400);
+  assert.ok(createPresetResponse.status >= 400);
   assert.equal(payloads[14].ok, false);
-  assert.ok(updateScenePresetAliasResponse.status >= 400);
+  assert.ok(savePresetSortRulesResponse.status >= 400);
   assert.equal(payloads[15].ok, false);
-  assert.ok(createTemplateResponse.status >= 400);
+  assert.ok(updatePresetResponse.status >= 400);
   assert.equal(payloads[16].ok, false);
-  assert.ok(updateTemplateResponse.status >= 400);
+  assert.ok(createScenePresetAliasResponse.status >= 400);
   assert.equal(payloads[17].ok, false);
-  assert.ok(updateTemplateSectionResponse.status >= 400);
+  assert.ok(updateScenePresetAliasResponse.status >= 400);
   assert.equal(payloads[18].ok, false);
-  assert.ok(freezeResponse.status >= 400);
+  assert.ok(createTemplateResponse.status >= 400);
   assert.equal(payloads[19].ok, false);
-  assert.ok(enqueueTrainingResponse.status >= 400);
+  assert.ok(updateTemplateResponse.status >= 400);
   assert.equal(payloads[20].ok, false);
-  assert.ok(enqueueSectionResponse.status >= 400);
+  assert.ok(updateTemplateSectionResponse.status >= 400);
   assert.equal(payloads[21].ok, false);
-  assert.ok(cancelResponse.status >= 400);
+  assert.ok(freezeResponse.status >= 400);
   assert.equal(payloads[22].ok, false);
+  assert.ok(enqueueTrainingResponse.status >= 400);
+  assert.equal(payloads[23].ok, false);
+  assert.ok(enqueueSectionResponse.status >= 400);
+  assert.equal(payloads[24].ok, false);
+  assert.ok(cancelResponse.status >= 400);
+  assert.equal(payloads[25].ok, false);
 });
 
 test("training asset and review routes exist under /api/training and return JSON error contracts", async () => {
