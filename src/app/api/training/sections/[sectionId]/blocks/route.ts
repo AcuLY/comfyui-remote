@@ -20,7 +20,8 @@ export async function POST(
 
   try {
     const { sectionId } = await params;
-    const data = await createTrainingSectionBlock(sectionId, body);
+    const projectId = new URL(request.url).searchParams.get("projectId");
+    const data = await createTrainingSectionBlock(sectionId, body, { projectId });
     return ok(data, { status: 201 });
   } catch (error) {
     const mapped = mapTrainingSceneBlockError(error);

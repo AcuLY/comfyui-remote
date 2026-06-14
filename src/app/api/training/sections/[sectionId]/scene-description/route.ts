@@ -7,12 +7,13 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ sectionId: string }> },
 ) {
   try {
     const { sectionId } = await params;
-    const data = await getTrainingSectionSceneDescription(sectionId);
+    const projectId = new URL(request.url).searchParams.get("projectId");
+    const data = await getTrainingSectionSceneDescription(sectionId, projectId);
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingReadError(error);

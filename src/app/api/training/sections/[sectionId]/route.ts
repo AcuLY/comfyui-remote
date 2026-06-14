@@ -15,7 +15,8 @@ export const dynamic = "force-dynamic";
 export async function GET(_request: Request, context: RouteContext) {
   try {
     const { sectionId } = await context.params;
-    const { section } = await getTrainingSectionContext(sectionId);
+    const projectId = new URL(_request.url).searchParams.get("projectId");
+    const { section } = await getTrainingSectionContext(sectionId, projectId);
     return ok(section);
   } catch (error) {
     const mapped = mapTrainingReadError(error);
@@ -33,9 +34,10 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   try {
     const { sectionId } = await context.params;
-    const { project } = await getTrainingSectionContext(sectionId);
+    const projectId = new URL(request.url).searchParams.get("projectId");
+    const { project } = await getTrainingSectionContext(sectionId, projectId);
     await upsertTrainingProjectSection(project.id, sectionId, body, project.sections);
-    const { section: updatedSection } = await getTrainingSectionContext(sectionId);
+    const { section: updatedSection } = await getTrainingSectionContext(sectionId, projectId);
     return ok(updatedSection);
   } catch (error) {
     if (error instanceof Error && error.name === "TrainingReadServiceError") {
@@ -50,7 +52,8 @@ export async function PATCH(request: Request, context: RouteContext) {
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
     const { sectionId } = await context.params;
-    const { project } = await getTrainingSectionContext(sectionId);
+    const projectId = new URL(_request.url).searchParams.get("projectId");
+    const { project } = await getTrainingSectionContext(sectionId, projectId);
     const data = await deleteTrainingProjectSection(project.id, sectionId, project.sections);
     return ok(data);
   } catch (error) {

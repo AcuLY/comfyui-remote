@@ -96,8 +96,8 @@ export async function getTrainingDatasetReadiness(projectId: string) {
   };
 }
 
-export async function getTrainingSectionSceneDescription(sectionId: string) {
-  const { project, section } = await getTrainingSectionContext(sectionId);
+export async function getTrainingSectionSceneDescription(sectionId: string, projectId?: string | null) {
+  const { project, section } = await getTrainingSectionContext(sectionId, projectId);
   return {
     projectId: project.id,
     sectionId,
@@ -106,7 +106,17 @@ export async function getTrainingSectionSceneDescription(sectionId: string) {
   };
 }
 
-export async function getTrainingSectionContext(sectionId: string) {
+export async function getTrainingSectionContext(sectionId: string, projectId?: string | null) {
+  if (projectId) {
+    const project = await getTrainingProject(projectId);
+    const section = project.sections.find((item) => item.id === sectionId);
+    if (section) {
+      return { project, section };
+    }
+
+    throw new TrainingReadServiceError("Training section not found", 404, { projectId, sectionId });
+  }
+
   const snapshot = await loadTrainingSnapshot();
   for (const project of snapshot.projects) {
     const section = project.sections.find((item) => item.id === sectionId);
@@ -118,7 +128,19 @@ export async function getTrainingSectionContext(sectionId: string) {
   throw new TrainingReadServiceError("Training section not found", 404, { sectionId });
 }
 
-export async function getTrainingBlockContext(blockId: string) {
+export async function getTrainingBlockContext(blockId: string, projectId?: string | null) {
+  if (projectId) {
+    const project = await getTrainingProject(projectId);
+    for (const section of project.sections) {
+      const block = section.blocks.find((item) => item.id === blockId);
+      if (block) {
+        return { project, section, block };
+      }
+    }
+
+    throw new TrainingReadServiceError("Training section block not found", 404, { blockId, projectId });
+  }
+
   const snapshot = await loadTrainingSnapshot();
   for (const project of snapshot.projects) {
     for (const section of project.sections) {

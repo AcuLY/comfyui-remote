@@ -20,7 +20,8 @@ export async function POST(
 
   try {
     const { sectionId } = await params;
-    const data = await reorderTrainingSectionBlocks(sectionId, body);
+    const projectId = new URL(request.url).searchParams.get("projectId");
+    const data = await reorderTrainingSectionBlocks(sectionId, body, { projectId });
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingSceneBlockError(error);

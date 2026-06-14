@@ -21,7 +21,8 @@ export async function POST(
 
   try {
     const { blockId } = await params;
-    const data = await detachTrainingSectionBlock(blockId, body);
+    const projectId = new URL(request.url).searchParams.get("projectId");
+    const data = await detachTrainingSectionBlock(blockId, body, { projectId });
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingSceneBlockError(error);

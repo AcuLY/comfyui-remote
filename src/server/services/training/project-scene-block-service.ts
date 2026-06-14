@@ -39,7 +39,7 @@ function createBlockId(sectionId: string) {
   return `${sectionId}-block-${Date.now()}`;
 }
 
-export async function createTrainingSectionBlock(sectionId: string, input: unknown) {
+export async function createTrainingSectionBlock(sectionId: string, input: unknown, options: { projectId?: string | null } = {}) {
   const parsed = createBlockSchema.safeParse(input);
   if (!parsed.success) {
     throw new TrainingSceneBlockServiceError("Invalid training section block request", 400, {
@@ -50,7 +50,7 @@ export async function createTrainingSectionBlock(sectionId: string, input: unkno
     });
   }
 
-  const { project, section } = await getTrainingSectionContext(sectionId);
+  const { project, section } = await getTrainingSectionContext(sectionId, options.projectId);
   const nextBlock: LoraTrainingSectionBlock = {
     id: createBlockId(sectionId),
     source: parsed.data.source,
@@ -72,7 +72,7 @@ export async function createTrainingSectionBlock(sectionId: string, input: unkno
   return nextBlock;
 }
 
-export async function updateTrainingSectionBlock(blockId: string, input: unknown) {
+export async function updateTrainingSectionBlock(blockId: string, input: unknown, options: { projectId?: string | null } = {}) {
   const parsed = updateBlockSchema.safeParse(input);
   if (!parsed.success) {
     throw new TrainingSceneBlockServiceError("Invalid training section block update request", 400, {
@@ -83,7 +83,7 @@ export async function updateTrainingSectionBlock(blockId: string, input: unknown
     });
   }
 
-  const { block, project, section } = await getTrainingBlockContext(blockId);
+  const { block, project, section } = await getTrainingBlockContext(blockId, options.projectId);
   const updatedBlock: LoraTrainingSectionBlock = {
     ...block,
     source: parsed.data.source ?? block.source,
@@ -105,7 +105,7 @@ export async function updateTrainingSectionBlock(blockId: string, input: unknown
   return updatedBlock;
 }
 
-export async function detachTrainingSectionBlock(blockId: string, input: unknown) {
+export async function detachTrainingSectionBlock(blockId: string, input: unknown, options: { projectId?: string | null } = {}) {
   const parsed = detachBlockSchema.safeParse(input);
   if (!parsed.success) {
     throw new TrainingSceneBlockServiceError("Invalid training section block detach request", 400, {
@@ -119,10 +119,10 @@ export async function detachTrainingSectionBlock(blockId: string, input: unknown
   return updateTrainingSectionBlock(blockId, {
     source: "本地",
     text: parsed.data.editedText,
-  });
+  }, options);
 }
 
-export async function reorderTrainingSectionBlocks(sectionId: string, input: unknown) {
+export async function reorderTrainingSectionBlocks(sectionId: string, input: unknown, options: { projectId?: string | null } = {}) {
   const parsed = reorderBlocksSchema.safeParse(input);
   if (!parsed.success) {
     throw new TrainingSceneBlockServiceError("Invalid training section block reorder request", 400, {
@@ -133,7 +133,7 @@ export async function reorderTrainingSectionBlocks(sectionId: string, input: unk
     });
   }
 
-  const { project, section } = await getTrainingSectionContext(sectionId);
+  const { project, section } = await getTrainingSectionContext(sectionId, options.projectId);
   const blockMap = new Map(section.blocks.map((block) => [block.id, block]));
   const reorderedBlocks = parsed.data.ids
     .map((id) => blockMap.get(id))
@@ -160,8 +160,8 @@ export async function reorderTrainingSectionBlocks(sectionId: string, input: unk
   return reorderedBlocks;
 }
 
-export async function deleteTrainingSectionBlock(blockId: string) {
-  const { project, section } = await getTrainingBlockContext(blockId);
+export async function deleteTrainingSectionBlock(blockId: string, options: { projectId?: string | null } = {}) {
+  const { project, section } = await getTrainingBlockContext(blockId, options.projectId);
   if (section.blocks.length <= 1) {
     throw new TrainingSceneBlockServiceError("Training section must keep at least one block", 409, { blockId, sectionId: section.id });
   }

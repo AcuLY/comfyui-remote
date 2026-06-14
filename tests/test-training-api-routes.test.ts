@@ -366,58 +366,57 @@ test("GET project-scoped training resources expose sections, results, dataset re
   const revisionsRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
   const trainingRunsRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
   const generationTasksRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
-  const projects = await listProjects();
-  const projectId = (
-    projects.find((project) => !String(project.id).startsWith("training-project-") && (project.sectionCount ?? 0) > 0 && (project.imageCount ?? 0) > 0)
-    ?? projects.find((project) => (project.sectionCount ?? 0) > 0 && (project.imageCount ?? 0) > 0)
-    ?? projects[0]
-  ).id;
+  await withTrainingManagedStoreSnapshot(async () => {
+    const { generationRunId, projectId, trainingRunId } = await createManagedCompletedRunFixtures();
 
-  const params = { params: Promise.resolve({ projectId }) };
-  const [sectionsResponse, resultsResponse, readinessResponse, revisionsResponse, trainingRunsResponse, generationTasksResponse] = await Promise.all([
-    sectionsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/sections`), params),
-    resultsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/image-results`), params),
-    readinessRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/dataset-readiness`), params),
-    revisionsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/dataset-revisions`), params),
-    trainingRunsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/training-runs`), params),
-    generationTasksRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/generation-tasks`), params),
-  ]);
+    const params = { params: Promise.resolve({ projectId }) };
+    const [sectionsResponse, resultsResponse, readinessResponse, revisionsResponse, trainingRunsResponse, generationTasksResponse] = await Promise.all([
+      sectionsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/sections`), params),
+      resultsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/image-results`), params),
+      readinessRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/dataset-readiness`), params),
+      revisionsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/dataset-revisions`), params),
+      trainingRunsRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/training-runs`), params),
+      generationTasksRoute.GET(new Request(`http://localhost/api/training/projects/${projectId}/generation-tasks`), params),
+    ]);
 
-  const [sectionsPayload, resultsPayload, readinessPayload, revisionsPayload, trainingRunsPayload, generationTasksPayload] = await Promise.all([
-    sectionsResponse.json(),
-    resultsResponse.json(),
-    readinessResponse.json(),
-    revisionsResponse.json(),
-    trainingRunsResponse.json(),
-    generationTasksResponse.json(),
-  ]);
+    const [sectionsPayload, resultsPayload, readinessPayload, revisionsPayload, trainingRunsPayload, generationTasksPayload] = await Promise.all([
+      sectionsResponse.json(),
+      resultsResponse.json(),
+      readinessResponse.json(),
+      revisionsResponse.json(),
+      trainingRunsResponse.json(),
+      generationTasksResponse.json(),
+    ]);
 
-  assert.equal(sectionsResponse.status, 200);
-  assert.equal(resultsResponse.status, 200);
-  assert.equal(readinessResponse.status, 200);
-  assert.equal(revisionsResponse.status, 200);
-  assert.equal(trainingRunsResponse.status, 200);
-  assert.equal(generationTasksResponse.status, 200);
+    assert.equal(sectionsResponse.status, 200);
+    assert.equal(resultsResponse.status, 200);
+    assert.equal(readinessResponse.status, 200);
+    assert.equal(revisionsResponse.status, 200);
+    assert.equal(trainingRunsResponse.status, 200);
+    assert.equal(generationTasksResponse.status, 200);
 
-  assert.ok(Array.isArray(sectionsPayload.data));
-  assert.ok(sectionsPayload.data.length > 0);
-  assert.ok(Array.isArray(resultsPayload.data));
-  assert.ok(resultsPayload.data.length > 0);
-  assert.equal(readinessPayload.data.projectId, projectId);
-  assert.equal(typeof readinessPayload.data.readyForTraining, "boolean");
-  assert.ok(Array.isArray(revisionsPayload.data));
-  assert.ok(revisionsPayload.data.length > 0);
-  const revisionId = revisionsPayload.data[0].id as string;
-  const revisionDetailResponse = await revisionDetailRoute.GET(
-    new Request(`http://localhost/api/training/dataset-revisions/${revisionId}`),
-    { params: Promise.resolve({ revisionId }) },
-  );
-  const revisionDetailPayload = await revisionDetailResponse.json();
-  assert.equal(revisionDetailResponse.status, 200);
-  assert.equal(revisionDetailPayload.ok, true);
-  assert.equal(revisionDetailPayload.data.id, revisionId);
-  assert.ok(trainingRunsPayload.data.every((run: { kind: string; projectId: string }) => run.kind === "training" && run.projectId === projectId));
-  assert.ok(generationTasksPayload.data.every((run: { kind: string; projectId: string }) => run.kind === "generation" && run.projectId === projectId));
+    assert.ok(Array.isArray(sectionsPayload.data));
+    assert.ok(sectionsPayload.data.length > 0);
+    assert.ok(Array.isArray(resultsPayload.data));
+    assert.ok(resultsPayload.data.length > 0);
+    assert.equal(readinessPayload.data.projectId, projectId);
+    assert.equal(typeof readinessPayload.data.readyForTraining, "boolean");
+    assert.ok(Array.isArray(revisionsPayload.data));
+    assert.ok(revisionsPayload.data.length > 0);
+    const revisionId = revisionsPayload.data[0].id as string;
+    const revisionDetailResponse = await revisionDetailRoute.GET(
+      new Request(`http://localhost/api/training/dataset-revisions/${revisionId}`),
+      { params: Promise.resolve({ revisionId }) },
+    );
+    const revisionDetailPayload = await revisionDetailResponse.json();
+    assert.equal(revisionDetailResponse.status, 200);
+    assert.equal(revisionDetailPayload.ok, true);
+    assert.equal(revisionDetailPayload.data.id, revisionId);
+    assert.ok((trainingRunsPayload.data as Array<{ id: string; kind: string; projectId: string }>).some((run) => run.id === trainingRunId));
+    assert.ok((generationTasksPayload.data as Array<{ id: string; kind: string; projectId: string }>).some((run) => run.id === generationRunId));
+    assert.ok(trainingRunsPayload.data.every((run: { kind: string; projectId: string }) => run.kind === "training" && run.projectId === projectId));
+    assert.ok(generationTasksPayload.data.every((run: { kind: string; projectId: string }) => run.kind === "generation" && run.projectId === projectId));
+  });
 });
 
 test("GET /api/training/sections/:sectionId/scene-description returns the resolved training scene text and source blocks", async () => {
@@ -451,6 +450,156 @@ test("GET /api/training/sections/:sectionId/scene-description returns the resolv
   assert.ok(sceneDescriptionPayload.data.text.length > 0);
   assert.ok(Array.isArray(sceneDescriptionPayload.data.blocks));
   assert.ok(sceneDescriptionPayload.data.blocks.length > 0);
+});
+
+test("training section and block alias routes honor project scope when ids overlap", async () => {
+  await withTrainingManagedStoreSnapshot(async () => {
+    const projectsRoute = await import("../src/app/api/training/projects/route");
+    const sectionAliasRoute = await import("../src/app/api/training/sections/[sectionId]/route");
+    const sceneDescriptionRoute = await import("../src/app/api/training/sections/[sectionId]/scene-description/route");
+    const blockDetailRoute = await import("../src/app/api/training/blocks/[blockId]/route");
+    const projectSectionRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
+
+    const createProject = async (title: string, scene: string, blockText: string) => {
+      const response = await projectsRoute.POST(
+        new Request("http://localhost/api/training/projects", {
+          method: "POST",
+          body: JSON.stringify({
+            title,
+            characterName: title,
+            projectName: title,
+            triggerToken: `overlap_alias_${Date.now()}_${title}`,
+            templateId: "character_identity_default",
+            trainingTemplateId: "character_identity_default",
+            checkpointRelativePath: "models/checkpoints/mock.safetensors",
+            usagePrompt: `${title} usage`,
+            detailPrompt: `${title} detail`,
+            sections: [
+              {
+                id: "shared-section",
+                title: `${title} 小节`,
+                enabled: true,
+                blockCount: 1,
+                blocks: [
+                  {
+                    id: "shared-block",
+                    source: "本地",
+                    title: `${title} block`,
+                    text: blockText,
+                  },
+                ],
+                resolvedScene: scene,
+                scenePreview: scene,
+              },
+            ],
+            trainingDefaults: {
+              autoGenerateSamples: false,
+              autoFreezeDataset: false,
+            },
+          }),
+        }),
+      );
+      const payload = await response.json();
+      assert.equal(response.status, 201);
+      assert.equal(payload.ok, true);
+      return payload.data as { id: string };
+    };
+
+    const firstProject = await createProject(`重复别名项目 A ${Date.now()}`, "scene a", "block text a");
+    const secondProject = await createProject(`重复别名项目 B ${Date.now()}`, "scene b", "block text b");
+
+    const sectionAliasResponse = await sectionAliasRoute.GET(
+      new Request(`http://localhost/api/training/sections/shared-section?projectId=${encodeURIComponent(secondProject.id)}`),
+      { params: Promise.resolve({ sectionId: "shared-section" }) },
+    );
+    const sectionAliasPayload = await sectionAliasResponse.json();
+    assert.equal(sectionAliasResponse.status, 200);
+    assert.equal(sectionAliasPayload.ok, true);
+    assert.match(sectionAliasPayload.data.title, /重复别名项目 B/);
+
+    const sceneDescriptionResponse = await sceneDescriptionRoute.GET(
+      new Request(`http://localhost/api/training/sections/shared-section/scene-description?projectId=${encodeURIComponent(secondProject.id)}`),
+      { params: Promise.resolve({ sectionId: "shared-section" }) },
+    );
+    const sceneDescriptionPayload = await sceneDescriptionResponse.json();
+    assert.equal(sceneDescriptionResponse.status, 200);
+    assert.equal(sceneDescriptionPayload.ok, true);
+    assert.equal(sceneDescriptionPayload.data.projectId, secondProject.id);
+    assert.equal(sceneDescriptionPayload.data.text, "scene b");
+
+    const sectionRunsRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
+    const firstRunResponse = await sectionRunsRoute.POST(
+      new Request("http://localhost/api/training/sections/shared-section/runs", {
+        method: "POST",
+        body: JSON.stringify({
+          projectId: firstProject.id,
+          userInstruction: "first overlap run",
+        }),
+      }),
+      { params: Promise.resolve({ sectionId: "shared-section" }) },
+    );
+    const firstRunPayload = await firstRunResponse.json();
+    assert.equal(firstRunResponse.status, 201);
+    assert.equal(firstRunPayload.ok, true);
+
+    const secondRunResponse = await sectionRunsRoute.POST(
+      new Request("http://localhost/api/training/sections/shared-section/runs", {
+        method: "POST",
+        body: JSON.stringify({
+          projectId: secondProject.id,
+          userInstruction: "second overlap run",
+        }),
+      }),
+      { params: Promise.resolve({ sectionId: "shared-section" }) },
+    );
+    const secondRunPayload = await secondRunResponse.json();
+    assert.equal(secondRunResponse.status, 201);
+    assert.equal(secondRunPayload.ok, true);
+
+    const scopedRunsResponse = await sectionRunsRoute.GET(
+      new Request(`http://localhost/api/training/sections/shared-section/runs?projectId=${encodeURIComponent(secondProject.id)}`),
+      { params: Promise.resolve({ sectionId: "shared-section" }) },
+    );
+    const scopedRunsPayload = await scopedRunsResponse.json();
+    assert.equal(scopedRunsResponse.status, 200);
+    assert.equal(scopedRunsPayload.ok, true);
+    assert.ok(Array.isArray(scopedRunsPayload.data));
+    assert.ok((scopedRunsPayload.data as Array<{ id: string; projectId: string }>).some((run) => run.id === secondRunPayload.data.id));
+    assert.ok((scopedRunsPayload.data as Array<{ id: string; projectId: string }>).every((run) => run.projectId === secondProject.id));
+    assert.ok(!(scopedRunsPayload.data as Array<{ id: string }>).some((run) => run.id === firstRunPayload.data.id));
+
+    const blockPatchResponse = await blockDetailRoute.PATCH(
+      new Request(`http://localhost/api/training/blocks/shared-block?projectId=${encodeURIComponent(secondProject.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          text: "block text b updated",
+        }),
+      }),
+      { params: Promise.resolve({ blockId: "shared-block" }) },
+    );
+    const blockPatchPayload = await blockPatchResponse.json();
+    assert.equal(blockPatchResponse.status, 200);
+    assert.equal(blockPatchPayload.ok, true);
+    assert.equal(blockPatchPayload.data.text, "block text b updated");
+
+    const firstSectionResponse = await projectSectionRoute.GET(
+      new Request(`http://localhost/api/training/projects/${firstProject.id}/sections/shared-section`),
+      { params: Promise.resolve({ projectId: firstProject.id, sectionId: "shared-section" }) },
+    );
+    const firstSectionPayload = await firstSectionResponse.json();
+    assert.equal(firstSectionResponse.status, 200);
+    assert.equal(firstSectionPayload.ok, true);
+    assert.equal(firstSectionPayload.data.blocks[0].text, "block text a");
+
+    const secondSectionResponse = await projectSectionRoute.GET(
+      new Request(`http://localhost/api/training/projects/${secondProject.id}/sections/shared-section`),
+      { params: Promise.resolve({ projectId: secondProject.id, sectionId: "shared-section" }) },
+    );
+    const secondSectionPayload = await secondSectionResponse.json();
+    assert.equal(secondSectionResponse.status, 200);
+    assert.equal(secondSectionPayload.ok, true);
+    assert.equal(secondSectionPayload.data.blocks[0].text, "block text b updated");
+  });
 });
 
 test("GET /api/training/sections/:sectionId/runs lists generation runs scoped to one training section", async () => {
@@ -884,22 +1033,21 @@ test("GET /api/training/runs filters the global training workspace by kind and s
 });
 
 test("GET /api/training/training-runs/:trainingRunId returns training run detail", async () => {
-  const runsRoute = await import("../src/app/api/training/runs/route");
   const { GET } = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
-  const runsResponse = await runsRoute.GET(new Request("http://localhost/api/training/runs?kind=training"));
-  const runsPayload = await runsResponse.json();
-  const trainingRunId = runsPayload.data[0].id;
+  await withTrainingManagedStoreSnapshot(async () => {
+    const { trainingRunId } = await createManagedCompletedRunFixtures();
 
-  const response = await GET(
-    new Request(`http://localhost/api/training/training-runs/${trainingRunId}`),
-    { params: Promise.resolve({ trainingRunId }) },
-  );
-  const payload = await response.json();
+    const response = await GET(
+      new Request(`http://localhost/api/training/training-runs/${trainingRunId}`),
+      { params: Promise.resolve({ trainingRunId }) },
+    );
+    const payload = await response.json();
 
-  assert.equal(response.status, 200);
-  assert.equal(payload.ok, true);
-  assert.equal(payload.data.id, trainingRunId);
-  assert.equal(payload.data.kind, "training");
+    assert.equal(response.status, 200);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.data.id, trainingRunId);
+    assert.equal(payload.data.kind, "training");
+  });
 });
 
 test("POST /api/training/training-runs/:trainingRunId/create-preset creates a training preset from a completed training run", async () => {
@@ -961,21 +1109,22 @@ test("POST /api/training/training-runs/:trainingRunId/create-preset creates a tr
 
 test("POST /api/training/training-runs/:trainingRunId/poll returns the current training run snapshot", async () => {
   const pollRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/poll/route");
-  const trainingRuns = await listRuns("?kind=training");
-  const trainingRunId = trainingRuns[0].id;
+  await withTrainingManagedStoreSnapshot(async () => {
+    const { trainingRunId } = await createManagedCompletedRunFixtures();
 
-  const response = await pollRoute.POST(
-    new Request(`http://localhost/api/training/training-runs/${trainingRunId}/poll`, {
-      method: "POST",
-    }),
-    { params: Promise.resolve({ trainingRunId }) },
-  );
-  const payload = await response.json();
+    const response = await pollRoute.POST(
+      new Request(`http://localhost/api/training/training-runs/${trainingRunId}/poll`, {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ trainingRunId }) },
+    );
+    const payload = await response.json();
 
-  assert.equal(response.status, 200);
-  assert.equal(payload.ok, true);
-  assert.equal(payload.data.id, trainingRunId);
-  assert.equal(payload.data.kind, "training");
+    assert.equal(response.status, 200);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.data.id, trainingRunId);
+    assert.equal(payload.data.kind, "training");
+  });
 });
 
 test("POST /api/training/training-runs/:trainingRunId/cleanup returns an idempotent cleanup summary", async () => {
