@@ -1026,11 +1026,30 @@ test("training project create page posts through the formal HTTP API on producti
   assert.match(formSource, /templateId:\s*sourceTemplate\.id/, "production project creation should submit the selected template id in product payload");
   assert.match(formSource, /trainingTemplateId:\s*sourceTemplate\.id/, "production project creation should pass the selected training template id");
   assert.match(formSource, /checkpointRelativePath/, "production project creation should send a checkpoint path instead of a demo-only model label");
-  assert.match(formSource, /selectedReferenceIds:\s*\[\.\.\.selectedReferenceIds\]/, "production project creation should submit explicitly selected reference ids");
+  assert.match(formSource, /selectedReferenceIds:\s*persistedSelectedReferenceIds/, "production project creation should submit persisted reference ids and exclude staged uploads from the initial create request");
   assert.match(formSource, /sections:\s*sectionSeeds/, "production project creation should submit the current seed sections");
   assert.match(formSource, /trainingDefaults:\s*\{/, "production project creation should submit dataset and sample defaults");
   assert.match(formSource, /router\.push\(`/, "production project creation should navigate to the created training project");
   assert.match(formSource, /pushToast/, "production project creation should surface API success or failure through the shared feedback system");
+});
+
+test("training project create page stages local uploaded references and syncs them through formal HTTP APIs", () => {
+  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
+  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const formSource = pagesSource.slice(formStart, detailStart);
+
+  assert.match(formSource, /projectReferenceUploadInputRef/, "project create page should keep a file input ref for staged reference uploads");
+  assert.match(formSource, /handleUploadProjectReference/, "project create page should expose an explicit upload entrypoint");
+  assert.match(formSource, /handleProjectReferenceFileChange/, "project create page should stage local reference uploads explicitly");
+  assert.match(formSource, /type="file"/, "project create page should render a real file input for reference uploads");
+  assert.match(formSource, /title:\s*"本地上传"/, "staged local uploads should appear as their own reference source group");
+  assert.match(formSource, /selectedStagedProjectReferenceUploads/, "project create flow should track which staged uploads were selected");
+  assert.match(formSource, /selectedReferenceIds:\s*persistedSelectedReferenceIds/, "project create API payload should exclude staged-upload ids from the initial create request");
+  assert.match(formSource, /fetch\(`\/api\/training\/projects\/\$\{projectId\}\/character-images`/, "after creation, staged uploads should sync through the formal character-image upload API");
+  assert.match(formSource, /fetch\(`\/api\/training\/character-images\/\$\{uploadPayload\.data\.id\}`/, "uploaded reference images should patch label metadata through the formal character-image detail API");
 });
 
 test("training project create page carries selected references into the local draft", () => {

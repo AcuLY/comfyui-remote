@@ -75,6 +75,12 @@ const RESULT_FILTER_ITEMS = [
 type TrainingResultFilter = (typeof RESULT_FILTER_ITEMS)[number]["value"];
 type LoraTrainingTemplateSeedSection = LoraTrainingTemplate["sections"][number];
 type SceneBlockPatch = Partial<Pick<LoraTrainingSectionBlock, "text" | "title">>;
+type ProjectReferenceUploadDraft = {
+  file: File;
+  id: string;
+  previewReference: ReferenceCandidate;
+  title: string;
+};
 type ProjectSectionDraftState = {
   blockCount: number;
   firstBlock: string;
@@ -187,6 +193,30 @@ function isProductionTrainingPath(pathname: string | null | undefined) {
 function buildTrainingProjectTriggerToken(title: string) {
   const normalized = title.trim().replace(/\s+/g, "_");
   return normalized || "training_project";
+}
+
+function buildProjectReferenceUploadPreview(file: File, draftId: string): ReferenceCandidate {
+  const title = file.name.replace(/\.[^.]+$/, "") || "本地上传图片";
+  const url = URL.createObjectURL(file);
+
+  return {
+    id: draftId,
+    title,
+    detail: "创建项目后会自动上传到角色资料，并作为参考图保留。",
+    image: {
+      id: `${draftId}-image`,
+      src: url,
+      full: url,
+      label: title,
+      status: "pending",
+      featured: false,
+      featured2: false,
+      cover: false,
+      width: null,
+      height: null,
+    },
+    meta: "本地上传",
+  };
 }
 
 function toTrainingImageReviewApiStatus(reviewStatus: LoraTrainingImageResult["reviewStatus"]) {
@@ -839,6 +869,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   const pathname = usePathname();
   const router = useRouter();
   const { pushToast } = useDemoFeedback();
+  const projectReferenceUploadInputRef = useRef<HTMLInputElement | null>(null);
   const training = useTraining(data);
   const urlSearch = useUrlSearch();
   const newProjectTemplateHints = readNewProjectTemplateHints(urlSearch);
@@ -861,6 +892,13 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   };
   const [projectFormState, setProjectFormState] = useState(defaultProjectForm);
   const projectForm = projectFormState.templateContextId === projectTemplateContextId ? projectFormState : defaultProjectForm;
+  const [projectReferenceUploadState, setProjectReferenceUploadState] = useState(() => ({
+    templateContextId: projectTemplateContextId,
+    uploads: [] as ProjectReferenceUploadDraft[],
+  }));
+  const stagedProjectReferenceUploads = projectReferenceUploadState.templateContextId === projectTemplateContextId
+    ? projectReferenceUploadState.uploads
+    : [];
   const referenceSourceTree: ReferenceSourceGroup[] = [
     {
       id: "existing-training-projects",
@@ -887,8 +925,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
       }))).slice(0, 4),
     },
     {
-      id: "uploaded-images",
-      title: "上传图片",
+      id: "local-image-library",
+      title: "本地图库",
       description: "资料候选",
       items: data.images.slice(0, 4).map((image) => ({
         id: `image-${image.id}`,
@@ -897,6 +935,12 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
         image,
         meta: image.status,
       })),
+    },
+    {
+      id: "staged-uploaded-images",
+      title: "本地上传",
+      description: "创建后自动导入",
+      items: stagedProjectReferenceUploads.map((upload) => upload.previewReference),
     },
   ].filter((group) => group.items.length > 0);
   const [projectReferenceSelectionState, setProjectReferenceSelectionState] = useState(() => ({
@@ -950,6 +994,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
   const selectedProjectReferences = referenceSourceTree
     .flatMap((group) => group.items)
     .filter((candidate) => selectedReferenceIds.has(candidate.id));
+  const stagedProjectReferenceUploadIds = new Set(stagedProjectReferenceUploads.map((upload) => upload.id));
+  const selectedStagedProjectReferenceUploads = stagedProjectReferenceUploads.filter((upload) => selectedReferenceIds.has(upload.id));
   const selectedReferenceTitles = selectedProjectReferences.map((reference) => reference.title);
   const [isCreatingProject, setIsCreatingProject] = useState(false);
   const isProductionTrainingRoute = pathname === "/training" || pathname.startsWith("/training/");
@@ -1043,6 +1089,103 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
     setSelectedReferenceIds((current) => new Set([...current, candidate.id]));
   }
 
+  function handleUploadProjectReference() {
+    projectReferenceUploadInputRef.current?.click();
+  }
+
+  function handleProjectReferenceFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.currentTarget.files ?? []);
+    if (files.length === 0) return;
+
+    const nextUploads: ProjectReferenceUploadDraft[] = [];
+    setProjectReferenceUploadState((current) => {
+      const activeUploads = current.templateContextId === projectTemplateContextId ? current.uploads : [];
+      const uploads = [...activeUploads];
+
+      files.forEach((file) => {
+        const duplicate = uploads.some((upload) => (
+          upload.file.name === file.name
+          && upload.file.size === file.size
+          && upload.file.lastModified === file.lastModified
+        ));
+        if (duplicate) return;
+
+        const id = `staged-upload-${Date.now()}-${uploads.length + 1}`;
+        const nextUpload = {
+          file,
+          id,
+          previewReference: buildProjectReferenceUploadPreview(file, id),
+          title: file.name.replace(/\.[^.]+$/, "") || "本地上传图片",
+        } satisfies ProjectReferenceUploadDraft;
+        uploads.push(nextUpload);
+        nextUploads.push(nextUpload);
+      });
+
+      return {
+        templateContextId: projectTemplateContextId,
+        uploads,
+      };
+    });
+
+    if (nextUploads[0]) {
+      handlePreviewProjectReference(nextUploads[0].previewReference);
+      pushToast({
+        tone: "success",
+        title: "本地图片已加入候选",
+        detail: nextUploads.length > 1 ? `${nextUploads.length} 张图片可加入新项目资料` : nextUploads[0].title,
+      });
+    } else {
+      pushToast({
+        tone: "warning",
+        title: "没有新的本地图片加入候选",
+        detail: "相同文件不会重复加入。",
+      });
+    }
+    event.currentTarget.value = "";
+  }
+
+  async function uploadSelectedProjectReferenceDrafts(projectId: string) {
+    const uploadedTitles: string[] = [];
+    const failedTitles: string[] = [];
+
+    for (const [index, upload] of selectedStagedProjectReferenceUploads.entries()) {
+      const formData = new FormData();
+      formData.append("file", upload.file);
+      formData.append("role", "source");
+      formData.append("sortOrder", String(index));
+
+      try {
+        const uploadResponse = await fetch(`/api/training/projects/${projectId}/character-images`, {
+          method: "POST",
+          body: formData,
+        });
+        const uploadPayload = await uploadResponse.json().catch(() => null);
+        if (!uploadResponse.ok || !uploadPayload?.ok || !uploadPayload?.data?.id) {
+          failedTitles.push(upload.title);
+          continue;
+        }
+
+        uploadedTitles.push(upload.title);
+        await fetch(`/api/training/character-images/${uploadPayload.data.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            label: upload.title,
+            note: "创建项目时本地上传的参考图",
+            sortOrder: index,
+          }),
+        }).catch(() => null);
+      } catch {
+        failedTitles.push(upload.title);
+      }
+    }
+
+    return {
+      failedTitles,
+      uploadedTitles,
+    };
+  }
+
   async function handleCreateProjectDraft() {
     const nextDraft = {
       autoFreezeDataset: trainingDefaults.autoFreezeDataset,
@@ -1098,6 +1241,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
 
     setIsCreatingProject(true);
     try {
+      const persistedSelectedReferenceIds = [...selectedReferenceIds].filter((referenceId) => !stagedProjectReferenceUploadIds.has(referenceId));
       const response = await fetch("/api/training/projects", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -1114,7 +1258,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
           detailPrompt: projectForm.detailPrompt,
           perSectionImageCount: projectForm.perSectionImageCount,
           trainingSteps: projectForm.trainingSteps,
-          selectedReferenceIds: [...selectedReferenceIds],
+          selectedReferenceIds: persistedSelectedReferenceIds,
           sections: sectionSeeds,
           trainingDefaults: {
             autoGenerateSamples: trainingDefaults.autoGenerateSamples,
@@ -1134,11 +1278,28 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
         return;
       }
 
-      pushToast({
-        tone: "success",
-        title: "训练项目已创建",
-        detail: projectForm.title,
-      });
+        pushToast({
+          tone: "success",
+          title: "训练项目已创建",
+          detail: projectForm.title,
+        });
+
+      if (selectedStagedProjectReferenceUploads.length > 0) {
+        const stagedUploadResult = await uploadSelectedProjectReferenceDrafts(payload.data.id);
+        if (stagedUploadResult.failedTitles.length > 0) {
+          pushToast({
+            tone: "warning",
+            title: "训练项目已创建，部分参考图未上传",
+            detail: stagedUploadResult.failedTitles.join("、"),
+          });
+        } else if (stagedUploadResult.uploadedTitles.length > 0) {
+          pushToast({
+            tone: "success",
+            title: "本地参考图已同步到角色资料",
+            detail: `${stagedUploadResult.uploadedTitles.length} 张`,
+          });
+        }
+      }
       router.push(`/training/projects/${payload.data.id}`);
     } catch (error) {
       pushToast({
@@ -1183,7 +1344,23 @@ export function LoraTrainingProjectFormPage({ data }: { data: DemoData }) {
               <Field multiline features={{ resize: true, clipboard: true }} label="角色细节描述" value={projectForm.detailPrompt} onChange={(value) => handleUpdateProjectForm("detailPrompt", value)} />
             </div>
           </Panel>
-          <Panel title="参考资料" subtitle="先预览引用来源，再显式加入新项目资料。">
+          <Panel
+            title="参考资料"
+            subtitle="先预览引用来源，再显式加入新项目资料。"
+            actions={(
+              <Button size="sm" icon={Upload} onClick={handleUploadProjectReference}>
+                上传图片
+              </Button>
+            )}
+          >
+            <input
+              ref={projectReferenceUploadInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              multiple
+              hidden
+              onChange={handleProjectReferenceFileChange}
+            />
             <ReferencePicker
                 referenceSourceTree={referenceSourceTree}
                 previewReference={activePreviewReference}
