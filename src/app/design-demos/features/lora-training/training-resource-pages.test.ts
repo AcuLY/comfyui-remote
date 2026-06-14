@@ -148,6 +148,37 @@ test("training preset library drag handles reorder visible presets locally", () 
   assert.match(itemSource, /\{\.\.\.handleProps\}/, "training preset row drag handles should receive sortable handle props");
 });
 
+test("training preset library persists reorder through the formal HTTP API on production routes", () => {
+  const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  assert.notEqual(presetsStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const presetsSource = pageSource.slice(presetsStart, detailStart);
+
+  assert.match(presetsSource, /usePathname/, "training preset library should detect whether it is running under production \\/training routes");
+  assert.match(presetsSource, /fetch\("\/api\/training\/presets\/sort-rules"/, "preset reorder should call the formal preset sort-rules API");
+  assert.match(presetsSource, /categoryOrder:\s*orderedPresetCategories/, "preset reorder should persist the active category order together with preset order");
+  assert.match(presetsSource, /presetOrder:\s*nextOrderedPresetIds/, "preset reorder should submit the reordered preset ids");
+  assert.match(presetsSource, /setOrderedPresetIds\(previousIds\)/, "preset reorder should roll back local state when persistence fails");
+  assert.match(presetsSource, /训练预制排序保存失败/, "preset reorder should surface save failures through the shared feedback system");
+});
+
+test("training preset category rail persists reorder through the formal HTTP API on production routes", () => {
+  const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
+  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
+  assert.notEqual(presetsStart, -1);
+  assert.notEqual(detailStart, -1);
+
+  const presetsSource = pageSource.slice(presetsStart, detailStart);
+
+  assert.match(presetsSource, /handleReorderPresetCategories/, "preset library should define a category reorder handler");
+  assert.match(presetsSource, /<SortableList items=\{orderedPresetCategories\} onReorder=\{handleReorderPresetCategories\}>/, "category rail should use the dedicated reorder handler");
+  assert.match(presetsSource, /categoryOrder:\s*nextCategoryOrder/, "category reorder should submit the updated category order");
+  assert.match(presetsSource, /presetOrder:\s*orderedPresetIds/, "category reorder should preserve the current preset order while persisting");
+  assert.match(presetsSource, /setOrderedPresetCategories\(previousCategories\)/, "category reorder should roll back local category order when persistence fails");
+});
+
 test("training preset selection labels reflect selected state like the managed library demo", () => {
   const itemStart = pageSource.indexOf("function TrainingPresetLibraryItemRow");
   const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
@@ -206,8 +237,9 @@ test("training preset category rail drag handles reorder categories locally", ()
   const presetsSource = pageSource.slice(presetsStart, detailStart);
 
   assert.match(presetsSource, /orderedPresetCategories/, "training preset category rail should keep local category order");
-  assert.match(presetsSource, /setOrderedPresetCategories/, "category rail reorder should update local state");
-  assert.match(presetsSource, /<SortableList items=\{orderedPresetCategories\} onReorder=\{setOrderedPresetCategories\}>/, "category rail should use the shared sortable wrapper");
+  assert.match(presetsSource, /handleReorderPresetCategories/, "category rail reorder should update local state through a dedicated handler");
+  assert.match(presetsSource, /setOrderedPresetCategories/, "category rail reorder handler should update local state");
+  assert.match(presetsSource, /<SortableList items=\{orderedPresetCategories\} onReorder=\{handleReorderPresetCategories\}>/, "category rail should use the shared sortable wrapper");
   assert.match(categoryItemSource, /useDemoSortable\(category\)/, "category rail items should attach sortable behavior to each category");
   assert.match(categoryItemSource, /ref=\{ref\}/, "category rail items should apply sortable refs");
   assert.match(categoryItemSource, /style=\{style\}/, "category rail items should apply sortable transforms");

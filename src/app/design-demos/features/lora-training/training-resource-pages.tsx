@@ -410,6 +410,8 @@ function TrainingPresetCategoryRailItem({
 }
 
 export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
+  const pathname = usePathname();
+  const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
   const categories = uniquePresetCategories(training.presets);
   const [orderedPresetCategories, setOrderedPresetCategories] = useState(() => categories);
@@ -429,6 +431,41 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
   const selectedCount = selectedIds.size;
   const activeCategoryLabel = activeCategory || "训练预制";
   const newPresetInCategoryHref = `/training/presets/new?category=${encodeURIComponent(activeCategory)}${currentFolder ? `&folder=${encodeURIComponent(currentFolder)}` : ""}`;
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
+
+  async function persistPresetLibrarySortRules(input: {
+    categoryOrder: string[];
+    onError: () => void;
+    presetOrder: string[];
+  }) {
+    try {
+      const response = await fetch("/api/training/presets/sort-rules", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          categoryOrder: input.categoryOrder,
+          presetOrder: input.presetOrder,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        input.onError();
+        pushToast({
+          tone: "error",
+          title: "训练预制排序保存失败",
+          detail: payload?.error?.message ?? "训练预制排序保存请求失败",
+        });
+      }
+    } catch (error) {
+      input.onError();
+      pushToast({
+        tone: "error",
+        title: "训练预制排序保存失败",
+        detail: error instanceof Error ? error.message : "训练预制排序保存请求失败",
+      });
+    }
+  }
 
   function togglePresetSelection(presetId: string, checked: boolean) {
     setSelectedIds((previous) => {
@@ -456,9 +493,32 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
   function handleReorderPresets(nextVisiblePresetIds: string[]) {
     const visiblePresetIdSet = new Set(visiblePresetIds);
     const reorderedVisiblePresetIds = [...nextVisiblePresetIds];
-    setOrderedPresetIds((current) =>
-      current.map((presetId) => visiblePresetIdSet.has(presetId) ? reorderedVisiblePresetIds.shift() ?? presetId : presetId),
+    const previousIds = orderedPresetIds;
+    const nextOrderedPresetIds = orderedPresetIds.map((presetId) =>
+      visiblePresetIdSet.has(presetId) ? reorderedVisiblePresetIds.shift() ?? presetId : presetId,
     );
+    setOrderedPresetIds(nextOrderedPresetIds);
+
+    if (!isProductionTrainingRoute) return;
+
+    void persistPresetLibrarySortRules({
+      categoryOrder: orderedPresetCategories,
+      onError: () => setOrderedPresetIds(previousIds),
+      presetOrder: nextOrderedPresetIds,
+    });
+  }
+
+  function handleReorderPresetCategories(nextCategoryOrder: string[]) {
+    const previousCategories = orderedPresetCategories;
+    setOrderedPresetCategories(nextCategoryOrder);
+
+    if (!isProductionTrainingRoute) return;
+
+    void persistPresetLibrarySortRules({
+      categoryOrder: nextCategoryOrder,
+      onError: () => setOrderedPresetCategories(previousCategories),
+      presetOrder: orderedPresetIds,
+    });
   }
 
   return (
@@ -477,7 +537,7 @@ export function LoraTrainingPresetsPage({ data }: { data: DemoData }) {
       <div className={s.resourceLayout}>
         <aside className={s.resourceRail}>
           <strong>分类</strong>
-          <SortableList items={orderedPresetCategories} onReorder={setOrderedPresetCategories}>
+          <SortableList items={orderedPresetCategories} onReorder={handleReorderPresetCategories}>
             {orderedPresetCategories.map((category) => (
               <TrainingPresetCategoryRailItem
                 active={activeCategory === category}
