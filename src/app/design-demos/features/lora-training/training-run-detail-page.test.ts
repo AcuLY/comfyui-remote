@@ -109,7 +109,7 @@ test("training detail distinguishes missing artifacts by run lifecycle", () => {
   assert.match(helperSource, /不可创建/, "failed runs without artifacts should not imply preset creation is waiting");
   assert.match(helperSource, /等待模型文件/, "queued or running runs should keep a waiting-for-model preset state");
   assert.match(detailPageSource, /trainingArtifactLabel\(currentRun\)/, "artifact stat should use the lifecycle-aware helper");
-  assert.match(detailPageSource, /trainingPresetStatusLabel\(currentRun, canCreatePreset\)/, "preset stat should use the lifecycle-aware helper");
+  assert.match(detailPageSource, /trainingPresetStatusLabel\(currentRun, canCreatePreset, presetCreatedAt\)/, "preset stat should use the lifecycle-aware helper");
   assert.doesNotMatch(detailPageSource, /等待 LoRA 文件/, "training detail should not use one generic missing-artifact preset state");
   assert.doesNotMatch(detailPageSource, /尚未生成 LoRA 文件/, "training detail should not use one generic missing-artifact model state");
 });
@@ -203,11 +203,14 @@ test("image generation detail renders task input attachments instead of project 
 });
 
 test("completed training run creates presets through the real training preset form route", () => {
-  assert.match(detailSource, /function createTrainingPresetHref/, "run detail should build a concrete preset creation href");
-  assert.match(detailSource, /\/training\/presets\/new/, "preset creation should navigate to the new training preset route");
-  assert.match(detailSource, /sourceRun/, "preset creation should pass the source training run id");
-  assert.match(detailSource, /artifact/, "preset creation should pass the final LoRA artifact name");
-  assert.match(detailSource, /<ButtonLink[\s\S]*?href=\{createTrainingPresetHref\(currentRun\)\}[\s\S]*?>\s*创建预制\s*<\/ButtonLink>/, "create preset action should be a link, not feedback-only UI");
+  assert.match(detailSource, /createdPresetState/, "run detail should keep local created-preset state");
+  assert.match(detailSource, /handleCreateTrainingPreset/, "run detail should define an explicit create-preset handler");
+  assert.match(detailSource, /fetch\(`\/api\/training\/training-runs\/\$\{currentRun\.id\}\/create-preset`/, "preset creation should call the formal training run preset API");
+  assert.match(detailSource, /presetName:\s*`\$\{currentRun\.projectTitle\} 训练预制`/, "preset creation should derive a default preset title from the source project");
+  assert.match(detailSource, /category:\s*"训练产物"/, "preset creation should default the training preset category");
+  assert.match(detailSource, /folder:\s*"LoRA 产物"/, "preset creation should default the training preset folder");
+  assert.match(detailSource, /router\.push\(`\/training\/presets\/\$\{payload\.data\.id\}`\)/, "preset creation should navigate to the created preset detail after success");
+  assert.match(detailSource, /pushToast/, "preset creation should surface API success or failure through the shared feedback system");
   assert.doesNotMatch(detailSource, /创建预制入口已预览/, "create preset action should not remain a preview-only placeholder");
 });
 

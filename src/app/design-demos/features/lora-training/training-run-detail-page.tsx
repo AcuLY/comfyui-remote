@@ -115,26 +115,15 @@ function generationResultsForRun(
     }));
 }
 
-function createTrainingPresetHref(run: LoraTrainingRun) {
-  const params = new URLSearchParams({
-    category: "训练产物",
-    folder: "LoRA 产物",
-    sourceRun: run.id,
-    project: run.projectTitle,
-  });
-  params.set("artifact", run.artifactName ?? run.finalLoraArtifactId ?? "");
-  return `/training/presets/new?${params.toString()}`;
-}
-
 function trainingArtifactLabel(run: LoraTrainingRun) {
   if (run.finalLoraArtifactId) return run.artifactName ?? run.finalLoraArtifactId;
   if (run.status === "failed") return "未生成模型文件";
   return "尚未生成模型文件";
 }
 
-function trainingPresetStatusLabel(run: LoraTrainingRun, canCreatePreset: boolean) {
+function trainingPresetStatusLabel(run: LoraTrainingRun, canCreatePreset: boolean, presetCreatedAt: string | null) {
   if (canCreatePreset) return "可创建";
-  if (run.presetCreatedAt) return "已创建";
+  if (presetCreatedAt) return "已创建";
   if (run.status === "failed") return "不可创建";
   return "等待模型文件";
 }
@@ -270,8 +259,14 @@ export function LoraTrainingRunDetailPage({
   });
   const [retryDraft, setRetryDraft] = useState<RetryDraft | null>(null);
   const [cancelledRunId, setCancelledRunId] = useState<string | null>(null);
+  const [createdPresetState, setCreatedPresetState] = useState<{
+    createdAt: string;
+    presetId: string;
+    runId: string;
+  } | null>(null);
   const [isQueueingRetry, setIsQueueingRetry] = useState(false);
   const [isCancellingTrainingRun, setIsCancellingTrainingRun] = useState(false);
+  const [isCreatingTrainingPreset, setIsCreatingTrainingPreset] = useState(false);
   const [isReviewingGenerationOutput, setIsReviewingGenerationOutput] = useState(false);
   const training = buildLoraTrainingDemoData(data);
   const run = findRun(data, kind, runId);
@@ -301,7 +296,9 @@ export function LoraTrainingRunDetailPage({
   const generationResultsHref = generationSectionHref ? `${generationSectionHref}#section-results` : null;
   const activeSample = activeSampleState?.runId === currentRun.id ? datasetSamples[activeSampleState.index] ?? null : null;
   const isActiveCaptionCopied = activeSample ? copiedCaption?.runId === currentRun.id && copiedCaption?.sampleId === activeSample.id : false;
-  const canCreatePreset = !isGeneration && currentRun.status === "completed" && Boolean(currentRun.finalLoraArtifactId) && !currentRun.presetCreatedAt;
+  const locallyCreatedPresetAt = createdPresetState?.runId === currentRun.id ? createdPresetState.createdAt : null;
+  const presetCreatedAt = currentRun.presetCreatedAt ?? locallyCreatedPresetAt;
+  const canCreatePreset = !isGeneration && currentRun.status === "completed" && Boolean(currentRun.finalLoraArtifactId) && !currentRun.presetCreatedAt && !locallyCreatedPresetAt;
   const logText = currentRun.trainingLogLines?.length ? currentRun.trainingLogLines.join("\n") : "尚未创建训练日志";
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
@@ -616,6 +613,69 @@ export function LoraTrainingRunDetailPage({
     }
   }
 
+  async function handleCreateTrainingPreset() {
+    if (!canCreatePreset) return;
+
+    if (!isProductionTrainingRoute) {
+      setCreatedPresetState({
+        createdAt: new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
+        presetId: `training-preset-${currentRun.id}`,
+        runId: currentRun.id,
+      });
+      pushToast({
+        tone: "success",
+        title: "训练预制已创建",
+        detail: currentRun.title,
+      });
+      return;
+    }
+
+    if (isCreatingTrainingPreset) return;
+
+    setIsCreatingTrainingPreset(true);
+    try {
+      const response = await fetch(`/api/training/training-runs/${currentRun.id}/create-preset`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          presetName: `${currentRun.projectTitle} 训练预制`,
+          category: "训练产物",
+          folder: "LoRA 产物",
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "创建训练预制失败",
+          detail: payload?.error?.message ?? "训练预制创建请求失败",
+        });
+        return;
+      }
+
+      setCreatedPresetState({
+        createdAt: payload.data.presetCreatedAt ?? new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date()),
+        presetId: payload.data.id,
+        runId: currentRun.id,
+      });
+      pushToast({
+        tone: "success",
+        title: "训练预制已创建",
+        detail: currentRun.title,
+      });
+      router.push(`/training/presets/${payload.data.id}`);
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "创建训练预制失败",
+        detail: error instanceof Error ? error.message : "训练预制创建请求失败",
+      });
+    } finally {
+      setIsCreatingTrainingPreset(false);
+    }
+  }
+
   return (
     <div className={s.page}>
       <PageHeader
@@ -698,14 +758,15 @@ export function LoraTrainingRunDetailPage({
           title={isGeneration ? "输出" : "训练产物"}
           subtitle={isGeneration ? "文本任务直接展示应用结果，图片任务展示进入结果池的样本。" : "完成后产出模型文件；未完成状态保留进度与日志入口。"}
           actions={canCreatePreset ? (
-            <ButtonLink
-              href={createTrainingPresetHref(currentRun)}
+            <Button
               icon={ImagePlus}
               tone="primary"
+              pending={isCreatingTrainingPreset}
               ariaLabel={`从训练任务创建预制：${currentRun.title}`}
+              onClick={handleCreateTrainingPreset}
             >
               创建预制
-            </ButtonLink>
+            </Button>
           ) : null}
         >
           <div className={s.stack}>
@@ -743,7 +804,7 @@ export function LoraTrainingRunDetailPage({
                 <div><dt>数据集</dt><dd>{project?.datasetVersion ?? "未记录"}</dd></div>
                 <div><dt>图片</dt><dd>{project?.keptCount ?? 0} 张已保留</dd></div>
                 <div><dt>LoRA 文件</dt><dd>{trainingArtifactLabel(currentRun)}</dd></div>
-                <div><dt>预制</dt><dd>{trainingPresetStatusLabel(currentRun, canCreatePreset)}</dd></div>
+                <div><dt>预制</dt><dd>{trainingPresetStatusLabel(currentRun, canCreatePreset, presetCreatedAt)}</dd></div>
               </dl>
             ) : null}
           </div>
