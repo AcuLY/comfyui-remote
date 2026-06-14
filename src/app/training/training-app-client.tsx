@@ -24,10 +24,8 @@ import {
   LoraTrainingTemplatesPage,
   LoraTrainingTemplateSectionPage,
 } from "@/features/training/ui";
-import { NotFoundPage } from "@/app/design-demos/features/settings";
-import { matchRoute } from "@/app/design-demos/routing";
-import type { DemoTheme, Match } from "@/app/design-demos/routing";
-import { DesignDemoShell } from "@/app/design-demos/shell/app-shell";
+import { DesignDemoShell, matchRoute, NotFoundPage } from "@/features/training/runtime";
+import type { DemoTheme, Match } from "@/features/training/runtime";
 
 function CurrentTrainingPage({ data, match }: { data: DemoData; match: Match }) {
   switch (match.key) {

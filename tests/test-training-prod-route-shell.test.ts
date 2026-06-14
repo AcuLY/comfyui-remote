@@ -109,4 +109,19 @@ test("training routes render a production shell without the /design-demos prefix
     /from "@\/app\/design-demos\/features\/lora-training"/,
     "production training app should not import training pages directly from the design-demos app path anymore",
   );
+  assert.match(
+    trainingAppClientSource,
+    /from "@\/features\/training\/runtime"/,
+    "production training app should read training shell and route runtime concerns through a feature-layer runtime entry point",
+  );
+  assert.doesNotMatch(
+    trainingAppClientSource,
+    /from "@\/app\/design-demos\/routing"/,
+    "production training app should not import training route matching directly from the design-demos routing path anymore",
+  );
+  assert.doesNotMatch(
+    trainingAppClientSource,
+    /from "@\/app\/design-demos\/shell\/app-shell"/,
+    "production training app should not import the training shell directly from the design-demos shell path anymore",
+  );
 });
