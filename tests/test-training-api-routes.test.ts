@@ -110,6 +110,29 @@ async function listRuns(query = "") {
   return payload.data as Array<{ id: string; kind: string; projectId: string; status: string }>;
 }
 
+test("GET /api/training exposes a machine-readable workflow manifest", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.data.module, "training");
+  assert.equal(payload.data.entrypoints.projects, "/api/training/projects");
+  assert.equal(payload.data.entrypoints.runs, "/api/training/runs");
+  assert.ok(Array.isArray(payload.data.workflows));
+  assert.ok(payload.data.workflows.length >= 4);
+  assert.ok(payload.data.workflows.some((workflow: { id: string }) => workflow.id === "training_execution"));
+  assert.equal(
+    payload.data.resources.projects.reorder.path,
+    "/api/training/projects/reorder",
+  );
+  assert.equal(
+    payload.data.resources.templates.reorder.path,
+    "/api/training/templates/reorder",
+  );
+});
+
 async function createManagedRunsForDeletionTest() {
   const {
     addManagedTrainingReferenceImageToResults,
