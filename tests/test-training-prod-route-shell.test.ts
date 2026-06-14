@@ -14,6 +14,7 @@ const buttonPath = resolve(repoRoot, "src/app/design-demos/shared/primitives/but
 const hrefContextPath = resolve(repoRoot, "src/app/design-demos/routing/href-context.tsx");
 const trainingRoutePagePath = resolve(repoRoot, "src/app/training/[[...route]]/page.tsx");
 const trainingAppClientPath = resolve(repoRoot, "src/app/training/training-app-client.tsx");
+const trainingFeatureAppPath = resolve(repoRoot, "src/features/training/app.tsx");
 
 const layoutSource = readFileSync(layoutPath, "utf8");
 const bottomNavSource = readFileSync(bottomNavPath, "utf8");
@@ -23,6 +24,7 @@ const buttonSource = readFileSync(buttonPath, "utf8");
 const hrefContextSource = existsSync(hrefContextPath) ? readFileSync(hrefContextPath, "utf8") : "";
 const trainingRoutePageSource = existsSync(trainingRoutePagePath) ? readFileSync(trainingRoutePagePath, "utf8") : "";
 const trainingAppClientSource = existsSync(trainingAppClientPath) ? readFileSync(trainingAppClientPath, "utf8") : "";
+const trainingFeatureAppSource = existsSync(trainingFeatureAppPath) ? readFileSync(trainingFeatureAppPath, "utf8") : "";
 
 test("production app shell treats /training routes as standalone surfaces", () => {
   assert.match(
@@ -101,47 +103,52 @@ test("training routes render a production shell without the /design-demos prefix
   );
   assert.match(
     trainingAppClientSource,
+    /export \{ TrainingApp \} from "@\/features\/training\/app";/,
+    "app-layer training client should re-export the feature-layer TrainingApp",
+  );
+  assert.match(
+    trainingFeatureAppSource,
     /pathname === "\/training" \? "\/training\/runs" : pathname \?\? "\/training\/runs"/,
-    "training app client should derive product training routes directly from the current pathname",
+    "feature-layer training app should derive product training routes directly from the current pathname",
   );
   assert.match(
-    trainingAppClientSource,
+    trainingFeatureAppSource,
     /DesignDemoShell[\s\S]*?hrefForRoute=\{\(route\) => route\}/,
-    "production training app should keep product routes untouched instead of re-prefixing them with /design-demos",
+    "feature-layer training app should keep product routes untouched instead of re-prefixing them with /design-demos",
   );
   assert.match(
-    trainingAppClientSource,
+    trainingFeatureAppSource,
     /from "@\/features\/training\/ui"/,
-    "production training app should read training pages through a dedicated feature-layer entry point",
+    "feature-layer training app should read training pages through a dedicated feature-layer entry point",
   );
   assert.doesNotMatch(
     trainingAppClientSource,
-    /from "@\/app\/design-demos\/features\/lora-training"/,
-    "production training app should not import training pages directly from the design-demos app path anymore",
+    /from "@\/features\/training\/ui"|from "@\/features\/training\/runtime"|from "@\/features\/training\/data"/,
+    "app-layer training client should stay a thin re-export instead of duplicating feature-layer imports",
   );
   assert.match(
-    trainingAppClientSource,
+    trainingFeatureAppSource,
     /from "@\/features\/training\/runtime"/,
-    "production training app should read training shell and route runtime concerns through a feature-layer runtime entry point",
+    "feature-layer training app should read training shell and route runtime concerns through a feature-layer runtime entry point",
   );
   assert.match(
-    trainingAppClientSource,
+    trainingFeatureAppSource,
     /from "@\/features\/training\/data"/,
-    "production training app should read its page-data type through a feature-layer data entry point",
+    "feature-layer training app should read its page-data type through a feature-layer data entry point",
   );
   assert.doesNotMatch(
-    trainingAppClientSource,
+    trainingFeatureAppSource,
     /from "@\/app\/design-demos\/routing"/,
-    "production training app should not import training route matching directly from the design-demos routing path anymore",
+    "feature-layer training app should not import training route matching directly from the design-demos routing path anymore",
   );
   assert.doesNotMatch(
-    trainingAppClientSource,
+    trainingFeatureAppSource,
     /from "@\/app\/design-demos\/shell\/app-shell"/,
-    "production training app should not import the training shell directly from the design-demos shell path anymore",
+    "feature-layer training app should not import the training shell directly from the design-demos shell path anymore",
   );
   assert.doesNotMatch(
-    trainingAppClientSource,
+    trainingFeatureAppSource,
     /from "@\/app\/design-demos\/data"/,
-    "production training app should not import training page data types directly from the design-demos data path anymore",
+    "feature-layer training app should not import training page data types directly from the design-demos data path anymore",
   );
 });
