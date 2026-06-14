@@ -5,8 +5,18 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const pageSource = readFileSync(resolve(testDir, "training-resource-pages.tsx"), "utf8");
-const cssSource = readFileSync(resolve(testDir, "training-resource-pages.module.css"), "utf8");
+const featureUiDir = resolve(testDir, "../../../../features/training/ui");
+const pageSource = readFileSync(resolve(featureUiDir, "training-resource-pages.tsx"), "utf8");
+const cssSource = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
+const legacyPageSource = readFileSync(resolve(testDir, "training-resource-pages.tsx"), "utf8");
+
+test("training resource page implementation is owned by the training feature layer", () => {
+  assert.match(
+    legacyPageSource,
+    /from "@\/features\/training\/ui\/training-resource-pages"/,
+    "design-demos resource page file should re-export the feature-layer resource pages",
+  );
+});
 
 test("training resource pages keep backend wiring notes out of user-facing copy", () => {
   assert.doesNotMatch(pageSource, /后端接入时/, "training resource UI should not expose backend integration notes");

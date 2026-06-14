@@ -8,7 +8,7 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../../../../features/training/ui");
 const projectsCss = readFileSync(resolve(testDir, "../../../../features/training/ui/training-projects-page.module.css"), "utf8");
 const projectPagesCss = readFileSync(resolve(testDir, "training-project-pages.module.css"), "utf8");
-const resourcesCss = readFileSync(resolve(testDir, "training-resource-pages.module.css"), "utf8");
+const resourcesCss = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
 const runsCss = readFileSync(resolve(featureUiDir, "training-runs-page.module.css"), "utf8");
 
 function hasResponsiveColumns(css: string, className: string) {

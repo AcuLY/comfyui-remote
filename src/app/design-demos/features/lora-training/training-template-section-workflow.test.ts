@@ -5,10 +5,12 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const resourceSource = readFileSync(resolve(testDir, "training-resource-pages.tsx"), "utf8");
-const cssSource = readFileSync(resolve(testDir, "training-resource-pages.module.css"), "utf8");
-const fixtureSource = readFileSync(resolve(testDir, "../../data/lora-training.ts"), "utf8");
-const typesSource = readFileSync(resolve(testDir, "../../../../features/training/types.ts"), "utf8");
+const featureUiDir = resolve(testDir, "../../../../features/training/ui");
+const featureRoot = resolve(testDir, "../../../../features/training");
+const resourceSource = readFileSync(resolve(featureUiDir, "training-resource-pages.tsx"), "utf8");
+const cssSource = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
+const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
+const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
 
 function sourceBetween(startMarker: string, endMarker: string) {
   const start = resourceSource.indexOf(startMarker);
