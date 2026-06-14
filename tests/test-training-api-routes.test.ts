@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import test from "node:test";
+
+const TRAINING_RUN_PRESET_STATE_PATH = join(process.cwd(), "data", "training-run-preset-state.json");
 
 async function listProjects() {
   const { GET } = await import("../src/app/api/training/projects/route");
@@ -12,6 +16,22 @@ async function listProjects() {
   assert.ok(payload.data.length > 0);
 
   return payload.data as Array<{ id: string; sectionCount?: number; imageCount?: number }>;
+}
+
+async function clearTrainingRunPresetState(runId: string) {
+  try {
+    const raw = await readFile(TRAINING_RUN_PRESET_STATE_PATH, "utf8");
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !parsed[runId]) {
+      return;
+    }
+    delete parsed[runId];
+    await writeFile(TRAINING_RUN_PRESET_STATE_PATH, `${JSON.stringify(parsed, null, 2)}\n`, "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
+  }
 }
 
 async function listRuns(query = "") {
@@ -424,6 +444,68 @@ test("GET /api/training/training-runs/:trainingRunId returns training run detail
   assert.equal(payload.ok, true);
   assert.equal(payload.data.id, trainingRunId);
   assert.equal(payload.data.kind, "training");
+});
+
+test("POST /api/training/training-runs/:trainingRunId/create-preset creates a training preset from a completed training run", async () => {
+  const runsRoute = await import("../src/app/api/training/runs/route");
+  const trainingRunDetailRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
+  const createPresetRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/create-preset/route");
+  const presetsRoute = await import("../src/app/api/training/presets/route");
+
+  const runsResponse = await runsRoute.GET(new Request("http://localhost/api/training/runs?kind=training&status=completed"));
+  const runsPayload = await runsResponse.json();
+  const completedRuns = runsPayload.data as Array<{ finalLoraArtifactId?: string; id: string; presetCreatedAt?: string }>;
+  const trainingRunId = completedRuns.find((run) => run.finalLoraArtifactId && !run.presetCreatedAt)?.id
+    ?? completedRuns.find((run) => run.finalLoraArtifactId)?.id;
+
+  assert.ok(trainingRunId, "expected a completed training run with a final LoRA artifact");
+  await clearTrainingRunPresetState(trainingRunId);
+
+  const presetTitle = `训练完成预制 ${Date.now()}`;
+  const createResponse = await createPresetRoute.POST(
+    new Request(`http://localhost/api/training/training-runs/${trainingRunId}/create-preset`, {
+      method: "POST",
+      body: JSON.stringify({
+        presetName: presetTitle,
+        category: "训练产物",
+        folder: "LoRA 产物",
+      }),
+    }),
+    { params: Promise.resolve({ trainingRunId }) },
+  );
+  const createPayload = await createResponse.json();
+
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  assert.equal(createPayload.data.title, presetTitle);
+
+  const presetListResponse = await presetsRoute.GET(new Request("http://localhost/api/training/presets"));
+  const presetListPayload = await presetListResponse.json();
+  assert.equal(presetListResponse.status, 200);
+  assert.equal(presetListPayload.ok, true);
+  assert.ok((presetListPayload.data as Array<{ id: string; title: string }>).some((preset) => preset.id === createPayload.data.id && preset.title === presetTitle));
+
+  const runDetailResponse = await trainingRunDetailRoute.GET(
+    new Request(`http://localhost/api/training/training-runs/${trainingRunId}`),
+    { params: Promise.resolve({ trainingRunId }) },
+  );
+  const runDetailPayload = await runDetailResponse.json();
+  assert.equal(runDetailResponse.status, 200);
+  assert.equal(runDetailPayload.ok, true);
+  assert.equal(typeof runDetailPayload.data.presetCreatedAt, "string");
+
+  const duplicateResponse = await createPresetRoute.POST(
+    new Request(`http://localhost/api/training/training-runs/${trainingRunId}/create-preset`, {
+      method: "POST",
+      body: JSON.stringify({
+        presetName: `${presetTitle} 再次创建`,
+      }),
+    }),
+    { params: Promise.resolve({ trainingRunId }) },
+  );
+  const duplicatePayload = await duplicateResponse.json();
+  assert.equal(duplicateResponse.status, 409);
+  assert.equal(duplicatePayload.ok, false);
 });
 
 test("GET /api/training/generation-tasks/:taskId returns generation task detail", async () => {

@@ -34,6 +34,7 @@ import { listManagedTrainingTemplates } from "@/server/services/training/templat
 import { listManagedTrainingProjects } from "@/server/services/training/project-service";
 import { listManagedTrainingRuns } from "@/server/services/training/project-service";
 import { listHiddenTrainingProjectIds } from "@/server/services/training/project-visibility-service";
+import { listTrainingRunPresetStates } from "@/server/services/training/run-preset-state-service";
 import { listHiddenTrainingRunIds } from "@/server/services/training/run-visibility-service";
 import {
   listTrainingProjectSectionCollections,
@@ -293,6 +294,26 @@ function filterHiddenTrainingProjects(
   };
 }
 
+function applyTrainingRunPresetStates(
+  training: LoraTrainingDemoData,
+  runPresetStates: Record<string, { createdAt: string; presetId: string }>,
+): LoraTrainingDemoData {
+  const stateEntries = Object.entries(runPresetStates);
+  if (stateEntries.length === 0) return training;
+
+  return {
+    ...training,
+    runs: training.runs.map((run) => {
+      const presetState = runPresetStates[run.id];
+      if (!presetState) return run;
+      return {
+        ...run,
+        presetCreatedAt: run.presetCreatedAt ?? formatUpdatedAt(presetState.createdAt),
+      };
+    }),
+  };
+}
+
 async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTrainingDemoData | null> {
   const jobs = await listCharacterLoraTrainingJobs({ page: 1, pageSize: 20 });
   const managedProjects = await listManagedTrainingProjects().catch(() => []);
@@ -308,13 +329,14 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
   }
 
   const baseTraining = buildLoraTrainingDemoData(baseData);
-  const [managedTemplates, realPresets, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds] = await Promise.all([
+  const [managedTemplates, realPresets, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds, runPresetStates] = await Promise.all([
     listManagedTrainingTemplates(),
     listTrainingSceneDescriptionPresets(),
     listTrainingProjectSectionCollections(),
     listTrainingProjectSectionOverrides(),
     listHiddenTrainingProjectIds().catch(() => []),
     listHiddenTrainingRunIds().catch(() => []),
+    listTrainingRunPresetStates().catch(() => ({})),
   ]);
 
   const projects = await Promise.all(jobs.jobs.map(async (job) => {
@@ -458,7 +480,7 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
 
   const managedProjectIds = new Set(managedProjects.map((project) => project.id));
 
-  return filterHiddenTrainingRuns(filterHiddenTrainingProjects(applyTrainingProjectSectionOverrides({
+  return applyTrainingRunPresetStates(filterHiddenTrainingRuns(filterHiddenTrainingProjects(applyTrainingProjectSectionOverrides({
     projects: [
       ...managedProjects,
       ...projects.filter((project) => !managedProjectIds.has(project.id)),
@@ -466,7 +488,7 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
     runs: [...(await listManagedTrainingRuns().catch(() => [])), ...runsByProject.flat()].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))),
     presets: realPresets.length ? realPresets : baseTraining.presets,
     templates: managedTemplates.length ? managedTemplates : baseTraining.templates,
-  }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds);
+  }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds), runPresetStates);
 }
 
 export async function loadTrainingRouteData(): Promise<DemoData> {
@@ -476,7 +498,7 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
   try {
     const loraTraining = await mapRealTrainingProjects(baseData);
     if (!loraTraining) {
-      const [managedProjects, managedRuns, fallbackPresets, fallbackTemplates, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds] = await Promise.all([
+      const [managedProjects, managedRuns, fallbackPresets, fallbackTemplates, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds, runPresetStates] = await Promise.all([
         listManagedTrainingProjects().catch(() => []),
         listManagedTrainingRuns().catch(() => []),
         listTrainingSceneDescriptionPresets().catch(() => baseTraining.presets),
@@ -485,9 +507,10 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
         listTrainingProjectSectionOverrides().catch(() => ({})),
         listHiddenTrainingProjectIds().catch(() => []),
         listHiddenTrainingRunIds().catch(() => []),
+        listTrainingRunPresetStates().catch(() => ({})),
       ]);
       const managedProjectIds = new Set(managedProjects.map((project) => project.id));
-      const mergedTraining = filterHiddenTrainingRuns(filterHiddenTrainingProjects(applyTrainingProjectSectionOverrides({
+      const mergedTraining = applyTrainingRunPresetStates(filterHiddenTrainingRuns(filterHiddenTrainingProjects(applyTrainingProjectSectionOverrides({
         ...baseTraining,
         projects: [
           ...managedProjects,
@@ -496,7 +519,7 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
         runs: [...managedRuns, ...baseTraining.runs],
         presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
         templates: fallbackTemplates.length ? fallbackTemplates : baseTraining.templates,
-      }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds);
+      }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds), runPresetStates);
       return {
         ...baseData,
         loraTraining: mergedTraining,
@@ -517,7 +540,7 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
       },
     };
   } catch {
-    const [managedProjects, managedRuns, fallbackPresets, fallbackTemplates, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds] = await Promise.all([
+    const [managedProjects, managedRuns, fallbackPresets, fallbackTemplates, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds, runPresetStates] = await Promise.all([
       listManagedTrainingProjects().catch(() => []),
       listManagedTrainingRuns().catch(() => []),
       listTrainingSceneDescriptionPresets().catch(() => baseTraining.presets),
@@ -526,9 +549,10 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
       listTrainingProjectSectionOverrides().catch(() => ({})),
       listHiddenTrainingProjectIds().catch(() => []),
       listHiddenTrainingRunIds().catch(() => []),
+      listTrainingRunPresetStates().catch(() => ({})),
     ]);
     const managedProjectIds = new Set(managedProjects.map((project) => project.id));
-    const mergedTraining = filterHiddenTrainingRuns(filterHiddenTrainingProjects(applyTrainingProjectSectionOverrides({
+    const mergedTraining = applyTrainingRunPresetStates(filterHiddenTrainingRuns(filterHiddenTrainingProjects(applyTrainingProjectSectionOverrides({
       ...baseTraining,
       projects: [
         ...managedProjects,
@@ -537,7 +561,7 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
       runs: [...managedRuns, ...baseTraining.runs],
       presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
       templates: fallbackTemplates.length ? fallbackTemplates : baseTraining.templates,
-    }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds);
+    }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds), runPresetStates);
     return {
       ...baseData,
       loraTraining: mergedTraining,
