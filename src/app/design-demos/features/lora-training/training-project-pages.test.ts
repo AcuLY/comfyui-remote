@@ -560,6 +560,23 @@ test("training dataset page starts training through the formal HTTP API on produ
   assert.match(datasetPageSource, /pushToast/, "dataset page should surface API success or failure through the shared feedback system");
 });
 
+test("training dataset page freezes the current dataset version through the formal HTTP API on production routes", () => {
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
+  assert.notEqual(datasetPageStart, -1);
+  assert.notEqual(revisionPageStart, -1);
+
+  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+
+  assert.match(datasetPageSource, /datasetRevisionState/, "dataset page should keep revision state scoped to the active project");
+  assert.match(datasetPageSource, /setDatasetRevisionState/, "freeze actions should update project-scoped dataset revision state");
+  assert.match(datasetPageSource, /handleFreezeDatasetRevision/, "dataset page should define an explicit freeze-version handler");
+  assert.match(datasetPageSource, /冻结当前版本/, "dataset page should expose a visible freeze-current-version action");
+  assert.match(datasetPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/dataset-revisions`/, "dataset page should call the formal dataset revision API");
+  assert.match(datasetPageSource, /router\.refresh\(\)/, "dataset freeze should refresh project data after a successful API response");
+  assert.match(datasetPageSource, /pushToast/, "dataset freeze should surface API success or failure through the shared feedback system");
+});
+
 test("training dataset draft stays scoped to the active project", () => {
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
   const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");

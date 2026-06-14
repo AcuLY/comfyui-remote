@@ -20,6 +20,7 @@ import {
   Play,
   Plus,
   Save,
+  Snowflake,
   Trash2,
 } from "lucide-react";
 
@@ -289,6 +290,37 @@ function referenceKindLabel(kind: LoraTrainingReferenceImage["kind"]) {
   if (kind === "original") return "原始";
   if (kind === "generated") return "生成";
   return "辅助";
+}
+
+function nextDatasetVersionLabel(currentVersion: string) {
+  const match = /^v(\d+)$/i.exec(currentVersion.trim());
+  if (!match) return "v1";
+  return `v${Number(match[1]) + 1}`;
+}
+
+function buildLocalDatasetRevision(project: LoraTrainingProject, version: string) {
+  const keptResults = project.resultPool.filter((result) => result.reviewStatus === "kept");
+  const samples = keptResults.slice(0, 6).map((result, index) => ({
+    id: `${project.id}-dataset-${version}-${index + 1}`,
+    label: String(index + 1).padStart(3, "0"),
+    sectionTitle: result.sectionTitle,
+    image: result.image,
+    captionSnapshot: result.caption,
+    filePathSnapshot: `datasets/${project.id}/${version}/${String(index + 1).padStart(3, "0")}.png`,
+  }));
+
+  return {
+    id: `${project.id}-dataset-${version}`,
+    version,
+    status: project.captionMissingCount > 0 ? "draft" as const : "ready" as const,
+    createdAt: "刚刚",
+    itemCount: keptResults.length,
+    captionMissingCount: keptResults.filter((result) => !result.caption.trim()).length,
+    manifestName: `dataset_${version}.jsonl`,
+    samples,
+    manifestRows: samples.slice(0, 4).map((sample) => `${sample.filePathSnapshot} | ${sample.captionSnapshot}`),
+    relatedTrainingRunIds: [],
+  };
 }
 
 function TrainingResultGrid({
@@ -3033,6 +3065,17 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
   const { pushToast } = useDemoFeedback();
   const hrefForRoute = useRouteHref();
   const project = findProject(data, projectId);
+  const [datasetRevisionState, setDatasetRevisionState] = useState<{
+    datasetVersion: string | null;
+    hasOverride: boolean;
+    projectId: string | null;
+    revisions: LoraTrainingProject["datasetRevisions"] | null;
+  }>(() => ({
+    datasetVersion: null,
+    hasOverride: false,
+    projectId: project?.id ?? null,
+    revisions: null,
+  }));
   const [trainingDraftState, setTrainingDraft] = useState<{
     draft: {
       captionMissingCount: number;
@@ -3045,11 +3088,76 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
     draft: null,
     projectId: project?.id ?? null,
   }));
+  const [isFreezingDataset, setIsFreezingDataset] = useState(false);
   const [isStartingTraining, setIsStartingTraining] = useState(false);
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   if (!project) return <EmptyPage title="没有训练数据集数据" />;
+  const hasDatasetRevisionOverride = datasetRevisionState.projectId === project.id && datasetRevisionState.hasOverride;
+  const datasetVersion = hasDatasetRevisionOverride ? (datasetRevisionState.datasetVersion ?? project.datasetVersion) : project.datasetVersion;
+  const datasetRevisions = hasDatasetRevisionOverride ? (datasetRevisionState.revisions ?? project.datasetRevisions) : project.datasetRevisions;
   const trainingDraft = trainingDraftState.projectId === project.id ? trainingDraftState.draft : null;
-  const latestRevision = project.datasetRevisions[0] ?? null;
+  const latestRevision = datasetRevisions[0] ?? null;
+
+  async function handleFreezeDatasetRevision() {
+    if (isFreezingDataset) return;
+    const nextVersion = nextDatasetVersionLabel(datasetVersion);
+
+    if (!isProductionTrainingRoute) {
+      const nextRevision = buildLocalDatasetRevision(project, nextVersion);
+      setDatasetRevisionState({
+        datasetVersion: nextVersion,
+        hasOverride: true,
+        projectId: project.id,
+        revisions: [nextRevision, ...datasetRevisions],
+      });
+      pushToast({
+        tone: "success",
+        title: "数据集版本已冻结",
+        detail: nextVersion,
+      });
+      return;
+    }
+
+    setIsFreezingDataset(true);
+    try {
+      const response = await fetch(`/api/training/projects/${project.id}/dataset-revisions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "冻结数据集失败",
+          detail: payload?.error?.message ?? "数据集冻结请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "success",
+        title: "数据集版本已冻结",
+        detail: nextVersion,
+      });
+      setDatasetRevisionState({
+        datasetVersion: null,
+        hasOverride: false,
+        projectId: project.id,
+        revisions: null,
+      });
+      router.refresh();
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "冻结数据集失败",
+        detail: error instanceof Error ? error.message : "数据集冻结请求失败",
+      });
+    } finally {
+      setIsFreezingDataset(false);
+    }
+  }
 
   async function handleOpenTrainingDraft() {
     const nextDraft = {
@@ -3057,7 +3165,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
         captionMissingCount: project.captionMissingCount,
         keptCount: project.keptCount,
         stepCount: 2400,
-        version: project.datasetVersion,
+        version: datasetVersion,
       },
       projectId: project.id,
     };
@@ -3067,7 +3175,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
       pushToast({
         tone: "success",
         title: trainingDraft ? "训练配置草稿已更新" : "训练配置草稿已打开",
-        detail: project.datasetVersion,
+        detail: datasetVersion,
       });
       return;
     }
@@ -3105,7 +3213,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
       pushToast({
         tone: "success",
         title: "训练任务已创建",
-        detail: project.datasetVersion,
+        detail: datasetVersion,
       });
       router.push(`/training/runs/training/${payload.data.id}`);
     } catch (error) {
@@ -3125,14 +3233,24 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
         active="dataset"
         project={project}
         actions={(
-          <Button
-            tone="primary"
-            icon={Play}
-            pending={isStartingTraining}
-            onClick={handleOpenTrainingDraft}
-          >
-            {trainingDraft ? "更新训练草稿" : "启动训练"}
-          </Button>
+          <>
+            <Button
+              icon={Snowflake}
+              disabled={project.keptCount === 0}
+              pending={isFreezingDataset}
+              onClick={handleFreezeDatasetRevision}
+            >
+              冻结当前版本
+            </Button>
+            <Button
+              tone="primary"
+              icon={Play}
+              pending={isStartingTraining}
+              onClick={handleOpenTrainingDraft}
+            >
+              {trainingDraft ? "更新训练草稿" : "启动训练"}
+            </Button>
+          </>
         )}
       />
       <div className={s.twoCol}>
@@ -3140,14 +3258,14 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
           <div className={s.readinessSummary}>
             <span><strong>{project.keptCount}</strong> 已保留图片</span>
             <span><strong>{project.captionMissingCount}</strong> 缺说明文本</span>
-            <span><strong>{project.datasetVersion}</strong> 当前版本</span>
+            <span><strong>{datasetVersion}</strong> 当前版本</span>
           </div>
           <p className={s.bodyText}>准备信息保持在训练入口附近，完整样本与冻结快照继续由下方草稿和版本列表承载。</p>
         </Panel>
         <Panel title="冻结版本">
           <div className={s.entityRowsSurface}>
             <div className={s.entityRows}>
-              {project.datasetRevisions.map((revision) => (
+              {datasetRevisions.map((revision) => (
                 <Link className={s.entityRow} href={hrefForRoute(`/training/projects/${project.id}/dataset/revisions/${revision.id}`)} key={revision.id}>
                   <div>
                     <strong>{revision.version}</strong>
