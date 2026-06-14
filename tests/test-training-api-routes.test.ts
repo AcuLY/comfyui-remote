@@ -183,9 +183,161 @@ async function createManagedRunsForDeletionTest() {
   };
 }
 
+async function createManagedCompletedRunFixtures() {
+  const {
+    addManagedTrainingReferenceImageToResults,
+    completeManagedGenerationRun,
+    completeManagedTrainingRun,
+    createManagedTrainingProject,
+    enqueueManagedTrainingRun,
+    enqueueManagedTrainingSectionGenerationRun,
+    freezeManagedTrainingDataset,
+    progressManagedTrainingRun,
+    uploadManagedTrainingProjectReferenceImage,
+  } = await import("../src/server/services/training/project-service");
+
+  const project = await createManagedTrainingProject({
+    title: `已完成运行测试项目 ${Date.now()}`,
+    characterName: "已完成运行测试角色",
+    triggerToken: `completed_fixture_${Date.now()}`,
+    templateId: "character_identity_default",
+    trainingTemplateId: "character_identity_default",
+    checkpointRelativePath: "models/checkpoints/mock.safetensors",
+    usagePrompt: "已完成运行测试",
+    detailPrompt: "已完成运行测试资料",
+    sections: [
+      {
+        id: "completed-fixture-section",
+        title: "已完成运行小节",
+        enabled: true,
+        blockCount: 1,
+        blocks: [
+          {
+            id: "completed-fixture-block",
+            source: "本地",
+            title: "已完成运行场景块",
+            text: "已完成运行测试场景。",
+          },
+        ],
+        resolvedScene: "已完成运行测试场景。",
+        scenePreview: "已完成运行测试场景。",
+      },
+    ],
+    trainingDefaults: {
+      autoFreezeDataset: false,
+      autoGenerateSamples: false,
+    },
+  });
+
+  const formData = new FormData();
+  formData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "completed-fixture.png", { type: "image/png" }));
+  formData.append("role", "source");
+  const uploadedReference = await uploadManagedTrainingProjectReferenceImage(project.id, formData);
+  assert.ok(uploadedReference?.id, "completed-run fixture should upload a reference image");
+
+  const keptReferenceResult = await addManagedTrainingReferenceImageToResults(uploadedReference.id, {
+    reviewStatus: "keep",
+    captionDraft: "已完成运行 fixture caption",
+  });
+  assert.ok(keptReferenceResult?.id, "completed-run fixture should materialize a kept result");
+
+  const generationRun = await enqueueManagedTrainingSectionGenerationRun(project.sections[0].id, {
+    projectId: project.id,
+    sourceImageIds: [uploadedReference.id],
+    userInstruction: "已完成运行 fixture 生成任务",
+  });
+  assert.ok(generationRun?.id, "completed-run fixture should create a generation run");
+
+  const completedGenerationRun = await completeManagedGenerationRun(generationRun.id, {
+    captionDraft: "已完成生成结果",
+    reviewStatus: "keep",
+  });
+  assert.ok(completedGenerationRun?.id, "completed-run fixture should complete the generation run");
+  assert.ok(completedGenerationRun?.outputResultIds?.length, "completed-run fixture should expose a generation output");
+
+  const frozen = await freezeManagedTrainingDataset(project.id);
+  assert.ok(frozen?.revision?.id, "completed-run fixture should freeze a dataset revision");
+
+  const trainingRun = await enqueueManagedTrainingRun(project.id, {
+    revisionId: frozen.revision.id,
+    config: {
+      overrides: {
+        ordinary: {
+          targetSteps: 1200,
+        },
+      },
+    },
+  });
+  assert.ok(trainingRun?.id, "completed-run fixture should create a training run");
+
+  const progressedTrainingRun = await progressManagedTrainingRun(trainingRun.id, {
+    currentStep: 1200,
+    schedulerMessage: "fixture training progress",
+    targetSteps: 1200,
+  });
+  assert.ok(progressedTrainingRun?.id, "completed-run fixture should advance the training run");
+
+  const completedTrainingRun = await completeManagedTrainingRun(trainingRun.id, {
+    artifactName: "completed-fixture.safetensors",
+  });
+  assert.ok(completedTrainingRun?.id, "completed-run fixture should complete the training run");
+  assert.ok(completedTrainingRun?.finalLoraArtifactId, "completed-run fixture should expose a final LoRA artifact");
+
+  return {
+    generationRunId: completedGenerationRun.id,
+    outputResultId: completedGenerationRun.outputResultIds?.[0] ?? null,
+    projectId: project.id,
+    trainingRunId: completedTrainingRun.id,
+  };
+}
+
 test("GET /api/training/projects lists training projects", async () => {
   const projects = await listProjects();
   assert.equal(typeof projects[0]?.id, "string");
+});
+
+test("managed training projects suppress demo project fixtures on /api/training/projects", async () => {
+  const { createManagedTrainingProject } = await import("../src/server/services/training/project-service");
+
+  await withTrainingManagedStoreSnapshot(async () => {
+    const created = await createManagedTrainingProject({
+      title: `Managed Only List ${Date.now()}`,
+      characterName: "Managed Only List",
+      projectName: "Managed Only List",
+      triggerToken: `managed_only_list_${Date.now()}`,
+      templateId: "character_identity_default",
+      trainingTemplateId: "character_identity_default",
+      checkpointRelativePath: "models/checkpoints/mock.safetensors",
+      usagePrompt: "managed only list usage",
+      detailPrompt: "managed only list detail",
+      sections: [
+        {
+          id: "managed-only-section",
+          title: "Managed Only Section",
+          enabled: true,
+          blockCount: 1,
+          blocks: [
+            {
+              id: "managed-only-block",
+              source: "本地",
+              title: "Managed Only Block",
+              text: "managed only scene",
+            },
+          ],
+          resolvedScene: "managed only scene",
+          scenePreview: "managed only scene",
+        },
+      ],
+      trainingDefaults: {
+        autoGenerateSamples: false,
+        autoFreezeDataset: false,
+      },
+    });
+
+    const projects = await listProjects();
+    assert.ok(projects.some((project) => project.id === created.id));
+    assert.ok(projects.every((project) => project.id !== "project-vela-neon"));
+  });
 });
 
 test("GET /api/training/projects/:projectId returns one project detail", async () => {
@@ -721,10 +873,14 @@ test("training section alias route reads, updates, and deletes by /api/training/
 });
 
 test("GET /api/training/runs filters the global training workspace by kind and status", async () => {
-  const runs = await listRuns("?kind=generation&status=completed");
+  await withTrainingManagedStoreSnapshot(async () => {
+    const { generationRunId } = await createManagedCompletedRunFixtures();
+    const runs = await listRuns("?kind=generation&status=completed");
 
-  assert.ok(runs.length > 0);
-  assert.ok(runs.every((run) => run.kind === "generation" && run.status === "completed"));
+    assert.ok(runs.length > 0);
+    assert.ok(runs.some((run) => run.id === generationRunId));
+    assert.ok(runs.every((run) => run.kind === "generation" && run.status === "completed"));
+  });
 });
 
 test("GET /api/training/training-runs/:trainingRunId returns training run detail", async () => {
@@ -747,65 +903,60 @@ test("GET /api/training/training-runs/:trainingRunId returns training run detail
 });
 
 test("POST /api/training/training-runs/:trainingRunId/create-preset creates a training preset from a completed training run", async () => {
-  const runsRoute = await import("../src/app/api/training/runs/route");
   const trainingRunDetailRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
   const createPresetRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/create-preset/route");
   const presetsRoute = await import("../src/app/api/training/presets/route");
 
-  const runsResponse = await runsRoute.GET(new Request("http://localhost/api/training/runs?kind=training&status=completed"));
-  const runsPayload = await runsResponse.json();
-  const completedRuns = runsPayload.data as Array<{ finalLoraArtifactId?: string; id: string; presetCreatedAt?: string }>;
-  const trainingRunId = completedRuns.find((run) => run.finalLoraArtifactId && !run.presetCreatedAt)?.id
-    ?? completedRuns.find((run) => run.finalLoraArtifactId)?.id;
+  await withTrainingManagedStoreSnapshot(async () => {
+    const { trainingRunId } = await createManagedCompletedRunFixtures();
+    await clearTrainingRunPresetState(trainingRunId);
 
-  assert.ok(trainingRunId, "expected a completed training run with a final LoRA artifact");
-  await clearTrainingRunPresetState(trainingRunId);
-
-  const presetTitle = `训练完成预制 ${Date.now()}`;
-  const createResponse = await createPresetRoute.POST(
-    new Request(`http://localhost/api/training/training-runs/${trainingRunId}/create-preset`, {
-      method: "POST",
-      body: JSON.stringify({
-        presetName: presetTitle,
-        category: "训练产物",
-        folder: "LoRA 产物",
+    const presetTitle = `训练完成预制 ${Date.now()}`;
+    const createResponse = await createPresetRoute.POST(
+      new Request(`http://localhost/api/training/training-runs/${trainingRunId}/create-preset`, {
+        method: "POST",
+        body: JSON.stringify({
+          presetName: presetTitle,
+          category: "训练产物",
+          folder: "LoRA 产物",
+        }),
       }),
-    }),
-    { params: Promise.resolve({ trainingRunId }) },
-  );
-  const createPayload = await createResponse.json();
+      { params: Promise.resolve({ trainingRunId }) },
+    );
+    const createPayload = await createResponse.json();
 
-  assert.equal(createResponse.status, 201);
-  assert.equal(createPayload.ok, true);
-  assert.equal(createPayload.data.title, presetTitle);
+    assert.equal(createResponse.status, 201);
+    assert.equal(createPayload.ok, true);
+    assert.equal(createPayload.data.title, presetTitle);
 
-  const presetListResponse = await presetsRoute.GET(new Request("http://localhost/api/training/presets"));
-  const presetListPayload = await presetListResponse.json();
-  assert.equal(presetListResponse.status, 200);
-  assert.equal(presetListPayload.ok, true);
-  assert.ok((presetListPayload.data as Array<{ id: string; title: string }>).some((preset) => preset.id === createPayload.data.id && preset.title === presetTitle));
+    const presetListResponse = await presetsRoute.GET(new Request("http://localhost/api/training/presets"));
+    const presetListPayload = await presetListResponse.json();
+    assert.equal(presetListResponse.status, 200);
+    assert.equal(presetListPayload.ok, true);
+    assert.ok((presetListPayload.data as Array<{ id: string; title: string }>).some((preset) => preset.id === createPayload.data.id && preset.title === presetTitle));
 
-  const runDetailResponse = await trainingRunDetailRoute.GET(
-    new Request(`http://localhost/api/training/training-runs/${trainingRunId}`),
-    { params: Promise.resolve({ trainingRunId }) },
-  );
-  const runDetailPayload = await runDetailResponse.json();
-  assert.equal(runDetailResponse.status, 200);
-  assert.equal(runDetailPayload.ok, true);
-  assert.equal(typeof runDetailPayload.data.presetCreatedAt, "string");
+    const runDetailResponse = await trainingRunDetailRoute.GET(
+      new Request(`http://localhost/api/training/training-runs/${trainingRunId}`),
+      { params: Promise.resolve({ trainingRunId }) },
+    );
+    const runDetailPayload = await runDetailResponse.json();
+    assert.equal(runDetailResponse.status, 200);
+    assert.equal(runDetailPayload.ok, true);
+    assert.equal(typeof runDetailPayload.data.presetCreatedAt, "string");
 
-  const duplicateResponse = await createPresetRoute.POST(
-    new Request(`http://localhost/api/training/training-runs/${trainingRunId}/create-preset`, {
-      method: "POST",
-      body: JSON.stringify({
-        presetName: `${presetTitle} 再次创建`,
+    const duplicateResponse = await createPresetRoute.POST(
+      new Request(`http://localhost/api/training/training-runs/${trainingRunId}/create-preset`, {
+        method: "POST",
+        body: JSON.stringify({
+          presetName: `${presetTitle} 再次创建`,
+        }),
       }),
-    }),
-    { params: Promise.resolve({ trainingRunId }) },
-  );
-  const duplicatePayload = await duplicateResponse.json();
-  assert.equal(duplicateResponse.status, 409);
-  assert.equal(duplicatePayload.ok, false);
+      { params: Promise.resolve({ trainingRunId }) },
+    );
+    const duplicatePayload = await duplicateResponse.json();
+    assert.equal(duplicateResponse.status, 409);
+    assert.equal(duplicatePayload.ok, false);
+  });
 });
 
 test("POST /api/training/training-runs/:trainingRunId/poll returns the current training run snapshot", async () => {
@@ -829,22 +980,23 @@ test("POST /api/training/training-runs/:trainingRunId/poll returns the current t
 
 test("POST /api/training/training-runs/:trainingRunId/cleanup returns an idempotent cleanup summary", async () => {
   const cleanupRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/cleanup/route");
-  const completedRuns = await listRuns("?kind=training&status=completed");
-  const trainingRunId = completedRuns[0].id;
+  await withTrainingManagedStoreSnapshot(async () => {
+    const { trainingRunId } = await createManagedCompletedRunFixtures();
 
-  const response = await cleanupRoute.POST(
-    new Request(`http://localhost/api/training/training-runs/${trainingRunId}/cleanup`, {
-      method: "POST",
-    }),
-    { params: Promise.resolve({ trainingRunId }) },
-  );
-  const payload = await response.json();
+    const response = await cleanupRoute.POST(
+      new Request(`http://localhost/api/training/training-runs/${trainingRunId}/cleanup`, {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ trainingRunId }) },
+    );
+    const payload = await response.json();
 
-  assert.equal(response.status, 200);
-  assert.equal(payload.ok, true);
-  assert.equal(payload.data.trainingRunId, trainingRunId);
-  assert.equal(typeof payload.data.cleaned, "boolean");
-  assert.ok(Array.isArray(payload.data.cleanedArtifacts));
+    assert.equal(response.status, 200);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.data.trainingRunId, trainingRunId);
+    assert.equal(typeof payload.data.cleaned, "boolean");
+    assert.ok(Array.isArray(payload.data.cleanedArtifacts));
+  });
 });
 
 test("GET /api/training/generation-tasks/:taskId returns generation task detail", async () => {
@@ -865,19 +1017,22 @@ test("GET /api/training/generation-tasks/:taskId returns generation task detail"
 
 test("GET /api/training/generation-tasks/:taskId/outputs returns generation outputs mapped into project results", async () => {
   const outputsRoute = await import("../src/app/api/training/generation-tasks/[taskId]/outputs/route");
-  const completedRuns = await listRuns("?kind=generation&status=completed");
-  const taskId = completedRuns[0].id;
+  await withTrainingManagedStoreSnapshot(async () => {
+    const { generationRunId, outputResultId } = await createManagedCompletedRunFixtures();
+    assert.ok(outputResultId, "completed-run fixture should expose an output result id");
 
-  const response = await outputsRoute.GET(
-    new Request(`http://localhost/api/training/generation-tasks/${taskId}/outputs`),
-    { params: Promise.resolve({ taskId }) },
-  );
-  const payload = await response.json();
+    const response = await outputsRoute.GET(
+      new Request(`http://localhost/api/training/generation-tasks/${generationRunId}/outputs`),
+      { params: Promise.resolve({ taskId: generationRunId }) },
+    );
+    const payload = await response.json();
 
-  assert.equal(response.status, 200);
-  assert.equal(payload.ok, true);
-  assert.ok(Array.isArray(payload.data));
-  assert.ok(payload.data.every((result: { id: string; sourceLabel: string }) => typeof result.id === "string" && typeof result.sourceLabel === "string"));
+    assert.equal(response.status, 200);
+    assert.equal(payload.ok, true);
+    assert.ok(Array.isArray(payload.data));
+    assert.ok((payload.data as Array<{ id: string }>).some((result) => result.id === outputResultId));
+    assert.ok(payload.data.every((result: { id: string; sourceLabel: string }) => typeof result.id === "string" && typeof result.sourceLabel === "string"));
+  });
 });
 
 test("GET /api/training/section-runs/:runId reads generation run detail and POST cancel updates it through the section-run alias", async () => {

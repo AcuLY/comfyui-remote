@@ -354,14 +354,30 @@ async function mapRealTrainingProjects(baseData: DemoData): Promise<LoraTraining
   const jobs = await listCharacterLoraTrainingJobs({ page: 1, pageSize: 20 });
   const managedProjects = await listManagedTrainingProjects().catch(() => []);
   if (!jobs.jobs.length) {
-    const managedRuns = await listManagedTrainingRuns().catch(() => []);
-    return managedProjects.length
-      ? {
-        ...buildLoraTrainingDemoData(baseData),
-        projects: managedProjects,
-        runs: [...managedRuns, ...buildLoraTrainingDemoData(baseData).runs],
-      }
-      : null;
+    if (!managedProjects.length) {
+      return null;
+    }
+
+    const [managedRuns, fallbackPresets, fallbackTemplates, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds, runPresetStates] = await Promise.all([
+      listManagedTrainingRuns().catch(() => []),
+      listTrainingSceneDescriptionPresets().catch(() => []),
+      listManagedTrainingTemplates().catch(() => []),
+      listTrainingProjectSectionCollections().catch(() => ({})),
+      listTrainingProjectSectionOverrides().catch(() => ({})),
+      listHiddenTrainingProjectIds().catch(() => []),
+      listHiddenTrainingRunIds().catch(() => []),
+      listTrainingRunPresetStates().catch(() => ({})),
+    ]);
+
+    const baseTraining = buildLoraTrainingDemoData(baseData);
+
+    return applyTrainingRunPresetStates(filterHiddenTrainingRuns(filterHiddenTrainingProjects(applyTrainingProjectSectionOverrides({
+      ...baseTraining,
+      projects: managedProjects,
+      runs: managedRuns,
+      presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
+      templates: fallbackTemplates.length ? fallbackTemplates : baseTraining.templates,
+    }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds), runPresetStates);
   }
 
   const baseTraining = buildLoraTrainingDemoData(baseData);
@@ -545,14 +561,10 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
         listHiddenTrainingRunIds().catch(() => []),
         listTrainingRunPresetStates().catch(() => ({})),
       ]);
-      const managedProjectIds = new Set(managedProjects.map((project) => project.id));
       const mergedTraining = applyTrainingRunPresetStates(filterHiddenTrainingRuns(filterHiddenTrainingProjects(applyTrainingProjectSectionOverrides({
         ...baseTraining,
-        projects: [
-          ...managedProjects,
-          ...baseTraining.projects.filter((project) => !managedProjectIds.has(project.id)),
-        ],
-        runs: [...managedRuns, ...baseTraining.runs],
+        projects: managedProjects.length ? managedProjects : baseTraining.projects,
+        runs: managedProjects.length ? managedRuns : [...managedRuns, ...baseTraining.runs],
         presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
         templates: fallbackTemplates.length ? fallbackTemplates : baseTraining.templates,
       }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds), runPresetStates);
@@ -587,14 +599,10 @@ export async function loadTrainingRouteData(): Promise<DemoData> {
       listHiddenTrainingRunIds().catch(() => []),
       listTrainingRunPresetStates().catch(() => ({})),
     ]);
-    const managedProjectIds = new Set(managedProjects.map((project) => project.id));
     const mergedTraining = applyTrainingRunPresetStates(filterHiddenTrainingRuns(filterHiddenTrainingProjects(applyTrainingProjectSectionOverrides({
       ...baseTraining,
-      projects: [
-        ...managedProjects,
-        ...baseTraining.projects.filter((project) => !managedProjectIds.has(project.id)),
-      ],
-      runs: [...managedRuns, ...baseTraining.runs],
+      projects: managedProjects.length ? managedProjects : baseTraining.projects,
+      runs: managedProjects.length ? managedRuns : [...managedRuns, ...baseTraining.runs],
       presets: fallbackPresets.length ? fallbackPresets : baseTraining.presets,
       templates: fallbackTemplates.length ? fallbackTemplates : baseTraining.templates,
     }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds), runPresetStates);
