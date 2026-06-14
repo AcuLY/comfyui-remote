@@ -94,6 +94,8 @@ export type LoraTrainingRun = {
   datasetRevisionId?: string;
   waitReason?: string;
   schedulerMessage?: string;
+  currentStep?: number;
+  targetSteps?: number;
   trainingConfig?: LoraTrainingConfigRow[];
   trainingLogArtifactName?: string;
   trainingLogLines?: string[];

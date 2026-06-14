@@ -1,4 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
+import { enqueueManagedTrainingSectionGenerationRun, mapTrainingProjectError } from "@/server/services/training/project-service";
 import {
   enqueueCharacterLoraSectionGenerationRun,
   mapCharacterLoraPhase3Error,
@@ -21,9 +22,17 @@ export async function POST(
 
   try {
     const { sectionId } = await params;
+    const managed = await enqueueManagedTrainingSectionGenerationRun(sectionId, typeof body === "object" && body ? body as Record<string, unknown> : {});
+    if (managed) {
+      return ok(managed, { status: 201 });
+    }
     const data = await enqueueCharacterLoraSectionGenerationRun(sectionId, body);
     return ok(data, { status: 201 });
   } catch (error) {
+    const managedMapped = mapTrainingProjectError(error);
+    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
+      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
+    }
     const mapped = mapCharacterLoraPhase3Error(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }

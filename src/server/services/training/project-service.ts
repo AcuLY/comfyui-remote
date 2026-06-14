@@ -3,9 +3,11 @@ import { dirname, extname, join } from "node:path";
 import type { DemoImage } from "@/app/design-demos/data/types";
 import type {
   LoraTrainingDatasetRevision,
+  LoraTrainingDatasetRevisionItem,
   LoraTrainingImageResult,
   LoraTrainingProject,
   LoraTrainingReferenceImage,
+  LoraTrainingRun,
   LoraTrainingSection,
 } from "@/app/design-demos/data/lora-training-types";
 import { buildLoraTrainingDemoData } from "@/app/design-demos/data/lora-training";
@@ -19,7 +21,9 @@ import { z } from "zod";
 
 const TRAINING_PROJECT_FALLBACK_PATH = join(process.cwd(), "data", "training-projects.json");
 const MANAGED_PROJECT_IMAGE_ROOT = join(process.cwd(), "data", "images", "training-managed");
+const TRAINING_MANAGED_RUNS_PATH = join(process.cwd(), "data", "training-managed-runs.json");
 let projectStoreWriteQueue: Promise<unknown> = Promise.resolve();
+let runStoreWriteQueue: Promise<unknown> = Promise.resolve();
 
 const projectSectionBlockSchema = z.object({
   id: z.string().trim().min(1),
@@ -108,6 +112,35 @@ async function withProjectStoreWriteLock<T>(fn: () => Promise<T>) {
   return next;
 }
 
+async function readFallbackTrainingRuns() {
+  try {
+    const raw = await readFile(TRAINING_MANAGED_RUNS_PATH, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      return parsed as LoraTrainingRun[];
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  return [] as LoraTrainingRun[];
+}
+
+async function writeFallbackTrainingRuns(runs: LoraTrainingRun[]) {
+  await mkdir(dirname(TRAINING_MANAGED_RUNS_PATH), { recursive: true });
+  const tempPath = `${TRAINING_MANAGED_RUNS_PATH}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(tempPath, `${JSON.stringify(runs, null, 2)}\n`, "utf8");
+  await rename(tempPath, TRAINING_MANAGED_RUNS_PATH);
+}
+
+async function withRunStoreWriteLock<T>(fn: () => Promise<T>) {
+  const next = runStoreWriteQueue.then(fn, fn);
+  runStoreWriteQueue = next.then(() => undefined, () => undefined);
+  return next;
+}
+
 function parseManagedProjectCreateInput(input: unknown) {
   const result = managedProjectCreateSchema.safeParse(input);
   if (result.success) return result.data;
@@ -123,6 +156,10 @@ function formatUpdatedAt(date = new Date()) {
   const hh = String(date.getHours()).padStart(2, "0");
   const mm = String(date.getMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
+}
+
+function formatTimestamp(date = new Date(), prefix: "完成于" | "开始于" | "创建于" | "失败于" = "创建于") {
+  return `${prefix} ${formatUpdatedAt(date)}`;
 }
 
 function normalizeTrainingProjectTitle(input: ManagedProjectCreateInput) {
@@ -235,13 +272,54 @@ function buildFallbackTrainingProject(
   };
 }
 
+function nextManagedDatasetVersion(project: LoraTrainingProject) {
+  const current = project.datasetRevisions[0]?.version ?? project.datasetVersion;
+  const match = current.match(/v(\d+)/i);
+  const nextVersion = match ? Number(match[1]) + 1 : 1;
+  return `v${nextVersion}`;
+}
+
+function buildManagedDatasetSamples(project: LoraTrainingProject, revisionId: string): LoraTrainingDatasetRevisionItem[] {
+  return project.resultPool
+    .filter((result) => result.reviewStatus === "kept")
+    .slice(0, 8)
+    .map((result, index) => ({
+      id: `${revisionId}-sample-${index + 1}`,
+      label: String(index + 1).padStart(3, "0"),
+      sectionTitle: result.sectionTitle,
+      image: result.image,
+      captionSnapshot: result.caption,
+      filePathSnapshot: result.image.full,
+    }));
+}
+
 export async function listManagedTrainingProjects() {
   return readFallbackTrainingProjects();
+}
+
+export async function listManagedTrainingRuns() {
+  return readFallbackTrainingRuns();
+}
+
+export async function getManagedTrainingRun(runId: string) {
+  const runs = await readFallbackTrainingRuns();
+  return runs.find((run) => run.id === runId) ?? null;
 }
 
 export async function getManagedTrainingProject(projectId: string) {
   const projects = await readFallbackTrainingProjects();
   return projects.find((project) => project.id === projectId) ?? null;
+}
+
+async function findManagedProjectBySectionId(sectionId: string) {
+  const projects = await readFallbackTrainingProjects();
+  for (const project of projects) {
+    const section = project.sections.find((item) => item.id === sectionId);
+    if (section) {
+      return { project, section };
+    }
+  }
+  return null;
 }
 
 export async function getManagedTrainingProjectProfile(projectId: string) {
@@ -503,6 +581,178 @@ export async function updateManagedTrainingImageResult(
       .find((project) => project.id === refreshed.project.id)
       ?.resultPool.find((result) => result.id === imageResultId) ?? null;
   });
+}
+
+export async function freezeManagedTrainingDataset(projectId: string) {
+  return withProjectStoreWriteLock(async () => {
+    const projects = await readFallbackTrainingProjects();
+    const currentIndex = projects.findIndex((project) => project.id === projectId);
+    if (currentIndex === -1) return null;
+
+    const current = projects[currentIndex];
+    const keptResults = current.resultPool.filter((result) => result.reviewStatus === "kept");
+    if (keptResults.length === 0) {
+      throw new TrainingProjectServiceError("Managed training dataset is not ready", 409, {
+        projectId,
+        reason: "no_kept_results",
+      });
+    }
+
+    const revisionId = `managed-revision-${Date.now()}`;
+    const version = nextManagedDatasetVersion(current);
+    const samples = buildManagedDatasetSamples(current, revisionId);
+    const revision: LoraTrainingDatasetRevision = {
+      id: revisionId,
+      version,
+      status: "ready",
+      createdAt: formatUpdatedAt(),
+      itemCount: keptResults.length,
+      captionMissingCount: keptResults.filter((result) => !result.caption?.trim()).length,
+      manifestName: `managed_${version}.jsonl`,
+      samples,
+      manifestRows: samples.map((sample) => `${sample.filePathSnapshot} | ${sample.captionSnapshot}`),
+      relatedTrainingRunIds: [],
+    };
+
+    const next = [...projects];
+    next[currentIndex] = recomputeManagedProject({
+      ...current,
+      updatedAt: formatUpdatedAt(),
+      datasetVersion: version,
+      datasetRevisions: [revision, ...current.datasetRevisions],
+    });
+    await writeFallbackTrainingProjects(next);
+
+    return {
+      revision,
+    };
+  });
+}
+
+export async function enqueueManagedTrainingSectionGenerationRun(
+  sectionId: string,
+  input: Record<string, unknown> = {},
+) {
+  const match = await findManagedProjectBySectionId(sectionId);
+  if (!match) return null;
+
+  const selectedSourceIds = Array.isArray(input.sourceImageIds) ? input.sourceImageIds.filter((id): id is string => typeof id === "string") : [];
+  const selectedResultIds = Array.isArray(input.previousCandidateImageIds) ? input.previousCandidateImageIds.filter((id): id is string => typeof id === "string") : [];
+  const inputImages = [
+    ...match.project.referenceImages.filter((reference) => selectedSourceIds.includes(reference.id)).map((reference) => reference.image),
+    ...match.project.resultPool.filter((result) => selectedResultIds.includes(result.id)).map((result) => result.image),
+  ];
+
+  const run: LoraTrainingRun = {
+    id: `managed-generation-${Date.now()}`,
+    kind: "generation",
+    status: "queued",
+    projectId: match.project.id,
+    sectionId: match.section.id,
+    projectTitle: match.project.title,
+    title: `${match.section.title} 图片生成`,
+    summary: "图片 · 手动创建",
+    timestamp: formatTimestamp(new Date(), "创建于"),
+    provider: "本地任务",
+    finalInput: typeof input.userInstruction === "string" ? input.userInstruction : "",
+    schedulerMessage: "等待生成队列处理",
+    inputImages,
+  };
+
+  await withRunStoreWriteLock(async () => {
+    const runs = await readFallbackTrainingRuns();
+    await writeFallbackTrainingRuns([run, ...runs]);
+  });
+
+  return run;
+}
+
+export async function enqueueManagedTrainingRun(
+  projectId: string,
+  input: Record<string, unknown> = {},
+) {
+  const project = await getManagedTrainingProject(projectId);
+  if (!project) return null;
+
+  let revisionId = typeof input.revisionId === "string" && input.revisionId.trim() ? input.revisionId.trim() : null;
+  let workingProject = project;
+
+  if (!revisionId) {
+    const frozen = await freezeManagedTrainingDataset(projectId);
+    if (!frozen?.revision?.id) {
+      throw new TrainingProjectServiceError("Managed training dataset is not ready", 409, { projectId });
+    }
+    revisionId = frozen.revision.id;
+    workingProject = (await getManagedTrainingProject(projectId)) ?? project;
+  }
+
+  const revision = workingProject.datasetRevisions.find((item) => item.id === revisionId);
+  if (!revision) {
+    throw new TrainingProjectServiceError("Managed training dataset revision not found", 404, { projectId, revisionId });
+  }
+
+  const targetSteps = Number(
+    (input.config as Record<string, unknown> | undefined)?.overrides
+      && typeof (input.config as Record<string, unknown>).overrides === "object"
+      ? ((input.config as {
+        overrides?: { ordinary?: { targetSteps?: number } };
+      }).overrides?.ordinary?.targetSteps ?? 2400)
+      : 2400,
+  );
+
+  const run: LoraTrainingRun = {
+    id: `managed-training-${Date.now()}`,
+    kind: "training",
+    status: "queued",
+    projectId,
+    projectTitle: workingProject.title,
+    title: `数据集版本 ${revision.version}`,
+    summary: `数据集 ${revision.version}`,
+    timestamp: formatTimestamp(new Date(), "创建于"),
+    provider: "本地训练",
+    datasetRevisionId: revision.id,
+    schedulerMessage: "等待训练队列处理",
+    targetSteps,
+    trainingConfig: [
+      { label: "目标步数", value: String(targetSteps) },
+      { label: "数据集版本", value: revision.version },
+    ],
+    datasetSamples: revision.samples.map((sample) => ({
+      id: sample.id,
+      label: sample.label,
+      sectionTitle: sample.sectionTitle,
+      image: sample.image,
+      caption: sample.captionSnapshot,
+      status: "kept",
+    })),
+  };
+
+  await withProjectStoreWriteLock(async () => {
+    const projects = await readFallbackTrainingProjects();
+    const currentIndex = projects.findIndex((item) => item.id === projectId);
+    if (currentIndex !== -1) {
+      const current = projects[currentIndex];
+      const nextRevisions = current.datasetRevisions.map((item) => item.id === revision.id
+        ? { ...item, relatedTrainingRunIds: [run.id, ...item.relatedTrainingRunIds] }
+        : item);
+      const next = [...projects];
+      next[currentIndex] = {
+        ...current,
+        updatedAt: formatUpdatedAt(),
+        recentTraining: `排队中 · ${revision.version}`,
+        datasetVersion: revision.version,
+        datasetRevisions: nextRevisions,
+      };
+      await writeFallbackTrainingProjects(next);
+    }
+  });
+
+  await withRunStoreWriteLock(async () => {
+    const runs = await readFallbackTrainingRuns();
+    await writeFallbackTrainingRuns([run, ...runs]);
+  });
+
+  return run;
 }
 
 export async function createManagedTrainingProject(input: unknown) {

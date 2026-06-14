@@ -1,4 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
+import { enqueueManagedTrainingRun, mapTrainingProjectError } from "@/server/services/training/project-service";
 import { listTrainingRuns, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
   freezeCharacterLoraDataset,
@@ -40,6 +41,10 @@ export async function POST(
 
   try {
     const { projectId } = await params;
+    const managed = await enqueueManagedTrainingRun(projectId, body);
+    if (managed) {
+      return ok(managed, { status: 201 });
+    }
     const revisionId = typeof body.revisionId === "string" && body.revisionId.trim() ? body.revisionId.trim() : null;
     const config = typeof body.config === "object" && body.config ? body.config : {};
 
@@ -54,6 +59,10 @@ export async function POST(
     const data = await enqueueCharacterLoraTrainingRun(resolvedRevisionId, config);
     return ok(data, { status: 201 });
   } catch (error) {
+    const managedMapped = mapTrainingProjectError(error);
+    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
+      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
+    }
     const mapped = error instanceof Error && error.message === "Dataset freeze did not return a revision id"
       ? { message: error.message, status: 409, details: undefined }
       : "status" in Object(error ?? {}) && "message" in Object(error ?? {})
