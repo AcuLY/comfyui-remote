@@ -557,6 +557,23 @@ test("training template form saves through the formal HTTP API on production rou
   assert.match(formSource, /pushToast/, "template form should surface API success or failure through the shared feedback system");
 });
 
+test("training template form deletes through the formal HTTP API on production edit routes", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  assert.match(formSource, /isDeletingTemplate/, "template form should track delete request state");
+  assert.match(formSource, /handleDeleteTemplate/, "template form should define a delete handler");
+  assert.match(formSource, /mode === "edit"/, "template delete action should only apply to persisted edit routes");
+  assert.match(formSource, /fetch\(`\/api\/training\/templates\/\$\{template\.id\}`/, "template form should call the formal template detail delete API");
+  assert.match(formSource, /method:\s*"DELETE"/, "template form delete should use DELETE");
+  assert.match(formSource, /router\.push\("\/training\/templates"\)/, "template form delete should return to the template list after success");
+  assert.match(formSource, /训练模板删除失败/, "template form delete should surface API failures through the shared feedback system");
+});
+
 test("project-sourced template creation saves through the formal save-as-template API", () => {
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");

@@ -1621,6 +1621,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
     draft: null,
   }));
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
+  const [isDeletingTemplate, setIsDeletingTemplate] = useState(false);
   const [isMutatingTemplateSections, setIsMutatingTemplateSections] = useState(false);
   const templateSections = templateSectionState.contextId === templateFormContextId ? templateSectionState.sections : templateSeedSections;
   const orderedTemplateSectionIds = templateSectionState.contextId === templateFormContextId ? templateSectionState.orderedIds : templateSeedSectionIds;
@@ -1760,6 +1761,54 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
       });
     } finally {
       setIsSavingTemplate(false);
+    }
+  }
+
+  async function handleDeleteTemplate() {
+    if (mode !== "edit" || !template?.id) return;
+
+    if (!isProductionTrainingRoute) {
+      pushToast({
+        tone: "warning",
+        title: "训练模板已移除",
+        detail: template.title,
+      });
+      router.push("/training/templates");
+      return;
+    }
+
+    if (isDeletingTemplate) return;
+
+    setIsDeletingTemplate(true);
+    try {
+      const response = await fetch(`/api/training/templates/${template.id}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "训练模板删除失败",
+          detail: payload?.error?.message ?? "训练模板删除请求失败",
+        });
+        return;
+      }
+
+      pushToast({
+        tone: "warning",
+        title: "训练模板已移除",
+        detail: template.title,
+      });
+      router.push("/training/templates");
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "训练模板删除失败",
+        detail: error instanceof Error ? error.message : "训练模板删除请求失败",
+      });
+    } finally {
+      setIsDeletingTemplate(false);
     }
   }
 
@@ -1992,14 +2041,26 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
         title={title}
         subtitle="编辑项目指引、小节设置、预制块和本地块。"
         actions={(
-          <Button
-            tone="primary"
-            icon={Save}
-            pending={isSavingTemplate}
-            onClick={handleSaveTemplate}
-          >
-            {templateDraft ? "更新草稿" : mode === "new" ? "创建模板" : "保存模板"}
-          </Button>
+          <>
+            {mode === "edit" && template?.id ? (
+              <Button
+                tone="danger"
+                icon={Trash2}
+                pending={isDeletingTemplate}
+                onClick={handleDeleteTemplate}
+              >
+                删除
+              </Button>
+            ) : null}
+            <Button
+              tone="primary"
+              icon={Save}
+              pending={isSavingTemplate}
+              onClick={handleSaveTemplate}
+            >
+              {templateDraft ? "更新草稿" : mode === "new" ? "创建模板" : "保存模板"}
+            </Button>
+          </>
         )}
       />
       <WorkbenchSurface className={s.trainingTemplateEditorSurface}>
