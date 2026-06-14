@@ -2337,6 +2337,70 @@ test("training template route can create a project from an existing template thr
   assert.equal(createPayload.data.sections.length, templateDetailPayload.data.sections.length);
 });
 
+test("newly created managed training template can immediately create a project through /api/training", async () => {
+  const templatesRoute = await import("../src/app/api/training/templates/route");
+  const templateProjectsRoute = await import("../src/app/api/training/templates/[templateId]/projects/route");
+
+  await withTrainingManagedStoreSnapshot(async () => {
+    const templateTitle = `即时建项目模板 ${Date.now()}`;
+    const createTemplateResponse = await templatesRoute.POST(
+      new Request("http://localhost/api/training/templates", {
+        method: "POST",
+        body: JSON.stringify({
+          title: templateTitle,
+          description: "即时建项目模板描述",
+          imageGuidance: "即时建项目图片要求",
+          captionGuidance: "即时建项目说明文本要求",
+          sections: [
+            {
+              id: "instant-project-template-section",
+              title: "即时模板小节",
+              enabled: true,
+              blockCount: 1,
+              blocks: [
+                {
+                  id: "instant-project-template-block",
+                  source: "本地",
+                  title: "即时模板场景块",
+                  text: "即时模板场景描述",
+                },
+              ],
+              resolvedScene: "即时模板场景描述",
+              scenePreview: "即时模板场景描述",
+            },
+          ],
+        }),
+      }),
+    );
+    const createTemplatePayload = await createTemplateResponse.json();
+    assert.equal(createTemplateResponse.status, 201);
+    assert.equal(createTemplatePayload.ok, true);
+
+    const templateId = createTemplatePayload.data.id as string;
+    const projectTitle = `即时模板建项目 ${Date.now()}`;
+    const createProjectResponse = await templateProjectsRoute.POST(
+      new Request(`http://localhost/api/training/templates/${templateId}/projects`, {
+        method: "POST",
+        body: JSON.stringify({
+          title: projectTitle,
+          characterName: projectTitle,
+          triggerToken: `instant_template_project_${Date.now()}`,
+          checkpointRelativePath: "models/checkpoints/mock.safetensors",
+          usagePrompt: "即时模板建项目使用提示词",
+          detailPrompt: "即时模板建项目细节描述",
+        }),
+      }),
+      { params: Promise.resolve({ templateId }) },
+    );
+    const createProjectPayload = await createProjectResponse.json();
+    assert.equal(createProjectResponse.status, 201);
+    assert.equal(createProjectPayload.ok, true);
+    assert.equal(createProjectPayload.data.title, projectTitle);
+    assert.equal(createProjectPayload.data.sections.length, 1);
+    assert.equal(createProjectPayload.data.sections[0].title, "即时模板小节");
+  });
+});
+
 test("training project route creates a project from the product payload through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const beforeResponse = await projectsRoute.GET(new Request("http://localhost/api/training/projects"));

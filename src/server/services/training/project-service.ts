@@ -14,6 +14,7 @@ import { buildLoraTrainingDemoData } from "@/app/design-demos/data/lora-training
 import { loadDesignDemoData } from "@/app/design-demos/data/load-demo-data";
 import { toImageUrl } from "@/lib/image-url";
 import { setTrainingProjectSectionCollection } from "@/server/services/training/project-section-service";
+import { getManagedTrainingTemplate } from "@/server/services/training/template-service";
 import {
   createCharacterLoraTrainingProject,
   mapCharacterLoraTrainingJobError,
@@ -1418,11 +1419,13 @@ export async function createManagedTrainingProject(input: unknown) {
 
   const demoData = await loadDesignDemoData();
   const baseTraining = buildLoraTrainingDemoData(demoData);
-  const template = baseTraining.templates.find((item) =>
-    item.id === templateId
-    || item.title === templateId
-    || (templateId === "character_identity_default" && item.title === "角色 LoRA 基础模板")
-  );
+  const template = await getManagedTrainingTemplate(templateId).catch(() => (
+    baseTraining.templates.find((item) =>
+      item.id === templateId
+      || item.title === templateId
+      || (templateId === "character_identity_default" && item.title === "角色 LoRA 基础模板")
+    ) ?? null
+  ));
   if (!template) {
     throw new TrainingProjectServiceError("Training template not found", 404, { templateId });
   }
