@@ -11,6 +11,8 @@ const TRAINING_PRESET_CATEGORY_TYPE = "training_scene_description";
 const TRAINING_PRESET_VARIANT_NAME = "场景描述";
 const TRAINING_PRESET_VARIANT_SLUG = "scene-description";
 const TRAINING_PRESET_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-presets.json");
+const TRAINING_PRESET_CATEGORY_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-categories.json");
+const TRAINING_PRESET_FOLDER_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-folders.json");
 
 const trainingPresetInputSchema = z.object({
   category: z.string().trim().min(1).max(80),
@@ -18,6 +20,60 @@ const trainingPresetInputSchema = z.object({
   sceneDescriptionText: z.string().trim().min(1).max(20_000),
   title: z.string().trim().min(1).max(160),
 });
+
+const trainingSceneCategoryCreateSchema = z.object({
+  name: z.string().trim().min(1).max(80),
+  slug: z.string().trim().min(1).max(120),
+  icon: z.string().trim().max(80).optional().nullable(),
+  color: z.string().trim().max(120).optional().nullable(),
+  sortOrder: z.coerce.number().int().optional(),
+  sceneDescriptionOrder: z.coerce.number().int().optional(),
+}).strict();
+
+const trainingSceneCategoryUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  slug: z.string().trim().min(1).max(120).optional(),
+  icon: z.string().trim().max(80).optional().nullable(),
+  color: z.string().trim().max(120).optional().nullable(),
+  sortOrder: z.coerce.number().int().optional(),
+  sceneDescriptionOrder: z.coerce.number().int().optional(),
+}).strict().refine((value) => Object.keys(value).length > 0, {
+  message: "At least one field is required",
+});
+
+const trainingSceneFolderCreateSchema = z.object({
+  categoryId: z.string().trim().min(1),
+  parentId: z.string().trim().min(1).optional().nullable(),
+  name: z.string().trim().min(1).max(80),
+  sortOrder: z.coerce.number().int().optional(),
+}).strict();
+
+const trainingSceneFolderUpdateSchema = z.object({
+  categoryId: z.string().trim().min(1).optional(),
+  parentId: z.string().trim().min(1).optional().nullable(),
+  name: z.string().trim().min(1).max(80).optional(),
+  sortOrder: z.coerce.number().int().optional(),
+}).strict().refine((value) => Object.keys(value).length > 0, {
+  message: "At least one field is required",
+});
+
+export type TrainingSceneDescriptionCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  icon: string | null;
+  color: string | null;
+  sortOrder: number;
+  sceneDescriptionOrder: number;
+};
+
+export type TrainingSceneDescriptionFolder = {
+  id: string;
+  categoryId: string;
+  parentId: string | null;
+  name: string;
+  sortOrder: number;
+};
 
 type TrainingPresetDefault = {
   categoryName: string;
@@ -110,6 +166,29 @@ type TrainingPresetRow = Prisma.PresetGetPayload<{
   };
 }>;
 
+type TrainingSceneCategoryRow = Prisma.PresetCategoryGetPayload<{
+  select: {
+    id: true;
+    name: true;
+    slug: true;
+    icon: true;
+    color: true;
+    sortOrder: true;
+    positivePromptOrder: true;
+    type: true;
+  };
+}>;
+
+type TrainingSceneFolderRow = Prisma.PresetFolderGetPayload<{
+  select: {
+    id: true;
+    categoryId: true;
+    parentId: true;
+    name: true;
+    sortOrder: true;
+  };
+}>;
+
 export class TrainingPresetServiceError extends Error {
   details?: unknown;
   status: number;
@@ -144,6 +223,62 @@ function buildDefaultFallbackPreset(preset: TrainingPresetDefault): LoraTraining
   };
 }
 
+function sortTrainingSceneCategories(categories: TrainingSceneDescriptionCategory[]) {
+  return [...categories].sort((left, right) =>
+    left.sortOrder - right.sortOrder
+    || left.sceneDescriptionOrder - right.sceneDescriptionOrder
+    || left.name.localeCompare(right.name),
+  );
+}
+
+function sortTrainingSceneFolders(folders: TrainingSceneDescriptionFolder[]) {
+  return [...folders].sort((left, right) =>
+    left.categoryId.localeCompare(right.categoryId)
+    || (left.parentId ?? "").localeCompare(right.parentId ?? "")
+    || left.sortOrder - right.sortOrder
+    || left.name.localeCompare(right.name),
+  );
+}
+
+function buildDefaultFallbackSceneLibraryState() {
+  const categories = new Map<string, TrainingSceneDescriptionCategory>();
+  const folders = new Map<string, TrainingSceneDescriptionFolder>();
+
+  for (const preset of DEFAULT_TRAINING_PRESETS) {
+    const categoryId = `training-scene-category-${preset.categorySlug}`;
+    if (!categories.has(categoryId)) {
+      categories.set(categoryId, {
+        id: categoryId,
+        name: preset.categoryName,
+        slug: preset.categorySlug,
+        icon: null,
+        color: null,
+        sortOrder: preset.categorySortOrder,
+        sceneDescriptionOrder: preset.categorySortOrder,
+      });
+    }
+
+    if (!preset.folderName.trim() || preset.folderName === "未归档") continue;
+
+    const folderSlug = slugifyForRepository(preset.folderName, "folder");
+    const folderId = `training-scene-folder-${preset.categorySlug}-${folderSlug}`;
+    if (!folders.has(folderId)) {
+      folders.set(folderId, {
+        id: folderId,
+        categoryId,
+        parentId: null,
+        name: preset.folderName,
+        sortOrder: preset.folderSortOrder,
+      });
+    }
+  }
+
+  return {
+    categories: sortTrainingSceneCategories([...categories.values()]),
+    folders: sortTrainingSceneFolders([...folders.values()]),
+  };
+}
+
 function formatUpdatedAt(value: Date | string) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
@@ -168,6 +303,28 @@ function mapTrainingPreset(row: TrainingPresetRow): LoraTrainingPreset {
   };
 }
 
+function mapTrainingSceneCategory(row: TrainingSceneCategoryRow): TrainingSceneDescriptionCategory {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    icon: row.icon,
+    color: row.color,
+    sortOrder: row.sortOrder,
+    sceneDescriptionOrder: row.positivePromptOrder,
+  };
+}
+
+function mapTrainingSceneFolder(row: TrainingSceneFolderRow): TrainingSceneDescriptionFolder {
+  return {
+    id: row.id,
+    categoryId: row.categoryId,
+    parentId: row.parentId,
+    name: row.name,
+    sortOrder: row.sortOrder,
+  };
+}
+
 async function readFallbackTrainingPresets() {
   try {
     const raw = await readFile(TRAINING_PRESET_FALLBACK_PATH, "utf8");
@@ -186,9 +343,55 @@ async function readFallbackTrainingPresets() {
   return defaults;
 }
 
+async function readFallbackTrainingCategories() {
+  try {
+    const raw = await readFile(TRAINING_PRESET_CATEGORY_FALLBACK_PATH, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      return sortTrainingSceneCategories(parsed as TrainingSceneDescriptionCategory[]);
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  const defaults = buildDefaultFallbackSceneLibraryState().categories;
+  await writeFallbackTrainingCategories(defaults);
+  return defaults;
+}
+
+async function readFallbackTrainingFolders() {
+  try {
+    const raw = await readFile(TRAINING_PRESET_FOLDER_FALLBACK_PATH, "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) {
+      return sortTrainingSceneFolders(parsed as TrainingSceneDescriptionFolder[]);
+    }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw error;
+    }
+  }
+
+  const defaults = buildDefaultFallbackSceneLibraryState().folders;
+  await writeFallbackTrainingFolders(defaults);
+  return defaults;
+}
+
 async function writeFallbackTrainingPresets(presets: LoraTrainingPreset[]) {
   await mkdir(dirname(TRAINING_PRESET_FALLBACK_PATH), { recursive: true });
   await writeFile(TRAINING_PRESET_FALLBACK_PATH, `${JSON.stringify(presets, null, 2)}\n`, "utf8");
+}
+
+async function writeFallbackTrainingCategories(categories: TrainingSceneDescriptionCategory[]) {
+  await mkdir(dirname(TRAINING_PRESET_CATEGORY_FALLBACK_PATH), { recursive: true });
+  await writeFile(TRAINING_PRESET_CATEGORY_FALLBACK_PATH, `${JSON.stringify(sortTrainingSceneCategories(categories), null, 2)}\n`, "utf8");
+}
+
+async function writeFallbackTrainingFolders(folders: TrainingSceneDescriptionFolder[]) {
+  await mkdir(dirname(TRAINING_PRESET_FOLDER_FALLBACK_PATH), { recursive: true });
+  await writeFile(TRAINING_PRESET_FOLDER_FALLBACK_PATH, `${JSON.stringify(sortTrainingSceneFolders(folders), null, 2)}\n`, "utf8");
 }
 
 function nextFallbackUpdatedAt() {
@@ -203,10 +406,123 @@ function shouldUseTrainingPresetFileFallback(error: unknown) {
   return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003/i.test(message);
 }
 
+function nextFallbackCategoryId(slug: string) {
+  return `training-scene-category-${slug}`;
+}
+
+function nextFallbackFolderId(categoryId: string, name: string) {
+  return `training-scene-folder-${categoryId}-${slugifyForRepository(name, "folder")}`;
+}
+
+function normalizeFallbackSceneLibraryState(input: {
+  categories: TrainingSceneDescriptionCategory[];
+  folders: TrainingSceneDescriptionFolder[];
+  presets: LoraTrainingPreset[];
+}) {
+  const nextCategories = [...input.categories];
+  const nextFolders = [...input.folders];
+  const categoryByName = new Map(nextCategories.map((category) => [category.name, category]));
+  const categoryBySlug = new Map(nextCategories.map((category) => [category.slug, category]));
+
+  for (const preset of input.presets) {
+    let category = categoryByName.get(preset.category);
+    if (!category) {
+      const baseSlug = `training-${slugifyForRepository(preset.category, "category")}`;
+      let slug = baseSlug;
+      let suffix = 2;
+      while (categoryBySlug.has(slug)) {
+        slug = `${baseSlug}-${suffix}`;
+        suffix += 1;
+      }
+      category = {
+        id: nextFallbackCategoryId(slug),
+        name: preset.category,
+        slug,
+        icon: null,
+        color: null,
+        sortOrder: nextCategories.length,
+        sceneDescriptionOrder: nextCategories.length,
+      };
+      nextCategories.push(category);
+      categoryByName.set(category.name, category);
+      categoryBySlug.set(category.slug, category);
+    }
+
+    if (!preset.folder.trim() || preset.folder === "未归档") continue;
+
+    const folderExists = nextFolders.some((folder) =>
+      folder.categoryId === category.id
+      && folder.parentId === null
+      && folder.name === preset.folder,
+    );
+    if (folderExists) continue;
+
+    const siblingSortOrder = nextFolders
+      .filter((folder) => folder.categoryId === category.id && folder.parentId === null)
+      .reduce((maxOrder, folder) => Math.max(maxOrder, folder.sortOrder), -1) + 1;
+    nextFolders.push({
+      id: nextFallbackFolderId(category.id, preset.folder),
+      categoryId: category.id,
+      parentId: null,
+      name: preset.folder,
+      sortOrder: siblingSortOrder,
+    });
+  }
+
+  return {
+    categories: sortTrainingSceneCategories(nextCategories),
+    folders: sortTrainingSceneFolders(nextFolders),
+  };
+}
+
 function parseTrainingPresetInput(input: unknown) {
   const result = trainingPresetInputSchema.safeParse(input);
   if (result.success) return result.data;
   throw new TrainingPresetServiceError("Invalid training preset request", 400, {
+    issues: result.error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+    })),
+  });
+}
+
+function parseTrainingSceneCategoryCreateInput(input: unknown) {
+  const result = trainingSceneCategoryCreateSchema.safeParse(input);
+  if (result.success) return result.data;
+  throw new TrainingPresetServiceError("Invalid training scene-description category request", 400, {
+    issues: result.error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+    })),
+  });
+}
+
+function parseTrainingSceneCategoryUpdateInput(input: unknown) {
+  const result = trainingSceneCategoryUpdateSchema.safeParse(input);
+  if (result.success) return result.data;
+  throw new TrainingPresetServiceError("Invalid training scene-description category request", 400, {
+    issues: result.error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+    })),
+  });
+}
+
+function parseTrainingSceneFolderCreateInput(input: unknown) {
+  const result = trainingSceneFolderCreateSchema.safeParse(input);
+  if (result.success) return result.data;
+  throw new TrainingPresetServiceError("Invalid training scene-description folder request", 400, {
+    issues: result.error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      message: issue.message,
+    })),
+  });
+}
+
+function parseTrainingSceneFolderUpdateInput(input: unknown) {
+  const result = trainingSceneFolderUpdateSchema.safeParse(input);
+  if (result.success) return result.data;
+  throw new TrainingPresetServiceError("Invalid training scene-description folder request", 400, {
     issues: result.error.issues.map((issue) => ({
       path: issue.path.join("."),
       message: issue.message,
@@ -411,6 +727,91 @@ async function getTrainingPresetRow(presetId: string) {
   });
 }
 
+async function listTrainingSceneCategoryRows() {
+  await ensureDefaultTrainingPresets();
+  return prisma.presetCategory.findMany({
+    where: { type: TRAINING_PRESET_CATEGORY_TYPE },
+    orderBy: [
+      { sortOrder: "asc" },
+      { positivePromptOrder: "asc" },
+      { createdAt: "asc" },
+    ],
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      icon: true,
+      color: true,
+      sortOrder: true,
+      positivePromptOrder: true,
+      type: true,
+    },
+  });
+}
+
+async function getTrainingSceneCategoryRow(categoryId: string) {
+  await ensureDefaultTrainingPresets();
+  return prisma.presetCategory.findFirst({
+    where: {
+      id: categoryId,
+      type: TRAINING_PRESET_CATEGORY_TYPE,
+    },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      icon: true,
+      color: true,
+      sortOrder: true,
+      positivePromptOrder: true,
+      type: true,
+    },
+  });
+}
+
+async function listTrainingSceneFolderRows() {
+  await ensureDefaultTrainingPresets();
+  return prisma.presetFolder.findMany({
+    where: {
+      category: {
+        type: TRAINING_PRESET_CATEGORY_TYPE,
+      },
+    },
+    orderBy: [
+      { categoryId: "asc" },
+      { parentId: "asc" },
+      { sortOrder: "asc" },
+      { createdAt: "asc" },
+    ],
+    select: {
+      id: true,
+      categoryId: true,
+      parentId: true,
+      name: true,
+      sortOrder: true,
+    },
+  });
+}
+
+async function getTrainingSceneFolderRow(folderId: string) {
+  await ensureDefaultTrainingPresets();
+  return prisma.presetFolder.findFirst({
+    where: {
+      id: folderId,
+      category: {
+        type: TRAINING_PRESET_CATEGORY_TYPE,
+      },
+    },
+    select: {
+      id: true,
+      categoryId: true,
+      parentId: true,
+      name: true,
+      sortOrder: true,
+    },
+  });
+}
+
 async function createUniqueCategorySlug(name: string) {
   const base = `training-${slugifyForRepository(name, "category")}`;
   let candidate = base;
@@ -561,44 +962,594 @@ export async function getTrainingSceneDescriptionPresetUsage(presetId: string) {
   };
 }
 
-export async function listTrainingSceneDescriptionTree() {
-  const presets = await listTrainingSceneDescriptionPresets();
-  const categoryMap = new Map<string, {
-    id: string;
-    name: string;
-    folders: Array<{ id: string; name: string; presets: LoraTrainingPreset[] }>;
-    presets: LoraTrainingPreset[];
-  }>();
+async function writeFallbackTrainingSceneLibraryState(input: {
+  categories: TrainingSceneDescriptionCategory[];
+  folders: TrainingSceneDescriptionFolder[];
+}) {
+  await Promise.all([
+    writeFallbackTrainingCategories(input.categories),
+    writeFallbackTrainingFolders(input.folders),
+  ]);
+}
 
-  for (const preset of presets) {
-    const categoryEntry = categoryMap.get(preset.category) ?? {
-      id: `training-scene-category-${preset.category}`,
-      name: preset.category,
-      folders: [],
-      presets: [],
+async function readFallbackTrainingSceneLibraryState() {
+  const [categories, folders, presets] = await Promise.all([
+    readFallbackTrainingCategories(),
+    readFallbackTrainingFolders(),
+    readFallbackTrainingPresets(),
+  ]);
+  return {
+    ...normalizeFallbackSceneLibraryState({ categories, folders, presets }),
+    presets,
+  };
+}
+
+function buildTrainingSceneDescriptionTree(input: {
+  categories: TrainingSceneDescriptionCategory[];
+  folders: TrainingSceneDescriptionFolder[];
+  presets: LoraTrainingPreset[];
+}) {
+  const categoryEntries = sortTrainingSceneCategories(input.categories).map((category) => ({
+    ...category,
+    folders: [] as Array<TrainingSceneDescriptionFolder & { presets: LoraTrainingPreset[] }>,
+    presets: [] as LoraTrainingPreset[],
+  }));
+  const categoryById = new Map(categoryEntries.map((category) => [category.id, category]));
+  const categoryByName = new Map(categoryEntries.map((category) => [category.name, category]));
+  const foldersByIdentity = new Map<string, TrainingSceneDescriptionFolder & { presets: LoraTrainingPreset[] }>();
+
+  for (const folder of sortTrainingSceneFolders(input.folders)) {
+    const category = categoryById.get(folder.categoryId);
+    if (!category) continue;
+    const folderEntry = {
+      ...folder,
+      presets: [] as LoraTrainingPreset[],
     };
-
-    if (preset.folder && preset.folder !== "未归档") {
-      let folderEntry = categoryEntry.folders.find((folder) => folder.name === preset.folder);
-      if (!folderEntry) {
-        folderEntry = {
-          id: `training-scene-folder-${preset.category}-${preset.folder}`,
-          name: preset.folder,
-          presets: [],
-        };
-        categoryEntry.folders.push(folderEntry);
-      }
-      folderEntry.presets.push(preset);
-    } else {
-      categoryEntry.presets.push(preset);
-    }
-
-    categoryMap.set(preset.category, categoryEntry);
+    category.folders.push(folderEntry);
+    foldersByIdentity.set(`${folder.categoryId}:${folder.name}`, folderEntry);
   }
 
-  return {
-    categories: [...categoryMap.values()],
-  };
+  for (const preset of input.presets) {
+    const category = categoryByName.get(preset.category);
+    if (!category) continue;
+    if (preset.folder && preset.folder !== "未归档") {
+      const folder = foldersByIdentity.get(`${category.id}:${preset.folder}`);
+      if (folder) {
+        folder.presets.push(preset);
+        continue;
+      }
+    }
+    category.presets.push(preset);
+  }
+
+  return { categories: categoryEntries };
+}
+
+function isUniqueConstraintError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
+function nextTrainingSceneCategorySortOrder(categories: TrainingSceneDescriptionCategory[]) {
+  return categories.reduce((maxOrder, category) => Math.max(maxOrder, category.sortOrder), -1) + 1;
+}
+
+function nextTrainingSceneFolderSortOrder(folders: TrainingSceneDescriptionFolder[], categoryId: string, parentId: string | null) {
+  return folders
+    .filter((folder) => folder.categoryId === categoryId && folder.parentId === parentId)
+    .reduce((maxOrder, folder) => Math.max(maxOrder, folder.sortOrder), -1) + 1;
+}
+
+export async function listTrainingSceneDescriptionTree(options: { includeInactive?: boolean } = {}) {
+  try {
+    const [categories, folders, rows] = await Promise.all([
+      listTrainingSceneCategoryRows(),
+      listTrainingSceneFolderRows(),
+      listTrainingPresetRows(),
+    ]);
+    const presets = rows
+      .map(mapTrainingPreset)
+      .filter((preset) => options.includeInactive ? true : preset.status === "active");
+    return buildTrainingSceneDescriptionTree({
+      categories: categories.map(mapTrainingSceneCategory),
+      folders: folders.map(mapTrainingSceneFolder),
+      presets,
+    });
+  } catch (error) {
+    if (!shouldUseTrainingPresetFileFallback(error)) throw error;
+    const snapshot = await readFallbackTrainingSceneLibraryState();
+    const presets = snapshot.presets.filter((preset) => options.includeInactive ? true : preset.status === "active");
+    return buildTrainingSceneDescriptionTree({
+      categories: snapshot.categories,
+      folders: snapshot.folders,
+      presets,
+    });
+  }
+}
+
+export async function createTrainingSceneDescriptionCategory(input: unknown) {
+  const parsed = parseTrainingSceneCategoryCreateInput(input);
+  try {
+    const current = await prisma.presetCategory.findUnique({ where: { slug: parsed.slug }, select: { id: true } });
+    if (current) {
+      throw new TrainingPresetServiceError("Training preset category slug already exists", 409, { slug: parsed.slug });
+    }
+
+    const maxOrder = await prisma.presetCategory.aggregate({
+      where: { type: TRAINING_PRESET_CATEGORY_TYPE },
+      _max: { sortOrder: true },
+    });
+    const created = await prisma.presetCategory.create({
+      data: {
+        name: parsed.name,
+        slug: parsed.slug,
+        icon: parsed.icon?.trim() || null,
+        color: parsed.color?.trim() || null,
+        sortOrder: parsed.sortOrder ?? ((maxOrder._max.sortOrder ?? -1) + 1),
+        positivePromptOrder: parsed.sceneDescriptionOrder ?? 0,
+        type: TRAINING_PRESET_CATEGORY_TYPE,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        icon: true,
+        color: true,
+        sortOrder: true,
+        positivePromptOrder: true,
+        type: true,
+      },
+    });
+    revalidateTrainingPresetPaths();
+    return mapTrainingSceneCategory(created);
+  } catch (error) {
+    if (error instanceof TrainingPresetServiceError) throw error;
+    if (isUniqueConstraintError(error)) {
+      throw new TrainingPresetServiceError("Training preset category slug already exists", 409, { slug: parsed.slug });
+    }
+    if (!shouldUseTrainingPresetFileFallback(error)) throw error;
+
+    const snapshot = await readFallbackTrainingSceneLibraryState();
+    if (snapshot.categories.some((category) => category.slug === parsed.slug)) {
+      throw new TrainingPresetServiceError("Training preset category slug already exists", 409, { slug: parsed.slug });
+    }
+    const created: TrainingSceneDescriptionCategory = {
+      id: nextFallbackCategoryId(parsed.slug),
+      name: parsed.name,
+      slug: parsed.slug,
+      icon: parsed.icon?.trim() || null,
+      color: parsed.color?.trim() || null,
+      sortOrder: parsed.sortOrder ?? nextTrainingSceneCategorySortOrder(snapshot.categories),
+      sceneDescriptionOrder: parsed.sceneDescriptionOrder ?? 0,
+    };
+    await writeFallbackTrainingSceneLibraryState({
+      categories: [...snapshot.categories, created],
+      folders: snapshot.folders,
+    });
+    revalidateTrainingPresetPaths();
+    return created;
+  }
+}
+
+export async function updateTrainingSceneDescriptionCategory(categoryId: string, input: unknown) {
+  const parsed = parseTrainingSceneCategoryUpdateInput(input);
+  try {
+    const current = await getTrainingSceneCategoryRow(categoryId);
+    if (!current) {
+      throw new TrainingPresetServiceError("Training preset category not found", 404, { categoryId });
+    }
+    if (parsed.slug && parsed.slug !== current.slug) {
+      const duplicate = await prisma.presetCategory.findUnique({ where: { slug: parsed.slug }, select: { id: true } });
+      if (duplicate) {
+        throw new TrainingPresetServiceError("Training preset category slug already exists", 409, { slug: parsed.slug });
+      }
+    }
+
+    const updated = await prisma.presetCategory.update({
+      where: { id: categoryId },
+      data: {
+        name: parsed.name ?? current.name,
+        slug: parsed.slug ?? current.slug,
+        icon: Object.prototype.hasOwnProperty.call(parsed, "icon") ? (parsed.icon?.trim() || null) : current.icon,
+        color: Object.prototype.hasOwnProperty.call(parsed, "color") ? (parsed.color?.trim() || null) : current.color,
+        sortOrder: parsed.sortOrder ?? current.sortOrder,
+        positivePromptOrder: parsed.sceneDescriptionOrder ?? current.positivePromptOrder,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        icon: true,
+        color: true,
+        sortOrder: true,
+        positivePromptOrder: true,
+        type: true,
+      },
+    });
+    revalidateTrainingPresetPaths();
+    return mapTrainingSceneCategory(updated);
+  } catch (error) {
+    if (error instanceof TrainingPresetServiceError) throw error;
+    if (isUniqueConstraintError(error)) {
+      throw new TrainingPresetServiceError("Training preset category slug already exists", 409, { categoryId });
+    }
+    if (!shouldUseTrainingPresetFileFallback(error)) throw error;
+
+    const snapshot = await readFallbackTrainingSceneLibraryState();
+    const categoryIndex = snapshot.categories.findIndex((category) => category.id === categoryId);
+    if (categoryIndex === -1) {
+      throw new TrainingPresetServiceError("Training preset category not found", 404, { categoryId });
+    }
+    const current = snapshot.categories[categoryIndex];
+    if (parsed.slug && parsed.slug !== current.slug && snapshot.categories.some((category) => category.slug === parsed.slug)) {
+      throw new TrainingPresetServiceError("Training preset category slug already exists", 409, { slug: parsed.slug });
+    }
+    const nextCategory: TrainingSceneDescriptionCategory = {
+      ...current,
+      name: parsed.name ?? current.name,
+      slug: parsed.slug ?? current.slug,
+      icon: Object.prototype.hasOwnProperty.call(parsed, "icon") ? (parsed.icon?.trim() || null) : current.icon,
+      color: Object.prototype.hasOwnProperty.call(parsed, "color") ? (parsed.color?.trim() || null) : current.color,
+      sortOrder: parsed.sortOrder ?? current.sortOrder,
+      sceneDescriptionOrder: parsed.sceneDescriptionOrder ?? current.sceneDescriptionOrder,
+    };
+    const nextCategories = [...snapshot.categories];
+    nextCategories[categoryIndex] = nextCategory;
+    const nextPresets = snapshot.presets.map((preset) => preset.category === current.name
+      ? { ...preset, category: nextCategory.name }
+      : preset);
+    await Promise.all([
+      writeFallbackTrainingPresets(nextPresets),
+      writeFallbackTrainingSceneLibraryState({
+        categories: nextCategories,
+        folders: snapshot.folders,
+      }),
+    ]);
+    revalidateTrainingPresetPaths();
+    return nextCategory;
+  }
+}
+
+export async function deleteTrainingSceneDescriptionCategory(categoryId: string) {
+  try {
+    const current = await getTrainingSceneCategoryRow(categoryId);
+    if (!current) {
+      throw new TrainingPresetServiceError("Training preset category not found", 404, { categoryId });
+    }
+
+    const [folderCount, activePresetCount] = await Promise.all([
+      prisma.presetFolder.count({
+        where: {
+          categoryId,
+          category: { type: TRAINING_PRESET_CATEGORY_TYPE },
+        },
+      }),
+      prisma.preset.count({
+        where: {
+          categoryId,
+          isActive: true,
+          category: { type: TRAINING_PRESET_CATEGORY_TYPE },
+        },
+      }),
+    ]);
+    if (folderCount > 0 || activePresetCount > 0) {
+      throw new TrainingPresetServiceError("Training preset category is not empty", 409, {
+        categoryId,
+        folderCount,
+        activePresetCount,
+      });
+    }
+
+    await prisma.$transaction([
+      prisma.preset.deleteMany({
+        where: {
+          categoryId,
+          isActive: false,
+          category: { type: TRAINING_PRESET_CATEGORY_TYPE },
+        },
+      }),
+      prisma.presetCategory.delete({ where: { id: categoryId } }),
+    ]);
+    revalidateTrainingPresetPaths();
+    return { success: true };
+  } catch (error) {
+    if (error instanceof TrainingPresetServiceError) throw error;
+    if (!shouldUseTrainingPresetFileFallback(error)) throw error;
+
+    const snapshot = await readFallbackTrainingSceneLibraryState();
+    const category = snapshot.categories.find((item) => item.id === categoryId);
+    if (!category) {
+      throw new TrainingPresetServiceError("Training preset category not found", 404, { categoryId });
+    }
+    const folderCount = snapshot.folders.filter((folder) => folder.categoryId === categoryId).length;
+    const activePresetCount = snapshot.presets.filter((preset) => preset.category === category.name && preset.status === "active").length;
+    if (folderCount > 0 || activePresetCount > 0) {
+      throw new TrainingPresetServiceError("Training preset category is not empty", 409, {
+        categoryId,
+        folderCount,
+        activePresetCount,
+      });
+    }
+    const nextPresets = snapshot.presets.filter((preset) => !(preset.category === category.name && preset.status !== "active"));
+    await Promise.all([
+      writeFallbackTrainingPresets(nextPresets),
+      writeFallbackTrainingSceneLibraryState({
+        categories: snapshot.categories.filter((item) => item.id !== categoryId),
+        folders: snapshot.folders,
+      }),
+    ]);
+    revalidateTrainingPresetPaths();
+    return { success: true };
+  }
+}
+
+export async function createTrainingSceneDescriptionFolder(input: unknown) {
+  const parsed = parseTrainingSceneFolderCreateInput(input);
+  try {
+    const category = await getTrainingSceneCategoryRow(parsed.categoryId);
+    if (!category) {
+      throw new TrainingPresetServiceError("Training preset category not found", 404, { categoryId: parsed.categoryId });
+    }
+    if (parsed.parentId) {
+      const parent = await getTrainingSceneFolderRow(parsed.parentId);
+      if (!parent || parent.categoryId !== parsed.categoryId) {
+        throw new TrainingPresetServiceError("Training preset folder parent not found", 404, {
+          categoryId: parsed.categoryId,
+          parentId: parsed.parentId,
+        });
+      }
+    }
+
+    const siblingMax = await prisma.presetFolder.aggregate({
+      where: {
+        categoryId: parsed.categoryId,
+        parentId: parsed.parentId ?? null,
+      },
+      _max: { sortOrder: true },
+    });
+    const created = await prisma.presetFolder.create({
+      data: {
+        categoryId: parsed.categoryId,
+        parentId: parsed.parentId ?? null,
+        name: parsed.name,
+        sortOrder: parsed.sortOrder ?? ((siblingMax._max.sortOrder ?? -1) + 1),
+      },
+      select: {
+        id: true,
+        categoryId: true,
+        parentId: true,
+        name: true,
+        sortOrder: true,
+      },
+    });
+    revalidateTrainingPresetPaths();
+    return mapTrainingSceneFolder(created);
+  } catch (error) {
+    if (error instanceof TrainingPresetServiceError) throw error;
+    if (!shouldUseTrainingPresetFileFallback(error)) throw error;
+
+    const snapshot = await readFallbackTrainingSceneLibraryState();
+    const category = snapshot.categories.find((item) => item.id === parsed.categoryId);
+    if (!category) {
+      throw new TrainingPresetServiceError("Training preset category not found", 404, { categoryId: parsed.categoryId });
+    }
+    if (parsed.parentId) {
+      const parent = snapshot.folders.find((folder) => folder.id === parsed.parentId);
+      if (!parent || parent.categoryId !== parsed.categoryId) {
+        throw new TrainingPresetServiceError("Training preset folder parent not found", 404, {
+          categoryId: parsed.categoryId,
+          parentId: parsed.parentId,
+        });
+      }
+    }
+    const created: TrainingSceneDescriptionFolder = {
+      id: nextFallbackFolderId(parsed.categoryId, `${parsed.name}-${Date.now()}`),
+      categoryId: parsed.categoryId,
+      parentId: parsed.parentId ?? null,
+      name: parsed.name,
+      sortOrder: parsed.sortOrder ?? nextTrainingSceneFolderSortOrder(snapshot.folders, parsed.categoryId, parsed.parentId ?? null),
+    };
+    await writeFallbackTrainingSceneLibraryState({
+      categories: snapshot.categories,
+      folders: [...snapshot.folders, created],
+    });
+    revalidateTrainingPresetPaths();
+    return created;
+  }
+}
+
+export async function updateTrainingSceneDescriptionFolder(folderId: string, input: unknown) {
+  const parsed = parseTrainingSceneFolderUpdateInput(input);
+  try {
+    const current = await getTrainingSceneFolderRow(folderId);
+    if (!current) {
+      throw new TrainingPresetServiceError("Training preset folder not found", 404, { folderId });
+    }
+
+    const nextCategoryId = parsed.categoryId ?? current.categoryId;
+    if (nextCategoryId !== current.categoryId) {
+      const presetCount = await prisma.preset.count({
+        where: {
+          folderId,
+          category: { type: TRAINING_PRESET_CATEGORY_TYPE },
+        },
+      });
+      if (presetCount > 0) {
+        throw new TrainingPresetServiceError("Training preset folder is not movable while it still contains presets", 409, { folderId });
+      }
+      const nextCategory = await getTrainingSceneCategoryRow(nextCategoryId);
+      if (!nextCategory) {
+        throw new TrainingPresetServiceError("Training preset category not found", 404, { categoryId: nextCategoryId });
+      }
+    }
+
+    const nextParentId = Object.prototype.hasOwnProperty.call(parsed, "parentId") ? (parsed.parentId ?? null) : current.parentId;
+    if (nextParentId === folderId) {
+      throw new TrainingPresetServiceError("Training preset folder cannot be its own parent", 400, { folderId });
+    }
+    if (nextParentId) {
+      const parent = await getTrainingSceneFolderRow(nextParentId);
+      if (!parent || parent.categoryId !== nextCategoryId) {
+        throw new TrainingPresetServiceError("Training preset folder parent not found", 404, {
+          folderId,
+          parentId: nextParentId,
+        });
+      }
+    }
+
+    const updated = await prisma.presetFolder.update({
+      where: { id: folderId },
+      data: {
+        categoryId: nextCategoryId,
+        parentId: nextParentId,
+        name: parsed.name ?? current.name,
+        sortOrder: parsed.sortOrder ?? current.sortOrder,
+      },
+      select: {
+        id: true,
+        categoryId: true,
+        parentId: true,
+        name: true,
+        sortOrder: true,
+      },
+    });
+    revalidateTrainingPresetPaths();
+    return mapTrainingSceneFolder(updated);
+  } catch (error) {
+    if (error instanceof TrainingPresetServiceError) throw error;
+    if (!shouldUseTrainingPresetFileFallback(error)) throw error;
+
+    const snapshot = await readFallbackTrainingSceneLibraryState();
+    const folderIndex = snapshot.folders.findIndex((folder) => folder.id === folderId);
+    if (folderIndex === -1) {
+      throw new TrainingPresetServiceError("Training preset folder not found", 404, { folderId });
+    }
+    const current = snapshot.folders[folderIndex];
+    const nextCategoryId = parsed.categoryId ?? current.categoryId;
+    if (nextCategoryId !== current.categoryId && snapshot.presets.some((preset) => preset.folder === current.name && preset.category === snapshot.categories.find((category) => category.id === current.categoryId)?.name)) {
+      throw new TrainingPresetServiceError("Training preset folder is not movable while it still contains presets", 409, { folderId });
+    }
+    if (!snapshot.categories.some((category) => category.id === nextCategoryId)) {
+      throw new TrainingPresetServiceError("Training preset category not found", 404, { categoryId: nextCategoryId });
+    }
+    const nextParentId = Object.prototype.hasOwnProperty.call(parsed, "parentId") ? (parsed.parentId ?? null) : current.parentId;
+    if (nextParentId === folderId) {
+      throw new TrainingPresetServiceError("Training preset folder cannot be its own parent", 400, { folderId });
+    }
+    if (nextParentId) {
+      const parent = snapshot.folders.find((folder) => folder.id === nextParentId);
+      if (!parent || parent.categoryId !== nextCategoryId) {
+        throw new TrainingPresetServiceError("Training preset folder parent not found", 404, {
+          folderId,
+          parentId: nextParentId,
+        });
+      }
+    }
+
+    const updated: TrainingSceneDescriptionFolder = {
+      ...current,
+      categoryId: nextCategoryId,
+      parentId: nextParentId,
+      name: parsed.name ?? current.name,
+      sortOrder: parsed.sortOrder ?? current.sortOrder,
+    };
+    const nextFolders = [...snapshot.folders];
+    nextFolders[folderIndex] = updated;
+    const categoryNameById = new Map(snapshot.categories.map((category) => [category.id, category.name]));
+    const nextPresets = snapshot.presets.map((preset) => (
+      preset.folder === current.name && preset.category === categoryNameById.get(current.categoryId)
+        ? {
+          ...preset,
+          category: categoryNameById.get(updated.categoryId) ?? preset.category,
+          folder: updated.name,
+        }
+        : preset
+    ));
+    await Promise.all([
+      writeFallbackTrainingPresets(nextPresets),
+      writeFallbackTrainingSceneLibraryState({
+        categories: snapshot.categories,
+        folders: nextFolders,
+      }),
+    ]);
+    revalidateTrainingPresetPaths();
+    return updated;
+  }
+}
+
+export async function deleteTrainingSceneDescriptionFolder(folderId: string) {
+  try {
+    const current = await getTrainingSceneFolderRow(folderId);
+    if (!current) {
+      throw new TrainingPresetServiceError("Training preset folder not found", 404, { folderId });
+    }
+
+    const [childFolderCount, activePresetCount] = await Promise.all([
+      prisma.presetFolder.count({ where: { parentId: folderId } }),
+      prisma.preset.count({
+        where: {
+          folderId,
+          isActive: true,
+          category: { type: TRAINING_PRESET_CATEGORY_TYPE },
+        },
+      }),
+    ]);
+    if (childFolderCount > 0 || activePresetCount > 0) {
+      throw new TrainingPresetServiceError("Training preset folder is not empty", 409, {
+        folderId,
+        childFolderCount,
+        activePresetCount,
+      });
+    }
+
+    await prisma.$transaction([
+      prisma.preset.deleteMany({
+        where: {
+          folderId,
+          isActive: false,
+          category: { type: TRAINING_PRESET_CATEGORY_TYPE },
+        },
+      }),
+      prisma.presetFolder.delete({ where: { id: folderId } }),
+    ]);
+    revalidateTrainingPresetPaths();
+    return { success: true };
+  } catch (error) {
+    if (error instanceof TrainingPresetServiceError) throw error;
+    if (!shouldUseTrainingPresetFileFallback(error)) throw error;
+
+    const snapshot = await readFallbackTrainingSceneLibraryState();
+    const folder = snapshot.folders.find((item) => item.id === folderId);
+    if (!folder) {
+      throw new TrainingPresetServiceError("Training preset folder not found", 404, { folderId });
+    }
+    const categoryName = snapshot.categories.find((category) => category.id === folder.categoryId)?.name;
+    const childFolderCount = snapshot.folders.filter((item) => item.parentId === folderId).length;
+    const activePresetCount = snapshot.presets.filter((preset) =>
+      preset.folder === folder.name
+      && preset.category === categoryName
+      && preset.status === "active",
+    ).length;
+    if (childFolderCount > 0 || activePresetCount > 0) {
+      throw new TrainingPresetServiceError("Training preset folder is not empty", 409, {
+        folderId,
+        childFolderCount,
+        activePresetCount,
+      });
+    }
+
+    const nextPresets = snapshot.presets.filter((preset) =>
+      !(preset.folder === folder.name && preset.category === categoryName && preset.status !== "active"),
+    );
+    await Promise.all([
+      writeFallbackTrainingPresets(nextPresets),
+      writeFallbackTrainingSceneLibraryState({
+        categories: snapshot.categories,
+        folders: snapshot.folders.filter((item) => item.id !== folderId),
+      }),
+    ]);
+    revalidateTrainingPresetPaths();
+    return { success: true };
+  }
 }
 
 export async function createTrainingSceneDescriptionPreset(input: unknown) {
@@ -646,7 +1597,8 @@ export async function createTrainingSceneDescriptionPreset(input: unknown) {
     return getTrainingSceneDescriptionPreset(created);
   } catch (error) {
     if (!shouldUseTrainingPresetFileFallback(error)) throw error;
-    const presets = await readFallbackTrainingPresets();
+    const snapshot = await readFallbackTrainingSceneLibraryState();
+    const presets = snapshot.presets;
     const nextId = `training-preset-${Date.now()}`;
     const created: LoraTrainingPreset = {
       id: nextId,
@@ -659,7 +1611,16 @@ export async function createTrainingSceneDescriptionPreset(input: unknown) {
       projectUsage: [],
       templateUsage: [],
     };
-    await writeFallbackTrainingPresets([...presets, created]);
+    const nextPresets = [...presets, created];
+    const normalized = normalizeFallbackSceneLibraryState({
+      categories: snapshot.categories,
+      folders: snapshot.folders,
+      presets: nextPresets,
+    });
+    await Promise.all([
+      writeFallbackTrainingPresets(nextPresets),
+      writeFallbackTrainingSceneLibraryState(normalized),
+    ]);
     revalidateTrainingPresetPaths(nextId);
     return created;
   }
@@ -723,7 +1684,8 @@ export async function updateTrainingSceneDescriptionPreset(presetId: string, inp
     return getTrainingSceneDescriptionPreset(presetId);
   } catch (error) {
     if (!shouldUseTrainingPresetFileFallback(error)) throw error;
-    const presets = await readFallbackTrainingPresets();
+    const snapshot = await readFallbackTrainingSceneLibraryState();
+    const presets = snapshot.presets;
     const existingIndex = presets.findIndex((preset) => preset.id === presetId);
     if (existingIndex === -1) {
       throw new TrainingPresetServiceError("Training preset not found", 404, { presetId });
@@ -738,7 +1700,15 @@ export async function updateTrainingSceneDescriptionPreset(presetId: string, inp
     };
     const next = [...presets];
     next[existingIndex] = updated;
-    await writeFallbackTrainingPresets(next);
+    const normalized = normalizeFallbackSceneLibraryState({
+      categories: snapshot.categories,
+      folders: snapshot.folders,
+      presets: next,
+    });
+    await Promise.all([
+      writeFallbackTrainingPresets(next),
+      writeFallbackTrainingSceneLibraryState(normalized),
+    ]);
     revalidateTrainingPresetPaths(presetId);
     return updated;
   }
@@ -760,7 +1730,8 @@ export async function deleteTrainingSceneDescriptionPreset(presetId: string) {
     return { success: true };
   } catch (error) {
     if (!shouldUseTrainingPresetFileFallback(error)) throw error;
-    const presets = await readFallbackTrainingPresets();
+    const snapshot = await readFallbackTrainingSceneLibraryState();
+    const presets = snapshot.presets;
     const existingIndex = presets.findIndex((preset) => preset.id === presetId);
     if (existingIndex === -1) {
       throw new TrainingPresetServiceError("Training preset not found", 404, { presetId });
@@ -771,7 +1742,15 @@ export async function deleteTrainingSceneDescriptionPreset(presetId: string) {
       status: "inactive",
       updatedAt: nextFallbackUpdatedAt(),
     };
-    await writeFallbackTrainingPresets(next);
+    const normalized = normalizeFallbackSceneLibraryState({
+      categories: snapshot.categories,
+      folders: snapshot.folders,
+      presets: next,
+    });
+    await Promise.all([
+      writeFallbackTrainingPresets(next),
+      writeFallbackTrainingSceneLibraryState(normalized),
+    ]);
     revalidateTrainingPresetPaths(presetId);
     return { success: true };
   }

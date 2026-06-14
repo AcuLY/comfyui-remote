@@ -1203,6 +1203,183 @@ test("scene-description preset alias routes mirror training preset CRUD under /a
   assert.equal(deletePayload.data.success, true);
 });
 
+test("scene-description category and folder routes create, update, guard non-empty delete, and delete through /api/training", async () => {
+  const categoryTreeRoute = await import("../src/app/api/training/scene-description/categories/route");
+  const categoryDetailRoute = await import("../src/app/api/training/scene-description/categories/[categoryId]/route");
+  const folderCreateRoute = await import("../src/app/api/training/scene-description/folders/route");
+  const folderDetailRoute = await import("../src/app/api/training/scene-description/folders/[folderId]/route");
+  const presetAliasRoute = await import("../src/app/api/training/scene-description/presets/route");
+  const presetAliasDetailRoute = await import("../src/app/api/training/scene-description/presets/[presetId]/route");
+
+  const categoryName = `分类 CRUD ${Date.now()}`;
+  const categorySlug = `training-category-crud-${Date.now()}`;
+  const folderName = `文件夹 CRUD ${Date.now()}`;
+
+  const createCategoryResponse = await categoryTreeRoute.POST(
+    new Request("http://localhost/api/training/scene-description/categories", {
+      method: "POST",
+      body: JSON.stringify({
+        name: categoryName,
+        slug: categorySlug,
+        icon: "FolderTree",
+        color: "hsl(160 72% 42%)",
+        sortOrder: 91,
+        sceneDescriptionOrder: 17,
+      }),
+    }),
+  );
+  const createCategoryPayload = await createCategoryResponse.json();
+
+  assert.equal(createCategoryResponse.status, 200);
+  assert.equal(createCategoryPayload.ok, true);
+  assert.equal(createCategoryPayload.data.name, categoryName);
+  assert.equal(createCategoryPayload.data.slug, categorySlug);
+  assert.equal(createCategoryPayload.data.sceneDescriptionOrder, 17);
+
+  const categoryId = createCategoryPayload.data.id as string;
+  const categoryParams = { params: Promise.resolve({ categoryId }) };
+
+  const updateCategoryResponse = await categoryDetailRoute.PATCH(
+    new Request(`http://localhost/api/training/scene-description/categories/${categoryId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        name: `${categoryName} 已更新`,
+        icon: "Folders",
+        color: "hsl(190 72% 42%)",
+        sortOrder: 92,
+        sceneDescriptionOrder: 23,
+      }),
+    }),
+    categoryParams,
+  );
+  const updateCategoryPayload = await updateCategoryResponse.json();
+
+  assert.equal(updateCategoryResponse.status, 200);
+  assert.equal(updateCategoryPayload.ok, true);
+  assert.equal(updateCategoryPayload.data.name, `${categoryName} 已更新`);
+  assert.equal(updateCategoryPayload.data.sceneDescriptionOrder, 23);
+
+  const createFolderResponse = await folderCreateRoute.POST(
+    new Request("http://localhost/api/training/scene-description/folders", {
+      method: "POST",
+      body: JSON.stringify({
+        categoryId,
+        name: folderName,
+        sortOrder: 7,
+      }),
+    }),
+  );
+  const createFolderPayload = await createFolderResponse.json();
+
+  assert.equal(createFolderResponse.status, 200);
+  assert.equal(createFolderPayload.ok, true);
+  assert.equal(createFolderPayload.data.categoryId, categoryId);
+  assert.equal(createFolderPayload.data.name, folderName);
+
+  const folderId = createFolderPayload.data.id as string;
+  const folderParams = { params: Promise.resolve({ folderId }) };
+
+  const updateFolderResponse = await folderDetailRoute.PATCH(
+    new Request(`http://localhost/api/training/scene-description/folders/${folderId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        name: `${folderName} 已更新`,
+        sortOrder: 11,
+      }),
+    }),
+    folderParams,
+  );
+  const updateFolderPayload = await updateFolderResponse.json();
+
+  assert.equal(updateFolderResponse.status, 200);
+  assert.equal(updateFolderPayload.ok, true);
+  assert.equal(updateFolderPayload.data.name, `${folderName} 已更新`);
+  assert.equal(updateFolderPayload.data.sortOrder, 11);
+
+  const treeResponse = await categoryTreeRoute.GET(
+    new Request("http://localhost/api/training/scene-description/categories"),
+  );
+  const treePayload = await treeResponse.json();
+
+  assert.equal(treeResponse.status, 200);
+  assert.equal(treePayload.ok, true);
+  assert.ok(treePayload.data.categories.some((category: {
+    folders?: Array<{ id: string; name: string }>;
+    id: string;
+  }) => category.id === categoryId && (category.folders ?? []).some((folder) => folder.id === folderId)));
+
+  const createPresetResponse = await presetAliasRoute.POST(
+    new Request("http://localhost/api/training/scene-description/presets", {
+      method: "POST",
+      body: JSON.stringify({
+        title: `分类文件夹约束预制 ${Date.now()}`,
+        category: `${categoryName} 已更新`,
+        folder: `${folderName} 已更新`,
+        sceneDescriptionText: "用于验证非空分类/文件夹不可直接删除。",
+      }),
+    }),
+  );
+  const createPresetPayload = await createPresetResponse.json();
+
+  assert.equal(createPresetResponse.status, 200);
+  assert.equal(createPresetPayload.ok, true);
+
+  const presetId = createPresetPayload.data.id as string;
+  const presetParams = { params: Promise.resolve({ presetId }) };
+
+  const deleteNonEmptyFolderResponse = await folderDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/scene-description/folders/${folderId}`, {
+      method: "DELETE",
+    }),
+    folderParams,
+  );
+  const deleteNonEmptyFolderPayload = await deleteNonEmptyFolderResponse.json();
+  assert.equal(deleteNonEmptyFolderResponse.status, 409);
+  assert.equal(deleteNonEmptyFolderPayload.ok, false);
+
+  const deleteNonEmptyCategoryResponse = await categoryDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/scene-description/categories/${categoryId}`, {
+      method: "DELETE",
+    }),
+    categoryParams,
+  );
+  const deleteNonEmptyCategoryPayload = await deleteNonEmptyCategoryResponse.json();
+  assert.equal(deleteNonEmptyCategoryResponse.status, 409);
+  assert.equal(deleteNonEmptyCategoryPayload.ok, false);
+
+  const deletePresetResponse = await presetAliasDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/scene-description/presets/${presetId}`, {
+      method: "DELETE",
+    }),
+    presetParams,
+  );
+  const deletePresetPayload = await deletePresetResponse.json();
+  assert.equal(deletePresetResponse.status, 200);
+  assert.equal(deletePresetPayload.ok, true);
+
+  const deleteFolderResponse = await folderDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/scene-description/folders/${folderId}`, {
+      method: "DELETE",
+    }),
+    folderParams,
+  );
+  const deleteFolderPayload = await deleteFolderResponse.json();
+  assert.equal(deleteFolderResponse.status, 200);
+  assert.equal(deleteFolderPayload.ok, true);
+  assert.equal(deleteFolderPayload.data.success, true);
+
+  const deleteCategoryResponse = await categoryDetailRoute.DELETE(
+    new Request(`http://localhost/api/training/scene-description/categories/${categoryId}`, {
+      method: "DELETE",
+    }),
+    categoryParams,
+  );
+  const deleteCategoryPayload = await deleteCategoryResponse.json();
+  assert.equal(deleteCategoryResponse.status, 200);
+  assert.equal(deleteCategoryPayload.ok, true);
+  assert.equal(deleteCategoryPayload.data.success, true);
+});
+
 test("training preset sort rules reorder categories and presets through /api/training", async () => {
   const presetsRoute = await import("../src/app/api/training/presets/route");
   const sortRulesRoute = await import("../src/app/api/training/presets/sort-rules/route");
@@ -2686,6 +2863,10 @@ test("training write routes exist under /api/training and fail through HTTP cont
   const restoreProjectRoute = await import("../src/app/api/training/projects/[projectId]/restore/route");
   const updateProjectSectionRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
   const updateSectionAliasRoute = await import("../src/app/api/training/sections/[sectionId]/route");
+  const createSceneCategoryRoute = await import("../src/app/api/training/scene-description/categories/route");
+  const updateSceneCategoryRoute = await import("../src/app/api/training/scene-description/categories/[categoryId]/route");
+  const createSceneFolderRoute = await import("../src/app/api/training/scene-description/folders/route");
+  const updateSceneFolderRoute = await import("../src/app/api/training/scene-description/folders/[folderId]/route");
   const createTrainingPresetRoute = await import("../src/app/api/training/presets/route");
   const saveTrainingPresetSortRulesRoute = await import("../src/app/api/training/presets/sort-rules/route");
   const updateTrainingPresetRoute = await import("../src/app/api/training/presets/[presetId]/route");
@@ -2704,16 +2885,22 @@ test("training write routes exist under /api/training and fail through HTTP cont
   const missingProjectSectionParams = { params: Promise.resolve({ projectId: "missing-project", sectionId: "missing-section" }) };
   const missingRunParams = { params: Promise.resolve({ trainingRunId: "missing-run" }) };
   const missingPresetParams = { params: Promise.resolve({ presetId: "missing-preset" }) };
+  const missingCategoryParams = { params: Promise.resolve({ categoryId: "missing-category" }) };
+  const missingFolderParams = { params: Promise.resolve({ folderId: "missing-folder" }) };
   const missingTemplateParams = { params: Promise.resolve({ templateId: "missing-template" }) };
   const missingTemplateSectionParams = { params: Promise.resolve({ templateId: "missing-template", sectionId: "missing-section" }) };
 
-  const [createResponse, updateResponse, archiveResponse, restoreResponse, updateProjectSectionResponse, updateSectionAliasResponse, createPresetResponse, savePresetSortRulesResponse, updatePresetResponse, createScenePresetAliasResponse, updateScenePresetAliasResponse, createTemplateResponse, updateTemplateResponse, updateTemplateSectionResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
+  const [createResponse, updateResponse, archiveResponse, restoreResponse, updateProjectSectionResponse, updateSectionAliasResponse, createSceneCategoryResponse, updateSceneCategoryResponse, createSceneFolderResponse, updateSceneFolderResponse, createPresetResponse, savePresetSortRulesResponse, updatePresetResponse, createScenePresetAliasResponse, updateScenePresetAliasResponse, createTemplateResponse, updateTemplateResponse, updateTemplateSectionResponse, freezeResponse, enqueueTrainingResponse, enqueueSectionResponse, cancelResponse] = await Promise.all([
     createProjectRoute.POST(new Request("http://localhost/api/training/projects", { method: "POST", body: "{}" })),
     updateProjectRoute.PATCH(new Request("http://localhost/api/training/projects/missing-project", { method: "PATCH", body: "{}" }), missingProjectParams),
     archiveProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/archive", { method: "POST" }), missingProjectParams),
     restoreProjectRoute.POST(new Request("http://localhost/api/training/projects/missing-project/restore", { method: "POST" }), missingProjectParams),
     updateProjectSectionRoute.PATCH(new Request("http://localhost/api/training/projects/missing-project/sections/missing-section", { method: "PATCH", body: "{}" }), missingProjectSectionParams),
     updateSectionAliasRoute.PATCH(new Request("http://localhost/api/training/sections/missing-section", { method: "PATCH", body: "{}" }), missingSectionParams),
+    createSceneCategoryRoute.POST(new Request("http://localhost/api/training/scene-description/categories", { method: "POST", body: "{}" })),
+    updateSceneCategoryRoute.PATCH(new Request("http://localhost/api/training/scene-description/categories/missing-category", { method: "PATCH", body: "{}" }), missingCategoryParams),
+    createSceneFolderRoute.POST(new Request("http://localhost/api/training/scene-description/folders", { method: "POST", body: "{}" })),
+    updateSceneFolderRoute.PATCH(new Request("http://localhost/api/training/scene-description/folders/missing-folder", { method: "PATCH", body: "{}" }), missingFolderParams),
     createTrainingPresetRoute.POST(new Request("http://localhost/api/training/presets", { method: "POST", body: "{}" })),
     saveTrainingPresetSortRulesRoute.POST(new Request("http://localhost/api/training/presets/sort-rules", { method: "POST", body: "{}" })),
     updateTrainingPresetRoute.PATCH(new Request("http://localhost/api/training/presets/missing-preset", { method: "PATCH", body: "{}" }), missingPresetParams),
@@ -2735,6 +2922,10 @@ test("training write routes exist under /api/training and fail through HTTP cont
     restoreResponse.json(),
     updateProjectSectionResponse.json(),
     updateSectionAliasResponse.json(),
+    createSceneCategoryResponse.json(),
+    updateSceneCategoryResponse.json(),
+    createSceneFolderResponse.json(),
+    updateSceneFolderResponse.json(),
     createPresetResponse.json(),
     savePresetSortRulesResponse.json(),
     updatePresetResponse.json(),
@@ -2761,30 +2952,38 @@ test("training write routes exist under /api/training and fail through HTTP cont
   assert.equal(payloads[4].ok, false);
   assert.ok(updateSectionAliasResponse.status >= 400);
   assert.equal(payloads[5].ok, false);
-  assert.ok(createPresetResponse.status >= 400);
+  assert.ok(createSceneCategoryResponse.status >= 400);
   assert.equal(payloads[6].ok, false);
-  assert.ok(savePresetSortRulesResponse.status >= 400);
+  assert.ok(updateSceneCategoryResponse.status >= 400);
   assert.equal(payloads[7].ok, false);
-  assert.ok(updatePresetResponse.status >= 400);
+  assert.ok(createSceneFolderResponse.status >= 400);
   assert.equal(payloads[8].ok, false);
-  assert.ok(createScenePresetAliasResponse.status >= 400);
+  assert.ok(updateSceneFolderResponse.status >= 400);
   assert.equal(payloads[9].ok, false);
-  assert.ok(updateScenePresetAliasResponse.status >= 400);
+  assert.ok(createPresetResponse.status >= 400);
   assert.equal(payloads[10].ok, false);
-  assert.ok(createTemplateResponse.status >= 400);
+  assert.ok(savePresetSortRulesResponse.status >= 400);
   assert.equal(payloads[11].ok, false);
-  assert.ok(updateTemplateResponse.status >= 400);
+  assert.ok(updatePresetResponse.status >= 400);
   assert.equal(payloads[12].ok, false);
-  assert.ok(updateTemplateSectionResponse.status >= 400);
+  assert.ok(createScenePresetAliasResponse.status >= 400);
   assert.equal(payloads[13].ok, false);
-  assert.ok(freezeResponse.status >= 400);
+  assert.ok(updateScenePresetAliasResponse.status >= 400);
   assert.equal(payloads[14].ok, false);
-  assert.ok(enqueueTrainingResponse.status >= 400);
+  assert.ok(createTemplateResponse.status >= 400);
   assert.equal(payloads[15].ok, false);
-  assert.ok(enqueueSectionResponse.status >= 400);
+  assert.ok(updateTemplateResponse.status >= 400);
   assert.equal(payloads[16].ok, false);
-  assert.ok(cancelResponse.status >= 400);
+  assert.ok(updateTemplateSectionResponse.status >= 400);
   assert.equal(payloads[17].ok, false);
+  assert.ok(freezeResponse.status >= 400);
+  assert.equal(payloads[18].ok, false);
+  assert.ok(enqueueTrainingResponse.status >= 400);
+  assert.equal(payloads[19].ok, false);
+  assert.ok(enqueueSectionResponse.status >= 400);
+  assert.equal(payloads[20].ok, false);
+  assert.ok(cancelResponse.status >= 400);
+  assert.equal(payloads[21].ok, false);
 });
 
 test("training asset and review routes exist under /api/training and return JSON error contracts", async () => {
