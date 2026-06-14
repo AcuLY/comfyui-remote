@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import test from "node:test";
+import { NextRequest } from "next/server";
 
 const TRAINING_RUN_PRESET_STATE_PATH = join(process.cwd(), "data", "training-run-preset-state.json");
 const TRAINING_MANAGED_RUNS_PATH = join(process.cwd(), "data", "training-managed-runs.json");
@@ -118,6 +119,7 @@ test("GET /api/training exposes a machine-readable workflow manifest", async () 
   assert.equal(response.status, 200);
   assert.equal(payload.ok, true);
   assert.equal(payload.data.module, "training");
+  assert.equal(payload.data.entrypoints.models, "/api/training/models?kind=checkpoint");
   assert.equal(payload.data.entrypoints.projects, "/api/training/projects");
   assert.equal(payload.data.entrypoints.runs, "/api/training/runs");
   assert.ok(Array.isArray(payload.data.workflows));
@@ -131,6 +133,26 @@ test("GET /api/training exposes a machine-readable workflow manifest", async () 
     payload.data.resources.templates.reorder.path,
     "/api/training/templates/reorder",
   );
+  assert.equal(
+    payload.data.resources.models.checkpoints.path,
+    "/api/training/models?kind=checkpoint",
+  );
+});
+
+test("GET /api/training/models lists checkpoint or LoRA assets for training workflows", async () => {
+  const { GET } = await import("../src/app/api/training/models/route");
+
+  const checkpointResponse = await GET(new NextRequest("http://localhost/api/training/models?kind=checkpoint"));
+  const checkpointPayload = await checkpointResponse.json();
+  assert.equal(checkpointResponse.status, 200);
+  assert.equal(checkpointPayload.ok, true);
+  assert.ok(Array.isArray(checkpointPayload.data));
+
+  const loraResponse = await GET(new NextRequest("http://localhost/api/training/models?kind=lora"));
+  const loraPayload = await loraResponse.json();
+  assert.equal(loraResponse.status, 200);
+  assert.equal(loraPayload.ok, true);
+  assert.ok(Array.isArray(loraPayload.data));
 });
 
 async function createManagedRunsForDeletionTest() {

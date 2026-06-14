@@ -9,6 +9,7 @@ const TRAINING_API_MANIFEST = {
   entrypoints: {
     projects: "/api/training/projects",
     runs: "/api/training/runs",
+    models: "/api/training/models?kind=checkpoint",
     presets: "/api/training/presets",
     templates: "/api/training/templates",
     scheduler: "/api/training/scheduler/status",
@@ -89,6 +90,10 @@ const TRAINING_API_MANIFEST = {
       update: { method: "PATCH", path: "/api/training/templates/:templateId" },
       remove: { method: "DELETE", path: "/api/training/templates/:templateId" },
       reorder: { method: "POST", path: "/api/training/templates/reorder" },
+    },
+    models: {
+      checkpoints: { method: "GET", path: "/api/training/models?kind=checkpoint" },
+      loras: { method: "GET", path: "/api/training/models?kind=lora" },
     },
     taxonomy: {
       sceneCategories: { method: "GET", path: "/api/training/scene-description/categories" },
