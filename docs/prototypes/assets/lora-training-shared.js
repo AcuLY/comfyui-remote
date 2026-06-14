@@ -1,11 +1,33 @@
+const PROTOTYPE_VERSION = "20260614-prototype-alignment-2";
+
+function withPrototypeVersion(href) {
+  try {
+    const url = new URL(href, window.location.href);
+    if (!url.pathname.endsWith(".html")) return href;
+    if (!url.pathname.includes("manager-lora-training-")) return href;
+    url.searchParams.set("v", PROTOTYPE_VERSION);
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return href;
+  }
+}
+
+function versionPrototypeLinks() {
+  document.querySelectorAll('a[href*="manager-lora-training-"]').forEach((link) => {
+    const href = link.getAttribute("href");
+    if (!href || href.startsWith("http")) return;
+    link.setAttribute("href", withPrototypeVersion(href));
+  });
+}
+
 function createDesktopNav(active) {
   const items = [
-    ["运行", "play-circle", "./manager-lora-training-runs-prototype.html", "runs"],
-    ["项目", "folder-kanban", "./manager-lora-training-projects-prototype.html", "projects"],
-    ["预制", "layers", "./manager-lora-training-presets-prototype.html", "presets"],
-    ["模板", "layout-template", "./manager-lora-training-templates-prototype.html", "templates"],
-    ["模型", "box", "./manager-lora-training-models-prototype.html", "models"],
-    ["设置", "settings", "./manager-lora-training-settings-mode-prototype.html", "settings"],
+    ["运行", "play-circle", withPrototypeVersion("./manager-lora-training-runs-prototype.html"), "runs"],
+    ["项目", "folder-kanban", withPrototypeVersion("./manager-lora-training-projects-prototype.html"), "projects"],
+    ["预制", "layers", withPrototypeVersion("./manager-lora-training-presets-prototype.html"), "presets"],
+    ["模板", "layout-template", withPrototypeVersion("./manager-lora-training-templates-prototype.html"), "templates"],
+    ["模型", "box", withPrototypeVersion("./manager-lora-training-models-prototype.html"), "models"],
+    ["设置", "settings", withPrototypeVersion("./manager-lora-training-settings-mode-prototype.html"), "settings"],
   ];
   const links = items
     .map(([label, icon, href, key]) => {
@@ -26,12 +48,12 @@ function createDesktopNav(active) {
 
 function createBottomNav(active) {
   const items = [
-    ["运行", "play-circle", "./manager-lora-training-runs-prototype.html", "runs"],
-    ["项目", "folder-kanban", "./manager-lora-training-projects-prototype.html", "projects"],
-    ["预制", "layers", "./manager-lora-training-presets-prototype.html", "presets"],
-    ["模板", "layout-template", "./manager-lora-training-templates-prototype.html", "templates"],
-    ["模型", "box", "./manager-lora-training-models-prototype.html", "models"],
-    ["设置", "settings", "./manager-lora-training-settings-mode-prototype.html", "settings"],
+    ["运行", "play-circle", withPrototypeVersion("./manager-lora-training-runs-prototype.html"), "runs"],
+    ["项目", "folder-kanban", withPrototypeVersion("./manager-lora-training-projects-prototype.html"), "projects"],
+    ["预制", "layers", withPrototypeVersion("./manager-lora-training-presets-prototype.html"), "presets"],
+    ["模板", "layout-template", withPrototypeVersion("./manager-lora-training-templates-prototype.html"), "templates"],
+    ["模型", "box", withPrototypeVersion("./manager-lora-training-models-prototype.html"), "models"],
+    ["设置", "settings", withPrototypeVersion("./manager-lora-training-settings-mode-prototype.html"), "settings"],
   ];
   const links = items
     .map(([label, icon, href, key]) => {
@@ -107,6 +129,7 @@ function setupLightbox() {
 function initLoraPrototype(activeNav) {
   createDesktopNav(activeNav);
   createBottomNav(activeNav);
+  versionPrototypeLinks();
   setupFilters();
   setupExpandableText();
   setupLightbox();

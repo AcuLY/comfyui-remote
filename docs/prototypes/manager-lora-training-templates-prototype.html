@@ -5,7 +5,134 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#09090b" />
     <title>LoRA 训练模式 - 模板</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-2" />
+    <style>
+      .template-grid {
+        display: grid;
+        gap: 10px;
+      }
+
+      .template-item {
+        display: grid;
+        gap: 12px;
+        min-width: 0;
+        padding: 12px;
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--panel-soft) 54%, transparent);
+        transition: background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+      }
+
+      .template-item:hover {
+        border-color: var(--line-strong);
+        background: var(--surface-hover);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+      }
+
+      .template-item-head,
+      .template-item-main,
+      .template-item-meta {
+        display: grid;
+        min-width: 0;
+      }
+
+      .template-item-head,
+      .template-item-meta {
+        gap: 8px;
+      }
+
+      .template-item-main {
+        gap: 4px;
+      }
+
+      .template-item-title {
+        display: inline-flex;
+        min-width: 0;
+        align-items: center;
+        gap: 8px;
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .template-item-title strong {
+        overflow: hidden;
+        color: var(--text);
+        font-size: 13px;
+        font-weight: 580;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .template-item-title span,
+      .template-item-main > span {
+        color: var(--muted);
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .template-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .template-chip-row a,
+      .template-chip-row span {
+        display: inline-flex;
+        min-height: 28px;
+        max-width: 210px;
+        align-items: center;
+        gap: 5px;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--field-bg);
+        color: var(--muted);
+        font-size: 10px;
+        line-height: 1;
+        padding: 6px 8px;
+        text-decoration: none;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .template-chip-row a:hover,
+      .template-chip-row a:focus-visible {
+        border-color: var(--line-strong);
+        color: var(--text);
+      }
+
+      .template-chip-row a em {
+        color: var(--emerald);
+        font-size: 9px;
+        font-style: normal;
+      }
+
+      .template-item-meta {
+        align-content: start;
+      }
+
+      .template-meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 10px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .template-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      @media (min-width: 520px) {
+        .template-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+    </style>
   </head>
   <body>
     <a class="skip-link" href="#prototype-main">跳到主要内容</a>
@@ -25,46 +152,98 @@
               <span>按模板进入编辑页，小节摘要放在同一行内快速浏览。</span>
             </div>
           </div>
-              <div class="panel-body entity-list">
-                <a class="entity-row" href="./manager-lora-training-template-edit-prototype.html">
-                  <div class="row-title">
+          <div class="panel-body template-grid">
+            <article class="template-item">
+              <div class="template-item-head">
+                <div class="template-item-main">
+                  <a class="template-item-title" href="./manager-lora-training-template-edit-prototype.html">
+                    <i data-lucide="layers-3" aria-hidden="true"></i>
                     <strong>角色 LoRA 基础模板</strong>
-                    <span>6 个小节 · 默认训练参数已配置 · 显示顺序 1</span>
-                  </div>
-                  <span class="status-note green">启用</span>
-                </a>
-                <div class="list-row subtle">
-                  <div class="plain-meta"><span>舞台肖像</span><span>街角夜景</span><span>白底棚拍</span><span>训练默认值 4 项</span></div>
-                  <div class="action-strip"><a class="button" href="./manager-lora-training-project-new-prototype.html?template=character-lora-base"><i data-lucide="copy-plus" aria-hidden="true"></i>从此模板创建项目</a></div>
+                    <span>6 小节</span>
+                  </a>
+                  <span>默认训练参数已配置，适合作为角色 LoRA 的通用起步模板。</span>
                 </div>
-                <a class="entity-row" href="./manager-lora-training-template-edit-prototype.html?template=portrait">
-                  <div class="row-title">
-                    <strong>写实头像模板</strong>
-                    <span>4 个小节 · 轻量 caption 指引 · 显示顺序 2</span>
-                  </div>
-                  <span class="status-note green">启用</span>
-                </a>
-                <div class="list-row subtle">
-                  <div class="plain-meta"><span>近景人像</span><span>纯色背景</span><span>半身构图</span><span>训练默认值 4 项</span></div>
-                  <div class="action-strip"><a class="button" href="./manager-lora-training-project-new-prototype.html?template=portrait"><i data-lucide="copy-plus" aria-hidden="true"></i>从此模板创建项目</a></div>
-                </div>
-                <a class="entity-row" href="./manager-lora-training-template-edit-prototype.html?template=legacy">
-                  <div class="row-title">
-                    <strong>旧版角色模板</strong>
-                    <span>保留给既有项目使用，不再作为新建默认模板。</span>
-                  </div>
-                  <span class="status-note">停用</span>
-                </a>
-                <div class="list-row subtle">
-                  <div class="plain-meta"><span>旧版舞台</span><span>旧版街景</span><span>兼容历史项目</span></div>
-                  <div class="action-strip"><a class="button" href="./manager-lora-training-project-new-prototype.html?template=legacy"><i data-lucide="copy-plus" aria-hidden="true"></i>从此模板创建项目</a></div>
+                <div class="template-chip-row">
+                  <a href="./manager-lora-training-template-section-prototype.html"><em>01</em>舞台肖像</a>
+                  <a href="./manager-lora-training-template-section-prototype.html?section=street"><em>02</em>街角夜景</a>
+                  <a href="./manager-lora-training-template-section-prototype.html?section=studio"><em>03</em>白底棚拍</a>
+                  <span>训练默认值 4 项</span>
                 </div>
               </div>
-            </section>
+              <div class="template-item-meta">
+                <div class="template-meta-row">
+                  <span>更新：16:12</span>
+                  <span class="status-note green">启用</span>
+                </div>
+                <div class="template-actions">
+                  <a class="button" href="./manager-lora-training-template-edit-prototype.html"><i data-lucide="square-pen" aria-hidden="true"></i>编辑</a>
+                  <a class="button" href="./manager-lora-training-project-new-prototype.html?template=character-lora-base"><i data-lucide="copy-plus" aria-hidden="true"></i>新建项目</a>
+                </div>
+              </div>
+            </article>
+
+            <article class="template-item">
+              <div class="template-item-head">
+                <div class="template-item-main">
+                  <a class="template-item-title" href="./manager-lora-training-template-edit-prototype.html?template=portrait">
+                    <i data-lucide="layers-3" aria-hidden="true"></i>
+                    <strong>写实头像模板</strong>
+                    <span>4 小节</span>
+                  </a>
+                  <span>更偏头像 close-up，保留轻量 caption 指引和稳定背景控制。</span>
+                </div>
+                <div class="template-chip-row">
+                  <a href="./manager-lora-training-template-section-prototype.html?template=portrait"><em>01</em>近景人像</a>
+                  <a href="./manager-lora-training-template-section-prototype.html?template=portrait&section=solid"><em>02</em>纯色背景</a>
+                  <a href="./manager-lora-training-template-section-prototype.html?template=portrait&section=half"><em>03</em>半身构图</a>
+                  <span>训练默认值 4 项</span>
+                </div>
+              </div>
+              <div class="template-item-meta">
+                <div class="template-meta-row">
+                  <span>更新：15:44</span>
+                  <span class="status-note green">启用</span>
+                </div>
+                <div class="template-actions">
+                  <a class="button" href="./manager-lora-training-template-edit-prototype.html?template=portrait"><i data-lucide="square-pen" aria-hidden="true"></i>编辑</a>
+                  <a class="button" href="./manager-lora-training-project-new-prototype.html?template=portrait"><i data-lucide="copy-plus" aria-hidden="true"></i>新建项目</a>
+                </div>
+              </div>
+            </article>
+
+            <article class="template-item">
+              <div class="template-item-head">
+                <div class="template-item-main">
+                  <a class="template-item-title" href="./manager-lora-training-template-edit-prototype.html?template=legacy">
+                    <i data-lucide="layers-3" aria-hidden="true"></i>
+                    <strong>旧版角色模板</strong>
+                    <span>兼容模板</span>
+                  </a>
+                  <span>保留给既有项目继续维护，不再作为新建项目的默认模板。</span>
+                </div>
+                <div class="template-chip-row">
+                  <span>旧版舞台</span>
+                  <span>旧版街景</span>
+                  <span>兼容历史项目</span>
+                </div>
+              </div>
+              <div class="template-item-meta">
+                <div class="template-meta-row">
+                  <span>更新：14:08</span>
+                  <span class="status-note">停用</span>
+                </div>
+                <div class="template-actions">
+                  <a class="button" href="./manager-lora-training-template-edit-prototype.html?template=legacy"><i data-lucide="square-pen" aria-hidden="true"></i>查看</a>
+                  <a class="button" href="./manager-lora-training-project-new-prototype.html?template=legacy"><i data-lucide="copy-plus" aria-hidden="true"></i>从兼容模板创建</a>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-2"></script>
     <script>initLoraPrototype("templates");</script>
   </body>
 </html>
