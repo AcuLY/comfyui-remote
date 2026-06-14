@@ -12,6 +12,8 @@ const trainingSnapshotServicePath = resolve(testDir, "../src/server/services/tra
 const trainingSnapshotServiceSource = existsSync(trainingSnapshotServicePath) ? readFileSync(trainingSnapshotServicePath, "utf8") : "";
 const trainingFeatureDataPath = resolve(testDir, "../src/features/training/data.ts");
 const trainingFeatureDataSource = existsSync(trainingFeatureDataPath) ? readFileSync(trainingFeatureDataPath, "utf8") : "";
+const trainingFeatureBuildPath = resolve(testDir, "../src/features/training/build.ts");
+const trainingFeatureBuildSource = existsSync(trainingFeatureBuildPath) ? readFileSync(trainingFeatureBuildPath, "utf8") : "";
 const sharedTrainingTypesPath = resolve(testDir, "../src/features/training/types.ts");
 const sharedTrainingTypesSource = existsSync(sharedTrainingTypesPath) ? readFileSync(sharedTrainingTypesPath, "utf8") : "";
 const legacyTrainingTypesPath = resolve(testDir, "../src/app/design-demos/data/lora-training-types.ts");
@@ -88,9 +90,14 @@ test("dedicated training snapshot service projects real CharacterLora data into 
 
 test("buildLoraTrainingDemoData prefers an injected production training payload when present", () => {
   assert.match(
-    trainingDataSource,
+    trainingFeatureBuildSource,
     /data\.loraTraining/,
-    "training demo builder should support a production-projected training payload override",
+    "training feature build should support a production-projected training payload override",
+  );
+  assert.match(
+    trainingDataSource,
+    /export \{ buildLoraTrainingDemoData \} from "@\/features\/training\/build";/,
+    "legacy design-demo training data file should become a compatibility re-export from the shared feature build module",
   );
 });
 
