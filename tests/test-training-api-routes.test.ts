@@ -291,6 +291,68 @@ async function createManagedCompletedRunFixtures() {
   };
 }
 
+async function createManagedReferenceSeedProject() {
+  const {
+    addManagedTrainingReferenceImageToResults,
+    createManagedTrainingProject,
+    uploadManagedTrainingProjectReferenceImage,
+  } = await import("../src/server/services/training/project-service");
+
+  const project = await createManagedTrainingProject({
+    title: `参考源项目 ${Date.now()}`,
+    characterName: "参考源角色",
+    projectName: "参考源项目",
+    triggerToken: `reference_seed_${Date.now()}`,
+    templateId: "character_identity_default",
+    trainingTemplateId: "character_identity_default",
+    checkpointRelativePath: "models/checkpoints/mock.safetensors",
+    usagePrompt: "参考源使用提示词",
+    detailPrompt: "参考源细节描述",
+    sections: [
+      {
+        id: "reference-seed-section",
+        title: "参考源小节",
+        enabled: true,
+        blockCount: 1,
+        blocks: [
+          {
+            id: "reference-seed-block",
+            source: "本地",
+            title: "参考源场景块",
+            text: "参考源场景",
+          },
+        ],
+        resolvedScene: "参考源场景",
+        scenePreview: "参考源场景",
+      },
+    ],
+    trainingDefaults: {
+      autoFreezeDataset: false,
+      autoGenerateSamples: false,
+    },
+  });
+
+  const formData = new FormData();
+  formData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "reference-seed.png", { type: "image/png" }));
+  formData.append("role", "source");
+  const uploadedReference = await uploadManagedTrainingProjectReferenceImage(project.id, formData);
+  assert.ok(uploadedReference?.id, "reference-seed fixture should upload a reference image");
+
+  const keptResult = await addManagedTrainingReferenceImageToResults(uploadedReference.id, {
+    reviewStatus: "keep",
+    captionDraft: "参考源保留结果",
+  });
+  assert.ok(keptResult?.id, "reference-seed fixture should create a kept result");
+
+  return {
+    projectId: project.id,
+    projectSelectionId: `project-${project.id}`,
+    resultSelectionId: `result-${keptResult.id}`,
+    resultSourceLabel: keptResult.sourceLabel,
+    title: project.title,
+  };
+}
+
 test("GET /api/training/projects lists training projects", async () => {
   const projects = await listProjects();
   assert.equal(typeof projects[0]?.id, "string");
@@ -337,6 +399,71 @@ test("managed training projects suppress demo project fixtures on /api/training/
     const projects = await listProjects();
     assert.ok(projects.some((project) => project.id === created.id));
     assert.ok(projects.every((project) => project.id !== "project-vela-neon"));
+  });
+});
+
+test("managed training project creation can seed references from existing managed projects and kept results", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+
+  await withTrainingManagedStoreSnapshot(async () => {
+    const seedProject = await createManagedReferenceSeedProject();
+    const title = `引用 managed 资料项目 ${Date.now()}`;
+
+    const createResponse = await projectsRoute.POST(
+      new Request("http://localhost/api/training/projects", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          characterName: title,
+          projectName: title,
+          triggerToken: `managed_reference_copy_${Date.now()}`,
+          templateId: "character_identity_default",
+          trainingTemplateId: "character_identity_default",
+          checkpointRelativePath: "models/checkpoints/mock.safetensors",
+          usagePrompt: "managed 引用复制测试",
+          detailPrompt: "managed 引用复制测试细节",
+          selectedReferenceIds: [seedProject.projectSelectionId, seedProject.resultSelectionId],
+          sections: [
+            {
+              id: "managed-reference-copy-section",
+              title: "managed reference copy",
+              enabled: true,
+              blockCount: 1,
+              blocks: [
+                {
+                  id: "managed-reference-copy-block",
+                  source: "本地",
+                  title: "managed reference copy block",
+                  text: "managed reference copy scene",
+                },
+              ],
+              resolvedScene: "managed reference copy scene",
+              scenePreview: "managed reference copy scene",
+            },
+          ],
+          trainingDefaults: {
+            autoGenerateSamples: false,
+            autoFreezeDataset: false,
+          },
+        }),
+      }),
+    );
+    const createPayload = await createResponse.json();
+    assert.equal(createResponse.status, 201);
+    assert.equal(createPayload.ok, true);
+
+    const projectId = createPayload.data.id as string;
+    const referenceResponse = await referenceRoute.GET(
+      new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+      { params: Promise.resolve({ projectId }) },
+    );
+    const referencePayload = await referenceResponse.json();
+    assert.equal(referenceResponse.status, 200);
+    assert.equal(referencePayload.ok, true);
+    assert.ok(Array.isArray(referencePayload.data));
+    assert.ok((referencePayload.data as Array<{ label: string }>).some((image) => image.label === seedProject.title));
+    assert.ok((referencePayload.data as Array<{ label: string }>).some((image) => image.label === seedProject.resultSourceLabel));
   });
 });
 

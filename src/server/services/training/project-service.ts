@@ -187,11 +187,11 @@ function buildTrainingProjectTriggerToken(title: string) {
 
 function deriveReferenceImages(
   selectedReferenceIds: string[],
-  baseTraining: ReturnType<typeof buildLoraTrainingDemoData>,
+  sourceProjects: LoraTrainingProject[],
   fallbackImages: DemoImage[],
 ): LoraTrainingReferenceImage[] {
-  const results = baseTraining.projects.flatMap((project) => project.resultPool);
-  const projects = baseTraining.projects;
+  const results = sourceProjects.flatMap((project) => project.resultPool);
+  const projects = sourceProjects;
 
   const picked = selectedReferenceIds.map((referenceId) => {
     if (referenceId.startsWith("project-")) {
@@ -1429,7 +1429,12 @@ export async function createManagedTrainingProject(input: unknown) {
 
   const triggerToken = parsed.triggerToken?.trim() || buildTrainingProjectTriggerToken(title);
   let createdId: string | null = null;
-  const selectedReferenceImages = deriveReferenceImages(parsed.selectedReferenceIds, baseTraining, demoData.images);
+  const managedReferenceSourceProjects = await listManagedTrainingProjects().catch(() => []);
+  const selectedReferenceImages = deriveReferenceImages(
+    parsed.selectedReferenceIds,
+    managedReferenceSourceProjects.length ? managedReferenceSourceProjects : baseTraining.projects,
+    demoData.images,
+  );
   const responseProject = buildFallbackTrainingProject(parsed, createdId ?? `training-project-${Date.now()}`, selectedReferenceImages);
 
   try {
