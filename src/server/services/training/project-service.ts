@@ -1,5 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, extname, join } from "node:path";
+import { basename, dirname, extname, join } from "node:path";
 import type { DemoImage } from "@/app/design-demos/data/types";
 import type {
   LoraTrainingDatasetRevision,
@@ -13,6 +14,10 @@ import type {
 import { buildLoraTrainingDemoData } from "@/app/design-demos/data/lora-training";
 import { loadDesignDemoData } from "@/app/design-demos/data/load-demo-data";
 import { toImageUrl } from "@/lib/image-url";
+import {
+  uploadCharacterLoraSourceImage,
+  updateCharacterLoraSourceImage,
+} from "@/server/services/character-lora-training/source-image-service";
 import { setTrainingProjectSectionCollection } from "@/server/services/training/project-section-service";
 import { getManagedTrainingTemplate } from "@/server/services/training/template-service";
 import {
@@ -186,6 +191,26 @@ function buildTrainingProjectTriggerToken(title: string) {
   return normalized || "training_project";
 }
 
+function buildManagedScopedId(prefix: string) {
+  return `${prefix}-${Date.now()}-${randomUUID()}`;
+}
+
+function imageUrlToRelativePath(url: string | null | undefined) {
+  if (!url) return null;
+  const normalized = url.split(/[?#]/, 1)[0] ?? url;
+  if (!normalized.startsWith("/api/images/")) return null;
+  const relative = decodeURIComponent(normalized.slice("/api/images/".length));
+  return relative ? `data/images/${relative}` : null;
+}
+
+function imageMimeTypeFromPath(relativePath: string) {
+  const extension = extname(relativePath).toLowerCase();
+  if (extension === ".jpg" || extension === ".jpeg") return "image/jpeg";
+  if (extension === ".webp") return "image/webp";
+  if (extension === ".gif") return "image/gif";
+  return "image/png";
+}
+
 function deriveReferenceImages(
   selectedReferenceIds: string[],
   sourceProjects: LoraTrainingProject[],
@@ -236,6 +261,60 @@ function deriveReferenceImages(
   }).filter((item): item is LoraTrainingReferenceImage => Boolean(item));
 
   return picked;
+}
+
+async function syncSelectedReferenceImagesToTrainingProject(
+  projectId: string,
+  selectedReferenceImages: LoraTrainingReferenceImage[],
+) {
+  const seenRelativePaths = new Set<string>();
+
+  for (const [index, reference] of selectedReferenceImages.entries()) {
+    const relativePath = imageUrlToRelativePath(reference.image.full) ?? imageUrlToRelativePath(reference.image.src);
+
+    if (!relativePath) {
+      throw new TrainingProjectServiceError("Selected training reference image could not be resolved to a local file", 400, {
+        projectId,
+        referenceId: reference.id,
+        src: reference.image.src,
+      });
+    }
+
+    const dedupeKey = relativePath.toLowerCase();
+    if (seenRelativePaths.has(dedupeKey)) {
+      continue;
+    }
+    seenRelativePaths.add(dedupeKey);
+
+    let buffer: Buffer;
+    try {
+      buffer = await readFile(join(process.cwd(), relativePath));
+    } catch (error) {
+      throw new TrainingProjectServiceError("Selected training reference image file was not found", 404, {
+        projectId,
+        referenceId: reference.id,
+        relativePath,
+        cause: error instanceof Error ? error.message : String(error),
+      });
+    }
+
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new File([buffer], basename(relativePath), {
+        type: imageMimeTypeFromPath(relativePath),
+      }),
+    );
+    formData.append("role", "source");
+    formData.append("sortOrder", String(index));
+
+    const uploaded = await uploadCharacterLoraSourceImage(projectId, formData);
+    await updateCharacterLoraSourceImage(projectId, uploaded.id, {
+      label: reference.label,
+      note: reference.note,
+      sortOrder: index,
+    });
+  }
 }
 
 function buildSeedSections(input: ManagedProjectCreateInput): LoraTrainingSection[] {
@@ -977,7 +1056,7 @@ export async function freezeManagedTrainingDataset(projectId: string) {
       });
     }
 
-    const revisionId = `managed-revision-${Date.now()}`;
+    const revisionId = buildManagedScopedId("managed-revision");
     const version = nextManagedDatasetVersion(current);
     const samples = buildManagedDatasetSamples(current, revisionId);
     const revision: LoraTrainingDatasetRevision = {
@@ -1042,7 +1121,7 @@ export async function enqueueManagedTrainingSectionGenerationRun(
   ];
 
   const run: LoraTrainingRun = {
-    id: `managed-generation-${Date.now()}`,
+    id: buildManagedScopedId("managed-generation"),
     kind: "generation",
     status: "queued",
     projectId: match.project.id,
@@ -1099,7 +1178,7 @@ export async function enqueueManagedTrainingRun(
   );
 
   const run: LoraTrainingRun = {
-    id: `managed-training-${Date.now()}`,
+    id: buildManagedScopedId("managed-training"),
     kind: "training",
     status: "queued",
     projectId,
@@ -1251,7 +1330,7 @@ export async function completeManagedGenerationRun(taskId: string, input: {
       const sourceImage = project.referenceImages[0]?.image ?? project.images[0] ?? project.resultPool[0]?.image;
       if (sourceImage) {
         const nextResult: LoraTrainingImageResult = {
-          id: `managed-worker-result-${Date.now()}`,
+          id: buildManagedScopedId("managed-worker-result"),
           sectionId: run.sectionId ?? "managed-worker",
           sectionTitle: project.sections.find((section) => section.id === run.sectionId)?.title ?? "生成结果",
           image: sourceImage,
@@ -1362,7 +1441,7 @@ export async function completeManagedTrainingRun(trainingRunId: string, input: {
   if (!currentRun) return null;
 
   const artifactName = input.artifactName?.trim() || `${trainingRunId}.safetensors`;
-  const artifactId = currentRun.finalLoraArtifactId || `managed-final-lora-${Date.now()}`;
+  const artifactId = currentRun.finalLoraArtifactId || buildManagedScopedId("managed-final-lora");
 
   return withRunStoreWriteLock(async () => {
     const refreshedRuns = await readFallbackTrainingRuns();
@@ -1456,7 +1535,13 @@ export async function createManagedTrainingProject(input: unknown) {
     if (parsed.sections.length > 0) {
       await setTrainingProjectSectionCollection(created.id, buildSeedSections(parsed));
     }
+    if (selectedReferenceImages.length > 0) {
+      await syncSelectedReferenceImagesToTrainingProject(created.id, selectedReferenceImages);
+    }
   } catch (error) {
+    if (error instanceof TrainingProjectServiceError) {
+      throw error;
+    }
     if (!shouldUseTrainingProjectFileFallback(error)) {
       const mapped = mapCharacterLoraTrainingJobError(error);
       throw new TrainingProjectServiceError(mapped.message, mapped.status, mapped.details);

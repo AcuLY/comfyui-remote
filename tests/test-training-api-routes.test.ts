@@ -2483,6 +2483,7 @@ test("production training project creation uses the real project path when the t
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
   const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
   const title = `真实创建链项目 ${Date.now()}`;
 
   const createResponse = await projectsRoute.POST(
@@ -2552,6 +2553,74 @@ test("production training project creation uses the real project path when the t
   assert.equal(uploadPayload.ok, true);
   assert.equal(uploadPayload.data.jobId, projectId);
   assert.equal(typeof uploadPayload.data.artifactId, "string");
+
+  const seedImageId = uploadPayload.data.id as string;
+  const addToResultsResponse = await addToResultsRoute.POST(
+    new Request(`http://localhost/api/training/character-images/${seedImageId}/add-to-results`, {
+      method: "POST",
+      body: JSON.stringify({
+        reviewStatus: "keep",
+        captionDraft: "真实创建链保留结果",
+      }),
+    }),
+    { params: Promise.resolve({ imageId: seedImageId }) },
+  );
+  const addToResultsPayload = await addToResultsResponse.json();
+  assert.equal(addToResultsResponse.status, 201);
+  assert.equal(addToResultsPayload.ok, true);
+
+  const createWithManagedReferencesResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title: `${title} 参考复制`,
+        characterName: `${title} 参考复制`,
+        projectName: `${title} 参考复制`,
+        triggerToken: `test_real_project_reference_copy_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        selectedReferenceIds: [`project-${projectId}`, `result-${addToResultsPayload.data.id}`],
+        sections: [
+          {
+            id: "real-create-reference-copy-section",
+            title: "真实引用复制小节",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "real-create-reference-copy-block",
+                source: "本地",
+                title: "真实引用复制 block",
+                text: "真实引用复制场景描述",
+              },
+            ],
+            resolvedScene: "真实引用复制场景描述",
+            scenePreview: "真实引用复制场景描述",
+          },
+        ],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createWithManagedReferencesPayload = await createWithManagedReferencesResponse.json();
+  assert.equal(createWithManagedReferencesResponse.status, 201);
+  assert.equal(createWithManagedReferencesPayload.ok, true);
+  const referenceCopyProjectId = createWithManagedReferencesPayload.data.id as string;
+
+  const copiedReferenceResponse = await referenceRoute.GET(
+    new Request(`http://localhost/api/training/projects/${referenceCopyProjectId}/character-images`),
+    { params: Promise.resolve({ projectId: referenceCopyProjectId }) },
+  );
+  const copiedReferencePayload = await copiedReferenceResponse.json();
+  assert.equal(copiedReferenceResponse.status, 200);
+  assert.equal(copiedReferencePayload.ok, true);
+  assert.ok(Array.isArray(copiedReferencePayload.data));
+  assert.ok((copiedReferencePayload.data as Array<{ label: string }>).some((image) => image.label === title));
+  assert.ok((copiedReferencePayload.data as Array<{ note: string }>).some((image) => image.note === "真实创建链保留结果"));
 });
 
 test("production generation tasks can be cancelled through /api/training when the training database is available", async () => {
