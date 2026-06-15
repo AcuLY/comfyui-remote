@@ -7,9 +7,9 @@ import { resolveRouteFallback } from "../src/lib/route-fallback";
 
 test("legacy character LoRA frontend routes are removed from the app shell", () => {
   assert.equal(existsSync(resolve("src/app/character-lora-training")), false);
-  assert.equal(resolveRouteFallback("/character-lora-training"), "/queue");
-  assert.equal(resolveRouteFallback("/character-lora-training/new"), "/queue");
-  assert.equal(resolveRouteFallback("/character-lora-training/job-1/sections/section-1/extra"), "/queue");
+  assert.equal(resolveRouteFallback("/character-lora-training"), null);
+  assert.equal(resolveRouteFallback("/character-lora-training/new"), null);
+  assert.equal(resolveRouteFallback("/character-lora-training/job-1/sections/section-1/extra"), null);
 });
 
 test("shared task panel actions do not import from the removed frontend route", () => {
@@ -17,5 +17,5 @@ test("shared task panel actions do not import from the removed frontend route", 
   const bottomNav = readFileSync(resolve("src/components/persistent-bottom-nav.tsx"), "utf8");
   assert.doesNotMatch(taskPanelForm, /@\/app\/character-lora-training/);
   assert.doesNotMatch(bottomNav, /\/character-lora-training/);
-  assert.match(bottomNav, /\/design-demos\/training\/runs/);
+  assert.match(bottomNav, /\/training\/runs/);
 });
