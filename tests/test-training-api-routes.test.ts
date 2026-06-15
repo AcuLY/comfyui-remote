@@ -8,10 +8,72 @@ import { NextRequest } from "next/server";
 const TRAINING_RUN_PRESET_STATE_PATH = join(process.cwd(), "data", "training-run-preset-state.json");
 const TRAINING_MANAGED_RUNS_PATH = join(process.cwd(), "data", "training-managed-runs.json");
 const TRAINING_PROJECTS_PATH = join(process.cwd(), "data", "training-projects.json");
+const TRAINING_TEMPLATES_PATH = join(process.cwd(), "data", "training-templates.json");
 const TRAINING_TEMPLATE_ORDER_PATH = join(process.cwd(), "data", "training-template-order.json");
 const TRAINING_ROUTE_METHODS = new Set(["GET", "POST", "PATCH", "DELETE", "PUT"]);
 const TRAINING_API_OPERATION_PREFIX = " /api/training";
 let trainingManagedStoreSnapshotQueue: Promise<unknown> = Promise.resolve();
+
+function cleanTrainingTemplateFallbackFixture() {
+  return [
+    {
+      id: "training-base",
+      title: "角色 LoRA 基础模板",
+      status: "active",
+      updatedAt: "10:00",
+      description: "干净的测试基线模板，避免读取本地运行时 fallback 数据。",
+      imageGuidance: "生成稳定、清晰的角色训练图。",
+      captionGuidance: "先写触发词，再写姿态、服装和光线。",
+      sectionCount: 1,
+      sections: [
+        {
+          id: "training-base-section",
+          title: "基础小节",
+          enabled: true,
+          blockCount: 1,
+          blocks: [
+            {
+              id: "training-base-block",
+              source: "本地",
+              title: "基础场景",
+              text: "干净角色训练图，身份稳定，背景简单。",
+            },
+          ],
+          resolvedScene: "干净角色训练图，身份稳定，背景简单。",
+          scenePreview: "干净角色训练图",
+        },
+      ],
+    },
+    {
+      id: "training-clean-secondary",
+      title: "补充训练模板",
+      status: "active",
+      updatedAt: "10:01",
+      description: "用于验证模板列表和排序的第二条干净 fixture。",
+      imageGuidance: "生成补充角度训练图。",
+      captionGuidance: "记录角度、镜头和背景控制。",
+      sectionCount: 1,
+      sections: [
+        {
+          id: "training-clean-secondary-section",
+          title: "补充小节",
+          enabled: true,
+          blockCount: 1,
+          blocks: [
+            {
+              id: "training-clean-secondary-block",
+              source: "本地",
+              title: "补充场景",
+              text: "补充角度训练图，轮廓清楚，遮挡较少。",
+            },
+          ],
+          resolvedScene: "补充角度训练图，轮廓清楚，遮挡较少。",
+          scenePreview: "补充角度训练图",
+        },
+      ],
+    },
+  ];
+}
 
 async function listRouteFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -184,9 +246,10 @@ async function restoreOptionalFile(path: string, contents: string | null) {
 
 async function withTrainingManagedStoreSnapshot<T>(fn: () => Promise<T>) {
   const run = async () => {
-    const [runsBefore, projectsBefore, templateOrderBefore] = await Promise.all([
+    const [runsBefore, projectsBefore, templatesBefore, templateOrderBefore] = await Promise.all([
       readOptionalFile(TRAINING_MANAGED_RUNS_PATH),
       readOptionalFile(TRAINING_PROJECTS_PATH),
+      readOptionalFile(TRAINING_TEMPLATES_PATH),
       readOptionalFile(TRAINING_TEMPLATE_ORDER_PATH),
     ]);
 
@@ -194,6 +257,7 @@ async function withTrainingManagedStoreSnapshot<T>(fn: () => Promise<T>) {
       await Promise.all([
         writeFile(TRAINING_MANAGED_RUNS_PATH, "[]\n", "utf8"),
         writeFile(TRAINING_PROJECTS_PATH, "[]\n", "utf8"),
+        writeFile(TRAINING_TEMPLATES_PATH, JSON.stringify(cleanTrainingTemplateFallbackFixture(), null, 2) + "\n", "utf8"),
         rm(TRAINING_TEMPLATE_ORDER_PATH, { force: true }),
       ]);
       return await fn();
@@ -201,6 +265,7 @@ async function withTrainingManagedStoreSnapshot<T>(fn: () => Promise<T>) {
       await Promise.all([
         restoreOptionalFile(TRAINING_MANAGED_RUNS_PATH, runsBefore),
         restoreOptionalFile(TRAINING_PROJECTS_PATH, projectsBefore),
+        restoreOptionalFile(TRAINING_TEMPLATES_PATH, templatesBefore),
         restoreOptionalFile(TRAINING_TEMPLATE_ORDER_PATH, templateOrderBefore),
       ]);
     }
@@ -215,6 +280,34 @@ function isProductionTrainingDatabaseUnavailable(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003/i.test(message);
 }
+
+test("training managed store snapshot restores template fallback data", async () => {
+  const before = await readOptionalFile(TRAINING_TEMPLATES_PATH);
+
+  await withTrainingManagedStoreSnapshot(async () => {
+    await writeFile(
+      TRAINING_TEMPLATES_PATH,
+      `${JSON.stringify([
+        {
+          id: "leaked-training-template",
+          title: "Leaked Training Template",
+          status: "active",
+          updatedAt: "10:00",
+          description: "This temporary template must not survive the test snapshot.",
+          sectionCount: 0,
+          sections: [],
+        },
+      ], null, 2)}\n`,
+      "utf8",
+    );
+  });
+
+  assert.equal(
+    await readOptionalFile(TRAINING_TEMPLATES_PATH),
+    before,
+    "Training API tests that create templates must restore the local template fallback file.",
+  );
+});
 
 async function listRuns(query = "") {
   const { GET } = await import("../src/app/api/training/runs/route");
@@ -5071,77 +5164,96 @@ test("training project route can save a project as a template through /api/train
   const saveAsTemplateRoute = await import("../src/app/api/training/projects/[projectId]/save-as-template/route");
   const templatesRoute = await import("../src/app/api/training/templates/route");
   const templateDetailRoute = await import("../src/app/api/training/templates/[templateId]/route");
-  const projects = await listProjects();
-  const projectId = (
-    projects.find((project) => (project.sectionCount ?? 0) > 0)
-    ?? projects[0]
-  ).id;
+  await withTrainingManagedStoreSnapshot(async () => {
+    const project = await createManagedProjectFixture({
+      title: `存模板来源项目 ${Date.now()}`,
+      sections: [
+        {
+          id: "save-as-template-source-section",
+          title: "存模板来源小节",
+          enabled: true,
+          blockCount: 1,
+          blocks: [
+            {
+              id: "save-as-template-source-block",
+              source: "本地",
+              title: "存模板来源场景块",
+              text: "存模板来源场景描述。",
+            },
+          ],
+          resolvedScene: "存模板来源场景描述。",
+          scenePreview: "存模板来源场景描述。",
+        },
+      ],
+    });
+    const projectId = project.id;
 
-  const projectDetailResponse = await projectDetailRoute.GET(
-    new Request(`http://localhost/api/training/projects/${projectId}`),
-    { params: Promise.resolve({ projectId }) },
-  );
-  const projectDetailPayload = await projectDetailResponse.json();
+    const projectDetailResponse = await projectDetailRoute.GET(
+      new Request(`http://localhost/api/training/projects/${projectId}`),
+      { params: Promise.resolve({ projectId }) },
+    );
+    const projectDetailPayload = await projectDetailResponse.json();
 
-  assert.equal(projectDetailResponse.status, 200);
-  assert.equal(projectDetailPayload.ok, true);
+    assert.equal(projectDetailResponse.status, 200);
+    assert.equal(projectDetailPayload.ok, true);
 
-  const templateTitle = `项目存模板 ${Date.now()}`;
-  const saveResponse = await saveAsTemplateRoute.POST(
-    new Request(`http://localhost/api/training/projects/${projectId}/save-as-template`, {
-      method: "POST",
-      body: JSON.stringify({
-        title: templateTitle,
-        description: "从项目保存为模板的测试描述。",
-        imageGuidance: "从项目保存为模板的图片指引。",
-        captionGuidance: "从项目保存为模板的说明文本指引。",
-        sections: [
-          {
-            id: "saved-template-section",
-            title: "保存模板小节",
-            enabled: true,
-            blockCount: 1,
-            blocks: [
-              {
-                id: "saved-template-block",
-                source: "本地",
-                title: "保存模板场景块",
-                text: "从项目模板保存时提交的场景描述。",
-              },
-            ],
-            resolvedScene: "从项目模板保存时提交的场景描述。",
-            scenePreview: "从项目模板保存时提交的场景描述。",
-          },
-        ],
+    const templateTitle = `项目存模板 ${Date.now()}`;
+    const saveResponse = await saveAsTemplateRoute.POST(
+      new Request(`http://localhost/api/training/projects/${projectId}/save-as-template`, {
+        method: "POST",
+        body: JSON.stringify({
+          title: templateTitle,
+          description: "从项目保存为模板的测试描述。",
+          imageGuidance: "从项目保存为模板的图片指引。",
+          captionGuidance: "从项目保存为模板的说明文本指引。",
+          sections: [
+            {
+              id: "saved-template-section",
+              title: "保存模板小节",
+              enabled: true,
+              blockCount: 1,
+              blocks: [
+                {
+                  id: "saved-template-block",
+                  source: "本地",
+                  title: "保存模板场景块",
+                  text: "从项目模板保存时提交的场景描述。",
+                },
+              ],
+              resolvedScene: "从项目模板保存时提交的场景描述。",
+              scenePreview: "从项目模板保存时提交的场景描述。",
+            },
+          ],
+        }),
       }),
-    }),
-    { params: Promise.resolve({ projectId }) },
-  );
-  const savePayload = await saveResponse.json();
+      { params: Promise.resolve({ projectId }) },
+    );
+    const savePayload = await saveResponse.json();
 
-  assert.equal(saveResponse.status, 201);
-  assert.equal(savePayload.ok, true);
-  assert.equal(savePayload.data.title, templateTitle);
-  assert.equal(savePayload.data.sections.length, 1);
-  assert.equal(savePayload.data.sections[0].title, "保存模板小节");
+    assert.equal(saveResponse.status, 201);
+    assert.equal(savePayload.ok, true);
+    assert.equal(savePayload.data.title, templateTitle);
+    assert.equal(savePayload.data.sections.length, 1);
+    assert.equal(savePayload.data.sections[0].title, "保存模板小节");
 
-  const templateId = savePayload.data.id as string;
-  const templateDetailResponse = await templateDetailRoute.GET(
-    new Request(`http://localhost/api/training/templates/${templateId}`),
-    { params: Promise.resolve({ templateId }) },
-  );
-  const templateDetailPayload = await templateDetailResponse.json();
-  assert.equal(templateDetailResponse.status, 200);
-  assert.equal(templateDetailPayload.ok, true);
-  assert.equal(templateDetailPayload.data.imageGuidance, "从项目保存为模板的图片指引。");
-  assert.equal(templateDetailPayload.data.captionGuidance, "从项目保存为模板的说明文本指引。");
-  assert.equal(templateDetailPayload.data.sections[0].title, "保存模板小节");
+    const templateId = savePayload.data.id as string;
+    const templateDetailResponse = await templateDetailRoute.GET(
+      new Request(`http://localhost/api/training/templates/${templateId}`),
+      { params: Promise.resolve({ templateId }) },
+    );
+    const templateDetailPayload = await templateDetailResponse.json();
+    assert.equal(templateDetailResponse.status, 200);
+    assert.equal(templateDetailPayload.ok, true);
+    assert.equal(templateDetailPayload.data.imageGuidance, "从项目保存为模板的图片指引。");
+    assert.equal(templateDetailPayload.data.captionGuidance, "从项目保存为模板的说明文本指引。");
+    assert.equal(templateDetailPayload.data.sections[0].title, "保存模板小节");
 
-  const templatesResponse = await templatesRoute.GET();
-  const templatesPayload = await templatesResponse.json();
-  assert.equal(templatesResponse.status, 200);
-  assert.equal(templatesPayload.ok, true);
-  assert.ok((templatesPayload.data as Array<{ id: string; title: string }>).some((template) => template.id === savePayload.data.id && template.title === templateTitle));
+    const templatesResponse = await templatesRoute.GET();
+    const templatesPayload = await templatesResponse.json();
+    assert.equal(templatesResponse.status, 200);
+    assert.equal(templatesPayload.ok, true);
+    assert.ok((templatesPayload.data as Array<{ id: string; title: string }>).some((template) => template.id === savePayload.data.id && template.title === templateTitle));
+  });
 });
 
 test("managed training project profile reads and updates through /api/training", async () => {
