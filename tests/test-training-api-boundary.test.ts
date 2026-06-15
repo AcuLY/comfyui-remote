@@ -259,6 +259,41 @@ test("training scene-description row reads go through a Training repository boun
   );
 });
 
+test("training scene-description presets have dedicated Prisma models instead of only shared preset scope", () => {
+  for (const schemaPath of ["prisma/schema.prisma", "prisma/schema.sqlite.prisma"]) {
+    const schemaSource = readFileSync(join(process.cwd(), schemaPath), "utf8");
+    const sceneDescriptionTextPattern = schemaPath.includes("sqlite")
+      ? /sceneDescriptionText\s+String\b/
+      : /sceneDescriptionText\s+String\s+@db\.Text/;
+
+    assert.match(
+      schemaSource,
+      /model TrainingSceneDescriptionPresetCategory\s*\{/,
+      `${schemaPath} should define a dedicated training scene-description category table.`,
+    );
+    assert.match(
+      schemaSource,
+      /model TrainingSceneDescriptionPresetFolder\s*\{/,
+      `${schemaPath} should define a dedicated training scene-description folder table.`,
+    );
+    assert.match(
+      schemaSource,
+      /model TrainingSceneDescriptionPreset\s*\{/,
+      `${schemaPath} should define a dedicated training scene-description preset table.`,
+    );
+    assert.match(
+      schemaSource,
+      sceneDescriptionTextPattern,
+      `${schemaPath} should store training preset text as sceneDescriptionText, not as a generation prompt variant.`,
+    );
+    assert.match(
+      schemaSource,
+      /sceneDescriptionOrder\s+Int\s+@default\(0\)/,
+      `${schemaPath} should store training scene-description composition order without borrowing positivePromptOrder.`,
+    );
+  }
+});
+
 test("preset resource lists stay scoped to their owning work mode except shared models and settings", async () => {
   const presetScopeSource = readFileSync(join(process.cwd(), "src/lib/actions/preset-resource-scope.ts"), "utf8");
   assert.match(

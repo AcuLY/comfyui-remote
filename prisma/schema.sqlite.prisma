@@ -13,50 +13,50 @@ datasource db {
 // ── Preset system ──
 
 model PresetCategory {
-  id                  String          @id @default(cuid())
-  name                String          // e.g. "角色", "场景", "风格", "镜位"
-  slug                String          @unique
-  icon                String?         // lucide icon name for UI badge
-  color               String?         // HSL color string
-  positivePromptOrder Int             @default(0)
-  negativePromptOrder Int             @default(0)
-  lora1Order          Int             @default(0)
-  lora2Order          Int             @default(0)
-  sortOrder           Int             @default(0)
-  type                String          @default("preset") // "preset" | "group"
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
-  presets             Preset[]
-  groups              PresetGroup[]
-  folders             PresetFolder[]
-  ownedSlots          PresetCategorySlot[] @relation("PresetCategorySlotOwner")
-  usedInSlots         PresetCategorySlot[] @relation("PresetCategorySlotTarget")
-  projectBindings     ProjectPresetBinding[]
-  templateBindings    ProjectTemplatePresetBinding[]
-  sectionBindings     SectionPresetBinding[]
-  templateSectionBindings     TemplateSectionPresetBinding[]
+  id                      String                         @id @default(cuid())
+  name                    String // e.g. "角色", "场景", "风格", "镜位"
+  slug                    String                         @unique
+  icon                    String? // lucide icon name for UI badge
+  color                   String? // HSL color string
+  positivePromptOrder     Int                            @default(0)
+  negativePromptOrder     Int                            @default(0)
+  lora1Order              Int                            @default(0)
+  lora2Order              Int                            @default(0)
+  sortOrder               Int                            @default(0)
+  type                    String                         @default("preset") // "preset" | "group"
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+  presets                 Preset[]
+  groups                  PresetGroup[]
+  folders                 PresetFolder[]
+  ownedSlots              PresetCategorySlot[]           @relation("PresetCategorySlotOwner")
+  usedInSlots             PresetCategorySlot[]           @relation("PresetCategorySlotTarget")
+  projectBindings         ProjectPresetBinding[]
+  templateBindings        ProjectTemplatePresetBinding[]
+  sectionBindings         SectionPresetBinding[]
+  templateSectionBindings TemplateSectionPresetBinding[]
 }
 
 model Preset {
-  id              String          @id @default(cuid())
-  categoryId      String
-  name            String
-  slug            String
-  isActive        Boolean         @default(true)
-  sortOrder       Int             @default(0)
-  notes           String?
-  civitaiLinks    Json?           // string[] — external Civitai model/version URLs
-  folderId        String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  category        PresetCategory  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  folder          PresetFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  variants        PresetVariant[]
-  changeLogs      PresetChangeLog[]
-  projectBindings  ProjectPresetBinding[]
-  templateBindings ProjectTemplatePresetBinding[]
-  sectionBindings  SectionPresetBinding[]
-  templateSectionBindings     TemplateSectionPresetBinding[]
+  id                      String                         @id @default(cuid())
+  categoryId              String
+  name                    String
+  slug                    String
+  isActive                Boolean                        @default(true)
+  sortOrder               Int                            @default(0)
+  notes                   String?
+  civitaiLinks            Json? // string[] — external Civitai model/version URLs
+  folderId                String?
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+  category                PresetCategory                 @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  folder                  PresetFolder?                  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  variants                PresetVariant[]
+  changeLogs              PresetChangeLog[]
+  projectBindings         ProjectPresetBinding[]
+  templateBindings        ProjectTemplatePresetBinding[]
+  sectionBindings         SectionPresetBinding[]
+  templateSectionBindings TemplateSectionPresetBinding[]
 
   @@unique([categoryId, slug])
   @@unique([categoryId, id])
@@ -64,25 +64,25 @@ model Preset {
 }
 
 model PresetVariant {
-  id              String          @id @default(cuid())
-  presetId        String
-  name            String
-  slug            String
-  prompt          String          // positive prompt
-  negativePrompt  String?
-  lora1           Json?           // Array<LoraBinding> — stage 1
-  lora2           Json?           // Array<LoraBinding> — stage 2 (upscale)
-  sortOrder       Int             @default(0)
-  isActive        Boolean         @default(true)
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  preset          Preset          @relation(fields: [presetId], references: [id], onDelete: Cascade)
-  outgoingLinks   PresetVariantLink[] @relation("PresetVariantLinkSource")
-  incomingLinks   PresetVariantLink[] @relation("PresetVariantLinkTarget")
-  projectBindings ProjectPresetBinding[]
-  templateBindings ProjectTemplatePresetBinding[]
-  sectionBindings SectionPresetBinding[]
-  templateSectionBindings     TemplateSectionPresetBinding[]
+  id                      String                         @id @default(cuid())
+  presetId                String
+  name                    String
+  slug                    String
+  prompt                  String // positive prompt
+  negativePrompt          String?
+  lora1                   Json? // Array<LoraBinding> — stage 1
+  lora2                   Json? // Array<LoraBinding> — stage 2 (upscale)
+  sortOrder               Int                            @default(0)
+  isActive                Boolean                        @default(true)
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+  preset                  Preset                         @relation(fields: [presetId], references: [id], onDelete: Cascade)
+  outgoingLinks           PresetVariantLink[]            @relation("PresetVariantLinkSource")
+  incomingLinks           PresetVariantLink[]            @relation("PresetVariantLinkTarget")
+  projectBindings         ProjectPresetBinding[]
+  templateBindings        ProjectTemplatePresetBinding[]
+  sectionBindings         SectionPresetBinding[]
+  templateSectionBindings TemplateSectionPresetBinding[]
 
   @@unique([presetId, slug])
   @@unique([presetId, id])
@@ -105,20 +105,20 @@ model PresetVariantLink {
 }
 
 model PresetGroup {
-  id          String               @id @default(cuid())
-  categoryId  String
-  name        String
-  slug        String
-  sortOrder   Int                  @default(0)
-  isActive    Boolean              @default(true)
-  folderId    String?
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  category    PresetCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  folder      PresetFolder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  members     PresetGroupMember[]
-  changeLogs  PresetGroupChangeLog[]
-  sectionBindings SectionPresetBinding[]
+  id                      String                         @id @default(cuid())
+  categoryId              String
+  name                    String
+  slug                    String
+  sortOrder               Int                            @default(0)
+  isActive                Boolean                        @default(true)
+  folderId                String?
+  createdAt               DateTime                       @default(now())
+  updatedAt               DateTime                       @updatedAt
+  category                PresetCategory                 @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  folder                  PresetFolder?                  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  members                 PresetGroupMember[]
+  changeLogs              PresetGroupChangeLog[]
+  sectionBindings         SectionPresetBinding[]
   templateSectionBindings TemplateSectionPresetBinding[]
 
   @@unique([categoryId, slug])
@@ -128,7 +128,7 @@ model PresetGroup {
 model PresetChangeLog {
   id        String   @id @default(cuid())
   presetId  String
-  dimension String   // "variants" | "content"
+  dimension String // "variants" | "content"
   title     String
   before    Json?
   after     Json?
@@ -141,7 +141,7 @@ model PresetChangeLog {
 model PresetGroupChangeLog {
   id            String      @id @default(cuid())
   presetGroupId String
-  dimension     String      // "meta" | "members"
+  dimension     String // "meta" | "members"
   title         String
   before        Json?
   after         Json?
@@ -152,14 +152,14 @@ model PresetGroupChangeLog {
 }
 
 model PresetGroupMember {
-  id              String      @id @default(cuid())
-  groupId         String
-  presetId        String?     // reference a preset (+ optional variantId)
-  variantId       String?     // specific variant of the preset
-  subGroupId      String?     // or reference another group (mutually exclusive with presetId)
-  slotCategoryId  String?     // if from slot template, locks to this category
-  sortOrder       Int         @default(0)
-  group           PresetGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  id             String      @id @default(cuid())
+  groupId        String
+  presetId       String? // reference a preset (+ optional variantId)
+  variantId      String? // specific variant of the preset
+  subGroupId     String? // or reference another group (mutually exclusive with presetId)
+  slotCategoryId String? // if from slot template, locks to this category
+  sortOrder      Int         @default(0)
+  group          PresetGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@index([groupId, sortOrder])
 }
@@ -182,30 +182,89 @@ model PresetCategorySlot {
 }
 
 model PresetFolder {
-  id          String         @id @default(cuid())
-  categoryId  String
-  parentId    String?
-  name        String
-  sortOrder   Int            @default(0)
-  category    PresetCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  parent      PresetFolder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
-  children    PresetFolder[] @relation("FolderTree")
-  presets     Preset[]
-  groups      PresetGroup[]
+  id         String         @id @default(cuid())
+  categoryId String
+  parentId   String?
+  name       String
+  sortOrder  Int            @default(0)
+  category   PresetCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  parent     PresetFolder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children   PresetFolder[] @relation("FolderTree")
+  presets    Preset[]
+  groups     PresetGroup[]
 
   @@index([categoryId, parentId, sortOrder])
+}
+
+// ── Training Scene Description Presets ──
+
+model TrainingSceneDescriptionPresetCategory {
+  id                    String   @id @default(cuid())
+  name                  String
+  slug                  String   @unique
+  icon                  String?
+  color                 String?
+  sortOrder             Int      @default(0)
+  sceneDescriptionOrder Int      @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  folders TrainingSceneDescriptionPresetFolder[]
+  presets TrainingSceneDescriptionPreset[]
+
+  @@index([sortOrder])
+  @@index([sceneDescriptionOrder])
+}
+
+model TrainingSceneDescriptionPresetFolder {
+  id         String   @id @default(cuid())
+  categoryId String
+  parentId   String?
+  name       String
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  category TrainingSceneDescriptionPresetCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  parent   TrainingSceneDescriptionPresetFolder?  @relation("TrainingSceneDescriptionPresetFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children TrainingSceneDescriptionPresetFolder[] @relation("TrainingSceneDescriptionPresetFolderTree")
+  presets  TrainingSceneDescriptionPreset[]
+
+  @@index([categoryId, parentId, sortOrder])
+}
+
+model TrainingSceneDescriptionPreset {
+  id                   String   @id @default(cuid())
+  categoryId           String
+  folderId             String?
+  name                 String
+  slug                 String
+  sceneDescriptionText String
+  notes                String?
+  sortOrder            Int      @default(0)
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  category TrainingSceneDescriptionPresetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  folder   TrainingSceneDescriptionPresetFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  @@unique([categoryId, slug])
+  @@unique([categoryId, id])
+  @@index([categoryId, folderId, sortOrder])
+  @@index([isActive, sortOrder])
 }
 
 // ── Project Templates ──
 
 model ProjectTemplate {
-  id             String                  @id @default(cuid())
-  name           String
-  description    String?
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
-  sections       ProjectTemplateSection[]
-  sectionFolders ProjectTemplateSectionFolder[]
+  id                String                         @id @default(cuid())
+  name              String
+  description       String?
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
+  sections          ProjectTemplateSection[]
+  sectionFolders    ProjectTemplateSectionFolder[]
   presetBindingRows ProjectTemplatePresetBinding[]
 
   @@index([createdAt])
@@ -233,10 +292,10 @@ model ProjectTemplatePresetBinding {
 }
 
 model ProjectTemplateSection {
-  id                String            @id @default(cuid())
+  id                String                           @id @default(cuid())
   projectTemplateId String
   folderId          String?
-  sortOrder         Int               @default(0)
+  sortOrder         Int                              @default(0)
   name              String?
   notes             String?
   aspectRatio       String?
@@ -250,18 +309,18 @@ model ProjectTemplateSection {
   upscaleFactor     Float?
   checkpointName    String?
   extraParams       Json?
-  projectTemplate    ProjectTemplate  @relation(fields: [projectTemplateId], references: [id], onDelete: Cascade)
-  folder             ProjectTemplateSectionFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  presetBindingRows  TemplateSectionPresetBinding[]
-  promptBlockRows    TemplateSectionPromptBlock[]
-  manualLoraEntries  TemplateSectionManualLoraEntry[]
+  projectTemplate   ProjectTemplate                  @relation(fields: [projectTemplateId], references: [id], onDelete: Cascade)
+  folder            ProjectTemplateSectionFolder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  presetBindingRows TemplateSectionPresetBinding[]
+  promptBlockRows   TemplateSectionPromptBlock[]
+  manualLoraEntries TemplateSectionManualLoraEntry[]
 
   @@index([projectTemplateId, sortOrder])
   @@index([folderId])
 }
 
 model TemplateSectionPresetBinding {
-  id                       String                 @id @default(cuid())
+  id                       String                           @id @default(cuid())
   projectTemplateSectionId String
   bindingKey               String
   categoryId               String
@@ -269,14 +328,14 @@ model TemplateSectionPresetBinding {
   variantId                String?
   presetGroupId            String?
   groupBindingKey          String?
-  sortOrder                Int                    @default(0)
-  createdAt                DateTime               @default(now())
-  updatedAt                DateTime               @updatedAt
-  projectTemplateSection   ProjectTemplateSection @relation(fields: [projectTemplateSectionId], references: [id], onDelete: Cascade)
-  category                 PresetCategory         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  preset                   Preset?                @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
-  variant                  PresetVariant?         @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
-  presetGroup              PresetGroup?           @relation(fields: [presetGroupId], references: [id], onDelete: Restrict)
+  sortOrder                Int                              @default(0)
+  createdAt                DateTime                         @default(now())
+  updatedAt                DateTime                         @updatedAt
+  projectTemplateSection   ProjectTemplateSection           @relation(fields: [projectTemplateSectionId], references: [id], onDelete: Cascade)
+  category                 PresetCategory                   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  preset                   Preset?                          @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
+  variant                  PresetVariant?                   @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
+  presetGroup              PresetGroup?                     @relation(fields: [presetGroupId], references: [id], onDelete: Restrict)
   promptBlock              TemplateSectionPromptBlock?
   manualLoraEntries        TemplateSectionManualLoraEntry[]
 
@@ -304,8 +363,8 @@ model TemplateSectionPromptBlock {
   projectTemplateSection   ProjectTemplateSection        @relation(fields: [projectTemplateSectionId], references: [id], onDelete: Cascade)
   templateSectionBinding   TemplateSectionPresetBinding? @relation(fields: [projectTemplateSectionId, templateSectionBindingId], references: [projectTemplateSectionId, id], onDelete: Cascade)
 
-  @@index([projectTemplateSectionId, sortOrder])
   @@unique([projectTemplateSectionId, templateSectionBindingId])
+  @@index([projectTemplateSectionId, sortOrder])
 }
 
 model TemplateSectionManualLoraEntry {
@@ -351,10 +410,10 @@ model ProjectTemplateSectionFolder {
 // ── Core models ──
 
 model Project {
-  id                    String                @id @default(cuid())
+  id                    String                 @id @default(cuid())
   title                 String
-  slug                  String                @unique
-  status                String                @default("draft")
+  slug                  String                 @unique
+  status                String                 @default("draft")
   coverImageId          String?
   folderId              String?
   checkpointName        String?
@@ -362,32 +421,33 @@ model Project {
   notes                 String?
   publishedAt           DateTime?
   archivedAt            DateTime?
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  folder                ProjectFolder?        @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  folder                ProjectFolder?         @relation(fields: [folderId], references: [id], onDelete: SetNull)
   sections              ProjectSection[]
   sectionFolders        ProjectSectionFolder[]
   runs                  Run[]
   censoringTasks        CensoringTask[]
   presetBindingRows     ProjectPresetBinding[]
+
   @@index([status, updatedAt])
   @@index([coverImageId])
   @@index([folderId])
 }
 
 model ProjectPresetBinding {
-  id          String         @id @default(cuid())
-  projectId   String
-  categoryId  String
-  presetId    String
-  variantId   String?
-  sortOrder   Int            @default(0)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  category    PresetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  preset      Preset         @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
-  variant     PresetVariant? @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
+  id         String         @id @default(cuid())
+  projectId  String
+  categoryId String
+  presetId   String
+  variantId  String?
+  sortOrder  Int            @default(0)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  project    Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  category   PresetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  preset     Preset         @relation(fields: [categoryId, presetId], references: [categoryId, id], onDelete: Restrict)
+  variant    PresetVariant? @relation(fields: [presetId, variantId], references: [presetId, id], onDelete: Restrict)
 
   @@unique([projectId, categoryId])
   @@index([projectId, sortOrder])
@@ -397,45 +457,45 @@ model ProjectPresetBinding {
 }
 
 model ProjectFolder {
-  id          String          @id @default(cuid())
-  parentId    String?
-  name        String
-  sortOrder   Int             @default(0)
-  parent      ProjectFolder?  @relation("ProjectFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
-  children    ProjectFolder[] @relation("ProjectFolderTree")
-  projects    Project[]
+  id        String          @id @default(cuid())
+  parentId  String?
+  name      String
+  sortOrder Int             @default(0)
+  parent    ProjectFolder?  @relation("ProjectFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  ProjectFolder[] @relation("ProjectFolderTree")
+  projects  Project[]
 
   @@index([parentId, sortOrder])
 }
 
 model ProjectSection {
-  id                    String                @id @default(cuid())
-  projectId             String
-  folderId              String?
-  name                  String?
-  sortOrder             Int                   @default(0)
-  enabled               Boolean               @default(true)
-  aspectRatio           String?
-  aspectRatios          Json?
-  shortSidePx           Int?
-  batchSize             Int?
-  seedPolicy1           String?
-  seedPolicy2           String?
-  ksampler1             Json?
-  ksampler2             Json?
-  upscaleFactor         Float?
-  checkpointName        String?
-  extraParams           Json?
-  latestRunId           String?
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  folder                ProjectSectionFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  runs                  Run[]
-  changeLogs            SectionChangeLog[]
-  presetBindingRows     SectionPresetBinding[]
-  sectionPromptBlocks   SectionPromptBlock[]
-  manualLoraEntries     SectionManualLoraEntry[]
+  id                  String                   @id @default(cuid())
+  projectId           String
+  folderId            String?
+  name                String?
+  sortOrder           Int                      @default(0)
+  enabled             Boolean                  @default(true)
+  aspectRatio         String?
+  aspectRatios        Json?
+  shortSidePx         Int?
+  batchSize           Int?
+  seedPolicy1         String?
+  seedPolicy2         String?
+  ksampler1           Json?
+  ksampler2           Json?
+  upscaleFactor       Float?
+  checkpointName      String?
+  extraParams         Json?
+  latestRunId         String?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  project             Project                  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  folder              ProjectSectionFolder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  runs                Run[]
+  changeLogs          SectionChangeLog[]
+  presetBindingRows   SectionPresetBinding[]
+  sectionPromptBlocks SectionPromptBlock[]
+  manualLoraEntries   SectionManualLoraEntry[]
 
   @@index([projectId, sortOrder])
   @@index([folderId])
@@ -485,28 +545,28 @@ model SectionPromptBlock {
   projectSection   ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
   sectionBinding   SectionPresetBinding? @relation(fields: [projectSectionId, sectionBindingId], references: [projectSectionId, id], onDelete: Cascade)
 
-  @@index([projectSectionId, sortOrder])
   @@unique([projectSectionId, sectionBindingId])
+  @@index([projectSectionId, sortOrder])
 }
 
 model SectionManualLoraEntry {
-  id               String                @id @default(cuid())
-  projectSectionId String
-  sectionBindingId String?
-  stage            String
-  path             String
-  weight           Float                 @default(1)
-  enabled          Boolean               @default(true)
+  id                     String                @id @default(cuid())
+  projectSectionId       String
+  sectionBindingId       String?
+  stage                  String
+  path                   String
+  weight                 Float                 @default(1)
+  enabled                Boolean               @default(true)
   detachedFromBindingKey String?
   detachedFromPresetId   String?
   detachedFromVariantId  String?
   detachedFromPath       String?
-  metadata         Json?
-  sortOrder        Int                   @default(0)
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-  projectSection   ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
-  sectionBinding   SectionPresetBinding? @relation(fields: [projectSectionId, sectionBindingId], references: [projectSectionId, id], onDelete: Restrict)
+  metadata               Json?
+  sortOrder              Int                   @default(0)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  projectSection         ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
+  sectionBinding         SectionPresetBinding? @relation(fields: [projectSectionId, sectionBindingId], references: [projectSectionId, id], onDelete: Restrict)
 
   @@index([projectSectionId, stage, sortOrder])
   @@index([sectionBindingId])
@@ -514,54 +574,54 @@ model SectionManualLoraEntry {
 }
 
 model ProjectSectionFolder {
-  id          String                 @id @default(cuid())
-  projectId   String
-  parentId    String?
-  name        String
-  sortOrder   Int                    @default(0)
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
-  project     Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  parent      ProjectSectionFolder?  @relation("ProjectSectionFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
-  children    ProjectSectionFolder[] @relation("ProjectSectionFolderTree")
-  sections    ProjectSection[]
+  id        String                 @id @default(cuid())
+  projectId String
+  parentId  String?
+  name      String
+  sortOrder Int                    @default(0)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  project   Project                @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parent    ProjectSectionFolder?  @relation("ProjectSectionFolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  ProjectSectionFolder[] @relation("ProjectSectionFolderTree")
+  sections  ProjectSection[]
 
   @@index([projectId, parentId, sortOrder])
 }
 
 model SectionChangeLog {
-  id                    String                @id @default(cuid())
-  projectSectionId      String
-  dimension             String                // "runParams" | "prompt" | "lora"
-  title                 String
-  before                Json?
-  after                 Json?
-  createdAt             DateTime              @default(now())
-  projectSection        ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
+  id               String         @id @default(cuid())
+  projectSectionId String
+  dimension        String // "runParams" | "prompt" | "lora"
+  title            String
+  before           Json?
+  after            Json?
+  createdAt        DateTime       @default(now())
+  projectSection   ProjectSection @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
 
   @@index([projectSectionId, dimension, createdAt])
 }
 
 model Run {
-  id                    String                @id @default(cuid())
-  projectId             String
-  projectSectionId      String
-  runIndex              Int                   @default(1)
-  status                String                @default("queued")
+  id                     String         @id @default(cuid())
+  projectId              String
+  projectSectionId       String
+  runIndex               Int            @default(1)
+  status                 String         @default("queued")
   resolvedConfigSnapshot Json
-  comfyPromptId         String?
-  executionMeta         Json?
-  submittedPrompt       Json?               // Full submitted ComfyUI workflow JSON
-  outputDir             String?
-  comfyOutputSubfolder  String?
-  errorMessage          String?
-  startedAt             DateTime?
-  finishedAt            DateTime?
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  project               Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectSection        ProjectSection        @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
-  images                ImageResult[]
+  comfyPromptId          String?
+  executionMeta          Json?
+  submittedPrompt        Json? // Full submitted ComfyUI workflow JSON
+  outputDir              String?
+  comfyOutputSubfolder   String?
+  errorMessage           String?
+  startedAt              DateTime?
+  finishedAt             DateTime?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  project                Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectSection         ProjectSection @relation(fields: [projectSectionId], references: [id], onDelete: Cascade)
+  images                 ImageResult[]
 
   @@index([status, createdAt])
   @@index([projectId, createdAt])
@@ -569,86 +629,86 @@ model Run {
 }
 
 model ImageResult {
-  id                    String          @id @default(cuid())
-  runId                 String
-  filePath              String          @unique
-  thumbPath             String?
-  width                 Int?
-  height                Int?
-  fileSize              BigInt?
-  reviewStatus          String          @default("pending")
-  featured              Boolean         @default(false)
-  featured2             Boolean         @default(false)
-  reviewedAt            DateTime?
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
-  run                   Run             @relation(fields: [runId], references: [id], onDelete: Cascade)
-  trashRecord           TrashRecord?
-  censoredFilePath      String?
-  censoredThumbPath     String?
-  censoredAt            DateTime?
-  censoringTasks        CensoringTask[]
+  id                String          @id @default(cuid())
+  runId             String
+  filePath          String          @unique
+  thumbPath         String?
+  width             Int?
+  height            Int?
+  fileSize          BigInt?
+  reviewStatus      String          @default("pending")
+  featured          Boolean         @default(false)
+  featured2         Boolean         @default(false)
+  reviewedAt        DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  run               Run             @relation(fields: [runId], references: [id], onDelete: Cascade)
+  trashRecord       TrashRecord?
+  censoredFilePath  String?
+  censoredThumbPath String?
+  censoredAt        DateTime?
+  censoringTasks    CensoringTask[]
 
   @@index([reviewStatus, createdAt])
   @@index([runId, createdAt])
 }
 
 model TrashRecord {
-  id                    String       @id @default(cuid())
-  imageResultId         String       @unique
-  originalPath          String
-  trashPath             String
-  reason                String?
-  deletedAt             DateTime     @default(now())
-  restoredAt            DateTime?
-  actorType             String       @default("user")
-  imageResult           ImageResult  @relation(fields: [imageResultId], references: [id], onDelete: Cascade)
+  id            String      @id @default(cuid())
+  imageResultId String      @unique
+  originalPath  String
+  trashPath     String
+  reason        String?
+  deletedAt     DateTime    @default(now())
+  restoredAt    DateTime?
+  actorType     String      @default("user")
+  imageResult   ImageResult @relation(fields: [imageResultId], references: [id], onDelete: Cascade)
 
   @@index([deletedAt])
   @@index([restoredAt])
 }
 
 model CensoringTask {
-  id              String       @id @default(cuid())
-  projectId       String
-  imageResultId   String
-  status          String       @default("queued")
-  errorMessage    String?
-  createdAt       DateTime     @default(now())
-  startedAt       DateTime?
-  finishedAt      DateTime?
-  project         Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  imageResult     ImageResult  @relation(fields: [imageResultId], references: [id], onDelete: Cascade)
+  id            String      @id @default(cuid())
+  projectId     String
+  imageResultId String
+  status        String      @default("queued")
+  errorMessage  String?
+  createdAt     DateTime    @default(now())
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  imageResult   ImageResult @relation(fields: [imageResultId], references: [id], onDelete: Cascade)
 
   @@index([projectId, status])
   @@index([status, createdAt])
 }
 
 model LoraAsset {
-  id                    String      @id @default(cuid())
-  name                  String
-  modelType             String      @default("lora")
-  category              String
-  fileName              String
-  absolutePath          String      @unique
-  relativePath          String
-  size                  BigInt?
-  source                String?
-  notes                 String?
-  triggerWords          String?     // trigger words for this LoRA
-  civitaiLink           String?
-  uploadedAt            DateTime    @default(now())
-  updatedAt             DateTime    @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  modelType    String   @default("lora")
+  category     String
+  fileName     String
+  absolutePath String   @unique
+  relativePath String
+  size         BigInt?
+  source       String?
+  notes        String?
+  triggerWords String? // trigger words for this LoRA
+  civitaiLink  String?
+  uploadedAt   DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model AuditLog {
-  id                    String      @id @default(cuid())
-  entityType            String
-  entityId              String
-  action                String
-  payload               Json?
-  actorType             String      @default("system")
-  createdAt             DateTime    @default(now())
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  payload    Json?
+  actorType  String   @default("system")
+  createdAt  DateTime @default(now())
 
   @@index([entityType, entityId, createdAt])
   @@index([action, createdAt])
@@ -679,14 +739,14 @@ model CharacterLoraTrainingTemplate {
 }
 
 model CharacterLoraTrainingJob {
-  id                         String                         @id @default(cuid())
-  slug                       String                         @unique
+  id                         String                           @id @default(cuid())
+  slug                       String                           @unique
   characterName              String
   triggerToken               String
-  status                     String                         @default("draft")
+  status                     String                           @default("draft")
   phase                      String?
   trainingScope              Json
-  captionStrategy            String                         @default("controllable_identity")
+  captionStrategy            String                           @default("controllable_identity")
   baseCheckpointName         String?
   baseCheckpointPath         String?
   baseCheckpointHash         String?
@@ -700,9 +760,9 @@ model CharacterLoraTrainingJob {
   trainingTemplateSnapshot   Json?
   createdBy                  String?
   failureSummary             String?
-  createdAt                  DateTime                       @default(now())
-  updatedAt                  DateTime                       @updatedAt
-  trainingTemplate           CharacterLoraTrainingTemplate? @relation(fields: [trainingTemplateId], references: [id], onDelete: SetNull)
+  createdAt                  DateTime                         @default(now())
+  updatedAt                  DateTime                         @updatedAt
+  trainingTemplate           CharacterLoraTrainingTemplate?   @relation(fields: [trainingTemplateId], references: [id], onDelete: SetNull)
   sourceImages               CharacterLoraSourceImage[]
   canonicalVersions          CharacterLoraCanonicalVersion[]
   promptCardVersions         CharacterLoraPromptCardVersion[]
@@ -741,21 +801,21 @@ model CharacterLoraSourceImage {
 }
 
 model CharacterLoraCanonicalVersion {
-  id                String                       @id @default(cuid())
-  jobId             String
-  version           Int
-  status            String                       @default("candidate")
-  canonicalView     String?
-  sourceRunId       String?
-  imageArtifactId   String
-  selectedAt        DateTime?
-  notes             String?
-  createdAt         DateTime                     @default(now())
-  job               CharacterLoraTrainingJob     @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  sourceRun         CharacterLoraGenerationRun?  @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
-  promptCards       CharacterLoraPromptCardVersion[]
-  sections          CharacterLoraJobSection[]
-  datasetRevisions  CharacterLoraDatasetRevision[]
+  id               String                           @id @default(cuid())
+  jobId            String
+  version          Int
+  status           String                           @default("candidate")
+  canonicalView    String?
+  sourceRunId      String?
+  imageArtifactId  String
+  selectedAt       DateTime?
+  notes            String?
+  createdAt        DateTime                         @default(now())
+  job              CharacterLoraTrainingJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sourceRun        CharacterLoraGenerationRun?      @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
+  promptCards      CharacterLoraPromptCardVersion[]
+  sections         CharacterLoraJobSection[]
+  datasetRevisions CharacterLoraDatasetRevision[]
 
   @@unique([jobId, version])
   @@index([jobId, status])
@@ -785,18 +845,18 @@ model CharacterLoraPromptCardVersion {
 }
 
 model CharacterLoraSectionTemplate {
-  id                   String                    @id @default(cuid())
+  id                   String                         @id @default(cuid())
   trainingTemplateId   String?
-  key                  String                    @unique
+  key                  String                         @unique
   name                 String
   description          String?
   angleTag             String?
   promptTemplate       String
   negativeTemplate     String?
-  targetCandidateCount Int                       @default(4)
-  targetKeepCount      Int                       @default(1)
-  sortOrder            Int                       @default(0)
-  isActive             Boolean                   @default(true)
+  targetCandidateCount Int                            @default(4)
+  targetKeepCount      Int                            @default(1)
+  sortOrder            Int                            @default(0)
+  isActive             Boolean                        @default(true)
   trainingTemplate     CharacterLoraTrainingTemplate? @relation(fields: [trainingTemplateId], references: [id], onDelete: SetNull)
   sections             CharacterLoraJobSection[]
 
@@ -834,13 +894,13 @@ model CharacterLoraJobSection {
 }
 
 model CharacterLoraGenerationRun {
-  id                String                       @id @default(cuid())
+  id                String                          @id @default(cuid())
   jobId             String
   sectionId         String?
   kind              String
   canonicalView     String?
   parentRunId       String?
-  status            String                       @default("queued")
+  status            String                          @default("queued")
   provider          String
   hostModel         String?
   imageModel        String
@@ -854,12 +914,12 @@ model CharacterLoraGenerationRun {
   errorSummary      String?
   startedAt         DateTime?
   finishedAt        DateTime?
-  createdAt         DateTime                     @default(now())
-  updatedAt         DateTime                     @updatedAt
-  job               CharacterLoraTrainingJob     @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  section           CharacterLoraJobSection?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
-  parentRun         CharacterLoraGenerationRun?  @relation("CharacterLoraGenerationRunTree", fields: [parentRunId], references: [id], onDelete: SetNull)
-  childRuns         CharacterLoraGenerationRun[] @relation("CharacterLoraGenerationRunTree")
+  createdAt         DateTime                        @default(now())
+  updatedAt         DateTime                        @updatedAt
+  job               CharacterLoraTrainingJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  section           CharacterLoraJobSection?        @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  parentRun         CharacterLoraGenerationRun?     @relation("CharacterLoraGenerationRunTree", fields: [parentRunId], references: [id], onDelete: SetNull)
+  childRuns         CharacterLoraGenerationRun[]    @relation("CharacterLoraGenerationRunTree")
   canonicalVersions CharacterLoraCanonicalVersion[]
   candidateImages   CharacterLoraCandidateImage[]
 
@@ -870,28 +930,28 @@ model CharacterLoraGenerationRun {
 }
 
 model CharacterLoraCandidateImage {
-  id                        String                           @id @default(cuid())
+  id                        String                        @id @default(cuid())
   jobId                     String
   sectionId                 String?
   generationRunId           String
   artifactId                String
-  filePath                  String                           @unique
+  filePath                  String                        @unique
   sha256                    String
   width                     Int?
   height                    Int?
   fileSize                  BigInt?
-  reviewStatus              String                           @default("pending")
+  reviewStatus              String                        @default("pending")
   rejectReasons             Json?
   reviewNote                String?
   captionDraft              String?
   reviewedAt                DateTime?
   includedDatasetRevisionId String?
-  createdAt                 DateTime                         @default(now())
-  updatedAt                 DateTime                         @updatedAt
-  job                       CharacterLoraTrainingJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  section                   CharacterLoraJobSection?         @relation(fields: [sectionId], references: [id], onDelete: SetNull)
-  generationRun             CharacterLoraGenerationRun       @relation(fields: [generationRunId], references: [id], onDelete: Cascade)
-  includedDatasetRevision   CharacterLoraDatasetRevision?    @relation("CharacterLoraIncludedDatasetRevision", fields: [includedDatasetRevisionId], references: [id], onDelete: SetNull)
+  createdAt                 DateTime                      @default(now())
+  updatedAt                 DateTime                      @updatedAt
+  job                       CharacterLoraTrainingJob      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  section                   CharacterLoraJobSection?      @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  generationRun             CharacterLoraGenerationRun    @relation(fields: [generationRunId], references: [id], onDelete: Cascade)
+  includedDatasetRevision   CharacterLoraDatasetRevision? @relation("CharacterLoraIncludedDatasetRevision", fields: [includedDatasetRevisionId], references: [id], onDelete: SetNull)
   datasetItems              CharacterLoraDatasetItem[]
 
   @@index([jobId, reviewStatus])
@@ -901,27 +961,27 @@ model CharacterLoraCandidateImage {
 }
 
 model CharacterLoraDatasetRevision {
-  id                         String                           @id @default(cuid())
+  id                         String                         @id @default(cuid())
   jobId                      String
   version                    Int
-  status                     String                           @default("freezing")
+  status                     String                         @default("freezing")
   canonicalVersionId         String
   promptCardVersionId        String
-  captionStrategy            String                           @default("controllable_identity")
-  itemCount                  Int                              @default(0)
-  sourceCount                Int                              @default(0)
-  syntheticCount             Int                              @default(0)
+  captionStrategy            String                         @default("controllable_identity")
+  itemCount                  Int                            @default(0)
+  sourceCount                Int                            @default(0)
+  syntheticCount             Int                            @default(0)
   selectedManifestArtifactId String
   metadataJsonlArtifactId    String
   captionAuditArtifactId     String?
   trainDir                   String
   frozenAt                   DateTime?
-  createdAt                  DateTime                         @default(now())
-  updatedAt                  DateTime                         @updatedAt
-  job                        CharacterLoraTrainingJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  canonicalVersion           CharacterLoraCanonicalVersion    @relation(fields: [canonicalVersionId], references: [id], onDelete: Restrict)
-  promptCardVersion          CharacterLoraPromptCardVersion   @relation(fields: [promptCardVersionId], references: [id], onDelete: Restrict)
-  includedCandidateImages    CharacterLoraCandidateImage[]    @relation("CharacterLoraIncludedDatasetRevision")
+  createdAt                  DateTime                       @default(now())
+  updatedAt                  DateTime                       @updatedAt
+  job                        CharacterLoraTrainingJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  canonicalVersion           CharacterLoraCanonicalVersion  @relation(fields: [canonicalVersionId], references: [id], onDelete: Restrict)
+  promptCardVersion          CharacterLoraPromptCardVersion @relation(fields: [promptCardVersionId], references: [id], onDelete: Restrict)
+  includedCandidateImages    CharacterLoraCandidateImage[]  @relation("CharacterLoraIncludedDatasetRevision")
   items                      CharacterLoraDatasetItem[]
   trainingRuns               CharacterLoraTrainingRun[]
 
@@ -932,17 +992,17 @@ model CharacterLoraDatasetRevision {
 }
 
 model CharacterLoraDatasetItem {
-  id                String                         @id @default(cuid())
+  id                String                       @id @default(cuid())
   datasetRevisionId String
   candidateImageId  String
   imageArtifactId   String
   captionArtifactId String
   captionText       String
-  repeatCount       Int                            @default(1)
+  repeatCount       Int                          @default(1)
   sourceWeight      Float?
-  sortOrder         Int                            @default(0)
-  datasetRevision   CharacterLoraDatasetRevision   @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
-  candidateImage    CharacterLoraCandidateImage    @relation(fields: [candidateImageId], references: [id], onDelete: Restrict)
+  sortOrder         Int                          @default(0)
+  datasetRevision   CharacterLoraDatasetRevision @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
+  candidateImage    CharacterLoraCandidateImage  @relation(fields: [candidateImageId], references: [id], onDelete: Restrict)
 
   @@unique([datasetRevisionId, candidateImageId])
   @@index([datasetRevisionId, sortOrder])
@@ -950,10 +1010,10 @@ model CharacterLoraDatasetItem {
 }
 
 model CharacterLoraTrainingRun {
-  id                         String                         @id @default(cuid())
+  id                         String                            @id @default(cuid())
   jobId                      String
   datasetRevisionId          String
-  status                     String                         @default("queued")
+  status                     String                            @default("queued")
   launcher                   String
   resolvedConfig             Json
   configArtifactId           String
@@ -969,10 +1029,10 @@ model CharacterLoraTrainingRun {
   cancelRequestedAt          DateTime?
   startedAt                  DateTime?
   finishedAt                 DateTime?
-  createdAt                  DateTime                       @default(now())
-  updatedAt                  DateTime                       @updatedAt
-  job                        CharacterLoraTrainingJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  datasetRevision            CharacterLoraDatasetRevision   @relation(fields: [datasetRevisionId], references: [id], onDelete: Restrict)
+  createdAt                  DateTime                          @default(now())
+  updatedAt                  DateTime                          @updatedAt
+  job                        CharacterLoraTrainingJob          @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  datasetRevision            CharacterLoraDatasetRevision      @relation(fields: [datasetRevisionId], references: [id], onDelete: Restrict)
   checkpoints                CharacterLoraTrainingCheckpoint[]
   benchmarkRuns              CharacterLoraBenchmarkRun[]
 
@@ -982,14 +1042,14 @@ model CharacterLoraTrainingRun {
 }
 
 model CharacterLoraTrainingCheckpoint {
-  id            String                    @id @default(cuid())
+  id            String                   @id @default(cuid())
   trainingRunId String
   step          Int
   artifactId    String
   sha256        String
   metrics       Json?
-  createdAt     DateTime                  @default(now())
-  trainingRun   CharacterLoraTrainingRun  @relation(fields: [trainingRunId], references: [id], onDelete: Cascade)
+  createdAt     DateTime                 @default(now())
+  trainingRun   CharacterLoraTrainingRun @relation(fields: [trainingRunId], references: [id], onDelete: Cascade)
 
   @@unique([trainingRunId, step])
   @@index([trainingRunId, step])
@@ -997,29 +1057,29 @@ model CharacterLoraTrainingCheckpoint {
 }
 
 model CharacterLoraBenchmarkRun {
-  id                 String                           @id @default(cuid())
-  jobId              String
-  trainingRunId      String
-  status             String                           @default("queued")
-  loraAssetId        String?
-  testPresetId       String?
-  testProjectId      String?
-  templateId         String?
-  checkpointMatrix   Json
-  weightMatrix       Json
-  reportArtifactId   String?
-  recommendedWeight  Float?
-  resultSummary      Json?
+  id                   String                           @id @default(cuid())
+  jobId                String
+  trainingRunId        String
+  status               String                           @default("queued")
+  loraAssetId          String?
+  testPresetId         String?
+  testProjectId        String?
+  templateId           String?
+  checkpointMatrix     Json
+  weightMatrix         Json
+  reportArtifactId     String?
+  recommendedWeight    Float?
+  resultSummary        Json?
   testPresetCleanedAt  DateTime?
   testProjectCleanedAt DateTime?
   cleanupSummary       Json?
-  startedAt          DateTime?
-  finishedAt         DateTime?
-  createdAt          DateTime                         @default(now())
-  updatedAt          DateTime                         @updatedAt
-  job                CharacterLoraTrainingJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  trainingRun        CharacterLoraTrainingRun         @relation(fields: [trainingRunId], references: [id], onDelete: Restrict)
-  promotionDecisions CharacterLoraPromotionDecision[]
+  startedAt            DateTime?
+  finishedAt           DateTime?
+  createdAt            DateTime                         @default(now())
+  updatedAt            DateTime                         @updatedAt
+  job                  CharacterLoraTrainingJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  trainingRun          CharacterLoraTrainingRun         @relation(fields: [trainingRunId], references: [id], onDelete: Restrict)
+  promotionDecisions   CharacterLoraPromotionDecision[]
 
   @@index([jobId, status])
   @@index([trainingRunId])
@@ -1027,10 +1087,10 @@ model CharacterLoraBenchmarkRun {
 }
 
 model CharacterLoraPromotionDecision {
-  id                        String                         @id @default(cuid())
+  id                        String                    @id @default(cuid())
   jobId                     String
   benchmarkRunId            String
-  status                    String                         @default("draft")
+  status                    String                    @default("draft")
   selectedLoraAssetId       String
   selectedCheckpoint        String?
   defaultRecommendedWeight  Float
@@ -1043,10 +1103,10 @@ model CharacterLoraPromotionDecision {
   reportArtifactId          String?
   decidedAt                 DateTime?
   promotedAt                DateTime?
-  createdAt                 DateTime                       @default(now())
-  updatedAt                 DateTime                       @updatedAt
-  job                       CharacterLoraTrainingJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  benchmarkRun              CharacterLoraBenchmarkRun      @relation(fields: [benchmarkRunId], references: [id], onDelete: Restrict)
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+  job                       CharacterLoraTrainingJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  benchmarkRun              CharacterLoraBenchmarkRun @relation(fields: [benchmarkRunId], references: [id], onDelete: Restrict)
 
   @@index([jobId, status])
   @@index([benchmarkRunId])
