@@ -629,7 +629,7 @@
   pointer-events: none;
 }
 
-@container (max-width: 860px) {
+@container (max-width: 1020px) {
   .currentRunItem {
     grid-template-columns: 1fr;
     gap: 10px;

@@ -47,8 +47,8 @@ test("training current-running cards adapt from their own surface width", () => 
   );
   assert.match(
     cssSource,
-    /@container\s*\(max-width:\s*860px\)\s*\{[\s\S]*?\.currentRunItem\s*\{[\s\S]*?grid-template-columns:\s*1fr/,
-    "current-running card layout should collapse from the surface width, not the viewport width",
+    /@container\s*\(max-width:\s*1020px\)\s*\{[\s\S]*?\.currentRunItem\s*\{[\s\S]*?grid-template-columns:\s*1fr/,
+    "current-running card layout should collapse from the surface width before the two-column list crowds it",
   );
   assert.doesNotMatch(
     cssSource,

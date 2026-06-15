@@ -8,10 +8,14 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const trainingPageSource = readFileSync(resolve(testDir, "../src/app/training/[[...route]]/page.tsx"), "utf8");
 const trainingRouteDataPath = resolve(testDir, "../src/app/training/load-training-route-data.ts");
 const trainingRouteDataSource = existsSync(trainingRouteDataPath) ? readFileSync(trainingRouteDataPath, "utf8") : "";
+const trainingRouteLoaderPath = resolve(testDir, "../src/features/training/load-route-data.ts");
+const trainingRouteLoaderSource = existsSync(trainingRouteLoaderPath) ? readFileSync(trainingRouteLoaderPath, "utf8") : "";
 const trainingSnapshotServicePath = resolve(testDir, "../src/server/services/training/snapshot-service.ts");
 const trainingSnapshotServiceSource = existsSync(trainingSnapshotServicePath) ? readFileSync(trainingSnapshotServicePath, "utf8") : "";
 const trainingFeatureDataPath = resolve(testDir, "../src/features/training/data.ts");
 const trainingFeatureDataSource = existsSync(trainingFeatureDataPath) ? readFileSync(trainingFeatureDataPath, "utf8") : "";
+const trainingFeatureAppPath = resolve(testDir, "../src/features/training/app.tsx");
+const trainingFeatureAppSource = existsSync(trainingFeatureAppPath) ? readFileSync(trainingFeatureAppPath, "utf8") : "";
 const trainingNotFoundPath = resolve(testDir, "../src/features/training/not-found-page.tsx");
 const trainingNotFoundSource = existsSync(trainingNotFoundPath) ? readFileSync(trainingNotFoundPath, "utf8") : "";
 const trainingFeatureBuildPath = resolve(testDir, "../src/features/training/build.ts");
@@ -111,18 +115,23 @@ test("buildLoraTrainingDemoData prefers an injected production training payload 
 test("production training route loader delegates snapshot assembly to a dedicated training service", () => {
   assert.match(
     trainingRouteDataSource,
-    /export \{ loadTrainingRouteData \} from "@\/features\/training\/data";/,
-    "app-layer route loader should re-export the dedicated training feature data loader",
+    /export \{ loadTrainingRouteData \} from "@\/features\/training\/load-route-data";/,
+    "app-layer route loader should re-export the dedicated server-only training route loader",
   );
   assert.match(
-    trainingFeatureDataSource,
+    trainingRouteLoaderSource,
     /export async function loadTrainingRouteData/,
-    "training feature data module should expose the shared route-data builder",
+    "training route loader should expose the shared route-data builder",
   );
   assert.match(
-    trainingFeatureDataSource,
+    trainingRouteLoaderSource,
     /loadTrainingSnapshot/,
-    "training feature data module should import the dedicated training snapshot service",
+    "training route loader should import the dedicated training snapshot service",
+  );
+  assert.doesNotMatch(
+    trainingFeatureDataSource,
+    /loadTrainingSnapshot|@\/server\/services\/training/,
+    "client-safe training feature data module should not import server snapshot services",
   );
   assert.doesNotMatch(
     trainingFeatureDataSource,
@@ -131,8 +140,8 @@ test("production training route loader delegates snapshot assembly to a dedicate
   );
   assert.match(
     trainingFeatureDataSource,
-    /shellData:/,
-    "training feature data module should package shell-specific demo data separately from training page data",
+    /shellData\?:\s*DemoData/,
+    "training feature data module should describe shell-specific demo data separately from training page data",
   );
   assert.doesNotMatch(
     trainingFeatureDataSource,
@@ -148,6 +157,29 @@ test("production training route loader delegates snapshot assembly to a dedicate
     trainingFeatureDataSource,
     /function buildTrainingShellData/,
     "training feature data module should synthesize a minimal shell dataset for /training routes",
+  );
+});
+
+test("training client app imports only the client-safe training data contract", () => {
+  const appDataImportLine = trainingFeatureAppSource
+    .split("\n")
+    .filter((line) => line.includes("@/features/training/data"))
+    .join("\n");
+
+  assert.match(
+    appDataImportLine,
+    /resolveTrainingShellData/,
+    "training app should read shell-data helpers from the client-safe data module",
+  );
+  assert.match(
+    appDataImportLine,
+    /import type \{ TrainingAppData \}/,
+    "training app should import the page data contract as a type only",
+  );
+  assert.doesNotMatch(
+    appDataImportLine,
+    /loadTrainingRouteData/,
+    "training app should not import the server route loader into the client bundle",
   );
 });
 

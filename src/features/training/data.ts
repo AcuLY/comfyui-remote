@@ -1,5 +1,4 @@
 import type { DemoData } from "@/app/design-demos/data/types";
-import { loadTrainingSnapshot } from "@/server/services/training/snapshot-service";
 import type { LoraTrainingDemoData, TrainingImage } from "./types";
 
 export type TrainingModelOption = Pick<DemoData["models"][number], "modelType" | "name" | "relativePath">;
@@ -15,7 +14,7 @@ export function resolveTrainingShellData(data: TrainingAppData): DemoData | null
   return data.shellData ?? null;
 }
 
-function buildTrainingShellData(loraTraining: LoraTrainingDemoData): DemoData {
+export function buildTrainingShellData(loraTraining: LoraTrainingDemoData): DemoData {
   const sectionCount = loraTraining.projects.reduce((sum, project) => sum + project.sections.length, 0);
   const pendingImages = loraTraining.projects.reduce(
     (sum, project) => sum + project.resultPool.filter((result) => result.reviewStatus === "pending").length,
@@ -50,16 +49,5 @@ function buildTrainingShellData(loraTraining: LoraTrainingDemoData): DemoData {
     auditLogs: [],
     images: [],
     loraTraining,
-  };
-}
-
-export async function loadTrainingRouteData(): Promise<TrainingAppData> {
-  const loraTraining = await loadTrainingSnapshot();
-
-  return {
-    images: [],
-    loraTraining,
-    models: [],
-    shellData: buildTrainingShellData(loraTraining),
   };
 }

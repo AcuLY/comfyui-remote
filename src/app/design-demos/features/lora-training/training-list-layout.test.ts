@@ -99,6 +99,14 @@ test("training current-running list waits for desktop workspace width before spl
   );
 });
 
+test("training current-running cards keep single-column internals while the list first splits", () => {
+  assert.match(
+    runsCss,
+    /@container\s*\(max-width:\s*1020px\)\s*\{[\s\S]*?\.currentRunItem\s*\{[\s\S]*?grid-template-columns:\s*1fr/,
+    "Current running cards should not split their internals until two list columns have enough room",
+  );
+});
+
 test("sortable training resource lists use ancestor surfaces for container queries", () => {
   assert.match(
     resourcesCss,
