@@ -263,6 +263,58 @@ test("GET /api/training manifest exposes scheduler and worker operations for age
   );
 });
 
+test("GET /api/training manifest exposes an end-to-end HTTP workflow for agents", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(
+    fullWorkflow,
+    "agent manifest should include a complete project-to-trained-LoRA HTTP workflow",
+  );
+  assert.deepEqual(
+    fullWorkflow.steps.map((step: { method: string; path: string }) => `${step.method} ${step.path}`),
+    [
+      "POST /api/training/projects",
+      "POST /api/training/projects/:projectId/character-images",
+      "PATCH /api/training/projects/:projectId/profile",
+      "POST /api/training/projects/:projectId/sections",
+      "POST /api/training/sections/:sectionId/blocks",
+      "POST /api/training/projects/:projectId/generation-tasks",
+      "POST /api/training/generation-tasks/:taskId/inputs",
+      "POST /api/training/generation-tasks/:taskId/preview",
+      "POST /api/training/generation-tasks/:taskId/run",
+      "POST /api/training/scheduler/tick",
+      "GET /api/training/worker/tasks/next",
+      "POST /api/training/worker/tasks/:taskId/heartbeat",
+      "POST /api/training/worker/generation-tasks/:taskId/complete",
+      "POST /api/training/worker/tasks/:taskId/complete",
+      "GET /api/training/generation-tasks/:taskId/outputs",
+      "POST /api/training/generation-outputs/:outputId/apply",
+      "POST /api/training/image-results/:imageResultId/review",
+      "POST /api/training/projects/:projectId/captions/generate",
+      "GET /api/training/projects/:projectId/dataset-readiness",
+      "POST /api/training/projects/:projectId/dataset-revisions",
+      "POST /api/training/projects/:projectId/training-runs",
+      "POST /api/training/scheduler/tick",
+      "GET /api/training/worker/tasks/next",
+      "POST /api/training/worker/tasks/:taskId/heartbeat",
+      "POST /api/training/worker/training-runs/:trainingRunId/progress",
+      "POST /api/training/worker/training-runs/:trainingRunId/complete",
+      "POST /api/training/worker/tasks/:taskId/complete",
+      "POST /api/training/training-runs/:trainingRunId/poll",
+      "POST /api/training/training-runs/:trainingRunId/cleanup",
+      "POST /api/training/training-runs/:trainingRunId/create-preset",
+    ],
+    "agent workflow should enumerate the full HTTP-only path from project setup through LoRA preset creation",
+  );
+});
+
 test("GET /api/training manifest covers every implemented training API route", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
