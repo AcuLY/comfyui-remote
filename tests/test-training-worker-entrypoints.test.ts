@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
@@ -59,6 +60,27 @@ test("training worker supervisor launches Training-named worker scripts", () => 
     /character-lora-training/,
     "training supervisor should not directly launch or import legacy Character LoRA scripts",
   );
+});
+
+test("training worker entrypoint help commands run under tsx without legacy labels", () => {
+  const tsxCli = join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs");
+  const workerEntrypoints = [
+    "scripts/training/image-worker.ts",
+    "scripts/training/dataset-freeze-worker.ts",
+    "scripts/training/training-worker.ts",
+  ];
+
+  for (const entrypoint of workerEntrypoints) {
+    const result = spawnSync(process.execPath, [tsxCli, entrypoint, "--help"], {
+      cwd: process.cwd(),
+      encoding: "utf8",
+    });
+
+    assert.equal(result.status, 0, `${entrypoint} --help should exit successfully: ${result.stderr}`);
+    assert.match(result.stdout, /LoRA training/i, `${entrypoint} --help should use Training naming`);
+    assert.doesNotMatch(result.stdout, /Character LoRA/i, `${entrypoint} --help should not expose legacy naming`);
+    assert.doesNotMatch(result.stderr, /Top-level await/i, `${entrypoint} should not rely on unsupported top-level await`);
+  }
 });
 
 test("training worker supervisor targets Training-named worker task HTTP routes", async () => {
