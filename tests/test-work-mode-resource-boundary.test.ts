@@ -27,6 +27,10 @@ const generationWorkerStatusRouteSource = readFileSync(resolve(repoRoot, "src/ap
 const generationProjectExportServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-export-service.ts"), "utf8");
 const generationProjectArchiveServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-archive-service.ts"), "utf8");
 const generationProjectFolderServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-folder-service.ts"), "utf8");
+const generationImageReviewActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/image-review.ts"), "utf8");
+const generationCensoringActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/censoring.ts"), "utf8");
+const generationSectionActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/section.ts"), "utf8");
+const generationTrashRepositorySource = readFileSync(resolve(repoRoot, "src/server/repositories/trash-repository.ts"), "utf8");
 const generationTemplateCrudSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-crud.ts"), "utf8");
 const generationTemplateImportSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-import.ts"), "utf8");
 const generationPresetReplacementSource = readFileSync(resolve(repoRoot, "src/server/services/preset-section-replacement-service.ts"), "utf8");
@@ -483,6 +487,84 @@ test("generation project service entrypoints reuse the generation project bounda
     generationProjectFolderServiceSource,
     /project\.count\(\{[\s\S]*buildGenerationProjectWhere\(\{\s*folderId:\s*id\s*\}\)/,
     "Generation project folder deletion should not count hidden training benchmark projects as visible folder contents.",
+  );
+});
+
+test("generation image review and censoring entrypoints reuse the generation project boundary", () => {
+  for (const [label, source] of [
+    ["generation image review actions", generationImageReviewActionSource],
+    ["generation censoring actions", generationCensoringActionSource],
+    ["generation trash repository", generationTrashRepositorySource],
+  ] as const) {
+    assert.match(
+      source,
+      /buildGenerationProjectWhere/,
+      `${label} should import the generation project boundary.`,
+    );
+  }
+
+  assert.match(
+    generationImageReviewActionSource,
+    /imageResult\.findMany\(\{[\s\S]*where:\s*\{[\s\S]*id:\s*\{\s*in:\s*uniqueImageIds\s*\}[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation image review actions should bulk-load images through generation-owned projects.",
+  );
+  assert.doesNotMatch(
+    generationImageReviewActionSource,
+    /project\.findUnique\(\{[\s\S]*where:\s*\{\s*id:\s*normalizedProjectId\s*\}/,
+    "Generation project image trash actions must not load projects by id without the project boundary.",
+  );
+  assert.match(
+    generationImageReviewActionSource,
+    /trashRecord\.findMany\(\{[\s\S]*imageResult:\s*\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation clear-trash should only clear trash records from generation-owned projects.",
+  );
+  assert.match(
+    generationCensoringActionSource,
+    /imageResult\.findFirst\(\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation single-image censoring should resolve images through generation-owned projects.",
+  );
+  assert.match(
+    generationCensoringActionSource,
+    /censoringTask\.(?:groupBy|updateMany)\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(/,
+    "Generation censoring task aggregates and mutations should resolve tasks through generation-owned projects.",
+  );
+  assert.match(
+    generationTrashRepositorySource,
+    /projectSection\.findFirst\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation section trash reads should reject section ids from hidden training benchmark projects.",
+  );
+});
+
+test("generation section actions reuse the generation project boundary", () => {
+  assert.match(
+    generationSectionActionSource,
+    /buildGenerationProjectWhere/,
+    "Generation section actions should import the generation project boundary.",
+  );
+  assert.doesNotMatch(
+    generationSectionActionSource,
+    /project\.findUnique\(\{[\s\S]*where:\s*\{\s*id:\s*projectId\s*\}/,
+    "Generation section actions must not load projects by id without the project boundary.",
+  );
+  assert.doesNotMatch(
+    generationSectionActionSource,
+    /project\.update\(\{[\s\S]*where:\s*\{\s*id:\s*projectId\s*\}/,
+    "Generation section actions must not update projects by id without the project boundary.",
+  );
+  assert.match(
+    generationSectionActionSource,
+    /projectSection\.find(?:First|Many)\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(/,
+    "Generation section id entrypoints should resolve sections through generation-owned projects.",
+  );
+  assert.match(
+    generationSectionActionSource,
+    /run\.count\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(/,
+    "Generation section run counts should reject hidden training benchmark projects.",
+  );
+  assert.match(
+    generationSectionActionSource,
+    /imageResult\.count\(\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(/,
+    "Generation section image counts should reject hidden training benchmark projects.",
   );
 });
 
