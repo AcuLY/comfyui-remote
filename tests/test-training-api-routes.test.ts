@@ -410,6 +410,119 @@ test("GET /api/training worker execution workflow declares machine-actionable ta
   );
 });
 
+test("GET /api/training worker execution workflow declares domain callback metadata", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const workerExecutionWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "worker_execution"
+  ) as {
+    steps: Array<{
+      id?: string;
+      description?: string;
+      method: string;
+      path: string;
+      requires?: string[];
+      pathParams?: Record<string, string>;
+      requestBody?: {
+        contentType?: string;
+        optionalFields?: string[];
+      };
+      produces?: string[];
+      responsePaths?: Record<string, string>;
+    }>;
+  } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(workerExecutionWorkflow, "agent manifest should include the worker execution workflow");
+
+  const steps = new Map(workerExecutionWorkflow.steps.map((step) => [step.id, step]));
+
+  assert.deepEqual(
+    steps.get("complete_generation_domain_task"),
+    {
+      id: "complete_generation_domain_task",
+      description: "Persist generated outputs on the generation task before completing the leased worker task.",
+      method: "POST",
+      path: "/api/training/worker/generation-tasks/:taskId/complete",
+      requires: ["generationTaskId"],
+      pathParams: { taskId: "generationTaskId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["resultImageResultId", "captionDraft", "reviewStatus"],
+      },
+      produces: ["outputId", "imageResultId"],
+      responsePaths: {
+        outputId: "$.data.outputResultIds[0]",
+        imageResultId: "$.data.outputResultIds[0]",
+      },
+    },
+  );
+  assert.deepEqual(
+    steps.get("fail_generation_domain_task"),
+    {
+      id: "fail_generation_domain_task",
+      description: "Persist a generation task failure before failing the leased worker task.",
+      method: "POST",
+      path: "/api/training/worker/generation-tasks/:taskId/fail",
+      requires: ["generationTaskId"],
+      pathParams: { taskId: "generationTaskId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["errorSummary"],
+      },
+    },
+  );
+  assert.deepEqual(
+    steps.get("report_training_domain_progress"),
+    {
+      id: "report_training_domain_progress",
+      description: "Persist visible training progress on the training run while the worker is active.",
+      method: "POST",
+      path: "/api/training/worker/training-runs/:trainingRunId/progress",
+      requires: ["trainingRunId"],
+      pathParams: { trainingRunId: "trainingRunId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["currentStep", "targetSteps", "schedulerMessage"],
+      },
+    },
+  );
+  assert.deepEqual(
+    steps.get("complete_training_domain_run"),
+    {
+      id: "complete_training_domain_run",
+      description: "Persist the final LoRA artifact on the training run before completing the leased worker task.",
+      method: "POST",
+      path: "/api/training/worker/training-runs/:trainingRunId/complete",
+      requires: ["trainingRunId"],
+      pathParams: { trainingRunId: "trainingRunId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["artifactName"],
+      },
+      produces: ["finalLoraArtifactId"],
+      responsePaths: { finalLoraArtifactId: "$.data.finalLoraArtifactId" },
+    },
+  );
+  assert.deepEqual(
+    steps.get("fail_training_domain_run"),
+    {
+      id: "fail_training_domain_run",
+      description: "Persist a training run failure before failing the leased worker task.",
+      method: "POST",
+      path: "/api/training/worker/training-runs/:trainingRunId/fail",
+      requires: ["trainingRunId"],
+      pathParams: { trainingRunId: "trainingRunId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["errorSummary"],
+      },
+    },
+  );
+});
+
 test("GET /api/training worker task resources declare request and response contracts", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
