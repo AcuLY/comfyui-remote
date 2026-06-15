@@ -699,6 +699,56 @@ test("GET /api/training full workflow declares body expectations for every write
   );
 });
 
+test("GET /api/training full workflow scopes worker leases by worker type", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  ) as {
+    steps: Array<{
+      id?: string;
+      path: string;
+      queryParams?: Record<string, string>;
+      requires?: string[];
+    }>;
+  } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(fullWorkflow, "agent manifest should include the full training workflow");
+
+  const steps = new Map(fullWorkflow.steps.map((step) => [step.id, step]));
+
+  assert.deepEqual(
+    steps.get("lease_generation_worker_task")?.queryParams,
+    {
+      leaseOwner: "agent",
+      workerType: "image_generation",
+    },
+    "Generation workers should lease only image_generation worker tasks.",
+  );
+  assert.deepEqual(
+    steps.get("lease_training_worker_task")?.queryParams,
+    {
+      leaseOwner: "agent",
+      workerType: "training",
+    },
+    "Training workers should lease only training worker tasks.",
+  );
+
+  const workerLeaseStepsMissingWorkerType = fullWorkflow.steps
+    .filter((step) => step.path === "/api/training/worker/tasks/next")
+    .filter((step) => !step.queryParams?.workerType)
+    .map((step) => step.id ?? "unknown");
+
+  assert.deepEqual(
+    workerLeaseStepsMissingWorkerType,
+    [],
+    "Every full workflow worker lease should declare workerType so agents do not lease unrelated queued work.",
+  );
+});
+
 test("training route operation inventory includes re-exported route handlers", async () => {
   const routeOperations = await listRouteOperations();
 

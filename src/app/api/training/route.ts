@@ -231,6 +231,10 @@ const TRAINING_API_MANIFEST = {
           method: "GET",
           path: "/api/training/worker/tasks/next",
           requires: ["workerTaskQueued"],
+          queryParams: {
+            workerType: "image_generation",
+            leaseOwner: "agent",
+          },
           produces: ["workerTaskId"],
           responsePaths: { workerTaskId: "$.data.id" },
         },
@@ -381,6 +385,10 @@ const TRAINING_API_MANIFEST = {
           method: "GET",
           path: "/api/training/worker/tasks/next",
           requires: ["workerTaskQueued"],
+          queryParams: {
+            workerType: "training",
+            leaseOwner: "agent",
+          },
           produces: ["workerTaskId"],
           responsePaths: { workerTaskId: "$.data.id" },
         },
