@@ -2463,7 +2463,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
       blockCount: sceneBlocks.length,
       enabledLabel: templateSectionForm.enabledLabel,
       firstBlock: sceneBlocks[0]?.title ?? "无场景块",
-      resolvedScene: resolvedTemplateScene || section.resolvedScene,
+      resolvedScene: resolvedTemplateScene || activeSection.resolvedScene,
       sectionId: activeSection.id,
       sectionTitle: templateSectionForm.title,
       templateId: activeTemplate.id,
@@ -2494,8 +2494,8 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
           title: templateSectionForm.title,
           enabled: templateSectionForm.enabledLabel === "启用",
           blocks: sceneBlocks,
-          resolvedScene: resolvedTemplateScene || section.resolvedScene,
-          scenePreview: resolvedTemplateScene || section.scenePreview,
+          resolvedScene: resolvedTemplateScene || activeSection.resolvedScene,
+          scenePreview: resolvedTemplateScene || activeSection.scenePreview,
         }),
       });
       const payload = await response.json().catch(() => null);

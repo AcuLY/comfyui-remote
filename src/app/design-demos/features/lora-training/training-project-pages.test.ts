@@ -197,7 +197,7 @@ test("training project overview archives and restores through the formal HTTP AP
   const overviewSource = pagesSource.slice(overviewStart, profileStart);
 
   assert.match(overviewSource, /usePathname/, "project overview should detect whether it is running under production \\/training routes");
-  assert.match(overviewSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/\$\{currentArchived \? "restore" : "archive"\}`/, "project overview should call the formal archive or restore API");
+  assert.match(overviewSource, /fetch\(`\/api\/training\/projects\/\$\{sourceProject\.id\}\/\$\{currentArchived \? "restore" : "archive"\}`/, "project overview should call the formal archive or restore API");
   assert.match(overviewSource, /method:\s*"POST"/, "project overview should archive and restore through POST");
   assert.match(overviewSource, /pushToast/, "project overview should surface API success or failure through the shared feedback system");
 });
@@ -246,7 +246,7 @@ test("training profile page uploads reference images through the formal HTTP API
   assert.match(profileSource, /usePathname/, "profile upload should detect whether it is running under production \\/training routes");
   assert.match(profileSource, /useRef<HTMLInputElement \| null>/, "profile upload should keep a real file input ref for production uploads");
   assert.match(profileSource, /new FormData\(\)/, "profile upload should use multipart form data");
-  assert.match(profileSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/character-images`/, "profile upload should call the formal training character image API");
+  assert.match(profileSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/character-images`/, "profile upload should call the formal training character image API");
   assert.match(profileSource, /method:\s*"POST"/, "profile upload should send uploads through POST");
   assert.match(profileSource, /formData\.append\("file", file\)/, "profile upload should append the selected file to form data");
   assert.match(profileSource, /pushToast/, "profile upload should surface API success or failure through the shared feedback system");
@@ -281,7 +281,7 @@ test("training profile page saves a visible local profile draft instead of only 
   assert.match(profileSource, /onClick=\{handleSaveProfile\}/, "save button should call the local save handler");
   assert.match(profileSource, /资料保存草稿/, "profile page should render the visible saved draft panel");
   assert.match(profileSource, /localReferenceImages\.length/, "saved draft should include the current reference image count");
-  assert.match(profileSource, /project\.usagePrompt/, "saved draft should preserve the current usage prompt");
+  assert.match(profileSource, /usagePrompt:\s*profileForm\.usagePrompt/, "saved draft should preserve the current usage prompt");
   assert.doesNotMatch(profileSource, /feedback="角色资料已保存"/, "profile save should not remain a feedback-only placeholder");
 });
 
@@ -294,7 +294,7 @@ test("training profile page saves through the formal HTTP API on production rout
   const profileSource = pagesSource.slice(profileStart, sectionsStart);
 
   assert.match(profileSource, /usePathname/, "profile page should detect whether it is running under production /training routes");
-  assert.match(profileSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/profile`/, "production profile save should call the formal training profile API");
+  assert.match(profileSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/profile`/, "production profile save should call the formal training profile API");
   assert.match(profileSource, /method:\s*"PATCH"/, "production profile save should update profile data through PATCH");
   assert.match(profileSource, /profileSummary:\s*profileForm\.profileSummary/, "production profile save should submit the edited profile summary");
   assert.match(profileSource, /pushToast/, "production profile save should surface API success or failure through the shared feedback system");
@@ -329,8 +329,8 @@ test("training profile draft stays scoped to the active project", () => {
 
   assert.match(profileSource, /projectId:\s*string;/, "saved profile draft should remember the project it belongs to");
   assert.match(profileSource, /visibleProfileDraft/, "profile page should derive a project-scoped visible draft");
-  assert.match(profileSource, /profileDraft\?\.projectId === project\.id \? profileDraft : null/, "draft display should be gated by the active project");
-  assert.match(profileSource, /projectId:\s*project\.id/, "save action should store the active project id on the draft");
+  assert.match(profileSource, /profileDraft\?\.projectId === activeProject\.id \? profileDraft : null/, "draft display should be gated by the active project");
+  assert.match(profileSource, /projectId:\s*activeProject\.id/, "save action should store the active project id on the draft");
   assert.doesNotMatch(profileSource, /\{profileDraft \? \(/, "profile page should not render a stale draft from another project");
 });
 
@@ -424,11 +424,11 @@ test("training section list mutations use the formal HTTP APIs on production rou
   const sectionsPageSource = pagesSource.slice(sectionsPageStart, sectionDetailStart);
 
   assert.match(sectionsPageSource, /usePathname/, "section list should detect whether it is running under production \\/training routes");
-  assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/sections`/, "section add and copy should call the formal project sections API");
+  assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/sections`/, "section add and copy should call the formal project sections API");
   assert.match(sectionsPageSource, /sourceSectionId:\s*section\.id/, "section copy should pass the copied source section id");
-  assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/sections\/\$\{sectionId\}`/, "section delete should call the formal section delete API");
+  assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/sections\/\$\{sectionId\}`/, "section delete should call the formal section delete API");
   assert.match(sectionsPageSource, /method:\s*"DELETE"/, "section delete should use DELETE");
-  assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/sections\/reorder`/, "section reorder should call the formal section reorder API");
+  assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/sections\/reorder`/, "section reorder should call the formal section reorder API");
   assert.match(sectionsPageSource, /orderedSectionIds:\s*nextSectionIds/, "section reorder should submit the visible section order");
   assert.match(sectionsPageSource, /pushToast/, "section list mutation requests should surface API success or failure through the shared feedback system");
 });
@@ -463,8 +463,8 @@ test("training project repeated object actions include the acted-on object name"
   assert.match(newProjectSource, /ariaLabel=\{`删除初始小节：\$\{section\.title\}`\}/, "seed delete should name the section");
   assert.doesNotMatch(projectDetailSource, /ariaLabel=\{`启动训练项目：\$\{project\.title\}`\}/, "project detail should leave start-training to the route header");
   assert.doesNotMatch(projectDetailSource, /ariaLabel=\{`保存训练项目为模板：\$\{project\.title\}`\}/, "project detail should leave save-as-template to the route header");
-  assert.match(projectDetailSource, /ariaLabel=\{`编辑训练项目资料：\$\{project\.title\}`\}/, "edit-profile action should name the project");
-  assert.match(projectDetailSource, /ariaLabel=\{`打开训练项目数据集工作台：\$\{project\.title\}`\}/, "dataset workspace action should name the project");
+  assert.match(projectDetailSource, /ariaLabel=\{`编辑训练项目资料：\$\{sourceProject\.title\}`\}/, "edit-profile action should name the project");
+  assert.match(projectDetailSource, /ariaLabel=\{`打开训练项目数据集工作台：\$\{sourceProject\.title\}`\}/, "dataset workspace action should name the project");
   assert.doesNotMatch(scopedPageSource, /ariaLabel=\{`新建项目生成任务：\$\{project\.title\}`\}/, "project generation action should not be duplicated inside the page header");
   assert.doesNotMatch(scopedPageSource, /ariaLabel=\{`启动项目训练：\$\{project\.title\}`\}/, "project training action should not be duplicated inside the page header");
 });
@@ -548,8 +548,8 @@ test("training dataset page opens a local training draft instead of only preview
   assert.match(datasetPageSource, /handleOpenTrainingDraft/, "dataset page should define a start-training handler");
   assert.match(datasetPageSource, /onClick=\{handleOpenTrainingDraft\}/, "start training button should call the local draft handler");
   assert.match(datasetPageSource, /训练配置草稿/, "dataset page should render a visible training draft panel");
-  assert.match(datasetPageSource, /project\.datasetVersion/, "training draft should carry the active dataset version");
-  assert.match(datasetPageSource, /project\.keptCount/, "training draft should carry kept image count");
+  assert.match(datasetPageSource, /version:\s*datasetVersion/, "training draft should carry the active dataset version");
+  assert.match(datasetPageSource, /keptCount,/, "training draft should carry kept image count");
   assert.doesNotMatch(datasetPageSource, /启动训练配置已打开/, "start training should not remain a toast-only placeholder");
 });
 
@@ -563,7 +563,7 @@ test("training dataset page starts training through the formal HTTP API on produ
 
   assert.match(datasetPageSource, /usePathname/, "dataset page should detect whether it is running under production \\/training routes");
   assert.match(datasetPageSource, /useRouter/, "dataset page should be able to navigate to the queued training run on production routes");
-  assert.match(datasetPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/training-runs`/, "dataset page should call the formal project training run API");
+  assert.match(datasetPageSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/training-runs`/, "dataset page should call the formal project training run API");
   assert.match(datasetPageSource, /method:\s*"POST"/, "dataset page should enqueue training runs through POST");
   assert.match(datasetPageSource, /revisionId:/, "dataset page should pass the selected dataset revision when available");
   assert.match(datasetPageSource, /targetSteps:/, "dataset page should map the draft training step count into the HTTP request config");
@@ -581,7 +581,7 @@ test("training dataset page gates start-training behind readiness and active-run
 
   assert.match(datasetPageSource, /const training = useTraining\(data\)/, "dataset page should inspect the full training run list for gating");
   assert.match(datasetPageSource, /run\.kind === "training"/, "dataset gating should only consider training runs");
-  assert.match(datasetPageSource, /run\.projectId === project\.id/, "dataset gating should stay scoped to the active project");
+  assert.match(datasetPageSource, /run\.projectId === activeProject\.id/, "dataset gating should stay scoped to the active project");
   assert.match(datasetPageSource, /run\.status === "queued" \|\| run\.status === "running"/, "dataset gating should block when a training run is queued or running");
   assert.match(datasetPageSource, /const startTrainingBlockedReason =/, "dataset page should define a shared blocked-start reason");
   assert.match(datasetPageSource, /同一训练项目不能同时存在多个进行中训练任务/, "dataset page should explain why concurrent training is blocked");
@@ -602,7 +602,7 @@ test("training dataset page freezes the current dataset version through the form
   assert.match(datasetPageSource, /setDatasetRevisionState/, "freeze actions should update project-scoped dataset revision state");
   assert.match(datasetPageSource, /handleFreezeDatasetRevision/, "dataset page should define an explicit freeze-version handler");
   assert.match(datasetPageSource, /冻结当前版本/, "dataset page should expose a visible freeze-current-version action");
-  assert.match(datasetPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/dataset-revisions`/, "dataset page should call the formal dataset revision API");
+  assert.match(datasetPageSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/dataset-revisions`/, "dataset page should call the formal dataset revision API");
   assert.match(datasetPageSource, /router\.refresh\(\)/, "dataset freeze should refresh project data after a successful API response");
   assert.match(datasetPageSource, /pushToast/, "dataset freeze should surface API success or failure through the shared feedback system");
 });
@@ -617,7 +617,7 @@ test("training dataset page bulk-generates captions through the formal HTTP API 
 
   assert.match(datasetPageSource, /handleGenerateDatasetCaptions/, "dataset page should define an explicit bulk caption-generation handler");
   assert.match(datasetPageSource, /批量生成说明文本/, "dataset page should expose a visible bulk caption-generation action");
-  assert.match(datasetPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/captions\/generate`/, "dataset page should call the formal bulk caption-generation API");
+  assert.match(datasetPageSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/captions\/generate`/, "dataset page should call the formal bulk caption-generation API");
   assert.match(datasetPageSource, /mode:\s*"kept_without_captions"/, "dataset page should request caption generation for kept images missing captions");
   assert.match(datasetPageSource, /router\.refresh\(\)/, "dataset caption generation should refresh project data after a successful API response");
   assert.match(datasetPageSource, /pushToast/, "dataset caption generation should surface API success or failure through the shared feedback system");
@@ -633,7 +633,7 @@ test("training dataset draft stays scoped to the active project", () => {
 
   assert.match(datasetPageSource, /trainingDraftState/, "dataset draft state should be stored with project context");
   assert.match(datasetPageSource, /projectId:\s*project\?\.id \?\? null/, "dataset draft state should remember the source project id");
-  assert.match(datasetPageSource, /trainingDraftState\.projectId === project\.id \? trainingDraftState\.draft : null/, "dataset draft should reset after project changes");
+  assert.match(datasetPageSource, /trainingDraftState\.projectId === activeProject\.id \? trainingDraftState\.draft : null/, "dataset draft should reset after project changes");
   assert.match(datasetPageSource, /draft:\s*null/, "a new project should not inherit another project's draft");
   assert.doesNotMatch(datasetPageSource, /const \[trainingDraft, setTrainingDraft\] = useState</, "training draft should not be stored without project context");
 });
@@ -650,9 +650,9 @@ test("training dataset readiness is a lightweight preparation summary, not a sta
   assert.doesNotMatch(datasetPageSource, /title="Readiness"/, "dataset page should not keep a standalone Readiness panel");
   assert.match(datasetPageSource, /title="训练准备"/, "dataset page should fold readiness into the training preparation area");
   assert.match(datasetPageSource, /className=\{s\.readinessSummary\}/, "dataset readiness should use the compact summary row");
-  assert.match(datasetPageSource, /project\.keptCount/, "preparation summary should keep the kept image count visible");
-  assert.match(datasetPageSource, /project\.captionMissingCount/, "preparation summary should keep caption gaps visible");
-  assert.match(datasetPageSource, /project\.datasetVersion/, "preparation summary should keep the active dataset version visible");
+  assert.match(datasetPageSource, /\{keptCount\}/, "preparation summary should keep the kept image count visible");
+  assert.match(datasetPageSource, /\{captionMissingCount\}/, "preparation summary should keep caption gaps visible");
+  assert.match(datasetPageSource, /\{datasetVersion\}/, "preparation summary should keep the active dataset version visible");
 });
 
 test("training dataset revision rows respond to their own panel width", () => {
@@ -778,7 +778,7 @@ test("project-scoped run rows retry through the formal HTTP API on production ro
 
   assert.match(scopedPageSource, /usePathname/, "project-scoped retry should detect whether it is running under production \\/training routes");
   assert.match(scopedPageSource, /fetch\(`\/api\/training\/sections\/\$\{run\.sectionId\}\/runs`/, "project-scoped generation retry should call the formal section run API");
-  assert.match(scopedPageSource, /fetch\(`\/api\/training\/projects\/\$\{project\.id\}\/training-runs`/, "project-scoped training retry should call the formal project training run API");
+  assert.match(scopedPageSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/training-runs`/, "project-scoped training retry should call the formal project training run API");
   assert.match(scopedPageSource, /parentRunId:\s*run\.id/, "project-scoped generation retry should pass the failed run id as the parent run");
   assert.match(scopedPageSource, /revisionId:\s*run\.datasetRevisionId/, "project-scoped training retry should pass the original dataset revision id");
   assert.match(scopedPageSource, /pushToast/, "project-scoped retry should surface API success or failure through the shared feedback system");
@@ -793,7 +793,7 @@ test("project-scoped run page interactions stay scoped to project and task kind"
   assert.match(scopedPageSource, /projectRunInteractionState/, "project task page interaction state should be stored with route context");
   assert.match(scopedPageSource, /projectId:\s*project\?\.id \?\? null/, "project task interactions should remember the source project id");
   assert.match(scopedPageSource, /\bkind,\s*\n\s*projectId:/, "project task interactions should remember the source task kind");
-  assert.match(scopedPageSource, /projectRunInteractionState\.projectId === project\.id && projectRunInteractionState\.kind === kind \? projectRunInteractionState :/, "project task interactions should fall back after project or kind changes");
+  assert.match(scopedPageSource, /projectRunInteractionState\.projectId === activeProject\.id && projectRunInteractionState\.kind === kind \? projectRunInteractionState :/, "project task interactions should fall back after project or kind changes");
   assert.match(scopedPageSource, /hiddenProjectRunIds:\s*new Set<string>\(\)/, "a new project task context should start with no hidden runs");
   assert.match(scopedPageSource, /retriedProjectRunIds:\s*new Set<string>\(\)/, "a new project task context should start with no retried runs");
   assert.doesNotMatch(scopedPageSource, /const \[status, setStatus\] = useState<LoraTrainingTaskStatus>\("completed"\)/, "project task status should not be stored without route context");

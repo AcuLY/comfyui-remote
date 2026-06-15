@@ -105,6 +105,14 @@ function useTraining(data: TrainingAppData) {
   return buildLoraTrainingDemoData(data);
 }
 
+function isTrainingModelOption(value: unknown): value is TrainingModelOption {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return record.modelType === "checkpoint"
+    && typeof record.name === "string"
+    && typeof record.relativePath === "string";
+}
+
 function findProject(data: TrainingAppData, projectId?: string) {
   if (!projectId) return undefined;
   const training = buildLoraTrainingDemoData(data);
@@ -1014,14 +1022,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
         const payload = await response.json().catch(() => null);
         if (!response.ok || !payload?.ok || !Array.isArray(payload.data)) return;
 
-        const nextModels = payload.data
-          .filter((item): item is TrainingModelOption => (
-            Boolean(item)
-            && typeof item === "object"
-            && item.modelType === "checkpoint"
-            && typeof item.name === "string"
-            && typeof item.relativePath === "string"
-          ))
+        const nextModels = (payload.data as unknown[])
+          .filter(isTrainingModelOption)
           .map((item) => ({
             modelType: item.modelType,
             name: item.name,
@@ -1490,25 +1492,26 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: Train
   }));
   const [isUpdatingProjectArchive, setIsUpdatingProjectArchive] = useState(false);
   if (!project) return <EmptyPage title="没有训练项目数据" />;
+  const sourceProject = project;
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
-  const isProjectArchived = projectArchiveState.projectId === project.id ? projectArchiveState.archived : project.status === "archived";
+  const isProjectArchived = projectArchiveState.projectId === sourceProject.id ? projectArchiveState.archived : sourceProject.status === "archived";
   const activeProject: LoraTrainingProject = isProjectArchived
-    ? { ...project, status: "archived" }
-    : project.status === "archived"
-      ? { ...project, status: "ready" }
-      : project;
-  const recentRuns = training.runs.filter((run) => run.projectId === project.id).slice(0, 4);
-  const recentResults = project.resultPool.filter((result) => result.reviewStatus === "kept").slice(0, 4);
-  const latestRevision = project.datasetRevisions[0];
+    ? { ...sourceProject, status: "archived" }
+    : sourceProject.status === "archived"
+      ? { ...sourceProject, status: "ready" }
+      : sourceProject;
+  const recentRuns = training.runs.filter((run) => run.projectId === sourceProject.id).slice(0, 4);
+  const recentResults = sourceProject.resultPool.filter((result) => result.reviewStatus === "kept").slice(0, 4);
+  const latestRevision = sourceProject.datasetRevisions[0];
 
   async function handleToggleProjectArchive() {
-    const currentArchived = projectArchiveState.projectId === project.id ? projectArchiveState.archived : project.status === "archived";
+    const currentArchived = projectArchiveState.projectId === sourceProject.id ? projectArchiveState.archived : sourceProject.status === "archived";
     const nextArchived = !currentArchived;
 
     const applyLocalArchiveState = () => {
       setProjectArchiveState({
         archived: nextArchived,
-        projectId: project.id,
+        projectId: sourceProject.id,
       });
     };
 
@@ -1517,7 +1520,7 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: Train
       pushToast({
         tone: nextArchived ? "warning" : "success",
         title: nextArchived ? "训练项目已归档" : "训练项目已恢复",
-        detail: project.title,
+        detail: sourceProject.title,
       });
       return;
     }
@@ -1526,7 +1529,7 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: Train
 
     setIsUpdatingProjectArchive(true);
     try {
-      const response = await fetch(`/api/training/projects/${project.id}/${currentArchived ? "restore" : "archive"}`, {
+      const response = await fetch(`/api/training/projects/${sourceProject.id}/${currentArchived ? "restore" : "archive"}`, {
         method: "POST",
       });
       const payload = await response.json().catch(() => null);
@@ -1544,7 +1547,7 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: Train
       pushToast({
         tone: nextArchived ? "warning" : "success",
         title: nextArchived ? "训练项目已归档" : "训练项目已恢复",
-        detail: project.title,
+        detail: sourceProject.title,
       });
       router.refresh();
     } catch (error) {
@@ -1563,7 +1566,7 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: Train
       <ProjectHeader
         active="overview"
         project={activeProject}
-        subtitle={isProjectArchived ? `${project.profileSummary} · 已归档` : project.profileSummary}
+        subtitle={isProjectArchived ? `${sourceProject.profileSummary} · 已归档` : sourceProject.profileSummary}
         actions={(
           <Button
             tone={isProjectArchived ? "subtle" : "danger"}
@@ -1578,27 +1581,27 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: Train
       <div className={s.overviewGrid}>
         <Panel title="角色资料">
           <div className={s.stack}>
-            <p className={s.bodyText}>{project.profileSummary}</p>
+            <p className={s.bodyText}>{sourceProject.profileSummary}</p>
             <div className={s.heroStrip}>
-              <ImageListSmall images={project.referenceImages.map((reference) => reference.image)} limit={project.referenceImages.length} />
+              <ImageListSmall images={sourceProject.referenceImages.map((reference) => reference.image)} limit={sourceProject.referenceImages.length} />
             </div>
-            <ButtonLink href={`/training/projects/${project.id}/profile`} icon={FileText} ariaLabel={`编辑训练项目资料：${project.title}`}>
+            <ButtonLink href={`/training/projects/${sourceProject.id}/profile`} icon={FileText} ariaLabel={`编辑训练项目资料：${sourceProject.title}`}>
               编辑资料
             </ButtonLink>
           </div>
         </Panel>
         <Panel title="训练入口" subtitle="总览只放启动判断，完整训练准备和冻结版本在数据集页处理。">
           <div className={s.readinessSummary}>
-            <span><strong>{project.keptCount}</strong> 已保留</span>
-            <span><strong>{project.captionMissingCount}</strong> 缺说明文本</span>
-            <span><strong>{latestRevision?.version ?? project.datasetVersion}</strong> 当前版本</span>
+            <span><strong>{sourceProject.keptCount}</strong> 已保留</span>
+            <span><strong>{sourceProject.captionMissingCount}</strong> 缺说明文本</span>
+            <span><strong>{latestRevision?.version ?? sourceProject.datasetVersion}</strong> 当前版本</span>
           </div>
-          <ButtonLink href={`/training/projects/${project.id}/dataset`} icon={Layers} tone="primary" ariaLabel={`打开训练项目数据集工作台：${project.title}`}>
+          <ButtonLink href={`/training/projects/${sourceProject.id}/dataset`} icon={Layers} tone="primary" ariaLabel={`打开训练项目数据集工作台：${sourceProject.title}`}>
             打开数据集工作台
           </ButtonLink>
         </Panel>
         <Panel title="最近任务">
-          <RunRows project={project} runs={recentRuns} />
+          <RunRows project={sourceProject} runs={recentRuns} />
         </Panel>
         <Panel title="最近产物" subtitle="只展示最近保留结果，完整审查在结果池。">
           <TrainingResultGrid results={recentResults} title="最近产物" />
@@ -1641,30 +1644,31 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingReferenceImage, setIsUploadingReferenceImage] = useState(false);
   if (!project) return <EmptyPage title="没有角色资料数据" />;
-  const localReferenceImages = referenceImageState.projectId === project.id ? referenceImageState.images : project.referenceImages;
-  const profileForm = profileFormState.projectId === project.id ? profileFormState : {
-    detailPrompt: project.detailPrompt,
-    profileSummary: project.profileSummary,
-    projectId: project.id,
-    usagePrompt: project.usagePrompt,
+  const activeProject = project;
+  const localReferenceImages = referenceImageState.projectId === activeProject.id ? referenceImageState.images : activeProject.referenceImages;
+  const profileForm = profileFormState.projectId === activeProject.id ? profileFormState : {
+    detailPrompt: activeProject.detailPrompt,
+    profileSummary: activeProject.profileSummary,
+    projectId: activeProject.id,
+    usagePrompt: activeProject.usagePrompt,
   };
-  const visibleProfileDraft = profileDraft?.projectId === project.id ? profileDraft : null;
+  const visibleProfileDraft = profileDraft?.projectId === activeProject.id ? profileDraft : null;
   const isProductionTrainingRoute = pathname === "/training" || pathname.startsWith("/training/");
-  const addedReferenceResultIds = referenceResultState.projectId === project.id ? referenceResultState.addedReferenceResultIds : new Set<string>();
-  const pendingReferenceIds = referenceResultRequestState.projectId === project.id ? referenceResultRequestState.pendingReferenceIds : new Set<string>();
+  const addedReferenceResultIds = referenceResultState.projectId === activeProject.id ? referenceResultState.addedReferenceResultIds : new Set<string>();
+  const pendingReferenceIds = referenceResultRequestState.projectId === activeProject.id ? referenceResultRequestState.pendingReferenceIds : new Set<string>();
 
   async function handleSaveProfile() {
     const nextDraft = {
       detailPrompt: profileForm.detailPrompt,
       profileSummary: profileForm.profileSummary,
-      projectId: project.id,
+      projectId: activeProject.id,
       referenceImageCount: localReferenceImages.length,
       usagePrompt: profileForm.usagePrompt,
     };
 
     if (!isProductionTrainingRoute) {
       setProfileDraft(nextDraft);
-      pushToast({ tone: "success", title: visibleProfileDraft ? "资料保存草稿已更新" : "资料保存草稿已记录", detail: project.title });
+      pushToast({ tone: "success", title: visibleProfileDraft ? "资料保存草稿已更新" : "资料保存草稿已记录", detail: activeProject.title });
       return;
     }
 
@@ -1672,7 +1676,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
 
     setIsSavingProfile(true);
     try {
-      const response = await fetch(`/api/training/projects/${project.id}/profile`, {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/profile`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -1696,7 +1700,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
       pushToast({
         tone: "success",
         title: visibleProfileDraft ? "资料已更新" : "资料已保存",
-        detail: project.title,
+        detail: activeProject.title,
       });
     } catch (error) {
       pushToast({
@@ -1711,16 +1715,16 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
 
   function handleUpdateProfileForm(field: "detailPrompt" | "profileSummary" | "usagePrompt", value: string) {
     setProfileForm((current) => {
-      const active = current.projectId === project.id ? current : {
-        detailPrompt: project.detailPrompt,
-        profileSummary: project.profileSummary,
-        projectId: project.id,
-        usagePrompt: project.usagePrompt,
+      const active = current.projectId === activeProject.id ? current : {
+        detailPrompt: activeProject.detailPrompt,
+        profileSummary: activeProject.profileSummary,
+        projectId: activeProject.id,
+        usagePrompt: activeProject.usagePrompt,
       };
       return {
         ...active,
         [field]: value,
-        projectId: project.id,
+        projectId: activeProject.id,
       };
     });
   }
@@ -1732,22 +1736,22 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
     }
 
     setLocalReferenceImages((current) => {
-      const currentImages = current.projectId === project.id ? current.images : project.referenceImages;
+      const currentImages = current.projectId === activeProject.id ? current.images : activeProject.referenceImages;
       const draftIndex = currentImages.length + 1;
-      const image = project.images[currentImages.length % project.images.length] ?? currentImages[0]?.image;
-      if (!image) return { images: currentImages, projectId: project.id };
+      const image = activeProject.images[currentImages.length % activeProject.images.length] ?? currentImages[0]?.image;
+      if (!image) return { images: currentImages, projectId: activeProject.id };
       return {
         images: [
           ...currentImages,
           {
-            id: `${project.id}-uploaded-reference-${draftIndex}`,
+            id: `${activeProject.id}-uploaded-reference-${draftIndex}`,
             image,
             kind: "auxiliary",
             label: `上传参考图 ${draftIndex}`,
             note: "页面内本地上传草稿，可继续作为角色辅助参考图管理。",
           },
         ],
-        projectId: project.id,
+        projectId: activeProject.id,
       };
     });
   }
@@ -1766,7 +1770,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
       formData.append("sortOrder", String(localReferenceImages.length));
       formData.append("provenance", JSON.stringify({ origin: "training_profile_upload" }));
 
-      const response = await fetch(`/api/training/projects/${project.id}/character-images`, {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/character-images`, {
         method: "POST",
         body: formData,
       });
@@ -1800,10 +1804,10 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
       }
 
       setLocalReferenceImages((current) => {
-        const currentImages = current.projectId === project.id ? current.images : project.referenceImages;
+        const currentImages = current.projectId === activeProject.id ? current.images : activeProject.referenceImages;
         return {
           images: [...currentImages, uploadedReference],
-          projectId: project.id,
+          projectId: activeProject.id,
         };
       });
       pushToast({
@@ -1829,10 +1833,10 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
     const applyLocalAddedState = () => {
       setReferenceResultState((current) => ({
         addedReferenceResultIds: new Set([
-          ...(current.projectId === project.id ? current.addedReferenceResultIds : new Set<string>()),
+          ...(current.projectId === activeProject.id ? current.addedReferenceResultIds : new Set<string>()),
           referenceId,
         ]),
-        projectId: project.id,
+        projectId: activeProject.id,
       }));
     };
 
@@ -1852,10 +1856,10 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
 
     setReferenceResultRequestState((current) => ({
       pendingReferenceIds: new Set([
-        ...(current.projectId === project.id ? current.pendingReferenceIds : new Set<string>()),
+        ...(current.projectId === activeProject.id ? current.pendingReferenceIds : new Set<string>()),
         referenceId,
       ]),
-      projectId: project.id,
+      projectId: activeProject.id,
     }));
     try {
       const response = await fetch(`/api/training/character-images/${referenceId}/add-to-results`, {
@@ -1890,11 +1894,11 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
       });
     } finally {
       setReferenceResultRequestState((current) => {
-        const nextPending = new Set(current.projectId === project.id ? current.pendingReferenceIds : new Set<string>());
+        const nextPending = new Set(current.projectId === activeProject.id ? current.pendingReferenceIds : new Set<string>());
         nextPending.delete(referenceId);
         return {
           pendingReferenceIds: nextPending,
-          projectId: project.id,
+          projectId: activeProject.id,
         };
       });
     }
@@ -1904,7 +1908,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
     <div className={s.page}>
       <ProjectHeader
         active="profile"
-        project={project}
+        project={activeProject}
         actions={(
           <Button
             tone="primary"
@@ -2065,8 +2069,9 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
   }));
   const [isMutatingSections, setIsMutatingSections] = useState(false);
   if (!project) return <EmptyPage title="没有训练小节数据" />;
-  const localSections = localSectionState.projectId === project.id ? localSectionState.sections : project.sections;
-  const orderedSectionIds = orderedSectionState.projectId === project.id ? orderedSectionState.ids : project.sections.map((section) => section.id);
+  const activeProject = project;
+  const localSections = localSectionState.projectId === activeProject.id ? localSectionState.sections : activeProject.sections;
+  const orderedSectionIds = orderedSectionState.projectId === activeProject.id ? orderedSectionState.ids : activeProject.sections.map((section) => section.id);
   const sectionMap = new Map(localSections.map((section) => [section.id, section]));
   const sections = orderedSectionIds
     .map((sectionId) => sectionMap.get(sectionId))
@@ -2101,15 +2106,15 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
         ...currentIds.slice(sourceOrderIndex + 1),
       ];
 
-    setLocalSections({ projectId: project.id, sections: nextSections });
-    setOrderedSectionIds({ ids: nextIds, projectId: project.id });
+    setLocalSections({ projectId: activeProject.id, sections: nextSections });
+    setOrderedSectionIds({ ids: nextIds, projectId: activeProject.id });
 
     if (!isProductionTrainingRoute) return;
     if (isMutatingSections) return;
 
     setIsMutatingSections(true);
     try {
-      const response = await fetch(`/api/training/projects/${project.id}/sections`, {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/sections`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -2123,8 +2128,8 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
           title: "复制小节失败",
           detail: payload?.error?.message ?? "训练小节复制请求失败",
         });
-        setLocalSections({ projectId: project.id, sections: localSections });
-        setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+        setLocalSections({ projectId: activeProject.id, sections: localSections });
+        setOrderedSectionIds({ ids: orderedSectionIds, projectId: activeProject.id });
         return;
       }
       const savedCopy = payload.data as LoraTrainingSection;
@@ -2142,16 +2147,16 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
           savedCopy.id,
           ...orderedSectionIds.slice(sourceOrderIndex + 1),
         ];
-      setLocalSections({ projectId: project.id, sections: savedSections });
-      setOrderedSectionIds({ ids: savedIds, projectId: project.id });
+      setLocalSections({ projectId: activeProject.id, sections: savedSections });
+      setOrderedSectionIds({ ids: savedIds, projectId: activeProject.id });
       pushToast({
         tone: "success",
         title: "小节已复制",
         detail: section.title,
       });
     } catch (error) {
-      setLocalSections({ projectId: project.id, sections: localSections });
-      setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+      setLocalSections({ projectId: activeProject.id, sections: localSections });
+      setOrderedSectionIds({ ids: orderedSectionIds, projectId: activeProject.id });
       pushToast({
         tone: "error",
         title: "复制小节失败",
@@ -2165,15 +2170,15 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
   async function handleDeleteSection(sectionId: string) {
     const nextSections = localSections.filter((section) => section.id !== sectionId);
     const nextIds = orderedSectionIds.filter((id) => id !== sectionId);
-    setLocalSections({ projectId: project.id, sections: nextSections });
-    setOrderedSectionIds({ ids: nextIds, projectId: project.id });
+    setLocalSections({ projectId: activeProject.id, sections: nextSections });
+    setOrderedSectionIds({ ids: nextIds, projectId: activeProject.id });
 
     if (!isProductionTrainingRoute) return;
     if (isMutatingSections) return;
 
     setIsMutatingSections(true);
     try {
-      const response = await fetch(`/api/training/projects/${project.id}/sections/${sectionId}`, {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/sections/${sectionId}`, {
         method: "DELETE",
       });
       const payload = await response.json().catch(() => null);
@@ -2183,8 +2188,8 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
           title: "删除小节失败",
           detail: payload?.error?.message ?? "训练小节删除请求失败",
         });
-        setLocalSections({ projectId: project.id, sections: localSections });
-        setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+        setLocalSections({ projectId: activeProject.id, sections: localSections });
+        setOrderedSectionIds({ ids: orderedSectionIds, projectId: activeProject.id });
         return;
       }
       pushToast({
@@ -2193,8 +2198,8 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
         detail: sectionId,
       });
     } catch (error) {
-      setLocalSections({ projectId: project.id, sections: localSections });
-      setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+      setLocalSections({ projectId: activeProject.id, sections: localSections });
+      setOrderedSectionIds({ ids: orderedSectionIds, projectId: activeProject.id });
       pushToast({
         tone: "error",
         title: "删除小节失败",
@@ -2206,7 +2211,7 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
   }
 
   async function handleReorderSections(nextSectionIds: string[]) {
-    setOrderedSectionIds({ ids: nextSectionIds, projectId: project.id });
+    setOrderedSectionIds({ ids: nextSectionIds, projectId: activeProject.id });
 
     if (!isProductionTrainingRoute) return;
     if (isMutatingSections) return;
@@ -2214,7 +2219,7 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
     const previousIds = orderedSectionIds;
     setIsMutatingSections(true);
     try {
-      const response = await fetch(`/api/training/projects/${project.id}/sections/reorder`, {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/sections/reorder`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -2228,14 +2233,14 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
           title: "排序小节失败",
           detail: payload?.error?.message ?? "训练小节排序请求失败",
         });
-        setOrderedSectionIds({ ids: previousIds, projectId: project.id });
+        setOrderedSectionIds({ ids: previousIds, projectId: activeProject.id });
         return;
       }
       const savedSections = payload.data as LoraTrainingSection[];
-      setLocalSections({ projectId: project.id, sections: savedSections });
-      setOrderedSectionIds({ ids: savedSections.map((section) => section.id), projectId: project.id });
+      setLocalSections({ projectId: activeProject.id, sections: savedSections });
+      setOrderedSectionIds({ ids: savedSections.map((section) => section.id), projectId: activeProject.id });
     } catch (error) {
-      setOrderedSectionIds({ ids: previousIds, projectId: project.id });
+      setOrderedSectionIds({ ids: previousIds, projectId: activeProject.id });
       pushToast({
         tone: "error",
         title: "排序小节失败",
@@ -2271,15 +2276,15 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
       images: [],
       resultStatus: "pending",
     };
-    setLocalSections({ projectId: project.id, sections: [...localSections, draft] });
-    setOrderedSectionIds({ ids: [...orderedSectionIds, draft.id], projectId: project.id });
+    setLocalSections({ projectId: activeProject.id, sections: [...localSections, draft] });
+    setOrderedSectionIds({ ids: [...orderedSectionIds, draft.id], projectId: activeProject.id });
 
     if (!isProductionTrainingRoute) return;
     if (isMutatingSections) return;
 
     setIsMutatingSections(true);
     try {
-      const response = await fetch(`/api/training/projects/${project.id}/sections`, {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/sections`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({}),
@@ -2291,21 +2296,21 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
           title: "新建小节失败",
           detail: payload?.error?.message ?? "训练小节创建请求失败",
         });
-        setLocalSections({ projectId: project.id, sections: localSections });
-        setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+        setLocalSections({ projectId: activeProject.id, sections: localSections });
+        setOrderedSectionIds({ ids: orderedSectionIds, projectId: activeProject.id });
         return;
       }
       const savedSection = payload.data as LoraTrainingSection;
-      setLocalSections({ projectId: project.id, sections: [...localSections, savedSection] });
-      setOrderedSectionIds({ ids: [...orderedSectionIds, savedSection.id], projectId: project.id });
+      setLocalSections({ projectId: activeProject.id, sections: [...localSections, savedSection] });
+      setOrderedSectionIds({ ids: [...orderedSectionIds, savedSection.id], projectId: activeProject.id });
       pushToast({
         tone: "success",
         title: "小节草稿已添加",
         detail: savedSection.title,
       });
     } catch (error) {
-      setLocalSections({ projectId: project.id, sections: localSections });
-      setOrderedSectionIds({ ids: orderedSectionIds, projectId: project.id });
+      setLocalSections({ projectId: activeProject.id, sections: localSections });
+      setOrderedSectionIds({ ids: orderedSectionIds, projectId: activeProject.id });
       pushToast({
         tone: "error",
         title: "新建小节失败",
@@ -2728,7 +2733,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
       pushToast({
         tone: "success",
         title: visibleSectionDraft ? "小节保存草稿已更新" : "小节保存草稿已记录",
-        detail: section.title,
+        detail: activeSection.title,
       });
       return;
     }
@@ -3749,21 +3754,22 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Trai
   const [isStartingTraining, setIsStartingTraining] = useState(false);
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   if (!project) return <EmptyPage title="没有训练数据集数据" />;
-  const hasDatasetResultOverride = datasetResultState.projectId === project.id && datasetResultState.hasOverride;
-  const resultPool = hasDatasetResultOverride ? (datasetResultState.results ?? project.resultPool) : project.resultPool;
+  const activeProject = project;
+  const hasDatasetResultOverride = datasetResultState.projectId === activeProject.id && datasetResultState.hasOverride;
+  const resultPool = hasDatasetResultOverride ? (datasetResultState.results ?? activeProject.resultPool) : activeProject.resultPool;
   const keptResults = resultPool.filter((result) => result.reviewStatus === "kept");
-  const keptCount = hasDatasetResultOverride ? keptResults.length : project.keptCount;
+  const keptCount = hasDatasetResultOverride ? keptResults.length : activeProject.keptCount;
   const captionMissingCount = hasDatasetResultOverride
     ? keptResults.filter((result) => captionMissing(result.caption)).length
-    : project.captionMissingCount;
-  const hasDatasetRevisionOverride = datasetRevisionState.projectId === project.id && datasetRevisionState.hasOverride;
-  const datasetVersion = hasDatasetRevisionOverride ? (datasetRevisionState.datasetVersion ?? project.datasetVersion) : project.datasetVersion;
-  const datasetRevisions = hasDatasetRevisionOverride ? (datasetRevisionState.revisions ?? project.datasetRevisions) : project.datasetRevisions;
-  const trainingDraft = trainingDraftState.projectId === project.id ? trainingDraftState.draft : null;
+    : activeProject.captionMissingCount;
+  const hasDatasetRevisionOverride = datasetRevisionState.projectId === activeProject.id && datasetRevisionState.hasOverride;
+  const datasetVersion = hasDatasetRevisionOverride ? (datasetRevisionState.datasetVersion ?? activeProject.datasetVersion) : activeProject.datasetVersion;
+  const datasetRevisions = hasDatasetRevisionOverride ? (datasetRevisionState.revisions ?? activeProject.datasetRevisions) : activeProject.datasetRevisions;
+  const trainingDraft = trainingDraftState.projectId === activeProject.id ? trainingDraftState.draft : null;
   const latestRevision = datasetRevisions[0] ?? null;
   const activeTrainingRuns = training.runs.filter((run) =>
     run.kind === "training"
-    && run.projectId === project.id
+    && run.projectId === activeProject.id
     && (run.status === "queued" || run.status === "running"));
   const activeTrainingRun = activeTrainingRuns[0] ?? null;
   const hasActiveTrainingRun = activeTrainingRuns.length > 0;
@@ -3795,7 +3801,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Trai
       });
       setDatasetResultState({
         hasOverride: true,
-        projectId: project.id,
+        projectId: activeProject.id,
         results: nextResults,
       });
       pushToast({
@@ -3808,7 +3814,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Trai
 
     setIsGeneratingDatasetCaptions(true);
     try {
-      const response = await fetch(`/api/training/projects/${project.id}/captions/generate`, {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/captions/generate`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -3829,11 +3835,11 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Trai
       pushToast({
         tone: "success",
         title: "说明文本已批量生成",
-        detail: typeof payload?.data?.taskCount === "number" ? `${payload.data.taskCount} 张图片已补全` : project.title,
+        detail: typeof payload?.data?.taskCount === "number" ? `${payload.data.taskCount} 张图片已补全` : activeProject.title,
       });
       setDatasetResultState({
         hasOverride: false,
-        projectId: project.id,
+        projectId: activeProject.id,
         results: null,
       });
       router.refresh();
@@ -3853,11 +3859,11 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Trai
     const nextVersion = nextDatasetVersionLabel(datasetVersion);
 
     if (!isProductionTrainingRoute) {
-      const nextRevision = buildLocalDatasetRevision(project.id, resultPool, nextVersion);
+      const nextRevision = buildLocalDatasetRevision(activeProject.id, resultPool, nextVersion);
       setDatasetRevisionState({
         datasetVersion: nextVersion,
         hasOverride: true,
-        projectId: project.id,
+        projectId: activeProject.id,
         revisions: [nextRevision, ...datasetRevisions],
       });
       pushToast({
@@ -3870,7 +3876,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Trai
 
     setIsFreezingDataset(true);
     try {
-      const response = await fetch(`/api/training/projects/${project.id}/dataset-revisions`, {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/dataset-revisions`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({}),
@@ -3894,7 +3900,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Trai
       setDatasetRevisionState({
         datasetVersion: null,
         hasOverride: false,
-        projectId: project.id,
+        projectId: activeProject.id,
         revisions: null,
       });
       router.refresh();
@@ -3926,7 +3932,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Trai
         stepCount: 2400,
         version: datasetVersion,
       },
-      projectId: project.id,
+      projectId: activeProject.id,
     };
 
     if (!isProductionTrainingRoute) {
@@ -3943,7 +3949,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Trai
 
     setIsStartingTraining(true);
     try {
-      const response = await fetch(`/api/training/projects/${project.id}/training-runs`, {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/training-runs`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -3990,7 +3996,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Trai
     <div className={s.page}>
       <ProjectHeader
         active="dataset"
-        project={project}
+        project={activeProject}
         actions={(
           <>
             <Button
@@ -4027,7 +4033,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Trai
           <div className={s.entityRowsSurface}>
             <div className={s.entityRows}>
               {datasetRevisions.map((revision) => (
-                <Link className={s.entityRow} href={hrefForRoute(`/training/projects/${project.id}/dataset/revisions/${revision.id}`)} key={revision.id}>
+                <Link className={s.entityRow} href={hrefForRoute(`/training/projects/${activeProject.id}/dataset/revisions/${revision.id}`)} key={revision.id}>
                   <div>
                     <strong>{revision.version}</strong>
                     <span>{revision.itemCount} 张 · 缺说明文本 {revision.captionMissingCount} · {revision.manifestName}</span>
@@ -4137,33 +4143,34 @@ export function LoraTrainingProjectScopedRunsPage({
   const [isRetryingProjectRuns, setIsRetryingProjectRuns] = useState(false);
   const [isDeletingProjectRuns, setIsDeletingProjectRuns] = useState(false);
   if (!project) return <EmptyPage title="没有项目任务数据" />;
+  const activeProject = project;
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
-  const projectRunInteraction = projectRunInteractionState.projectId === project.id && projectRunInteractionState.kind === kind ? projectRunInteractionState : {
+  const projectRunInteraction = projectRunInteractionState.projectId === activeProject.id && projectRunInteractionState.kind === kind ? projectRunInteractionState : {
     hiddenProjectRunIds: new Set<string>(),
     kind,
-    projectId: project.id,
+    projectId: activeProject.id,
     retriedProjectRunIds: new Set<string>(),
     status: "completed" as LoraTrainingTaskStatus,
   };
   const status = projectRunInteraction.status;
   const hiddenProjectRunIds = projectRunInteraction.hiddenProjectRunIds;
   const retriedProjectRunIds = projectRunInteraction.retriedProjectRunIds;
-  const projectRuns = training.runs.filter((run) => run.projectId === project.id && run.kind === kind && !hiddenProjectRunIds.has(run.id));
+  const projectRuns = training.runs.filter((run) => run.projectId === activeProject.id && run.kind === kind && !hiddenProjectRunIds.has(run.id));
   const visibleRuns = projectRuns.filter((run) => run.status === status);
 
   function updateProjectRunInteraction(updater: (current: typeof projectRunInteraction) => typeof projectRunInteraction) {
     setProjectRunInteractionState((current) => {
-      const active = current.projectId === project.id && current.kind === kind ? current : {
+      const active = current.projectId === activeProject.id && current.kind === kind ? current : {
         hiddenProjectRunIds: new Set<string>(),
         kind,
-        projectId: project.id,
+        projectId: activeProject.id,
         retriedProjectRunIds: new Set<string>(),
         status: "completed" as LoraTrainingTaskStatus,
       };
       return {
         ...updater(active),
         kind,
-        projectId: project.id,
+        projectId: activeProject.id,
       };
     });
   }
@@ -4274,7 +4281,7 @@ export function LoraTrainingProjectScopedRunsPage({
               headers: { "content-type": "application/json" },
               body: JSON.stringify({
                 parentRunId: run.id,
-                projectId: project.id,
+                projectId: activeProject.id,
               }),
             });
           })()
@@ -4282,7 +4289,7 @@ export function LoraTrainingProjectScopedRunsPage({
             if (!run.datasetRevisionId) {
               throw new Error("当前训练任务缺少数据集版本，无法重试。");
             }
-            return fetch(`/api/training/projects/${project.id}/training-runs`, {
+            return fetch(`/api/training/projects/${activeProject.id}/training-runs`, {
               method: "POST",
               headers: { "content-type": "application/json" },
               body: JSON.stringify({

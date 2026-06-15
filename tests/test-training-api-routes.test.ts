@@ -1350,7 +1350,7 @@ test("POST /api/training/training-runs/:trainingRunId/create-preset creates a tr
     assert.equal(createPayload.ok, true);
     assert.equal(createPayload.data.title, presetTitle);
 
-    const presetListResponse = await presetsRoute.GET(new Request("http://localhost/api/training/presets"));
+    const presetListResponse = await presetsRoute.GET();
     const presetListPayload = await presetListResponse.json();
     assert.equal(presetListResponse.status, 200);
     assert.equal(presetListPayload.ok, true);
@@ -1604,9 +1604,9 @@ test("GET /api/training/presets and /api/training/templates expose training reso
   const templatesRoute = await import("../src/app/api/training/templates/route");
 
   const [presetsResponse, sceneDescriptionTreeResponse, templatesResponse] = await Promise.all([
-    presetsRoute.GET(new Request("http://localhost/api/training/presets")),
+    presetsRoute.GET(),
     sceneDescriptionTreeRoute.GET(new Request("http://localhost/api/training/scene-description/categories")),
-    templatesRoute.GET(new Request("http://localhost/api/training/templates")),
+    templatesRoute.GET(),
   ]);
   const [presetsPayload, sceneDescriptionTreePayload, templatesPayload] = await Promise.all([
     presetsResponse.json(),
@@ -2056,9 +2056,7 @@ test("generation output apply can add a managed output into project reference im
     assert.equal(runPayload.ok, true);
     const taskId = runPayload.data.id as string;
 
-    const tickResponse = await schedulerTickRoute.POST(
-      new Request("http://localhost/api/training/scheduler/tick", { method: "POST" }),
-    );
+    const tickResponse = await schedulerTickRoute.POST();
     const tickPayload = await tickResponse.json();
     assert.equal(tickResponse.status, 200);
     assert.equal(tickPayload.ok, true);
@@ -2288,7 +2286,7 @@ test("training preset sort rules reorder categories and presets through /api/tra
   const presetsRoute = await import("../src/app/api/training/presets/route");
   const sortRulesRoute = await import("../src/app/api/training/presets/sort-rules/route");
 
-  const originalResponse = await presetsRoute.GET(new Request("http://localhost/api/training/presets"));
+  const originalResponse = await presetsRoute.GET();
   const originalPayload = await originalResponse.json();
   const originalPresets = originalPayload.data as Array<{ category: string; id: string }>;
   const originalCategoryOrder = [...new Set(originalPresets.map((preset) => preset.category))];
@@ -2313,7 +2311,7 @@ test("training preset sort rules reorder categories and presets through /api/tra
   assert.equal(reorderPayload.data.categoryOrder[0], reversedCategoryOrder[0]);
   assert.equal(reorderPayload.data.presetOrder[0], reversedPresetOrder[0]);
 
-  const afterResponse = await presetsRoute.GET(new Request("http://localhost/api/training/presets"));
+  const afterResponse = await presetsRoute.GET();
   const afterPayload = await afterResponse.json();
   const afterPresets = afterPayload.data as Array<{ category: string; id: string }>;
   const afterCategoryOrder = [...new Set(afterPresets.map((preset) => preset.category))];
@@ -2587,7 +2585,7 @@ test("training template route can create a project from an existing template thr
   const templatesRoute = await import("../src/app/api/training/templates/route");
   const templateDetailRoute = await import("../src/app/api/training/templates/[templateId]/route");
   const templateProjectsRoute = await import("../src/app/api/training/templates/[templateId]/projects/route");
-  const templatesResponse = await templatesRoute.GET(new Request("http://localhost/api/training/templates"));
+  const templatesResponse = await templatesRoute.GET();
   const templatesPayload = await templatesResponse.json();
 
   assert.equal(templatesResponse.status, 200);
@@ -2632,7 +2630,7 @@ test("training template reorder route persists managed template order through /a
   const templateReorderRoute = await import("../src/app/api/training/templates/reorder/route");
 
   await withTrainingManagedStoreSnapshot(async () => {
-    const initialResponse = await templatesRoute.GET(new Request("http://localhost/api/training/templates"));
+    const initialResponse = await templatesRoute.GET();
     const initialPayload = await initialResponse.json();
 
     assert.equal(initialResponse.status, 200);
@@ -2656,7 +2654,7 @@ test("training template reorder route persists managed template order through /a
     assert.equal(reorderPayload.ok, true);
     assert.deepEqual(reorderPayload.data.orderedTemplateIds, reorderedIds);
 
-    const afterResponse = await templatesRoute.GET(new Request("http://localhost/api/training/templates"));
+    const afterResponse = await templatesRoute.GET();
     const afterPayload = await afterResponse.json();
 
     assert.equal(afterResponse.status, 200);
@@ -3385,7 +3383,7 @@ test("training project route can save a project as a template through /api/train
   assert.equal(templateDetailPayload.data.captionGuidance, "从项目保存为模板的说明文本指引。");
   assert.equal(templateDetailPayload.data.sections[0].title, "保存模板小节");
 
-  const templatesResponse = await templatesRoute.GET(new Request("http://localhost/api/training/templates"));
+  const templatesResponse = await templatesRoute.GET();
   const templatesPayload = await templatesResponse.json();
   assert.equal(templatesResponse.status, 200);
   assert.equal(templatesPayload.ok, true);
@@ -4654,7 +4652,7 @@ test("managed scheduler and worker endpoints can advance generation and training
     assert.equal(queuedGenerationPayload.ok, true);
     const generationTaskId = queuedGenerationPayload.data.id as string;
 
-    const tickGenerationResponse = await schedulerTickRoute.POST(new Request("http://localhost/api/training/scheduler/tick", { method: "POST" }));
+    const tickGenerationResponse = await schedulerTickRoute.POST();
     const tickGenerationPayload = await tickGenerationResponse.json();
     assert.equal(tickGenerationResponse.status, 200);
     assert.equal(tickGenerationPayload.ok, true);
@@ -4721,7 +4719,7 @@ test("managed scheduler and worker endpoints can advance generation and training
     assert.equal(queuedTrainingPayload.ok, true);
     const trainingRunId = queuedTrainingPayload.data.id as string;
 
-    const tickTrainingResponse = await schedulerTickRoute.POST(new Request("http://localhost/api/training/scheduler/tick", { method: "POST" }));
+    const tickTrainingResponse = await schedulerTickRoute.POST();
     const tickTrainingPayload = await tickTrainingResponse.json();
     assert.equal(tickTrainingResponse.status, 200);
     assert.equal(tickTrainingPayload.ok, true);
@@ -4843,7 +4841,7 @@ test("managed worker endpoints can mark generation and training runs as failed t
     );
     const generationPayload = await generationResponse.json();
     const generationTaskId = generationPayload.data.id as string;
-    await schedulerTickRoute.POST(new Request("http://localhost/api/training/scheduler/tick", { method: "POST" }));
+    await schedulerTickRoute.POST();
 
     const failGenerationResponse = await workerGenerationFailRoute.POST(
       new Request(`http://localhost/api/training/worker/generation-tasks/${generationTaskId}/fail`, {
@@ -4921,7 +4919,7 @@ test("managed worker endpoints can mark generation and training runs as failed t
     );
     const trainingPayload = await trainingResponse.json();
     const trainingRunId = trainingPayload.data.id as string;
-    await schedulerTickRoute.POST(new Request("http://localhost/api/training/scheduler/tick", { method: "POST" }));
+    await schedulerTickRoute.POST();
 
     const failTrainingResponse = await workerTrainingFailRoute.POST(
       new Request(`http://localhost/api/training/worker/training-runs/${trainingRunId}/fail`, {
