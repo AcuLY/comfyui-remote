@@ -1172,7 +1172,7 @@ function templateStatus(template: LoraTrainingTemplate) {
 
 type LoraTrainingTemplateSection = LoraTrainingTemplate["sections"][number];
 
-const TRAINING_TEMPLATE_SCROLL_KEY = "demo-training-templates-from";
+const TRAINING_TEMPLATE_SCROLL_KEY = "comfyui-manager:training:templates:list-anchor";
 
 function readAndClearTrainingTemplateListAnchor() {
   if (typeof window === "undefined") return undefined;

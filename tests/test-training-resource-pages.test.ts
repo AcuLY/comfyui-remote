@@ -22,6 +22,19 @@ test("training resource pages keep backend wiring notes out of user-facing copy"
   assert.doesNotMatch(pageSource, /后端接入时/, "training resource UI should not expose backend integration notes");
 });
 
+test("training resource pages use production-owned browser persistence keys", () => {
+  assert.doesNotMatch(
+    pageSource,
+    /demo-training/,
+    "production training resource pages must not store route state under demo-prefixed browser keys",
+  );
+  assert.match(
+    pageSource,
+    /TRAINING_TEMPLATE_SCROLL_KEY\s*=\s*"comfyui-manager:training:templates:list-anchor"/,
+    "training template list anchor state should use a production training namespace",
+  );
+});
+
 test("training resource route helpers do not replace invalid route ids with first fixtures", () => {
   const helperStart = pageSource.indexOf("function findPreset");
   const foldersStart = pageSource.indexOf("function uniquePresetCategories");
