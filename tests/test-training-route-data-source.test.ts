@@ -12,6 +12,8 @@ const trainingSnapshotServicePath = resolve(testDir, "../src/server/services/tra
 const trainingSnapshotServiceSource = existsSync(trainingSnapshotServicePath) ? readFileSync(trainingSnapshotServicePath, "utf8") : "";
 const trainingFeatureDataPath = resolve(testDir, "../src/features/training/data.ts");
 const trainingFeatureDataSource = existsSync(trainingFeatureDataPath) ? readFileSync(trainingFeatureDataPath, "utf8") : "";
+const trainingNotFoundPath = resolve(testDir, "../src/features/training/not-found-page.tsx");
+const trainingNotFoundSource = existsSync(trainingNotFoundPath) ? readFileSync(trainingNotFoundPath, "utf8") : "";
 const trainingFeatureBuildPath = resolve(testDir, "../src/features/training/build.ts");
 const trainingFeatureBuildSource = existsSync(trainingFeatureBuildPath) ? readFileSync(trainingFeatureBuildPath, "utf8") : "";
 const sharedTrainingTypesPath = resolve(testDir, "../src/features/training/types.ts");
@@ -146,6 +148,24 @@ test("production training route loader delegates snapshot assembly to a dedicate
     trainingFeatureDataSource,
     /function buildTrainingShellData/,
     "training feature data module should synthesize a minimal shell dataset for /training routes",
+  );
+});
+
+test("training not-found page is owned by the training feature layer", () => {
+  assert.doesNotMatch(
+    trainingNotFoundSource,
+    /fallback-route-data|features\/settings\/not-found-page\.shell\.module\.css/,
+    "training not-found page should not reuse design-demo fallback data or settings page styling",
+  );
+  assert.match(
+    trainingNotFoundSource,
+    /href="\/training\/runs"/,
+    "training not-found page should return to the production training run route",
+  );
+  assert.match(
+    trainingNotFoundSource,
+    /\/training\/projects/,
+    "training not-found page should expose training project navigation rather than generic demo routes",
   );
 });
 
