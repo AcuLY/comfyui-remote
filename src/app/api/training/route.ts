@@ -1,4 +1,8 @@
 import { ok } from "@/lib/api-response";
+import {
+  TRAINING_GENERATION_KINDS,
+  TRAINING_GENERATION_TASK_TYPES,
+} from "@/lib/training/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -317,7 +321,11 @@ const TRAINING_API_MANIFEST = {
           requestBody: {
             contentType: "application/json",
             requiredFields: ["sectionId"],
-            optionalFields: ["taskType", "supplementalPrompt"],
+            optionalFields: ["generationKind", "taskType", "supplementalPrompt"],
+            enumValues: {
+              generationKind: [...TRAINING_GENERATION_KINDS],
+              taskType: [...TRAINING_GENERATION_TASK_TYPES],
+            },
             bodyParams: { sectionId: "sectionId" },
           },
           produces: ["taskId"],

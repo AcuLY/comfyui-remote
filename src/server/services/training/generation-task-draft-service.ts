@@ -1,6 +1,12 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, extname, join } from "node:path";
 import type { LoraTrainingRun } from "@/features/training/types";
+import {
+  trainingGenerationKindSchema,
+  trainingGenerationTaskTypeSchema,
+  type TrainingGenerationKind,
+  type TrainingGenerationTaskType,
+} from "@/lib/training/schemas";
 import { getTrainingProject } from "@/server/services/training/read-service";
 import { enqueueManagedTrainingSectionGenerationRun, getManagedTrainingProject, mapTrainingProjectError } from "@/server/services/training/project-service";
 import type { LegacyTrainingProviderInputImage } from "@/server/services/training/legacy-compat-service";
@@ -33,12 +39,42 @@ type GenerationTaskDraftRecord = {
   id: string;
   projectId: string;
   sectionId: string;
+  generationKind?: string;
   taskType: string;
   supplementalPrompt: string;
   inputs: GenerationTaskDraftInput[];
   supplementalImages: GenerationTaskDraftSupplementalImage[];
   createdAt: string;
   updatedAt: string;
+};
+
+const DEFAULT_GENERATION_TASK_TYPE: TrainingGenerationTaskType = "trainingset_generation";
+
+const TRAINING_GENERATION_TASK_TYPE_LABELS: Record<TrainingGenerationTaskType, string> = {
+  caption_generation: "说明文本补全",
+  image_prompt_generation: "图片提示词生成",
+  profile_text_generation: "角色描述生成",
+  reference_image_generation: "参考图生成",
+  scene_description_generation: "场景描述生成",
+  trainingset_generation: "训练集图片生成",
+};
+
+const TRAINING_GENERATION_TASK_LABEL_TO_TYPE: Record<string, TrainingGenerationTaskType> = {
+  参考图生成: "reference_image_generation",
+  场景描述生成: "scene_description_generation",
+  图片提示词生成: "image_prompt_generation",
+  角色描述生成: "profile_text_generation",
+  训练集图片生成: "trainingset_generation",
+  说明文本补全: "caption_generation",
+};
+
+const TRAINING_GENERATION_KIND_BY_TASK_TYPE: Record<TrainingGenerationTaskType, TrainingGenerationKind> = {
+  caption_generation: "text_generation",
+  image_prompt_generation: "text_generation",
+  profile_text_generation: "text_generation",
+  reference_image_generation: "image_generation",
+  scene_description_generation: "text_generation",
+  trainingset_generation: "image_generation",
 };
 
 export class TrainingGenerationTaskDraftServiceError extends Error {
@@ -100,6 +136,43 @@ function mapLegacyGenerationStatus(status: string): LoraTrainingRun["status"] {
   if (status === "running") return "running";
   if (status === "queued") return "queued";
   return "failed";
+}
+
+function normalizeGenerationTaskType(value: string | null | undefined): TrainingGenerationTaskType {
+  const normalized = value?.trim();
+  if (!normalized) return DEFAULT_GENERATION_TASK_TYPE;
+
+  const canonicalResult = trainingGenerationTaskTypeSchema.safeParse(normalized);
+  if (canonicalResult.success) return canonicalResult.data;
+
+  return TRAINING_GENERATION_TASK_LABEL_TO_TYPE[normalized] ?? DEFAULT_GENERATION_TASK_TYPE;
+}
+
+function normalizeGenerationKind(
+  value: string | null | undefined,
+  taskType: TrainingGenerationTaskType,
+): TrainingGenerationKind {
+  const normalized = value?.trim();
+  if (normalized) {
+    const canonicalResult = trainingGenerationKindSchema.safeParse(normalized);
+    if (canonicalResult.success) return canonicalResult.data;
+  }
+
+  return TRAINING_GENERATION_KIND_BY_TASK_TYPE[taskType];
+}
+
+function normalizeGenerationTaskMetadata(input: {
+  generationKind?: string | null;
+  taskType?: string | null;
+}) {
+  const taskType = normalizeGenerationTaskType(input.taskType);
+  const generationKind = normalizeGenerationKind(input.generationKind, taskType);
+
+  return {
+    generationKind,
+    taskType,
+    taskTypeLabel: TRAINING_GENERATION_TASK_TYPE_LABELS[taskType],
+  };
 }
 
 function mapLegacyGenerationRunToTrainingRun(input: {
@@ -230,6 +303,7 @@ async function buildGenerationTaskDraftView(draft: GenerationTaskDraftRecord) {
     id: input.id,
     ...resolveReference(project, section.id, input.referenceId),
   }));
+  const taskMetadata = normalizeGenerationTaskMetadata(draft);
 
   const finalInput = [
     project.usagePrompt,
@@ -249,13 +323,15 @@ async function buildGenerationTaskDraftView(draft: GenerationTaskDraftRecord) {
   return {
     createdAt: draft.createdAt,
     finalInput,
+    generationKind: taskMetadata.generationKind,
     id: draft.id,
     inputs: resolvedInputs,
     projectId: draft.projectId,
     sectionId: draft.sectionId,
     supplementalImages: draft.supplementalImages,
     supplementalPrompt: draft.supplementalPrompt,
-    taskType: draft.taskType,
+    taskType: taskMetadata.taskType,
+    taskTypeLabel: taskMetadata.taskTypeLabel,
     updatedAt: draft.updatedAt,
   };
 }
@@ -268,6 +344,7 @@ export async function getManagedGenerationTaskDraft(taskId: string) {
 }
 
 export async function createManagedGenerationTaskDraft(projectId: string, input: {
+  generationKind?: string | null;
   sectionId?: string | null;
   taskType?: string | null;
   supplementalPrompt?: string | null;
@@ -281,16 +358,18 @@ export async function createManagedGenerationTaskDraft(projectId: string, input:
       sectionId: sectionId ?? null,
     });
   }
+  const taskMetadata = normalizeGenerationTaskMetadata(input);
 
   const nextDraft: GenerationTaskDraftRecord = {
     createdAt: formatTimestamp(),
+    generationKind: taskMetadata.generationKind,
     id: createDraftId(),
     inputs: [],
     projectId,
     sectionId: section.id,
     supplementalImages: [],
     supplementalPrompt: input.supplementalPrompt?.trim() || "",
-    taskType: input.taskType?.trim() || "训练集图片生成",
+    taskType: taskMetadata.taskType,
     updatedAt: formatTimestamp(),
   };
 
@@ -303,14 +382,20 @@ export async function createManagedGenerationTaskDraft(projectId: string, input:
 }
 
 export async function updateManagedGenerationTaskDraft(taskId: string, input: {
+  generationKind?: string | null;
   taskType?: string | null;
   supplementalPrompt?: string | null;
 }) {
   const { draft, drafts } = await getDraftOrThrow(taskId);
+  const taskMetadata = normalizeGenerationTaskMetadata({
+    generationKind: typeof input.generationKind === "string" ? input.generationKind : draft.generationKind,
+    taskType: typeof input.taskType === "string" && input.taskType.trim() ? input.taskType : draft.taskType,
+  });
   const nextDraft: GenerationTaskDraftRecord = {
     ...draft,
+    generationKind: taskMetadata.generationKind,
     supplementalPrompt: typeof input.supplementalPrompt === "string" ? input.supplementalPrompt.trim() : draft.supplementalPrompt,
-    taskType: typeof input.taskType === "string" && input.taskType.trim() ? input.taskType.trim() : draft.taskType,
+    taskType: taskMetadata.taskType,
     updatedAt: formatTimestamp(),
   };
 
@@ -538,13 +623,14 @@ export async function runManagedGenerationTask(taskId: string) {
     relativePath: image.relativePath,
     title: image.title,
   }));
+  const taskMetadata = normalizeGenerationTaskMetadata(draft);
 
   const managedRun = await enqueueManagedTrainingSectionGenerationRun(section.id, {
     previousCandidateImageIds,
     projectId: draft.projectId,
     sourceImageIds,
     supplementalImages,
-    userInstruction: `${draft.taskType}\n\n${preview.finalInput}`,
+    userInstruction: `${taskMetadata.taskTypeLabel}\n\n${preview.finalInput}`,
   }).catch((error) => {
     const mapped = mapTrainingProjectError(error);
     throw new TrainingGenerationTaskDraftServiceError(mapped.message, mapped.status, mapped.details);
@@ -562,7 +648,7 @@ export async function runManagedGenerationTask(taskId: string) {
         ? []
         : await buildTrainingSupplementalInputImages(taskId, section.id, draft.supplementalImages),
       sourceImageIds,
-      userInstruction: `${draft.taskType}\n\n${preview.finalInput}`,
+      userInstruction: `${taskMetadata.taskTypeLabel}\n\n${preview.finalInput}`,
     }).catch((error) => {
       const mapped = mapLegacyTrainingGenerationError(error);
       throw new TrainingGenerationTaskDraftServiceError(mapped.message, mapped.status, mapped.details);

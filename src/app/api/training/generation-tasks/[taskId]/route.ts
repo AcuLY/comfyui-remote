@@ -46,6 +46,7 @@ export async function PATCH(
     const { taskId } = await params;
     const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
     const data = await updateManagedGenerationTaskDraft(taskId, {
+      generationKind: typeof payload.generationKind === "string" ? payload.generationKind : null,
       supplementalPrompt: typeof payload.supplementalPrompt === "string" ? payload.supplementalPrompt : null,
       taskType: typeof payload.taskType === "string" ? payload.taskType : null,
     });

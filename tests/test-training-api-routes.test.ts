@@ -1115,6 +1115,7 @@ test("GET /api/training full workflow declares request body bindings for non-pat
       requestBody?: {
         bodyParams?: Record<string, string>;
         contentType?: string;
+        enumValues?: Record<string, string[]>;
         optionalFields?: string[];
         requiredFields?: string[];
       };
@@ -1133,7 +1134,18 @@ test("GET /api/training full workflow declares request body bindings for non-pat
     {
       bodyParams: { sectionId: "sectionId" },
       contentType: "application/json",
-      optionalFields: ["taskType", "supplementalPrompt"],
+      enumValues: {
+        generationKind: ["text_generation", "image_generation"],
+        taskType: [
+          "profile_text_generation",
+          "scene_description_generation",
+          "image_prompt_generation",
+          "caption_generation",
+          "trainingset_generation",
+          "reference_image_generation",
+        ],
+      },
+      optionalFields: ["generationKind", "taskType", "supplementalPrompt"],
       requiredFields: ["sectionId"],
     },
     "The generation draft route needs sectionId in the JSON body, not just in workflow memory.",
@@ -4842,8 +4854,9 @@ test("production generation task draft lifecycle works through /api/training whe
     new Request(`http://localhost/api/training/projects/${projectId}/generation-tasks`, {
       method: "POST",
       body: JSON.stringify({
+        generationKind: "image_generation",
         sectionId,
-        taskType: "训练集图片生成",
+        taskType: "trainingset_generation",
         supplementalPrompt: "真实初始补充提示词",
       }),
     }),
@@ -4858,6 +4871,7 @@ test("production generation task draft lifecycle works through /api/training whe
     new Request(`http://localhost/api/training/generation-tasks/${taskId}`, {
       method: "PATCH",
       body: JSON.stringify({
+        generationKind: "image_generation",
         taskType: "角色描述生成",
         supplementalPrompt: "真实更新后的补充提示词",
       }),
@@ -4867,7 +4881,9 @@ test("production generation task draft lifecycle works through /api/training whe
   const patchTaskPayload = await patchTaskResponse.json();
   assert.equal(patchTaskResponse.status, 200);
   assert.equal(patchTaskPayload.ok, true);
-  assert.equal(patchTaskPayload.data.taskType, "角色描述生成");
+  assert.equal(patchTaskPayload.data.generationKind, "image_generation");
+  assert.equal(patchTaskPayload.data.taskType, "profile_text_generation");
+  assert.equal(patchTaskPayload.data.taskTypeLabel, "角色描述生成");
 
   const addInputResponse = await generationTaskInputsRoute.POST(
     new Request(`http://localhost/api/training/generation-tasks/${taskId}/inputs`, {
@@ -6110,8 +6126,9 @@ test("managed training project generation task draft lifecycle works through /ap
     new Request(`http://localhost/api/training/projects/${projectId}/generation-tasks`, {
       method: "POST",
       body: JSON.stringify({
+        generationKind: "image_generation",
         sectionId,
-        taskType: "训练集图片生成",
+        taskType: "reference_image_generation",
         supplementalPrompt: "初始补充提示词",
       }),
     }),
@@ -6120,13 +6137,17 @@ test("managed training project generation task draft lifecycle works through /ap
   const createTaskPayload = await createTaskResponse.json();
   assert.equal(createTaskResponse.status, 201);
   assert.equal(createTaskPayload.ok, true);
+  assert.equal(createTaskPayload.data.generationKind, "image_generation");
+  assert.equal(createTaskPayload.data.taskType, "reference_image_generation");
+  assert.equal(createTaskPayload.data.taskTypeLabel, "参考图生成");
   const taskId = createTaskPayload.data.id as string;
 
   const patchTaskResponse = await generationTaskDetailRoute.PATCH(
     new Request(`http://localhost/api/training/generation-tasks/${taskId}`, {
       method: "PATCH",
       body: JSON.stringify({
-        taskType: "角色描述生成",
+        generationKind: "image_generation",
+        taskType: "trainingset_generation",
         supplementalPrompt: "更新后的补充提示词",
       }),
     }),
@@ -6135,7 +6156,9 @@ test("managed training project generation task draft lifecycle works through /ap
   const patchTaskPayload = await patchTaskResponse.json();
   assert.equal(patchTaskResponse.status, 200);
   assert.equal(patchTaskPayload.ok, true);
-  assert.equal(patchTaskPayload.data.taskType, "角色描述生成");
+  assert.equal(patchTaskPayload.data.generationKind, "image_generation");
+  assert.equal(patchTaskPayload.data.taskType, "trainingset_generation");
+  assert.equal(patchTaskPayload.data.taskTypeLabel, "训练集图片生成");
 
   const addInputResponse = await generationTaskInputsRoute.POST(
     new Request(`http://localhost/api/training/generation-tasks/${taskId}/inputs`, {
@@ -6175,6 +6198,9 @@ test("managed training project generation task draft lifecycle works through /ap
   const previewPayload = await previewResponse.json();
   assert.equal(previewResponse.status, 200);
   assert.equal(previewPayload.ok, true);
+  assert.equal(previewPayload.data.generationKind, "image_generation");
+  assert.equal(previewPayload.data.taskType, "trainingset_generation");
+  assert.equal(previewPayload.data.taskTypeLabel, "训练集图片生成");
   assert.match(previewPayload.data.finalInput, /更新后的补充提示词/);
 
   const removeInputResponse = await generationInputDetailRoute.DELETE(

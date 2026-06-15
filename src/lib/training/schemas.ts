@@ -52,6 +52,23 @@ export const trainingSceneFolderUpdateSchema = z.object({
   message: "At least one field is required",
 });
 
+export const TRAINING_GENERATION_KINDS = [
+  "text_generation",
+  "image_generation",
+] as const;
+
+export const TRAINING_GENERATION_TASK_TYPES = [
+  "profile_text_generation",
+  "scene_description_generation",
+  "image_prompt_generation",
+  "caption_generation",
+  "trainingset_generation",
+  "reference_image_generation",
+] as const;
+
+export const trainingGenerationKindSchema = z.enum(TRAINING_GENERATION_KINDS);
+export const trainingGenerationTaskTypeSchema = z.enum(TRAINING_GENERATION_TASK_TYPES);
+
 export const TRAINING_WORKER_TYPES = [
   "image_generation",
   "dataset_freeze",
@@ -152,3 +169,5 @@ export type TrainingWorkerTaskLeaseRequest = z.infer<typeof trainingWorkerTaskLe
 export type TrainingWorkerTaskHeartbeatRequest = z.infer<typeof trainingWorkerTaskHeartbeatRequestSchema>;
 export type TrainingWorkerTaskCompleteRequest = z.infer<typeof trainingWorkerTaskCompleteRequestSchema>;
 export type TrainingWorkerTaskFailRequest = z.infer<typeof trainingWorkerTaskFailRequestSchema>;
+export type TrainingGenerationKind = z.infer<typeof trainingGenerationKindSchema>;
+export type TrainingGenerationTaskType = z.infer<typeof trainingGenerationTaskTypeSchema>;
