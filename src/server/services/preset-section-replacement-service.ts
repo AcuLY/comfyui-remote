@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
+import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
 import {
   planPresetSectionReplacements,
   type PresetReplacementBinding,
@@ -62,10 +63,10 @@ async function loadReplacementPresets(rules: readonly PresetSectionReplacementRu
   if (presetIds.length === 0) return [];
 
   const presets = await prisma.preset.findMany({
-    where: {
+    where: buildGenerationPresetWhere({
       id: { in: presetIds },
       category: { type: ordinaryPresetCategoryTypeWhere() },
-    },
+    }),
     select: {
       id: true,
       name: true,

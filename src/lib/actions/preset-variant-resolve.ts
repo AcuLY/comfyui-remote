@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
+import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -22,14 +23,14 @@ export type ResolvedVariantContent = {
 export async function findPresetIdsAffectedByVariantChange(variantId: string, presetId: string) {
   const variants = await prisma.presetVariant.findMany({
     where: {
-      preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+      preset: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }),
     },
     select: { id: true, presetId: true },
   });
   const relationLinks = await prisma.presetVariantLink.findMany({
     where: {
-      sourceVariant: { preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } } },
-      linkedVariant: { preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } } },
+      sourceVariant: { preset: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }) },
+      linkedVariant: { preset: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }) },
     },
     select: { sourceVariantId: true, linkedVariantId: true },
   });
@@ -92,7 +93,7 @@ export async function resolveVariantContent(
   const variant = await prisma.presetVariant.findFirst({
     where: {
       id: variantId,
-      preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+      preset: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }),
     },
   });
   if (!variant || !variant.isActive) return empty;

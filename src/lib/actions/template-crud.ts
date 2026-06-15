@@ -15,6 +15,7 @@ import {
   assertOrdinaryPresetLibraryBindingRefs,
   ordinaryPresetCategoryTypeWhere,
 } from "./preset-resource-scope";
+import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -468,10 +469,10 @@ export async function resolveTemplatePresetImports(
   if (presetIds.length === 0) return [];
 
   const presets = await prisma.preset.findMany({
-    where: {
+    where: buildGenerationPresetWhere({
       id: { in: presetIds },
       category: { type: ordinaryPresetCategoryTypeWhere() },
-    },
+    }),
     include: {
       category: {
         select: {

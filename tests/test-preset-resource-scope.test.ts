@@ -494,6 +494,84 @@ test("ordinary preset category and list reads do not expose legacy training benc
   );
 });
 
+test("ordinary preset operational reads do not expose legacy training benchmark temporary presets", async () => {
+  await prisma.presetCategory.create({
+    data: {
+      id: "ordinary-benchmark-operation-category",
+      name: "Ordinary Benchmark Operation",
+      slug: "ordinary-benchmark-operation",
+      color: "190 50% 55%",
+      type: "preset",
+    },
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "ordinary-benchmark-operation-visible-preset",
+        categoryId: "ordinary-benchmark-operation-category",
+        name: "Ordinary Benchmark Operation Visible",
+        slug: "ordinary-benchmark-operation-visible",
+      },
+      {
+        id: "legacy-training-operation-hidden-preset",
+        categoryId: "ordinary-benchmark-operation-category",
+        name: "Legacy Training Operation Hidden",
+        slug: "legacy-training-operation-hidden",
+        notes: JSON.stringify({
+          temporary: true,
+          purpose: "character_lora_benchmark",
+          benchmarkRunId: "benchmark-operation-hidden",
+        }),
+      },
+    ],
+  });
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "ordinary-benchmark-operation-visible-variant",
+        presetId: "ordinary-benchmark-operation-visible-preset",
+        name: "Ordinary Operation Visible",
+        slug: "ordinary-operation-visible",
+        prompt: "ordinary operation prompt",
+      },
+      {
+        id: "legacy-training-operation-hidden-variant",
+        presetId: "legacy-training-operation-hidden-preset",
+        name: "Legacy Training Operation Hidden",
+        slug: "legacy-training-operation-hidden",
+        prompt: "legacy training operation prompt must not leak",
+      },
+    ],
+  });
+
+  assert.equal(
+    (await resolveVariantContent("ordinary-benchmark-operation-visible-variant")).prompt,
+    "ordinary operation prompt",
+    "ordinary variant resolution should still resolve generation-owned variants",
+  );
+  assert.deepEqual(
+    await resolveVariantContent("legacy-training-operation-hidden-variant"),
+    { prompt: "", negativePrompt: null, lora1: [], lora2: [] },
+    "ordinary variant resolution must treat legacy training benchmark variants as out of scope",
+  );
+
+  const imports = await resolveTemplatePresetImports([
+    {
+      presetId: "ordinary-benchmark-operation-visible-preset",
+      variantId: "ordinary-benchmark-operation-visible-variant",
+    },
+    {
+      presetId: "legacy-training-operation-hidden-preset",
+      variantId: "legacy-training-operation-hidden-variant",
+    },
+  ]);
+  assert.deepEqual(
+    imports.map((item) => ({ presetId: item.presetId, prompt: item.prompt })),
+    [{ presetId: "ordinary-benchmark-operation-visible-preset", prompt: "ordinary operation prompt" }],
+    "ordinary template imports must ignore legacy training benchmark presets even when called by id",
+  );
+});
+
 test("ordinary preset reads do not expose LoRA training resources through linked variants or slots", async () => {
   await prisma.presetCategory.createMany({
     data: [

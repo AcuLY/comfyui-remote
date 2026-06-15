@@ -1,6 +1,7 @@
 import { switchBindingVariant } from "@/lib/actions";
 import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
+import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 export type SwitchVariantUpdate = {
   sectionId: string;
@@ -151,11 +152,11 @@ function parseSyncInput(body: unknown): SyncPresetVariantsInput {
 
 async function findPresetByNameOrSlug(nameOrSlug: string) {
   return prisma.preset.findFirst({
-    where: {
+    where: buildGenerationPresetWhere({
       isActive: true,
       category: { type: ordinaryPresetCategoryTypeWhere() },
       OR: [{ name: nameOrSlug }, { slug: nameOrSlug }],
-    },
+    }),
     include: {
       variants: {
         where: { isActive: true },

@@ -10,6 +10,7 @@ import {
 } from "@/server/prompt-config/preset-group-resolver";
 import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-binding-service";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
+import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
 import { resolveVariantContent } from "./preset-variant";
 import { ordinaryPresetCategoryTypeWhere, ordinaryPresetLibraryCategoryTypeWhere } from "./preset-resource-scope";
 import {
@@ -560,10 +561,10 @@ export async function importPresetToSection(
   presetGroupId?: string,
 ): Promise<ImportPresetResult | null> {
   const preset = await prisma.preset.findFirst({
-    where: {
+    where: buildGenerationPresetWhere({
       id: presetId,
       category: { type: ordinaryPresetCategoryTypeWhere() },
-    },
+    }),
     include: {
       category: { select: { id: true, name: true, color: true, positivePromptOrder: true, lora1Order: true, lora2Order: true } },
       variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },

@@ -1,5 +1,6 @@
 import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
+import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
 import { syncPresetVariants } from "@/server/services/agent-preset-variant-service";
 import {
   buildSyncPresetVariantFlowVerification,
@@ -96,11 +97,11 @@ async function inferPresetNameFromProject(projectId: string, explicitPresetName:
   }
 
   const presets = await prisma.preset.findMany({
-    where: {
+    where: buildGenerationPresetWhere({
       id: { in: presetIds },
       isActive: true,
       category: { type: ordinaryPresetCategoryTypeWhere() },
-    },
+    }),
     select: {
       id: true,
       name: true,
@@ -139,11 +140,11 @@ async function inferPresetNameFromProject(projectId: string, explicitPresetName:
 
 async function findPresetForVerification(nameOrSlug: string): Promise<FlowTargetPreset> {
   const preset = await prisma.preset.findFirst({
-    where: {
+    where: buildGenerationPresetWhere({
       isActive: true,
       category: { type: ordinaryPresetCategoryTypeWhere() },
       OR: [{ name: nameOrSlug }, { slug: nameOrSlug }],
-    },
+    }),
     select: {
       id: true,
       name: true,
