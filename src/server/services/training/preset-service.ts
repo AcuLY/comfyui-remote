@@ -5,11 +5,14 @@ import { Prisma } from "@/generated/prisma";
 import type { LoraTrainingPreset } from "@/features/training/types";
 import { prisma } from "@/lib/prisma";
 import {
+  trainingPresetInputSchema,
+  trainingPresetSortRulesSchema,
+  trainingSceneCategoryCreateSchema,
+  trainingSceneCategoryUpdateSchema,
   trainingSceneFolderCreateSchema,
   trainingSceneFolderUpdateSchema,
 } from "@/lib/training/schemas";
 import { slugifyForRepository } from "@/server/services/training/legacy-compat-service";
-import { z } from "zod";
 
 const TRAINING_PRESET_CATEGORY_TYPE = "training_scene_description";
 const TRAINING_PRESET_VARIANT_NAME = "场景描述";
@@ -17,33 +20,6 @@ const TRAINING_PRESET_VARIANT_SLUG = "scene-description";
 const TRAINING_PRESET_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-presets.json");
 const TRAINING_PRESET_CATEGORY_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-categories.json");
 const TRAINING_PRESET_FOLDER_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-folders.json");
-
-const trainingPresetInputSchema = z.object({
-  category: z.string().trim().min(1).max(80),
-  folder: z.string().trim().max(80).optional().default(""),
-  sceneDescriptionText: z.string().trim().min(1).max(20_000),
-  title: z.string().trim().min(1).max(160),
-});
-
-const trainingSceneCategoryCreateSchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  slug: z.string().trim().min(1).max(120),
-  icon: z.string().trim().max(80).optional().nullable(),
-  color: z.string().trim().max(120).optional().nullable(),
-  sortOrder: z.coerce.number().int().optional(),
-  sceneDescriptionOrder: z.coerce.number().int().optional(),
-}).strict();
-
-const trainingSceneCategoryUpdateSchema = z.object({
-  name: z.string().trim().min(1).max(80).optional(),
-  slug: z.string().trim().min(1).max(120).optional(),
-  icon: z.string().trim().max(80).optional().nullable(),
-  color: z.string().trim().max(120).optional().nullable(),
-  sortOrder: z.coerce.number().int().optional(),
-  sceneDescriptionOrder: z.coerce.number().int().optional(),
-}).strict().refine((value) => Object.keys(value).length > 0, {
-  message: "At least one field is required",
-});
 
 export type TrainingSceneDescriptionCategory = {
   id: string;
@@ -1784,11 +1760,7 @@ export async function cascadeDeleteTrainingSceneDescriptionPreset(
 }
 
 export async function saveTrainingSceneDescriptionPresetSortRules(input: unknown) {
-  const schema = z.object({
-    categoryOrder: z.array(z.string().trim().min(1)).min(1),
-    presetOrder: z.array(z.string().trim().min(1)).min(1),
-  });
-  const result = schema.safeParse(input);
+  const result = trainingPresetSortRulesSchema.safeParse(input);
   if (!result.success) {
     throw new TrainingPresetServiceError("Invalid training preset sort-rules request", 400, {
       issues: result.error.issues.map((issue) => ({

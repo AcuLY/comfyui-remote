@@ -50,7 +50,7 @@ test("training services isolate legacy character-lora-training dependencies in o
   );
 });
 
-test("training scene folder DTO schemas live under src/lib/training", async () => {
+test("training scene-description DTO schemas live under src/lib/training", async () => {
   const schemasPath = join(process.cwd(), "src/lib/training/schemas.ts");
 
   assert.equal(
@@ -59,11 +59,77 @@ test("training scene folder DTO schemas live under src/lib/training", async () =
     "Training API DTO schemas should live under src/lib/training/schemas.ts",
   );
 
+  const presetServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/preset-service.ts"), "utf8");
+  assert.match(
+    presetServiceSource,
+    /@\/lib\/training\/schemas/,
+    "Training preset service should consume shared Training DTO schemas",
+  );
+  assert.doesNotMatch(
+    presetServiceSource,
+    /from "zod"/,
+    "Training preset service should not define API DTO schemas inline",
+  );
+
   const {
+    trainingPresetSortRulesSchema,
+    trainingPresetInputSchema,
+    trainingSceneCategoryCreateSchema,
+    trainingSceneCategoryUpdateSchema,
     trainingSceneFolderCreateSchema,
     trainingSceneFolderUpdateSchema,
   } = await import("../src/lib/training/schemas");
 
+  assert.deepEqual(
+    trainingPresetInputSchema.parse({
+      category: "环境",
+      folder: "雨景",
+      sceneDescriptionText: "雨夜街角，霓虹反射。",
+      title: "雨夜街角",
+    }),
+    {
+      category: "环境",
+      folder: "雨景",
+      sceneDescriptionText: "雨夜街角，霓虹反射。",
+      title: "雨夜街角",
+    },
+  );
+  assert.deepEqual(
+    trainingSceneCategoryCreateSchema.parse({
+      color: null,
+      icon: "CloudRain",
+      name: "环境",
+      sceneDescriptionOrder: 4,
+      slug: "training-environment",
+      sortOrder: 2,
+    }),
+    {
+      color: null,
+      icon: "CloudRain",
+      name: "环境",
+      sceneDescriptionOrder: 4,
+      slug: "training-environment",
+      sortOrder: 2,
+    },
+  );
+  assert.deepEqual(
+    trainingSceneCategoryUpdateSchema.parse({
+      name: "环境更新",
+    }),
+    {
+      name: "环境更新",
+    },
+  );
+  assert.deepEqual(
+    trainingPresetSortRulesSchema.parse({
+      categoryOrder: ["环境", "光线"],
+      presetOrder: ["rainy-street", "cyan-rim-light"],
+    }),
+    {
+      categoryOrder: ["环境", "光线"],
+      presetOrder: ["rainy-street", "cyan-rim-light"],
+    },
+  );
   assert.deepEqual(
     trainingSceneFolderCreateSchema.parse({
       categoryId: "training-category",
