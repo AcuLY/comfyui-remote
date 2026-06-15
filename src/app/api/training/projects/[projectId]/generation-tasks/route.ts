@@ -38,6 +38,7 @@ export async function POST(
     const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
     const data = await createManagedGenerationTaskDraft(projectId, {
       generationKind: typeof payload.generationKind === "string" ? payload.generationKind : null,
+      paramsJson: Object.prototype.hasOwnProperty.call(payload, "paramsJson") ? payload.paramsJson : undefined,
       sectionId: typeof payload.sectionId === "string" ? payload.sectionId : null,
       supplementalPrompt: typeof payload.supplementalPrompt === "string" ? payload.supplementalPrompt : null,
       taskType: typeof payload.taskType === "string" ? payload.taskType : null,

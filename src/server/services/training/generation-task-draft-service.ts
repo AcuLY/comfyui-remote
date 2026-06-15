@@ -40,6 +40,7 @@ type GenerationTaskDraftRecord = {
   projectId: string;
   sectionId: string;
   generationKind?: string;
+  paramsJson?: Record<string, unknown> | null;
   taskType: string;
   supplementalPrompt: string;
   inputs: GenerationTaskDraftInput[];
@@ -173,6 +174,23 @@ function normalizeGenerationTaskMetadata(input: {
     taskType,
     taskTypeLabel: TRAINING_GENERATION_TASK_TYPE_LABELS[taskType],
   };
+}
+
+function isJsonObject(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function normalizeGenerationParamsJson(
+  value: unknown,
+  fallback: Record<string, unknown> | null = null,
+) {
+  if (typeof value === "undefined") return fallback;
+  if (value === null) return null;
+  if (isJsonObject(value)) return value;
+
+  throw new TrainingGenerationTaskDraftServiceError("paramsJson must be a JSON object", 400, {
+    paramsJsonType: Array.isArray(value) ? "array" : typeof value,
+  });
 }
 
 function mapLegacyGenerationRunToTrainingRun(input: {
@@ -326,6 +344,7 @@ async function buildGenerationTaskDraftView(draft: GenerationTaskDraftRecord) {
     generationKind: taskMetadata.generationKind,
     id: draft.id,
     inputs: resolvedInputs,
+    paramsJson: draft.paramsJson ?? null,
     projectId: draft.projectId,
     sectionId: draft.sectionId,
     supplementalImages: draft.supplementalImages,
@@ -345,6 +364,7 @@ export async function getManagedGenerationTaskDraft(taskId: string) {
 
 export async function createManagedGenerationTaskDraft(projectId: string, input: {
   generationKind?: string | null;
+  paramsJson?: unknown;
   sectionId?: string | null;
   taskType?: string | null;
   supplementalPrompt?: string | null;
@@ -359,12 +379,14 @@ export async function createManagedGenerationTaskDraft(projectId: string, input:
     });
   }
   const taskMetadata = normalizeGenerationTaskMetadata(input);
+  const paramsJson = normalizeGenerationParamsJson(input.paramsJson);
 
   const nextDraft: GenerationTaskDraftRecord = {
     createdAt: formatTimestamp(),
     generationKind: taskMetadata.generationKind,
     id: createDraftId(),
     inputs: [],
+    paramsJson,
     projectId,
     sectionId: section.id,
     supplementalImages: [],
@@ -383,6 +405,7 @@ export async function createManagedGenerationTaskDraft(projectId: string, input:
 
 export async function updateManagedGenerationTaskDraft(taskId: string, input: {
   generationKind?: string | null;
+  paramsJson?: unknown;
   taskType?: string | null;
   supplementalPrompt?: string | null;
 }) {
@@ -391,9 +414,11 @@ export async function updateManagedGenerationTaskDraft(taskId: string, input: {
     generationKind: typeof input.generationKind === "string" ? input.generationKind : draft.generationKind,
     taskType: typeof input.taskType === "string" && input.taskType.trim() ? input.taskType : draft.taskType,
   });
+  const paramsJson = normalizeGenerationParamsJson(input.paramsJson, draft.paramsJson ?? null);
   const nextDraft: GenerationTaskDraftRecord = {
     ...draft,
     generationKind: taskMetadata.generationKind,
+    paramsJson,
     supplementalPrompt: typeof input.supplementalPrompt === "string" ? input.supplementalPrompt.trim() : draft.supplementalPrompt,
     taskType: taskMetadata.taskType,
     updatedAt: formatTimestamp(),

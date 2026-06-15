@@ -321,7 +321,7 @@ const TRAINING_API_MANIFEST = {
           requestBody: {
             contentType: "application/json",
             requiredFields: ["sectionId"],
-            optionalFields: ["generationKind", "taskType", "supplementalPrompt"],
+            optionalFields: ["generationKind", "taskType", "supplementalPrompt", "paramsJson"],
             enumValues: {
               generationKind: [...TRAINING_GENERATION_KINDS],
               taskType: [...TRAINING_GENERATION_TASK_TYPES],

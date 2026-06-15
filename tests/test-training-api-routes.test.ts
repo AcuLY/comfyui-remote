@@ -1145,7 +1145,7 @@ test("GET /api/training full workflow declares request body bindings for non-pat
           "reference_image_generation",
         ],
       },
-      optionalFields: ["generationKind", "taskType", "supplementalPrompt"],
+      optionalFields: ["generationKind", "taskType", "supplementalPrompt", "paramsJson"],
       requiredFields: ["sectionId"],
     },
     "The generation draft route needs sectionId in the JSON body, not just in workflow memory.",
@@ -4856,6 +4856,10 @@ test("production generation task draft lifecycle works through /api/training whe
       body: JSON.stringify({
         generationKind: "image_generation",
         sectionId,
+        paramsJson: {
+          referenceStrength: 0.55,
+          seedPolicy: "fixed",
+        },
         taskType: "trainingset_generation",
         supplementalPrompt: "真实初始补充提示词",
       }),
@@ -4865,6 +4869,10 @@ test("production generation task draft lifecycle works through /api/training whe
   const createTaskPayload = await createTaskResponse.json();
   assert.equal(createTaskResponse.status, 201);
   assert.equal(createTaskPayload.ok, true);
+  assert.deepEqual(createTaskPayload.data.paramsJson, {
+    referenceStrength: 0.55,
+    seedPolicy: "fixed",
+  });
   const taskId = createTaskPayload.data.id as string;
 
   const patchTaskResponse = await generationTaskDetailRoute.PATCH(
@@ -4872,6 +4880,10 @@ test("production generation task draft lifecycle works through /api/training whe
       method: "PATCH",
       body: JSON.stringify({
         generationKind: "image_generation",
+        paramsJson: {
+          providerModel: "gpt-image-2",
+          temperature: 0.25,
+        },
         taskType: "角色描述生成",
         supplementalPrompt: "真实更新后的补充提示词",
       }),
@@ -4882,6 +4894,10 @@ test("production generation task draft lifecycle works through /api/training whe
   assert.equal(patchTaskResponse.status, 200);
   assert.equal(patchTaskPayload.ok, true);
   assert.equal(patchTaskPayload.data.generationKind, "image_generation");
+  assert.deepEqual(patchTaskPayload.data.paramsJson, {
+    providerModel: "gpt-image-2",
+    temperature: 0.25,
+  });
   assert.equal(patchTaskPayload.data.taskType, "profile_text_generation");
   assert.equal(patchTaskPayload.data.taskTypeLabel, "角色描述生成");
 
@@ -6128,6 +6144,10 @@ test("managed training project generation task draft lifecycle works through /ap
       body: JSON.stringify({
         generationKind: "image_generation",
         sectionId,
+        paramsJson: {
+          referenceStrength: 0.7,
+          seedPolicy: "reuse_project_seed",
+        },
         taskType: "reference_image_generation",
         supplementalPrompt: "初始补充提示词",
       }),
@@ -6138,6 +6158,10 @@ test("managed training project generation task draft lifecycle works through /ap
   assert.equal(createTaskResponse.status, 201);
   assert.equal(createTaskPayload.ok, true);
   assert.equal(createTaskPayload.data.generationKind, "image_generation");
+  assert.deepEqual(createTaskPayload.data.paramsJson, {
+    referenceStrength: 0.7,
+    seedPolicy: "reuse_project_seed",
+  });
   assert.equal(createTaskPayload.data.taskType, "reference_image_generation");
   assert.equal(createTaskPayload.data.taskTypeLabel, "参考图生成");
   const taskId = createTaskPayload.data.id as string;
@@ -6147,6 +6171,10 @@ test("managed training project generation task draft lifecycle works through /ap
       method: "PATCH",
       body: JSON.stringify({
         generationKind: "image_generation",
+        paramsJson: {
+          providerModel: "gpt-image-2",
+          temperature: 0.35,
+        },
         taskType: "trainingset_generation",
         supplementalPrompt: "更新后的补充提示词",
       }),
@@ -6157,6 +6185,10 @@ test("managed training project generation task draft lifecycle works through /ap
   assert.equal(patchTaskResponse.status, 200);
   assert.equal(patchTaskPayload.ok, true);
   assert.equal(patchTaskPayload.data.generationKind, "image_generation");
+  assert.deepEqual(patchTaskPayload.data.paramsJson, {
+    providerModel: "gpt-image-2",
+    temperature: 0.35,
+  });
   assert.equal(patchTaskPayload.data.taskType, "trainingset_generation");
   assert.equal(patchTaskPayload.data.taskTypeLabel, "训练集图片生成");
 
@@ -6199,6 +6231,10 @@ test("managed training project generation task draft lifecycle works through /ap
   assert.equal(previewResponse.status, 200);
   assert.equal(previewPayload.ok, true);
   assert.equal(previewPayload.data.generationKind, "image_generation");
+  assert.deepEqual(previewPayload.data.paramsJson, {
+    providerModel: "gpt-image-2",
+    temperature: 0.35,
+  });
   assert.equal(previewPayload.data.taskType, "trainingset_generation");
   assert.equal(previewPayload.data.taskTypeLabel, "训练集图片生成");
   assert.match(previewPayload.data.finalInput, /更新后的补充提示词/);
