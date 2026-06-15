@@ -1,8 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  heartbeatLegacyTrainingWorkerTask,
-  mapLegacyTrainingGenerationError,
-} from "@/server/services/training/legacy-compat-service";
+  heartbeatTrainingWorkerTask,
+  mapTrainingWorkerTaskError,
+} from "@/server/worker/training/task-api";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +22,10 @@ export async function POST(request: Request, context: WorkerTaskRouteContext) {
   }
 
   try {
-    const data = await heartbeatLegacyTrainingWorkerTask(taskId, body);
+    const data = await heartbeatTrainingWorkerTask(taskId, body);
     return ok(data);
   } catch (error) {
-    const mapped = mapLegacyTrainingGenerationError(error);
+    const mapped = mapTrainingWorkerTaskError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

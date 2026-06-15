@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import test from "node:test";
 
@@ -47,5 +47,45 @@ test("training services isolate legacy character-lora-training dependencies in o
     directLegacyImports,
     [],
     "Training services should use legacy-compat-service while the remaining old implementation is migrated.",
+  );
+});
+
+test("training worker task routes go through the Training worker boundary", () => {
+  const taskApiPath = join(process.cwd(), "src/server/worker/training/task-api.ts");
+  assert.equal(existsSync(taskApiPath), true, "Training worker task API boundary should exist under src/server/worker/training");
+
+  const taskApiSource = readFileSync(taskApiPath, "utf8");
+  assert.doesNotMatch(
+    taskApiSource,
+    /@\/server\/services\/character-lora-training/,
+    "Training worker task boundary should not import legacy character-lora-training services directly",
+  );
+  assert.match(taskApiSource, /export async function getTrainingWorkerQueueStatus/);
+  assert.match(taskApiSource, /export async function leaseNextTrainingWorkerTask/);
+  assert.match(taskApiSource, /export async function heartbeatTrainingWorkerTask/);
+  assert.match(taskApiSource, /export async function completeTrainingWorkerTask/);
+  assert.match(taskApiSource, /export async function failTrainingWorkerTask/);
+
+  const workerRouteFiles = listFiles(join(process.cwd(), "src/app/api/training/worker"), (name) => name === "route.ts");
+  const leakingRoutes = workerRouteFiles
+    .map((path) => ({
+      path,
+      source: readFileSync(path, "utf8"),
+    }))
+    .filter(({ source }) => source.includes("@/server/services/training/legacy-compat-service"))
+    .map(({ path }) => relative(process.cwd(), path));
+
+  assert.deepEqual(
+    leakingRoutes,
+    [],
+    "Training worker routes should call src/server/worker/training/task-api instead of the legacy compat service directly.",
+  );
+
+  const taskLifecycleRoutes = workerRouteFiles
+    .filter((path) => path.includes(join("worker", "tasks")))
+    .map((path) => readFileSync(path, "utf8").includes("@/server/worker/training/task-api"));
+  assert.ok(
+    taskLifecycleRoutes.every(Boolean),
+    "Training worker task lifecycle routes should import the Training worker task API boundary",
   );
 });

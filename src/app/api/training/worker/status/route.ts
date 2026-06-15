@@ -1,17 +1,17 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  getLegacyTrainingWorkerQueueStatus,
-  mapLegacyTrainingGenerationError,
-} from "@/server/services/training/legacy-compat-service";
+  getTrainingWorkerQueueStatus,
+  mapTrainingWorkerTaskError,
+} from "@/server/worker/training/task-api";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const data = await getLegacyTrainingWorkerQueueStatus();
+    const data = await getTrainingWorkerQueueStatus();
     return ok(data);
   } catch (error) {
-    const mapped = mapLegacyTrainingGenerationError(error);
+    const mapped = mapTrainingWorkerTaskError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

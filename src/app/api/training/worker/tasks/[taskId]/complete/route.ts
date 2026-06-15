@@ -1,8 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  completeLegacyTrainingWorkerTask,
-  mapLegacyTrainingGenerationError,
-} from "@/server/services/training/legacy-compat-service";
+  completeTrainingWorkerTask,
+  mapTrainingWorkerTaskError,
+} from "@/server/worker/training/task-api";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +21,10 @@ export async function POST(request: Request, context: WorkerTaskRouteContext) {
   }
 
   try {
-    const data = await completeLegacyTrainingWorkerTask(taskId, body);
+    const data = await completeTrainingWorkerTask(taskId, body);
     return ok(data);
   } catch (error) {
-    const mapped = mapLegacyTrainingGenerationError(error);
+    const mapped = mapTrainingWorkerTaskError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

@@ -1,8 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  leaseNextLegacyTrainingWorkerTask,
-  mapLegacyTrainingGenerationError,
-} from "@/server/services/training/legacy-compat-service";
+  leaseNextTrainingWorkerTask,
+  mapTrainingWorkerTaskError,
+} from "@/server/worker/training/task-api";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ export async function GET(request: Request) {
   const searchParams = new URL(request.url).searchParams;
 
   try {
-    const data = await leaseNextLegacyTrainingWorkerTask({
+    const data = await leaseNextTrainingWorkerTask({
       workerType: searchParams.get("workerType"),
       leaseOwner: searchParams.get("leaseOwner") ?? undefined,
       leaseDurationSeconds: searchParams.get("leaseDurationSeconds")
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     });
     return ok(data);
   } catch (error) {
-    const mapped = mapLegacyTrainingGenerationError(error);
+    const mapped = mapTrainingWorkerTaskError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
