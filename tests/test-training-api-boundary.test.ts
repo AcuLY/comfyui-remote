@@ -461,6 +461,16 @@ test("preset resource lists stay scoped to their owning work mode except shared 
   const trainingPresetServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/preset-service.ts"), "utf8");
   assert.match(
     trainingPresetServiceSource,
+    /@\/server\/repositories\/training\/helpers/,
+    "Training preset service should use Training-owned repository helpers for slug generation.",
+  );
+  assert.doesNotMatch(
+    trainingPresetServiceSource,
+    /@\/server\/services\/training\/legacy-compat-service/,
+    "Training preset service should not import the legacy compat adapter for helper functions.",
+  );
+  assert.match(
+    trainingPresetServiceSource,
     /trainingSceneDescriptionPresetCategory\.findFirst\(\{\s*where:\s*\{[\s\S]*?slug:\s*preset\.categorySlug/,
     "Training default presets should only reuse dedicated training scene-description categories.",
   );

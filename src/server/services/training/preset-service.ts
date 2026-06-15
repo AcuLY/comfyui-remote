@@ -23,7 +23,7 @@ import {
   type TrainingSceneCategoryRow,
   type TrainingSceneFolderRow,
 } from "@/server/repositories/training/scene-description-presets";
-import { slugifyForRepository } from "@/server/services/training/legacy-compat-service";
+import { slugifyForTrainingRepository } from "@/server/repositories/training/helpers";
 
 const TRAINING_PRESET_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-presets.json");
 const TRAINING_PRESET_CATEGORY_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-categories.json");
@@ -214,7 +214,7 @@ function buildDefaultFallbackSceneLibraryState() {
 
     if (!preset.folderName.trim() || preset.folderName === "未归档") continue;
 
-    const folderSlug = slugifyForRepository(preset.folderName, "folder");
+    const folderSlug = slugifyForTrainingRepository(preset.folderName, "folder");
     const folderId = `training-scene-folder-${preset.categorySlug}-${folderSlug}`;
     if (!folders.has(folderId)) {
       folders.set(folderId, {
@@ -364,7 +364,7 @@ function nextFallbackCategoryId(slug: string) {
 }
 
 function nextFallbackFolderId(categoryId: string, name: string) {
-  return `training-scene-folder-${categoryId}-${slugifyForRepository(name, "folder")}`;
+  return `training-scene-folder-${categoryId}-${slugifyForTrainingRepository(name, "folder")}`;
 }
 
 function normalizeFallbackSceneLibraryState(input: {
@@ -383,7 +383,7 @@ function normalizeFallbackSceneLibraryState(input: {
   for (const preset of input.presets) {
     let category = categoryByName.get(preset.category);
     if (!category) {
-      const baseSlug = `training-${slugifyForRepository(preset.category, "category")}`;
+      const baseSlug = `training-${slugifyForTrainingRepository(preset.category, "category")}`;
       let slug = baseSlug;
       let suffix = 2;
       while (categoryBySlug.has(slug)) {
@@ -632,7 +632,7 @@ async function getTrainingSceneFolderRow(folderId: string) {
 }
 
 async function createUniqueCategorySlug(name: string) {
-  const base = `training-${slugifyForRepository(name, "category")}`;
+  const base = `training-${slugifyForTrainingRepository(name, "category")}`;
   let candidate = base;
   let suffix = 2;
 
@@ -645,7 +645,7 @@ async function createUniqueCategorySlug(name: string) {
 }
 
 async function createUniquePresetSlug(categoryId: string, title: string, excludePresetId?: string) {
-  const base = slugifyForRepository(title, "training-preset");
+  const base = slugifyForTrainingRepository(title, "training-preset");
   let candidate = base;
   let suffix = 2;
 
