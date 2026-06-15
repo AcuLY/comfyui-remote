@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, extname, join } from "node:path";
+import type { LoraTrainingRun } from "@/features/training/types";
 import { getTrainingProject } from "@/server/services/training/read-service";
 import type { CharacterLoraProviderInputImage } from "@/server/character-lora-training/contracts";
 import { createCharacterLoraJobArtifact } from "@/server/repositories/character-lora-training";
@@ -79,6 +80,49 @@ async function withGenerationTaskDraftWriteLock<T>(fn: () => Promise<T>) {
 
 function formatTimestamp(value = new Date()) {
   return value.toISOString();
+}
+
+function formatRunTimestamp(value: string | null | undefined, prefix: "完成于" | "开始于" | "创建于" | "失败于" = "创建于") {
+  if (!value) return "未记录";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${prefix} ${hh}:${mm}`;
+}
+
+function mapLegacyGenerationStatus(status: string): LoraTrainingRun["status"] {
+  if (status === "done") return "completed";
+  if (status === "running") return "running";
+  if (status === "queued") return "queued";
+  return "failed";
+}
+
+function mapLegacyGenerationRunToTrainingRun(input: {
+  finalInput: string;
+  project: Awaited<ReturnType<typeof getTrainingProject>>;
+  run: Awaited<ReturnType<typeof enqueueCharacterLoraSectionGenerationRun>>;
+  section: Awaited<ReturnType<typeof getTrainingProject>>["sections"][number];
+}): LoraTrainingRun {
+  return {
+    id: input.run.id,
+    kind: "generation",
+    status: mapLegacyGenerationStatus(input.run.status),
+    projectId: input.project.id,
+    sectionId: input.section.id,
+    projectTitle: input.project.title,
+    title: `${input.section.title} 图片生成`,
+    summary: `图片 · 小节 ${input.section.title}`,
+    timestamp: input.run.finishedAt
+      ? formatRunTimestamp(input.run.finishedAt, input.run.status === "failed" ? "失败于" : "完成于")
+      : input.run.startedAt
+        ? formatRunTimestamp(input.run.startedAt, "开始于")
+        : formatRunTimestamp(input.run.createdAt, "创建于"),
+    provider: input.run.imageModel ?? input.run.hostModel ?? input.run.provider,
+    finalInput: input.run.visualPrompt ?? input.run.hostInstruction ?? input.finalInput,
+    outputLabel: input.run.counts.candidateImages > 0 ? `输出 ${input.run.counts.candidateImages} 张图片` : undefined,
+    schedulerMessage: "已进入生成队列",
+  };
 }
 
 function createDraftId() {
@@ -491,7 +535,7 @@ export async function runManagedGenerationTask(taskId: string) {
     title: image.title,
   }));
 
-  let run = await enqueueManagedTrainingSectionGenerationRun(section.id, {
+  const managedRun = await enqueueManagedTrainingSectionGenerationRun(section.id, {
     previousCandidateImageIds,
     projectId: draft.projectId,
     sourceImageIds,
@@ -502,9 +546,13 @@ export async function runManagedGenerationTask(taskId: string) {
     throw new TrainingGenerationTaskDraftServiceError(mapped.message, mapped.status, mapped.details);
   });
 
-  if (!run) {
+  let run: LoraTrainingRun;
+
+  if (managedRun) {
+    run = managedRun;
+  } else {
     const projectIsManaged = Boolean(await getManagedTrainingProject(draft.projectId));
-    run = await enqueueCharacterLoraSectionGenerationRun(section.id, {
+    const legacyRun = await enqueueCharacterLoraSectionGenerationRun(section.id, {
       previousCandidateImageIds,
       supplementalInputImages: projectIsManaged
         ? []
@@ -514,6 +562,12 @@ export async function runManagedGenerationTask(taskId: string) {
     }).catch((error) => {
       const mapped = mapCharacterLoraPhase3Error(error);
       throw new TrainingGenerationTaskDraftServiceError(mapped.message, mapped.status, mapped.details);
+    });
+    run = mapLegacyGenerationRunToTrainingRun({
+      finalInput: preview.finalInput,
+      project,
+      run: legacyRun,
+      section,
     });
   }
 

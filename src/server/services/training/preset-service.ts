@@ -223,7 +223,7 @@ function buildDefaultFallbackPreset(preset: TrainingPresetDefault): LoraTraining
   };
 }
 
-function normalizeBuiltInFallbackPreset(preset: LoraTrainingPreset) {
+function normalizeBuiltInFallbackPreset(preset: LoraTrainingPreset): LoraTrainingPreset {
   const builtIn = DEFAULT_TRAINING_PRESETS.find((item) => item.id === preset.id);
   if (!builtIn) return preset;
 
@@ -342,7 +342,7 @@ function mapTrainingSceneFolder(row: TrainingSceneFolderRow): TrainingSceneDescr
   };
 }
 
-async function readFallbackTrainingPresets() {
+async function readFallbackTrainingPresets(): Promise<LoraTrainingPreset[]> {
   try {
     const raw = await readFile(TRAINING_PRESET_FALLBACK_PATH, "utf8");
     const parsed = JSON.parse(raw) as unknown;
@@ -435,7 +435,10 @@ function normalizeFallbackSceneLibraryState(input: {
   categories: TrainingSceneDescriptionCategory[];
   folders: TrainingSceneDescriptionFolder[];
   presets: LoraTrainingPreset[];
-}) {
+}): {
+  categories: TrainingSceneDescriptionCategory[];
+  folders: TrainingSceneDescriptionFolder[];
+} {
   const nextCategories = [...input.categories];
   const nextFolders = [...input.folders];
   const categoryByName = new Map(nextCategories.map((category) => [category.name, category]));
@@ -942,7 +945,7 @@ function revalidateTrainingPresetPaths(presetId?: string) {
   if (presetId) safeRevalidatePath(`/training/presets/${presetId}`);
 }
 
-export async function listTrainingSceneDescriptionPresets() {
+export async function listTrainingSceneDescriptionPresets(): Promise<LoraTrainingPreset[]> {
   try {
     const rows = await listTrainingPresetRows();
     return rows.map(mapTrainingPreset);

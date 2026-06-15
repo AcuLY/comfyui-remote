@@ -21,26 +21,23 @@ export class TrainingRunPresetStateServiceError extends Error {
   }
 }
 
-async function readRunPresetStateMap() {
+async function readRunPresetStateMap(): Promise<Record<string, TrainingRunPresetState>> {
   try {
     const raw = await readFile(TRAINING_RUN_PRESET_STATE_PATH, "utf8");
     const parsed = JSON.parse(raw) as unknown;
     if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return Object.fromEntries(
-        Object.entries(parsed as Record<string, unknown>)
-          .filter(([, value]) => value && typeof value === "object" && !Array.isArray(value))
-          .map(([runId, value]) => {
-            const record = value as Record<string, unknown>;
-            return [
-              runId,
-              {
-                createdAt: typeof record.createdAt === "string" ? record.createdAt : new Date().toISOString(),
-                presetId: typeof record.presetId === "string" ? record.presetId : "",
-              } satisfies TrainingRunPresetState,
-            ];
-          })
-          .filter(([, value]) => value.presetId.length > 0),
-      ) as Record<string, TrainingRunPresetState>;
+      const state: Record<string, TrainingRunPresetState> = {};
+      for (const [runId, value] of Object.entries(parsed as Record<string, unknown>)) {
+        if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+        const record = value as Record<string, unknown>;
+        const presetId = typeof record.presetId === "string" ? record.presetId : "";
+        if (!presetId) continue;
+        state[runId] = {
+          createdAt: typeof record.createdAt === "string" ? record.createdAt : new Date().toISOString(),
+          presetId,
+        };
+      }
+      return state;
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
@@ -87,7 +84,7 @@ export async function recordTrainingRunPresetCreation(runId: string, presetId: s
     }
 
     const createdAt = new Date().toISOString();
-    const next = {
+    const next: Record<string, TrainingRunPresetState> = {
       ...current,
       [normalizedRunId]: {
         createdAt,

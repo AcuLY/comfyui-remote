@@ -20,8 +20,6 @@ import {
   listCharacterLoraTrainingJobs,
 } from "@/server/services/character-lora-training/job-service";
 import {
-} from "@/server/services/character-lora-training/section-template-service";
-import {
   listCharacterLoraCandidateImages,
   listCharacterLoraDatasetRevisions,
 } from "@/server/services/character-lora-training/phase3-service";
@@ -190,6 +188,24 @@ function buildGenerationInputImages(
     .filter((image): image is TrainingImage => Boolean(image));
 }
 
+function normalizeGenerationInputImages(value: unknown): Array<{
+  relativePath: string;
+  role: string;
+}> {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const record = item as Record<string, unknown>;
+    const relativePath = typeof record.relativePath === "string" ? record.relativePath : "";
+    if (!relativePath) return [];
+    return [{
+      relativePath,
+      role: typeof record.role === "string" ? record.role : "history",
+    }];
+  });
+}
+
 function buildTrainingRuns(
   project: { id: string; title: string },
   resultPool: LoraTrainingImageResult[],
@@ -243,7 +259,7 @@ async function buildGenerationRuns(input: {
     grouped.get(image.generationRunId)!.push(image);
   }
 
-  const runs = await Promise.all(
+  const runs: Array<LoraTrainingRun | null> = await Promise.all(
     [...grouped.entries()].map(async ([generationRunId, images]) => {
       const run = await getCharacterLoraGenerationRun(generationRunId);
       if (!run) return null;
@@ -264,7 +280,7 @@ async function buildGenerationRuns(input: {
             : formatTimestamp(run.createdAt, "创建于"),
         provider: run.imageModel ?? run.hostModel ?? run.provider,
         finalInput: run.visualPrompt ?? run.hostInstruction,
-        inputImages: buildGenerationInputImages(run.inputImages),
+        inputImages: buildGenerationInputImages(normalizeGenerationInputImages(run.inputImages)),
         errorMessage: typeof run.errorSummary === "string" ? run.errorSummary : run.errorSummary ? JSON.stringify(run.errorSummary) : undefined,
         outputLabel: `输出 ${images.length} 张图片`,
         outputResultIds: images.map((image) => image.id),

@@ -245,7 +245,7 @@ async function deriveReferenceImages(
   const results = sourceProjects.flatMap((project) => project.resultPool);
   const projects = sourceProjects;
 
-  const picked = await Promise.all(selectedReferenceIds.map(async (referenceId) => {
+  const picked: Array<LoraTrainingReferenceImage | null> = await Promise.all(selectedReferenceIds.map(async (referenceId) => {
     if (referenceId.startsWith("project-")) {
       const projectId = referenceId.slice("project-".length);
       const project = projects.find((item) => item.id === projectId);
@@ -362,7 +362,7 @@ async function syncSelectedReferenceImagesToTrainingProject(
     const formData = new FormData();
     formData.append(
       "file",
-      new File([buffer], basename(relativePath), {
+      new File([new Uint8Array(buffer)], basename(relativePath), {
         type: imageMimeTypeFromPath(relativePath),
       }),
     );

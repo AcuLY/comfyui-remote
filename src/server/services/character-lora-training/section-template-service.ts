@@ -272,6 +272,7 @@ function buildTrainingTemplateSnapshot(
     trainingDefaults: template.trainingDefaults,
     benchmarkDefaults: template.benchmarkDefaults,
     promotionDefaults: template.promotionDefaults,
+    updatedAt: template.updatedAt,
     sectionTemplates: sectionTemplates.map((section) => ({
       id: section.id,
       trainingTemplateId: section.trainingTemplateId,
