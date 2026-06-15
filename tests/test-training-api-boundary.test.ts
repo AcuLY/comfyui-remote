@@ -460,6 +460,33 @@ test("generation preset import and replacement helpers keep training presets out
   }
 });
 
+test("generation preset resolvers use the shared ordinary preset scope contract", () => {
+  const scopedGenerationFiles = [
+    "src/lib/actions/preset-variant-resolve.ts",
+    "src/server/prompt-config/preset-resolver.ts",
+    "src/server/prompt-config/preset-group-resolver.ts",
+  ] as const;
+
+  for (const relativePath of scopedGenerationFiles) {
+    const source = readFileSync(join(process.cwd(), relativePath), "utf8");
+    assert.match(
+      source,
+      /@\/lib\/actions\/preset-resource-scope/,
+      `${relativePath} should import the shared preset resource scope contract.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /const\s+ORDINARY_PRESET_CATEGORY_TYPE\s*=\s*"preset"/,
+      `${relativePath} should not redefine the ordinary preset category type.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /type:\s*"preset"/,
+      `${relativePath} should not hand-write generation preset category filters.`,
+    );
+  }
+});
+
 test("generation project option loaders use the shared ordinary preset scope", () => {
   for (const relativePath of ["src/server/repositories/project-view-repository/form-view.ts"]) {
     const source = readFileSync(join(process.cwd(), relativePath), "utf8");

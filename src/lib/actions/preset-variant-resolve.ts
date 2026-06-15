@@ -1,9 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
-
-const ORDINARY_PRESET_CATEGORY_TYPE = "preset";
 
 // ---------------------------------------------------------------------------
 // Types
