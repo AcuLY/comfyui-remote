@@ -5,6 +5,7 @@ import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { cancelProjectTasksForCleanup } from "@/server/services/project-deletion-service";
 import { cleanupProjectExportDirectory } from "@/server/services/project-file-cleanup-service";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 const log = createLogger({ module: "project-archive-service" });
 
@@ -21,8 +22,8 @@ export type ArchiveProjectResult = {
 
 export async function archiveProject(projectId: string): Promise<ArchiveProjectResult> {
   // 1. Find the project
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: { id: true, title: true, slug: true, status: true, publishedAt: true, archivedAt: true },
   });
 
@@ -60,7 +61,13 @@ export async function archiveProject(projectId: string): Promise<ArchiveProjectR
   let deletedTrashFiles = 0;
   try {
     const trashedImages = await prisma.imageResult.findMany({
-      where: { run: { projectId }, reviewStatus: "trashed" },
+      where: {
+        run: {
+          projectId,
+          project: buildGenerationProjectWhere({ id: projectId }),
+        },
+        reviewStatus: "trashed",
+      },
       select: { id: true, trashRecord: { select: { id: true, trashPath: true } } },
     });
 
@@ -109,7 +116,11 @@ export async function archiveProject(projectId: string): Promise<ArchiveProjectR
   if (env.comfyLaunchCwd) {
     try {
       const runs = await prisma.run.findMany({
-        where: { projectId, comfyOutputSubfolder: { not: null } },
+        where: {
+          projectId,
+          project: buildGenerationProjectWhere({ id: projectId }),
+          comfyOutputSubfolder: { not: null },
+        },
         select: { comfyOutputSubfolder: true },
       });
 
@@ -151,8 +162,8 @@ export async function archiveProject(projectId: string): Promise<ArchiveProjectR
   const exportCleanup = await cleanupProjectExportDirectory(project.title);
 
   // 7. Set archivedAt
-  await prisma.project.update({
-    where: { id: projectId },
+  await prisma.project.updateMany({
+    where: buildGenerationProjectWhere({ id: projectId }),
     data: { archivedAt: new Date() },
   });
 

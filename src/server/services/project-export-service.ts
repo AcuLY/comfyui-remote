@@ -4,6 +4,7 @@ import { join, resolve, sep } from "node:path";
 import archiver from "archiver";
 import sharp from "sharp";
 import { prisma } from "@/lib/prisma";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 const EXPORT_ROOT = resolve(process.cwd(), "data", "export");
 
@@ -34,8 +35,8 @@ export function selectCensoredFeatureImages<T extends CensoredFeatureImage>(imag
 }
 
 export async function exportProjectImages(projectId: string): Promise<ExportProjectImagesResult> {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       id: true,
       title: true,
@@ -78,7 +79,10 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
     where: {
       id: project.coverImageId,
       reviewStatus: { not: "trashed" },
-      run: { projectId: project.id },
+      run: {
+        projectId: project.id,
+        project: buildGenerationProjectWhere({ id: project.id }),
+      },
     },
     select: { filePath: true, censoredFilePath: true },
   });
@@ -242,8 +246,8 @@ export async function exportProjectImages(projectId: string): Promise<ExportProj
   }
 
   // Mark project as published
-  await prisma.project.update({
-    where: { id: projectId },
+  await prisma.project.updateMany({
+    where: buildGenerationProjectWhere({ id: projectId }),
     data: { publishedAt: new Date() },
   });
 

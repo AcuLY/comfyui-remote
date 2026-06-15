@@ -24,6 +24,9 @@ const generationQueueDataRouteSource = readFileSync(resolve(repoRoot, "src/app/a
 const generationRunLifecycleSource = readFileSync(resolve(repoRoot, "src/lib/actions/run-lifecycle.ts"), "utf8");
 const generationRunWorkflowRouteSource = readFileSync(resolve(repoRoot, "src/app/api/runs/[runId]/workflow/route.ts"), "utf8");
 const generationWorkerStatusRouteSource = readFileSync(resolve(repoRoot, "src/app/api/worker/status/route.ts"), "utf8");
+const generationProjectExportServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-export-service.ts"), "utf8");
+const generationProjectArchiveServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-archive-service.ts"), "utf8");
+const generationProjectFolderServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-folder-service.ts"), "utf8");
 const generationTemplateCrudSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-crud.ts"), "utf8");
 const generationTemplateImportSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-import.ts"), "utf8");
 const generationPresetReplacementSource = readFileSync(resolve(repoRoot, "src/server/services/preset-section-replacement-service.ts"), "utf8");
@@ -436,6 +439,51 @@ test("generation queue auxiliary lists reuse the generation project boundary", (
       `${label} project-title lookup must not fetch projects by id without the generation project boundary.`,
     );
   }
+});
+
+test("generation project service entrypoints reuse the generation project boundary", () => {
+  for (const [label, source] of [
+    ["generation project export service", generationProjectExportServiceSource],
+    ["generation project archive service", generationProjectArchiveServiceSource],
+    ["generation project folder service", generationProjectFolderServiceSource],
+  ] as const) {
+    assert.match(
+      source,
+      /buildGenerationProjectWhere/,
+      `${label} should import the generation project boundary.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /project\.findUnique\(\{[\s\S]*where:\s*\{\s*id:\s*(?:projectId|normalizedProjectId)/,
+      `${label} must not fetch projects by id without the generation project boundary.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /project\.update\(\{[\s\S]*where:\s*\{\s*id:\s*(?:projectId|normalizedProjectId)/,
+      `${label} must not update projects by id without the generation project boundary.`,
+    );
+  }
+
+  assert.match(
+    generationProjectExportServiceSource,
+    /imageResult\.findFirst\(\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(/,
+    "Generation project export cover lookup should reject images from hidden training benchmark projects.",
+  );
+  assert.match(
+    generationProjectArchiveServiceSource,
+    /imageResult\.findMany\(\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(/,
+    "Generation project archive trash cleanup should reject images from hidden training benchmark projects.",
+  );
+  assert.match(
+    generationProjectArchiveServiceSource,
+    /run\.findMany\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(/,
+    "Generation project archive output cleanup should reject runs from hidden training benchmark projects.",
+  );
+  assert.match(
+    generationProjectFolderServiceSource,
+    /project\.count\(\{[\s\S]*buildGenerationProjectWhere\(\{\s*folderId:\s*id\s*\}\)/,
+    "Generation project folder deletion should not count hidden training benchmark projects as visible folder contents.",
+  );
 });
 
 test("generation worker status uses the generation project boundary", () => {
