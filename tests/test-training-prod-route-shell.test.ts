@@ -16,6 +16,7 @@ const trainingRoutePagePath = resolve(repoRoot, "src/app/training/[[...route]]/p
 const trainingAppClientPath = resolve(repoRoot, "src/app/training/training-app-client.tsx");
 const trainingFeatureAppPath = resolve(repoRoot, "src/features/training/app.tsx");
 const trainingRuntimePath = resolve(repoRoot, "src/features/training/runtime.ts");
+const trainingRoutesPath = resolve(repoRoot, "src/features/training/routes.ts");
 const trainingThemePath = resolve(repoRoot, "src/features/training/theme.ts");
 
 const layoutSource = readFileSync(layoutPath, "utf8");
@@ -28,6 +29,7 @@ const trainingRoutePageSource = existsSync(trainingRoutePagePath) ? readFileSync
 const trainingAppClientSource = existsSync(trainingAppClientPath) ? readFileSync(trainingAppClientPath, "utf8") : "";
 const trainingFeatureAppSource = existsSync(trainingFeatureAppPath) ? readFileSync(trainingFeatureAppPath, "utf8") : "";
 const trainingRuntimeSource = existsSync(trainingRuntimePath) ? readFileSync(trainingRuntimePath, "utf8") : "";
+const trainingRoutesSource = existsSync(trainingRoutesPath) ? readFileSync(trainingRoutesPath, "utf8") : "";
 const trainingThemeSource = existsSync(trainingThemePath) ? readFileSync(trainingThemePath, "utf8") : "";
 
 test("production app shell treats /training routes as standalone surfaces", () => {
@@ -40,6 +42,24 @@ test("production app shell treats /training routes as standalone surfaces", () =
     layoutSource,
     /isLoginPage \|\| isDesignDemoPage \|\| isTrainingPage \? children : <AppShell>\{children\}<\/AppShell>/,
     "training routes should not be wrapped in the legacy production AppShell",
+  );
+});
+
+test("production training routes do not own the shared model manager page", () => {
+  assert.doesNotMatch(
+    trainingRoutesSource,
+    /pattern:\s*"\/training\/models"/,
+    "models should remain a shared resource page instead of a LoRA training module route",
+  );
+  assert.match(
+    bottomNavSource,
+    /href:\s*"\/assets\/models"/,
+    "persistent navigation should keep model management on the shared asset route",
+  );
+  assert.doesNotMatch(
+    bottomNavSource,
+    /href:\s*"\/training\/models"/,
+    "persistent navigation should not add a training-owned models page",
   );
 });
 
