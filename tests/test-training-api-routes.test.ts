@@ -9,6 +9,7 @@ const TRAINING_RUN_PRESET_STATE_PATH = join(process.cwd(), "data", "training-run
 const TRAINING_MANAGED_RUNS_PATH = join(process.cwd(), "data", "training-managed-runs.json");
 const TRAINING_PROJECTS_PATH = join(process.cwd(), "data", "training-projects.json");
 const TRAINING_TEMPLATE_ORDER_PATH = join(process.cwd(), "data", "training-template-order.json");
+const TRAINING_ROUTE_METHODS = new Set(["GET", "POST", "PATCH", "DELETE", "PUT"]);
 let trainingManagedStoreSnapshotQueue: Promise<unknown> = Promise.resolve();
 
 async function listRouteFiles(dir: string): Promise<string[]> {
@@ -34,6 +35,25 @@ function routeFileToTrainingApiPath(filePath: string) {
   return `/api/training/${segments.join("/")}`;
 }
 
+function collectRouteExportedMethods(source: string) {
+  const methods = new Set<string>();
+
+  for (const match of source.matchAll(/^export async function (GET|POST|PATCH|DELETE|PUT)/gm)) {
+    methods.add(match[1]);
+  }
+
+  for (const match of source.matchAll(/^export \{([^}]+)\} from /gm)) {
+    for (const item of match[1].split(",")) {
+      const exportedName = item.trim().split(/\s+as\s+/i).pop()?.trim();
+      if (exportedName && TRAINING_ROUTE_METHODS.has(exportedName)) {
+        methods.add(exportedName);
+      }
+    }
+  }
+
+  return [...methods];
+}
+
 async function listRouteOperations() {
   const routeFiles = await listRouteFiles(join(process.cwd(), "src", "app", "api", "training"));
   return routeFiles.flatMap((filePath) => {
@@ -41,8 +61,7 @@ async function listRouteOperations() {
     if (routePath === "/api/training") return [];
 
     const source = readFileSync(filePath, "utf8");
-    return [...source.matchAll(/^export async function (GET|POST|PATCH|DELETE|PUT)/gm)]
-      .map((match) => `${match[1]} ${routePath}`);
+    return collectRouteExportedMethods(source).map((method) => `${method} ${routePath}`);
   }).sort();
 }
 
@@ -312,6 +331,23 @@ test("GET /api/training manifest exposes an end-to-end HTTP workflow for agents"
       "POST /api/training/training-runs/:trainingRunId/create-preset",
     ],
     "agent workflow should enumerate the full HTTP-only path from project setup through LoRA preset creation",
+  );
+});
+
+test("training route operation inventory includes re-exported route handlers", async () => {
+  const routeOperations = await listRouteOperations();
+
+  assert.ok(
+    routeOperations.includes("POST /api/training/scene-description/presets"),
+    "operation inventory should include POST handlers re-exported from another route module",
+  );
+  assert.ok(
+    routeOperations.includes("PATCH /api/training/scene-description/presets/:presetId"),
+    "operation inventory should include PATCH handlers re-exported from another route module",
+  );
+  assert.ok(
+    routeOperations.includes("DELETE /api/training/scene-description/presets/:presetId"),
+    "operation inventory should include DELETE handlers re-exported from another route module",
   );
 });
 
