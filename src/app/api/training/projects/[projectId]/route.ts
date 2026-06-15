@@ -5,17 +5,14 @@ import {
 } from "@/server/services/training/read-service";
 import {
   deleteManagedTrainingProject,
+  mapTrainingProjectMutationError,
   mapTrainingProjectError,
-  updateManagedTrainingProject,
+  updateTrainingProject,
 } from "@/server/services/training/project-service";
 import {
   hideTrainingProjects,
   mapTrainingProjectVisibilityError,
 } from "@/server/services/training/project-visibility-service";
-import {
-  mapLegacyTrainingProjectError,
-  updateLegacyTrainingProject,
-} from "@/server/services/training/legacy-compat-service";
 
 export const dynamic = "force-dynamic";
 
@@ -47,18 +44,10 @@ export async function PATCH(
 
   try {
     const { projectId } = await params;
-    const managed = await updateManagedTrainingProject(projectId, body);
-    if (managed) {
-      return ok(managed);
-    }
-    const data = await updateLegacyTrainingProject(projectId, body);
+    const data = await updateTrainingProject(projectId, body);
     return ok(data);
   } catch (error) {
-    const managedMapped = mapTrainingProjectError(error);
-    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
-      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
-    }
-    const mapped = mapLegacyTrainingProjectError(error);
+    const mapped = mapTrainingProjectMutationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

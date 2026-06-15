@@ -213,3 +213,22 @@ test("training image result routes use the project service boundary", () => {
   assert.match(projectService, /export async function updateTrainingImageResult/);
   assert.match(projectService, /export async function reviewTrainingImageResult/);
 });
+
+test("training project detail route uses the project service boundary for mutations", () => {
+  const routeFile = "src/app/api/training/projects/[projectId]/route.ts";
+  const source = readFileSync(join(process.cwd(), routeFile), "utf8");
+
+  assert.match(
+    source,
+    /@\/server\/services\/training\/project-service/,
+    `${routeFile} should route project mutations through project-service`,
+  );
+  assert.doesNotMatch(
+    source,
+    /@\/server\/services\/training\/legacy-compat-service/,
+    `${routeFile} should not update legacy projects from the route layer`,
+  );
+
+  const projectService = readFileSync(join(process.cwd(), "src/server/services/training/project-service.ts"), "utf8");
+  assert.match(projectService, /export async function updateTrainingProject/);
+});

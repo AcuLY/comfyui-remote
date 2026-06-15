@@ -31,6 +31,7 @@ import {
   restoreLegacyTrainingProject,
   reviewLegacyTrainingImages,
   updateLegacyTrainingImageCaption,
+  updateLegacyTrainingProject,
   updateCharacterLoraSourceImage,
   uploadCharacterLoraSourceImage,
 } from "@/server/services/training/legacy-compat-service";
@@ -505,6 +506,12 @@ export async function updateManagedTrainingProject(projectId: string, input: unk
     await writeFallbackTrainingProjects(next);
     return next[currentIndex];
   });
+}
+
+export async function updateTrainingProject(projectId: string, input: unknown) {
+  const managedProject = await updateManagedTrainingProject(projectId, input);
+  if (managedProject) return managedProject;
+  return updateLegacyTrainingProject(projectId, input);
 }
 
 export async function archiveManagedTrainingProject(projectId: string) {
