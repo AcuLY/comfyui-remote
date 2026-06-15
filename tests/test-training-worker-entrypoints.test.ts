@@ -78,9 +78,33 @@ test("training worker entrypoint help commands run under tsx without legacy labe
 
     assert.equal(result.status, 0, `${entrypoint} --help should exit successfully: ${result.stderr}`);
     assert.match(result.stdout, /LoRA training/i, `${entrypoint} --help should use Training naming`);
+    assert.match(result.stdout, /TRAINING_MANAGER_URL/, `${entrypoint} --help should document Training manager URL env`);
+    assert.match(result.stdout, /TRAINING_MANAGER_TOKEN/, `${entrypoint} --help should document Training manager token env`);
     assert.doesNotMatch(result.stdout, /Character LoRA/i, `${entrypoint} --help should not expose legacy naming`);
     assert.doesNotMatch(result.stderr, /Top-level await/i, `${entrypoint} should not rely on unsupported top-level await`);
   }
+});
+
+test("training worker common maps Training env aliases before loading legacy adapters", () => {
+  const source = readFileSync(join(process.cwd(), "scripts/training/worker-common.ts"), "utf8");
+
+  assert.match(source, /TRAINING_MANAGER_URL/, "Training worker common should accept a Training-named manager URL");
+  assert.match(source, /TRAINING_MANAGER_TOKEN/, "Training worker common should accept a Training-named manager token");
+  assert.match(
+    source,
+    /CHARACTER_LORA_MANAGER_URL/,
+    "Training worker common should bridge manager URL into the current legacy adapter",
+  );
+  assert.match(
+    source,
+    /CHARACTER_LORA_MANAGER_TOKEN/,
+    "Training worker common should bridge manager token into the current legacy adapter",
+  );
+  assert.match(
+    source,
+    /applyTrainingManagerEnvAliases\(\);[\s\S]*input\.importLegacyWorker\(\)/,
+    "Training env aliases should be applied before the legacy worker adapter is imported",
+  );
 });
 
 test("training worker supervisor targets Training-named worker task HTTP routes", async () => {

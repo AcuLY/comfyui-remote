@@ -14,6 +14,10 @@ Options:
   --interval-ms <ms>     Poll interval. Default: 5000.
   --lease-seconds <sec>  Lease/heartbeat extension. Default: 300.
   --worker-owner <name>  Lease owner.
+
+Manager auth:
+  TRAINING_MANAGER_URL defaults to http://127.0.0.1:3000.
+  x-api-token is read from AUTH_TOKEN or TRAINING_MANAGER_TOKEN.
 `.trim();
 
 runTrainingWorkerEntrypoint({

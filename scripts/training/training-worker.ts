@@ -16,6 +16,10 @@ Options:
   --worker-owner <name>  Lease owner.
   --dry-run              Validate inputs without launching training.
   --mock-complete        With --dry-run only, write mock artifacts and complete the task.
+
+Manager auth:
+  TRAINING_MANAGER_URL defaults to http://127.0.0.1:3000.
+  x-api-token is read from AUTH_TOKEN or TRAINING_MANAGER_TOKEN.
 `.trim();
 
 runTrainingWorkerEntrypoint({
