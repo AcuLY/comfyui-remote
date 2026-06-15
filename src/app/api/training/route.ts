@@ -75,8 +75,13 @@ const TRAINING_API_MANIFEST = {
     },
     {
       id: "worker_execution",
-      description: "Advance queued generation and training work, then write worker progress or completion callbacks.",
+      description: "Lease worker tasks, heartbeat progress, and write worker progress or completion callbacks.",
       steps: [
+        { method: "GET", path: "/api/training/worker/status" },
+        { method: "GET", path: "/api/training/worker/tasks/next" },
+        { method: "POST", path: "/api/training/worker/tasks/:taskId/heartbeat" },
+        { method: "POST", path: "/api/training/worker/tasks/:taskId/complete" },
+        { method: "POST", path: "/api/training/worker/tasks/:taskId/fail" },
         { method: "GET", path: "/api/training/scheduler/status" },
         { method: "POST", path: "/api/training/scheduler/tick" },
         { method: "POST", path: "/api/training/worker/generation-tasks/:taskId/complete" },

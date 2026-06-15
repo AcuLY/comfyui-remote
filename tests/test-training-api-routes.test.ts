@@ -214,9 +214,29 @@ test("GET /api/training manifest exposes scheduler and worker operations for age
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
   const payload = await response.json();
+  const workerExecutionWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "worker_execution"
+  );
 
   assert.equal(response.status, 200);
   assert.equal(payload.ok, true);
+  assert.ok(workerExecutionWorkflow, "agent manifest should include a worker execution workflow");
+  assert.deepEqual(
+    workerExecutionWorkflow.steps.slice(0, 4).map((step: { method: string; path: string }) => `${step.method} ${step.path}`),
+    [
+      "GET /api/training/worker/status",
+      "GET /api/training/worker/tasks/next",
+      "POST /api/training/worker/tasks/:taskId/heartbeat",
+      "POST /api/training/worker/tasks/:taskId/complete",
+    ],
+    "worker execution workflow should start with the Training worker task lease/heartbeat/complete lifecycle",
+  );
+  assert.ok(
+    workerExecutionWorkflow.steps.some((step: { method: string; path: string }) =>
+      step.method === "POST" && step.path === "/api/training/worker/tasks/:taskId/fail"
+    ),
+    "worker execution workflow should expose the Training worker task failure callback",
+  );
   assert.equal(
     payload.data.resources.scheduler.tick.path,
     "/api/training/scheduler/tick",
@@ -238,7 +258,7 @@ test("GET /api/training manifest exposes scheduler and worker operations for age
     "agent manifest should expose training completion callbacks",
   );
   assert.ok(
-    payload.data.workflows.some((workflow: { id: string }) => workflow.id === "worker_execution"),
+    workerExecutionWorkflow,
     "agent manifest should include a worker execution workflow in addition to public UI workflows",
   );
 });
