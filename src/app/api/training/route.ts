@@ -668,13 +668,60 @@ const TRAINING_API_MANIFEST = {
     },
     worker: {
       generation: {
-        complete: { method: "POST", path: "/api/training/worker/generation-tasks/:taskId/complete" },
-        fail: { method: "POST", path: "/api/training/worker/generation-tasks/:taskId/fail" },
+        complete: {
+          method: "POST",
+          path: "/api/training/worker/generation-tasks/:taskId/complete",
+          pathParams: { taskId: "generationTaskId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["resultImageResultId", "captionDraft", "reviewStatus"],
+          },
+          produces: ["outputId", "imageResultId"],
+          responsePaths: {
+            outputId: "$.data.outputResultIds[0]",
+            imageResultId: "$.data.outputResultIds[0]",
+          },
+        },
+        fail: {
+          method: "POST",
+          path: "/api/training/worker/generation-tasks/:taskId/fail",
+          pathParams: { taskId: "generationTaskId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["errorSummary"],
+          },
+        },
       },
       training: {
-        progress: { method: "POST", path: "/api/training/worker/training-runs/:trainingRunId/progress" },
-        complete: { method: "POST", path: "/api/training/worker/training-runs/:trainingRunId/complete" },
-        fail: { method: "POST", path: "/api/training/worker/training-runs/:trainingRunId/fail" },
+        progress: {
+          method: "POST",
+          path: "/api/training/worker/training-runs/:trainingRunId/progress",
+          pathParams: { trainingRunId: "trainingRunId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["currentStep", "targetSteps", "schedulerMessage"],
+          },
+        },
+        complete: {
+          method: "POST",
+          path: "/api/training/worker/training-runs/:trainingRunId/complete",
+          pathParams: { trainingRunId: "trainingRunId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["artifactName"],
+          },
+          produces: ["finalLoraArtifactId"],
+          responsePaths: { finalLoraArtifactId: "$.data.finalLoraArtifactId" },
+        },
+        fail: {
+          method: "POST",
+          path: "/api/training/worker/training-runs/:trainingRunId/fail",
+          pathParams: { trainingRunId: "trainingRunId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["errorSummary"],
+          },
+        },
       },
     },
     workerTasks: {

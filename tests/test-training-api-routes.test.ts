@@ -481,6 +481,84 @@ test("GET /api/training worker task resources declare request and response contr
   );
 });
 
+test("GET /api/training domain worker callback resources declare request and response contracts", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const workerResources = payload.data.resources.worker;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.deepEqual(
+    workerResources.generation.complete,
+    {
+      method: "POST",
+      path: "/api/training/worker/generation-tasks/:taskId/complete",
+      pathParams: { taskId: "generationTaskId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["resultImageResultId", "captionDraft", "reviewStatus"],
+      },
+      produces: ["outputId", "imageResultId"],
+      responsePaths: {
+        outputId: "$.data.outputResultIds[0]",
+        imageResultId: "$.data.outputResultIds[0]",
+      },
+    },
+    "generation worker completion should document the generation task id binding and output handoffs.",
+  );
+  assert.deepEqual(
+    workerResources.generation.fail,
+    {
+      method: "POST",
+      path: "/api/training/worker/generation-tasks/:taskId/fail",
+      pathParams: { taskId: "generationTaskId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["errorSummary"],
+      },
+    },
+  );
+  assert.deepEqual(
+    workerResources.training.progress,
+    {
+      method: "POST",
+      path: "/api/training/worker/training-runs/:trainingRunId/progress",
+      pathParams: { trainingRunId: "trainingRunId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["currentStep", "targetSteps", "schedulerMessage"],
+      },
+    },
+  );
+  assert.deepEqual(
+    workerResources.training.complete,
+    {
+      method: "POST",
+      path: "/api/training/worker/training-runs/:trainingRunId/complete",
+      pathParams: { trainingRunId: "trainingRunId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["artifactName"],
+      },
+      produces: ["finalLoraArtifactId"],
+      responsePaths: { finalLoraArtifactId: "$.data.finalLoraArtifactId" },
+    },
+  );
+  assert.deepEqual(
+    workerResources.training.fail,
+    {
+      method: "POST",
+      path: "/api/training/worker/training-runs/:trainingRunId/fail",
+      pathParams: { trainingRunId: "trainingRunId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["errorSummary"],
+      },
+    },
+  );
+});
+
 test("GET /api/training manifest exposes an end-to-end HTTP workflow for agents", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
