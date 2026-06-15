@@ -139,6 +139,39 @@ test("GET /api/training exposes a machine-readable workflow manifest", async () 
   );
 });
 
+test("GET /api/training manifest exposes scheduler and worker operations for agent-driven execution", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.equal(
+    payload.data.resources.scheduler.tick.path,
+    "/api/training/scheduler/tick",
+    "agent manifest should expose the scheduler tick needed to advance queued work",
+  );
+  assert.equal(
+    payload.data.resources.worker.generation.complete.path,
+    "/api/training/worker/generation-tasks/:taskId/complete",
+    "agent manifest should expose generation completion callbacks",
+  );
+  assert.equal(
+    payload.data.resources.worker.training.progress.path,
+    "/api/training/worker/training-runs/:trainingRunId/progress",
+    "agent manifest should expose training progress callbacks",
+  );
+  assert.equal(
+    payload.data.resources.worker.training.complete.path,
+    "/api/training/worker/training-runs/:trainingRunId/complete",
+    "agent manifest should expose training completion callbacks",
+  );
+  assert.ok(
+    payload.data.workflows.some((workflow: { id: string }) => workflow.id === "worker_execution"),
+    "agent manifest should include a worker execution workflow in addition to public UI workflows",
+  );
+});
+
 test("GET /api/training/models lists checkpoint or LoRA assets for training workflows", async () => {
   const { GET } = await import("../src/app/api/training/models/route");
 

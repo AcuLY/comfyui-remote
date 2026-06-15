@@ -67,6 +67,19 @@ const TRAINING_API_MANIFEST = {
         { method: "POST", path: "/api/training/training-runs/:trainingRunId/create-preset" },
       ],
     },
+    {
+      id: "worker_execution",
+      description: "Advance queued generation and training work, then write worker progress or completion callbacks.",
+      steps: [
+        { method: "GET", path: "/api/training/scheduler/status" },
+        { method: "POST", path: "/api/training/scheduler/tick" },
+        { method: "POST", path: "/api/training/worker/generation-tasks/:taskId/complete" },
+        { method: "POST", path: "/api/training/worker/generation-tasks/:taskId/fail" },
+        { method: "POST", path: "/api/training/worker/training-runs/:trainingRunId/progress" },
+        { method: "POST", path: "/api/training/worker/training-runs/:trainingRunId/complete" },
+        { method: "POST", path: "/api/training/worker/training-runs/:trainingRunId/fail" },
+      ],
+    },
   ],
   resources: {
     projects: {
@@ -94,6 +107,21 @@ const TRAINING_API_MANIFEST = {
     models: {
       checkpoints: { method: "GET", path: "/api/training/models?kind=checkpoint" },
       loras: { method: "GET", path: "/api/training/models?kind=lora" },
+    },
+    scheduler: {
+      status: { method: "GET", path: "/api/training/scheduler/status" },
+      tick: { method: "POST", path: "/api/training/scheduler/tick" },
+    },
+    worker: {
+      generation: {
+        complete: { method: "POST", path: "/api/training/worker/generation-tasks/:taskId/complete" },
+        fail: { method: "POST", path: "/api/training/worker/generation-tasks/:taskId/fail" },
+      },
+      training: {
+        progress: { method: "POST", path: "/api/training/worker/training-runs/:trainingRunId/progress" },
+        complete: { method: "POST", path: "/api/training/worker/training-runs/:trainingRunId/complete" },
+        fail: { method: "POST", path: "/api/training/worker/training-runs/:trainingRunId/fail" },
+      },
     },
     taxonomy: {
       sceneCategories: { method: "GET", path: "/api/training/scene-description/categories" },
