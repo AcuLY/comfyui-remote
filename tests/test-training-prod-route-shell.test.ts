@@ -32,6 +32,16 @@ const trainingRuntimeSource = existsSync(trainingRuntimePath) ? readFileSync(tra
 const trainingRoutesSource = existsSync(trainingRoutesPath) ? readFileSync(trainingRoutesPath, "utf8") : "";
 const trainingThemeSource = existsSync(trainingThemePath) ? readFileSync(trainingThemePath, "utf8") : "";
 
+function extractTrainingRouteKeys() {
+  return [...trainingRoutesSource.matchAll(/\{\s*key:\s*"([^"]+)",\s*pattern:\s*"([^"]+)"/g)]
+    .map((match) => ({ key: match[1] ?? "", pattern: match[2] ?? "" }))
+    .filter((route) => route.key);
+}
+
+function extractTrainingPageSwitchCases() {
+  return new Set([...trainingFeatureAppSource.matchAll(/case "([^"]+)":/g)].map((match) => match[1] ?? ""));
+}
+
 test("production app shell treats /training routes as standalone surfaces", () => {
   assert.match(
     layoutSource,
@@ -60,6 +70,31 @@ test("production training routes do not own the shared model manager page", () =
     bottomNavSource,
     /href:\s*"\/training\/models"/,
     "persistent navigation should not add a training-owned models page",
+  );
+});
+
+test("production training route inventory is exported and every route renders a page", () => {
+  const routes = extractTrainingRouteKeys();
+  const pageCases = extractTrainingPageSwitchCases();
+  const missingPageCases = routes
+    .map((route) => route.key)
+    .filter((key) => !pageCases.has(key));
+
+  assert.match(
+    trainingRoutesSource,
+    /export const TRAINING_ROUTE_PATTERNS/,
+    "training route patterns should be exported so route coverage can be audited without reading private source text",
+  );
+  assert.ok(routes.length >= 20, "training route inventory should cover the full training workspace");
+  assert.deepEqual(
+    routes.filter((route) => !route.pattern.startsWith("/training/")),
+    [],
+    "training feature route inventory should stay on production /training paths",
+  );
+  assert.deepEqual(
+    missingPageCases,
+    [],
+    "every production training route key should be handled by CurrentTrainingPage",
   );
 });
 

@@ -30,7 +30,7 @@ export type Match = {
   route: string;
 };
 
-const TRAINING_ROUTE_PATTERNS: Array<{ key: Exclude<TrainingRouteKey, "not-found">; pattern: string }> = [
+export const TRAINING_ROUTE_PATTERNS: Array<{ key: Exclude<TrainingRouteKey, "not-found">; pattern: string }> = [
   { key: "training-generation-run-detail", pattern: "/training/runs/generation/:taskId" },
   { key: "training-training-run-detail", pattern: "/training/runs/training/:trainingRunId" },
   { key: "training-runs", pattern: "/training/runs" },
