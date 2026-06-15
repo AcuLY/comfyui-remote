@@ -1400,6 +1400,67 @@ test("project preset binding writes use ProjectPresetBinding rows without rewrit
   assert.equal(await prisma.sectionPromptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
 });
 
+test("project preset binding writes reject LoRA training preset resources", async () => {
+  const seed = await seedProjectWithPreset();
+  await prisma.presetCategory.create({
+    data: {
+      id: `${seed.key}-training-category`,
+      name: `${seed.key} Training Category`,
+      slug: `${seed.key}-training-category`,
+      type: "training_scene_description",
+    },
+  });
+  await prisma.preset.create({
+    data: {
+      id: `${seed.key}-training-preset`,
+      categoryId: `${seed.key}-training-category`,
+      name: `${seed.key} Training Preset`,
+      slug: `${seed.key}-training-preset`,
+    },
+  });
+  await prisma.presetVariant.create({
+    data: {
+      id: `${seed.key}-training-variant`,
+      presetId: `${seed.key}-training-preset`,
+      name: "Training",
+      slug: `${seed.key}-training-variant`,
+      prompt: `${seed.key} training prompt must not enter generation bindings`,
+    },
+  });
+
+  await assert.rejects(
+    () => createProject({
+      title: `${seed.key} Training Binding Project`,
+      checkpointName: `${seed.key}.ckpt`,
+      presetBindings: [
+        {
+          categoryId: `${seed.key}-training-category`,
+          presetId: `${seed.key}-training-preset`,
+          variantId: `${seed.key}-training-variant`,
+        },
+      ],
+      notes: null,
+    }),
+    /ordinary preset/i,
+    "generation project creation must reject training-owned preset bindings",
+  );
+
+  await assert.rejects(
+    () => updateProject({
+      projectId: seed.project.id,
+      presetBindings: [
+        {
+          categoryId: `${seed.key}-training-category`,
+          presetId: `${seed.key}-training-preset`,
+          variantId: `${seed.key}-training-variant`,
+        },
+      ],
+    }),
+    /ordinary preset/i,
+    "generation project updates must reject training-owned preset bindings",
+  );
+});
+
 test("applyParamToAllSections presets applies ProjectPresetBinding rows as section bindings only", async () => {
   const seed = await seedProjectWithPreset();
   await prisma.projectPresetBinding.create({

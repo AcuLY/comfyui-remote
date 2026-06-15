@@ -7,6 +7,11 @@ import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 import { copyProject as copyProjectRepo } from "@/server/repositories/project-repository";
 import { archiveProject as archiveProjectService } from "@/server/services/project-archive-service";
 import { deleteProjectCompletely } from "@/server/services/project-deletion-service";
+import {
+  assertOrdinaryPresetCategories,
+  assertOrdinaryPresets,
+  assertOrdinaryPresetVariants,
+} from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,6 +100,15 @@ function normalizeProjectPresetBindings(bindings: readonly PresetBinding[]) {
   return normalized;
 }
 
+async function assertOrdinaryProjectPresetBindings(bindings: readonly PresetBinding[]) {
+  const normalized = normalizeProjectPresetBindings(bindings);
+  await assertOrdinaryPresetCategories(normalized.map((binding) => binding.categoryId));
+  await assertOrdinaryPresets(normalized.map((binding) => binding.presetId));
+  await assertOrdinaryPresetVariants(
+    normalized.flatMap((binding) => binding.variantId ? [binding.variantId] : []),
+  );
+}
+
 async function replaceProjectPresetBindingRows(
   tx: Prisma.TransactionClient,
   projectId: string,
@@ -116,6 +130,7 @@ async function replaceProjectPresetBindingRows(
 
 export async function createProject(input: CreateProjectInput): Promise<string> {
   const checkpointName = input.checkpointName.trim() || DEFAULT_CHECKPOINT_NAME;
+  await assertOrdinaryProjectPresetBindings(input.presetBindings);
 
   // 生成唯一 slug
   const baseSlug = input.title
@@ -175,6 +190,9 @@ export async function createProject(input: CreateProjectInput): Promise<string> 
 
 export async function updateProject(input: UpdateProjectInput) {
   const { projectId, sections, projectLevelOverrides, presetBindings, ...projectData } = input;
+  if (presetBindings !== undefined) {
+    await assertOrdinaryProjectPresetBindings(presetBindings);
+  }
 
   await prisma.$transaction(async (tx) => {
     // 更新 project 基础字段（包括 projectLevelOverrides）
