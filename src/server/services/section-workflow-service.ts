@@ -5,6 +5,7 @@ import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
 import { validateComfyPromptDraft } from "@/server/services/comfyui-service";
 import { buildComfyPromptDraft } from "@/server/worker/payload-builder";
 import type { WorkerRunSnapshot } from "@/server/worker/types";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 function sectionSlug(sortOrder: number) {
   return `section_${sortOrder + 1}`;
@@ -19,8 +20,8 @@ function buildWorkflowFileStem(projectTitle: string, sectionName: string, sortOr
 }
 
 export async function buildCurrentSectionWorkflow(projectId: string, sectionId: string) {
-  const project = await db.project.findUnique({
-    where: { id: projectId },
+  const project = await db.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       id: true,
       title: true,
@@ -39,6 +40,7 @@ export async function buildCurrentSectionWorkflow(projectId: string, sectionId: 
     where: {
       id: sectionId,
       projectId,
+      project: buildGenerationProjectWhere({ id: projectId }),
     },
     select: {
       id: true,
@@ -53,7 +55,10 @@ export async function buildCurrentSectionWorkflow(projectId: string, sectionId: 
   }
 
   const latestRunIndex = await db.run.aggregate({
-    where: { projectSectionId: sectionId },
+    where: {
+      projectSectionId: sectionId,
+      project: buildGenerationProjectWhere({ id: projectId }),
+    },
     _max: { runIndex: true },
   });
 

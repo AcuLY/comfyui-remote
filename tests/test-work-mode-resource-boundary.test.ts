@@ -24,13 +24,23 @@ const generationQueueDataRouteSource = readFileSync(resolve(repoRoot, "src/app/a
 const generationRunLifecycleSource = readFileSync(resolve(repoRoot, "src/lib/actions/run-lifecycle.ts"), "utf8");
 const generationRunWorkflowRouteSource = readFileSync(resolve(repoRoot, "src/app/api/runs/[runId]/workflow/route.ts"), "utf8");
 const generationWorkerStatusRouteSource = readFileSync(resolve(repoRoot, "src/app/api/worker/status/route.ts"), "utf8");
+const generationWorkerRepositorySource = readFileSync(resolve(repoRoot, "src/server/worker/repository.ts"), "utf8");
+const generationRunExecutorSource = readFileSync(resolve(repoRoot, "src/server/services/run-executor.ts"), "utf8");
 const generationProjectExportServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-export-service.ts"), "utf8");
 const generationProjectArchiveServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-archive-service.ts"), "utf8");
 const generationProjectFolderServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-folder-service.ts"), "utf8");
 const generationImageReviewActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/image-review.ts"), "utf8");
 const generationCensoringActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/censoring.ts"), "utf8");
 const generationSectionActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/section.ts"), "utf8");
+const generationProjectActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/project.ts"), "utf8");
+const generationTemplateSaveActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-save.ts"), "utf8");
 const generationTrashRepositorySource = readFileSync(resolve(repoRoot, "src/server/repositories/trash-repository.ts"), "utf8");
+const generationReviewRepositorySource = readFileSync(resolve(repoRoot, "src/server/repositories/review-repository.ts"), "utf8");
+const generationSectionWorkflowServiceSource = readFileSync(resolve(repoRoot, "src/server/services/section-workflow-service.ts"), "utf8");
+const generationImageCoverRouteSource = readFileSync(resolve(repoRoot, "src/app/api/images/[imageId]/cover/route.ts"), "utf8");
+const generationImageFeaturedHelperSource = readFileSync(resolve(repoRoot, "src/app/api/images/[imageId]/featured-helper.ts"), "utf8");
+const generationAgentPresetVariantFlowSource = readFileSync(resolve(repoRoot, "src/server/services/agent-preset-variant-flow-service.ts"), "utf8");
+const generationAgentPresetVariantSyncSource = readFileSync(resolve(repoRoot, "src/server/services/agent-preset-variant-service.ts"), "utf8");
 const generationTemplateCrudSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-crud.ts"), "utf8");
 const generationTemplateImportSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-import.ts"), "utf8");
 const generationPresetReplacementSource = readFileSync(resolve(repoRoot, "src/server/services/preset-section-replacement-service.ts"), "utf8");
@@ -568,6 +578,93 @@ test("generation section actions reuse the generation project boundary", () => {
   );
 });
 
+test("generation project, template, and agent entrypoints reuse the generation project boundary", () => {
+  for (const [label, source] of [
+    ["generation project actions", generationProjectActionSource],
+    ["generation template save action", generationTemplateSaveActionSource],
+    ["generation agent preset flow", generationAgentPresetVariantFlowSource],
+    ["generation agent preset sync", generationAgentPresetVariantSyncSource],
+    ["generation section workflow service", generationSectionWorkflowServiceSource],
+  ] as const) {
+    assert.match(
+      source,
+      /buildGenerationProjectWhere/,
+      `${label} should import the generation project boundary.`,
+    );
+  }
+
+  assert.match(
+    generationProjectActionSource,
+    /project\.updateMany\(\{[\s\S]*where:\s*buildGenerationProjectWhere\(\{\s*id:\s*projectId/,
+    "Generation project updates should reject hidden training benchmark projects.",
+  );
+  assert.match(
+    generationProjectActionSource,
+    /projectSection\.updateMany\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(/,
+    "Generation project bulk section updates should reject hidden training benchmark projects.",
+  );
+  assert.match(
+    generationTemplateSaveActionSource,
+    /project\.findFirst\(\{[\s\S]*where:\s*buildGenerationProjectWhere\(\{\s*id:\s*projectId/,
+    "Generation template save should not snapshot hidden training benchmark projects.",
+  );
+  assert.match(
+    generationAgentPresetVariantFlowSource,
+    /project\.find(?:First|Many)\(\{[\s\S]*where:\s*buildGenerationProjectWhere\(/,
+    "Generation agent preset flow project lookup should reject hidden training benchmark projects.",
+  );
+  assert.match(
+    generationAgentPresetVariantSyncSource,
+    /project\.findFirst\(\{[\s\S]*where:\s*buildGenerationProjectWhere\(\{\s*id:\s*projectId/,
+    "Generation agent preset sync should resolve source and target projects through the generation boundary.",
+  );
+  assert.match(
+    generationSectionWorkflowServiceSource,
+    /project\.findFirst\(\{[\s\S]*where:\s*buildGenerationProjectWhere\(\{\s*id:\s*projectId/,
+    "Generation section workflow downloads should reject hidden training benchmark projects.",
+  );
+});
+
+test("generation review and image API entrypoints reuse the generation project boundary", () => {
+  for (const [label, source] of [
+    ["generation review repository", generationReviewRepositorySource],
+    ["generation image cover route", generationImageCoverRouteSource],
+    ["generation featured image helper", generationImageFeaturedHelperSource],
+  ] as const) {
+    assert.match(
+      source,
+      /buildGenerationProjectWhere/,
+      `${label} should import the generation project boundary.`,
+    );
+  }
+
+  assert.match(
+    generationReviewRepositorySource,
+    /run\.findFirst\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation review run loaders should reject hidden training benchmark runs.",
+  );
+  assert.match(
+    generationReviewRepositorySource,
+    /imageResult\.findMany\(\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation review image mutations should reject hidden training benchmark images.",
+  );
+  assert.match(
+    generationReviewRepositorySource,
+    /imageResult\.findFirst\(\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation review restore should reject hidden training benchmark images.",
+  );
+  assert.match(
+    generationImageCoverRouteSource,
+    /imageResult\.findFirst\(\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation cover image route should reject hidden training benchmark images.",
+  );
+  assert.match(
+    generationImageFeaturedHelperSource,
+    /imageResult\.findFirst\(\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation featured image route should reject hidden training benchmark images.",
+  );
+});
+
 test("generation worker status uses the generation project boundary", () => {
   assert.match(
     generationWorkerStatusRouteSource,
@@ -634,6 +731,40 @@ test("generation run lifecycle actions use the generation project boundary", () 
     generationRunLifecycleSource,
     /project\.update\(\{[\s\S]*where:\s*\{\s*id:\s*run\.projectId\s*\}/,
     "Generation run lifecycle actions must not update projects without the generation project boundary.",
+  );
+});
+
+test("generation worker execution entrypoints reuse the generation project boundary", () => {
+  for (const [label, source] of [
+    ["generation worker repository", generationWorkerRepositorySource],
+    ["generation run executor", generationRunExecutorSource],
+  ] as const) {
+    assert.match(
+      source,
+      /buildGenerationProjectWhere/,
+      `${label} should import the generation project boundary.`,
+    );
+  }
+
+  assert.match(
+    generationWorkerRepositorySource,
+    /run\.findMany\(\{[\s\S]*status:\s*RunStatus\.queued[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation worker queue leasing should not pick hidden training benchmark runs.",
+  );
+  assert.match(
+    generationWorkerRepositorySource,
+    /run\.findFirst\(\{[\s\S]*where:\s*buildGenerationRunWhere\(\{\s*id:\s*runId/,
+    "Generation worker run lookup should resolve runs through generation-owned projects.",
+  );
+  assert.match(
+    generationRunExecutorSource,
+    /run\.findMany\(\{[\s\S]*status:\s*\{\s*in:\s*\[RunStatus\.queued,\s*RunStatus\.running\][\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation run recovery should not recover hidden training benchmark runs.",
+  );
+  assert.match(
+    generationRunExecutorSource,
+    /run\.findMany\(\{[\s\S]*status:\s*RunStatus\.queued[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation run recovery should not submit hidden training benchmark queued runs.",
   );
 });
 

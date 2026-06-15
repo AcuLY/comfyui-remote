@@ -1,6 +1,9 @@
 import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
-import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import {
+  buildGenerationPresetWhere,
+  buildGenerationProjectWhere,
+} from "@/server/repositories/legacy-training-resource-boundary";
 import { syncPresetVariants } from "@/server/services/agent-preset-variant-service";
 import {
   buildSyncPresetVariantFlowVerification,
@@ -42,8 +45,8 @@ function isRoleCategory(category: { name: string; slug: string }) {
 
 async function findProjectByTitle(title: string, expectedProjectId: string | null, errorPrefix: "SOURCE" | "TARGET"): Promise<ProjectLookup> {
   if (expectedProjectId) {
-    const project = await prisma.project.findUnique({
-      where: { id: expectedProjectId },
+    const project = await prisma.project.findFirst({
+      where: buildGenerationProjectWhere({ id: expectedProjectId }),
       select: { id: true, title: true, updatedAt: true, createdAt: true },
     });
     if (!project) {
@@ -56,7 +59,7 @@ async function findProjectByTitle(title: string, expectedProjectId: string | nul
   }
 
   const projects = await prisma.project.findMany({
-    where: { title },
+    where: buildGenerationProjectWhere({ title }),
     select: { id: true, title: true, updatedAt: true, createdAt: true },
   });
   return pickLatestProjectByExactTitle(projects, title);
@@ -66,7 +69,11 @@ async function inferPresetNameFromProject(projectId: string, explicitPresetName:
   if (explicitPresetName) return explicitPresetName;
 
   const sections = await prisma.projectSection.findMany({
-    where: { projectId, enabled: true },
+    where: {
+      projectId,
+      enabled: true,
+      project: buildGenerationProjectWhere({ id: projectId }),
+    },
     select: {
       sectionPromptBlocks: {
         where: {
@@ -162,7 +169,11 @@ async function findPresetForVerification(nameOrSlug: string): Promise<FlowTarget
 
 async function getSectionsForVerification(projectId: string): Promise<FlowSectionForVerification[]> {
   const sections = await prisma.projectSection.findMany({
-    where: { projectId, enabled: true },
+    where: {
+      projectId,
+      enabled: true,
+      project: buildGenerationProjectWhere({ id: projectId }),
+    },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 import {
   assertOrdinaryPresetLibraryBindingRefs,
   assertOrdinaryProjectPresetBindingRefs,
@@ -99,8 +100,8 @@ export async function saveProjectAsTemplate(
   templateName: string,
   templateDescription?: string | null,
 ): Promise<string> {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       presetBindingRows: {
         select: {

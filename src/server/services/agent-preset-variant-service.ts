@@ -1,7 +1,10 @@
 import { switchBindingVariant } from "@/lib/actions";
 import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
-import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import {
+  buildGenerationPresetWhere,
+  buildGenerationProjectWhere,
+} from "@/server/repositories/legacy-training-resource-boundary";
 
 export type SwitchVariantUpdate = {
   sectionId: string;
@@ -75,7 +78,11 @@ export async function switchProjectVariants(
   const sectionIds = [...new Set(updates.map((update) => update.sectionId))];
   const sections = sectionIds.length > 0
     ? await prisma.projectSection.findMany({
-        where: { projectId: normalizedProjectId, id: { in: sectionIds } },
+        where: {
+          projectId: normalizedProjectId,
+          id: { in: sectionIds },
+          project: buildGenerationProjectWhere({ id: normalizedProjectId }),
+        },
         select: { id: true },
       })
     : [];
@@ -169,8 +176,8 @@ async function findPresetByNameOrSlug(nameOrSlug: string) {
 }
 
 async function getProjectSectionsForSync(projectId: string) {
-  return prisma.project.findUnique({
-    where: { id: projectId },
+  return prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       id: true,
       title: true,

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { ok, fail } from "@/lib/api-response";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 type FeaturedField = "featured" | "featured2";
 
@@ -26,8 +27,11 @@ export async function handleFeaturedToggle(
 
     const value = Boolean((body as Record<string, unknown>)[field]);
 
-    const existing = await db.imageResult.findUnique({
-      where: { id: imageId },
+    const existing = await db.imageResult.findFirst({
+      where: {
+        id: imageId,
+        run: { project: buildGenerationProjectWhere() },
+      },
       select: { id: true, reviewStatus: true },
     });
     if (!existing) {
