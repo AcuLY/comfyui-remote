@@ -246,7 +246,7 @@ test("training profile page uploads reference images through the formal HTTP API
   assert.match(profileSource, /usePathname/, "profile upload should detect whether it is running under production \\/training routes");
   assert.match(profileSource, /useRef<HTMLInputElement \| null>/, "profile upload should keep a real file input ref for production uploads");
   assert.match(profileSource, /new FormData\(\)/, "profile upload should use multipart form data");
-  assert.match(profileSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/character-images`/, "profile upload should call the formal training character image API");
+  assert.match(profileSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/reference-images`/, "profile upload should call the formal training reference image API");
   assert.match(profileSource, /method:\s*"POST"/, "profile upload should send uploads through POST");
   assert.match(profileSource, /formData\.append\("file", file\)/, "profile upload should append the selected file to form data");
   assert.match(profileSource, /pushToast/, "profile upload should surface API success or failure through the shared feedback system");
@@ -260,7 +260,7 @@ test("training profile page adds reference images to the result pool through the
 
   const profileSource = pagesSource.slice(profileStart, sectionsStart);
 
-  assert.match(profileSource, /fetch\(`\/api\/training\/character-images\/\$\{referenceId\}\/add-to-results`/, "profile reference cards should call the formal add-to-results API");
+  assert.match(profileSource, /fetch\(`\/api\/training\/reference-images\/\$\{referenceId\}\/add-to-results`/, "profile reference cards should call the formal add-to-results API");
   assert.match(profileSource, /method:\s*"POST"/, "profile add-to-results action should use POST");
   assert.match(profileSource, /addedReferenceResultIds/, "profile page should keep a visible local state for references that were added to the result pool");
   assert.match(profileSource, /已加入结果池/, "profile page should render a visible added-to-result-pool state");
@@ -1063,8 +1063,8 @@ test("training project create page stages local uploaded references and syncs th
   assert.match(formSource, /title:\s*"本地上传"/, "staged local uploads should appear as their own reference source group");
   assert.match(formSource, /selectedStagedProjectReferenceUploads/, "project create flow should track which staged uploads were selected");
   assert.match(formSource, /selectedReferenceIds:\s*persistedSelectedReferenceIds/, "project create API payload should exclude staged-upload ids from the initial create request");
-  assert.match(formSource, /fetch\(`\/api\/training\/projects\/\$\{projectId\}\/character-images`/, "after creation, staged uploads should sync through the formal character-image upload API");
-  assert.match(formSource, /fetch\(`\/api\/training\/character-images\/\$\{uploadPayload\.data\.id\}`/, "uploaded reference images should patch label metadata through the formal character-image detail API");
+  assert.match(formSource, /fetch\(`\/api\/training\/projects\/\$\{projectId\}\/reference-images`/, "after creation, staged uploads should sync through the formal reference-image upload API");
+  assert.match(formSource, /fetch\(`\/api\/training\/reference-images\/\$\{uploadPayload\.data\.id\}`/, "uploaded reference images should patch label metadata through the formal reference-image detail API");
 });
 
 test("training project create page hides the demo local image library on production routes", () => {

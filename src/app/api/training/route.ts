@@ -51,8 +51,8 @@ const TRAINING_API_MANIFEST = {
       description: "Create a training project, upload reference images, and save profile data.",
       steps: [
         { method: "POST", path: "/api/training/projects" },
-        { method: "POST", path: "/api/training/projects/:projectId/character-images" },
-        { method: "GET", path: "/api/training/projects/:projectId/character-images" },
+        { method: "POST", path: "/api/training/projects/:projectId/reference-images" },
+        { method: "GET", path: "/api/training/projects/:projectId/reference-images" },
         { method: "GET", path: "/api/training/projects/:projectId/profile" },
         { method: "PATCH", path: "/api/training/projects/:projectId/profile" },
       ],
@@ -255,7 +255,7 @@ const TRAINING_API_MANIFEST = {
           id: "upload_reference_image",
           description: "Upload source/reference images for the project profile.",
           method: "POST",
-          path: "/api/training/projects/:projectId/character-images",
+          path: "/api/training/projects/:projectId/reference-images",
           requires: ["projectId"],
           pathParams: { projectId: "projectId" },
           requestBody: {
@@ -678,7 +678,14 @@ const TRAINING_API_MANIFEST = {
       list: { method: "GET", path: "/api/training/runs" },
     },
     projectMedia: {
-      characterImages: {
+      referenceImages: {
+        list: { method: "GET", path: "/api/training/projects/:projectId/reference-images" },
+        create: { method: "POST", path: "/api/training/projects/:projectId/reference-images" },
+        update: { method: "PATCH", path: "/api/training/reference-images/:imageId" },
+        remove: { method: "DELETE", path: "/api/training/reference-images/:imageId" },
+        addToResults: { method: "POST", path: "/api/training/reference-images/:imageId/add-to-results" },
+      },
+      legacyCharacterImages: {
         list: { method: "GET", path: "/api/training/projects/:projectId/character-images" },
         create: { method: "POST", path: "/api/training/projects/:projectId/character-images" },
         update: { method: "PATCH", path: "/api/training/character-images/:imageId" },

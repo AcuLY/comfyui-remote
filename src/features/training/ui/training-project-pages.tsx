@@ -1198,7 +1198,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
       formData.append("sortOrder", String(index));
 
       try {
-        const uploadResponse = await fetch(`/api/training/projects/${projectId}/character-images`, {
+        const uploadResponse = await fetch(`/api/training/projects/${projectId}/reference-images`, {
           method: "POST",
           body: formData,
         });
@@ -1209,7 +1209,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
         }
 
         uploadedTitles.push(upload.title);
-        await fetch(`/api/training/character-images/${uploadPayload.data.id}`, {
+        await fetch(`/api/training/reference-images/${uploadPayload.data.id}`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -1770,7 +1770,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
       formData.append("sortOrder", String(localReferenceImages.length));
       formData.append("provenance", JSON.stringify({ origin: "training_profile_upload" }));
 
-      const response = await fetch(`/api/training/projects/${activeProject.id}/character-images`, {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/reference-images`, {
         method: "POST",
         body: formData,
       });
@@ -1862,7 +1862,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
       projectId: activeProject.id,
     }));
     try {
-      const response = await fetch(`/api/training/character-images/${referenceId}/add-to-results`, {
+      const response = await fetch(`/api/training/reference-images/${referenceId}/add-to-results`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

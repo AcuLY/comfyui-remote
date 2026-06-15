@@ -813,7 +813,7 @@ test("GET /api/training manifest exposes an end-to-end HTTP workflow for agents"
     fullWorkflow.steps.map((step: { method: string; path: string }) => `${step.method} ${step.path}`),
     [
       "POST /api/training/projects",
-      "POST /api/training/projects/:projectId/character-images",
+      "POST /api/training/projects/:projectId/reference-images",
       "PATCH /api/training/projects/:projectId/profile",
       "POST /api/training/projects/:projectId/sections",
       "POST /api/training/sections/:sectionId/blocks",

@@ -532,9 +532,9 @@ test("training project detail route uses the project service boundary for mutati
 
 test("training reference image routes use the project service boundary", () => {
   const routeFiles = [
-    "src/app/api/training/projects/[projectId]/character-images/route.ts",
-    "src/app/api/training/character-images/[imageId]/route.ts",
-    "src/app/api/training/character-images/[imageId]/add-to-results/route.ts",
+    "src/app/api/training/projects/[projectId]/reference-images/route.ts",
+    "src/app/api/training/reference-images/[imageId]/route.ts",
+    "src/app/api/training/reference-images/[imageId]/add-to-results/route.ts",
   ];
 
   for (const routeFile of routeFiles) {
