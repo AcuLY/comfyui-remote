@@ -50,6 +50,46 @@ test("training services isolate legacy character-lora-training dependencies in o
   );
 });
 
+test("training scene folder DTO schemas live under src/lib/training", async () => {
+  const schemasPath = join(process.cwd(), "src/lib/training/schemas.ts");
+
+  assert.equal(
+    existsSync(schemasPath),
+    true,
+    "Training API DTO schemas should live under src/lib/training/schemas.ts",
+  );
+
+  const {
+    trainingSceneFolderCreateSchema,
+    trainingSceneFolderUpdateSchema,
+  } = await import("../src/lib/training/schemas");
+
+  assert.deepEqual(
+    trainingSceneFolderCreateSchema.parse({
+      categoryId: "training-category",
+      name: "环境文件夹",
+      parentId: "parent-folder",
+      sortOrder: 8,
+    }),
+    {
+      categoryId: "training-category",
+      name: "环境文件夹",
+      parentId: "parent-folder",
+      sortOrder: 8,
+    },
+  );
+  assert.deepEqual(
+    trainingSceneFolderUpdateSchema.parse({
+      name: "更新文件夹",
+      parentId: null,
+    }),
+    {
+      name: "更新文件夹",
+      parentId: null,
+    },
+  );
+});
+
 test("training worker task routes go through the Training worker boundary", () => {
   const taskApiPath = join(process.cwd(), "src/server/worker/training/task-api.ts");
   assert.equal(existsSync(taskApiPath), true, "Training worker task API boundary should exist under src/server/worker/training");

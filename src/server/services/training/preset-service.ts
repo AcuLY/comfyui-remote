@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import type { LoraTrainingPreset } from "@/features/training/types";
 import { prisma } from "@/lib/prisma";
+import {
+  trainingSceneFolderCreateSchema,
+  trainingSceneFolderUpdateSchema,
+} from "@/lib/training/schemas";
 import { slugifyForRepository } from "@/server/services/training/legacy-compat-service";
 import { z } from "zod";
 
@@ -37,22 +41,6 @@ const trainingSceneCategoryUpdateSchema = z.object({
   color: z.string().trim().max(120).optional().nullable(),
   sortOrder: z.coerce.number().int().optional(),
   sceneDescriptionOrder: z.coerce.number().int().optional(),
-}).strict().refine((value) => Object.keys(value).length > 0, {
-  message: "At least one field is required",
-});
-
-const trainingSceneFolderCreateSchema = z.object({
-  categoryId: z.string().trim().min(1),
-  parentId: z.string().trim().min(1).optional().nullable(),
-  name: z.string().trim().min(1).max(80),
-  sortOrder: z.coerce.number().int().optional(),
-}).strict();
-
-const trainingSceneFolderUpdateSchema = z.object({
-  categoryId: z.string().trim().min(1).optional(),
-  parentId: z.string().trim().min(1).optional().nullable(),
-  name: z.string().trim().min(1).max(80).optional(),
-  sortOrder: z.coerce.number().int().optional(),
 }).strict().refine((value) => Object.keys(value).length > 0, {
   message: "At least one field is required",
 });
