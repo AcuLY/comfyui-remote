@@ -11,7 +11,13 @@ import {
   type TemplateSectionPromptBlockWrite,
 } from "@/server/prompt-config/template-resolver";
 import { resolveVariantContent } from "./preset-variant";
-import { ordinaryPresetCategoryTypeWhere } from "./preset-resource-scope";
+import {
+  assertOrdinaryPresetGroup,
+  assertOrdinaryPresetLibraryCategories,
+  assertOrdinaryPresets,
+  assertOrdinaryPresetVariants,
+  ordinaryPresetCategoryTypeWhere,
+} from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -152,6 +158,28 @@ async function replaceTemplateSectionRelationRows(
   await createTemplateSectionRelationRows(tx, rows);
 }
 
+async function assertOrdinaryTemplateSections(sections: readonly ProjectTemplateSectionData[]) {
+  const bindingRows = sections.flatMap((section, index) =>
+    buildTemplateSectionRowsFromSectionData({
+      projectTemplateSectionId: `template-section-validation:${index}`,
+      section,
+    }).presetBindings
+  );
+
+  await assertOrdinaryPresetLibraryCategories(bindingRows.map((binding) => binding.categoryId));
+  await assertOrdinaryPresets(
+    bindingRows.flatMap((binding) => binding.presetId ? [binding.presetId] : []),
+  );
+  await assertOrdinaryPresetVariants(
+    bindingRows.flatMap((binding) => binding.variantId ? [binding.variantId] : []),
+  );
+  await Promise.all(
+    bindingRows
+      .flatMap((binding) => binding.presetGroupId ? [binding.presetGroupId] : [])
+      .map((groupId) => assertOrdinaryPresetGroup(groupId)),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Project Template CRUD
 // ---------------------------------------------------------------------------
@@ -159,6 +187,8 @@ async function replaceTemplateSectionRelationRows(
 export async function createProjectTemplate(
   input: CreateProjectTemplateInput,
 ): Promise<string> {
+  await assertOrdinaryTemplateSections(input.sections);
+
   const template = await prisma.$transaction(async (tx) => {
     const createdTemplate = await tx.projectTemplate.create({
       data: {
@@ -191,6 +221,9 @@ export async function updateProjectTemplate(
   input: UpdateProjectTemplateInput,
 ): Promise<void> {
   const { id, sections, ...rest } = input;
+  if (sections) {
+    await assertOrdinaryTemplateSections(sections);
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.projectTemplate.update({
@@ -256,6 +289,8 @@ export async function updateProjectTemplate(
 export async function updateProjectTemplateSection(
   input: UpdateProjectTemplateSectionInput,
 ): Promise<void> {
+  await assertOrdinaryTemplateSections([input.section]);
+
   const existing = await prisma.projectTemplateSection.findFirst({
     where: {
       id: input.sectionId,

@@ -322,6 +322,7 @@ let removePromptBlock: typeof PromptBlockService.removePromptBlock;
 let setPromptBlockOrder: typeof PromptBlockService.setPromptBlockOrder;
 let importTemplateToProject: typeof TemplateImportActions.importTemplateToProject;
 let createProjectTemplate: typeof TemplateCrudActions.createProjectTemplate;
+let updateProjectTemplate: typeof TemplateCrudActions.updateProjectTemplate;
 let updateProjectTemplateSection: typeof TemplateCrudActions.updateProjectTemplateSection;
 let copyProjectTemplateSection: typeof TemplateCrudActions.copyProjectTemplateSection;
 let createProject: typeof ProjectActions.createProject;
@@ -357,6 +358,7 @@ test.before(async () => {
   setPromptBlockOrder = promptBlockService.setPromptBlockOrder;
   importTemplateToProject = templateImportActions.importTemplateToProject;
   createProjectTemplate = templateCrudActions.createProjectTemplate;
+  updateProjectTemplate = templateCrudActions.updateProjectTemplate;
   updateProjectTemplateSection = templateCrudActions.updateProjectTemplateSection;
   copyProjectTemplateSection = templateCrudActions.copyProjectTemplateSection;
   createProject = projectActions.createProject;
@@ -484,6 +486,52 @@ function legacyPresetPromptBlock(input: Awaited<ReturnType<typeof seedProjectWit
     negative: `${input.key} stale expanded negative`,
     sortOrder: 0,
   };
+}
+
+function trainingPresetPromptBlock(
+  input: Awaited<ReturnType<typeof seedProjectWithPreset>>,
+  bindingId = `${input.key}-training-binding`,
+) {
+  return {
+    type: "preset",
+    sourceId: `${input.key}-training-preset`,
+    variantId: `${input.key}-training-variant`,
+    categoryId: `${input.key}-training-category`,
+    bindingId,
+    groupBindingId: null,
+    label: `${input.key} training label`,
+    positive: `${input.key} training positive`,
+    negative: `${input.key} training negative`,
+    sortOrder: 0,
+  };
+}
+
+async function seedTrainingPresetResource(input: Awaited<ReturnType<typeof seedProjectWithPreset>>) {
+  await prisma.presetCategory.create({
+    data: {
+      id: `${input.key}-training-category`,
+      name: `${input.key} Training Category`,
+      slug: `${input.key}-training-category`,
+      type: "training_scene_description",
+    },
+  });
+  await prisma.preset.create({
+    data: {
+      id: `${input.key}-training-preset`,
+      categoryId: `${input.key}-training-category`,
+      name: `${input.key} Training Preset`,
+      slug: `${input.key}-training-preset`,
+    },
+  });
+  await prisma.presetVariant.create({
+    data: {
+      id: `${input.key}-training-variant`,
+      presetId: `${input.key}-training-preset`,
+      name: "Training",
+      slug: `${input.key}-training-variant`,
+      prompt: `${input.key} training prompt must not enter generation template bindings`,
+    },
+  });
 }
 
 function legacyCustomPromptBlock(input: Awaited<ReturnType<typeof seedProjectWithPreset>>) {
@@ -1326,6 +1374,63 @@ test("template CRUD converts submitted prompt and manual lora data into template
   assert.equal(await prisma.templateSectionPresetBinding.count({ where: { projectTemplateSectionId: copiedSectionId } }), 1);
   assert.equal(await prisma.templateSectionPromptBlock.count({ where: { projectTemplateSectionId: copiedSectionId } }), 1);
   assert.equal(await prisma.templateSectionManualLoraEntry.count({ where: { projectTemplateSectionId: copiedSectionId } }), 1);
+});
+
+test("template CRUD writes reject LoRA training preset resources", async () => {
+  const seed = await seedProjectWithPreset();
+  await seedTrainingPresetResource(seed);
+  const trainingSection = templateSectionInput(seed, {
+    promptBlocks: [trainingPresetPromptBlock(seed)],
+    loraConfig: { lora1: [], lora2: [] },
+  });
+
+  await assert.rejects(
+    () => createProjectTemplate({
+      name: `${seed.key} Training Template`,
+      sections: [trainingSection],
+    }),
+    /ordinary preset/i,
+    "generation template creation must reject training-owned preset bindings",
+  );
+
+  const template = await prisma.projectTemplate.create({
+    data: { id: `${seed.key}-template-boundary`, name: `${seed.key} Boundary Template` },
+  });
+  const section = await prisma.projectTemplateSection.create({
+    data: {
+      id: `${seed.key}-template-boundary-section`,
+      projectTemplateId: template.id,
+      sortOrder: 0,
+      name: `${seed.key} Boundary Section`,
+    },
+  });
+
+  await assert.rejects(
+    () => updateProjectTemplate({
+      id: template.id,
+      sections: [
+        {
+          ...trainingSection,
+          id: section.id,
+        },
+      ],
+    }),
+    /ordinary preset/i,
+    "generation template section updates must reject training-owned preset bindings",
+  );
+
+  await assert.rejects(
+    () => updateProjectTemplateSection({
+      templateId: template.id,
+      sectionId: section.id,
+      section: {
+        ...trainingSection,
+        id: section.id,
+      },
+    }),
+    /ordinary preset/i,
+    "generation template single-section saves must reject training-owned preset bindings",
+  );
 });
 
 test("copyProjectTemplateSection inserts the copy immediately after the source section", async () => {
