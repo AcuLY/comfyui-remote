@@ -41,7 +41,6 @@ const TRAINING_API_MANIFEST = {
   },
   workerSupervisor: {
     defaultCommand: "cmd /c npm run training:workers",
-    mockCommand: "cmd /c npm run training:workers:mock",
     defaultWorkers: ["image", "dataset-freeze", "training"],
     script: "scripts/training/worker-queue.ts",
   },

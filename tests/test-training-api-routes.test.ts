@@ -269,6 +269,26 @@ test("GET /api/training exposes a machine-readable workflow manifest", async () 
   );
 });
 
+test("GET /api/training manifest exposes production worker supervisor metadata without mock commands", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.deepEqual(payload.data.workerSupervisor, {
+    defaultCommand: "cmd /c npm run training:workers",
+    defaultWorkers: ["image", "dataset-freeze", "training"],
+    script: "scripts/training/worker-queue.ts",
+  });
+  assert.equal(Object.hasOwn(payload.data.workerSupervisor, "mockCommand"), false);
+  assert.doesNotMatch(
+    JSON.stringify(payload.data.workerSupervisor),
+    /training:workers:mock|mockCommand/i,
+    "agent-facing training manifest should not advertise debug/mock worker commands",
+  );
+});
+
 test("GET /api/training manifest exposes scheduler and worker operations for agent-driven execution", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
