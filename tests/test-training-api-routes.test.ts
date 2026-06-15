@@ -3517,8 +3517,8 @@ test("generation output apply can add a managed output into project reference im
 
 test("generation output apply can idempotently project a production candidate output into reference images through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
-  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
-  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
   const generationOutputApplyRoute = await import("../src/app/api/training/generation-outputs/[outputId]/apply/route");
 
   const title = `测试真实输出应用项目 ${Date.now()}`;
@@ -3576,7 +3576,7 @@ test("generation output apply can idempotently project a production candidate ou
   referenceUploadFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "production-output-source.png", { type: "image/png" }));
   referenceUploadFormData.append("role", "source");
   const uploadReferenceResponse = await referenceRoute.POST(
-    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`, {
       method: "POST",
       body: referenceUploadFormData,
     }),
@@ -3587,7 +3587,7 @@ test("generation output apply can idempotently project a production candidate ou
   assert.equal(uploadReferencePayload.ok, true);
 
   const beforeReferenceResponse = await referenceRoute.GET(
-    new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`),
     params,
   );
   const beforeReferencePayload = await beforeReferenceResponse.json();
@@ -3597,7 +3597,7 @@ test("generation output apply can idempotently project a production candidate ou
   const imageId = uploadReferencePayload.data.id as string;
 
   const candidateResponse = await addToResultsRoute.POST(
-    new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+    new Request(`http://localhost/api/training/reference-images/${imageId}/add-to-results`, {
       method: "POST",
       body: JSON.stringify({
         reviewStatus: "pending",
@@ -3628,7 +3628,7 @@ test("generation output apply can idempotently project a production candidate ou
   assert.equal(applyPayload.data.targetEntityId, projectId);
 
   const afterReferenceResponse = await referenceRoute.GET(
-    new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`),
     params,
   );
   const afterReferencePayload = await afterReferenceResponse.json();
@@ -4181,8 +4181,8 @@ test("production training project creation uses the real project path when the t
 
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
-  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
-  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
   const title = `真实创建链项目 ${Date.now()}`;
 
   const createResponse = await projectsRoute.POST(
@@ -4241,7 +4241,7 @@ test("production training project creation uses the real project path when the t
   uploadFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "real-create-source.png", { type: "image/png" }));
   uploadFormData.append("role", "source");
   const uploadResponse = await referenceRoute.POST(
-    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`, {
       method: "POST",
       body: uploadFormData,
     }),
@@ -4255,7 +4255,7 @@ test("production training project creation uses the real project path when the t
 
   const seedImageId = uploadPayload.data.id as string;
   const addToResultsResponse = await addToResultsRoute.POST(
-    new Request(`http://localhost/api/training/character-images/${seedImageId}/add-to-results`, {
+    new Request(`http://localhost/api/training/reference-images/${seedImageId}/add-to-results`, {
       method: "POST",
       body: JSON.stringify({
         reviewStatus: "keep",
@@ -4311,7 +4311,7 @@ test("production training project creation uses the real project path when the t
   const referenceCopyProjectId = createWithManagedReferencesPayload.data.id as string;
 
   const copiedReferenceResponse = await referenceRoute.GET(
-    new Request(`http://localhost/api/training/projects/${referenceCopyProjectId}/character-images`),
+    new Request(`http://localhost/api/training/projects/${referenceCopyProjectId}/reference-images`),
     { params: Promise.resolve({ projectId: referenceCopyProjectId }) },
   );
   const copiedReferencePayload = await copiedReferenceResponse.json();
@@ -4636,7 +4636,7 @@ test("production generation task draft lifecycle works through /api/training whe
   }
 
   const projectsRoute = await import("../src/app/api/training/projects/route");
-  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
   const projectGenerationTasksRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
   const generationTaskDetailRoute = await import("../src/app/api/training/generation-tasks/[taskId]/route");
   const generationTaskInputsRoute = await import("../src/app/api/training/generation-tasks/[taskId]/inputs/route");
@@ -4695,7 +4695,7 @@ test("production generation task draft lifecycle works through /api/training whe
   uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "real-generation-draft-source.png", { type: "image/png" }));
   uploadReferenceFormData.append("role", "source");
   const uploadReferenceResponse = await referenceRoute.POST(
-    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`, {
       method: "POST",
       body: uploadReferenceFormData,
     }),
@@ -5595,8 +5595,8 @@ test("managed training project can upload result images through /api/training", 
 
 test("training text revisions can checkpoint and restore production image-result captions through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
-  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
-  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
   const imageResultRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
   const resultsRoute = await import("../src/app/api/training/projects/[projectId]/image-results/route");
   const textRevisionsRoute = await import("../src/app/api/training/projects/[projectId]/text-revisions/route");
@@ -5633,7 +5633,7 @@ test("training text revisions can checkpoint and restore production image-result
   uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "text-revision-source.png", { type: "image/png" }));
   uploadReferenceFormData.append("role", "source");
   const uploadReferenceResponse = await referenceRoute.POST(
-    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`, {
       method: "POST",
       body: uploadReferenceFormData,
     }),
@@ -5645,7 +5645,7 @@ test("training text revisions can checkpoint and restore production image-result
   const imageId = uploadReferencePayload.data.id as string;
 
   const addToResultsResponse = await addToResultsRoute.POST(
-    new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+    new Request(`http://localhost/api/training/reference-images/${imageId}/add-to-results`, {
       method: "POST",
       body: JSON.stringify({
         reviewStatus: "pending",

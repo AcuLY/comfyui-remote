@@ -81,6 +81,25 @@ test("training API design docs use reference-image route names as the primary pr
   assert.doesNotMatch(finalTechnicalDesign, /\bcharacter-images\b/);
 });
 
+test("production training API route tests use reference-image routes instead of legacy character-image aliases", () => {
+  const routeTestSource = readFileSync(join(process.cwd(), "tests/test-training-api-routes.test.ts"), "utf8");
+  const productionTestsUsingLegacyReferenceAliases: string[] = [];
+  const testBlockPattern = /test\("([^"]+)", async \(\) => \{([\s\S]*?)(?=\n\}\);\n\ntest\("|$)/g;
+
+  for (const match of routeTestSource.matchAll(testBlockPattern)) {
+    const [, title, body] = match;
+    if (title.includes("production") && body.includes("/character-images")) {
+      productionTestsUsingLegacyReferenceAliases.push(title);
+    }
+  }
+
+  assert.deepEqual(
+    productionTestsUsingLegacyReferenceAliases,
+    [],
+    "Production training API behavior tests should exercise /reference-images; /character-images is only a compatibility alias.",
+  );
+});
+
 test("training scene-description DTO schemas live under src/lib/training", async () => {
   const schemasPath = join(process.cwd(), "src/lib/training/schemas.ts");
 
