@@ -294,6 +294,98 @@ test("training scene-description presets have dedicated Prisma models instead of
   }
 });
 
+test("training templates have dedicated Prisma models instead of legacy character-lora templates only", () => {
+  for (const schemaPath of ["prisma/schema.prisma", "prisma/schema.sqlite.prisma"]) {
+    const schemaSource = readFileSync(join(process.cwd(), schemaPath), "utf8");
+    const textFieldPattern = schemaPath.includes("sqlite") ? /String\b/ : /String\s+@db\.Text/;
+
+    assert.match(
+      schemaSource,
+      /model TrainingTemplate\s*\{/,
+      `${schemaPath} should define a dedicated TrainingTemplate table.`,
+    );
+    assert.match(
+      schemaSource,
+      /model TrainingTemplateSection\s*\{/,
+      `${schemaPath} should define dedicated TrainingTemplateSection rows.`,
+    );
+    assert.match(
+      schemaSource,
+      /model TrainingTemplateSectionSceneDescriptionBlock\s*\{/,
+      `${schemaPath} should define dedicated template scene-description block rows.`,
+    );
+    assert.match(
+      schemaSource,
+      new RegExp(`imagePromptGuidance\\s+${textFieldPattern.source}`),
+      `${schemaPath} should store template image prompt guidance on TrainingTemplate.`,
+    );
+    assert.match(
+      schemaSource,
+      new RegExp(`trainingCaptionFormat\\s+${textFieldPattern.source}`),
+      `${schemaPath} should store template caption format on TrainingTemplate.`,
+    );
+    assert.match(
+      schemaSource,
+      /trainingDefaultsJson\s+Json\?/,
+      `${schemaPath} should keep training defaults on the dedicated training template row.`,
+    );
+  }
+});
+
+test("training template row reads and writes go through a Training repository boundary", () => {
+  const repositoryPath = join(process.cwd(), "src/server/repositories/training/templates.ts");
+
+  assert.equal(
+    existsSync(repositoryPath),
+    true,
+    "Training template row access should live under src/server/repositories/training.",
+  );
+
+  const repositorySource = readFileSync(repositoryPath, "utf8");
+  assert.match(repositorySource, /export async function listTrainingTemplateRows/);
+  assert.match(repositorySource, /export async function getTrainingTemplateRow/);
+  assert.match(repositorySource, /export async function createTrainingTemplateRow/);
+  assert.match(repositorySource, /export async function updateTrainingTemplateRow/);
+  assert.match(repositorySource, /export async function softDeleteTrainingTemplateRow/);
+  assert.match(
+    repositorySource,
+    /trainingTemplate\.findMany/,
+    "Training template rows should read from the dedicated TrainingTemplate table.",
+  );
+  assert.match(
+    repositorySource,
+    /trainingTemplate\.create/,
+    "Training template creation should write to the dedicated TrainingTemplate table.",
+  );
+
+  const templateServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/template-service.ts"), "utf8");
+  assert.match(
+    templateServiceSource,
+    /@\/server\/repositories\/training\/templates/,
+    "Training template service should call the dedicated training template repository.",
+  );
+  assert.doesNotMatch(
+    templateServiceSource,
+    /createLegacyTrainingTemplate|getLegacyTrainingTemplateSnapshot|listLegacyTrainingTemplates|updateLegacyTrainingTemplate|upsertLegacyTrainingTemplates/,
+    "Training template CRUD should no longer use legacy CharacterLora template storage.",
+  );
+});
+
+test("training template creation lets dedicated storage own nested row ids", () => {
+  const templateServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/template-service.ts"), "utf8");
+
+  assert.match(
+    templateServiceSource,
+    /normalizeTemplatePayload\(parsed,\s*\{\s*preserveIds:\s*false\s*\}\)/,
+    "Training template creation should not persist client draft section or block ids as dedicated table primary keys.",
+  );
+  assert.match(
+    templateServiceSource,
+    /updateTrainingTemplateRow\(lookupId,\s*normalizeTemplatePayload\(parsed,\s*\{\s*preserveIds:\s*true\s*\}\)\)/,
+    "Training template updates should keep existing nested row ids when replacing owned sections.",
+  );
+});
+
 test("preset resource lists stay scoped to their owning work mode except shared models and settings", async () => {
   const presetScopeSource = readFileSync(join(process.cwd(), "src/lib/actions/preset-resource-scope.ts"), "utf8");
   assert.match(
@@ -931,19 +1023,18 @@ test("training generation task draft service uses Training-named legacy adapter 
   );
 });
 
-test("training template service uses Training-named legacy adapter aliases", () => {
+test("training template service has moved template CRUD off legacy adapter aliases", () => {
   const templateServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/template-service.ts"), "utf8");
 
-  assert.match(templateServiceSource, /createLegacyTrainingTemplate/);
-  assert.match(templateServiceSource, /getLegacyTrainingTemplateSnapshot/);
-  assert.match(templateServiceSource, /listLegacyTrainingTemplates/);
-  assert.match(templateServiceSource, /mapLegacyTrainingSectionTemplateError/);
-  assert.match(templateServiceSource, /updateLegacyTrainingTemplate/);
-  assert.match(templateServiceSource, /upsertLegacyTrainingTemplates/);
+  assert.match(templateServiceSource, /createTrainingTemplateRow/);
+  assert.match(templateServiceSource, /getTrainingTemplateRow/);
+  assert.match(templateServiceSource, /listTrainingTemplateRows/);
+  assert.match(templateServiceSource, /softDeleteTrainingTemplateRow/);
+  assert.match(templateServiceSource, /updateTrainingTemplateRow/);
   assert.doesNotMatch(
     templateServiceSource,
-    /CharacterLora|character-lora|getCharacterLora|listCharacterLora|createCharacterLora|updateCharacterLora|upsertCharacterLora|mapCharacterLora/,
-    "Training template service should keep legacy CharacterLora symbol names and ids inside the adapter boundary.",
+    /createLegacyTrainingTemplate|getLegacyTrainingTemplateSnapshot|listLegacyTrainingTemplates|mapLegacyTrainingSectionTemplateError|updateLegacyTrainingTemplate|upsertLegacyTrainingTemplates/,
+    "Training template service should use dedicated TrainingTemplate storage instead of legacy template CRUD.",
   );
 });
 

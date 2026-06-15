@@ -306,8 +306,9 @@ model TrainingSceneDescriptionPresetCategory {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  folders TrainingSceneDescriptionPresetFolder[]
-  presets TrainingSceneDescriptionPreset[]
+  folders        TrainingSceneDescriptionPresetFolder[]
+  presets        TrainingSceneDescriptionPreset[]
+  templateBlocks TrainingTemplateSectionSceneDescriptionBlock[]
 
   @@index([sortOrder])
   @@index([sceneDescriptionOrder])
@@ -343,13 +344,71 @@ model TrainingSceneDescriptionPreset {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  category TrainingSceneDescriptionPresetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  folder   TrainingSceneDescriptionPresetFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  category       TrainingSceneDescriptionPresetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  folder         TrainingSceneDescriptionPresetFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  templateBlocks TrainingTemplateSectionSceneDescriptionBlock[]
 
   @@unique([categoryId, slug])
   @@unique([categoryId, id])
   @@index([categoryId, folderId, sortOrder])
   @@index([isActive, sortOrder])
+}
+
+// ── Training Templates ──
+
+model TrainingTemplate {
+  id                    String                    @id @default(cuid())
+  name                  String
+  slug                  String?                   @unique
+  description           String?                   @db.Text
+  imagePromptGuidance   String                    @db.Text
+  imagePromptFormat     String                    @db.Text
+  captioningGuidance    String                    @db.Text
+  trainingCaptionFormat String                    @db.Text
+  trainingDefaultsJson  Json?
+  sortOrder             Int                       @default(0)
+  isActive              Boolean                   @default(true)
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+  sections              TrainingTemplateSection[]
+
+  @@index([isActive, sortOrder])
+}
+
+model TrainingTemplateSection {
+  id                 String                                           @id @default(cuid())
+  trainingTemplateId String
+  name               String?
+  sortOrder          Int                                              @default(0)
+  enabled            Boolean                                          @default(true)
+  sectionDefaultsJson Json?
+  createdAt          DateTime                                         @default(now())
+  updatedAt          DateTime                                         @updatedAt
+  template           TrainingTemplate                                 @relation(fields: [trainingTemplateId], references: [id], onDelete: Cascade)
+  blocks             TrainingTemplateSectionSceneDescriptionBlock[]
+
+  @@index([trainingTemplateId, sortOrder])
+}
+
+model TrainingTemplateSectionSceneDescriptionBlock {
+  id                               String                                  @id @default(cuid())
+  trainingTemplateSectionId        String
+  sceneDescriptionPresetCategoryId String?
+  sceneDescriptionPresetId         String?
+  sourceType                       String
+  title                            String
+  localText                        String?                                 @db.Text
+  sortOrder                        Int                                     @default(0)
+  enabled                          Boolean                                 @default(true)
+  createdAt                        DateTime                                @default(now())
+  updatedAt                        DateTime                                @updatedAt
+  section                          TrainingTemplateSection                 @relation(fields: [trainingTemplateSectionId], references: [id], onDelete: Cascade)
+  category                         TrainingSceneDescriptionPresetCategory? @relation(fields: [sceneDescriptionPresetCategoryId], references: [id], onDelete: SetNull, map: "training_template_block_category_fkey")
+  preset                           TrainingSceneDescriptionPreset?         @relation(fields: [sceneDescriptionPresetId], references: [id], onDelete: SetNull, map: "training_template_block_preset_fkey")
+
+  @@index([trainingTemplateSectionId, sortOrder])
+  @@index([sceneDescriptionPresetCategoryId], map: "training_template_block_category_idx")
+  @@index([sceneDescriptionPresetId], map: "training_template_block_preset_idx")
 }
 
 // ── Project Templates ──

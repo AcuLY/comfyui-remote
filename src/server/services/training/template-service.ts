@@ -2,20 +2,50 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { LoraTrainingTemplate } from "@/features/training/types";
 import {
-  TRAINING_COMPAT_TEMPLATE_BASE_ID,
-  TRAINING_DEFAULT_TEMPLATE_KEY,
-  TRAINING_FALLBACK_TEMPLATE_BASE_ID,
-  createLegacyTrainingTemplate,
-  getLegacyTrainingTemplateSnapshot,
-  listLegacyTrainingTemplates,
-  mapLegacyTrainingSectionTemplateError,
-  updateLegacyTrainingTemplate,
-  upsertLegacyTrainingTemplates,
-} from "@/server/services/training/legacy-compat-service";
+  createTrainingTemplateRow,
+  getTrainingTemplateRow,
+  listTrainingTemplateRows,
+  softDeleteTrainingTemplateRow,
+  updateTrainingTemplateRow,
+  type TrainingTemplateInput as TrainingTemplateRowInput,
+  type TrainingTemplateRow,
+} from "@/server/repositories/training/templates";
 import { listTrainingTemplateOrderIds, orderTrainingTemplatesByStoredIds } from "@/server/services/training/template-order-service";
 import { z } from "zod";
 
+const TRAINING_FALLBACK_TEMPLATE_BASE_ID = "training-base";
+const TRAINING_COMPAT_TEMPLATE_BASE_ID = "character-lora-base";
+const TRAINING_DEFAULT_TEMPLATE_KEY = "character_identity_default";
 const TRAINING_TEMPLATE_FALLBACK_PATH = join(process.cwd(), "data", "training-templates.json");
+const DEFAULT_IMAGE_PROMPT_FORMAT = `Generate a finished anime character illustration.
+
+Character:
+{characterDetailPrompt}
+
+Scene:
+{sceneDescription}
+
+Supplemental prompt:
+{supplementalPrompt}
+
+Guidance:
+{imagePromptGuidance}`;
+const DEFAULT_TRAINING_CAPTION_FORMAT = `Caption the provided image for a character LoRA dataset.
+
+Required prefix:
+{loraUsagePrompt}
+
+Scene context:
+{sceneDescription}
+
+Image-specific supplemental prompt:
+{imageSupplementalPrompt}
+
+Task supplemental prompt:
+{supplementalPrompt}
+
+Guidance:
+{captioningGuidance}`;
 const DEFAULT_FALLBACK_TRAINING_TEMPLATES: LoraTrainingTemplate[] = [
   {
     id: TRAINING_FALLBACK_TEMPLATE_BASE_ID,
@@ -193,13 +223,7 @@ export class TrainingTemplateServiceError extends Error {
 
 function shouldUseTrainingTemplateFileFallback(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
-  return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003/i.test(message);
-}
-
-function readGuidance(value: unknown, key: string) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const candidate = (value as Record<string, unknown>)[key];
-  return typeof candidate === "string" && candidate.trim().length > 0 ? candidate : null;
+  return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003|P2021|P2022|no such table|does not exist/i.test(message);
 }
 
 function formatUpdatedAt(value: Date | string = new Date()) {
@@ -231,31 +255,29 @@ function findFallbackTrainingTemplateIndex(templates: LoraTrainingTemplate[], te
   return templates.findIndex((item) => item.id === lookupId || item.title === templateId);
 }
 
-function mapTemplateSnapshot(snapshot: Awaited<ReturnType<typeof getLegacyTrainingTemplateSnapshot>>): LoraTrainingTemplate {
+function mapTrainingTemplateRow(row: TrainingTemplateRow): LoraTrainingTemplate {
   return {
-    id: snapshot.id,
-    title: snapshot.name,
-    status: snapshot.isActive ? "active" : "archived",
-    updatedAt: formatUpdatedAt(snapshot.updatedAt),
-    description: snapshot.description ?? "",
-    imageGuidance: readGuidance(snapshot.trainingDefaults, "imageGuidance") ?? "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。",
-    captionGuidance: readGuidance(snapshot.promptCardDefaults, "captionGuidance") ?? "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。",
-    sectionCount: snapshot.sectionTemplates.length,
-    sections: snapshot.sectionTemplates.map((section) => ({
+    id: row.id,
+    title: row.name,
+    status: row.isActive ? "active" : "archived",
+    updatedAt: formatUpdatedAt(row.updatedAt),
+    description: row.description ?? "",
+    imageGuidance: row.imagePromptGuidance,
+    captionGuidance: row.captioningGuidance,
+    sectionCount: row.sections.length,
+    sections: row.sections.map((section) => ({
       id: section.id,
-      title: section.name,
-      enabled: section.isActive,
-      blockCount: 1,
-      blocks: [
-        {
-          id: `${section.id}-prompt-template`,
-          source: "本地" as const,
-          title: section.angleTag || "模板提示词",
-          text: section.promptTemplate || section.description || section.name,
-        },
-      ],
-      resolvedScene: section.description || section.promptTemplate || section.name,
-      scenePreview: section.description || section.name,
+      title: section.name ?? "未命名小节",
+      enabled: section.enabled,
+      blockCount: section.blocks.length,
+      blocks: section.blocks.map((block) => ({
+        id: block.id,
+        source: block.sourceType === "preset" ? "预制" : "本地",
+        title: block.title,
+        text: block.localText ?? block.title,
+      })),
+      resolvedScene: section.blocks.map((block) => block.localText ?? block.title).filter(Boolean).join("\n\n") || section.name || "未填写场景描述",
+      scenePreview: section.blocks[0]?.localText ?? section.name ?? "未填写场景摘要",
     })),
   };
 }
@@ -294,23 +316,28 @@ async function writeFallbackTrainingTemplates(templates: LoraTrainingTemplate[])
   await writeFile(TRAINING_TEMPLATE_FALLBACK_PATH, `${JSON.stringify(templates, null, 2)}\n`, "utf8");
 }
 
-function normalizeTemplatePayload(input: TrainingTemplateInput) {
+function normalizeTemplatePayload(
+  input: TrainingTemplateInput,
+  options: { preserveIds: boolean } = { preserveIds: true },
+): TrainingTemplateRowInput {
   return {
-    title: input.title,
+    name: input.title,
+    slug: null,
     description: input.description ?? null,
-    imageGuidance: input.imageGuidance ?? null,
-    captionGuidance: input.captionGuidance ?? null,
+    imagePromptGuidance: input.imageGuidance ?? "",
+    imagePromptFormat: DEFAULT_IMAGE_PROMPT_FORMAT,
+    captioningGuidance: input.captionGuidance ?? "",
+    trainingCaptionFormat: DEFAULT_TRAINING_CAPTION_FORMAT,
     sections: input.sections.map((section) => ({
-      id: section.id,
-      title: section.title,
+      id: options.preserveIds ? section.id : undefined,
+      name: section.title,
       enabled: section.enabled,
-      blockCount: section.blockCount,
       blocks: section.blocks.map((block) => ({
+        id: options.preserveIds ? block.id : undefined,
+        sourceType: block.source === "预制" ? "preset" : "local",
         title: block.title,
-        text: block.text,
+        localText: block.text,
       })),
-      resolvedScene: section.resolvedScene ?? null,
-      scenePreview: section.scenePreview ?? null,
     })),
   };
 }
@@ -374,9 +401,8 @@ export async function listManagedTrainingTemplates() {
   const orderedTemplateIds = await listTrainingTemplateOrderIds().catch(() => []);
 
   try {
-    const summaries = await listLegacyTrainingTemplates();
-    const snapshots = await Promise.all(summaries.map((template) => getLegacyTrainingTemplateSnapshot({ id: template.id })));
-    const databaseTemplates = snapshots.map(mapTemplateSnapshot);
+    const rows = await listTrainingTemplateRows();
+    const databaseTemplates = rows.map(mapTrainingTemplateRow);
     const databaseIds = new Set(databaseTemplates.map((template) => template.id));
     return orderTrainingTemplatesByStoredIds([
       ...fallbackTemplates.filter((template) => !databaseIds.has(template.id)),
@@ -390,20 +416,19 @@ export async function listManagedTrainingTemplates() {
 
 export async function getManagedTrainingTemplate(templateId: string) {
   const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
-  const fallbackTemplate = findFallbackTrainingTemplate(fallbackTemplates, templateId);
-  if (fallbackTemplate) {
-    return fallbackTemplate;
-  }
+  const lookupId = normalizeTrainingTemplateLookupId(templateId);
 
   try {
-    const snapshot = await getLegacyTrainingTemplateSnapshot({ id: templateId });
-    return mapTemplateSnapshot(snapshot);
+    const row = await getTrainingTemplateRow(lookupId);
+    if (row) return mapTrainingTemplateRow(row);
+    const fallbackTemplate = findFallbackTrainingTemplate(fallbackTemplates, lookupId);
+    if (fallbackTemplate) return fallbackTemplate;
+    throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
   } catch (error) {
-    const mapped = mapLegacyTrainingSectionTemplateError(error);
     if (!shouldUseTrainingTemplateFileFallback(error)) {
-      throw new TrainingTemplateServiceError(mapped.message, mapped.status, mapped.details);
+      throw error;
     }
-    const template = findFallbackTrainingTemplate(fallbackTemplates, templateId);
+    const template = findFallbackTrainingTemplate(fallbackTemplates, lookupId);
     if (!template) {
       throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
     }
@@ -415,12 +440,11 @@ export async function createManagedTrainingTemplate(input: unknown) {
   const parsed = parseTrainingTemplateInput(input);
 
   try {
-    const snapshot = await createLegacyTrainingTemplate(normalizeTemplatePayload(parsed));
-    return mapTemplateSnapshot(snapshot);
+    const row = await createTrainingTemplateRow(normalizeTemplatePayload(parsed, { preserveIds: false }));
+    return mapTrainingTemplateRow(row);
   } catch (error) {
     if (!shouldUseTrainingTemplateFileFallback(error)) {
-      const mapped = mapLegacyTrainingSectionTemplateError(error);
-      throw new TrainingTemplateServiceError(mapped.message, mapped.status, mapped.details);
+      throw error;
     }
     const templates = await readFallbackTrainingTemplates();
     const nextId = `training-template-${Date.now()}`;
@@ -456,12 +480,13 @@ export async function createManagedTrainingTemplate(input: unknown) {
 export async function updateManagedTrainingTemplate(templateId: string, input: unknown) {
   const parsed = parseTrainingTemplateInput(input);
   const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
-  const fallbackIndex = findFallbackTrainingTemplateIndex(fallbackTemplates, templateId);
+  const lookupId = normalizeTrainingTemplateLookupId(templateId);
+  const fallbackIndex = findFallbackTrainingTemplateIndex(fallbackTemplates, lookupId);
 
-  if (fallbackIndex !== -1) {
-    const fallbackTemplateId = fallbackTemplates[fallbackIndex].id;
+  const updateFallbackTemplate = async (currentIndex: number) => {
+    const fallbackTemplateId = fallbackTemplates[currentIndex].id;
     const updated: LoraTrainingTemplate = {
-      ...fallbackTemplates[fallbackIndex],
+      ...fallbackTemplates[currentIndex],
       title: parsed.title,
       updatedAt: nextTemplateUpdatedAt(),
       description: parsed.description ?? "",
@@ -484,21 +509,22 @@ export async function updateManagedTrainingTemplate(templateId: string, input: u
       })),
     };
     const next = [...fallbackTemplates];
-    next[fallbackIndex] = updated;
+    next[currentIndex] = updated;
     await writeFallbackTrainingTemplates(next);
     return updated;
-  }
+  };
 
   try {
-    const snapshot = await updateLegacyTrainingTemplate(templateId, normalizeTemplatePayload(parsed));
-    return mapTemplateSnapshot(snapshot);
+    const row = await updateTrainingTemplateRow(lookupId, normalizeTemplatePayload(parsed, { preserveIds: true }));
+    if (row) return mapTrainingTemplateRow(row);
+    if (fallbackIndex !== -1) return updateFallbackTemplate(fallbackIndex);
+    throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
   } catch (error) {
     if (!shouldUseTrainingTemplateFileFallback(error)) {
-      const mapped = mapLegacyTrainingSectionTemplateError(error);
-      throw new TrainingTemplateServiceError(mapped.message, mapped.status, mapped.details);
+      throw error;
     }
     const templates = await readFallbackTrainingTemplates();
-    const currentIndex = findFallbackTrainingTemplateIndex(templates, templateId);
+    const currentIndex = findFallbackTrainingTemplateIndex(templates, lookupId);
     if (currentIndex === -1) {
       throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
     }
@@ -535,38 +561,25 @@ export async function updateManagedTrainingTemplate(templateId: string, input: u
 
 export async function deleteManagedTrainingTemplate(templateId: string) {
   const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
-  const fallbackIndex = findFallbackTrainingTemplateIndex(fallbackTemplates, templateId);
-
-  if (fallbackIndex !== -1) {
-    const next = [...fallbackTemplates];
-    next.splice(fallbackIndex, 1);
-    await writeFallbackTrainingTemplates(next);
-    return { success: true };
-  }
+  const lookupId = normalizeTrainingTemplateLookupId(templateId);
+  const fallbackIndex = findFallbackTrainingTemplateIndex(fallbackTemplates, lookupId);
 
   try {
-    const snapshot = await getLegacyTrainingTemplateSnapshot({ id: templateId });
-    await upsertLegacyTrainingTemplates([{
-      key: snapshot.key,
-      name: snapshot.name,
-      description: snapshot.description ?? null,
-      baseFamily: snapshot.baseFamily ?? null,
-      captionStrategyDefault: snapshot.captionStrategyDefault,
-      canonicalDefaults: snapshot.canonicalDefaults as never,
-      promptCardDefaults: snapshot.promptCardDefaults as never,
-      trainingDefaults: snapshot.trainingDefaults as never,
-      benchmarkDefaults: snapshot.benchmarkDefaults as never,
-      promotionDefaults: snapshot.promotionDefaults as never,
-      isActive: false,
-      sortOrder: snapshot.sortOrder ?? 10,
-    }]);
+    const row = await softDeleteTrainingTemplateRow(lookupId);
+    if (!row && fallbackIndex === -1) {
+      throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
+    }
+    if (!row && fallbackIndex !== -1) {
+      const next = [...fallbackTemplates];
+      next.splice(fallbackIndex, 1);
+      await writeFallbackTrainingTemplates(next);
+    }
     return { success: true };
   } catch (error) {
     if (!shouldUseTrainingTemplateFileFallback(error)) {
-      const mapped = mapLegacyTrainingSectionTemplateError(error);
-      throw new TrainingTemplateServiceError(mapped.message, mapped.status, mapped.details);
+      throw error;
     }
-    const currentIndex = findFallbackTrainingTemplateIndex(fallbackTemplates, templateId);
+    const currentIndex = findFallbackTrainingTemplateIndex(fallbackTemplates, lookupId);
     if (currentIndex === -1) {
       throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
     }
