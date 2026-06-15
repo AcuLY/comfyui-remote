@@ -1,10 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
-import { addManagedTrainingReferenceImageToResults } from "@/server/services/training/project-service";
 import {
-  getLegacyTrainingReferenceImage,
-  mapLegacyTrainingReferenceImageError,
-  registerLegacyTrainingReferenceImageAsResult,
-} from "@/server/services/training/legacy-compat-service";
+  addTrainingReferenceImageToResults,
+  mapTrainingReferenceImageMutationError,
+} from "@/server/services/training/project-service";
 
 export const dynamic = "force-dynamic";
 
@@ -24,28 +22,10 @@ export async function POST(
   try {
     const { imageId } = await params;
     const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
-    const managedResult = await addManagedTrainingReferenceImageToResults(imageId, {
-      reviewStatus: typeof payload.reviewStatus === "string" ? payload.reviewStatus : undefined,
-      captionDraft: typeof payload.captionDraft === "string" ? payload.captionDraft : null,
-    });
-    if (managedResult) {
-      return ok(managedResult, { status: 201 });
-    }
-    const sourceImage = await getLegacyTrainingReferenceImage(imageId);
-
-    if (!sourceImage) {
-      return fail("Training reference image not found", 404);
-    }
-
-    const data = await registerLegacyTrainingReferenceImageAsResult({
-      jobId: sourceImage.jobId,
-      sourceImageId: imageId,
-      reviewStatus: typeof payload.reviewStatus === "string" ? payload.reviewStatus as never : undefined,
-      captionDraft: typeof payload.captionDraft === "string" ? payload.captionDraft : null,
-    });
+    const data = await addTrainingReferenceImageToResults(imageId, payload);
     return ok(data, { status: 201 });
   } catch (error) {
-    const mapped = mapLegacyTrainingReferenceImageError(error);
+    const mapped = mapTrainingReferenceImageMutationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

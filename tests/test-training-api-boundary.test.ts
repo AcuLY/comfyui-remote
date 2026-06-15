@@ -232,3 +232,33 @@ test("training project detail route uses the project service boundary for mutati
   const projectService = readFileSync(join(process.cwd(), "src/server/services/training/project-service.ts"), "utf8");
   assert.match(projectService, /export async function updateTrainingProject/);
 });
+
+test("training reference image routes use the project service boundary", () => {
+  const routeFiles = [
+    "src/app/api/training/projects/[projectId]/character-images/route.ts",
+    "src/app/api/training/character-images/[imageId]/route.ts",
+    "src/app/api/training/character-images/[imageId]/add-to-results/route.ts",
+  ];
+
+  for (const routeFile of routeFiles) {
+    const source = readFileSync(join(process.cwd(), routeFile), "utf8");
+
+    assert.match(
+      source,
+      /@\/server\/services\/training\/project-service/,
+      `${routeFile} should route reference image mutations through project-service`,
+    );
+    assert.doesNotMatch(
+      source,
+      /@\/server\/services\/training\/legacy-compat-service/,
+      `${routeFile} should not fallback to legacy compat from the route layer`,
+    );
+  }
+
+  const projectService = readFileSync(join(process.cwd(), "src/server/services/training/project-service.ts"), "utf8");
+  assert.match(projectService, /export async function listTrainingProjectReferenceImages/);
+  assert.match(projectService, /export async function uploadTrainingProjectReferenceImage/);
+  assert.match(projectService, /export async function updateTrainingReferenceImage/);
+  assert.match(projectService, /export async function deleteTrainingReferenceImage/);
+  assert.match(projectService, /export async function addTrainingReferenceImageToResults/);
+});

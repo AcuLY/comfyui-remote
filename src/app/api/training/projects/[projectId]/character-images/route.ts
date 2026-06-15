@@ -1,15 +1,10 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  listManagedTrainingProjectReferenceImages,
-  mapTrainingProjectError,
-  uploadManagedTrainingProjectReferenceImage,
+  listTrainingProjectReferenceImages,
+  mapTrainingReferenceImageMutationError,
+  registerTrainingReferenceImageFromArtifact,
+  uploadTrainingProjectReferenceImage,
 } from "@/server/services/training/project-service";
-import {
-  listLegacyTrainingReferenceImages,
-  mapLegacyTrainingReferenceImageError,
-  registerLegacyTrainingReferenceImageFromArtifact,
-  uploadLegacyTrainingReferenceImage,
-} from "@/server/services/training/legacy-compat-service";
 
 export const dynamic = "force-dynamic";
 
@@ -19,18 +14,10 @@ export async function GET(
 ) {
   try {
     const { projectId } = await params;
-    const managedImages = await listManagedTrainingProjectReferenceImages(projectId);
-    if (managedImages) {
-      return ok(managedImages);
-    }
-    const data = await listLegacyTrainingReferenceImages(projectId);
+    const data = await listTrainingProjectReferenceImages(projectId);
     return ok(data);
   } catch (error) {
-    const managedMapped = mapTrainingProjectError(error);
-    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
-      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
-    }
-    const mapped = mapLegacyTrainingReferenceImageError(error);
+    const mapped = mapTrainingReferenceImageMutationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
@@ -48,7 +35,7 @@ export async function POST(
       if (!body || typeof body !== "object") {
         return fail("Invalid JSON body", 400);
       }
-      const data = await registerLegacyTrainingReferenceImageFromArtifact(projectId, body);
+      const data = await registerTrainingReferenceImageFromArtifact(projectId, body);
       return ok(data, { status: 201 });
     }
 
@@ -59,18 +46,10 @@ export async function POST(
       return fail("Invalid multipart form data", 400);
     }
 
-    const managedUpload = await uploadManagedTrainingProjectReferenceImage(projectId, formData);
-    if (managedUpload) {
-      return ok(managedUpload, { status: 201 });
-    }
-    const data = await uploadLegacyTrainingReferenceImage(projectId, formData);
+    const data = await uploadTrainingProjectReferenceImage(projectId, formData);
     return ok(data, { status: 201 });
   } catch (error) {
-    const managedMapped = mapTrainingProjectError(error);
-    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
-      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
-    }
-    const mapped = mapLegacyTrainingReferenceImageError(error);
+    const mapped = mapTrainingReferenceImageMutationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

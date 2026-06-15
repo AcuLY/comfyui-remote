@@ -17,22 +17,31 @@ import {
   cancelLegacyTrainingGenerationRun,
   cancelLegacyTrainingRun,
   createCharacterLoraTrainingProject,
+  deleteLegacyTrainingReferenceImage,
   enqueueLegacyTrainingRun,
   enqueueLegacyTrainingSectionGenerationRun,
   freezeLegacyTrainingDataset,
   getCharacterLoraCandidateImage,
   getCharacterLoraJobSection,
   getCharacterLoraTrainingJob,
+  getLegacyTrainingReferenceImage,
+  getLegacyTrainingReferenceImageFromRepository,
   listCharacterLoraSourceImages,
+  listLegacyTrainingReferenceImages,
   mapCharacterLoraTrainingJobError,
   mapLegacyTrainingGenerationError,
   mapLegacyTrainingProjectError,
+  mapLegacyTrainingReferenceImageError,
   mapLegacyTrainingRunError,
+  registerLegacyTrainingReferenceImageAsResult,
+  registerLegacyTrainingReferenceImageFromArtifact,
   restoreLegacyTrainingProject,
   reviewLegacyTrainingImages,
   updateLegacyTrainingImageCaption,
   updateLegacyTrainingProject,
+  updateLegacyTrainingReferenceImage,
   updateCharacterLoraSourceImage,
+  uploadLegacyTrainingReferenceImage,
   uploadCharacterLoraSourceImage,
 } from "@/server/services/training/legacy-compat-service";
 import { setTrainingProjectSectionCollection } from "@/server/services/training/project-section-service";
@@ -743,6 +752,12 @@ export async function listManagedTrainingProjectReferenceImages(projectId: strin
   return project ? project.referenceImages : null;
 }
 
+export async function listTrainingProjectReferenceImages(projectId: string) {
+  const managedImages = await listManagedTrainingProjectReferenceImages(projectId);
+  if (managedImages) return managedImages;
+  return listLegacyTrainingReferenceImages(projectId);
+}
+
 export async function uploadManagedTrainingImageResult(projectId: string, formData: FormData) {
   const project = await getManagedTrainingProject(projectId);
   if (!project) return null;
@@ -844,6 +859,16 @@ export async function uploadManagedTrainingProjectReferenceImage(projectId: stri
   });
 }
 
+export async function uploadTrainingProjectReferenceImage(projectId: string, formData: FormData) {
+  const managedUpload = await uploadManagedTrainingProjectReferenceImage(projectId, formData);
+  if (managedUpload) return managedUpload;
+  return uploadLegacyTrainingReferenceImage(projectId, formData);
+}
+
+export async function registerTrainingReferenceImageFromArtifact(projectId: string, input: unknown) {
+  return registerLegacyTrainingReferenceImageFromArtifact(projectId, input);
+}
+
 async function findManagedReferenceOwner(imageId: string) {
   const projects = await readFallbackTrainingProjects();
   for (const project of projects) {
@@ -925,6 +950,22 @@ export async function updateManagedTrainingReferenceImage(
       .find((project) => project.id === refreshed.project.id)
       ?.referenceImages.find((reference) => reference.id === imageId) ?? null;
   });
+}
+
+export async function updateTrainingReferenceImage(imageId: string, input: Record<string, unknown>) {
+  const managedImage = await updateManagedTrainingReferenceImage(imageId, {
+    kind: typeof input.kind === "string" ? input.kind : null,
+    label: typeof input.label === "string" ? input.label : null,
+    note: typeof input.note === "string" ? input.note : null,
+  });
+  if (managedImage) return managedImage;
+
+  const sourceImage = await getLegacyTrainingReferenceImageFromRepository(imageId).catch(() => null);
+  const productionProjectId = sourceImage?.jobId ?? null;
+  if (!productionProjectId) {
+    throw new TrainingProjectServiceError("Training reference image not found", 404, { imageId });
+  }
+  return updateLegacyTrainingReferenceImage(productionProjectId, imageId, input);
 }
 
 export async function applyManagedTrainingImageResultToReferenceImage(
@@ -1026,6 +1067,18 @@ export async function deleteManagedTrainingReferenceImage(imageId: string) {
   });
 }
 
+export async function deleteTrainingReferenceImage(imageId: string) {
+  const managedImage = await deleteManagedTrainingReferenceImage(imageId);
+  if (managedImage) return managedImage;
+
+  const sourceImage = await getLegacyTrainingReferenceImageFromRepository(imageId).catch(() => null);
+  const productionProjectId = sourceImage?.jobId ?? null;
+  if (!productionProjectId) {
+    throw new TrainingProjectServiceError("Training reference image not found", 404, { imageId });
+  }
+  return deleteLegacyTrainingReferenceImage(productionProjectId, imageId);
+}
+
 export async function addManagedTrainingReferenceImageToResults(
   imageId: string,
   input: { reviewStatus?: string; captionDraft?: string | null } = {},
@@ -1060,6 +1113,26 @@ export async function addManagedTrainingReferenceImageToResults(
       : project);
     await writeFallbackTrainingProjects(nextProjects);
     return nextResult;
+  });
+}
+
+export async function addTrainingReferenceImageToResults(imageId: string, input: Record<string, unknown> = {}) {
+  const managedResult = await addManagedTrainingReferenceImageToResults(imageId, {
+    reviewStatus: typeof input.reviewStatus === "string" ? input.reviewStatus : undefined,
+    captionDraft: typeof input.captionDraft === "string" ? input.captionDraft : null,
+  });
+  if (managedResult) return managedResult;
+
+  const sourceImage = await getLegacyTrainingReferenceImage(imageId);
+  if (!sourceImage) {
+    throw new TrainingProjectServiceError("Training reference image not found", 404, { imageId });
+  }
+
+  return registerLegacyTrainingReferenceImageAsResult({
+    jobId: sourceImage.jobId,
+    sourceImageId: imageId,
+    reviewStatus: typeof input.reviewStatus === "string" ? input.reviewStatus as never : undefined,
+    captionDraft: typeof input.captionDraft === "string" ? input.captionDraft : null,
   });
 }
 
@@ -1769,6 +1842,15 @@ export function mapTrainingProjectMutationError(error: unknown) {
   }
 
   return mapLegacyTrainingProjectError(error);
+}
+
+export function mapTrainingReferenceImageMutationError(error: unknown) {
+  const mapped = mapTrainingProjectError(error);
+  if (mapped.status !== 500 || mapped.message !== "Unexpected training project error") {
+    return mapped;
+  }
+
+  return mapLegacyTrainingReferenceImageError(error);
 }
 
 export function mapTrainingGenerationRunMutationError(error: unknown) {
