@@ -11,7 +11,7 @@ import {
 } from "@/lib/work-mode-resources";
 import type { TrainingShellData } from "./data";
 import { findTrainingHeaderSpecForRoute } from "./header-specs";
-import type { TrainingTheme } from "./theme";
+import { TRAINING_THEME_PERSISTENCE, type TrainingTheme } from "./theme";
 
 const TRAINING_NAV_ICONS: Record<WorkModeResourceKey, DesignDemoShellNavLink["icon"]> = {
   runs: ClipboardList,
@@ -84,6 +84,7 @@ export function TrainingShell({
       initialTheme={initialTheme}
       navigationLinks={buildTrainingNavigationLinks(data)}
       routeHeaderConfig={findTrainingHeaderSpecForRoute(data, currentRoute)}
+      themePersistence={TRAINING_THEME_PERSISTENCE}
     >
       {children}
     </DesignDemoShell>

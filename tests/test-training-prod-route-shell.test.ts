@@ -353,6 +353,16 @@ test("training routes render a production shell without the /design-demos prefix
     "shared shell should fall back to demo route headers only when no module-owned route header is provided",
   );
   assert.match(
+    shellSource,
+    /themePersistence\?:/,
+    "shared shell should expose a theme persistence injection point for production modules",
+  );
+  assert.match(
+    shellSource,
+    /themePersistence \?\? DEFAULT_DESIGN_DEMO_THEME_PERSISTENCE/,
+    "shared shell should keep the design-demo theme persistence as the default only when no module-owned persistence is provided",
+  );
+  assert.match(
     trainingRuntimeSource,
     /from "\.\/routes"/,
     "feature-layer training runtime should read route matching from a local training route module",
@@ -364,7 +374,27 @@ test("training routes render a production shell without the /design-demos prefix
   );
   assert.match(
     trainingThemeSource,
-    /TRAINING_THEME_COOKIE = "comfyui_manager_design_demo_theme"/,
-    "feature-layer training theme should own the production theme cookie constant directly",
+    /TRAINING_THEME_STORAGE_KEY = "comfyui-manager:training-theme"/,
+    "feature-layer training theme should own a production training localStorage key",
+  );
+  assert.match(
+    trainingThemeSource,
+    /TRAINING_THEME_COOKIE = "comfyui_manager_training_theme"/,
+    "feature-layer training theme should own a production training cookie name",
+  );
+  assert.match(
+    trainingThemeSource,
+    /TRAINING_THEME_COOKIE_PATH = "\/training"/,
+    "feature-layer training theme should scope the production training theme cookie to /training",
+  );
+  assert.doesNotMatch(
+    trainingThemeSource,
+    /design_demo_theme/,
+    "feature-layer training theme should not reuse the design-demo theme cookie",
+  );
+  assert.match(
+    trainingShellSource,
+    /themePersistence=\{TRAINING_THEME_PERSISTENCE\}/,
+    "production training shell should pass its own theme persistence contract to the shared shell",
   );
 });

@@ -12,11 +12,12 @@ import { Button } from "@/components/design-demo-ui/primitives/button";
 import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
+  DESIGN_DEMO_THEME_ATTRIBUTE,
+  DESIGN_DEMO_THEME_COOKIE,
   DESIGN_DEMO_THEME_STORAGE_KEY,
   WORK_MODE_CHANGE_EVENT,
   WORK_MODE_STORAGE_KEY,
   applyDesignDemoSfwMode,
-  applyDesignDemoTheme,
   buildWorkModeNavLinks,
   demoHref,
   isDemoThemeValue,
@@ -33,6 +34,30 @@ import { RouteHeaderSurface } from "./header-surface";
 import type { HeaderSpec } from "./header-types";
 
 export type DesignDemoShellNavLink = NavLinkDef;
+
+export type DesignDemoShellThemePersistence = {
+  storageKey: string;
+  cookieName: string;
+  cookiePath: string;
+  documentAttribute?: string;
+  maxAgeSeconds?: number;
+};
+
+const THEME_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
+
+const DEFAULT_DESIGN_DEMO_THEME_PERSISTENCE: DesignDemoShellThemePersistence = {
+  storageKey: DESIGN_DEMO_THEME_STORAGE_KEY,
+  cookieName: DESIGN_DEMO_THEME_COOKIE,
+  cookiePath: "/design-demos",
+  documentAttribute: DESIGN_DEMO_THEME_ATTRIBUTE,
+  maxAgeSeconds: THEME_COOKIE_MAX_AGE_SECONDS,
+};
+
+function applyShellTheme(theme: DemoTheme, persistence: DesignDemoShellThemePersistence) {
+  document.documentElement.setAttribute(persistence.documentAttribute ?? DESIGN_DEMO_THEME_ATTRIBUTE, theme);
+  window.localStorage.setItem(persistence.storageKey, theme);
+  document.cookie = `${persistence.cookieName}=${theme}; Path=${persistence.cookiePath}; Max-Age=${persistence.maxAgeSeconds ?? THEME_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax`;
+}
 
 function readStoredWorkMode(): DesignDemoWorkMode {
   if (typeof window === "undefined") return "generation";
@@ -299,6 +324,7 @@ export function DesignDemoShell({
   initialTheme,
   navigationLinks,
   routeHeaderConfig,
+  themePersistence,
 }: {
   children: ReactNode;
   currentRoute: string;
@@ -307,6 +333,7 @@ export function DesignDemoShell({
   initialTheme: DemoTheme;
   navigationLinks?: DesignDemoShellNavLink[];
   routeHeaderConfig?: HeaderSpec | null;
+  themePersistence?: DesignDemoShellThemePersistence;
 }) {
   const contentFrameRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -325,6 +352,7 @@ export function DesignDemoShell({
   const isLightTheme = theme === "light";
   const defaultRouteHeaderConfig = useMemo(() => findHeaderSpecForRoute(data, currentRoute), [currentRoute, data]);
   const resolvedRouteHeaderConfig = routeHeaderConfig === undefined ? defaultRouteHeaderConfig : routeHeaderConfig;
+  const resolvedThemePersistence = themePersistence ?? DEFAULT_DESIGN_DEMO_THEME_PERSISTENCE;
   const hasRouteHeader = Boolean(resolvedRouteHeaderConfig);
   const setRouteHeaderNode = useCallback((node: HTMLElement | null) => {
     routeHeaderRef.current = node;
@@ -348,10 +376,10 @@ export function DesignDemoShell({
     sidebarQuery.addEventListener("change", syncSidebarCollapse);
 
     const frameId = window.requestAnimationFrame(() => {
-      const storedTheme = window.localStorage.getItem(DESIGN_DEMO_THEME_STORAGE_KEY);
+      const storedTheme = window.localStorage.getItem(resolvedThemePersistence.storageKey);
       const resolvedTheme = isDemoThemeValue(storedTheme) ? storedTheme : initialTheme;
 
-      applyDesignDemoTheme(resolvedTheme);
+      applyShellTheme(resolvedTheme, resolvedThemePersistence);
       setTheme(resolvedTheme);
       setRouteHeaderCompact(window.matchMedia("(max-width: 760px)").matches);
       setSfwMode(isSfwEnabledValue(window.localStorage.getItem(DESIGN_DEMO_SFW_STORAGE_KEY)));
@@ -362,7 +390,7 @@ export function DesignDemoShell({
       sidebarQuery.removeEventListener("change", syncSidebarCollapse);
       window.cancelAnimationFrame(frameId);
     };
-  }, [initialTheme]);
+  }, [initialTheme, resolvedThemePersistence]);
 
   useEffect(() => {
     function syncStoredWorkMode() {
@@ -501,7 +529,7 @@ export function DesignDemoShell({
   function toggleTheme() {
     setTheme((currentTheme) => {
       const nextTheme = currentTheme === "dark" ? "light" : "dark";
-      applyDesignDemoTheme(nextTheme);
+      applyShellTheme(nextTheme, resolvedThemePersistence);
       return nextTheme;
     });
   }

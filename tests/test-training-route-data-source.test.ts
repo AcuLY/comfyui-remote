@@ -226,13 +226,13 @@ test("training not-found page is owned by the training feature layer", () => {
   );
   assert.match(
     trainingNotFoundSource,
-    /href="\/training\/runs"/,
-    "training not-found page should return to the production training run route",
+    /WORK_MODE_RESOURCE_TARGETS\.lora_training\.runs\.href/,
+    "training not-found page should return to the production training run route through the shared resource contract",
   );
   assert.match(
     trainingNotFoundSource,
-    /\/training\/projects/,
-    "training not-found page should expose training project navigation rather than generic demo routes",
+    /buildWorkModeResourceTargetList\("lora_training"\)/,
+    "training not-found page should expose training module navigation through the shared resource contract rather than generic demo routes",
   );
 });
 
