@@ -13,12 +13,15 @@ import type {
 } from "@/features/training/types";
 import { toImageUrl } from "@/lib/image-url";
 import {
+  archiveLegacyTrainingProject,
   createCharacterLoraTrainingProject,
   getCharacterLoraCandidateImage,
   getCharacterLoraJobSection,
   getCharacterLoraTrainingJob,
   listCharacterLoraSourceImages,
   mapCharacterLoraTrainingJobError,
+  mapLegacyTrainingProjectError,
+  restoreLegacyTrainingProject,
   updateCharacterLoraSourceImage,
   uploadCharacterLoraSourceImage,
 } from "@/server/services/training/legacy-compat-service";
@@ -513,6 +516,12 @@ export async function archiveManagedTrainingProject(projectId: string) {
   });
 }
 
+export async function archiveTrainingProject(projectId: string) {
+  const managedProject = await archiveManagedTrainingProject(projectId);
+  if (managedProject) return managedProject;
+  return archiveLegacyTrainingProject(projectId);
+}
+
 export async function restoreManagedTrainingProject(projectId: string) {
   return withProjectStoreWriteLock(async () => {
     const projects = await readFallbackTrainingProjects();
@@ -529,6 +538,12 @@ export async function restoreManagedTrainingProject(projectId: string) {
     await writeFallbackTrainingProjects(next);
     return next[currentIndex];
   });
+}
+
+export async function restoreTrainingProject(projectId: string) {
+  const managedProject = await restoreManagedTrainingProject(projectId);
+  if (managedProject) return managedProject;
+  return restoreLegacyTrainingProject(projectId);
 }
 
 export async function deleteManagedTrainingProject(projectId: string) {
@@ -1635,4 +1650,13 @@ export function mapTrainingProjectError(error: unknown) {
     status: 500,
     details: error instanceof Error ? error.message : String(error),
   };
+}
+
+export function mapTrainingProjectMutationError(error: unknown) {
+  const mapped = mapTrainingProjectError(error);
+  if (mapped.status !== 500 || mapped.message !== "Unexpected training project error") {
+    return mapped;
+  }
+
+  return mapLegacyTrainingProjectError(error);
 }
