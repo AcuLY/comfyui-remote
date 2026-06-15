@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { join, relative } from "node:path";
 import test from "node:test";
 import { NextRequest } from "next/server";
 
@@ -9,6 +9,46 @@ const TRAINING_MANAGED_RUNS_PATH = join(process.cwd(), "data", "training-managed
 const TRAINING_PROJECTS_PATH = join(process.cwd(), "data", "training-projects.json");
 const TRAINING_TEMPLATE_ORDER_PATH = join(process.cwd(), "data", "training-template-order.json");
 let trainingManagedStoreSnapshotQueue: Promise<unknown> = Promise.resolve();
+
+async function listRouteFiles(dir: string): Promise<string[]> {
+  const entries = await readdir(dir, { withFileTypes: true });
+  const nested = await Promise.all(entries.map(async (entry) => {
+    const entryPath = join(dir, entry.name);
+    if (entry.isDirectory()) return listRouteFiles(entryPath);
+    return entry.name === "route.ts" ? [entryPath] : [];
+  }));
+  return nested.flat();
+}
+
+function routeFileToTrainingApiPath(filePath: string) {
+  const root = join(process.cwd(), "src", "app", "api", "training");
+  const routeRelativePath = relative(root, filePath);
+  if (routeRelativePath === "route.ts") return "/api/training";
+
+  const routePath = routeRelativePath.replace(/\/route\.ts$/, "");
+  const segments = routePath.split("/").map((segment) => {
+    const dynamic = segment.match(/^\[(.+)\]$/);
+    return dynamic ? `:${dynamic[1]}` : segment;
+  });
+  return `/api/training/${segments.join("/")}`;
+}
+
+function collectManifestPaths(value: unknown, paths = new Set<string>()) {
+  if (typeof value === "string" && value.startsWith("/api/training")) {
+    paths.add(value.split("?")[0] ?? value);
+    return paths;
+  }
+  if (!value || typeof value !== "object") return paths;
+  if ("path" in value && typeof value.path === "string") {
+    paths.add(value.path.split("?")[0] ?? value.path);
+  }
+
+  for (const child of Object.values(value)) {
+    collectManifestPaths(child, paths);
+  }
+
+  return paths;
+}
 
 async function listProjects() {
   const { GET } = await import("../src/app/api/training/projects/route");
@@ -170,6 +210,25 @@ test("GET /api/training manifest exposes scheduler and worker operations for age
     payload.data.workflows.some((workflow: { id: string }) => workflow.id === "worker_execution"),
     "agent manifest should include a worker execution workflow in addition to public UI workflows",
   );
+});
+
+test("GET /api/training manifest covers every implemented training API route", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+
+  const routeFiles = await listRouteFiles(join(process.cwd(), "src", "app", "api", "training"));
+  const routePaths = routeFiles
+    .map(routeFileToTrainingApiPath)
+    .filter((path) => path !== "/api/training")
+    .sort();
+  const manifestPaths = collectManifestPaths(payload.data);
+  const missingFromManifest = routePaths.filter((path) => !manifestPaths.has(path));
+
+  assert.deepEqual(missingFromManifest, []);
 });
 
 test("GET /api/training/models lists checkpoint or LoRA assets for training workflows", async () => {
