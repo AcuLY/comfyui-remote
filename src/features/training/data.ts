@@ -1,20 +1,53 @@
-import type { DemoData } from "@/app/design-demos/data/types";
 import type { LoraTrainingDemoData, TrainingImage } from "./types";
 
-export type TrainingModelOption = Pick<DemoData["models"][number], "modelType" | "name" | "relativePath">;
+export type TrainingModelOption = {
+  modelType: string;
+  name: string;
+  relativePath: string;
+};
 
-export type TrainingAppData = Pick<DemoData, "images" | "models"> & {
+export type TrainingShellData = {
+  source: {
+    loadedFromSqlite: boolean;
+    databaseLabel: string;
+    imageSourceLabel: string;
+    modelBaseLabel: string;
+    comfyApiLabel: string;
+    warning: string | null;
+  };
+  metrics: {
+    projects: number;
+    sections: number;
+    runs: number;
+    pendingImages: number;
+    presets: number;
+    templates: number;
+    loras: number;
+  };
+  projectFolders: never[];
+  projects: never[];
+  runs: never[];
+  categories: never[];
+  templates: never[];
+  loras: never[];
+  models: never[];
+  auditLogs: never[];
+  images: never[];
+  loraTraining?: LoraTrainingDemoData;
+};
+
+export type TrainingAppData = {
   images: TrainingImage[];
   loraTraining?: LoraTrainingDemoData;
   models: TrainingModelOption[];
-  shellData?: DemoData;
+  shellData?: TrainingShellData;
 };
 
-export function resolveTrainingShellData(data: TrainingAppData): DemoData | null {
+export function resolveTrainingShellData(data: TrainingAppData): TrainingShellData | null {
   return data.shellData ?? null;
 }
 
-export function buildTrainingShellData(loraTraining: LoraTrainingDemoData): DemoData {
+export function buildTrainingShellData(loraTraining: LoraTrainingDemoData): TrainingShellData {
   const sectionCount = loraTraining.projects.reduce((sum, project) => sum + project.sections.length, 0);
   const pendingImages = loraTraining.projects.reduce(
     (sum, project) => sum + project.resultPool.filter((result) => result.reviewStatus === "pending").length,

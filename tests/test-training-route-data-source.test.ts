@@ -138,10 +138,15 @@ test("production training route loader delegates snapshot assembly to a dedicate
     /loadDesignDemoData/,
     "training feature data module should not load the full design-demo dataset anymore",
   );
+  assert.doesNotMatch(
+    trainingFeatureDataSource,
+    /@\/app\/design-demos\/data\/types/,
+    "training feature data contract should not import design-demo data types",
+  );
   assert.match(
     trainingFeatureDataSource,
-    /shellData\?:\s*DemoData/,
-    "training feature data module should describe shell-specific demo data separately from training page data",
+    /shellData\?:\s*TrainingShellData/,
+    "training feature data module should describe shell-specific data with a local training-owned contract",
   );
   assert.doesNotMatch(
     trainingFeatureDataSource,
