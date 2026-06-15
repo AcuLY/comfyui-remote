@@ -1,14 +1,18 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { fail } from "@/lib/api-response";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ runId: string }> },
 ) {
   const { runId } = await params;
-  const run = await prisma.run.findUnique({
-    where: { id: runId },
+  const run = await prisma.run.findFirst({
+    where: {
+      id: runId,
+      project: buildGenerationProjectWhere(),
+    },
     select: { submittedPrompt: true, projectSection: { select: { name: true } } },
   });
   if (!run?.submittedPrompt) {

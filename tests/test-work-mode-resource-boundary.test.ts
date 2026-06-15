@@ -21,6 +21,8 @@ const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/train
 const generationProjectDetailSource = readFileSync(resolve(repoRoot, "src/server/repositories/project-view-repository/detail-view.ts"), "utf8");
 const generationQueuePageSource = readFileSync(resolve(repoRoot, "src/app/queue/page.tsx"), "utf8");
 const generationQueueDataRouteSource = readFileSync(resolve(repoRoot, "src/app/api/queue-data/route.ts"), "utf8");
+const generationRunLifecycleSource = readFileSync(resolve(repoRoot, "src/lib/actions/run-lifecycle.ts"), "utf8");
+const generationRunWorkflowRouteSource = readFileSync(resolve(repoRoot, "src/app/api/runs/[runId]/workflow/route.ts"), "utf8");
 const generationWorkerStatusRouteSource = readFileSync(resolve(repoRoot, "src/app/api/worker/status/route.ts"), "utf8");
 const generationTemplateCrudSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-crud.ts"), "utf8");
 const generationTemplateImportSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-import.ts"), "utf8");
@@ -451,6 +453,57 @@ test("generation worker status uses the generation project boundary", () => {
     generationWorkerStatusRouteSource,
     /run\.findMany\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
     "Generation worker status recent runs should filter through generation-owned projects.",
+  );
+});
+
+test("generation run workflow downloads use the generation project boundary", () => {
+  assert.match(
+    generationRunWorkflowRouteSource,
+    /buildGenerationProjectWhere/,
+    "Generation workflow downloads should not expose training-owned run workflow payloads.",
+  );
+  assert.match(
+    generationRunWorkflowRouteSource,
+    /run\.findFirst\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation workflow downloads should resolve runs through generation-owned projects.",
+  );
+  assert.doesNotMatch(
+    generationRunWorkflowRouteSource,
+    /run\.findUnique\(\{[\s\S]*where:\s*\{\s*id:\s*runId\s*\}/,
+    "Generation workflow downloads must not fetch runs by id without the resource boundary.",
+  );
+});
+
+test("generation run lifecycle actions use the generation project boundary", () => {
+  assert.match(
+    generationRunLifecycleSource,
+    /buildGenerationRunWhere/,
+    "Generation run lifecycle actions should centralize Run ownership filtering.",
+  );
+  assert.match(
+    generationRunLifecycleSource,
+    /buildGenerationProjectWhere/,
+    "Generation run lifecycle actions should derive run ownership from generation-owned projects.",
+  );
+  assert.doesNotMatch(
+    generationRunLifecycleSource,
+    /run\.findUnique\(\{[\s\S]*where:\s*\{\s*id:\s*runId\s*\}/,
+    "Generation run lifecycle actions must not fetch runs by id without the resource boundary.",
+  );
+  assert.doesNotMatch(
+    generationRunLifecycleSource,
+    /where:\s*\{\s*status:\s*\{\s*in:\s*RUN_ACTIVE_STATUSES\s*\}\s*\}/,
+    "Bulk active-run lifecycle actions must not scan every module's active runs.",
+  );
+  assert.doesNotMatch(
+    generationRunLifecycleSource,
+    /where:\s*\{\s*status:\s*"paused"/,
+    "Bulk paused-run lifecycle actions must not scan every module's paused runs.",
+  );
+  assert.doesNotMatch(
+    generationRunLifecycleSource,
+    /project\.update\(\{[\s\S]*where:\s*\{\s*id:\s*run\.projectId\s*\}/,
+    "Generation run lifecycle actions must not update projects without the generation project boundary.",
   );
 });
 
