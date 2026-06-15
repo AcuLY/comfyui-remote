@@ -100,6 +100,27 @@ test("production training API route tests use reference-image routes instead of 
   );
 });
 
+test("training API behavior tests reserve legacy character-image routes for explicit compatibility coverage", () => {
+  const routeTestSource = readFileSync(join(process.cwd(), "tests/test-training-api-routes.test.ts"), "utf8");
+  const testsUsingLegacyReferenceAliasesOutsideCompatibility: string[] = [];
+  const testBlockPattern = /test\("([^"]+)", async \(\) => \{([\s\S]*?)(?=\n\}\);\n\ntest\("|$)/g;
+
+  for (const match of routeTestSource.matchAll(testBlockPattern)) {
+    const [, title, body] = match;
+    const isCompatibilityCoverage = /legacy|compatib/i.test(title);
+
+    if (!isCompatibilityCoverage && body.includes("/character-images")) {
+      testsUsingLegacyReferenceAliasesOutsideCompatibility.push(title);
+    }
+  }
+
+  assert.deepEqual(
+    testsUsingLegacyReferenceAliasesOutsideCompatibility,
+    [],
+    "Training API behavior tests should exercise /reference-images; /character-images should only appear in explicit legacy compatibility tests.",
+  );
+});
+
 test("training scene-description DTO schemas live under src/lib/training", async () => {
   const schemasPath = join(process.cwd(), "src/lib/training/schemas.ts");
 

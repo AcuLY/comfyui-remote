@@ -1904,7 +1904,7 @@ test("managed training projects suppress demo project fixtures on /api/training/
 
 test("managed training project creation can seed references from existing managed projects and kept results", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
-  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
 
   await withTrainingManagedStoreSnapshot(async () => {
     const seedProject = await createManagedReferenceSeedProject();
@@ -1955,7 +1955,7 @@ test("managed training project creation can seed references from existing manage
 
     const projectId = createPayload.data.id as string;
     const referenceResponse = await referenceRoute.GET(
-      new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+      new Request(`http://localhost/api/training/projects/${projectId}/reference-images`),
       { params: Promise.resolve({ projectId }) },
     );
     const referencePayload = await referenceResponse.json();
@@ -3345,7 +3345,7 @@ test("scene-description category and folder routes create, update, guard non-emp
 
 test("generation output apply can add a managed output into project reference images through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
-  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
   const resultUploadRoute = await import("../src/app/api/training/projects/[projectId]/image-results/upload/route");
   const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
   const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
@@ -3404,7 +3404,7 @@ test("generation output apply can add a managed output into project reference im
     const projectParams = { params: Promise.resolve({ projectId }) };
 
     const beforeReferenceResponse = await referenceRoute.GET(
-      new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+      new Request(`http://localhost/api/training/projects/${projectId}/reference-images`),
       projectParams,
     );
     const beforeReferencePayload = await beforeReferenceResponse.json();
@@ -3490,7 +3490,7 @@ test("generation output apply can add a managed output into project reference im
     assert.equal(applyPayload.data.result.kind, "generated");
 
     const afterReferenceResponse = await referenceRoute.GET(
-      new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+      new Request(`http://localhost/api/training/projects/${projectId}/reference-images`),
       projectParams,
     );
     const afterReferencePayload = await afterReferenceResponse.json();
@@ -5712,8 +5712,8 @@ test("training text revisions can checkpoint and restore production image-result
 
 test("training image caption route can generate a managed caption task result through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
-  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
-  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
   const patchImageRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
   const imageCaptionRoute = await import("../src/app/api/training/image-results/[imageResultId]/caption/route");
   const title = `managed caption task 项目 ${Date.now()}`;
@@ -5748,7 +5748,7 @@ test("training image caption route can generate a managed caption task result th
   uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "caption-task-source.png", { type: "image/png" }));
   uploadReferenceFormData.append("role", "source");
   const uploadReferenceResponse = await referenceRoute.POST(
-    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`, {
       method: "POST",
       body: uploadReferenceFormData,
     }),
@@ -5760,7 +5760,7 @@ test("training image caption route can generate a managed caption task result th
   const imageId = uploadReferencePayload.data.id as string;
 
   const addToResultsResponse = await addToResultsRoute.POST(
-    new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+    new Request(`http://localhost/api/training/reference-images/${imageId}/add-to-results`, {
       method: "POST",
       body: JSON.stringify({
         reviewStatus: "pending",
@@ -5811,8 +5811,8 @@ test("training image caption route can generate a managed caption task result th
 
 test("training bulk caption route supports kept_without_captions mode through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
-  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
-  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
   const patchImageRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
   const resultsRoute = await import("../src/app/api/training/projects/[projectId]/image-results/route");
   const bulkCaptionsRoute = await import("../src/app/api/training/projects/[projectId]/captions/generate/route");
@@ -5848,7 +5848,7 @@ test("training bulk caption route supports kept_without_captions mode through /a
   uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "bulk-caption-source.png", { type: "image/png" }));
   uploadReferenceFormData.append("role", "source");
   const uploadReferenceResponse = await referenceRoute.POST(
-    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`, {
       method: "POST",
       body: uploadReferenceFormData,
     }),
@@ -5860,7 +5860,7 @@ test("training bulk caption route supports kept_without_captions mode through /a
   const imageId = uploadReferencePayload.data.id as string;
 
   const addToResultsResponse = await addToResultsRoute.POST(
-    new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+    new Request(`http://localhost/api/training/reference-images/${imageId}/add-to-results`, {
       method: "POST",
       body: JSON.stringify({
         reviewStatus: "keep",
@@ -6609,14 +6609,14 @@ test("managed worker endpoints can mark generation and training runs as failed t
     const generationDetailPayload = await generationDetailResponse.json();
     assert.equal(generationDetailPayload.data.status, "failed");
 
-    const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
-    const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+    const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
+    const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
     const reviewRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
     const uploadReferenceFormData = new FormData();
     uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "worker-fail-reference.png", { type: "image/png" }));
     uploadReferenceFormData.append("role", "source");
     const uploadReferenceResponse = await referenceRoute.POST(
-      new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+      new Request(`http://localhost/api/training/projects/${projectId}/reference-images`, {
         method: "POST",
         body: uploadReferenceFormData,
       }),
@@ -6627,7 +6627,7 @@ test("managed worker endpoints can mark generation and training runs as failed t
     assert.equal(uploadReferencePayload.ok, true);
     const imageId = uploadReferencePayload.data.id as string;
     const addToResultsResponse = await addToResultsRoute.POST(
-      new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+      new Request(`http://localhost/api/training/reference-images/${imageId}/add-to-results`, {
         method: "POST",
         body: JSON.stringify({ reviewStatus: "pending", captionDraft: "可训练参考图" }),
       }),
@@ -6691,8 +6691,8 @@ test("managed worker endpoints can mark generation and training runs as failed t
 
 test("managed training project can enqueue generation, freeze dataset, and start training through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
-  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
-  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
   const reviewRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
   const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
   const datasetRevisionRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
@@ -6756,7 +6756,7 @@ test("managed training project can enqueue generation, freeze dataset, and start
   uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "run-chain-reference.png", { type: "image/png" }));
   uploadReferenceFormData.append("role", "source");
   const uploadReferenceResponse = await referenceRoute.POST(
-    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`, {
       method: "POST",
       body: uploadReferenceFormData,
     }),
@@ -6768,7 +6768,7 @@ test("managed training project can enqueue generation, freeze dataset, and start
   const imageId = uploadReferencePayload.data.id as string;
 
   const addToResultsResponse = await addToResultsRoute.POST(
-    new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+    new Request(`http://localhost/api/training/reference-images/${imageId}/add-to-results`, {
       method: "POST",
       body: JSON.stringify({ reviewStatus: "pending", captionDraft: "可训练参考图" }),
     }),
@@ -7148,8 +7148,8 @@ test("training write routes exist under /api/training and fail through HTTP cont
 
 test("training asset and review routes exist under /api/training and return JSON error contracts", async () => {
   const profileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");
-  const characterImagesRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
-  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const referenceImagesRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
   const reviewImageRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
   const patchImageRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
   const imageCaptionRoute = await import("../src/app/api/training/image-results/[imageResultId]/caption/route");
@@ -7161,9 +7161,9 @@ test("training asset and review routes exist under /api/training and return JSON
 
   const [profileResponse, listResponse, uploadResponse, addToResultsResponse, reviewResponse, patchResponse, imageCaptionResponse, bulkCaptionsResponse] = await Promise.all([
     profileRoute.GET(new Request("http://localhost/api/training/projects/missing-project/profile"), missingProjectParams),
-    characterImagesRoute.GET(new Request("http://localhost/api/training/projects/missing-project/character-images"), missingProjectParams),
-    characterImagesRoute.POST(new Request("http://localhost/api/training/projects/missing-project/character-images", { method: "POST" }), missingProjectParams),
-    addToResultsRoute.POST(new Request("http://localhost/api/training/character-images/missing-image/add-to-results", { method: "POST", body: "{}" }), missingImageParams),
+    referenceImagesRoute.GET(new Request("http://localhost/api/training/projects/missing-project/reference-images"), missingProjectParams),
+    referenceImagesRoute.POST(new Request("http://localhost/api/training/projects/missing-project/reference-images", { method: "POST" }), missingProjectParams),
+    addToResultsRoute.POST(new Request("http://localhost/api/training/reference-images/missing-image/add-to-results", { method: "POST", body: "{}" }), missingImageParams),
     reviewImageRoute.POST(new Request("http://localhost/api/training/image-results/missing-result/review", { method: "POST", body: JSON.stringify({ reviewStatus: "kept" }) }), missingResultParams),
     patchImageRoute.PATCH(new Request("http://localhost/api/training/image-results/missing-result", { method: "PATCH", body: JSON.stringify({ captionDraft: "updated caption" }) }), missingResultParams),
     imageCaptionRoute.POST(new Request("http://localhost/api/training/image-results/missing-result/caption", { method: "POST", body: JSON.stringify({ captionDraft: "updated caption" }) }), missingResultParams),
@@ -7190,6 +7190,36 @@ test("training asset and review routes exist under /api/training and return JSON
     [patchResponse, payloads[5]],
     [imageCaptionResponse, payloads[6]],
     [bulkCaptionsResponse, payloads[7]],
+  ] as const) {
+    assert.ok(response.status >= 400);
+    assert.equal(payload.ok, false);
+    assert.equal(typeof payload.error.message, "string");
+  }
+});
+
+test("legacy training character image aliases return JSON error contracts", async () => {
+  const characterImagesRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
+  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+
+  const missingProjectParams = { params: Promise.resolve({ projectId: "missing-project" }) };
+  const missingImageParams = { params: Promise.resolve({ imageId: "missing-image" }) };
+
+  const [listResponse, uploadResponse, addToResultsResponse] = await Promise.all([
+    characterImagesRoute.GET(new Request("http://localhost/api/training/projects/missing-project/character-images"), missingProjectParams),
+    characterImagesRoute.POST(new Request("http://localhost/api/training/projects/missing-project/character-images", { method: "POST" }), missingProjectParams),
+    addToResultsRoute.POST(new Request("http://localhost/api/training/character-images/missing-image/add-to-results", { method: "POST", body: "{}" }), missingImageParams),
+  ]);
+
+  const payloads = await Promise.all([
+    listResponse.json(),
+    uploadResponse.json(),
+    addToResultsResponse.json(),
+  ]);
+
+  for (const [response, payload] of [
+    [listResponse, payloads[0]],
+    [uploadResponse, payloads[1]],
+    [addToResultsResponse, payloads[2]],
   ] as const) {
     assert.ok(response.status >= 400);
     assert.equal(payload.ok, false);
