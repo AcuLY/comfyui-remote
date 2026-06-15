@@ -359,8 +359,16 @@ test("GET /api/training worker execution workflow declares machine-actionable ta
     },
     "Generic worker leases should declare query params and workerType values instead of forcing agents to infer them.",
   );
-  assert.deepEqual(steps.get("lease_worker_task")?.produces, ["workerTaskId"]);
-  assert.deepEqual(steps.get("lease_worker_task")?.responsePaths, { workerTaskId: "$.data.id" });
+  assert.deepEqual(steps.get("lease_worker_task")?.produces, [
+    "workerTaskId",
+    "workerTaskTargetType",
+    "workerTaskTargetId",
+  ]);
+  assert.deepEqual(steps.get("lease_worker_task")?.responsePaths, {
+    workerTaskId: "$.data.id",
+    workerTaskTargetType: "$.data.targetType",
+    workerTaskTargetId: "$.data.targetId",
+  });
 
   assert.deepEqual(
     steps.get("heartbeat_worker_task"),
@@ -407,6 +415,75 @@ test("GET /api/training worker execution workflow declares machine-actionable ta
         optionalFields: ["leaseOwner", "providerError"],
       },
     },
+  );
+});
+
+test("GET /api/training worker execution lease declares domain target handoffs", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const workerExecutionWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "worker_execution"
+  ) as {
+    steps: Array<{
+      id?: string;
+      requires?: string[];
+      produces?: string[];
+      responsePaths?: Record<string, string>;
+      conditionalProduces?: Array<{
+        when: Record<string, string>;
+        produces: string[];
+        responsePaths: Record<string, string>;
+      }>;
+    }>;
+  } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(workerExecutionWorkflow, "agent manifest should include the worker execution workflow");
+
+  const steps = new Map(workerExecutionWorkflow.steps.map((step) => [step.id, step]));
+  const leaseWorkerTask = steps.get("lease_worker_task");
+
+  assert.deepEqual(
+    leaseWorkerTask?.produces,
+    ["workerTaskId", "workerTaskTargetType", "workerTaskTargetId"],
+    "Worker leases should expose the target fields returned by the worker task API.",
+  );
+  assert.deepEqual(
+    leaseWorkerTask?.responsePaths,
+    {
+      workerTaskId: "$.data.id",
+      workerTaskTargetType: "$.data.targetType",
+      workerTaskTargetId: "$.data.targetId",
+    },
+    "Worker leases should map target handoffs from the serialized worker task response.",
+  );
+  assert.deepEqual(
+    leaseWorkerTask?.conditionalProduces,
+    [
+      {
+        when: { workerTaskTargetType: "generationRun" },
+        produces: ["generationTaskId"],
+        responsePaths: { generationTaskId: "$.data.targetId" },
+      },
+      {
+        when: { workerTaskTargetType: "trainingRun" },
+        produces: ["trainingRunId"],
+        responsePaths: { trainingRunId: "$.data.targetId" },
+      },
+    ],
+    "Worker leases should declare how target ids satisfy domain-specific callback steps.",
+  );
+
+  const conditionalProduces = leaseWorkerTask?.conditionalProduces?.flatMap((handoff) => handoff.produces) ?? [];
+  assert.ok(
+    conditionalProduces.includes(steps.get("complete_generation_domain_task")?.requires?.[0] ?? ""),
+    "Generation completion should be satisfiable from the leased worker target id.",
+  );
+  assert.ok(
+    conditionalProduces.includes(steps.get("report_training_domain_progress")?.requires?.[0] ?? ""),
+    "Training progress should be satisfiable from the leased worker target id.",
   );
 });
 
@@ -550,8 +627,24 @@ test("GET /api/training worker task resources declare request and response contr
           ],
         },
       },
-      produces: ["workerTaskId"],
-      responsePaths: { workerTaskId: "$.data.id" },
+      produces: ["workerTaskId", "workerTaskTargetType", "workerTaskTargetId"],
+      responsePaths: {
+        workerTaskId: "$.data.id",
+        workerTaskTargetType: "$.data.targetType",
+        workerTaskTargetId: "$.data.targetId",
+      },
+      conditionalProduces: [
+        {
+          when: { workerTaskTargetType: "generationRun" },
+          produces: ["generationTaskId"],
+          responsePaths: { generationTaskId: "$.data.targetId" },
+        },
+        {
+          when: { workerTaskTargetType: "trainingRun" },
+          produces: ["trainingRunId"],
+          responsePaths: { trainingRunId: "$.data.targetId" },
+        },
+      ],
     },
     "workerTasks.next should be directly executable from resources metadata without reading workflow prose.",
   );

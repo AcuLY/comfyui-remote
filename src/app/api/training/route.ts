@@ -2,6 +2,27 @@ import { ok } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
+const WORKER_TASK_LEASE_HANDOFF_METADATA = {
+  produces: ["workerTaskId", "workerTaskTargetType", "workerTaskTargetId"],
+  responsePaths: {
+    workerTaskId: "$.data.id",
+    workerTaskTargetType: "$.data.targetType",
+    workerTaskTargetId: "$.data.targetId",
+  },
+  conditionalProduces: [
+    {
+      when: { workerTaskTargetType: "generationRun" },
+      produces: ["generationTaskId"],
+      responsePaths: { generationTaskId: "$.data.targetId" },
+    },
+    {
+      when: { workerTaskTargetType: "trainingRun" },
+      produces: ["trainingRunId"],
+      responsePaths: { trainingRunId: "$.data.targetId" },
+    },
+  ],
+};
+
 const TRAINING_API_MANIFEST = {
   module: "training",
   version: 1,
@@ -102,8 +123,7 @@ const TRAINING_API_MANIFEST = {
               ],
             },
           },
-          produces: ["workerTaskId"],
-          responsePaths: { workerTaskId: "$.data.id" },
+          ...WORKER_TASK_LEASE_HANDOFF_METADATA,
         },
         {
           id: "heartbeat_worker_task",
@@ -805,8 +825,7 @@ const TRAINING_API_MANIFEST = {
             ],
           },
         },
-        produces: ["workerTaskId"],
-        responsePaths: { workerTaskId: "$.data.id" },
+        ...WORKER_TASK_LEASE_HANDOFF_METADATA,
       },
       heartbeat: {
         method: "POST",
