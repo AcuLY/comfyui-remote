@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 const testDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(testDir, "..");
 const layoutPath = resolve(repoRoot, "src/app/layout.tsx");
+const appShellPath = resolve(repoRoot, "src/components/app-shell.tsx");
 const bottomNavPath = resolve(repoRoot, "src/components/persistent-bottom-nav.tsx");
 const settingsPagePath = resolve(repoRoot, "src/app/settings/page.tsx");
 const shellPath = resolve(repoRoot, "src/components/design-demo-shell/app-shell.tsx");
@@ -21,6 +22,7 @@ const trainingRoutesPath = resolve(repoRoot, "src/features/training/routes.ts");
 const trainingThemePath = resolve(repoRoot, "src/features/training/theme.ts");
 
 const layoutSource = readFileSync(layoutPath, "utf8");
+const appShellSource = readFileSync(appShellPath, "utf8");
 const bottomNavSource = readFileSync(bottomNavPath, "utf8");
 const settingsPageSource = readFileSync(settingsPagePath, "utf8");
 const shellSource = readFileSync(shellPath, "utf8");
@@ -95,6 +97,24 @@ test("production bottom nav resolves module-owned resources from the current wor
   assert.match(bottomNavSource, /WORK_MODE_STORAGE_KEY/, "production bottom nav should read the persisted work mode.");
   assert.match(bottomNavSource, /WORK_MODE_CHANGE_EVENT/, "production bottom nav should update when settings changes the work mode.");
   assert.match(bottomNavSource, /aria-label=\{modeLabel\}/, "the mode indicator should expose the current mode without becoming a seventh nav link.");
+});
+
+test("production app shell hides generation task panel while LoRA training mode owns resource links", () => {
+  assert.match(
+    appShellSource,
+    /resolveWorkModeForPathname/,
+    "AppShell should resolve the current work mode instead of always exposing generation-only controls.",
+  );
+  assert.match(
+    appShellSource,
+    /workMode === "generation"/,
+    "The generation task panel should be gated to generation mode.",
+  );
+  assert.doesNotMatch(
+    appShellSource,
+    /<PersistentBottomNav \/>\s*<TaskPanelContainer \/>/,
+    "The generation task panel should not be rendered unconditionally on shared LoRA-mode pages.",
+  );
 });
 
 test("production settings page exposes the work mode switch", () => {

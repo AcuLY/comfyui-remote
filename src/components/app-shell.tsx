@@ -1,13 +1,47 @@
 "use client";
 
 import { Toaster } from "sonner";
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
+
 import { PersistentBottomNav } from "@/components/persistent-bottom-nav";
 import { SfwModeProvider } from "@/components/sfw-mode-provider";
 import { TaskPanelProvider, TaskPanelContainer } from "@/components/task-panel";
 import { NotificationCopyButtons } from "@/components/notification-copy-buttons";
+import {
+  resolveStoredWorkMode,
+  resolveWorkModeForPathname,
+  WORK_MODE_CHANGE_EVENT,
+  WORK_MODE_STORAGE_KEY,
+  type WorkMode,
+} from "@/lib/work-mode";
+
+function subscribeWorkMode(onStoreChange: () => void) {
+  window.addEventListener(WORK_MODE_CHANGE_EVENT, onStoreChange);
+  window.addEventListener("storage", onStoreChange);
+  return () => {
+    window.removeEventListener(WORK_MODE_CHANGE_EVENT, onStoreChange);
+    window.removeEventListener("storage", onStoreChange);
+  };
+}
+
+function getStoredWorkModeSnapshot() {
+  return resolveStoredWorkMode(window.localStorage.getItem(WORK_MODE_STORAGE_KEY));
+}
+
+function getStoredWorkModeServerSnapshot(): WorkMode {
+  return "generation";
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const storedWorkMode = useSyncExternalStore(
+    subscribeWorkMode,
+    getStoredWorkModeSnapshot,
+    getStoredWorkModeServerSnapshot,
+  );
+  const workMode = resolveWorkModeForPathname(pathname, storedWorkMode);
+
   return (
     <TaskPanelProvider>
       <SfwModeProvider />
@@ -15,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <PersistentBottomNav />
-      <TaskPanelContainer />
+      {workMode === "generation" ? <TaskPanelContainer /> : null}
       <NotificationCopyButtons />
       <Toaster
         theme="dark"
