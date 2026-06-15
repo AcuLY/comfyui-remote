@@ -1838,17 +1838,19 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   }
 
   function handleAddTemplateSection() {
+    const activeTemplateId = isProductionTrainingRoute && mode === "edit" ? template?.id : null;
+    if (activeTemplateId && isMutatingTemplateSections) return;
+
     const draft = createDraftTemplateSection(templateSections, "");
     setLocalTemplateSections((current) => [...current, draft]);
     setOrderedTemplateSectionIds((ids) => [...ids, draft.id]);
 
-    if (!isProductionTrainingRoute || mode !== "edit" || !template?.id) return;
-    if (isMutatingTemplateSections) return;
+    if (!activeTemplateId) return;
 
     setIsMutatingTemplateSections(true);
     void (async () => {
       try {
-        const response = await fetch(`/api/training/templates/${template.id}/sections`, {
+        const response = await fetch(`/api/training/templates/${activeTemplateId}/sections`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({}),
@@ -1880,6 +1882,9 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   }
 
   function handleCopyTemplateSection(section: LoraTrainingTemplateSection) {
+    const activeTemplateId = isProductionTrainingRoute && mode === "edit" ? template?.id : null;
+    if (activeTemplateId && isMutatingTemplateSections) return;
+
     const copyNumber = nextTemplateSectionCopyNumber(templateSections, section.id);
     const copy: LoraTrainingTemplateSection = {
       ...section,
@@ -1905,15 +1910,14 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
       ];
     });
 
-    if (!isProductionTrainingRoute || mode !== "edit" || !template?.id) return;
-    if (isMutatingTemplateSections) return;
+    if (!activeTemplateId) return;
 
     const previousSections = templateSections;
     const previousIds = orderedTemplateSectionIds;
     setIsMutatingTemplateSections(true);
     void (async () => {
       try {
-        const response = await fetch(`/api/training/templates/${template.id}/sections`, {
+        const response = await fetch(`/api/training/templates/${activeTemplateId}/sections`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
@@ -1947,18 +1951,20 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   }
 
   function handleDeleteTemplateSection(sectionId: string) {
+    const activeTemplateId = isProductionTrainingRoute && mode === "edit" ? template?.id : null;
+    if (activeTemplateId && isMutatingTemplateSections) return;
+
     setLocalTemplateSections((current) => current.filter((section) => section.id !== sectionId));
     setOrderedTemplateSectionIds((ids) => ids.filter((id) => id !== sectionId));
 
-    if (!isProductionTrainingRoute || mode !== "edit" || !template?.id) return;
-    if (isMutatingTemplateSections) return;
+    if (!activeTemplateId) return;
 
     const previousSections = templateSections;
     const previousIds = orderedTemplateSectionIds;
     setIsMutatingTemplateSections(true);
     void (async () => {
       try {
-        const response = await fetch(`/api/training/templates/${template.id}/sections/${sectionId}`, {
+        const response = await fetch(`/api/training/templates/${activeTemplateId}/sections/${sectionId}`, {
           method: "DELETE",
         });
         const payload = await response.json().catch(() => null);
@@ -1988,18 +1994,20 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   }
 
   function handleReorderTemplateSections(nextIds: string[]) {
+    const activeTemplateId = isProductionTrainingRoute && mode === "edit" ? template?.id : null;
+    if (activeTemplateId && isMutatingTemplateSections) return;
+
     setOrderedTemplateSectionIds(nextIds);
     setLocalTemplateSections((current) => orderTemplateSectionsByIds(current, nextIds));
 
-    if (!isProductionTrainingRoute || mode !== "edit" || !template?.id) return;
-    if (isMutatingTemplateSections) return;
+    if (!activeTemplateId) return;
 
     const previousSections = templateSections;
     const previousIds = orderedTemplateSectionIds;
     setIsMutatingTemplateSections(true);
     void (async () => {
       try {
-        const response = await fetch(`/api/training/templates/${template.id}/sections/reorder`, {
+        const response = await fetch(`/api/training/templates/${activeTemplateId}/sections/reorder`, {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({

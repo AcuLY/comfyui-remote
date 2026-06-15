@@ -10,6 +10,19 @@ const pageSource = readFileSync(resolve(featureUiDir, "training-resource-pages.t
 const cssSource = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
 const legacyPageSource = readFileSync(resolve(testDir, "../src/app/design-demos/features/lora-training/training-resource-pages.tsx"), "utf8");
 
+function nestedComponentFunctionSource(source: string, functionName: string) {
+  const start = source.indexOf(`function ${functionName}`);
+  assert.notEqual(start, -1, `${functionName} should exist`);
+
+  const endCandidates = [
+    source.indexOf("\n  function ", start + 1),
+    source.indexOf("\n  if (mode", start + 1),
+    source.indexOf("\n  return (", start + 1),
+  ].filter((index) => index !== -1);
+  assert.ok(endCandidates.length > 0, `${functionName} should have a bounded source range`);
+  return source.slice(start, Math.min(...endCandidates));
+}
+
 test("training resource page implementation is owned by the training feature layer", () => {
   assert.match(
     legacyPageSource,
@@ -665,13 +678,45 @@ test("training template form section actions persist through formal HTTP APIs on
 
   assert.match(formSource, /usePathname/, "template form should detect whether it is running under production \\/training routes");
   assert.match(formSource, /mode === "edit"/, "template section mutations should distinguish persisted edit routes from new-template drafts");
-  assert.match(formSource, /fetch\(`\/api\/training\/templates\/\$\{template\.id\}\/sections`/, "add and copy template section actions should call the formal template section collection API");
+  assert.match(formSource, /activeTemplateId = isProductionTrainingRoute && mode === "edit" \? template\?\.id : null/, "template section mutations should resolve the persisted template id before optimistic edits");
+  assert.match(formSource, /fetch\(`\/api\/training\/templates\/\$\{activeTemplateId\}\/sections`/, "add and copy template section actions should call the formal template section collection API");
   assert.match(formSource, /sourceSectionId:\s*section\.id/, "template section copy should send the copied source section id");
-  assert.match(formSource, /fetch\(`\/api\/training\/templates\/\$\{template\.id\}\/sections\/\$\{sectionId\}`/, "template section delete should call the formal template section detail API");
-  assert.match(formSource, /fetch\(`\/api\/training\/templates\/\$\{template\.id\}\/sections\/reorder`/, "template section reorder should call the formal template section reorder API");
+  assert.match(formSource, /fetch\(`\/api\/training\/templates\/\$\{activeTemplateId\}\/sections\/\$\{sectionId\}`/, "template section delete should call the formal template section detail API");
+  assert.match(formSource, /fetch\(`\/api\/training\/templates\/\$\{activeTemplateId\}\/sections\/reorder`/, "template section reorder should call the formal template section reorder API");
   assert.match(formSource, /method:\s*"DELETE"/, "template section delete should use DELETE");
   assert.match(formSource, /orderedSectionIds:\s*nextIds/, "template section reorder should submit the updated ordered ids");
   assert.match(formSource, /模板小节(创建|复制|删除|排序)失败/, "template section mutations should surface API failures through the shared feedback system");
+});
+
+test("training template form section mutation handlers guard concurrent actions before optimistic local state", () => {
+  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
+  const sectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
+  assert.notEqual(formStart, -1);
+  assert.notEqual(sectionStart, -1);
+
+  const formSource = pageSource.slice(formStart, sectionStart);
+
+  for (const functionName of [
+    "handleAddTemplateSection",
+    "handleCopyTemplateSection",
+    "handleDeleteTemplateSection",
+    "handleReorderTemplateSections",
+  ]) {
+    const handler = nestedComponentFunctionSource(formSource, functionName);
+    const guardMatch = handler.match(/if\s*\([^)]*isMutatingTemplateSections[^)]*\)\s*return;/);
+    const guardIndex = guardMatch?.index ?? -1;
+    const localMutationIndexes = [
+      handler.indexOf("setLocalTemplateSections("),
+      handler.indexOf("setOrderedTemplateSectionIds("),
+    ].filter((index) => index !== -1);
+
+    assert.notEqual(guardIndex, -1, `${functionName} should guard against concurrent template section mutations`);
+    assert.ok(localMutationIndexes.length > 0, `${functionName} should still update local optimistic state after it is allowed to run`);
+    assert.ok(
+      guardIndex < Math.min(...localMutationIndexes),
+      `${functionName} should not mutate local template section state while a production HTTP operation is in flight`,
+    );
+  }
 });
 
 test("training template section copy inserts the duplicate directly after the source section", () => {
