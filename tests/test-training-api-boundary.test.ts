@@ -325,6 +325,43 @@ test("preset resource lists stay scoped to their owning work mode except shared 
   assert.equal(trainingHrefs.includes("/settings"), true, "Settings remain a shared resource.");
 });
 
+test("shared model resources are not re-exposed as training-owned resources", () => {
+  assert.equal(
+    existsSync(join(process.cwd(), "src/app/api/training/models/route.ts")),
+    false,
+    "Models are shared resources; the training API namespace should not own a duplicate models route.",
+  );
+
+  const trainingManifestSource = readFileSync(join(process.cwd(), "src/app/api/training/route.ts"), "utf8");
+  assert.doesNotMatch(
+    trainingManifestSource,
+    /\/api\/training\/models/,
+    "Training manifest should advertise the shared model API instead of a training-owned model API.",
+  );
+  assert.match(
+    trainingManifestSource,
+    /\/api\/models\?kind=checkpoint/,
+    "Training manifest should still point agents to the shared checkpoint model list.",
+  );
+  assert.match(
+    trainingManifestSource,
+    /\/api\/models\?kind=lora/,
+    "Training manifest should still point agents to the shared LoRA model list.",
+  );
+
+  const projectPagesSource = readFileSync(join(process.cwd(), "src/features/training/ui/training-project-pages.tsx"), "utf8");
+  assert.doesNotMatch(
+    projectPagesSource,
+    /\/api\/training\/models/,
+    "Training project forms should load model options through the shared model API.",
+  );
+  assert.match(
+    projectPagesSource,
+    /fetch\("\/api\/models\?kind=checkpoint"\)/,
+    "Training project forms should use the shared checkpoint model API.",
+  );
+});
+
 test("generation preset import and replacement helpers keep training presets out of ordinary reads", () => {
   const promptBlockSource = readFileSync(join(process.cwd(), "src/lib/actions/prompt-block.ts"), "utf8");
   assert.match(

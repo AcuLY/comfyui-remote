@@ -1018,7 +1018,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
 
     void (async () => {
       try {
-        const response = await fetch("/api/training/models?kind=checkpoint");
+        const response = await fetch("/api/models?kind=checkpoint");
         const payload = await response.json().catch(() => null);
         if (!response.ok || !payload?.ok || !Array.isArray(payload.data)) return;
 

@@ -10,6 +10,7 @@ const TRAINING_MANAGED_RUNS_PATH = join(process.cwd(), "data", "training-managed
 const TRAINING_PROJECTS_PATH = join(process.cwd(), "data", "training-projects.json");
 const TRAINING_TEMPLATE_ORDER_PATH = join(process.cwd(), "data", "training-template-order.json");
 const TRAINING_ROUTE_METHODS = new Set(["GET", "POST", "PATCH", "DELETE", "PUT"]);
+const TRAINING_API_OPERATION_PREFIX = " /api/training";
 const UNADVERTISED_TRAINING_COMPATIBILITY_ALIAS_PATHS = new Set([
   "/api/training/projects/:projectId/character-images",
   "/api/training/character-images/:imageId",
@@ -249,7 +250,7 @@ test("GET /api/training exposes a machine-readable workflow manifest", async () 
   assert.equal(response.status, 200);
   assert.equal(payload.ok, true);
   assert.equal(payload.data.module, "training");
-  assert.equal(payload.data.entrypoints.models, "/api/training/models?kind=checkpoint");
+  assert.equal(payload.data.entrypoints.models, "/api/models?kind=checkpoint");
   assert.equal(payload.data.entrypoints.projects, "/api/training/projects");
   assert.equal(payload.data.entrypoints.runs, "/api/training/runs");
   assert.ok(Array.isArray(payload.data.workflows));
@@ -265,7 +266,7 @@ test("GET /api/training exposes a machine-readable workflow manifest", async () 
   );
   assert.equal(
     payload.data.resources.models.checkpoints.path,
-    "/api/training/models?kind=checkpoint",
+    "/api/models?kind=checkpoint",
   );
 });
 
@@ -1532,7 +1533,9 @@ test("GET /api/training manifest only advertises implemented training HTTP opera
   assert.equal(payload.ok, true);
 
   const routeOperations = await listRouteOperations();
-  const manifestOperations = [...collectManifestOperations(payload.data)].sort();
+  const manifestOperations = [...collectManifestOperations(payload.data)]
+    .filter((operation) => operation.includes(TRAINING_API_OPERATION_PREFIX))
+    .sort();
   const missingRoutes = manifestOperations.filter((manifestOperation) => !routeOperations.some((routeOperation) =>
     operationMatchesPattern(routeOperation, manifestOperation)
   ));
@@ -1544,16 +1547,16 @@ test("GET /api/training manifest only advertises implemented training HTTP opera
   );
 });
 
-test("GET /api/training/models lists checkpoint or LoRA assets for training workflows", async () => {
-  const { GET } = await import("../src/app/api/training/models/route");
+test("GET /api/models lists checkpoint or LoRA assets for training workflows", async () => {
+  const { GET } = await import("../src/app/api/models/route");
 
-  const checkpointResponse = await GET(new NextRequest("http://localhost/api/training/models?kind=checkpoint"));
+  const checkpointResponse = await GET(new NextRequest("http://localhost/api/models?kind=checkpoint"));
   const checkpointPayload = await checkpointResponse.json();
   assert.equal(checkpointResponse.status, 200);
   assert.equal(checkpointPayload.ok, true);
   assert.ok(Array.isArray(checkpointPayload.data));
 
-  const loraResponse = await GET(new NextRequest("http://localhost/api/training/models?kind=lora"));
+  const loraResponse = await GET(new NextRequest("http://localhost/api/models?kind=lora"));
   const loraPayload = await loraResponse.json();
   assert.equal(loraResponse.status, 200);
   assert.equal(loraPayload.ok, true);

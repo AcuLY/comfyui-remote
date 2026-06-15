@@ -34,7 +34,7 @@ const TRAINING_API_MANIFEST = {
   entrypoints: {
     projects: "/api/training/projects",
     runs: "/api/training/runs",
-    models: "/api/training/models?kind=checkpoint",
+    models: "/api/models?kind=checkpoint",
     presets: "/api/training/presets",
     templates: "/api/training/templates",
     scheduler: "/api/training/scheduler/status",
@@ -670,8 +670,8 @@ const TRAINING_API_MANIFEST = {
       },
     },
     models: {
-      checkpoints: { method: "GET", path: "/api/training/models?kind=checkpoint" },
-      loras: { method: "GET", path: "/api/training/models?kind=lora" },
+      checkpoints: { method: "GET", path: "/api/models?kind=checkpoint" },
+      loras: { method: "GET", path: "/api/models?kind=lora" },
     },
     runs: {
       list: { method: "GET", path: "/api/training/runs" },
