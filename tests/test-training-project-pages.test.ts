@@ -1031,11 +1031,20 @@ test("training project create page posts through the formal HTTP API on producti
 
   assert.match(formSource, /useRouter/, "project creation should be able to navigate to the created training project on production routes");
   assert.match(formSource, /usePathname/, "project creation should detect whether it is running under production \\/training routes");
-  assert.match(formSource, /fetch\("\/api\/training\/projects"/, "production project creation should call the formal training projects API");
+  assert.match(
+    formSource,
+    /fetch\(`\/api\/training\/templates\/\$\{sourceTemplate\.id\}\/projects`/,
+    "production project creation from a template should call the template-owned create-project API",
+  );
+  assert.doesNotMatch(
+    formSource,
+    /fetch\("\/api\/training\/projects"/,
+    "production project creation from a template should not bypass the template-owned create-project API",
+  );
   assert.match(formSource, /method:\s*"POST"/, "production project creation should create projects through POST");
   assert.match(formSource, /title:\s*projectForm\.title\.trim\(\)/, "production project creation should submit the product title");
-  assert.match(formSource, /templateId:\s*sourceTemplate\.id/, "production project creation should submit the selected template id in product payload");
-  assert.match(formSource, /trainingTemplateId:\s*sourceTemplate\.id/, "production project creation should pass the selected training template id");
+  assert.doesNotMatch(formSource, /templateId:\s*sourceTemplate\.id/, "template id should be carried by the endpoint path, not duplicated in the body");
+  assert.doesNotMatch(formSource, /trainingTemplateId:\s*sourceTemplate\.id/, "training template id should be carried by the endpoint path, not duplicated in the body");
   assert.match(formSource, /checkpointRelativePath/, "production project creation should send a checkpoint path instead of a demo-only model label");
   assert.match(formSource, /fetch\("\/api\/models\?kind=checkpoint"\)/, "production project creation should discover checkpoint options through the shared models API");
   assert.match(formSource, /availableCheckpointModels/, "production project creation should keep a dedicated checkpoint option list");

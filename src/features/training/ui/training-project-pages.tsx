@@ -1285,7 +1285,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
     setIsCreatingProject(true);
     try {
       const persistedSelectedReferenceIds = [...selectedReferenceIds].filter((referenceId) => !stagedProjectReferenceUploadIds.has(referenceId));
-      const response = await fetch("/api/training/projects", {
+      const response = await fetch(`/api/training/templates/${sourceTemplate.id}/projects`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -1293,7 +1293,6 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
           characterName: projectForm.title.trim(),
           projectName: projectForm.title.trim(),
           triggerToken: buildTrainingProjectTriggerToken(projectForm.title),
-          templateId: sourceTemplate.id,
           checkpointRelativePath: checkpointAsset.relativePath,
           baseModel: projectForm.baseModel,
           captionStrategy: projectForm.captionStrategy,
@@ -1307,7 +1306,6 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
             autoGenerateSamples: trainingDefaults.autoGenerateSamples,
             autoFreezeDataset: trainingDefaults.autoFreezeDataset,
           },
-          trainingTemplateId: sourceTemplate.id,
         }),
       });
       const payload = await response.json().catch(() => null);

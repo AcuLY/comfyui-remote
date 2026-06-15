@@ -4141,6 +4141,24 @@ test("newly created managed training template can immediately create a project t
           checkpointRelativePath: "models/checkpoints/mock.safetensors",
           usagePrompt: "即时模板建项目使用提示词",
           detailPrompt: "即时模板建项目细节描述",
+          sections: [
+            {
+              id: "instant-project-template-section",
+              title: "前端调整后的小节种子",
+              enabled: false,
+              blockCount: 1,
+              blocks: [
+                {
+                  id: "instant-project-template-block",
+                  source: "本地",
+                  title: "前端调整后的场景块",
+                  text: "前端调整后的场景描述",
+                },
+              ],
+              resolvedScene: "前端调整后的场景描述",
+              scenePreview: "前端调整后的场景描述",
+            },
+          ],
         }),
       }),
       { params: Promise.resolve({ templateId }) },
@@ -4150,7 +4168,8 @@ test("newly created managed training template can immediately create a project t
     assert.equal(createProjectPayload.ok, true);
     assert.equal(createProjectPayload.data.title, projectTitle);
     assert.equal(createProjectPayload.data.sections.length, 1);
-    assert.equal(createProjectPayload.data.sections[0].title, "即时模板小节");
+    assert.equal(createProjectPayload.data.sections[0].title, "前端调整后的小节种子");
+    assert.equal(createProjectPayload.data.sections[0].enabled, false);
   });
 });
 

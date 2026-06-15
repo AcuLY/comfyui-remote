@@ -13,6 +13,23 @@ import {
   mapTrainingTemplateError,
 } from "@/server/services/training/template-service";
 
+const templateProjectSectionBlockSchema = z.object({
+  id: z.string().trim().min(1).optional(),
+  source: z.enum(["预制", "本地"]).optional(),
+  title: z.string().trim().min(1).max(160),
+  text: z.string().trim().min(1).max(20_000),
+}).strict();
+
+const templateProjectSectionOverrideSchema = z.object({
+  id: z.string().trim().min(1),
+  title: z.string().trim().min(1).max(160),
+  enabled: z.boolean(),
+  blockCount: z.coerce.number().int().min(0).optional(),
+  blocks: z.array(templateProjectSectionBlockSchema).default([]),
+  resolvedScene: z.string().trim().min(1).max(20_000),
+  scenePreview: z.string().trim().min(1).max(20_000),
+}).strict();
+
 const createProjectFromTemplateSchema = z.object({
   title: z.string().trim().min(1).max(160).optional(),
   name: z.string().trim().min(1).max(160).optional(),
@@ -27,6 +44,7 @@ const createProjectFromTemplateSchema = z.object({
   perSectionImageCount: z.string().trim().max(32).optional(),
   trainingSteps: z.string().trim().max(32).optional(),
   selectedReferenceIds: z.array(z.string().trim().min(1)).optional().default([]),
+  sections: z.array(templateProjectSectionOverrideSchema).optional(),
   trainingDefaults: z.object({
     autoGenerateSamples: z.boolean().optional().default(true),
     autoFreezeDataset: z.boolean().optional().default(true),
@@ -156,7 +174,7 @@ export async function createTrainingProjectFromTemplate(templateId: string, inpu
       perSectionImageCount: parsed.data.perSectionImageCount,
       trainingSteps: parsed.data.trainingSteps,
       selectedReferenceIds: parsed.data.selectedReferenceIds,
-      sections: mapTemplateSectionsToProjectSections(template),
+      sections: parsed.data.sections?.length ? parsed.data.sections : mapTemplateSectionsToProjectSections(template),
       trainingDefaults: parsed.data.trainingDefaults,
     });
   } catch (error) {
