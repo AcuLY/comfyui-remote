@@ -191,6 +191,16 @@ test("training worker task routes go through the Training worker boundary", () =
     /@\/server\/services\/character-lora-training/,
     "Training worker task boundary should not import legacy character-lora-training services directly",
   );
+  assert.doesNotMatch(
+    taskApiSource,
+    /@\/server\/character-lora-training\/contracts/,
+    "Training worker task boundary should use Training-owned DTO schemas instead of legacy CharacterLora contracts.",
+  );
+  assert.match(
+    taskApiSource,
+    /@\/lib\/training\/schemas/,
+    "Training worker task boundary should consume worker task request schemas from src/lib/training/schemas.ts.",
+  );
   assert.match(taskApiSource, /export async function getTrainingWorkerQueueStatus/);
   assert.match(taskApiSource, /export async function leaseNextTrainingWorkerTask/);
   assert.match(taskApiSource, /export async function heartbeatTrainingWorkerTask/);
@@ -218,6 +228,36 @@ test("training worker task routes go through the Training worker boundary", () =
   assert.ok(
     taskLifecycleRoutes.every(Boolean),
     "Training worker task lifecycle routes should import the Training worker task API boundary",
+  );
+});
+
+test("training worker task DTO schemas live under src/lib/training", async () => {
+  const schemasSource = readFileSync(join(process.cwd(), "src/lib/training/schemas.ts"), "utf8");
+  assert.match(schemasSource, /trainingWorkerTaskLeaseRequestSchema/);
+  assert.match(schemasSource, /trainingWorkerTaskHeartbeatRequestSchema/);
+  assert.match(schemasSource, /trainingWorkerTaskCompleteRequestSchema/);
+  assert.match(schemasSource, /trainingWorkerTaskFailRequestSchema/);
+
+  const { trainingWorkerTaskLeaseRequestSchema } = await import("../src/lib/training/schemas");
+  const parsed = trainingWorkerTaskLeaseRequestSchema.parse({
+    leaseOwner: "agent",
+    targetId: "generation-run-1",
+    targetType: "generationRun",
+    workerType: "image_generation",
+  });
+
+  assert.deepEqual(parsed, {
+    leaseOwner: "agent",
+    targetId: "generation-run-1",
+    targetType: "generationRun",
+    workerType: "image_generation",
+  });
+  assert.throws(
+    () => trainingWorkerTaskLeaseRequestSchema.parse({
+      targetType: "generationRun",
+      workerType: "image_generation",
+    }),
+    /targetType and targetId must be provided together/,
   );
 });
 

@@ -351,9 +351,6 @@ test("GET /api/training worker execution workflow declares machine-actionable ta
           "image_generation",
           "dataset_freeze",
           "training",
-          "benchmark",
-          "promotion",
-          "prompt_card_draft",
         ],
       },
     },
@@ -621,9 +618,6 @@ test("GET /api/training worker task resources declare request and response contr
             "image_generation",
             "dataset_freeze",
             "training",
-            "benchmark",
-            "promotion",
-            "prompt_card_draft",
           ],
         },
       },
@@ -688,8 +682,8 @@ test("GET /api/training worker task resources declare request and response contr
 });
 
 test("worker task lease contract accepts target filters for exact agent leases", async () => {
-  const { characterLoraWorkerTaskLeaseRequestSchema } = await import("../src/server/character-lora-training/contracts");
-  const parsed = characterLoraWorkerTaskLeaseRequestSchema.parse({
+  const { trainingWorkerTaskLeaseRequestSchema } = await import("../src/lib/training/schemas");
+  const parsed = trainingWorkerTaskLeaseRequestSchema.parse({
     workerType: "image_generation",
     leaseOwner: "agent",
     leaseDurationSeconds: 120,
@@ -4595,20 +4589,20 @@ test("production worker task lease route filters queued tasks by target query pa
       data: [
         {
           jobId: job.id,
-          workerType: "prompt_card_draft",
+          workerType: "dataset_freeze",
           targetType: "targetedLeaseTest",
           targetId: firstTargetId,
           status: "queued",
-          payload: { taskType: "prompt_card_draft", marker: "first" },
+          payload: { taskType: "dataset_freeze", marker: "first" },
           createdAt: new Date("2026-01-01T00:00:00.000Z"),
         },
         {
           jobId: job.id,
-          workerType: "prompt_card_draft",
+          workerType: "dataset_freeze",
           targetType: "targetedLeaseTest",
           targetId: secondTargetId,
           status: "queued",
-          payload: { taskType: "prompt_card_draft", marker: "second" },
+          payload: { taskType: "dataset_freeze", marker: "second" },
           createdAt: new Date("2026-01-01T00:00:01.000Z"),
         },
       ],
@@ -4616,7 +4610,7 @@ test("production worker task lease route filters queued tasks by target query pa
 
     const leaseResponse = await workerTaskNextRoute.GET(
       new Request(
-        `http://localhost/api/training/worker/tasks/next?workerType=prompt_card_draft&leaseOwner=targeted-route-test&targetType=targetedLeaseTest&targetId=${secondTargetId}`,
+        `http://localhost/api/training/worker/tasks/next?workerType=dataset_freeze&leaseOwner=targeted-route-test&targetType=targetedLeaseTest&targetId=${secondTargetId}`,
       ),
     );
     const leasePayload = await leaseResponse.json();

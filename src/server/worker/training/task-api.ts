@@ -7,11 +7,11 @@ import {
   mapLegacyTrainingGenerationError,
 } from "@/server/services/training/legacy-compat-service";
 import {
-  characterLoraWorkerTaskCompleteRequestSchema,
-  characterLoraWorkerTaskFailRequestSchema,
-  characterLoraWorkerTaskHeartbeatRequestSchema,
-  characterLoraWorkerTaskLeaseRequestSchema,
-} from "@/server/character-lora-training/contracts";
+  trainingWorkerTaskCompleteRequestSchema,
+  trainingWorkerTaskFailRequestSchema,
+  trainingWorkerTaskHeartbeatRequestSchema,
+  trainingWorkerTaskLeaseRequestSchema,
+} from "@/lib/training/schemas";
 import { listManagedTrainingRuns } from "@/server/services/training/project-service";
 import type { LoraTrainingRun } from "@/features/training/types";
 
@@ -94,7 +94,7 @@ async function findManagedRunForWorkerTask(
 }
 
 async function leaseNextManagedTrainingWorkerTask(input: unknown) {
-  const parsed = characterLoraWorkerTaskLeaseRequestSchema.safeParse(input);
+  const parsed = trainingWorkerTaskLeaseRequestSchema.safeParse(input);
   if (!parsed.success) return null;
 
   const runs = await listManagedTrainingRuns();
@@ -117,7 +117,7 @@ async function leaseNextManagedTrainingWorkerTask(input: unknown) {
 }
 
 async function heartbeatManagedTrainingWorkerTask(taskId: string, input: unknown) {
-  const parsed = characterLoraWorkerTaskHeartbeatRequestSchema.safeParse(input);
+  const parsed = trainingWorkerTaskHeartbeatRequestSchema.safeParse(input);
   if (!parsed.success) return null;
 
   const run = await findManagedRunForWorkerTask(taskId);
@@ -130,7 +130,7 @@ async function heartbeatManagedTrainingWorkerTask(taskId: string, input: unknown
 }
 
 async function completeManagedTrainingWorkerTask(taskId: string, input: unknown) {
-  const parsed = characterLoraWorkerTaskCompleteRequestSchema.safeParse(input);
+  const parsed = trainingWorkerTaskCompleteRequestSchema.safeParse(input);
   if (!parsed.success) return null;
 
   const run = await findManagedRunForWorkerTask(taskId, null);
@@ -144,7 +144,7 @@ async function completeManagedTrainingWorkerTask(taskId: string, input: unknown)
 }
 
 async function failManagedTrainingWorkerTask(taskId: string, input: unknown) {
-  const parsed = characterLoraWorkerTaskFailRequestSchema.safeParse(input);
+  const parsed = trainingWorkerTaskFailRequestSchema.safeParse(input);
   if (!parsed.success) return null;
 
   const run = await findManagedRunForWorkerTask(taskId, null);
