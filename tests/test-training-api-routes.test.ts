@@ -548,6 +548,79 @@ test("GET /api/training full workflow declares response paths for every produced
   );
 });
 
+test("GET /api/training full workflow declares request body bindings for non-path handoffs", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  ) as {
+    steps: Array<{
+      id?: string;
+      pathParams?: Record<string, string>;
+      requestBody?: {
+        bodyParams?: Record<string, string>;
+        contentType?: string;
+        optionalFields?: string[];
+        requiredFields?: string[];
+      };
+      requires?: string[];
+    }>;
+  } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(fullWorkflow, "agent manifest should include the full training workflow");
+
+  const steps = new Map(fullWorkflow.steps.map((step) => [step.id, step]));
+
+  assert.deepEqual(
+    steps.get("create_generation_task")?.requestBody,
+    {
+      bodyParams: { sectionId: "sectionId" },
+      contentType: "application/json",
+      optionalFields: ["taskType", "supplementalPrompt"],
+      requiredFields: ["sectionId"],
+    },
+    "The generation draft route needs sectionId in the JSON body, not just in workflow memory.",
+  );
+  assert.deepEqual(
+    steps.get("attach_generation_inputs")?.requires,
+    ["taskId", "imageId"],
+    "Attaching generation inputs should consume the uploaded reference image handoff.",
+  );
+  assert.deepEqual(
+    steps.get("attach_generation_inputs")?.requestBody,
+    {
+      bodyParams: { referenceId: "imageId" },
+      contentType: "application/json",
+      requiredFields: ["referenceId"],
+    },
+    "The generation input route needs the uploaded image id as body.referenceId.",
+  );
+  assert.deepEqual(
+    steps.get("create_training_run")?.requestBody,
+    {
+      bodyParams: { revisionId: "revisionId" },
+      contentType: "application/json",
+      optionalFields: ["config"],
+      requiredFields: ["revisionId"],
+    },
+    "Starting training should bind the frozen dataset revision into the JSON body.",
+  );
+
+  const bodyParamsWithoutRequiredHandoff = fullWorkflow.steps.flatMap((step) =>
+    Object.entries(step.requestBody?.bodyParams ?? {})
+      .filter(([, handoffId]) => !step.requires?.includes(handoffId))
+      .map(([bodyField, handoffId]) => `${step.id ?? "unknown"}:${bodyField}->${handoffId}`));
+
+  assert.deepEqual(
+    bodyParamsWithoutRequiredHandoff,
+    [],
+    "Every request body handoff binding should reference a handoff id listed in the same step's requires array.",
+  );
+});
+
 test("training route operation inventory includes re-exported route handlers", async () => {
   const routeOperations = await listRouteOperations();
 
