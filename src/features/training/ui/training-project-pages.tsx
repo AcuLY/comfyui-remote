@@ -464,12 +464,14 @@ function buildLocalDatasetRevision(projectId: string, results: LoraTrainingImage
 }
 
 function TrainingResultGrid({
+  onOpenCaptionRevisionHistory,
   onReviewStatusChange,
   onToggleSelected,
   results,
   selectedIds,
   title = "训练结果",
 }: {
+  onOpenCaptionRevisionHistory?: (resultId: string) => void;
   onReviewStatusChange?: (resultId: string, status: LoraTrainingImageResult["reviewStatus"]) => void;
   onToggleSelected?: (resultId: string) => void;
   results: LoraTrainingImageResult[];
@@ -528,6 +530,18 @@ function TrainingResultGrid({
                 {onToggleSelected ? null : <StatusBadge status={reviewStatusTone(result.reviewStatus)} label={reviewStatusLabel(result.reviewStatus)} />}
               </span>
               <p className={s.trainingResultCaption}>{result.caption}</p>
+              {onOpenCaptionRevisionHistory ? (
+                <div className={s.trainingResultCaptionActions}>
+                  <Button
+                    size="sm"
+                    tone="subtle"
+                    icon={FileText}
+                    onClick={() => onOpenCaptionRevisionHistory(result.id)}
+                  >
+                    查看说明文本历史
+                  </Button>
+                </div>
+              ) : null}
             </article>
           );
         })}
@@ -3787,6 +3801,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
 
 export function LoraTrainingProjectResultsPage({ data, projectId }: { data: TrainingAppData; projectId?: string }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { pushToast } = useDemoFeedback();
   const project = findProject(data, projectId);
   const [resultInteractionState, setResultInteractionState] = useState(() => ({
@@ -3798,7 +3813,19 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Trai
     projectId: project?.id ?? null,
     results: project?.resultPool ?? [],
   }));
+  const [captionRevisionResultId, setCaptionRevisionResultId] = useState<string | null>(null);
+  const [captionRevisionState, setCaptionRevisionState] = useState<{
+    projectId: string | null;
+    resultId: string | null;
+    revisions: TrainingTextRevisionItem[];
+  }>(() => ({
+    projectId: project?.id ?? null,
+    resultId: null,
+    revisions: [],
+  }));
   const [isReviewingResults, setIsReviewingResults] = useState(false);
+  const [isLoadingCaptionRevisions, setIsLoadingCaptionRevisions] = useState(false);
+  const [restoringCaptionRevisionId, setRestoringCaptionRevisionId] = useState<string | null>(null);
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const localResults = resultState.projectId === project?.id ? resultState.results : project?.resultPool ?? [];
   if (!project) return <EmptyPage title="没有训练结果池数据" />;
@@ -3815,6 +3842,12 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Trai
   const selectedVisibleResultIds = new Set([...selectedResultIds].filter((resultId) => visibleResultIds.has(resultId)));
   const selectedVisibleCount = selectedVisibleResultIds.size;
   const allVisibleResultsSelected = results.length > 0 && selectedVisibleCount === results.length;
+  const selectedCaptionRevisionResult = captionRevisionResultId
+    ? localResults.find((result) => result.id === captionRevisionResultId) ?? null
+    : null;
+  const visibleCaptionRevisions = captionRevisionState.projectId === activeProject.id && captionRevisionState.resultId === captionRevisionResultId
+    ? captionRevisionState.revisions
+    : [];
 
   function updateLocalResults(updater: (current: LoraTrainingImageResult[]) => LoraTrainingImageResult[]) {
     setLocalResults((current) => ({
@@ -3928,6 +3961,99 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Trai
     void persistReviewedResults([resultId], reviewStatus);
   }
 
+  async function handleOpenCaptionRevisionHistory(resultId: string) {
+    setCaptionRevisionResultId(resultId);
+
+    if (!isProductionTrainingRoute) {
+      setCaptionRevisionState({ projectId: activeProject.id, resultId, revisions: [] });
+      pushToast({
+        tone: "info",
+        title: "说明文本历史",
+        detail: "原型模式不会写入服务端说明文本历史。",
+      });
+      return;
+    }
+
+    if (isLoadingCaptionRevisions) return;
+
+    setIsLoadingCaptionRevisions(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("entityType", "image_result");
+      params.set("entityId", resultId);
+      params.set("fieldName", "captionDraft");
+      const response = await fetch(`/api/training/projects/${activeProject.id}/text-revisions?${params.toString()}`);
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !Array.isArray(payload.data)) {
+        pushToast({
+          tone: "error",
+          title: "说明文本历史加载失败",
+          detail: payload?.error?.message ?? "说明文本历史请求失败",
+        });
+        return;
+      }
+
+      setCaptionRevisionState({
+        projectId: activeProject.id,
+        resultId,
+        revisions: payload.data.filter(isTrainingTextRevisionItem),
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "说明文本历史加载失败",
+        detail: error instanceof Error ? error.message : "说明文本历史请求失败",
+      });
+    } finally {
+      setIsLoadingCaptionRevisions(false);
+    }
+  }
+
+  async function handleRestoreCaptionRevision(revisionId: string) {
+    if (!isProductionTrainingRoute || restoringCaptionRevisionId) return;
+
+    setRestoringCaptionRevisionId(revisionId);
+    try {
+      const response = await fetch(`/api/training/text-revisions/${revisionId}/restore`, {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "恢复说明文本失败",
+          detail: payload?.error?.message ?? "说明文本恢复请求失败",
+        });
+        return;
+      }
+
+      const restoredResultId = payload.data?.entityId;
+      const restoredValue = payload.data?.textValue;
+      if (typeof restoredResultId === "string" && typeof restoredValue === "string") {
+        updateLocalResults((current) => current.map((result) =>
+          result.id === restoredResultId ? { ...result, caption: restoredValue } : result,
+        ));
+      }
+
+      pushToast({
+        tone: "success",
+        title: "说明文本已恢复",
+        detail: selectedCaptionRevisionResult?.sourceLabel ?? activeProject.title,
+      });
+      router.refresh();
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "恢复说明文本失败",
+        detail: error instanceof Error ? error.message : "说明文本恢复请求失败",
+      });
+    } finally {
+      setRestoringCaptionRevisionId(null);
+    }
+  }
+
   function toggleResultSelection(resultId: string) {
     updateResultSelection((current) => {
       const next = new Set(current);
@@ -3986,6 +4112,7 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Trai
             />
           ) : null}
           <TrainingResultGrid
+            onOpenCaptionRevisionHistory={handleOpenCaptionRevisionHistory}
             onReviewStatusChange={handleReviewResult}
             onToggleSelected={toggleResultSelection}
             results={results}
@@ -3994,6 +4121,38 @@ export function LoraTrainingProjectResultsPage({ data, projectId }: { data: Trai
           />
         </div>
       </Panel>
+      {captionRevisionResultId ? (
+        <Panel
+          title="说明文本历史"
+          subtitle={`${selectedCaptionRevisionResult?.sourceLabel ?? "训练结果"} · 可恢复到任一 caption 版本`}
+        >
+          <div className={s.textRevisionPanel}>
+            {isLoadingCaptionRevisions ? (
+              <p className={s.bodyText}>正在读取说明文本历史...</p>
+            ) : visibleCaptionRevisions.length > 0 ? (
+              visibleCaptionRevisions.map((revision) => (
+                <article className={s.textRevisionCard} key={revision.id}>
+                  <div className={s.textRevisionMeta}>
+                    <strong>{PROFILE_REVISION_REASON_LABELS[revision.reason] ?? revision.reason}</strong>
+                    <span>{formatProfileRevisionTime(revision.createdAt)}</span>
+                  </div>
+                  <p>{revision.textValue || "空文本"}</p>
+                  <Button
+                    size="sm"
+                    tone="subtle"
+                    pending={restoringCaptionRevisionId === revision.id}
+                    onClick={() => handleRestoreCaptionRevision(revision.id)}
+                  >
+                    恢复此版本
+                  </Button>
+                </article>
+              ))
+            ) : (
+              <p className={s.bodyText}>暂无说明文本历史。批量补全、覆盖或训练流程产生快照后会显示在这里。</p>
+            )}
+          </div>
+        </Panel>
+      ) : null}
     </div>
   );
 }

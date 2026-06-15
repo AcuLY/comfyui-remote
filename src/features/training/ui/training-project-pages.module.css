@@ -786,6 +786,12 @@
   overflow-wrap: anywhere;
 }
 
+.trainingResultCaptionActions {
+  display: flex;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
 .trainingResultMeta {
   display: flex;
   min-width: 0;

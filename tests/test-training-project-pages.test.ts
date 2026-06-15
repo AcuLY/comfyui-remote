@@ -431,6 +431,45 @@ test("training result review posts through the formal HTTP API on production rou
   assert.match(resultsPageSource, /pushToast/, "project result review should surface API success or failure through the shared feedback system");
 });
 
+test("training results page exposes caption text revision history and restore controls", () => {
+  const gridStart = pagesSource.indexOf("function TrainingResultGrid");
+  const runRowsStart = pagesSource.indexOf("function runPreviewImages");
+  const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
+  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
+  assert.notEqual(gridStart, -1);
+  assert.notEqual(runRowsStart, -1);
+  assert.notEqual(resultsPageStart, -1);
+  assert.notEqual(datasetPageStart, -1);
+
+  const gridSource = pagesSource.slice(gridStart, runRowsStart);
+  const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
+
+  assert.match(gridSource, /onOpenCaptionRevisionHistory/, "result grid should expose a per-result caption history callback");
+  assert.match(gridSource, /查看说明文本历史/, "result cards should render a nearby caption history action");
+  assert.match(resultsPageSource, /const router = useRouter\(\)/, "results page should refresh after restoring server-side caption history");
+  assert.match(resultsPageSource, /captionRevisionResultId/, "results page should remember which result history is open");
+  assert.match(resultsPageSource, /handleOpenCaptionRevisionHistory/, "results page should define a result caption history opener");
+  assert.match(resultsPageSource, /params\.set\("entityType", "image_result"\)/, "caption history should request image-result revisions");
+  assert.match(resultsPageSource, /params\.set\("entityId", resultId\)/, "caption history should stay scoped to the selected result");
+  assert.match(resultsPageSource, /params\.set\("fieldName", "captionDraft"\)/, "caption history should stay scoped to captionDraft");
+  assert.match(
+    resultsPageSource,
+    /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/text-revisions\?\$\{params\.toString\(\)\}`/,
+    "caption history should load through the formal text-revision list API",
+  );
+  assert.match(resultsPageSource, /handleRestoreCaptionRevision/, "results page should define a caption revision restore handler");
+  assert.match(
+    resultsPageSource,
+    /fetch\(`\/api\/training\/text-revisions\/\$\{revisionId\}\/restore`/,
+    "caption restore should call the formal text-revision restore API",
+  );
+  assert.match(resultsPageSource, /method:\s*"POST"/, "caption restore should use POST");
+  assert.match(resultsPageSource, /caption:\s*restoredValue/, "caption restore should update the local result caption");
+  assert.match(resultsPageSource, /router\.refresh\(\)/, "caption restore should refresh server data");
+  assert.match(resultsPageSource, /说明文本历史/, "results page should render a visible caption history panel");
+  assert.match(resultsPageSource, /恢复此版本/, "results page should render restore controls for caption history entries");
+});
+
 test("training section detail saves through the formal HTTP API on production routes", () => {
   const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
   const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
