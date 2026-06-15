@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/actions/preset-resource-scope";
 import { normalizeCivitaiLinks } from "@/lib/utils";
+import {
+  buildGenerationPresetWhere,
+  isLegacyTrainingBenchmarkResourceNotes,
+} from "@/server/repositories/legacy-training-resource-boundary";
 
 export type PresetQueryFilters = {
   name?: string;
@@ -25,12 +29,15 @@ function linkedVariantsFromRows(variant: {
     linkedVariantId: string;
     linkedVariant: {
       presetId: string;
-      preset: { category: { type: string } };
+      preset: { category: { type: string }; notes: string | null };
     };
   }>;
 }) {
   return variant.outgoingLinks
-    .filter((link) => link.linkedVariant.preset.category.type === ORDINARY_PRESET_CATEGORY_TYPE)
+    .filter((link) => (
+      link.linkedVariant.preset.category.type === ORDINARY_PRESET_CATEGORY_TYPE
+      && !isLegacyTrainingBenchmarkResourceNotes(link.linkedVariant.preset.notes)
+    ))
     .map((link) => ({
       presetId: link.linkedVariant.presetId,
       variantId: link.linkedVariantId,
@@ -42,7 +49,7 @@ function variantResponse<Variant extends {
     linkedVariantId: string;
     linkedVariant: {
       presetId: string;
-      preset: { category: { type: string } };
+      preset: { category: { type: string }; notes: string | null };
     };
   }>;
 }>(
@@ -74,7 +81,7 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
   const categoryId = filters.categoryId?.trim();
 
   const presets = await prisma.preset.findMany({
-    where: {
+    where: buildGenerationPresetWhere({
       category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
       ...(filters.includeInactive ? {} : { isActive: true }),
       ...(name ? { name } : {}),
@@ -90,7 +97,7 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
           ],
         },
       } : {}),
-    },
+    }),
     orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }],
     include: {
       category: {
@@ -122,7 +129,7 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
               linkedVariant: {
                 select: {
                   presetId: true,
-                  preset: { select: { category: { select: { type: true } } } },
+                  preset: { select: { category: { select: { type: true } }, notes: true } },
                 },
               },
             },
@@ -151,11 +158,11 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
 
 export async function getPresetById(presetId: string, includeInactive = false) {
   const preset = await prisma.preset.findFirst({
-    where: {
+    where: buildGenerationPresetWhere({
       id: presetId,
       category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
       ...(includeInactive ? {} : { isActive: true }),
-    },
+    }),
     include: {
       category: {
         select: {
@@ -186,7 +193,7 @@ export async function getPresetById(presetId: string, includeInactive = false) {
               linkedVariant: {
                 select: {
                   presetId: true,
-                  preset: { select: { category: { select: { type: true } } } },
+                  preset: { select: { category: { select: { type: true } }, notes: true } },
                 },
               },
             },

@@ -12,6 +12,10 @@ import {
   type PresetGroupChangeDimension,
   type PresetHistoryEntry,
 } from "@/server/services/preset-change-history-service";
+import {
+  buildGenerationPresetWhere,
+  isLegacyTrainingBenchmarkResourceNotes,
+} from "@/server/repositories/legacy-training-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Shared helper: resolve display names for group members
@@ -37,14 +41,17 @@ type LinkedVariantSource = {
     linkedVariantId: string;
     linkedVariant: {
       presetId: string;
-      preset: { category: { type: string } };
+      preset: { category: { type: string }; notes: string | null };
     };
   }>;
 };
 
 function linkedVariantRefs(variant: LinkedVariantSource): LinkedVariantRef[] {
   return variant.outgoingLinks
-    .filter((link) => link.linkedVariant.preset.category.type === ORDINARY_PRESET_CATEGORY_TYPE)
+    .filter((link) => (
+      link.linkedVariant.preset.category.type === ORDINARY_PRESET_CATEGORY_TYPE
+      && !isLegacyTrainingBenchmarkResourceNotes(link.linkedVariant.preset.notes)
+    ))
     .map((link) => ({
       presetId: link.linkedVariant.presetId,
       variantId: link.linkedVariantId,
@@ -98,10 +105,10 @@ async function resolveMemberNames(
   const [presetNames, variantNames, groupNames, slotCategories] = await Promise.all([
     allPresetIds.size > 0
       ? prisma.preset.findMany({
-          where: {
+          where: buildGenerationPresetWhere({
             id: { in: [...allPresetIds] },
             category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
-          },
+          }),
           select: { id: true, name: true },
         })
       : [],
@@ -109,7 +116,7 @@ async function resolveMemberNames(
       ? prisma.presetVariant.findMany({
           where: {
             id: { in: [...allVariantIds] },
-            preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+            preset: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }),
           },
           select: { id: true, name: true, presetId: true },
         })
@@ -249,7 +256,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
     include: {
       _count: {
         select: {
-          presets: { where: { isActive: true } },
+          presets: { where: buildGenerationPresetWhere({ isActive: true }) },
           groups: { where: { isActive: true } },
         },
       },
@@ -262,7 +269,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
         },
       },
       presets: {
-        where: { isActive: true },
+        where: buildGenerationPresetWhere({ isActive: true }),
         orderBy: { sortOrder: "asc" },
         include: {
           _count: { select: { variants: true } },
@@ -277,7 +284,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
                   linkedVariant: {
                     select: {
                       presetId: true,
-                      preset: { select: { category: { select: { type: true } } } },
+                      preset: { select: { category: { select: { type: true } }, notes: true } },
                     },
                   },
                 },
@@ -422,7 +429,7 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
       include: {
         _count: {
           select: {
-            presets: { where: { isActive: true } },
+            presets: { where: buildGenerationPresetWhere({ isActive: true }) },
             groups: { where: { isActive: true } },
           },
         },
@@ -435,7 +442,7 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
           },
         },
         presets: {
-          where: { isActive: true },
+          where: buildGenerationPresetWhere({ isActive: true }),
           orderBy: { sortOrder: "asc" },
           select: {
             id: true,
@@ -484,7 +491,7 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
           where: {
             id: { in: [...new Set(contentVariantIds)] },
             isActive: true,
-            preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+            preset: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }),
           },
           include: {
             outgoingLinks: {
@@ -494,7 +501,7 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
                 linkedVariant: {
                   select: {
                     presetId: true,
-                    preset: { select: { category: { select: { type: true } } } },
+                    preset: { select: { category: { select: { type: true } }, notes: true } },
                   },
                 },
               },
@@ -691,7 +698,7 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
         select: { id: true, name: true, parentId: true, sortOrder: true },
       },
       presets: {
-        where: { isActive: true },
+        where: buildGenerationPresetWhere({ isActive: true }),
         orderBy: { sortOrder: "asc" },
         select: {
           id: true,
@@ -714,7 +721,7 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
                   linkedVariant: {
                     select: {
                       presetId: true,
-                      preset: { select: { category: { select: { type: true } } } },
+                      preset: { select: { category: { select: { type: true } }, notes: true } },
                     },
                   },
                 },
@@ -886,7 +893,7 @@ export async function getPresetFolders(filters: {
     include: {
       _count: {
         select: {
-          presets: true,
+          presets: { where: buildGenerationPresetWhere() },
           groups: true,
           children: true,
         },
@@ -915,7 +922,7 @@ export async function getPresetFolder(folderId: string): Promise<PresetFolderIte
     include: {
       _count: {
         select: {
-          presets: true,
+          presets: { where: buildGenerationPresetWhere() },
           groups: true,
           children: true,
         },

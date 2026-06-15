@@ -13,6 +13,10 @@ import type * as TemplateImportActions from "../src/lib/actions/template-import"
 import type * as TemplateCrudActions from "../src/lib/actions/template-crud";
 import type * as TemplateSaveActions from "../src/lib/actions/template-save";
 import type * as ProjectActions from "../src/lib/actions/project";
+import type * as ProjectRepository from "../src/server/repositories/project-repository";
+import type * as ProjectViewRepository from "../src/server/repositories/project-view-repository";
+import type * as QueueDataRepository from "../src/server/repositories/queue-data-repository";
+import type * as TemplateViewRepository from "../src/server/repositories/template-view-repository";
 
 process.env.DB_PROVIDER = "sqlite";
 
@@ -245,6 +249,42 @@ setupDb.exec(`
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE "Run" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectId" TEXT NOT NULL,
+    "projectSectionId" TEXT NOT NULL,
+    "runIndex" INTEGER NOT NULL DEFAULT 1,
+    "status" TEXT NOT NULL DEFAULT 'queued',
+    "resolvedConfigSnapshot" JSONB NOT NULL DEFAULT '{}',
+    "comfyPromptId" TEXT,
+    "executionMeta" JSONB,
+    "submittedPrompt" JSONB,
+    "outputDir" TEXT,
+    "comfyOutputSubfolder" TEXT,
+    "errorMessage" TEXT,
+    "startedAt" DATETIME,
+    "finishedAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE "ImageResult" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "runId" TEXT NOT NULL,
+    "filePath" TEXT NOT NULL UNIQUE,
+    "thumbPath" TEXT,
+    "width" INTEGER,
+    "height" INTEGER,
+    "fileSize" BIGINT,
+    "reviewStatus" TEXT NOT NULL DEFAULT 'pending',
+    "featured" BOOLEAN NOT NULL DEFAULT false,
+    "featured2" BOOLEAN NOT NULL DEFAULT false,
+    "reviewedAt" DATETIME,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "censoredFilePath" TEXT,
+    "censoredThumbPath" TEXT,
+    "censoredAt" DATETIME
+  );
   CREATE TABLE "ProjectSectionFolder" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "projectId" TEXT NOT NULL,
@@ -349,6 +389,13 @@ let createProject: typeof ProjectActions.createProject;
 let updateProject: typeof ProjectActions.updateProject;
 let copyProject: typeof ProjectActions.copyProject;
 let applyParamToAllSections: typeof ProjectActions.applyParamToAllSections;
+let listProjects: typeof ProjectViewRepository.listProjects;
+let listProjectsForApi: typeof ProjectRepository.listProjects;
+let listProjectTemplates: typeof TemplateViewRepository.listProjectTemplates;
+let getProjectTemplateDetail: typeof TemplateViewRepository.getProjectTemplateDetail;
+let getReviewGroupIds: typeof QueueDataRepository.getReviewGroupIds;
+let getRunningRuns: typeof QueueDataRepository.getRunningRuns;
+let getFailedRuns: typeof QueueDataRepository.getFailedRuns;
 
 let sequence = 0;
 
@@ -365,6 +412,10 @@ test.before(async () => {
   const templateCrudActions = await import("../src/lib/actions/template-crud");
   const templateSaveActions = await import("../src/lib/actions/template-save");
   const projectActions = await import("../src/lib/actions/project");
+  const projectRepository = await import("../src/server/repositories/project-repository");
+  const projectViewRepository = await import("../src/server/repositories/project-view-repository");
+  const queueDataRepository = await import("../src/server/repositories/queue-data-repository");
+  const templateViewRepository = await import("../src/server/repositories/template-view-repository");
 
   prisma = prismaModule.prisma;
   importPresetToSection = promptBlockActions.importPresetToSection;
@@ -388,6 +439,13 @@ test.before(async () => {
   updateProject = projectActions.updateProject;
   copyProject = projectActions.copyProject;
   applyParamToAllSections = projectActions.applyParamToAllSections;
+  listProjects = projectViewRepository.listProjects;
+  listProjectsForApi = projectRepository.listProjects;
+  listProjectTemplates = templateViewRepository.listProjectTemplates;
+  getProjectTemplateDetail = templateViewRepository.getProjectTemplateDetail;
+  getReviewGroupIds = queueDataRepository.getReviewGroupIds;
+  getRunningRuns = queueDataRepository.getRunningRuns;
+  getFailedRuns = queueDataRepository.getFailedRuns;
 });
 
 async function seedProjectWithPreset(options: SeedOptions = {}) {
@@ -474,6 +532,216 @@ async function seedProjectWithPreset(options: SeedOptions = {}) {
 
   return { key, category, preset, variantA, variantB, project, section };
 }
+
+test("generation project and template lists hide legacy training benchmark temporary resources", async () => {
+  const key = `zrw-benchmark-boundary-${++sequence}`;
+  const benchmarkNotes = JSON.stringify({
+    temporary: true,
+    purpose: "character_lora_benchmark",
+    benchmarkRunId: `${key}-run`,
+  }, null, 2);
+
+  await prisma.project.createMany({
+    data: [
+      {
+        id: `${key}-visible-project`,
+        title: `${key} Visible Project`,
+        slug: `${key}-visible-project`,
+        status: "draft",
+      },
+      {
+        id: `${key}-hidden-project`,
+        title: `${key} Hidden Benchmark Project`,
+        slug: `${key}-hidden-project`,
+        status: "draft",
+        notes: benchmarkNotes,
+      },
+    ],
+  });
+  await prisma.projectTemplate.createMany({
+    data: [
+      {
+        id: `${key}-visible-template`,
+        name: `${key} Visible Template`,
+        description: "Ordinary generation project template",
+      },
+      {
+        id: `${key}-hidden-template`,
+        name: "角色 LoRA 测试",
+        description: "Default ProjectTemplate for Character LoRA training benchmark and promotion evidence.",
+      },
+    ],
+  });
+
+  const projectIds = (await listProjects()).map((project) => project.id);
+  assert.equal(
+    projectIds.includes(`${key}-visible-project`),
+    true,
+    "generation project list should still include ordinary generation projects",
+  );
+  assert.equal(
+    projectIds.includes(`${key}-hidden-project`),
+    false,
+    "generation project list must hide legacy training benchmark temporary projects",
+  );
+  const apiProjectIds = (await listProjectsForApi()).map((project) => project.id);
+  assert.equal(
+    apiProjectIds.includes(`${key}-visible-project`),
+    true,
+    "generation project API list should still include ordinary generation projects",
+  );
+  assert.equal(
+    apiProjectIds.includes(`${key}-hidden-project`),
+    false,
+    "generation project API list must hide legacy training benchmark temporary projects",
+  );
+
+  const templateIds = (await listProjectTemplates()).map((template) => template.id);
+  assert.equal(
+    templateIds.includes(`${key}-visible-template`),
+    true,
+    "generation template list should still include ordinary generation templates",
+  );
+  assert.equal(
+    templateIds.includes(`${key}-hidden-template`),
+    false,
+    "generation template list must hide legacy training benchmark templates stored in ProjectTemplate",
+  );
+  assert.equal(
+    await getProjectTemplateDetail(`${key}-hidden-template`),
+    null,
+    "generation template detail must not expose a legacy training benchmark template by direct id",
+  );
+});
+
+test("generation run lists hide runs attached to legacy training benchmark temporary projects", async () => {
+  const key = `zrw-benchmark-runs-${++sequence}`;
+  const benchmarkNotes = JSON.stringify({
+    temporary: true,
+    purpose: "character_lora_benchmark",
+    benchmarkRunId: `${key}-benchmark`,
+  }, null, 2);
+
+  await prisma.project.createMany({
+    data: [
+      {
+        id: `${key}-visible-project`,
+        title: `${key} Visible Project`,
+        slug: `${key}-visible-project`,
+        status: "draft",
+      },
+      {
+        id: `${key}-hidden-project`,
+        title: `${key} Hidden Benchmark Project`,
+        slug: `${key}-hidden-project`,
+        status: "draft",
+        notes: benchmarkNotes,
+      },
+    ],
+  });
+  await prisma.projectSection.createMany({
+    data: [
+      {
+        id: `${key}-visible-section`,
+        projectId: `${key}-visible-project`,
+        name: `${key} Visible Section`,
+        sortOrder: 0,
+      },
+      {
+        id: `${key}-hidden-section`,
+        projectId: `${key}-hidden-project`,
+        name: `${key} Hidden Section`,
+        sortOrder: 0,
+      },
+    ],
+  });
+  await prisma.run.createMany({
+    data: [
+      {
+        id: `${key}-visible-done-run`,
+        projectId: `${key}-visible-project`,
+        projectSectionId: `${key}-visible-section`,
+        status: "done",
+        resolvedConfigSnapshot: {},
+      },
+      {
+        id: `${key}-hidden-done-run`,
+        projectId: `${key}-hidden-project`,
+        projectSectionId: `${key}-hidden-section`,
+        status: "done",
+        resolvedConfigSnapshot: {},
+      },
+      {
+        id: `${key}-visible-running-run`,
+        projectId: `${key}-visible-project`,
+        projectSectionId: `${key}-visible-section`,
+        status: "running",
+        resolvedConfigSnapshot: {},
+      },
+      {
+        id: `${key}-hidden-running-run`,
+        projectId: `${key}-hidden-project`,
+        projectSectionId: `${key}-hidden-section`,
+        status: "running",
+        resolvedConfigSnapshot: {},
+      },
+      {
+        id: `${key}-visible-failed-run`,
+        projectId: `${key}-visible-project`,
+        projectSectionId: `${key}-visible-section`,
+        status: "failed",
+        resolvedConfigSnapshot: {},
+      },
+      {
+        id: `${key}-hidden-failed-run`,
+        projectId: `${key}-hidden-project`,
+        projectSectionId: `${key}-hidden-section`,
+        status: "failed",
+        resolvedConfigSnapshot: {},
+      },
+    ],
+  });
+  await prisma.imageResult.createMany({
+    data: [
+      {
+        id: `${key}-visible-image`,
+        runId: `${key}-visible-done-run`,
+        filePath: `${key}/visible.png`,
+        reviewStatus: "pending",
+      },
+      {
+        id: `${key}-hidden-image`,
+        runId: `${key}-hidden-done-run`,
+        filePath: `${key}/hidden.png`,
+        reviewStatus: "pending",
+      },
+    ],
+  });
+
+  const reviewGroupIds = await getReviewGroupIds();
+  assert.equal(reviewGroupIds.includes(`${key}-visible-done-run`), true);
+  assert.equal(
+    reviewGroupIds.includes(`${key}-hidden-done-run`),
+    false,
+    "generation review queue must hide done runs from legacy training benchmark temporary projects",
+  );
+
+  const runningIds = (await getRunningRuns()).map((run) => run.id);
+  assert.equal(runningIds.includes(`${key}-visible-running-run`), true);
+  assert.equal(
+    runningIds.includes(`${key}-hidden-running-run`),
+    false,
+    "generation running list must hide active runs from legacy training benchmark temporary projects",
+  );
+
+  const failedIds = (await getFailedRuns()).map((run) => run.id);
+  assert.equal(failedIds.includes(`${key}-visible-failed-run`), true);
+  assert.equal(
+    failedIds.includes(`${key}-hidden-failed-run`),
+    false,
+    "generation failed list must hide failed runs from legacy training benchmark temporary projects",
+  );
+});
 
 async function createNormalizedPresetBlock(input: Awaited<ReturnType<typeof seedProjectWithPreset>>) {
   const binding = await prisma.sectionPresetBinding.create({

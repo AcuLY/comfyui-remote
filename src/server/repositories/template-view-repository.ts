@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/server/repositories/queue-data-repository";
+import { buildGenerationProjectTemplateWhere } from "@/server/repositories/legacy-training-resource-boundary";
 import { resolveTemplateSectionConfig } from "@/server/prompt-config/template-resolver";
 
 // ---------------------------------------------------------------------------
@@ -60,7 +61,7 @@ export type ProjectTemplateListItem = {
 export async function listProjectTemplates(filters: { name?: string } = {}): Promise<ProjectTemplateListItem[]> {
   const name = filters.name?.trim();
   const templates = await prisma.projectTemplate.findMany({
-    where: name ? { name: { contains: name } } : undefined,
+    where: buildGenerationProjectTemplateWhere(name ? { name: { contains: name } } : {}),
     orderBy: { updatedAt: "desc" },
     include: { _count: { select: { sections: true } } },
   });
@@ -85,8 +86,8 @@ export type ProjectTemplateDetail = {
 export async function getProjectTemplateDetail(
   templateId: string,
 ): Promise<ProjectTemplateDetail | null> {
-  const template = await prisma.projectTemplate.findUnique({
-    where: { id: templateId },
+  const template = await prisma.projectTemplate.findFirst({
+    where: buildGenerationProjectTemplateWhere({ id: templateId }),
     include: {
       sectionFolders: {
         orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],

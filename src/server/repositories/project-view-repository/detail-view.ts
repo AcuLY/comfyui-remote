@@ -7,6 +7,7 @@ import {
   formatDate,
   PROJECT_PRESET_BINDING_DISPLAY_SELECT,
 } from "@/server/repositories/queue-data-repository";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 import { resolveSectionConfigsById } from "@/server/repositories/project-repository/helpers";
 import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
 import { listProjectNavigationItems } from "./list-view";
@@ -87,8 +88,8 @@ function readResolvedString(
 
 export async function getProjectDetail(projectId: string): Promise<ProjectDetail | null> {
   const [project, projectNavItems] = await Promise.all([
-    prisma.project.findUnique({
-      where: { id: projectId },
+    prisma.project.findFirst({
+      where: buildGenerationProjectWhere({ id: projectId }),
       select: {
         id: true,
         title: true,
@@ -306,8 +307,11 @@ export type ProjectResultsData = {
 };
 
 export async function getSectionResults(sectionId: string): Promise<SectionResultsData | null> {
-  const pos = await prisma.projectSection.findUnique({
-    where: { id: sectionId },
+  const pos = await prisma.projectSection.findFirst({
+    where: {
+      id: sectionId,
+      project: buildGenerationProjectWhere(),
+    },
     include: {
       project: {
         select: {
@@ -355,6 +359,7 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
     prisma.run.findMany({
       where: {
         projectId: pos.project.id,
+        project: buildGenerationProjectWhere(),
         images: {
           some: { reviewStatus: "pending" },
         },
@@ -454,8 +459,8 @@ export async function getSectionResults(sectionId: string): Promise<SectionResul
 
 export async function getProjectResults(projectId: string): Promise<ProjectResultsData | null> {
   const [project, projectNavItems] = await Promise.all([
-    prisma.project.findUnique({
-      where: { id: projectId },
+    prisma.project.findFirst({
+      where: buildGenerationProjectWhere({ id: projectId }),
       select: {
         id: true,
         title: true,

@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
+import { buildLegacyCharacterLoraBenchmarkTemplateWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 import { toInputJsonValue, readJsonRecord } from "./helpers";
 import { serializeBenchmarkTemplate } from "./serializers";
@@ -302,9 +303,7 @@ export async function findPreferredCharacterLoraBenchmarkTemplate(
 }
 
 export function buildCharacterLoraBenchmarkTemplateWhere(): Prisma.ProjectTemplateWhereInput {
-  return {
-    OR: CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS.map((term) => ({ name: { contains: term } })),
-  };
+  return buildLegacyCharacterLoraBenchmarkTemplateWhere();
 }
 
 export function buildCharacterLoraBenchmarkTemplateSections(checkpointName: string | null) {

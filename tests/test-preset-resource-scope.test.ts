@@ -432,6 +432,68 @@ test("ordinary preset category and list reads do not expose LoRA training preset
   );
 });
 
+test("ordinary preset category and list reads do not expose legacy training benchmark temporary presets", async () => {
+  await prisma.presetCategory.create({
+    data: {
+      id: "ordinary-benchmark-temp-category",
+      name: "Ordinary Benchmark Temp",
+      slug: "ordinary-benchmark-temp",
+      type: "preset",
+    },
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "ordinary-benchmark-visible-preset",
+        categoryId: "ordinary-benchmark-temp-category",
+        name: "Ordinary Benchmark Visible Preset",
+        slug: "ordinary-benchmark-visible-preset",
+      },
+      {
+        id: "legacy-training-benchmark-hidden-preset",
+        categoryId: "ordinary-benchmark-temp-category",
+        name: "Legacy Training Benchmark Hidden Preset",
+        slug: "legacy-training-benchmark-hidden-preset",
+        notes: JSON.stringify({
+          temporary: true,
+          purpose: "character_lora_benchmark",
+          benchmarkRunId: "benchmark-temp-hidden",
+        }, null, 2),
+      },
+    ],
+  });
+
+  const ordinaryPagePresetIds = (await getPresetCategoriesWithPresets())
+    .flatMap((category) => category.presets.map((preset) => preset.id));
+  assert.equal(
+    ordinaryPagePresetIds.includes("ordinary-benchmark-visible-preset"),
+    true,
+    "ordinary preset page data should still include ordinary presets without training benchmark notes",
+  );
+  assert.equal(
+    ordinaryPagePresetIds.includes("legacy-training-benchmark-hidden-preset"),
+    false,
+    "ordinary preset page data must hide legacy training benchmark temporary presets stored in ordinary preset tables",
+  );
+
+  const ordinaryApiPresetIds = (await listPresets({ includeInactive: true })).map((preset) => preset.id);
+  assert.equal(
+    ordinaryApiPresetIds.includes("ordinary-benchmark-visible-preset"),
+    true,
+    "ordinary preset API should still include ordinary presets without training benchmark notes",
+  );
+  assert.equal(
+    ordinaryApiPresetIds.includes("legacy-training-benchmark-hidden-preset"),
+    false,
+    "ordinary preset API must hide legacy training benchmark temporary presets stored in ordinary preset tables",
+  );
+  assert.equal(
+    await getPresetById("legacy-training-benchmark-hidden-preset", true),
+    null,
+    "ordinary preset detail API must not expose a legacy training benchmark temporary preset by direct id",
+  );
+});
+
 test("ordinary preset reads do not expose LoRA training resources through linked variants or slots", async () => {
   await prisma.presetCategory.createMany({
     data: [

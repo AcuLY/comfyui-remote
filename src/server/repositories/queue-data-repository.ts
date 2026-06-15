@@ -2,6 +2,10 @@ import { Prisma } from "@/generated/prisma";
 import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
+import {
+  buildGenerationPresetWhere,
+  buildGenerationProjectWhere,
+} from "@/server/repositories/legacy-training-resource-boundary";
 import fs from "node:fs";
 import path from "node:path";
 import type { QueuePagination, QueueRun, RunningRun, FailedRun, ReviewGroup, ReviewImage, ReviewStatus } from "@/lib/types";
@@ -27,10 +31,10 @@ export const PROJECT_PRESET_BINDING_DISPLAY_SELECT = {
 export async function batchResolvePresetNames(presetIds: string[]): Promise<Map<string, { name: string }>> {
   if (presetIds.length === 0) return new Map();
   const presets = await prisma.preset.findMany({
-    where: {
+    where: buildGenerationPresetWhere({
       id: { in: presetIds },
       category: { type: ordinaryPresetCategoryTypeWhere() },
-    },
+    }),
     select: { id: true, name: true },
   });
   return new Map(presets.map((p) => [p.id, { name: p.name }]));
@@ -148,7 +152,8 @@ export function formatDate(date: Date): string {
 const VISIBLE_QUEUE_RUN_WHERE = {
   status: "done",
   images: { some: { reviewStatus: "pending" } },
-} as const;
+  project: buildGenerationProjectWhere(),
+} satisfies Prisma.RunWhereInput;
 const VISIBLE_QUEUE_RUN_ORDER_BY = [
   { finishedAt: "desc" },
   { createdAt: "desc" },
@@ -215,7 +220,10 @@ async function loadVisibleQueueRunPage(page: number, pageSize: number) {
   const totalPendingImagesPromise = prisma.imageResult.count({
     where: {
       reviewStatus: "pending",
-      run: { status: "done" },
+      run: {
+        status: "done",
+        project: buildGenerationProjectWhere(),
+      },
     },
   });
 
@@ -301,7 +309,10 @@ export async function getQueueRunsPage(options: QueuePageOptions = {}): Promise<
 
 export async function getRunningRuns(): Promise<RunningRun[]> {
   const runs = await prisma.run.findMany({
-    where: { status: { in: ["queued", "running", "paused"] } },
+    where: {
+      status: { in: ["queued", "running", "paused"] },
+      project: buildGenerationProjectWhere(),
+    },
     orderBy: { createdAt: "desc" },
     include: {
       project: {
@@ -358,7 +369,10 @@ export async function getRunningRuns(): Promise<RunningRun[]> {
 
 export async function getFailedRuns(): Promise<FailedRun[]> {
   const runs = await prisma.run.findMany({
-    where: { status: "failed" },
+    where: {
+      status: "failed",
+      project: buildGenerationProjectWhere(),
+    },
     orderBy: { finishedAt: "desc" },
     take: 20,
     include: {
@@ -398,8 +412,11 @@ export async function getFailedRuns(): Promise<FailedRun[]> {
 // ---------------------------------------------------------------------------
 
 export async function getReviewGroup(runId: string): Promise<ReviewGroup | null> {
-  const run = await prisma.run.findUnique({
-    where: { id: runId },
+  const run = await prisma.run.findFirst({
+    where: {
+      id: runId,
+      project: buildGenerationProjectWhere(),
+    },
     include: {
       project: {
         select: {

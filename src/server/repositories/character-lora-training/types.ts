@@ -3,15 +3,12 @@ import {
   CharacterLoraImageReviewStatus,
   CharacterLoraJobStatus,
 } from "@/generated/prisma/enums";
+export {
+  LEGACY_CHARACTER_LORA_BENCHMARK_TEMPLATE_DESCRIPTION as CHARACTER_LORA_BENCHMARK_TEMPLATE_DESCRIPTION,
+  LEGACY_CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME as CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME,
+  LEGACY_CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS as CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS,
+} from "@/server/repositories/legacy-training-resource-boundary";
 
-export const CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME_TERMS = [
-  "角色 lora 测试",
-  "角色 LoRA 测试",
-  "character lora",
-] as const;
-export const CHARACTER_LORA_BENCHMARK_TEMPLATE_NAME = "角色 LoRA 测试";
-export const CHARACTER_LORA_BENCHMARK_TEMPLATE_DESCRIPTION =
-  "Default ProjectTemplate for Character LoRA training benchmark and promotion evidence. It covers the standard 7 promotion variants.";
 export const CHARACTER_LORA_BENCHMARK_TEMPLATE_REQUIRED_SECTION_COUNT = 7;
 export const CHARACTER_LORA_BENCHMARK_TEMPLATE_SECTIONS = [
   { name: "默认", slug: "default", promptSuffix: "default outfit, standing pose" },

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { buildFolderScopedItemOrder } from "@/lib/folder-navigation";
 import { toImageUrl } from "@/lib/image-url";
 import type { ProjectCard, ProjectFolderItem, ReviewStatus } from "@/lib/types";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 import {
   extractPresetNames,
   formatDate,
@@ -24,6 +25,7 @@ export async function listProjectNavigationItems() {
       },
     }),
     prisma.project.findMany({
+      where: buildGenerationProjectWhere(),
       orderBy: { updatedAt: "desc" },
       select: {
         id: true,
@@ -38,6 +40,7 @@ export async function listProjectNavigationItems() {
 
 export async function listProjects(): Promise<ProjectCard[]> {
   const projects = await prisma.project.findMany({
+    where: buildGenerationProjectWhere(),
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
@@ -113,7 +116,7 @@ export async function listProjectFolders(): Promise<ProjectFolderItem[]> {
       sortOrder: true,
       _count: {
         select: {
-          projects: true,
+          projects: { where: buildGenerationProjectWhere() },
           children: true,
         },
       },

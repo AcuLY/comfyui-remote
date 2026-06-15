@@ -1,5 +1,9 @@
 import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
+import {
+  buildGenerationPresetWhere,
+  buildGenerationProjectWhere,
+} from "@/server/repositories/legacy-training-resource-boundary";
 import { resolveSectionConfigsById } from "@/server/repositories/project-repository/helpers";
 
 // ---------------------------------------------------------------------------
@@ -40,7 +44,7 @@ export async function getProjectFormOptions(): Promise<ProjectFormOptions> {
     orderBy: { sortOrder: "asc" },
     include: {
       presets: {
-        where: { isActive: true },
+        where: buildGenerationPresetWhere({ isActive: true }),
         orderBy: { sortOrder: "asc" },
         include: {
           variants: {
@@ -108,8 +112,8 @@ export type ProjectEditData = {
 };
 
 export async function getProjectEditData(projectId: string): Promise<ProjectEditData | null> {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     include: {
       presetBindingRows: {
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],

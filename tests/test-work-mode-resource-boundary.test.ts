@@ -18,6 +18,7 @@ const trainingShellSource = readFileSync(resolve(repoRoot, "src/features/trainin
 const trainingRoutesSource = readFileSync(resolve(repoRoot, "src/features/training/routes.ts"), "utf8");
 const trainingNotFoundSource = readFileSync(resolve(repoRoot, "src/features/training/not-found-page.tsx"), "utf8");
 const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/training/route.ts"), "utf8");
+const generationProjectDetailSource = readFileSync(resolve(repoRoot, "src/server/repositories/project-view-repository/detail-view.ts"), "utf8");
 
 const MODULE_OWNED_RESOURCE_KEYS = ["runs", "projects", "presets", "templates"] as const;
 const SHARED_RESOURCE_KEYS = ["models", "settings"] as const;
@@ -326,6 +327,24 @@ test("training manifest advertises only training-owned APIs plus shared resource
   assert.match(trainingManifestSource, /\/api\/training\/runs/);
   assert.match(trainingManifestSource, /\/api\/models\?kind=checkpoint/);
   assert.match(trainingManifestSource, /\/api\/models\?kind=lora/);
+});
+
+test("generation project detail loaders reuse the generation resource boundary", () => {
+  assert.match(
+    generationProjectDetailSource,
+    /buildGenerationProjectWhere/,
+    "Generation project detail/result loaders should reuse the shared generation project boundary.",
+  );
+  assert.doesNotMatch(
+    generationProjectDetailSource,
+    /prisma\.project\.findUnique\(\{\s*where:\s*\{\s*id:\s*projectId\s*\}/,
+    "Generation project detail/result loaders must not fetch projects by id without the resource boundary.",
+  );
+  assert.match(
+    generationProjectDetailSource,
+    /prisma\.projectSection\.findFirst\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation section result detail should reject sections owned by hidden training benchmark projects.",
+  );
 });
 
 test("resource target contract documents every production resource owner", () => {
