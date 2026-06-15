@@ -7,11 +7,13 @@ import { ArrowRight, FlaskConical, History, ImageIcon, Monitor } from "lucide-re
 import type { DemoData } from "../../data";
 import s from "./settings-page.shell.module.css";
 import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { buildWorkModeResourceTargetList } from "@/lib/work-mode-resources";
 import {
   WORK_MODE_CHANGE_EVENT,
   WORK_MODE_STORAGE_KEY,
   demoHref,
   isDesignDemoWorkModeValue,
+  normalizeProductRoute,
 } from "../../routing";
 import type { DesignDemoWorkMode } from "../../routing";
 
@@ -35,21 +37,6 @@ const WORK_MODE_OPTIONS: Array<{
   },
 ];
 
-const MODE_ROUTE_ROWS: Record<DesignDemoWorkMode, Array<{ label: string; route: string }>> = {
-  generation: [
-    { label: "运行", route: "/runs" },
-    { label: "项目", route: "/projects" },
-    { label: "预制", route: "/presets" },
-    { label: "模板", route: "/templates" },
-  ],
-  lora_training: [
-    { label: "运行", route: "/training/runs" },
-    { label: "项目", route: "/training/projects" },
-    { label: "预制", route: "/training/presets" },
-    { label: "模板", route: "/training/templates" },
-  ],
-};
-
 function readInitialWorkMode(): DesignDemoWorkMode {
   if (typeof window === "undefined") return "generation";
   try {
@@ -60,9 +47,16 @@ function readInitialWorkMode(): DesignDemoWorkMode {
   }
 }
 
+function buildModeRouteList(workMode: DesignDemoWorkMode) {
+  return buildWorkModeResourceTargetList(workMode).map((target) => ({
+    label: target.label,
+    route: target.owner === "lora_training" ? target.href : normalizeProductRoute(target.href),
+  }));
+}
+
 export function SettingsPage({ data }: { data: DemoData }) {
   const [workMode, setWorkMode] = useState<DesignDemoWorkMode>(readInitialWorkMode);
-  const modeRouteList = MODE_ROUTE_ROWS[workMode];
+  const modeRouteList = buildModeRouteList(workMode);
 
   function selectWorkMode(nextMode: DesignDemoWorkMode) {
     setWorkMode(nextMode);
@@ -112,10 +106,6 @@ export function SettingsPage({ data }: { data: DemoData }) {
               <code>{item.route}</code>
             </span>
           ))}
-          <span>
-            <strong>设置</strong>
-            <code>/settings</code>
-          </span>
         </div>
       </section>
       <div className={s.settingsLinkList}>

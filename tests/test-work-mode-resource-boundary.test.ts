@@ -11,6 +11,7 @@ import {
 const repoRoot = process.cwd();
 const bottomNavSource = readFileSync(resolve(repoRoot, "src/components/persistent-bottom-nav.tsx"), "utf8");
 const demoRoutesSource = readFileSync(resolve(repoRoot, "src/app/design-demos/routing/routes.ts"), "utf8");
+const settingsPageSource = readFileSync(resolve(repoRoot, "src/app/design-demos/features/settings/settings-page.tsx"), "utf8");
 const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/training/route.ts"), "utf8");
 
 const MODULE_OWNED_RESOURCE_KEYS = ["runs", "projects", "presets", "templates"] as const;
@@ -153,6 +154,24 @@ test("design-demo shell navigation consumes the shared work mode resource contra
     assert.equal(generationLink?.href, generationTarget.href);
     assert.equal(trainingLink?.href, trainingTarget.href);
   }
+});
+
+test("settings work-mode resource preview consumes the shared resource contract", () => {
+  assert.match(
+    settingsPageSource,
+    /@\/lib\/work-mode-resources/,
+    "Settings should preview resource destinations from the shared work-mode resource contract.",
+  );
+  assert.doesNotMatch(
+    settingsPageSource,
+    /MODE_ROUTE_ROWS/,
+    "Settings should not maintain a second hand-written work-mode route table.",
+  );
+  assert.doesNotMatch(
+    settingsPageSource,
+    /route:\s*"\/(?:training|presets|projects|templates|runs)/,
+    "Settings should not hard-code module-owned resource routes outside the shared contract.",
+  );
 });
 
 test("training manifest advertises only training-owned APIs plus shared resources", () => {

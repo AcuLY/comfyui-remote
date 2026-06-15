@@ -12,6 +12,7 @@ import type * as PresetGroupActions from "../src/lib/actions/preset-group";
 import type * as PresetVariantCrudActions from "../src/lib/actions/preset-variant-crud";
 import type * as PresetVariantResolveActions from "../src/lib/actions/preset-variant-resolve";
 import type * as ServerData from "../src/lib/server-data";
+import type * as PresetQueryService from "../src/server/services/preset-query-service";
 import type * as TemplateCrudActions from "../src/lib/actions/template-crud";
 import type * as TrainingPresetService from "../src/server/services/training/preset-service";
 
@@ -118,6 +119,15 @@ setupDb.exec(`
     "slotCategoryId" TEXT,
     "sortOrder" INTEGER NOT NULL DEFAULT 0
   );
+  CREATE TABLE "PresetChangeLog" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "presetId" TEXT NOT NULL,
+    "dimension" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "before" JSONB,
+    "after" JSONB,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
   CREATE TABLE "PresetGroupChangeLog" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "presetGroupId" TEXT NOT NULL,
@@ -141,8 +151,10 @@ let deletePreset: typeof PresetVariantCrudActions.deletePreset;
 let resolveVariantContent: typeof PresetVariantResolveActions.resolveVariantContent;
 let getPresetFolders: typeof ServerData.getPresetFolders;
 let getPresetFolder: typeof ServerData.getPresetFolder;
+let getPresetCategoriesWithPresets: typeof ServerData.getPresetCategoriesWithPresets;
 let getPresetGroups: typeof ServerData.getPresetGroups;
 let getPresetGroup: typeof ServerData.getPresetGroup;
+let listPresets: typeof PresetQueryService.listPresets;
 let resolveTemplatePresetImports: typeof TemplateCrudActions.resolveTemplatePresetImports;
 let createTrainingSceneDescriptionPreset: typeof TrainingPresetService.createTrainingSceneDescriptionPreset;
 
@@ -154,6 +166,7 @@ test.before(async () => {
   const presetGroupActions = await import("../src/lib/actions/preset-group");
   const presetVariantCrudActions = await import("../src/lib/actions/preset-variant-crud");
   const presetVariantResolveActions = await import("../src/lib/actions/preset-variant-resolve");
+  const presetQueryService = await import("../src/server/services/preset-query-service");
   const templateCrudActions = await import("../src/lib/actions/template-crud");
   const trainingPresetService = await import("../src/server/services/training/preset-service");
 
@@ -169,8 +182,10 @@ test.before(async () => {
   resolveVariantContent = presetVariantResolveActions.resolveVariantContent;
   getPresetFolders = serverData.getPresetFolders;
   getPresetFolder = serverData.getPresetFolder;
+  getPresetCategoriesWithPresets = serverData.getPresetCategoriesWithPresets;
   getPresetGroups = serverData.getPresetGroups;
   getPresetGroup = serverData.getPresetGroup;
+  listPresets = presetQueryService.listPresets;
   resolveTemplatePresetImports = templateCrudActions.resolveTemplatePresetImports;
   createTrainingSceneDescriptionPreset = trainingPresetService.createTrainingSceneDescriptionPreset;
 });
@@ -320,6 +335,89 @@ test("ordinary preset folder and group writes cannot use LoRA training categorie
     /ordinary preset category/i,
   );
   assert.equal(await prisma.presetGroup.count({ where: { slug: "leaked-group" } }), 0);
+});
+
+test("ordinary preset category and list reads do not expose LoRA training presets", async () => {
+  await prisma.presetCategory.createMany({
+    data: [
+      {
+        id: "ordinary-list-readable-category",
+        name: "Ordinary List Readable",
+        slug: "ordinary-list-readable",
+        type: "preset",
+      },
+      {
+        id: "training-list-readable-category",
+        name: "Training List Readable",
+        slug: "training-list-readable",
+        type: "training_scene_description",
+      },
+    ],
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "ordinary-list-readable-preset",
+        categoryId: "ordinary-list-readable-category",
+        name: "Ordinary List Readable Preset",
+        slug: "ordinary-list-readable-preset",
+      },
+      {
+        id: "training-list-hidden-preset",
+        categoryId: "training-list-readable-category",
+        name: "Training List Hidden Preset",
+        slug: "training-list-hidden-preset",
+      },
+    ],
+  });
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "ordinary-list-readable-variant",
+        presetId: "ordinary-list-readable-preset",
+        name: "Ordinary List Variant",
+        slug: "ordinary-list-variant",
+        prompt: "ordinary list prompt",
+      },
+      {
+        id: "training-list-hidden-variant",
+        presetId: "training-list-hidden-preset",
+        name: "Training List Variant",
+        slug: "training-list-variant",
+        prompt: "training list prompt must not leak",
+      },
+    ],
+  });
+
+  const ordinaryPagePresetIds = (await getPresetCategoriesWithPresets())
+    .flatMap((category) => category.presets.map((preset) => preset.id));
+  assert.equal(
+    ordinaryPagePresetIds.includes("ordinary-list-readable-preset"),
+    true,
+    "ordinary preset page data should still include generation-owned presets",
+  );
+  assert.equal(
+    ordinaryPagePresetIds.includes("training-list-hidden-preset"),
+    false,
+    "ordinary preset page data must hide training-owned presets stored in the same tables",
+  );
+
+  const ordinaryApiPresetIds = (await listPresets({ includeInactive: true })).map((preset) => preset.id);
+  assert.equal(
+    ordinaryApiPresetIds.includes("ordinary-list-readable-preset"),
+    true,
+    "ordinary preset API should still include generation-owned presets",
+  );
+  assert.equal(
+    ordinaryApiPresetIds.includes("training-list-hidden-preset"),
+    false,
+    "ordinary preset API must hide training-owned presets stored in the same tables",
+  );
+  assert.deepEqual(
+    await listPresets({ categoryId: "training-list-readable-category", includeInactive: true }),
+    [],
+    "ordinary preset API must not expose training presets even when called with a training category id",
+  );
 });
 
 test("ordinary preset folder and group reads do not expose LoRA training resources", async () => {

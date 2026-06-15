@@ -25,6 +25,12 @@ type FetchOperation = {
   raw: string;
 };
 
+type ApiPathReference = {
+  file: string;
+  path: string;
+  raw: string;
+};
+
 async function listRouteFiles(dir: string): Promise<string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
   const nested = await Promise.all(entries.map(async (entry) => {
@@ -80,6 +86,10 @@ function normalizeFetchPath(raw: string) {
   return raw.replace(/\$\{[^}]+}/g, ":param").split("?")[0] ?? raw;
 }
 
+function normalizeApiPath(raw: string) {
+  return raw.replace(/\$\{[^}]+}/g, ":param").split("?")[0] ?? raw;
+}
+
 function routeMatches(fetchPath: string, routePath: string) {
   const fetchSegments = fetchPath.split("/").filter(Boolean);
   const routeSegments = routePath.split("/").filter(Boolean);
@@ -91,6 +101,27 @@ function routeMatches(fetchPath: string, routePath: string) {
       || fetchSegments[index] === segment
     ))
   );
+}
+
+function collectManifestOperations(value: unknown, operations = new Set<RouteOperation>()) {
+  if (!value || typeof value !== "object") return operations;
+  if (
+    "method" in value
+    && typeof value.method === "string"
+    && "path" in value
+    && typeof value.path === "string"
+  ) {
+    operations.add({
+      method: value.method,
+      path: value.path.split("?")[0] ?? value.path,
+    });
+  }
+
+  for (const child of Object.values(value)) {
+    collectManifestOperations(child, operations);
+  }
+
+  return operations;
 }
 
 function collectTrainingFetchOperations(): FetchOperation[] {
@@ -110,6 +141,18 @@ function collectTrainingFetchOperations(): FetchOperation[] {
   });
 }
 
+function collectTrainingApiPathReferences(): ApiPathReference[] {
+  return TRAINING_UI_FILES.flatMap((file) => {
+    const source = readFileSync(join(process.cwd(), file), "utf8");
+    return [...source.matchAll(/([`'"])(\/api\/training[^`'"]*)\1/g)]
+      .map((match) => ({
+        file,
+        path: normalizeApiPath(match[2]),
+        raw: match[2],
+      }));
+  });
+}
+
 test("training frontend fetch calls target implemented training HTTP route operations", async () => {
   const routeOperations = await listRouteOperations();
   const fetchOperations = collectTrainingFetchOperations();
@@ -126,5 +169,48 @@ test("training frontend fetch calls target implemented training HTTP route opera
     missingOperations,
     [],
     "Every /api/training fetch in the production training UI should have a matching route handler and HTTP method.",
+  );
+});
+
+test("training manifest advertises every production training UI HTTP operation to agents", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const manifestOperations = [...collectManifestOperations(payload.data)];
+  const fetchOperations = collectTrainingFetchOperations();
+  const missingOperations = fetchOperations.filter((fetchOperation) => !manifestOperations.some((manifestOperation) => (
+    manifestOperation.method === fetchOperation.method
+    && routeMatches(fetchOperation.path, manifestOperation.path)
+  )));
+
+  assert.ok(
+    manifestOperations.length >= fetchOperations.length,
+    "agent manifest should enumerate at least the production UI's training HTTP surface",
+  );
+  assert.deepEqual(
+    missingOperations,
+    [],
+    "Every production training UI HTTP operation should be advertised by GET /api/training for agent orchestration.",
+  );
+});
+
+test("training manifest advertises every production training UI API path reference", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const manifestPaths = [...collectManifestOperations(payload.data)].map((operation) => operation.path);
+  const apiPathReferences = collectTrainingApiPathReferences();
+  const missingPaths = apiPathReferences.filter((apiPathReference) => !manifestPaths.some((manifestPath) =>
+    routeMatches(apiPathReference.path, manifestPath)
+  ));
+
+  assert.ok(
+    apiPathReferences.length > collectTrainingFetchOperations().length,
+    "path reference scan should catch ternary and variable API targets beyond direct fetch literals",
+  );
+  assert.deepEqual(
+    missingPaths,
+    [],
+    "Every production training UI API path reference should be advertised by GET /api/training for agent discovery.",
   );
 });
