@@ -2099,6 +2099,22 @@ test("scene-description category and folder routes create, update, guard non-emp
   assert.equal(updateFolderPayload.data.name, `${folderName} 已更新`);
   assert.equal(updateFolderPayload.data.sortOrder, 11);
 
+  const foldersResponse = await folderCreateRoute.GET(
+    new Request("http://localhost/api/training/scene-description/folders"),
+  );
+  const foldersPayload = await foldersResponse.json();
+
+  assert.equal(foldersResponse.status, 200);
+  assert.equal(foldersPayload.ok, true);
+  assert.ok(Array.isArray(foldersPayload.data.folders));
+  assert.ok(foldersPayload.data.folders.some((folder: {
+    categoryId: string;
+    id: string;
+    name: string;
+  }) => folder.id === folderId
+    && folder.categoryId === categoryId
+    && folder.name === `${folderName} 已更新`));
+
   const treeResponse = await categoryTreeRoute.GET(
     new Request("http://localhost/api/training/scene-description/categories"),
   );
