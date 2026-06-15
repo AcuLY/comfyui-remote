@@ -83,6 +83,68 @@
   gap: 12px;
 }
 
+.profileFieldShell {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.profileFieldActions {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.textRevisionPanel {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+.textRevisionCard {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+  border: 1px solid var(--demo-border);
+  border-radius: 12px;
+  background: var(--demo-field-bg);
+  padding: 12px;
+}
+
+.textRevisionMeta {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.textRevisionMeta strong {
+  min-width: 0;
+  color: var(--demo-text);
+  font-size: 12px;
+  font-weight: 680;
+}
+
+.textRevisionMeta span {
+  flex: 0 0 auto;
+  color: var(--demo-faint);
+  font-size: 11px;
+}
+
+.textRevisionCard p {
+  display: -webkit-box;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--demo-muted);
+  font-size: 12px;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow-wrap: anywhere;
+}
+
 .heroStrip {
   display: grid;
   min-width: 0;

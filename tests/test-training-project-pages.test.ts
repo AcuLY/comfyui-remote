@@ -300,6 +300,38 @@ test("training profile page saves through the formal HTTP API on production rout
   assert.match(profileSource, /pushToast/, "production profile save should surface API success or failure through the shared feedback system");
 });
 
+test("training profile page exposes text revision history and restore beside editable fields", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /const router = useRouter\(\)/, "profile page should refresh after restoring a server-side text revision");
+  assert.match(profileSource, /profileRevisionField/, "profile page should keep selected text-revision field state");
+  assert.match(profileSource, /handleOpenProfileRevisionHistory/, "profile page should define a field-level revision history opener");
+  assert.match(profileSource, /params\.set\("entityType", "profile"\)/, "revision list requests should stay scoped to profile text");
+  assert.match(profileSource, /params\.set\("entityId", activeProject\.id\)/, "revision list requests should stay scoped to the active project");
+  assert.match(profileSource, /params\.set\("fieldName", fieldName\)/, "revision list requests should stay scoped to the selected field");
+  assert.match(
+    profileSource,
+    /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/text-revisions\?\$\{params\.toString\(\)\}`/,
+    "profile history should load revisions through the formal text-revision list API",
+  );
+  assert.match(profileSource, /handleRestoreProfileRevision/, "profile page should define a text-revision restore handler");
+  assert.match(
+    profileSource,
+    /fetch\(`\/api\/training\/text-revisions\/\$\{revisionId\}\/restore`/,
+    "profile restore should call the formal text-revision restore API",
+  );
+  assert.match(profileSource, /method:\s*"POST"/, "profile restore should use POST");
+  assert.match(profileSource, /router\.refresh\(\)/, "restoring a server-side text revision should refresh server data");
+  assert.match(profileSource, /查看资料历史/, "editable profile fields should expose a nearby history action");
+  assert.match(profileSource, /文本历史/, "profile page should render a visible text history panel");
+  assert.match(profileSource, /恢复此版本/, "profile page should render restore controls for history entries");
+});
+
 test("training profile page saves editable profile fields into the local draft", () => {
   const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const sectionsStart = pagesSource.indexOf("function SectionCard");

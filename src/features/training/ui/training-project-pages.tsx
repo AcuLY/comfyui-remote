@@ -95,6 +95,37 @@ type ProjectSectionDraftState = {
 const DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT = "保持角色正面可训练，避免复杂遮挡和多人构图。";
 const PROJECT_RUN_ERROR_CLAMP_LINES = 3;
 
+type TrainingProfileRevisionField = "loraUsagePrompt" | "characterDetailPrompt" | "profileSummary";
+type TrainingProfileFormField = "detailPrompt" | "profileSummary" | "usagePrompt";
+type TrainingTextRevisionItem = {
+  id: string;
+  fieldName: string;
+  textValue: string;
+  reason: string;
+  sourceTaskId: string | null;
+  sourceRunId: string | null;
+  createdAt: string;
+};
+
+const PROFILE_REVISION_FIELDS: Array<{
+  fieldName: TrainingProfileRevisionField;
+  formField: TrainingProfileFormField;
+  label: string;
+}> = [
+  { fieldName: "loraUsagePrompt", formField: "usagePrompt", label: "LoRA 使用提示词" },
+  { fieldName: "characterDetailPrompt", formField: "detailPrompt", label: "角色细节描述" },
+  { fieldName: "profileSummary", formField: "profileSummary", label: "资料备注" },
+];
+
+const PROFILE_REVISION_REASON_LABELS: Record<string, string> = {
+  ai_generation: "AI 生成",
+  before_overwrite: "覆盖前快照",
+  idle_checkpoint: "空闲快照",
+  run_snapshot: "任务快照",
+  dataset_freeze: "冻结数据集",
+  start_training: "开始训练",
+};
+
 type NewProjectTemplateHints = {
   sections: string;
   templateId: string;
@@ -111,6 +142,31 @@ function isTrainingModelOption(value: unknown): value is TrainingModelOption {
   return record.modelType === "checkpoint"
     && typeof record.name === "string"
     && typeof record.relativePath === "string";
+}
+
+function isTrainingTextRevisionItem(value: unknown): value is TrainingTextRevisionItem {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.id === "string"
+    && typeof record.fieldName === "string"
+    && typeof record.textValue === "string"
+    && typeof record.reason === "string"
+    && typeof record.createdAt === "string";
+}
+
+function profileRevisionFieldConfig(fieldName: TrainingProfileRevisionField) {
+  return PROFILE_REVISION_FIELDS.find((field) => field.fieldName === fieldName) ?? PROFILE_REVISION_FIELDS[0];
+}
+
+function formatProfileRevisionTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
 }
 
 function findProject(data: TrainingAppData, projectId?: string) {
@@ -1637,6 +1693,7 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: Train
 
 export function LoraTrainingProjectProfilePage({ data, projectId }: { data: TrainingAppData; projectId?: string }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { pushToast } = useDemoFeedback();
   const referenceUploadInputRef = useRef<HTMLInputElement | null>(null);
   const project = findProject(data, projectId);
@@ -1665,8 +1722,20 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
     pendingReferenceIds: new Set<string>(),
     projectId: project?.id ?? null,
   }));
+  const [profileRevisionField, setProfileRevisionField] = useState<TrainingProfileRevisionField | null>(null);
+  const [profileRevisionState, setProfileRevisionState] = useState<{
+    fieldName: TrainingProfileRevisionField | null;
+    projectId: string | null;
+    revisions: TrainingTextRevisionItem[];
+  }>(() => ({
+    fieldName: null,
+    projectId: project?.id ?? null,
+    revisions: [],
+  }));
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingReferenceImage, setIsUploadingReferenceImage] = useState(false);
+  const [isLoadingProfileRevisions, setIsLoadingProfileRevisions] = useState(false);
+  const [restoringProfileRevisionId, setRestoringProfileRevisionId] = useState<string | null>(null);
   if (!project) return <EmptyPage title="没有角色资料数据" />;
   const activeProject = project;
   const localReferenceImages = referenceImageState.projectId === activeProject.id ? referenceImageState.images : activeProject.referenceImages;
@@ -1680,6 +1749,10 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
   const isProductionTrainingRoute = pathname === "/training" || pathname.startsWith("/training/");
   const addedReferenceResultIds = referenceResultState.projectId === activeProject.id ? referenceResultState.addedReferenceResultIds : new Set<string>();
   const pendingReferenceIds = referenceResultRequestState.projectId === activeProject.id ? referenceResultRequestState.pendingReferenceIds : new Set<string>();
+  const selectedProfileRevisionField = profileRevisionField ? profileRevisionFieldConfig(profileRevisionField) : null;
+  const visibleProfileRevisions = profileRevisionState.projectId === activeProject.id && profileRevisionState.fieldName === profileRevisionField
+    ? profileRevisionState.revisions
+    : [];
 
   async function handleSaveProfile() {
     const nextDraft = {
@@ -1751,6 +1824,112 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
         projectId: activeProject.id,
       };
     });
+  }
+
+  async function handleOpenProfileRevisionHistory(fieldName: TrainingProfileRevisionField) {
+    setProfileRevisionField(fieldName);
+
+    if (!isProductionTrainingRoute) {
+      setProfileRevisionState({ fieldName, projectId: activeProject.id, revisions: [] });
+      pushToast({
+        tone: "info",
+        title: "文本历史",
+        detail: "原型模式不会写入服务端文本历史。",
+      });
+      return;
+    }
+
+    if (isLoadingProfileRevisions) return;
+
+    setIsLoadingProfileRevisions(true);
+    try {
+      const params = new URLSearchParams();
+      params.set("entityType", "profile");
+      params.set("entityId", activeProject.id);
+      params.set("fieldName", fieldName);
+      const response = await fetch(`/api/training/projects/${activeProject.id}/text-revisions?${params.toString()}`);
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok || !Array.isArray(payload.data)) {
+        pushToast({
+          tone: "error",
+          title: "文本历史加载失败",
+          detail: payload?.error?.message ?? "文本历史请求失败",
+        });
+        return;
+      }
+
+      setProfileRevisionState({
+        fieldName,
+        projectId: activeProject.id,
+        revisions: payload.data.filter(isTrainingTextRevisionItem),
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "文本历史加载失败",
+        detail: error instanceof Error ? error.message : "文本历史请求失败",
+      });
+    } finally {
+      setIsLoadingProfileRevisions(false);
+    }
+  }
+
+  async function handleRestoreProfileRevision(revisionId: string) {
+    if (!isProductionTrainingRoute || restoringProfileRevisionId) return;
+
+    setRestoringProfileRevisionId(revisionId);
+    try {
+      const response = await fetch(`/api/training/text-revisions/${revisionId}/restore`, {
+        method: "POST",
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "恢复文本失败",
+          detail: payload?.error?.message ?? "文本恢复请求失败",
+        });
+        return;
+      }
+
+      const restoredField = payload.data?.fieldName;
+      const restoredValue = payload.data?.textValue;
+      if (typeof restoredField === "string" && typeof restoredValue === "string") {
+        const config = PROFILE_REVISION_FIELDS.find((field) => field.fieldName === restoredField);
+        if (config) {
+          setProfileForm((current) => {
+            const active = current.projectId === activeProject.id ? current : {
+              detailPrompt: activeProject.detailPrompt,
+              profileSummary: activeProject.profileSummary,
+              projectId: activeProject.id,
+              usagePrompt: activeProject.usagePrompt,
+            };
+            return {
+              ...active,
+              [config.formField]: restoredValue,
+              projectId: activeProject.id,
+            };
+          });
+        }
+      }
+
+      router.refresh();
+      pushToast({
+        tone: "success",
+        title: "文本已恢复",
+        detail: selectedProfileRevisionField?.label ?? activeProject.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "恢复文本失败",
+        detail: error instanceof Error ? error.message : "文本恢复请求失败",
+      });
+    } finally {
+      setRestoringProfileRevisionId(null);
+    }
   }
 
   function handleUploadReferenceImage() {
@@ -1947,9 +2126,48 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
       <div className={s.twoCol}>
         <Panel title="角色文本">
           <div className={s.formStack}>
-            <Field multiline features={{ resize: true, clipboard: true }} label="LoRA 使用提示词" value={profileForm.usagePrompt} onChange={(value) => handleUpdateProfileForm("usagePrompt", value)} />
-            <Field multiline features={{ resize: true, clipboard: true }} label="角色细节描述" value={profileForm.detailPrompt} onChange={(value) => handleUpdateProfileForm("detailPrompt", value)} />
-            <Field multiline features={{ resize: true, clipboard: true }} label="资料备注" value={profileForm.profileSummary} onChange={(value) => handleUpdateProfileForm("profileSummary", value)} />
+            <div className={s.profileFieldShell}>
+              <div className={s.profileFieldActions}>
+                <Button
+                  size="sm"
+                  tone="subtle"
+                  pending={isLoadingProfileRevisions && profileRevisionField === "loraUsagePrompt"}
+                  ariaLabel="查看资料历史：LoRA 使用提示词"
+                  onClick={() => handleOpenProfileRevisionHistory("loraUsagePrompt")}
+                >
+                  历史
+                </Button>
+              </div>
+              <Field multiline features={{ resize: true, clipboard: true }} label="LoRA 使用提示词" value={profileForm.usagePrompt} onChange={(value) => handleUpdateProfileForm("usagePrompt", value)} />
+            </div>
+            <div className={s.profileFieldShell}>
+              <div className={s.profileFieldActions}>
+                <Button
+                  size="sm"
+                  tone="subtle"
+                  pending={isLoadingProfileRevisions && profileRevisionField === "characterDetailPrompt"}
+                  ariaLabel="查看资料历史：角色细节描述"
+                  onClick={() => handleOpenProfileRevisionHistory("characterDetailPrompt")}
+                >
+                  历史
+                </Button>
+              </div>
+              <Field multiline features={{ resize: true, clipboard: true }} label="角色细节描述" value={profileForm.detailPrompt} onChange={(value) => handleUpdateProfileForm("detailPrompt", value)} />
+            </div>
+            <div className={s.profileFieldShell}>
+              <div className={s.profileFieldActions}>
+                <Button
+                  size="sm"
+                  tone="subtle"
+                  pending={isLoadingProfileRevisions && profileRevisionField === "profileSummary"}
+                  ariaLabel="查看资料历史：资料备注"
+                  onClick={() => handleOpenProfileRevisionHistory("profileSummary")}
+                >
+                  历史
+                </Button>
+              </div>
+              <Field multiline features={{ resize: true, clipboard: true }} label="资料备注" value={profileForm.profileSummary} onChange={(value) => handleUpdateProfileForm("profileSummary", value)} />
+            </div>
           </div>
         </Panel>
         <Panel title="参考图" subtitle="original / generated / auxiliary 都作为自由参考图管理，不做 fixed slots。">
@@ -1987,6 +2205,35 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
           </div>
         </Panel>
       </div>
+      {selectedProfileRevisionField ? (
+        <Panel title="文本历史" subtitle={`${selectedProfileRevisionField.label} · 可恢复到任一历史版本`}>
+          <div className={s.textRevisionPanel}>
+            {isLoadingProfileRevisions ? (
+              <p className={s.bodyText}>正在读取文本历史...</p>
+            ) : visibleProfileRevisions.length > 0 ? (
+              visibleProfileRevisions.map((revision) => (
+                <article className={s.textRevisionCard} key={revision.id}>
+                  <div className={s.textRevisionMeta}>
+                    <strong>{PROFILE_REVISION_REASON_LABELS[revision.reason] ?? revision.reason}</strong>
+                    <span>{formatProfileRevisionTime(revision.createdAt)}</span>
+                  </div>
+                  <p>{revision.textValue || "空文本"}</p>
+                  <Button
+                    size="sm"
+                    tone="subtle"
+                    pending={restoringProfileRevisionId === revision.id}
+                    onClick={() => handleRestoreProfileRevision(revision.id)}
+                  >
+                    恢复此版本
+                  </Button>
+                </article>
+              ))
+            ) : (
+              <p className={s.bodyText}>暂无历史版本。保存、覆盖或训练流程产生快照后会显示在这里。</p>
+            )}
+          </div>
+        </Panel>
+      ) : null}
       {visibleProfileDraft ? (
         <Panel title="资料保存草稿" subtitle="页面内已记录当前资料状态，可继续调整后再创建训练任务。">
           <dl className={s.profileDraft}>
