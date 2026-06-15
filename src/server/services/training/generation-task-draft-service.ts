@@ -139,7 +139,7 @@ function mapLegacyGenerationStatus(status: string): LoraTrainingRun["status"] {
   return "failed";
 }
 
-function normalizeGenerationTaskType(value: string | null | undefined): TrainingGenerationTaskType {
+export function normalizeGenerationTaskType(value: string | null | undefined): TrainingGenerationTaskType {
   const normalized = value?.trim();
   if (!normalized) return DEFAULT_GENERATION_TASK_TYPE;
 
@@ -195,14 +195,20 @@ function normalizeGenerationParamsJson(
 
 function mapLegacyGenerationRunToTrainingRun(input: {
   finalInput: string;
+  generationKind?: TrainingGenerationKind;
   project: Awaited<ReturnType<typeof getTrainingProject>>;
   run: Awaited<ReturnType<typeof enqueueLegacyTrainingSectionGenerationRun>>;
   section: Awaited<ReturnType<typeof getTrainingProject>>["sections"][number];
+  taskType?: TrainingGenerationTaskType;
+  taskTypeLabel?: string;
 }): LoraTrainingRun {
   return {
     id: input.run.id,
     kind: "generation",
     status: mapLegacyGenerationStatus(input.run.status),
+    generationKind: input.generationKind,
+    taskType: input.taskType,
+    taskTypeLabel: input.taskTypeLabel,
     projectId: input.project.id,
     sectionId: input.section.id,
     projectTitle: input.project.title,
@@ -687,7 +693,12 @@ export async function runManagedGenerationTask(taskId: string) {
   let run: LoraTrainingRun;
 
   if (managedRun) {
-    run = managedRun;
+    run = {
+      ...managedRun,
+      generationKind: taskMetadata.generationKind,
+      taskType: taskMetadata.taskType,
+      taskTypeLabel: taskMetadata.taskTypeLabel,
+    };
   } else {
     const projectIsManaged = Boolean(await getManagedTrainingProject(draft.projectId));
     const legacyRun = await enqueueLegacyTrainingSectionGenerationRun(section.id, {
@@ -703,9 +714,12 @@ export async function runManagedGenerationTask(taskId: string) {
     });
     run = mapLegacyGenerationRunToTrainingRun({
       finalInput: preview.finalInput,
+      generationKind: taskMetadata.generationKind,
       project,
       run: legacyRun,
       section,
+      taskType: taskMetadata.taskType,
+      taskTypeLabel: taskMetadata.taskTypeLabel,
     });
   }
 

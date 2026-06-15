@@ -1,12 +1,21 @@
 import { fail, ok } from "@/lib/api-response";
+import type { LoraTrainingTaskStatus } from "@/features/training/types";
 import { listTrainingRuns, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
   createManagedGenerationTaskDraft,
   listManagedGenerationTaskDrafts,
   mapTrainingGenerationTaskDraftError,
+  normalizeGenerationTaskType,
 } from "@/server/services/training/generation-task-draft-service";
 
 export const dynamic = "force-dynamic";
+
+const RUN_STATUSES = new Set<LoraTrainingTaskStatus>(["completed", "running", "queued", "failed"]);
+
+function normalizeRunStatus(status: string | null): LoraTrainingTaskStatus | null {
+  if (!status) return null;
+  return RUN_STATUSES.has(status as LoraTrainingTaskStatus) ? status as LoraTrainingTaskStatus : null;
+}
 
 export async function GET(
   request: Request,
@@ -23,8 +32,18 @@ export async function GET(
       return ok(data);
     }
 
-    const data = await listTrainingRuns({ kind: "generation", projectId });
-    return ok(data);
+    if (status && !normalizeRunStatus(status)) {
+      return ok([]);
+    }
+
+    const statusFilter = normalizeRunStatus(status);
+    const taskTypeFilter = taskType?.trim() ? normalizeGenerationTaskType(taskType) : null;
+    const data = await listTrainingRuns({
+      kind: "generation",
+      projectId,
+      status: statusFilter ?? undefined,
+    });
+    return ok(data.filter((run) => !taskTypeFilter || run.taskType === taskTypeFilter));
   } catch (error) {
     if (status === "draft") {
       const mapped = mapTrainingGenerationTaskDraftError(error);

@@ -1202,7 +1202,7 @@ test("GET /api/training generation task resources declare draft list filters", a
       queryParamSchema: {
         optionalFields: ["status", "taskType"],
         enumValues: {
-          status: ["draft"],
+          status: ["draft", "queued", "running", "completed", "failed"],
           taskType: [
             "profile_text_generation",
             "scene_description_generation",
@@ -6308,8 +6308,37 @@ test("managed training project generation task draft lifecycle works through /ap
   assert.equal(runPayload.ok, true);
   assert.equal(runPayload.data.kind, "generation");
   assert.equal(runPayload.data.projectId, projectId);
+  assert.equal(runPayload.data.generationKind, "image_generation");
+  assert.equal(runPayload.data.taskType, "trainingset_generation");
+  assert.equal(runPayload.data.taskTypeLabel, "训练集图片生成");
   assert.ok(Array.isArray(runPayload.data.inputImages));
   assert.ok(runPayload.data.inputImages.length >= 1);
+
+  const queuedTasksResponse = await projectGenerationTasksRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/generation-tasks?status=queued&taskType=trainingset_generation`),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const queuedTasksPayload = await queuedTasksResponse.json();
+  assert.equal(queuedTasksResponse.status, 200);
+  assert.equal(queuedTasksPayload.ok, true);
+  const listedQueuedTask = queuedTasksPayload.data.find((task: { id: string }) => task.id === runPayload.data.id);
+  assert.ok(listedQueuedTask, "Project generation task lists should expose queued typed tasks after a draft is run.");
+  assert.equal(listedQueuedTask.generationKind, "image_generation");
+  assert.equal(listedQueuedTask.taskType, "trainingset_generation");
+  assert.equal(listedQueuedTask.taskTypeLabel, "训练集图片生成");
+
+  const mismatchedTypeResponse = await projectGenerationTasksRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/generation-tasks?status=queued&taskType=profile_text_generation`),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const mismatchedTypePayload = await mismatchedTypeResponse.json();
+  assert.equal(mismatchedTypeResponse.status, 200);
+  assert.equal(mismatchedTypePayload.ok, true);
+  assert.equal(
+    mismatchedTypePayload.data.some((task: { id: string }) => task.id === runPayload.data.id),
+    false,
+    "Project generation task taskType filters must not return a different generation task kind.",
+  );
 
   const getAfterRunResponse = await generationTaskDetailRoute.GET(
     new Request(`http://localhost/api/training/generation-tasks/${taskId}`),

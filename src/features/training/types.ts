@@ -1,3 +1,8 @@
+import type {
+  TrainingGenerationKind,
+  TrainingGenerationTaskType,
+} from "@/lib/training/schemas";
+
 export type TrainingImageStatus = "pending" | "kept" | "trashed";
 
 export type TrainingImage = {
@@ -87,6 +92,9 @@ export type LoraTrainingRun = {
   id: string;
   kind: LoraTrainingTaskKind;
   status: LoraTrainingTaskStatus;
+  generationKind?: TrainingGenerationKind;
+  taskType?: TrainingGenerationTaskType;
+  taskTypeLabel?: string;
   projectId: string;
   sectionId?: string;
   projectTitle: string;

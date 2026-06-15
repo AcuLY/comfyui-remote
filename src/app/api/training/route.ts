@@ -729,7 +729,7 @@ const TRAINING_API_MANIFEST = {
         queryParamSchema: {
           optionalFields: ["status", "taskType"],
           enumValues: {
-            status: ["draft"],
+            status: ["draft", "queued", "running", "completed", "failed"],
             taskType: TRAINING_GENERATION_TASK_TYPES,
           },
         },
