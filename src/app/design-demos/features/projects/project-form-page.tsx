@@ -4,12 +4,12 @@ import { Save } from "lucide-react";
 
 import type { DemoData, DemoProject } from "../../data";
 import s from "./project-form-page.projects.module.css";
-import { Button } from "../../shared/primitives/button";
-import { Field } from "../../shared/primitives/field";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { Panel } from "../../shared/primitives/panel";
-import { FloatingSelect } from "../../shared/primitives/floating-select";
-import { SwitchRow } from "../../shared/primitives/switch-row";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { Field } from "@/components/design-demo-ui/primitives/field";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { Panel } from "@/components/design-demo-ui/primitives/panel";
+import { FloatingSelect } from "@/components/design-demo-ui/primitives/floating-select";
+import { SwitchRow } from "@/components/design-demo-ui/primitives/switch-row";
 
 export function ProjectFormPage({ project, mode, data }: { project?: DemoProject; mode: "new" | "edit"; data?: DemoData }) {
   const checkpoints = data?.models.filter(m => m.modelType === "checkpoint") ?? [];

@@ -7,7 +7,7 @@ import type * as React from "react";
 import type { DemoTemplate } from "../../data";
 import { cx, demoHref } from "../../routing";
 import type { DemoTemplateSection, TemplateSectionMode } from "../../routing";
-import { AnchorRail } from "../../shared/patterns";
+import { AnchorRail } from "@/components/design-demo-ui/patterns";
 import s from "./template-section-shell.library.module.css";
 
 export function templateSectionAnchorId(section: DemoTemplateSection) {

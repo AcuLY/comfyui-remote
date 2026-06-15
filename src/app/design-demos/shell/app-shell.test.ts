@@ -6,9 +6,10 @@ import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const shellDir = resolve(testDir, "../../../components/design-demo-shell");
+const sharedUiDir = resolve(testDir, "../../../components/design-demo-ui");
 const shellSource = readFileSync(resolve(shellDir, "app-shell.tsx"), "utf8");
 const cssSource = readFileSync(resolve(shellDir, "app-shell.module.css"), "utf8");
-const pageHeaderSource = readFileSync(resolve(testDir, "../shared/primitives/page-header/index.tsx"), "utf8");
+const pageHeaderSource = readFileSync(resolve(sharedUiDir, "primitives/page-header/index.tsx"), "utf8");
 
 function sourceRegion(source: string, startMarker: string, endMarker: string) {
   const start = source.indexOf(startMarker);

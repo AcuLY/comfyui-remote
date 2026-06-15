@@ -2,11 +2,11 @@
 
 import { Plus } from "lucide-react";
 
-import { Button } from "../../../shared/primitives/button";
+import { Button } from "@/components/design-demo-ui/primitives/button";
 import s from "./editor-lora-column.module.css";
 import { LORA_FILE_OPTIONS } from "./editor-page-data";
 import { LoraRow, type LoraRowData } from "./editor-parts";
-import { SortableList } from "../../../shared/primitives/sortable";
+import { SortableList } from "@/components/design-demo-ui/primitives/sortable";
 
 export function LoraColumn({
   label,

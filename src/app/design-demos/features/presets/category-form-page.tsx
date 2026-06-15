@@ -13,13 +13,13 @@ import {
   type DemoData,
 } from "../../data";
 import s from "./category-form-page.library.module.css";
-import { Button } from "../../shared/primitives/button";
-import { EmptyPage } from "../../shared/primitives/empty-page";
-import { Field } from "../../shared/primitives/field";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { FloatingSelect } from "../../shared/primitives/floating-select";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { EmptyPage } from "@/components/design-demo-ui/primitives/empty-page";
+import { Field } from "@/components/design-demo-ui/primitives/field";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { FloatingSelect } from "@/components/design-demo-ui/primitives/floating-select";
 import { cx } from "../../routing";
-import { UnitRowShell } from "../../shared/patterns";
+import { UnitRowShell } from "@/components/design-demo-ui/patterns";
 
 function PresetCategoryEditor({ category, categories }: { category: DemoCategory | null; categories: DemoCategory[] }) {
   const [draftType, setDraftType] = useState<"preset" | "group">(category?.type === "group" ? "group" : "preset");

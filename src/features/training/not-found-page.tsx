@@ -1,9 +1,9 @@
 import { Home } from "lucide-react";
 
 import { fallbackRouteData } from "@/app/design-demos/data/fallback-route-data";
-import { ButtonLink } from "@/app/design-demos/shared/primitives/button";
-import { PageHeader } from "@/app/design-demos/shared/primitives/page-header";
-import { RouteTable } from "@/app/design-demos/shared/primitives/route-table";
+import { ButtonLink } from "@/components/design-demo-ui/primitives/button";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { RouteTable } from "@/components/design-demo-ui/primitives/route-table";
 import s from "@/app/design-demos/features/settings/not-found-page.shell.module.css";
 
 export function TrainingNotFoundPage({ route }: { route: string }) {

@@ -1,4 +1,4 @@
-import { createSvgIcon, createSvgIconFromString, type SvgIconComponent } from "../../shared/primitives/icons/custom-svg";
+import { createSvgIcon, createSvgIconFromString, type SvgIconComponent } from "@/components/design-demo-ui/primitives/icons/custom-svg";
 
 /** 示例：用 createSvgIcon 创建描边风格图标 */
 export const ComfyuiIcon = createSvgIcon({

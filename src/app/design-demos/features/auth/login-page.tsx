@@ -1,11 +1,11 @@
 import { Lock, X } from "lucide-react";
 
 import s from "./login-page.shell.module.css";
-import { Button } from "../../shared/primitives/button";
-import { Field } from "../../shared/primitives/field";
-import { OperationStateStrip } from "../../shared/feedback/operation-state-strip";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { Panel } from "../../shared/primitives/panel";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { Field } from "@/components/design-demo-ui/primitives/field";
+import { OperationStateStrip } from "@/components/design-demo-ui/feedback/operation-state-strip";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { Panel } from "@/components/design-demo-ui/primitives/panel";
 
 export function LoginPage() {
   return (

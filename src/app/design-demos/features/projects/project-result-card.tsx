@@ -6,10 +6,10 @@ import type { DemoImage, DemoSection } from "../../data";
 import { sectionAnchorId } from "../../routing";
 import type { ResultDemoFilter } from "../../routing";
 import s from "./project-result-card.projects.module.css";
-import { Button } from "../../shared/primitives/button";
-import { ImageGrid } from "../../shared/media/image-grid";
-import { SegmentedControl } from "../../shared/primitives/segmented-control";
-import { StatusBadge } from "../../shared/primitives/status-badge";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { ImageGrid } from "@/components/design-demo-ui/media/image-grid";
+import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 
 export function ProjectResultsToolbar({
   images,

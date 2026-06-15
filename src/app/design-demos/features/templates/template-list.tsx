@@ -7,10 +7,10 @@ import { Edit3, Layers3, Plus, Trash2 } from "lucide-react";
 import type { DemoData } from "../../data";
 import { demoHref } from "../../routing";
 import s from "./template-list.module.css";
-import { Button } from "../../shared/primitives/button";
-import { ButtonLink } from "../../shared/primitives/button";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { StatusBadge } from "../../shared/primitives/status-badge";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { ButtonLink } from "@/components/design-demo-ui/primitives/button";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 
 const SCROLL_KEY = "demo-templates-from";
 

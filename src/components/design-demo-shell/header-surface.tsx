@@ -8,7 +8,7 @@ import { ArrowLeft, MoreHorizontal } from "lucide-react";
 
 import { cx, useRouteHref } from "@/app/design-demos/routing";
 import type { HeaderAction, HeaderSpec } from "@/app/design-demos/routing/header-specs";
-import { Button, ButtonLink } from "@/app/design-demos/shared/primitives";
+import { Button, ButtonLink } from "@/components/design-demo-ui/primitives";
 import s from "./header-surface.module.css";
 
 type RouteHeaderMode = "expanded" | "mobile";

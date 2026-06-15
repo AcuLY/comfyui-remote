@@ -5,14 +5,14 @@ import { Copy, GripVertical, History, Link2, Plus, RefreshCw, Save, Search, Tras
 
 import { categoryTypeLabel, presetFolderBreadcrumb, type DemoData, type DemoPreset } from "../../data";
 import s from "./preset-edit-page.library.module.css";
-import { Button } from "../../shared/primitives/button";
-import { EmptyPage } from "../../shared/primitives/empty-page";
-import { Field } from "../../shared/primitives/field";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { FloatingSelect } from "../../shared/primitives/floating-select";
-import { StatusBadge } from "../../shared/primitives/status-badge";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { EmptyPage } from "@/components/design-demo-ui/primitives/empty-page";
+import { Field } from "@/components/design-demo-ui/primitives/field";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { FloatingSelect } from "@/components/design-demo-ui/primitives/floating-select";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 import { cx, firstCategory } from "../../routing";
-import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
+import { SortableList, useDemoSortable } from "@/components/design-demo-ui/primitives/sortable";
 
 type SaveState = "saved" | "queued" | "saving" | "failed";
 type LoraStageId = 1 | 2;

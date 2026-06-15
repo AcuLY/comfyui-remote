@@ -6,9 +6,9 @@ import { ArrowRight, CheckSquare, ChevronDown, CircleAlert, Copy, X } from "luci
 
 import type { DemoRun } from "../../data";
 import { cx, demoHref } from "../../routing";
-import { Button } from "../../shared/primitives/button";
-import { Checkbox } from "../../shared/primitives/checkbox";
-import { StatusBadge } from "../../shared/primitives/status-badge";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { Checkbox } from "@/components/design-demo-ui/primitives/checkbox";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 import { groupCollapsedKey, groupRunsByProject } from "./queue-model";
 import type { QueueRunMode } from "./types";
 import s from "./run-list.runs.module.css";

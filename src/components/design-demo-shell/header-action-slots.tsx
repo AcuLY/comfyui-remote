@@ -6,8 +6,8 @@ import { ChevronLeft, ChevronRight, Download, Edit3, FolderPlus, Play, Plus, Row
 
 import type { DemoData, DemoProject, DemoSection } from "@/app/design-demos/data";
 import { demoHref, rawSectionId } from "@/app/design-demos/routing";
-import { Button, ButtonLink } from "@/app/design-demos/shared/primitives/button";
-import { SegmentedControl } from "@/app/design-demos/shared/primitives/segmented-control";
+import { Button, ButtonLink } from "@/components/design-demo-ui/primitives/button";
+import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
 import type { HeaderActionSlot } from "./header-surface";
 
 type ProjectListFilter = "all" | "unfinished";

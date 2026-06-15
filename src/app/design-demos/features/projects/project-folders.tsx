@@ -6,15 +6,15 @@ import type { DemoImage, DemoProject, DemoProjectFolder, DemoRun } from "../../d
 import { cx } from "../../routing";
 import cardStyles from "./project-list-item.projects.module.css";
 import s from "./project-folders.projects.module.css";
-import { Button } from "../../shared/primitives/button";
-import { Checkbox } from "../../shared/primitives/checkbox";
-import { ImageListSmall } from "../../shared/media/image-list-small";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { Checkbox } from "@/components/design-demo-ui/primitives/checkbox";
+import { ImageListSmall } from "@/components/design-demo-ui/media/image-list-small";
 import {
   FolderBreadcrumb,
   MoveTargetPicker,
   SelectionBatchBar,
   type MoveTargetOption,
-} from "../../shared/patterns";
+} from "@/components/design-demo-ui/patterns";
 import { ProjectListCardShell } from "./project-list-item";
 
 const FOLDER_PREVIEW_IMAGE_LIMIT = 24;

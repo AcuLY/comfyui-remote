@@ -3,7 +3,7 @@
 import { Check, Star, Trash2 } from "lucide-react";
 
 import s from "./lightbox-preview.editor.module.css";
-import { ImagePreviewLarge } from "../../../shared/media/image-preview-large";
+import { ImagePreviewLarge } from "@/components/design-demo-ui/media/image-preview-large";
 import type { SectionEditorModel } from "./use-section-editor-state";
 
 export function LightboxPreview({ editor }: { editor: SectionEditorModel }) {

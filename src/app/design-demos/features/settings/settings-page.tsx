@@ -6,7 +6,7 @@ import { ArrowRight, FlaskConical, History, ImageIcon, Monitor } from "lucide-re
 
 import type { DemoData } from "../../data";
 import s from "./settings-page.shell.module.css";
-import { PageHeader } from "../../shared/primitives/page-header";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
 import {
   WORK_MODE_CHANGE_EVENT,
   WORK_MODE_STORAGE_KEY,

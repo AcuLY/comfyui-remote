@@ -5,12 +5,12 @@ import { GripVertical, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cx, useRouteHref } from "@/app/design-demos/routing";
-import { ImageListSmall } from "@/app/design-demos/shared/media/image-list-small";
-import { UnitRowShell } from "@/app/design-demos/shared/patterns";
-import { Button } from "@/app/design-demos/shared/primitives/button";
-import { Checkbox } from "@/app/design-demos/shared/primitives/checkbox";
-import { useDemoSortable } from "@/app/design-demos/shared/primitives/sortable";
-import { StatusBadge } from "@/app/design-demos/shared/primitives/status-badge";
+import { ImageListSmall } from "@/components/design-demo-ui/media/image-list-small";
+import { UnitRowShell } from "@/components/design-demo-ui/patterns";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { Checkbox } from "@/components/design-demo-ui/primitives/checkbox";
+import { useDemoSortable } from "@/components/design-demo-ui/primitives/sortable";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 import type { LoraTrainingProject } from "@/features/training/types";
 import s from "./training-project-list-item.module.css";
 

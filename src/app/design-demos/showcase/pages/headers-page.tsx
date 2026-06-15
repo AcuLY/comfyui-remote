@@ -10,7 +10,7 @@ import { buildHeaderSpecs, displayHeaderRoute, headerAction as action } from "..
 import type { HeaderSpec } from "../../routing/header-specs";
 import { getHeaderActionSlots } from "../../shell/header-action-slots";
 import { RouteHeaderSurface } from "../../shell/header-surface";
-import { PageHeader } from "../../shared/primitives";
+import { PageHeader } from "@/components/design-demo-ui/primitives";
 import s from "./headers-page.module.css";
 
 type HeaderMode = "expanded" | "mobile";

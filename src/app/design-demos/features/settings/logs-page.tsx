@@ -5,10 +5,10 @@ import { Search } from "lucide-react";
 
 import type { DemoData } from "../../data";
 import s from "./logs-page.shell.module.css";
-import { Button } from "../../shared/primitives/button";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { SegmentedControl } from "../../shared/primitives/segmented-control";
-import { StatusBadge } from "../../shared/primitives/status-badge";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 import { cx } from "../../routing";
 import type { LogDemoSource } from "../../routing";
 

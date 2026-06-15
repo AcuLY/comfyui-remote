@@ -96,9 +96,9 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const demoClientSource = readFileSync(resolve(testDir, "../shell/app-client.tsx"), "utf8");
 const familyPageSource = readFileSync(resolve(testDir, "pages/family-page.tsx"), "utf8");
 const designDemosDir = resolve(testDir, "..");
+const designDemoUiDir = resolve(testDir, "../../../components/design-demo-ui");
 
-function sourceFilesUnder(relativeDir: string) {
-  const root = resolve(designDemosDir, relativeDir);
+function sourceFilesUnderRoot(root: string) {
   const files: string[] = [];
 
   function visit(dir: string) {
@@ -115,6 +115,10 @@ function sourceFilesUnder(relativeDir: string) {
 
   visit(root);
   return files;
+}
+
+function sourceFilesUnder(relativeDir: string) {
+  return sourceFilesUnderRoot(resolve(designDemosDir, relativeDir));
 }
 
 function filesUnder(relativeDir: string, extensionPattern: RegExp) {
@@ -137,10 +141,10 @@ function filesUnder(relativeDir: string, extensionPattern: RegExp) {
   return files;
 }
 
-function assertNoForbiddenImports(relativeDir: string, forbiddenTargets: string[]) {
+function assertNoForbiddenImportsInFiles(sourcePaths: string[], forbiddenTargets: string[]) {
   const importPattern = /(?:import|export)\s+(?:type\s+)?[^"']*?\sfrom\s+["']([^"']+)["']/g;
 
-  for (const sourcePath of sourceFilesUnder(relativeDir)) {
+  for (const sourcePath of sourcePaths) {
     const source = readFileSync(sourcePath, "utf8");
     for (const match of source.matchAll(importPattern)) {
       const importPath = match[1];
@@ -152,8 +156,18 @@ function assertNoForbiddenImports(relativeDir: string, forbiddenTargets: string[
   }
 }
 
+function assertNoForbiddenImports(relativeDir: string, forbiddenTargets: string[]) {
+  assertNoForbiddenImportsInFiles(sourceFilesUnder(relativeDir), forbiddenTargets);
+}
+
 function sourcePathExists(sourcePath: string) {
-  const absolutePath = resolve(designDemosDir, sourcePath);
+  const sourceRoot = sourcePath.startsWith("shared/")
+    ? designDemoUiDir
+    : designDemosDir;
+  const normalizedSourcePath = sourcePath.startsWith("shared/")
+    ? sourcePath.replace(/^shared\//, "")
+    : sourcePath;
+  const absolutePath = resolve(sourceRoot, normalizedSourcePath);
   const candidates = [
     absolutePath,
     `${absolutePath}.ts`,
@@ -341,7 +355,7 @@ for (const removedFile of removedShowcaseFiles) {
 }
 
 assertNoForbiddenImports("routing", ["/features/", "/showcase/"]);
-assertNoForbiddenImports("shared", ["/features/"]);
+assertNoForbiddenImportsInFiles(sourceFilesUnderRoot(designDemoUiDir), ["/features/", "@/app/design-demos/features/"]);
 
 const dataTypesSource = readFileSync(resolve(designDemosDir, "data/types.ts"), "utf8");
 assert.match(dataTypesSource, /civitaiLinks:\s*string\[\]/, "DemoPreset should expose Civitai links as demo-only data");

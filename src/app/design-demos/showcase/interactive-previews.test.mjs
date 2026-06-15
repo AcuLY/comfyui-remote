@@ -6,12 +6,13 @@ import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const showcaseDir = resolve(testDir);
+const designDemoUiDir = resolve(showcaseDir, "../../../components/design-demo-ui");
 const componentPreviewsSource = readShowcaseSource("pages/component-previews.tsx");
 const familySamplesSource = readShowcaseSource("pages/family-samples.tsx");
 const previewKeysSource = readShowcaseSource("preview-keys.ts");
 const registrySource = readShowcaseSource("registry.ts");
 const pendingReviewGroupsCss = readFileSync(resolve(showcaseDir, "../features/runs/pending-review-groups.runs.module.css"), "utf8");
-const patternsCss = readFileSync(resolve(showcaseDir, "../shared/patterns/patterns.module.css"), "utf8");
+const patternsCss = readFileSync(resolve(designDemoUiDir, "patterns/patterns.module.css"), "utf8");
 const presetLibraryCss = readFileSync(resolve(showcaseDir, "../features/presets/library-page.library.module.css"), "utf8");
 const presetLibrarySource = readFileSync(resolve(showcaseDir, "../features/presets/library-page.tsx"), "utf8");
 const presetEditSource = readFileSync(resolve(showcaseDir, "../features/presets/preset-edit-page.tsx"), "utf8");

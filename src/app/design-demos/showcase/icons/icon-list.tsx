@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 
-import type { SvgIconComponent } from "../../shared/primitives/icons/custom-svg";
+import type { SvgIconComponent } from "@/components/design-demo-ui/primitives/icons/custom-svg";
 import s from "./icon-list.showcase.module.css";
 
 type IconComponent = LucideIcon | SvgIconComponent;

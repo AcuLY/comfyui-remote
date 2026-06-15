@@ -5,14 +5,14 @@ import { Copy, Download, GripVertical, Plus, Rows3, Save, Trash2 } from "lucide-
 
 import type { DemoData, DemoTemplate } from "../../data";
 import s from "./template-section-page.library.module.css";
-import { Button } from "../../shared/primitives/button";
-import { ButtonLink } from "../../shared/primitives/button";
-import { EmptyPage } from "../../shared/primitives/empty-page";
-import { Field } from "../../shared/primitives/field";
-import { OperationStateStrip } from "../../shared/feedback/operation-state-strip";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { FloatingSelect } from "../../shared/primitives/floating-select";
-import { StatusBadge } from "../../shared/primitives/status-badge";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { ButtonLink } from "@/components/design-demo-ui/primitives/button";
+import { EmptyPage } from "@/components/design-demo-ui/primitives/empty-page";
+import { Field } from "@/components/design-demo-ui/primitives/field";
+import { OperationStateStrip } from "@/components/design-demo-ui/feedback/operation-state-strip";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { FloatingSelect } from "@/components/design-demo-ui/primitives/floating-select";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 import { TemplateSectionShell, templateSectionAnchorId } from "./template-section-shell";
 
 export function TemplateSectionPage({ template, sectionIndex, data }: { template: DemoTemplate | undefined; sectionIndex: string | undefined; data?: DemoData }) {

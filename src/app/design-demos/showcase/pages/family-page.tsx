@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import type { DemoData } from "../../data";
 import { demoHref } from "../../routing";
-import { ButtonLink, PageHeader } from "../../shared/primitives";
+import { ButtonLink, PageHeader } from "@/components/design-demo-ui/primitives";
 import { getShowcaseComponents, getShowcaseFamily, SHOWCASE_FAMILIES } from "../registry";
 import type { ShowcaseComponentEntry, ShowcaseComponentStatus, ShowcaseFamilyId } from "../registry";
 import { ShowcaseItem } from "../showcase-item";

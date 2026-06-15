@@ -3,9 +3,9 @@ import Link from "next/link";
 import { ChevronDown, Trash2 } from "lucide-react";
 
 import { cx, demoHref } from "../../routing";
-import { Button } from "../../shared/primitives/button";
-import { EmptyRows } from "../../shared/primitives/empty-rows";
-import { ImageListSmall } from "../../shared/media/image-list-small";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { EmptyRows } from "@/components/design-demo-ui/primitives/empty-rows";
+import { ImageListSmall } from "@/components/design-demo-ui/media/image-list-small";
 import { DemoPager } from "./demo-pager";
 import { groupCollapsedKey } from "./queue-model";
 import type { QueueProjectGroup, QueueReviewRow } from "./types";

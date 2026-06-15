@@ -5,12 +5,12 @@ import { useState } from "react";
 import { Archive, CheckSquare, Grid2X2, List, Plus, X } from "lucide-react";
 
 import { cx } from "@/app/design-demos/routing";
-import { useDemoFeedback } from "@/app/design-demos/shared/feedback/context";
-import { SelectionBatchBar } from "@/app/design-demos/shared/patterns";
-import { Button, ButtonLink } from "@/app/design-demos/shared/primitives/button";
-import { PageHeader } from "@/app/design-demos/shared/primitives/page-header";
-import { SegmentedControl } from "@/app/design-demos/shared/primitives/segmented-control";
-import { SortableList } from "@/app/design-demos/shared/primitives/sortable";
+import { useDemoFeedback } from "@/components/design-demo-ui/feedback/context";
+import { SelectionBatchBar } from "@/components/design-demo-ui/patterns";
+import { Button, ButtonLink } from "@/components/design-demo-ui/primitives/button";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
+import { SortableList } from "@/components/design-demo-ui/primitives/sortable";
 import { buildLoraTrainingDemoData } from "@/features/training/build";
 import type { TrainingAppData } from "@/features/training/data";
 import type { LoraTrainingProject } from "@/features/training/types";

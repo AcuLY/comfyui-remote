@@ -6,8 +6,8 @@ import type { ReactNode } from "react";
 import { Eye, EyeOff, FlaskConical, ImageIcon, Menu, Moon, MoreHorizontal, Sun } from "lucide-react";
 
 import type { DemoData } from "@/app/design-demos/data";
-import { DemoFeedbackProvider } from "@/app/design-demos/shared/feedback";
-import { Button } from "@/app/design-demos/shared/primitives/button";
+import { DemoFeedbackProvider } from "@/components/design-demo-ui/feedback";
+import { Button } from "@/components/design-demo-ui/primitives/button";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
   DESIGN_DEMO_THEME_STORAGE_KEY,

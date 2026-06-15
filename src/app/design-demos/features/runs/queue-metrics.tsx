@@ -1,6 +1,6 @@
 import { AlertTriangle, Clock3, ImageIcon } from "lucide-react";
 
-import { MetricCard } from "../../shared/primitives/metric-card";
+import { MetricCard } from "@/components/design-demo-ui/primitives/metric-card";
 import s from "./queue-metrics.runs.module.css";
 
 export function QueueMetrics({

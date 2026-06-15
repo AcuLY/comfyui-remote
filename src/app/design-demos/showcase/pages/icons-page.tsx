@@ -6,7 +6,7 @@ import { FolderInput, History, Home, ImageIcon, Play, Search, Star, Trash2 } fro
 import { CustomIconDemo } from "../icons/custom-icon-demo";
 import { ALL_ICONS } from "../icons/icon-data";
 import { GroupedIconList } from "../icons/icon-list";
-import { PageHeader } from "../../shared/primitives";
+import { PageHeader } from "@/components/design-demo-ui/primitives";
 import iconS from "../icons/icons-page.showcase.module.css";
 import s from "./showcase-pages.module.css";
 
