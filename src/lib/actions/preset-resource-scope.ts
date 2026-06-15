@@ -176,3 +176,19 @@ export async function assertOrdinaryPresetVariant(variantId: string) {
 
   return variant;
 }
+
+export async function assertOrdinaryPresetVariants(variantIds: string[]) {
+  const ids = uniqueIds(variantIds);
+  if (ids.length === 0) return;
+
+  const count = await prisma.presetVariant.count({
+    where: {
+      id: { in: ids },
+      preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+    },
+  });
+
+  if (count !== ids.length) {
+    throw new PresetResourceScopeError("Ordinary preset variants include non-generation resources");
+  }
+}

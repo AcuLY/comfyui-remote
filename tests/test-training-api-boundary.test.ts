@@ -499,6 +499,27 @@ test("generation preset import and replacement helpers keep training presets out
   }
 });
 
+test("generation preset variant links cannot write training-owned variants", () => {
+  const presetScopeSource = readFileSync(join(process.cwd(), "src/lib/actions/preset-resource-scope.ts"), "utf8");
+  assert.match(
+    presetScopeSource,
+    /export async function assertOrdinaryPresetVariants/,
+    "Shared preset scope should expose a batch guard for ordinary generation preset variants.",
+  );
+
+  const presetCrudSource = readFileSync(join(process.cwd(), "src/lib/actions/preset-variant-crud.ts"), "utf8");
+  assert.match(
+    presetCrudSource,
+    /assertOrdinaryPresetVariants\(refs\.map\(\(ref\) => ref\.variantId\)\)/,
+    "Generation preset variant link writes should reject training-owned linked variant ids before createMany.",
+  );
+  assert.match(
+    presetCrudSource,
+    /assertOrdinaryPresetVariants\(ids\)/,
+    "Generation preset variant reordering should reject training-owned variant ids before updating sort order.",
+  );
+});
+
 test("generation preset resolvers use the shared ordinary preset scope contract", () => {
   const scopedGenerationFiles = [
     "src/lib/actions/preset-variant-resolve.ts",

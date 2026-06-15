@@ -10,6 +10,7 @@ import {
   assertOrdinaryPresetCategory,
   assertOrdinaryPresetFolder,
   assertOrdinaryPresetVariant,
+  assertOrdinaryPresetVariants,
   assertOrdinaryPresets,
 } from "./preset-resource-scope";
 
@@ -162,6 +163,7 @@ async function replaceVariantLinks(
   linkedVariants: unknown,
 ) {
   const refs = normalizeLinkedVariantRefs(linkedVariants);
+  await assertOrdinaryPresetVariants(refs.map((ref) => ref.variantId));
 
   await tx.presetVariantLink.deleteMany({ where: { sourceVariantId } });
   if (refs.length === 0) return refs;
@@ -634,6 +636,7 @@ export async function reorderPresets(categoryId: string, ids: string[]) {
 
 export async function reorderPresetVariants(presetId: string, ids: string[]) {
   await assertOrdinaryPreset(presetId);
+  await assertOrdinaryPresetVariants(ids);
   const before = await prisma.presetVariant.findMany({
     where: { presetId, id: { in: ids } },
     orderBy: { sortOrder: "asc" },
