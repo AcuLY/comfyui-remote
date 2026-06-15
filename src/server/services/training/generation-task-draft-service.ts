@@ -3,14 +3,14 @@ import { dirname, extname, join } from "node:path";
 import type { LoraTrainingRun } from "@/features/training/types";
 import { getTrainingProject } from "@/server/services/training/read-service";
 import { enqueueManagedTrainingSectionGenerationRun, getManagedTrainingProject, mapTrainingProjectError } from "@/server/services/training/project-service";
-import type { CharacterLoraProviderInputImage } from "@/server/services/training/legacy-compat-service";
+import type { LegacyTrainingProviderInputImage } from "@/server/services/training/legacy-compat-service";
 import {
-  createCharacterLoraJobArtifact,
-  enqueueCharacterLoraSectionGenerationRun,
+  createLegacyTrainingProjectArtifact,
+  enqueueLegacyTrainingSectionGenerationRun,
   getExistingJob,
   getExistingSection,
-  mapCharacterLoraPhase3Error,
-  writeCharacterLoraBufferArtifact,
+  mapLegacyTrainingGenerationError,
+  writeLegacyTrainingBufferArtifact,
 } from "@/server/services/training/legacy-compat-service";
 
 const TRAINING_GENERATION_TASK_DRAFTS_PATH = join(process.cwd(), "data", "training-generation-task-drafts.json");
@@ -105,7 +105,7 @@ function mapLegacyGenerationStatus(status: string): LoraTrainingRun["status"] {
 function mapLegacyGenerationRunToTrainingRun(input: {
   finalInput: string;
   project: Awaited<ReturnType<typeof getTrainingProject>>;
-  run: Awaited<ReturnType<typeof enqueueCharacterLoraSectionGenerationRun>>;
+  run: Awaited<ReturnType<typeof enqueueLegacyTrainingSectionGenerationRun>>;
   section: Awaited<ReturnType<typeof getTrainingProject>>["sections"][number];
 }): LoraTrainingRun {
   return {
@@ -467,9 +467,9 @@ function resolveDraftSupplementalImageAbsolutePath(relativePath: string) {
     : join(process.cwd(), "data", "images", relativePath);
 }
 
-async function buildCharacterLoraSupplementalInputImages(taskId: string, sectionId: string, supplementalImages: GenerationTaskDraftSupplementalImage[]) {
+async function buildTrainingSupplementalInputImages(taskId: string, sectionId: string, supplementalImages: GenerationTaskDraftSupplementalImage[]) {
   if (supplementalImages.length === 0) {
-    return [] as CharacterLoraProviderInputImage[];
+    return [] as LegacyTrainingProviderInputImage[];
   }
 
   const section = await getExistingSection(sectionId);
@@ -492,8 +492,8 @@ async function buildCharacterLoraSupplementalInputImages(taskId: string, section
       });
     }
 
-    const artifactStat = await writeCharacterLoraBufferArtifact(job.artifactRoot, relativePath, buffer);
-    const artifact = await createCharacterLoraJobArtifact({
+    const artifactStat = await writeLegacyTrainingBufferArtifact(job.artifactRoot, relativePath, buffer);
+    const artifact = await createLegacyTrainingProjectArtifact({
       absolutePath: artifactStat.absolutePath,
       byteSize: BigInt(artifactStat.byteSize),
       jobId: job.id,
@@ -514,7 +514,7 @@ async function buildCharacterLoraSupplementalInputImages(taskId: string, section
       relativePath: artifactStat.relativePath,
       role: "local_reference",
       sha256: artifactStat.sha256,
-    } satisfies CharacterLoraProviderInputImage;
+    } satisfies LegacyTrainingProviderInputImage;
   }));
 }
 
@@ -556,15 +556,15 @@ export async function runManagedGenerationTask(taskId: string) {
     run = managedRun;
   } else {
     const projectIsManaged = Boolean(await getManagedTrainingProject(draft.projectId));
-    const legacyRun = await enqueueCharacterLoraSectionGenerationRun(section.id, {
+    const legacyRun = await enqueueLegacyTrainingSectionGenerationRun(section.id, {
       previousCandidateImageIds,
       supplementalInputImages: projectIsManaged
         ? []
-        : await buildCharacterLoraSupplementalInputImages(taskId, section.id, draft.supplementalImages),
+        : await buildTrainingSupplementalInputImages(taskId, section.id, draft.supplementalImages),
       sourceImageIds,
       userInstruction: `${draft.taskType}\n\n${preview.finalInput}`,
     }).catch((error) => {
-      const mapped = mapCharacterLoraPhase3Error(error);
+      const mapped = mapLegacyTrainingGenerationError(error);
       throw new TrainingGenerationTaskDraftServiceError(mapped.message, mapped.status, mapped.details);
     });
     run = mapLegacyGenerationRunToTrainingRun({

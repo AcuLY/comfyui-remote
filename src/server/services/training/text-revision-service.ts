@@ -2,11 +2,11 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import {
-  createCharacterLoraPromptCardVersion,
-  getCharacterLoraCandidateImage,
-  getCharacterLoraTrainingJob,
-  listCharacterLoraPromptCardVersions,
-  updateCharacterLoraImageCaption,
+  createLegacyTrainingPromptCardVersion,
+  getLegacyTrainingCandidateImage,
+  getLegacyTrainingProject,
+  listLegacyTrainingPromptCardVersions,
+  updateLegacyTrainingImageCaption,
 } from "@/server/services/training/legacy-compat-service";
 import {
   getManagedTrainingImageResult,
@@ -131,7 +131,7 @@ async function assertTrainingProjectExists(projectId: string) {
   const managed = await getManagedTrainingProject(projectId);
   if (managed) return { managed: true as const };
 
-  await getCharacterLoraTrainingJob(projectId);
+  await getLegacyTrainingProject(projectId);
   return { managed: false as const };
 }
 
@@ -188,7 +188,7 @@ async function assertSupportedTextTarget(projectId: string, input: {
       return ownership;
     }
 
-    const productionResult = await getCharacterLoraCandidateImage(input.entityId);
+    const productionResult = await getLegacyTrainingCandidateImage(input.entityId);
     if (!productionResult || productionResult.jobId !== projectId) {
       throw new TrainingTextRevisionServiceError("Training image result not found", 404, {
         imageResultId: input.entityId,
@@ -213,8 +213,8 @@ async function readCurrentProfileTextValue(projectId: string, fieldName: string)
   }
 
   const [job, promptCardVersions] = await Promise.all([
-    getCharacterLoraTrainingJob(projectId),
-    listCharacterLoraPromptCardVersions(projectId),
+    getLegacyTrainingProject(projectId),
+    listLegacyTrainingPromptCardVersions(projectId),
   ]);
   const currentPromptCard = promptCardVersions.find((version) => version.id === job.currentPromptCardVersionId) ?? promptCardVersions.at(-1) ?? null;
 
@@ -243,7 +243,7 @@ async function readCurrentImageResultTextValue(projectId: string, imageResultId:
   const managedResult = await getManagedTrainingImageResult(imageResultId);
   if (managedResult) return managedResult.caption ?? "";
 
-  const productionResult = await getCharacterLoraCandidateImage(imageResultId);
+  const productionResult = await getLegacyTrainingCandidateImage(imageResultId);
   if (!productionResult || productionResult.jobId !== projectId) {
     throw new TrainingTextRevisionServiceError("Training image result not found", 404, {
       imageResultId,
@@ -268,13 +268,13 @@ async function applyProfileRevision(projectId: string, fieldName: string, textVa
   }
 
   const [job, promptCardVersions] = await Promise.all([
-    getCharacterLoraTrainingJob(projectId),
-    listCharacterLoraPromptCardVersions(projectId),
+    getLegacyTrainingProject(projectId),
+    listLegacyTrainingPromptCardVersions(projectId),
   ]);
   const currentPromptCard = promptCardVersions.find((version) => version.id === job.currentPromptCardVersionId) ?? promptCardVersions.at(-1) ?? null;
 
   if (fieldName === "loraUsagePrompt") {
-    return createCharacterLoraPromptCardVersion(projectId, {
+    return createLegacyTrainingPromptCardVersion(projectId, {
       canonicalVersionId: currentPromptCard?.canonicalVersionId ?? job.currentCanonicalVersionId ?? null,
       triggerToken: job.triggerToken,
       identityTraits: currentPromptCard?.identityTraits ?? {},
@@ -299,7 +299,7 @@ async function applyProfileRevision(projectId: string, fieldName: string, textVa
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new TrainingTextRevisionServiceError("characterDetailPrompt revision must be a JSON object string", 400);
     }
-    return createCharacterLoraPromptCardVersion(projectId, {
+    return createLegacyTrainingPromptCardVersion(projectId, {
       canonicalVersionId: currentPromptCard?.canonicalVersionId ?? job.currentCanonicalVersionId ?? null,
       triggerToken: job.triggerToken,
       identityTraits: parsed.identityTraits ?? currentPromptCard?.identityTraits ?? {},
@@ -330,7 +330,7 @@ async function applyImageResultRevision(projectId: string, imageResultId: string
     return data;
   }
 
-  return updateCharacterLoraImageCaption(imageResultId, {
+  return updateLegacyTrainingImageCaption(imageResultId, {
     captionDraft: textValue,
   });
 }

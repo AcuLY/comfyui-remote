@@ -88,6 +88,7 @@ import {
 } from "@/server/repositories/character-lora-training-repository";
 
 export type { CharacterLoraProviderInputImage };
+export type LegacyTrainingProviderInputImage = CharacterLoraProviderInputImage;
 
 export {
   createCharacterLoraJobArtifact,
@@ -136,6 +137,7 @@ export const mapLegacyTrainingPromptCardError = mapCharacterLoraPromptCardError;
 export const mapLegacyTrainingReferenceImageError = mapCharacterLoraSourceImageError;
 export const mapLegacyTrainingGenerationError = mapCharacterLoraPhase3Error;
 export const mapLegacyTrainingRunError = mapCharacterLoraTrainingError;
+export const mapLegacyTrainingSectionTemplateError = mapCharacterLoraSectionTemplateError;
 
 export const updateLegacyTrainingProject = updateCharacterLoraTrainingJob;
 export const archiveLegacyTrainingProject = archiveCharacterLoraTrainingJob;
@@ -144,6 +146,8 @@ export const createLegacyTrainingProject = createCharacterLoraTrainingProject;
 export const getLegacyTrainingProject = getCharacterLoraTrainingJob;
 export const getLegacyTrainingProjectOverview = getCharacterLoraTrainingJobOverview;
 export const listLegacyTrainingProjects = listCharacterLoraTrainingJobs;
+export const createLegacyTrainingProjectArtifact = createCharacterLoraJobArtifact;
+export const writeLegacyTrainingBufferArtifact = writeCharacterLoraBufferArtifact;
 
 export const createLegacyTrainingPromptCardVersion = createCharacterLoraPromptCardVersion;
 export const listLegacyTrainingPromptCardVersions = listCharacterLoraPromptCardVersions;
@@ -181,3 +185,12 @@ export const failLegacyTrainingWorkerTask = failCharacterLoraTask;
 export const enqueueLegacyTrainingRun = enqueueCharacterLoraTrainingRun;
 export const cancelLegacyTrainingRun = cancelTrainingRun;
 export const listLegacyTrainingRuns = listCharacterLoraTrainingRuns;
+
+export const TRAINING_FALLBACK_TEMPLATE_BASE_ID = "training-base";
+export const TRAINING_COMPAT_TEMPLATE_BASE_ID = "character-lora-base";
+export const TRAINING_DEFAULT_TEMPLATE_KEY = "character_identity_default";
+export const createLegacyTrainingTemplate = createCharacterLoraTrainingTemplate;
+export const getLegacyTrainingTemplateSnapshot = getCharacterLoraTrainingTemplateSnapshot;
+export const listLegacyTrainingTemplates = listCharacterLoraTrainingTemplates;
+export const updateLegacyTrainingTemplate = updateCharacterLoraTrainingTemplate;
+export const upsertLegacyTrainingTemplates = upsertCharacterLoraTrainingTemplates;
