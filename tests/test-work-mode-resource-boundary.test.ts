@@ -19,6 +19,10 @@ const trainingRoutesSource = readFileSync(resolve(repoRoot, "src/features/traini
 const trainingNotFoundSource = readFileSync(resolve(repoRoot, "src/features/training/not-found-page.tsx"), "utf8");
 const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/training/route.ts"), "utf8");
 const generationProjectDetailSource = readFileSync(resolve(repoRoot, "src/server/repositories/project-view-repository/detail-view.ts"), "utf8");
+const generationQueuePageSource = readFileSync(resolve(repoRoot, "src/app/queue/page.tsx"), "utf8");
+const generationTemplateCrudSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-crud.ts"), "utf8");
+const generationTemplateImportSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-import.ts"), "utf8");
+const generationPresetReplacementSource = readFileSync(resolve(repoRoot, "src/server/services/preset-section-replacement-service.ts"), "utf8");
 
 const MODULE_OWNED_RESOURCE_KEYS = ["runs", "projects", "presets", "templates"] as const;
 const SHARED_RESOURCE_KEYS = ["models", "settings"] as const;
@@ -344,6 +348,84 @@ test("generation project detail loaders reuse the generation resource boundary",
     generationProjectDetailSource,
     /prisma\.projectSection\.findFirst\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
     "Generation section result detail should reject sections owned by hidden training benchmark projects.",
+  );
+});
+
+test("generation template action entrypoints reuse generation resource boundaries", () => {
+  assert.match(
+    generationTemplateCrudSource,
+    /buildGenerationProjectTemplateWhere/,
+    "Generation template option lists should reuse the generation template boundary.",
+  );
+  assert.match(
+    generationTemplateCrudSource,
+    /projectTemplate\.findMany\(\{[\s\S]*where:\s*buildGenerationProjectTemplateWhere\(\)/,
+    "Generation template option lists must not expose training-owned templates.",
+  );
+
+  assert.match(
+    generationTemplateImportSource,
+    /buildGenerationProjectWhere/,
+    "Generation template import should verify the destination project is generation-owned.",
+  );
+  assert.match(
+    generationTemplateImportSource,
+    /buildGenerationProjectTemplateWhere/,
+    "Generation template import should verify the source template is generation-owned.",
+  );
+  assert.doesNotMatch(
+    generationTemplateImportSource,
+    /projectTemplate\.findUnique\(\{[\s\S]*where:\s*\{\s*id:\s*templateId\s*\}/,
+    "Generation template import must not fetch templates by id without the generation template boundary.",
+  );
+  assert.doesNotMatch(
+    generationTemplateImportSource,
+    /project\.findUnique\(\{[\s\S]*where:\s*\{\s*id:\s*projectId\s*\}/,
+    "Generation template import must not fetch projects by id without the generation project boundary.",
+  );
+
+  assert.match(
+    generationPresetReplacementSource,
+    /buildGenerationProjectWhere/,
+    "Generation preset replacement project targets should reuse the generation project boundary.",
+  );
+  assert.match(
+    generationPresetReplacementSource,
+    /buildGenerationProjectTemplateWhere/,
+    "Generation preset replacement template targets should reuse the generation template boundary.",
+  );
+  assert.doesNotMatch(
+    generationPresetReplacementSource,
+    /project\.findUnique\(\{[\s\S]*where:\s*\{\s*id:\s*projectId\s*\}/,
+    "Generation preset replacement must not load project targets by id without the generation project boundary.",
+  );
+  assert.doesNotMatch(
+    generationPresetReplacementSource,
+    /projectTemplate\.findUnique\(\{[\s\S]*where:\s*\{\s*id:\s*templateId\s*\}/,
+    "Generation preset replacement must not load template targets by id without the generation template boundary.",
+  );
+});
+
+test("generation queue auxiliary lists reuse the generation project boundary", () => {
+  assert.match(
+    generationQueuePageSource,
+    /buildGenerationProjectWhere/,
+    "Generation queue auxiliary lists should import the generation project boundary.",
+  );
+  assert.match(
+    generationQueuePageSource,
+    /censoringTask\.groupBy\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Active censoring progress should not include training-owned projects.",
+  );
+  assert.match(
+    generationQueuePageSource,
+    /censoringTask\.findMany\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Censoring history should not include training-owned projects.",
+  );
+  assert.doesNotMatch(
+    generationQueuePageSource,
+    /project\.findMany\(\{[\s\S]*where:\s*\{\s*id:\s*\{\s*in:\s*projectIds\s*\}/,
+    "Generation queue project-title lookup must not fetch projects by id without the generation project boundary.",
   );
 });
 

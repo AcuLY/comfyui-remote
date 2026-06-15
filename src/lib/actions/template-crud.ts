@@ -15,7 +15,10 @@ import {
   assertOrdinaryPresetLibraryBindingRefs,
   ordinaryPresetCategoryTypeWhere,
 } from "./preset-resource-scope";
-import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import {
+  buildGenerationPresetWhere,
+  buildGenerationProjectTemplateWhere,
+} from "@/server/repositories/legacy-training-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -452,6 +455,7 @@ export async function getTemplateOptionsForClient(): Promise<
   Array<{ id: string; name: string; sectionCount: number }>
 > {
   const templates = await prisma.projectTemplate.findMany({
+    where: buildGenerationProjectTemplateWhere(),
     orderBy: { updatedAt: "desc" },
     select: { id: true, name: true, _count: { select: { sections: true } } },
   });

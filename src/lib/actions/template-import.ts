@@ -14,6 +14,10 @@ import {
   type SectionPresetBindingWrite,
   type SectionPromptBlockWrite,
 } from "@/server/prompt-config/template-resolver";
+import {
+  buildGenerationProjectTemplateWhere,
+  buildGenerationProjectWhere,
+} from "@/server/repositories/legacy-training-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -135,8 +139,8 @@ export async function importTemplateToProject(
   const onExistingSections = options?.onExistingSections ?? "append";
   const dryRun = options?.dryRun ?? false;
 
-  const template = await prisma.projectTemplate.findUnique({
-    where: { id: templateId },
+  const template = await prisma.projectTemplate.findFirst({
+    where: buildGenerationProjectTemplateWhere({ id: templateId }),
     include: {
       presetBindingRows: {
         orderBy: { sortOrder: "asc" },
@@ -232,8 +236,8 @@ export async function importTemplateToProject(
   });
   if (!template) throw new Error("TEMPLATE_NOT_FOUND");
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       checkpointName: true,
       presetBindingRows: {
