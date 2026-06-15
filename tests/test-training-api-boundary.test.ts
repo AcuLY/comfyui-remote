@@ -50,6 +50,37 @@ test("training services isolate legacy character-lora-training dependencies in o
   );
 });
 
+test("training API design docs use reference-image route names as the primary project media API", () => {
+  const backendApiDesign = readFileSync(
+    join(process.cwd(), "docs/plans/2026-06-07-manager-lora-training-backend-api-schema-design.md"),
+    "utf8",
+  );
+  const finalTechnicalDesign = readFileSync(
+    join(process.cwd(), "docs/plans/2026-06-07-manager-lora-training-final-technical-design.md"),
+    "utf8",
+  );
+
+  for (const path of [
+    "/api/training/projects/:projectId/reference-images",
+    "/api/training/reference-images/:imageId",
+    "/api/training/reference-images/:imageId/add-to-results",
+  ]) {
+    assert.match(backendApiDesign, new RegExp(path.replaceAll("/", "\\/")));
+  }
+
+  for (const legacyPath of [
+    "/api/training/projects/:projectId/character-images",
+    "/api/training/character-images/:imageId",
+    "/api/training/character-images/:imageId/add-to-results",
+  ]) {
+    assert.doesNotMatch(backendApiDesign, new RegExp(legacyPath.replaceAll("/", "\\/")));
+  }
+
+  assert.match(backendApiDesign, /### 6\.2 Profile and Reference Images/);
+  assert.match(finalTechnicalDesign, /\breference-images\b/);
+  assert.doesNotMatch(finalTechnicalDesign, /\bcharacter-images\b/);
+});
+
 test("training scene-description DTO schemas live under src/lib/training", async () => {
   const schemasPath = join(process.cwd(), "src/lib/training/schemas.ts");
 
