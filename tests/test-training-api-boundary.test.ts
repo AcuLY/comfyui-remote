@@ -161,3 +161,29 @@ test("training dataset revision freeze route uses the project service boundary",
   const projectService = readFileSync(join(process.cwd(), "src/server/services/training/project-service.ts"), "utf8");
   assert.match(projectService, /export async function freezeTrainingDataset/);
 });
+
+test("training run enqueue routes use the project service boundary", () => {
+  const routeFiles = [
+    "src/app/api/training/sections/[sectionId]/runs/route.ts",
+    "src/app/api/training/projects/[projectId]/training-runs/route.ts",
+  ];
+
+  for (const routeFile of routeFiles) {
+    const source = readFileSync(join(process.cwd(), routeFile), "utf8");
+
+    assert.match(
+      source,
+      /@\/server\/services\/training\/project-service/,
+      `${routeFile} should route run enqueue mutations through project-service`,
+    );
+    assert.doesNotMatch(
+      source,
+      /@\/server\/services\/training\/legacy-compat-service/,
+      `${routeFile} should not fallback to legacy compat from the route layer`,
+    );
+  }
+
+  const projectService = readFileSync(join(process.cwd(), "src/server/services/training/project-service.ts"), "utf8");
+  assert.match(projectService, /export async function enqueueTrainingSectionGenerationRun/);
+  assert.match(projectService, /export async function enqueueTrainingRun/);
+});

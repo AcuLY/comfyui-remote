@@ -17,6 +17,8 @@ import {
   cancelLegacyTrainingGenerationRun,
   cancelLegacyTrainingRun,
   createCharacterLoraTrainingProject,
+  enqueueLegacyTrainingRun,
+  enqueueLegacyTrainingSectionGenerationRun,
   freezeLegacyTrainingDataset,
   getCharacterLoraCandidateImage,
   getCharacterLoraJobSection,
@@ -1227,6 +1229,13 @@ export async function enqueueManagedTrainingSectionGenerationRun(
   return run;
 }
 
+export async function enqueueTrainingSectionGenerationRun(sectionId: string, input: unknown = {}) {
+  const managedInput = typeof input === "object" && input ? input as Record<string, unknown> : {};
+  const managedRun = await enqueueManagedTrainingSectionGenerationRun(sectionId, managedInput);
+  if (managedRun) return managedRun;
+  return enqueueLegacyTrainingSectionGenerationRun(sectionId, input);
+}
+
 export async function enqueueManagedTrainingRun(
   projectId: string,
   input: Record<string, unknown> = {},
@@ -1321,6 +1330,30 @@ export async function enqueueManagedTrainingRun(
   });
 
   return run;
+}
+
+export async function enqueueTrainingRun(projectId: string, input: Record<string, unknown> = {}) {
+  const managedRun = await enqueueManagedTrainingRun(projectId, input);
+  if (managedRun) return managedRun;
+
+  const revisionId = typeof input.revisionId === "string" && input.revisionId.trim() ? input.revisionId.trim() : null;
+  const config = typeof input.config === "object" && input.config ? input.config : {};
+  const enqueueInput = {
+    ...input,
+    ...(typeof config === "object" && config ? config : {}),
+  };
+  delete enqueueInput.revisionId;
+  delete enqueueInput.config;
+
+  const resolvedRevisionId = revisionId ?? await (async () => {
+    const frozen = await freezeLegacyTrainingDataset(projectId, {});
+    if (!("revision" in frozen) || !frozen.revision?.id) {
+      throw new TrainingProjectServiceError("Dataset freeze did not return a revision id", 409);
+    }
+    return frozen.revision.id;
+  })();
+
+  return enqueueLegacyTrainingRun(resolvedRevisionId, enqueueInput);
 }
 
 export async function cancelManagedTrainingRun(trainingRunId: string) {
@@ -1700,4 +1733,18 @@ export function mapTrainingRunMutationError(error: unknown) {
   }
 
   return mapLegacyTrainingRunError(error);
+}
+
+export function mapTrainingRunCreationError(error: unknown) {
+  const mapped = mapTrainingProjectError(error);
+  if (mapped.status !== 500 || mapped.message !== "Unexpected training project error") {
+    return mapped;
+  }
+
+  const trainingMapped = mapLegacyTrainingRunError(error);
+  if (trainingMapped.status !== 400 || trainingMapped.message !== "Unexpected character LoRA training error") {
+    return trainingMapped;
+  }
+
+  return mapLegacyTrainingGenerationError(error);
 }
