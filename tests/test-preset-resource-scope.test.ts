@@ -145,7 +145,9 @@ let updatePresetCategory: typeof PresetCategoryActions.updatePresetCategory;
 let createPresetFolder: typeof PresetFolderActions.createPresetFolder;
 let renamePresetFolder: typeof PresetFolderActions.renamePresetFolder;
 let createPresetGroup: typeof PresetGroupActions.createPresetGroup;
+let copyPresetGroup: typeof PresetGroupActions.copyPresetGroup;
 let createPreset: typeof PresetVariantCrudActions.createPreset;
+let copyPreset: typeof PresetVariantCrudActions.copyPreset;
 let updatePreset: typeof PresetVariantCrudActions.updatePreset;
 let deletePreset: typeof PresetVariantCrudActions.deletePreset;
 let resolveVariantContent: typeof PresetVariantResolveActions.resolveVariantContent;
@@ -178,7 +180,9 @@ test.before(async () => {
   createPresetFolder = presetFolderActions.createPresetFolder;
   renamePresetFolder = presetFolderActions.renamePresetFolder;
   createPresetGroup = presetGroupActions.createPresetGroup;
+  copyPresetGroup = presetGroupActions.copyPresetGroup;
   createPreset = presetVariantCrudActions.createPreset;
+  copyPreset = presetVariantCrudActions.copyPreset;
   updatePreset = presetVariantCrudActions.updatePreset;
   deletePreset = presetVariantCrudActions.deletePreset;
   resolveVariantContent = presetVariantResolveActions.resolveVariantContent;
@@ -822,6 +826,232 @@ test("ordinary template preset imports do not resolve LoRA training presets", as
     imports.map((item) => ({ presetId: item.presetId, prompt: item.prompt })),
     [{ presetId: "ordinary-template-import-preset", prompt: "ordinary template prompt" }],
     "ordinary template preset imports must ignore training-owned presets even when called by id",
+  );
+});
+
+test("ordinary preset copies do not preserve LoRA training linked variants", async () => {
+  await prisma.presetCategory.createMany({
+    data: [
+      {
+        id: "ordinary-copy-source-category",
+        name: "Ordinary Copy Source",
+        slug: "ordinary-copy-source",
+        type: "preset",
+      },
+      {
+        id: "training-copy-hidden-category",
+        name: "Training Copy Hidden",
+        slug: "training-copy-hidden",
+        type: "training_scene_description",
+      },
+    ],
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "ordinary-copy-source-preset",
+        categoryId: "ordinary-copy-source-category",
+        name: "Ordinary Copy Source Preset",
+        slug: "ordinary-copy-source-preset",
+        sortOrder: 0,
+      },
+      {
+        id: "ordinary-copy-target-preset",
+        categoryId: "ordinary-copy-source-category",
+        name: "Ordinary Copy Target Preset",
+        slug: "ordinary-copy-target-preset",
+        sortOrder: 1,
+      },
+      {
+        id: "training-copy-hidden-preset",
+        categoryId: "training-copy-hidden-category",
+        name: "Training Copy Hidden Preset",
+        slug: "training-copy-hidden-preset",
+      },
+    ],
+  });
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "ordinary-copy-source-variant",
+        presetId: "ordinary-copy-source-preset",
+        name: "Ordinary Copy Source Variant",
+        slug: "ordinary-copy-source-variant",
+        prompt: "ordinary copy source prompt",
+      },
+      {
+        id: "ordinary-copy-target-variant",
+        presetId: "ordinary-copy-target-preset",
+        name: "Ordinary Copy Target Variant",
+        slug: "ordinary-copy-target-variant",
+        prompt: "ordinary copy target prompt",
+      },
+      {
+        id: "training-copy-hidden-variant",
+        presetId: "training-copy-hidden-preset",
+        name: "Training Copy Hidden Variant",
+        slug: "training-copy-hidden-variant",
+        prompt: "training linked prompt must not be copied",
+      },
+    ],
+  });
+  await prisma.presetVariantLink.createMany({
+    data: [
+      {
+        id: "ordinary-copy-link-to-ordinary",
+        sourceVariantId: "ordinary-copy-source-variant",
+        linkedVariantId: "ordinary-copy-target-variant",
+        sortOrder: 0,
+      },
+      {
+        id: "ordinary-copy-link-to-training",
+        sourceVariantId: "ordinary-copy-source-variant",
+        linkedVariantId: "training-copy-hidden-variant",
+        sortOrder: 1,
+      },
+    ],
+  });
+
+  const copiedPreset = await ignoreStaticRevalidateError(() => copyPreset("ordinary-copy-source-preset")) ??
+    await prisma.preset.findFirstOrThrow({ where: { slug: "ordinary-copy-source-preset-copy" } });
+  const copiedVariant = await prisma.presetVariant.findFirstOrThrow({
+    where: { presetId: copiedPreset.id, slug: "ordinary-copy-source-variant" },
+  });
+  const copiedLinks = await prisma.presetVariantLink.findMany({
+    where: { sourceVariantId: copiedVariant.id },
+    orderBy: { sortOrder: "asc" },
+  });
+
+  assert.deepEqual(
+    copiedLinks.map((link) => link.linkedVariantId),
+    ["ordinary-copy-target-variant"],
+    "ordinary preset copies must drop linked variants owned by the training module",
+  );
+});
+
+test("ordinary preset group copies do not preserve LoRA training members", async () => {
+  await prisma.presetCategory.createMany({
+    data: [
+      {
+        id: "ordinary-group-copy-preset-category",
+        name: "Ordinary Group Copy Presets",
+        slug: "ordinary-group-copy-presets",
+        type: "preset",
+      },
+      {
+        id: "ordinary-group-copy-group-category",
+        name: "Ordinary Group Copy Groups",
+        slug: "ordinary-group-copy-groups",
+        type: "group",
+      },
+      {
+        id: "training-group-copy-hidden-category",
+        name: "Training Group Copy Hidden",
+        slug: "training-group-copy-hidden",
+        type: "training_scene_description",
+      },
+    ],
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "ordinary-group-copy-preset",
+        categoryId: "ordinary-group-copy-preset-category",
+        name: "Ordinary Group Copy Preset",
+        slug: "ordinary-group-copy-preset",
+      },
+      {
+        id: "training-group-copy-hidden-preset",
+        categoryId: "training-group-copy-hidden-category",
+        name: "Training Group Copy Hidden Preset",
+        slug: "training-group-copy-hidden-preset",
+      },
+    ],
+  });
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "ordinary-group-copy-variant",
+        presetId: "ordinary-group-copy-preset",
+        name: "Ordinary Group Copy Variant",
+        slug: "ordinary-group-copy-variant",
+        prompt: "ordinary group copy prompt",
+      },
+      {
+        id: "training-group-copy-hidden-variant",
+        presetId: "training-group-copy-hidden-preset",
+        name: "Training Group Copy Hidden Variant",
+        slug: "training-group-copy-hidden-variant",
+        prompt: "training group member prompt must not be copied",
+      },
+    ],
+  });
+  await prisma.presetGroup.createMany({
+    data: [
+      {
+        id: "ordinary-group-copy-source-group",
+        categoryId: "ordinary-group-copy-group-category",
+        name: "Ordinary Group Copy Source",
+        slug: "ordinary-group-copy-source",
+      },
+      {
+        id: "training-group-copy-hidden-subgroup",
+        categoryId: "training-group-copy-hidden-category",
+        name: "Training Group Copy Hidden Subgroup",
+        slug: "training-group-copy-hidden-subgroup",
+      },
+    ],
+  });
+  await prisma.presetGroupMember.createMany({
+    data: [
+      {
+        id: "ordinary-group-copy-member",
+        groupId: "ordinary-group-copy-source-group",
+        presetId: "ordinary-group-copy-preset",
+        variantId: "ordinary-group-copy-variant",
+        slotCategoryId: "ordinary-group-copy-preset-category",
+        sortOrder: 0,
+      },
+      {
+        id: "training-group-copy-hidden-preset-member",
+        groupId: "ordinary-group-copy-source-group",
+        presetId: "training-group-copy-hidden-preset",
+        variantId: "training-group-copy-hidden-variant",
+        slotCategoryId: "training-group-copy-hidden-category",
+        sortOrder: 1,
+      },
+      {
+        id: "training-group-copy-hidden-subgroup-member",
+        groupId: "ordinary-group-copy-source-group",
+        subGroupId: "training-group-copy-hidden-subgroup",
+        sortOrder: 2,
+      },
+    ],
+  });
+
+  const copiedGroup = await ignoreStaticRevalidateError(() => copyPresetGroup("ordinary-group-copy-source-group")) ??
+    await prisma.presetGroup.findFirstOrThrow({ where: { slug: "ordinary-group-copy-source-copy" } });
+  const copiedMembers = await prisma.presetGroupMember.findMany({
+    where: { groupId: copiedGroup.id },
+    orderBy: { sortOrder: "asc" },
+  });
+
+  assert.deepEqual(
+    copiedMembers.map((member) => ({
+      presetId: member.presetId,
+      variantId: member.variantId,
+      subGroupId: member.subGroupId,
+      slotCategoryId: member.slotCategoryId,
+    })),
+    [
+      {
+        presetId: "ordinary-group-copy-preset",
+        variantId: "ordinary-group-copy-variant",
+        subGroupId: null,
+        slotCategoryId: "ordinary-group-copy-preset-category",
+      },
+    ],
+    "ordinary preset group copies must drop training-owned preset and subgroup members",
   );
 });
 

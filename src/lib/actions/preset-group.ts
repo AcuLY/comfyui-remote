@@ -5,12 +5,14 @@ import { after as afterResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { recordPresetGroupChange } from "@/server/services/preset-change-history-service";
 import {
+  ORDINARY_PRESET_CATEGORY_TYPE,
   assertOrdinaryPreset,
   assertOrdinaryPresetCategory,
   assertOrdinaryPresetFolder,
   assertOrdinaryPresetGroup,
   assertOrdinaryPresetLibraryCategory,
   assertOrdinaryPresetVariant,
+  ordinaryPresetLibraryCategoryTypeWhere,
 } from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------
@@ -39,6 +41,13 @@ export type PresetGroupMemberReplacementInput = {
 };
 
 type GroupMemberSnapshot = Awaited<ReturnType<typeof groupMembersSnapshot>>[number];
+type CopyableGroupMember = {
+  presetId: string | null;
+  variantId: string | null;
+  subGroupId: string | null;
+  slotCategoryId: string | null;
+  sortOrder: number;
+};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -78,6 +87,85 @@ async function groupMembersSnapshot(groupId: string) {
 
 function sortGroupMemberSnapshots(members: GroupMemberSnapshot[]): GroupMemberSnapshot[] {
   return [...members].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
+}
+
+function uniqueStrings(values: Array<string | null | undefined>) {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+}
+
+async function filterOrdinaryGroupCopyMembers(members: CopyableGroupMember[]) {
+  const presetIds = uniqueStrings(members.map((member) => member.presetId));
+  const variantIds = uniqueStrings(members.map((member) => member.variantId));
+  const subGroupIds = uniqueStrings(members.map((member) => member.subGroupId));
+  const slotCategoryIds = uniqueStrings(members.map((member) => member.slotCategoryId));
+
+  const [presets, variants, groups, slotCategories] = await Promise.all([
+    presetIds.length > 0
+      ? prisma.preset.findMany({
+          where: {
+            id: { in: presetIds },
+            category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+          },
+          select: { id: true },
+        })
+      : [],
+    variantIds.length > 0
+      ? prisma.presetVariant.findMany({
+          where: {
+            id: { in: variantIds },
+            preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+          },
+          select: { id: true, presetId: true },
+        })
+      : [],
+    subGroupIds.length > 0
+      ? prisma.presetGroup.findMany({
+          where: {
+            id: { in: subGroupIds },
+            category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
+          },
+          select: { id: true },
+        })
+      : [],
+    slotCategoryIds.length > 0
+      ? prisma.presetCategory.findMany({
+          where: {
+            id: { in: slotCategoryIds },
+            type: ORDINARY_PRESET_CATEGORY_TYPE,
+          },
+          select: { id: true },
+        })
+      : [],
+  ]);
+
+  const ordinaryPresetIds = new Set(presets.map((preset) => preset.id));
+  const ordinaryVariantPresetIds = new Map(variants.map((variant) => [variant.id, variant.presetId]));
+  const ordinaryGroupIds = new Set(groups.map((group) => group.id));
+  const ordinarySlotCategoryIds = new Set(slotCategories.map((category) => category.id));
+
+  return members.filter((member) => {
+    if (member.presetId && member.subGroupId) return false;
+    if (!member.presetId && !member.subGroupId) return false;
+
+    if (member.presetId) {
+      if (!ordinaryPresetIds.has(member.presetId)) return false;
+      if (member.variantId && ordinaryVariantPresetIds.get(member.variantId) !== member.presetId) {
+        return false;
+      }
+    } else if (member.variantId) {
+      return false;
+    }
+
+    if (member.subGroupId && !ordinaryGroupIds.has(member.subGroupId)) {
+      return false;
+    }
+
+    if (member.slotCategoryId && !ordinarySlotCategoryIds.has(member.slotCategoryId)) {
+      return false;
+    }
+
+    return true;
+  });
 }
 
 function schedulePresetGroupMemberChangeEffects(input: {
@@ -176,6 +264,7 @@ export async function copyPresetGroup(groupId: string) {
     throw new Error("Preset group not found");
   }
 
+  const sourceMembers = await filterOrdinaryGroupCopyMembers(source.members);
   let copyIdentity: { name: string; slug: string } | null = null;
   for (let attempt = 1; attempt <= 100; attempt += 1) {
     const copySuffix = attempt === 1 ? "Copy" : `Copy ${attempt}`;
@@ -229,9 +318,9 @@ export async function copyPresetGroup(groupId: string) {
       },
     });
 
-    if (source.members.length > 0) {
+    if (sourceMembers.length > 0) {
       await tx.presetGroupMember.createMany({
-        data: source.members.map((member) => ({
+        data: sourceMembers.map((member) => ({
           groupId: newGroup.id,
           presetId: member.presetId,
           variantId: member.variantId,

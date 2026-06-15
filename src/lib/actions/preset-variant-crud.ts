@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { recordPresetChange } from "@/server/services/preset-change-history-service";
 import { toJsonValue } from "./_helpers";
 import {
+  ORDINARY_PRESET_CATEGORY_TYPE,
   assertOrdinaryPreset,
   assertOrdinaryPresetCategory,
   assertOrdinaryPresetFolder,
@@ -394,7 +395,14 @@ export async function copyPreset(presetId: string) {
     }
 
     const sourceLinks = await tx.presetVariantLink.findMany({
-      where: { sourceVariantId: { in: source.variants.map((variant) => variant.id) } },
+      where: {
+        sourceVariantId: { in: source.variants.map((variant) => variant.id) },
+        linkedVariant: {
+          preset: {
+            category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+          },
+        },
+      },
       select: { sourceVariantId: true, linkedVariantId: true, sortOrder: true },
       orderBy: { sortOrder: "asc" },
     });
