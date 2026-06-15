@@ -4,7 +4,8 @@ import Link from "next/link";
 import { GripVertical, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { cx, useRouteHref } from "@/app/design-demos/routing";
+import { useRouteHref } from "@/components/design-demo-routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import { ImageListSmall } from "@/components/design-demo-ui/media/image-list-small";
 import { UnitRowShell } from "@/components/design-demo-ui/patterns";
 import { Button } from "@/components/design-demo-ui/primitives/button";

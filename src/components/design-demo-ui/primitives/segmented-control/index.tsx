@@ -2,7 +2,7 @@
 
 import type * as React from "react";
 
-import { cx } from "@/app/design-demos/routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import s from "./segmented-control.module.css";
 
 export type SegmentedControlItem<T extends string | number> = {

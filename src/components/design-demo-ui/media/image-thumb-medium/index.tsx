@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ImageIcon } from "lucide-react";
 
 import type { DemoImage } from "@/app/design-demos/data";
-import { cx } from "@/app/design-demos/routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import { Checkbox } from "../../primitives/checkbox";
 import s from "../image/image.module.css";
 import { StatusBadge } from "../../primitives/status-badge";

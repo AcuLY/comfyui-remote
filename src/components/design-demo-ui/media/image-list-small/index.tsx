@@ -4,7 +4,7 @@ import type { CSSProperties } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import type { DemoImage } from "@/app/design-demos/data";
-import { cx } from "@/app/design-demos/routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import s from "../image/image.module.css";
 import { ImageListStats } from "../image-list-stats";
 import { ImageThumbSmall } from "../image-thumb-small";

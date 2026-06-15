@@ -3,7 +3,7 @@
 import type { KeyboardEvent, MouseEvent } from "react";
 import { Check, Square } from "lucide-react";
 
-import { cx } from "@/app/design-demos/routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import s from "./checkbox.module.css";
 
 export function Checkbox({

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { cx } from "@/app/design-demos/routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import s from "./switch.module.css";
 
 export function Switch({

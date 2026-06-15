@@ -1,7 +1,7 @@
 "use client";
 
 import type { DemoToastTone } from "@/app/design-demos/routing";
-import { cx } from "@/app/design-demos/routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import s from "./operation-state-strip.module.css";
 
 export function OperationStateStrip({

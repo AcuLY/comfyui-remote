@@ -6,7 +6,8 @@ import type * as React from "react";
 import { Activity } from "lucide-react";
 
 import type { DemoButtonFeedback } from "@/app/design-demos/routing";
-import { cx, useRouteHref } from "@/app/design-demos/routing";
+import { useRouteHref } from "@/components/design-demo-routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import { useDemoFeedback } from "../../feedback/context";
 import type { ButtonTone, RouteIcon } from "@/components/design-demo-ui/primitives/shared/types";
 import { controlLabel } from "@/components/design-demo-ui/primitives/shared/utils";

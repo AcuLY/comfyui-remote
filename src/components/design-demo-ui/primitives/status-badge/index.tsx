@@ -1,6 +1,6 @@
 "use client";
 
-import { cx } from "@/app/design-demos/routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import s from "./status-badge.module.css";
 import { statusLabel } from "@/components/design-demo-ui/primitives/shared/utils";
 

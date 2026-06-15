@@ -3,11 +3,10 @@
 import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
 
-import { demoHref } from "./routes";
+export type RouteHrefBuilder = (route: string) => string;
 
-type RouteHrefBuilder = (route: string) => string;
-
-const RouteHrefContext = createContext<RouteHrefBuilder>(demoHref);
+const identityHref: RouteHrefBuilder = (route) => route;
+const RouteHrefContext = createContext<RouteHrefBuilder>(identityHref);
 
 export function RouteHrefProvider({
   children,
@@ -17,7 +16,7 @@ export function RouteHrefProvider({
   hrefForRoute?: RouteHrefBuilder;
 }) {
   return (
-    <RouteHrefContext.Provider value={hrefForRoute ?? demoHref}>
+    <RouteHrefContext.Provider value={hrefForRoute ?? identityHref}>
       {children}
     </RouteHrefContext.Provider>
   );

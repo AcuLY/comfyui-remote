@@ -5,7 +5,7 @@ import { useCallback, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 
 import type { DemoToast } from "@/app/design-demos/routing";
-import { cx } from "@/app/design-demos/routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import s from "./feedback.module.css";
 import { Button } from "../primitives/button";
 import { DemoFeedbackContext } from "./context";

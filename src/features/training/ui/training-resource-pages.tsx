@@ -5,7 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, CheckSquare, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle, Trash2 } from "lucide-react";
 
-import { cx, useRouteHref } from "@/app/design-demos/routing";
+import { useRouteHref } from "@/components/design-demo-routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import { useDemoFeedback } from "@/components/design-demo-ui/feedback/context";
 import { OperationStateStrip } from "@/components/design-demo-ui/feedback/operation-state-strip";
 import { Button, ButtonLink } from "@/components/design-demo-ui/primitives/button";

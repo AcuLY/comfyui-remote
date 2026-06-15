@@ -5,7 +5,8 @@ import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckSquare, ChevronDown, CircleAlert, Clock3, Copy, RotateCcw, X } from "lucide-react";
 
-import { cx, useRouteHref } from "@/app/design-demos/routing";
+import { useRouteHref } from "@/components/design-demo-routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import { useDemoFeedback } from "@/components/design-demo-ui/feedback/context";
 import { ImageListSmall } from "@/components/design-demo-ui/media";
 import { Button } from "@/components/design-demo-ui/primitives/button";

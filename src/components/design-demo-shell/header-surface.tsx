@@ -6,7 +6,8 @@ import type { CSSProperties, ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
 
-import { cx, useRouteHref } from "@/app/design-demos/routing";
+import { useRouteHref } from "@/components/design-demo-routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import type { HeaderAction, HeaderSpec } from "@/app/design-demos/routing/header-specs";
 import { Button, ButtonLink } from "@/components/design-demo-ui/primitives";
 import s from "./header-surface.module.css";

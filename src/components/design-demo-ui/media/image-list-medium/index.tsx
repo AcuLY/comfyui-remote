@@ -5,7 +5,7 @@ import { Children, useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
 import type { DemoImage } from "@/app/design-demos/data";
-import { cx } from "@/app/design-demos/routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import { ImageListStats } from "../image-list-stats";
 import s from "../image/image.module.css";
 

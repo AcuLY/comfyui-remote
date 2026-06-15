@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Archive, CheckSquare, Grid2X2, List, Plus, X } from "lucide-react";
 
-import { cx } from "@/app/design-demos/routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import { useDemoFeedback } from "@/components/design-demo-ui/feedback/context";
 import { SelectionBatchBar } from "@/components/design-demo-ui/patterns";
 import { Button, ButtonLink } from "@/components/design-demo-ui/primitives/button";

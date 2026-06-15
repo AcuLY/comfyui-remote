@@ -26,7 +26,8 @@ import {
 } from "lucide-react";
 
 import { toImageUrl } from "@/lib/image-url";
-import { cx, useRouteHref } from "@/app/design-demos/routing";
+import { useRouteHref } from "@/components/design-demo-routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import { useDemoFeedback } from "@/components/design-demo-ui/feedback/context";
 import { ImageListSmall } from "@/components/design-demo-ui/media/image-list-small";
 import { ImagePreviewFrame } from "@/components/design-demo-ui/media/image-preview-frame";

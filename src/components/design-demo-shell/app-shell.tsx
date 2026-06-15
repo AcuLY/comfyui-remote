@@ -6,24 +6,24 @@ import type { ReactNode } from "react";
 import { Eye, EyeOff, FlaskConical, ImageIcon, Menu, Moon, MoreHorizontal, Sun } from "lucide-react";
 
 import type { DemoData } from "@/app/design-demos/data";
+import { RouteHrefProvider, useRouteHref } from "@/components/design-demo-routing";
 import { DemoFeedbackProvider } from "@/components/design-demo-ui/feedback";
 import { Button } from "@/components/design-demo-ui/primitives/button";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import {
   DESIGN_DEMO_SFW_STORAGE_KEY,
   DESIGN_DEMO_THEME_STORAGE_KEY,
-  RouteHrefProvider,
   WORK_MODE_CHANGE_EVENT,
   WORK_MODE_STORAGE_KEY,
   applyDesignDemoSfwMode,
   applyDesignDemoTheme,
   buildWorkModeNavLinks,
-  cx,
+  demoHref,
   isDemoThemeValue,
   isDesignDemoWorkModeValue,
   isNavActive,
   isSfwEnabledValue,
   resolveWorkModeForRoute,
-  useRouteHref,
 } from "@/app/design-demos/routing";
 import type { DemoTheme, DesignDemoWorkMode, NavLinkDef } from "@/app/design-demos/routing";
 import { findHeaderSpecForRoute } from "@/app/design-demos/routing/header-specs";
@@ -508,7 +508,7 @@ export function DesignDemoShell({
   }
 
   return (
-    <RouteHrefProvider hrefForRoute={hrefForRoute}>
+    <RouteHrefProvider hrefForRoute={hrefForRoute ?? demoHref}>
       <div className={cx(s.shell, isLightTheme && s.shellLight)} data-app-shell data-demo-font="harmonyos" data-theme={theme}>
         <DemoFeedbackProvider>
           {!hasRouteHeader ? (

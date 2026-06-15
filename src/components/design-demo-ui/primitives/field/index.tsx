@@ -3,7 +3,7 @@
 import { useId, useState } from "react";
 import { ClipboardCopy, ClipboardPaste } from "lucide-react";
 
-import { cx } from "@/app/design-demos/routing";
+import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import s from "./field.module.css";
 import { Button } from "../button";
 import { useDemoFeedback } from "../../feedback/context";
