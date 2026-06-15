@@ -19,6 +19,7 @@ const trainingRoutePagePath = resolve(repoRoot, "src/app/training/[[...route]]/p
 const trainingAppClientPath = resolve(repoRoot, "src/app/training/training-app-client.tsx");
 const trainingFeatureAppPath = resolve(repoRoot, "src/features/training/app.tsx");
 const trainingRuntimePath = resolve(repoRoot, "src/features/training/runtime.ts");
+const trainingShellPath = resolve(repoRoot, "src/features/training/shell.tsx");
 const trainingRoutesPath = resolve(repoRoot, "src/features/training/routes.ts");
 const trainingThemePath = resolve(repoRoot, "src/features/training/theme.ts");
 
@@ -35,6 +36,7 @@ const trainingRoutePageSource = existsSync(trainingRoutePagePath) ? readFileSync
 const trainingAppClientSource = existsSync(trainingAppClientPath) ? readFileSync(trainingAppClientPath, "utf8") : "";
 const trainingFeatureAppSource = existsSync(trainingFeatureAppPath) ? readFileSync(trainingFeatureAppPath, "utf8") : "";
 const trainingRuntimeSource = existsSync(trainingRuntimePath) ? readFileSync(trainingRuntimePath, "utf8") : "";
+const trainingShellSource = existsSync(trainingShellPath) ? readFileSync(trainingShellPath, "utf8") : "";
 const trainingRoutesSource = existsSync(trainingRoutesPath) ? readFileSync(trainingRoutesPath, "utf8") : "";
 const trainingThemeSource = existsSync(trainingThemePath) ? readFileSync(trainingThemePath, "utf8") : "";
 
@@ -236,8 +238,13 @@ test("training routes render a production shell without the /design-demos prefix
   );
   assert.match(
     trainingFeatureAppSource,
-    /DesignDemoShell[\s\S]*?hrefForRoute=\{\(route\) => route\}/,
+    /TrainingShell[\s\S]*?hrefForRoute=\{\(route\) => route\}/,
     "feature-layer training app should keep product routes untouched instead of re-prefixing them with /design-demos",
+  );
+  assert.doesNotMatch(
+    trainingFeatureAppSource,
+    /DesignDemoShell|DemoTheme/,
+    "feature-layer training app should not expose demo shell or theme names at the production training boundary",
   );
   assert.match(
     trainingFeatureAppSource,
@@ -278,6 +285,16 @@ test("training routes render a production shell without the /design-demos prefix
     trainingRuntimeSource,
     /from "@\/app\/design-demos\/routing"/,
     "feature-layer training runtime should not import the training route matcher directly from the design-demos routing path anymore",
+  );
+  assert.doesNotMatch(
+    trainingRuntimeSource,
+    /DesignDemoShell|DemoTheme/,
+    "feature-layer training runtime should not re-export demo shell or theme names",
+  );
+  assert.match(
+    trainingShellSource,
+    /export \{ DesignDemoShell as TrainingShell \}/,
+    "training shell compatibility wrapper should rename the shared shell at the training feature boundary",
   );
   assert.match(
     trainingRuntimeSource,

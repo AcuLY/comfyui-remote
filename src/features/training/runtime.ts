@@ -1,5 +1,5 @@
-export { DesignDemoShell } from "@/components/design-demo-shell/app-shell";
+export { TrainingShell } from "./shell";
 export { TrainingNotFoundPage as NotFoundPage } from "./not-found-page";
 export { matchRoute } from "./routes";
 export type { Match } from "./routes";
-export type { TrainingTheme as DemoTheme } from "./theme";
+export type { TrainingTheme } from "./theme";
