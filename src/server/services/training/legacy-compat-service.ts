@@ -56,6 +56,9 @@ import {
   writeCharacterLoraBufferArtifact,
 } from "@/server/services/character-lora-training/artifact-service";
 import {
+  CHARACTER_LORA_UNDIFFERENTIATED_SOURCE_ROLE,
+} from "@/lib/character-lora-source-images";
+import {
   getExistingJob,
   getExistingSection,
 } from "@/server/services/character-lora-training/phase3-internal";
@@ -151,6 +154,9 @@ export const deleteLegacyTrainingReferenceImage = deleteCharacterLoraSourceImage
 export const getLegacyTrainingReferenceImage = getCharacterLoraSourceImageFromSourceImageRepository;
 export const getLegacyTrainingReferenceImageFromRepository = getCharacterLoraSourceImageFromRepository;
 export const registerLegacyTrainingReferenceImageAsResult = registerCharacterLoraSourceImageAsCandidate;
+export const createLegacyTrainingReferenceImage = createCharacterLoraSourceImage;
+export const findLegacyTrainingReferenceImageDuplicate = findCharacterLoraSourceImageDuplicate;
+export const TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE = CHARACTER_LORA_UNDIFFERENTIATED_SOURCE_ROLE;
 
 export const freezeLegacyTrainingDataset = freezeCharacterLoraDataset;
 export const enqueueLegacyTrainingSectionGenerationRun = enqueueCharacterLoraSectionGenerationRun;

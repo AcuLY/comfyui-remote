@@ -275,6 +275,22 @@ test("training caption service uses Training-named legacy adapter aliases", () =
   );
 });
 
+test("training generation output service uses Training-named legacy adapter aliases", () => {
+  const generationOutputServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/generation-output-service.ts"), "utf8");
+
+  assert.match(generationOutputServiceSource, /createLegacyTrainingReferenceImage/);
+  assert.match(generationOutputServiceSource, /findLegacyTrainingReferenceImageDuplicate/);
+  assert.match(generationOutputServiceSource, /getLegacyTrainingCandidateImage/);
+  assert.match(generationOutputServiceSource, /getLegacyTrainingProject/);
+  assert.match(generationOutputServiceSource, /getLegacyTrainingReferenceImageFromRepository/);
+  assert.match(generationOutputServiceSource, /listLegacyTrainingReferenceImages/);
+  assert.doesNotMatch(
+    generationOutputServiceSource,
+    /CharacterLora|CHARACTER_LORA|character-lora|getCharacterLora|listCharacterLora|createCharacterLora|findCharacterLora/,
+    "Training generation output service should keep legacy CharacterLora symbol names inside the adapter boundary.",
+  );
+});
+
 test("training project archive and restore routes use the project service boundary", () => {
   const routeFiles = [
     "src/app/api/training/projects/[projectId]/archive/route.ts",

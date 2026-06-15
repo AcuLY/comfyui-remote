@@ -1,14 +1,13 @@
 import path from "node:path";
 
-import { CharacterLoraJobStatus } from "@/generated/prisma/enums";
-import { CHARACTER_LORA_UNDIFFERENTIATED_SOURCE_ROLE } from "@/lib/character-lora-source-images";
 import {
-  createCharacterLoraSourceImage,
-  findCharacterLoraSourceImageDuplicate,
-  getCharacterLoraCandidateImage,
-  getCharacterLoraSourceImage,
-  getCharacterLoraTrainingJobFromRepository as getCharacterLoraTrainingJob,
-  listCharacterLoraSourceImagesFromRepository as listCharacterLoraSourceImages,
+  createLegacyTrainingReferenceImage,
+  findLegacyTrainingReferenceImageDuplicate,
+  getLegacyTrainingCandidateImage,
+  getLegacyTrainingProject,
+  getLegacyTrainingReferenceImageFromRepository,
+  listLegacyTrainingReferenceImages,
+  TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE,
 } from "@/server/services/training/legacy-compat-service";
 import {
   applyManagedTrainingImageResultToReferenceImage,
@@ -130,11 +129,11 @@ async function applyProductionGenerationOutput(
   input: GenerationOutputApplyInput,
   target: GenerationOutputApplyTarget,
 ) {
-  const output = await getCharacterLoraCandidateImage(outputId);
+  const output = await getLegacyTrainingCandidateImage(outputId);
   if (!output) return null;
-  const job = await getCharacterLoraTrainingJob(output.jobId);
+  const job = await getLegacyTrainingProject(output.jobId);
   if (!job) {
-    throw new TrainingGenerationOutputServiceError("Character LoRA training job not found", 404, { outputId, jobId: output.jobId });
+    throw new TrainingGenerationOutputServiceError("Training project not found", 404, { outputId, projectId: output.jobId });
   }
 
   if (input.targetEntityId && input.targetEntityId !== job.id) {
@@ -157,23 +156,23 @@ async function applyProductionGenerationOutput(
     };
   }
 
-  if (job.status === CharacterLoraJobStatus.archived || job.status === CharacterLoraJobStatus.promoted) {
+  if (job.status === "archived" || job.status === "promoted") {
     throw new TrainingGenerationOutputServiceError(
-      "Archived or promoted character LoRA training jobs cannot accept generated reference images",
+      "Archived training projects cannot accept generated reference images",
       409,
       { status: job.status },
     );
   }
 
-  const duplicate = await findCharacterLoraSourceImageDuplicate({
+  const duplicate = await findLegacyTrainingReferenceImageDuplicate({
     jobId: job.id,
-    role: CHARACTER_LORA_UNDIFFERENTIATED_SOURCE_ROLE,
+    role: TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE,
     sha256: output.sha256,
   });
   if (duplicate) {
-    const existing = await getCharacterLoraSourceImage(duplicate.id);
+    const existing = await getLegacyTrainingReferenceImageFromRepository(duplicate.id);
     if (!existing) {
-      throw new TrainingGenerationOutputServiceError("Character LoRA source image not found", 404, {
+      throw new TrainingGenerationOutputServiceError("Training reference image not found", 404, {
         outputId,
         sourceImageId: duplicate.id,
       });
@@ -189,11 +188,11 @@ async function applyProductionGenerationOutput(
     };
   }
 
-  const sourceImages = await listCharacterLoraSourceImages(job.id);
+  const sourceImages = await listLegacyTrainingReferenceImages(job.id);
   const byteSize = typeof output.fileSize === "string" && output.fileSize.trim() ? BigInt(output.fileSize) : null;
-  const created = await createCharacterLoraSourceImage({
+  const created = await createLegacyTrainingReferenceImage({
     jobId: job.id,
-    role: CHARACTER_LORA_UNDIFFERENTIATED_SOURCE_ROLE,
+    role: TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE,
     relativePath: output.relativePath,
     absolutePath: path.join(job.artifactRoot, output.relativePath),
     sha256: output.sha256,
