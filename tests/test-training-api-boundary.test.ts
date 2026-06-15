@@ -351,6 +351,26 @@ test("preset resource lists stay scoped to their owning work mode except shared 
   assert.equal(trainingHrefs.includes("/settings"), true, "Settings remain a shared resource.");
 });
 
+test("generation preset list workspaces reuse the ordinary preset scope contract", () => {
+  const scopedGenerationPresetListFiles = [
+    "src/app/assets/presets/sort-rules/page.tsx",
+  ] as const;
+
+  for (const relativePath of scopedGenerationPresetListFiles) {
+    const source = readFileSync(join(process.cwd(), relativePath), "utf8");
+    assert.match(
+      source,
+      /ordinaryPresetCategoryTypeWhere|ordinaryPresetLibraryCategoryTypeWhere|ORDINARY_PRESET_CATEGORY_TYPE/,
+      `${relativePath} should reuse the ordinary preset scope helper instead of owning a raw category filter.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /type:\s*"preset"/,
+      `${relativePath} should not hand-write generation preset category filters.`,
+    );
+  }
+});
+
 test("shared model resources are not re-exposed as training-owned resources", () => {
   assert.equal(
     existsSync(join(process.cwd(), "src/app/api/training/models/route.ts")),

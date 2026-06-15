@@ -1,9 +1,10 @@
+import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
 import { SortRulesEditor } from "./sort-rules-editor";
 
 export default async function SortRulesPage() {
   const categories = await prisma.presetCategory.findMany({
-    where: { type: "preset" },
+    where: { type: ordinaryPresetCategoryTypeWhere() },
     select: {
       id: true,
       name: true,
