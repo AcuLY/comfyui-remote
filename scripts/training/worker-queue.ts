@@ -7,7 +7,7 @@ import {
   parseWorkerCli,
   readNumberOption,
   readStringOption,
-} from "../character-lora-training/worker-common";
+} from "./worker-common";
 
 type WorkerSpec = {
   key: string;
@@ -94,7 +94,7 @@ async function main() {
 
     const args = [
       tsxCli,
-      path.join("scripts", "character-lora-training", spec.script),
+      path.join("scripts", "training", spec.script),
       "--poll",
       "--worker-owner",
       `${ownerPrefix}-${spec.ownerSuffix}`,

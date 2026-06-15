@@ -30,6 +30,37 @@ test("training worker supervisor does not expose legacy-only workers by default"
   assert.doesNotMatch(source, /character-lora:workers/);
 });
 
+test("training worker supervisor launches Training-named worker scripts", () => {
+  const workerQueuePath = join(process.cwd(), "scripts/training/worker-queue.ts");
+  const requiredEntrypoints = [
+    "scripts/training/image-worker.ts",
+    "scripts/training/dataset-freeze-worker.ts",
+    "scripts/training/training-worker.ts",
+    "scripts/training/worker-common.ts",
+  ];
+
+  for (const entrypoint of requiredEntrypoints) {
+    assert.equal(existsSync(join(process.cwd(), entrypoint)), true, `${entrypoint} should exist`);
+  }
+
+  const source = readFileSync(workerQueuePath, "utf8");
+  assert.match(
+    source,
+    /path\.join\("scripts",\s*"training",\s*spec\.script\)/,
+    "training supervisor should spawn Training-owned worker entrypoints",
+  );
+  assert.match(
+    source,
+    /from "\.\/worker-common"/,
+    "training supervisor should import Training-owned worker CLI helpers",
+  );
+  assert.doesNotMatch(
+    source,
+    /character-lora-training/,
+    "training supervisor should not directly launch or import legacy Character LoRA scripts",
+  );
+});
+
 test("training worker supervisor targets Training-named worker task HTTP routes", async () => {
   const workerQueuePath = join(process.cwd(), "scripts/training/worker-queue.ts");
   const workerCommonPath = join(process.cwd(), "scripts/character-lora-training/worker-common.ts");
