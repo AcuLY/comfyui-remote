@@ -1089,7 +1089,7 @@ test("training project create page creates a local front-end draft instead of pr
   assert.match(formSource, /createdProjectDraft \? "更新项目草稿" : "创建项目"/, "create action should visibly switch to updating the local draft");
   assert.match(formSource, /创建结果/, "project creation should render a visible created-draft result panel");
   assert.match(formSource, /sectionSeeds\.length/, "created draft should reflect the current local seed section count");
-  assert.doesNotMatch(formSource, /POST \/api\/training\/projects/, "project creation should not advertise missing backend wiring in the UI");
+  assert.match(formSource, /if \(!isProductionTrainingRoute\)/, "local draft creation should be limited to non-production prototype routes");
 });
 
 test("training project create page posts through the formal HTTP API on production routes", () => {
@@ -1104,14 +1104,11 @@ test("training project create page posts through the formal HTTP API on producti
   assert.match(formSource, /usePathname/, "project creation should detect whether it is running under production \\/training routes");
   assert.match(
     formSource,
-    /fetch\(`\/api\/training\/templates\/\$\{sourceTemplate\.id\}\/projects`/,
-    "production project creation from a template should call the template-owned create-project API",
+    /const createProjectEndpoint = sourceTemplate\s*\?\s*`\/api\/training\/templates\/\$\{sourceTemplate\.id\}\/projects`\s*:\s*"\/api\/training\/projects"/,
+    "production project creation should use the template-owned endpoint only when a source template is selected",
   );
-  assert.doesNotMatch(
-    formSource,
-    /fetch\("\/api\/training\/projects"/,
-    "production project creation from a template should not bypass the template-owned create-project API",
-  );
+  assert.match(formSource, /fetch\(createProjectEndpoint/, "production project creation should post through the resolved endpoint");
+  assert.doesNotMatch(formSource, /请选择一个训练模板后再创建项目/, "production project creation should allow the explicit no-template option");
   assert.match(formSource, /method:\s*"POST"/, "production project creation should create projects through POST");
   assert.match(formSource, /title:\s*projectForm\.title\.trim\(\)/, "production project creation should submit the product title");
   assert.doesNotMatch(formSource, /templateId:\s*sourceTemplate\.id/, "template id should be carried by the endpoint path, not duplicated in the body");

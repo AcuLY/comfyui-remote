@@ -1834,12 +1834,8 @@ export async function createManagedTrainingProject(input: unknown) {
   const title = normalizeTrainingProjectTitle(parsed);
   const templateId = normalizeTrainingTemplateId(parsed);
 
-  if (!templateId) {
-    throw new TrainingProjectServiceError("trainingTemplateId or templateId is required", 400);
-  }
-
-  const template = await getManagedTrainingTemplate(templateId).catch(() => null);
-  if (!template) {
+  const template = templateId ? await getManagedTrainingTemplate(templateId).catch(() => null) : null;
+  if (templateId && !template) {
     throw new TrainingProjectServiceError("Training template not found", 404, { templateId });
   }
 
@@ -1862,12 +1858,10 @@ export async function createManagedTrainingProject(input: unknown) {
       projectName: title,
       triggerToken,
       checkpointRelativePath,
-      trainingTemplateId: template.id,
+      trainingTemplateId: template?.id,
     });
     createdId = created.id;
-    if (parsed.sections.length > 0) {
-      await setTrainingProjectSectionCollection(created.id, buildSeedSections(parsed));
-    }
+    await setTrainingProjectSectionCollection(created.id, buildSeedSections(parsed));
     if (selectedReferenceImages.length > 0) {
       await syncSelectedReferenceImagesToTrainingProject(created.id, selectedReferenceImages);
     }

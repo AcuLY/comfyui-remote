@@ -1353,15 +1353,6 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
       return;
     }
 
-    if (!sourceTemplate) {
-      pushToast({
-        tone: "error",
-        title: "训练项目创建失败",
-        detail: "请选择一个训练模板后再创建项目。",
-      });
-      return;
-    }
-
     const checkpointAsset = availableCheckpointModels.find((model) => (
       model.modelType === "checkpoint"
       && (projectForm.baseModel === "继承训练默认模型" || model.name === projectForm.baseModel)
@@ -1381,7 +1372,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
     setIsCreatingProject(true);
     try {
       const persistedSelectedReferenceIds = [...selectedReferenceIds].filter((referenceId) => !stagedProjectReferenceUploadIds.has(referenceId));
-      const response = await fetch(`/api/training/templates/${sourceTemplate.id}/projects`, {
+      const createProjectEndpoint = sourceTemplate ? `/api/training/templates/${sourceTemplate.id}/projects` : "/api/training/projects";
+      const response = await fetch(createProjectEndpoint, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({

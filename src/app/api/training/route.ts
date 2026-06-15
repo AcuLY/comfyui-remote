@@ -244,8 +244,8 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/projects",
           requestBody: {
             contentType: "application/json",
-            requiredFields: ["title", "triggerToken", "templateId", "trainingTemplateId", "checkpointRelativePath"],
-            optionalFields: ["characterName", "projectName", "usagePrompt", "detailPrompt", "selectedReferenceIds", "sections", "trainingDefaults"],
+            requiredFields: ["title", "triggerToken", "checkpointRelativePath"],
+            optionalFields: ["characterName", "projectName", "templateId", "trainingTemplateId", "usagePrompt", "detailPrompt", "selectedReferenceIds", "sections", "trainingDefaults"],
           },
           produces: ["projectId"],
           responsePaths: { projectId: "$.data.id" },

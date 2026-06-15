@@ -882,6 +882,30 @@ test("GET /api/training manifest exposes an end-to-end HTTP workflow for agents"
   );
 });
 
+test("GET /api/training full workflow create-project step supports blank project creation", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  ) as { steps: Array<{ id?: string; requestBody?: { requiredFields?: string[]; optionalFields?: string[] } }> } | undefined;
+  const createProjectStep = fullWorkflow?.steps.find((step) => step.id === "create_project");
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(createProjectStep, "agent workflow should declare a create_project step");
+  assert.deepEqual(
+    createProjectStep.requestBody?.requiredFields,
+    ["title", "triggerToken", "checkpointRelativePath"],
+    "Blank training project creation should not require template ids.",
+  );
+  assert.ok(
+    createProjectStep.requestBody?.optionalFields?.includes("templateId")
+      && createProjectStep.requestBody.optionalFields.includes("trainingTemplateId"),
+    "Template ids should remain optional when an agent wants to seed from a template.",
+  );
+});
+
 test("GET /api/training full workflow steps include machine-actionable handoff metadata", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
@@ -2018,6 +2042,41 @@ test("managed training project creation can seed references from existing manage
     assert.ok(Array.isArray(referencePayload.data));
     assert.ok((referencePayload.data as Array<{ label: string }>).some((image) => image.label === seedProject.title));
     assert.ok((referencePayload.data as Array<{ label: string }>).some((image) => image.label === seedProject.resultSourceLabel));
+  });
+});
+
+test("POST /api/training/projects creates a blank project without template ids", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+
+  await withTrainingManagedStoreSnapshot(async () => {
+    const title = `无模板空训练项目 ${Date.now()}`;
+    const createResponse = await projectsRoute.POST(
+      new Request("http://localhost/api/training/projects", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          characterName: title,
+          projectName: title,
+          triggerToken: `blank_project_${Date.now()}`,
+          checkpointRelativePath: "models/checkpoints/mock.safetensors",
+          usagePrompt: "无模板创建后再补资料。",
+          detailPrompt: "无模板创建不应该要求来源训练模板。",
+          selectedReferenceIds: [],
+          sections: [],
+          trainingDefaults: {
+            autoGenerateSamples: false,
+            autoFreezeDataset: false,
+          },
+        }),
+      }),
+    );
+    const createPayload = await createResponse.json();
+
+    assert.equal(createResponse.status, 201);
+    assert.equal(createPayload.ok, true);
+    assert.equal(createPayload.data.title, title);
+    assert.equal(createPayload.data.sectionCount, 0);
+    assert.deepEqual(createPayload.data.sections, []);
   });
 });
 
