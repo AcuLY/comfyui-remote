@@ -1,6 +1,17 @@
 import process from "node:process";
 
 export * from "../character-lora-training/worker-common";
+export {
+  createManagerClient,
+  getManagerBaseUrl,
+  getWorkerTaskApiBasePath,
+  ManagerApiError,
+  parseWorkerCli,
+  readNumberOption,
+  readStringOption,
+  resolveManagerAuth,
+  WorkerError,
+} from "../character-lora-training/worker-common";
 
 function copyEnvAlias(sourceName: string, targetName: string) {
   const sourceValue = process.env[sourceName]?.trim();
@@ -14,6 +25,8 @@ function applyTrainingManagerEnvAliases() {
   copyEnvAlias("TRAINING_MANAGER_URL", "CHARACTER_LORA_MANAGER_URL");
   copyEnvAlias("TRAINING_MANAGER_TOKEN", "CHARACTER_LORA_MANAGER_TOKEN");
 }
+
+applyTrainingManagerEnvAliases();
 
 export function runTrainingWorkerEntrypoint(input: {
   help: string;
