@@ -11,6 +11,7 @@ const GENERATION_ROUTE_PREFIXES = [
 ] as const;
 
 const LORA_TRAINING_ROUTE_PREFIXES = [
+  "/training",
   "/training/runs",
   "/training/projects",
   "/training/presets",

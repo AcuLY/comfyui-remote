@@ -7,6 +7,7 @@ import {
   WORK_MODE_RESOURCE_TARGETS,
   buildWorkModeResourceTargets,
 } from "../src/lib/work-mode-resources";
+import { inferWorkModeFromPathname, resolveWorkModeForPathname } from "../src/lib/work-mode";
 
 const repoRoot = process.cwd();
 const bottomNavSource = readFileSync(resolve(repoRoot, "src/components/persistent-bottom-nav.tsx"), "utf8");
@@ -87,6 +88,15 @@ test("work mode resource targets isolate generation and training-owned resources
       `${key} should use the same route from both work modes.`,
     );
   }
+});
+
+test("work mode inference treats the production training root as LoRA training-owned", () => {
+  assert.equal(inferWorkModeFromPathname("/training"), "lora_training");
+  assert.equal(
+    resolveWorkModeForPathname("/training", "generation"),
+    "lora_training",
+    "the /training root must not fall back to a stored generation mode and expose generation-owned resources",
+  );
 });
 
 test("module-owned frontend pages do not fetch the other module's resource APIs", () => {
