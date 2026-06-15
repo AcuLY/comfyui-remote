@@ -953,15 +953,30 @@ test("training caption service uses the Training image-result repository boundar
   );
 });
 
-test("training generation output service uses Training-named legacy adapter aliases", () => {
+test("training generation output service uses the Training image-result repository boundary", () => {
   const generationOutputServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/generation-output-service.ts"), "utf8");
+  const repositorySource = readFileSync(join(process.cwd(), "src/server/repositories/training/image-results.ts"), "utf8");
 
-  assert.match(generationOutputServiceSource, /createLegacyTrainingReferenceImage/);
-  assert.match(generationOutputServiceSource, /findLegacyTrainingReferenceImageDuplicate/);
-  assert.match(generationOutputServiceSource, /getLegacyTrainingCandidateImage/);
-  assert.match(generationOutputServiceSource, /getLegacyTrainingProject/);
-  assert.match(generationOutputServiceSource, /getLegacyTrainingReferenceImageFromRepository/);
-  assert.match(generationOutputServiceSource, /listLegacyTrainingReferenceImages/);
+  assert.match(
+    generationOutputServiceSource,
+    /@\/server\/repositories\/training\/image-results/,
+    "Training generation output service should call the Training image-result repository boundary.",
+  );
+  assert.match(generationOutputServiceSource, /createTrainingReferenceImage/);
+  assert.match(generationOutputServiceSource, /findTrainingReferenceImageDuplicate/);
+  assert.match(generationOutputServiceSource, /getTrainingCandidateImage/);
+  assert.match(generationOutputServiceSource, /getTrainingProductionProject/);
+  assert.match(generationOutputServiceSource, /getTrainingReferenceImage/);
+  assert.match(generationOutputServiceSource, /listTrainingReferenceImages/);
+  assert.doesNotMatch(
+    generationOutputServiceSource,
+    /@\/server\/services\/training\/legacy-compat-service|createLegacyTrainingReferenceImage|findLegacyTrainingReferenceImageDuplicate|getLegacyTrainingCandidateImage|getLegacyTrainingProject|getLegacyTrainingReferenceImageFromRepository|listLegacyTrainingReferenceImages/,
+    "Training generation output service should not import production image-result operations from legacy compat directly.",
+  );
+  assert.match(repositorySource, /createLegacyTrainingReferenceImage/);
+  assert.match(repositorySource, /findLegacyTrainingReferenceImageDuplicate/);
+  assert.match(repositorySource, /getLegacyTrainingReferenceImageFromRepository/);
+  assert.match(repositorySource, /listLegacyTrainingReferenceImages/);
   assert.doesNotMatch(
     generationOutputServiceSource,
     /CharacterLora|CHARACTER_LORA|character-lora|getCharacterLora|listCharacterLora|createCharacterLora|findCharacterLora/,

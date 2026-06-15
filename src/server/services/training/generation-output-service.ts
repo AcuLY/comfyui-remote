@@ -1,14 +1,14 @@
 import path from "node:path";
 
 import {
-  createLegacyTrainingReferenceImage,
-  findLegacyTrainingReferenceImageDuplicate,
-  getLegacyTrainingCandidateImage,
-  getLegacyTrainingProject,
-  getLegacyTrainingReferenceImageFromRepository,
-  listLegacyTrainingReferenceImages,
+  createTrainingReferenceImage,
+  findTrainingReferenceImageDuplicate,
+  getTrainingCandidateImage,
+  getTrainingProductionProject,
+  getTrainingReferenceImage,
+  listTrainingReferenceImages,
   TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE,
-} from "@/server/services/training/legacy-compat-service";
+} from "@/server/repositories/training/image-results";
 import {
   applyManagedTrainingImageResultToReferenceImage,
   getManagedTrainingProject,
@@ -129,9 +129,9 @@ async function applyProductionGenerationOutput(
   input: GenerationOutputApplyInput,
   target: GenerationOutputApplyTarget,
 ) {
-  const output = await getLegacyTrainingCandidateImage(outputId);
+  const output = await getTrainingCandidateImage(outputId);
   if (!output) return null;
-  const job = await getLegacyTrainingProject(output.jobId);
+  const job = await getTrainingProductionProject(output.jobId);
   if (!job) {
     throw new TrainingGenerationOutputServiceError("Training project not found", 404, { outputId, projectId: output.jobId });
   }
@@ -164,13 +164,13 @@ async function applyProductionGenerationOutput(
     );
   }
 
-  const duplicate = await findLegacyTrainingReferenceImageDuplicate({
+  const duplicate = await findTrainingReferenceImageDuplicate({
     jobId: job.id,
     role: TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE,
     sha256: output.sha256,
   });
   if (duplicate) {
-    const existing = await getLegacyTrainingReferenceImageFromRepository(duplicate.id);
+    const existing = await getTrainingReferenceImage(duplicate.id);
     if (!existing) {
       throw new TrainingGenerationOutputServiceError("Training reference image not found", 404, {
         outputId,
@@ -188,9 +188,9 @@ async function applyProductionGenerationOutput(
     };
   }
 
-  const sourceImages = await listLegacyTrainingReferenceImages(job.id);
+  const sourceImages = await listTrainingReferenceImages(job.id);
   const byteSize = typeof output.fileSize === "string" && output.fileSize.trim() ? BigInt(output.fileSize) : null;
-  const created = await createLegacyTrainingReferenceImage({
+  const created = await createTrainingReferenceImage({
     jobId: job.id,
     role: TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE,
     relativePath: output.relativePath,
