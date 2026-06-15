@@ -17,6 +17,7 @@ import {
   cancelLegacyTrainingGenerationRun,
   cancelLegacyTrainingRun,
   createCharacterLoraTrainingProject,
+  freezeLegacyTrainingDataset,
   getCharacterLoraCandidateImage,
   getCharacterLoraJobSection,
   getCharacterLoraTrainingJob,
@@ -1161,6 +1162,12 @@ export async function freezeManagedTrainingDataset(projectId: string) {
       revision,
     };
   });
+}
+
+export async function freezeTrainingDataset(projectId: string, input: unknown = {}) {
+  const managedRevision = await freezeManagedTrainingDataset(projectId);
+  if (managedRevision) return managedRevision;
+  return freezeLegacyTrainingDataset(projectId, input);
 }
 
 export async function enqueueManagedTrainingSectionGenerationRun(

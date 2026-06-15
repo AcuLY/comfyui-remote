@@ -142,3 +142,22 @@ test("training run cancel routes use the project service boundary", () => {
   assert.match(projectService, /export async function cancelTrainingGenerationRun/);
   assert.match(projectService, /export async function cancelTrainingRun/);
 });
+
+test("training dataset revision freeze route uses the project service boundary", () => {
+  const routeFile = "src/app/api/training/projects/[projectId]/dataset-revisions/route.ts";
+  const source = readFileSync(join(process.cwd(), routeFile), "utf8");
+
+  assert.match(
+    source,
+    /@\/server\/services\/training\/project-service/,
+    `${routeFile} should route dataset freeze mutations through project-service`,
+  );
+  assert.doesNotMatch(
+    source,
+    /@\/server\/services\/training\/legacy-compat-service/,
+    `${routeFile} should not fallback to legacy compat from the route layer`,
+  );
+
+  const projectService = readFileSync(join(process.cwd(), "src/server/services/training/project-service.ts"), "utf8");
+  assert.match(projectService, /export async function freezeTrainingDataset/);
+});
