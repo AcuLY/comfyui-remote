@@ -749,6 +749,48 @@ test("GET /api/training full workflow scopes worker leases by worker type", asyn
   );
 });
 
+test("GET /api/training full workflow scopes section alias routes with project query handoffs", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  ) as {
+    steps: Array<{
+      id?: string;
+      path: string;
+      queryParamBindings?: Record<string, string>;
+      requires?: string[];
+    }>;
+  } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(fullWorkflow, "agent manifest should include the full training workflow");
+
+  const addSceneBlockStep = fullWorkflow.steps.find((step) => step.id === "add_scene_block");
+  assert.deepEqual(
+    addSceneBlockStep?.queryParamBindings,
+    { projectId: "projectId" },
+    "Section alias block creation should pass ?projectId=... so duplicate section ids stay scoped to the current project.",
+  );
+  assert.ok(
+    addSceneBlockStep?.requires?.includes("projectId"),
+    "Section alias block creation should require projectId before binding it into the query string.",
+  );
+
+  const queryParamBindingsWithoutRequiredHandoff = fullWorkflow.steps.flatMap((step) =>
+    Object.entries(step.queryParamBindings ?? {})
+      .filter(([, handoffId]) => !step.requires?.includes(handoffId))
+      .map(([queryParam, handoffId]) => `${step.id ?? "unknown"}:${queryParam}->${handoffId}`));
+
+  assert.deepEqual(
+    queryParamBindingsWithoutRequiredHandoff,
+    [],
+    "Every query parameter handoff binding should reference a handoff id listed in the same step's requires array.",
+  );
+});
+
 test("training route operation inventory includes re-exported route handlers", async () => {
   const routeOperations = await listRouteOperations();
 

@@ -154,8 +154,9 @@ const TRAINING_API_MANIFEST = {
           description: "Attach a local or preset-backed scene block to the section.",
           method: "POST",
           path: "/api/training/sections/:sectionId/blocks",
-          requires: ["sectionId"],
+          requires: ["projectId", "sectionId"],
           pathParams: { sectionId: "sectionId" },
+          queryParamBindings: { projectId: "projectId" },
           requestBody: {
             contentType: "application/json",
             requiredFields: ["title", "text"],
