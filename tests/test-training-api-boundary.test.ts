@@ -923,13 +923,29 @@ test("training worker task DTO schemas live under src/lib/training", async () =>
   );
 });
 
-test("training caption service uses Training-named legacy adapter aliases", () => {
+test("training caption service uses the Training image-result repository boundary", () => {
   const captionServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/caption-service.ts"), "utf8");
+  const repositoryPath = join(process.cwd(), "src/server/repositories/training/image-results.ts");
 
-  assert.match(captionServiceSource, /getLegacyTrainingCandidateImage/);
-  assert.match(captionServiceSource, /getLegacyTrainingProject/);
-  assert.match(captionServiceSource, /listLegacyTrainingCandidateImages/);
-  assert.match(captionServiceSource, /updateLegacyTrainingImageCaption/);
+  assert.equal(
+    existsSync(repositoryPath),
+    true,
+    "Training image-result access should live under src/server/repositories/training.",
+  );
+  assert.match(
+    captionServiceSource,
+    /@\/server\/repositories\/training\/image-results/,
+    "Training caption service should call the Training image-result repository boundary.",
+  );
+  assert.match(captionServiceSource, /getTrainingCandidateImage/);
+  assert.match(captionServiceSource, /getTrainingProductionProject/);
+  assert.match(captionServiceSource, /listTrainingCandidateImages/);
+  assert.match(captionServiceSource, /updateTrainingCandidateImageCaption/);
+  assert.doesNotMatch(
+    captionServiceSource,
+    /@\/server\/services\/training\/legacy-compat-service|getLegacyTrainingCandidateImage|getLegacyTrainingProject|listLegacyTrainingCandidateImages|updateLegacyTrainingImageCaption/,
+    "Training caption service should not import production image-result operations from legacy compat directly.",
+  );
   assert.doesNotMatch(
     captionServiceSource,
     /CharacterLora|getCharacterLora|listCharacterLora|updateCharacterLora/,
