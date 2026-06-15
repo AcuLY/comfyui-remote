@@ -15,6 +15,8 @@ const DEFAULT_MANAGER_URL = "http://127.0.0.1:3000";
 const DEFAULT_LEASE_SECONDS = 300;
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
 const ENV_PATH = path.resolve(process.cwd(), ".env");
+const LEGACY_WORKER_TASK_API_BASE_PATH = "/api/character-lora-training/worker/tasks";
+const TRAINING_WORKER_TASK_API_BASE_PATH = "/api/training/worker/tasks";
 
 export type AuthSourceShape = {
   source: "env:AUTH_TOKEN" | "env:CHARACTER_LORA_MANAGER_TOKEN" | ".env:AUTH_TOKEN" | ".env:CHARACTER_LORA_MANAGER_TOKEN" | "none";
@@ -213,6 +215,12 @@ export function getManagerBaseUrl() {
   return (process.env.CHARACTER_LORA_MANAGER_URL?.trim() || DEFAULT_MANAGER_URL).replace(/\/+$/, "");
 }
 
+export function getWorkerTaskApiBasePath() {
+  return process.env.TRAINING_MANAGER_API_NAMESPACE?.trim() === "training"
+    ? TRAINING_WORKER_TASK_API_BASE_PATH
+    : LEGACY_WORKER_TASK_API_BASE_PATH;
+}
+
 export async function resolveManagerAuth(): Promise<AuthSourceShape & { token: string | null }> {
   if (process.env.AUTH_TOKEN?.trim()) {
     return { source: "env:AUTH_TOKEN", hasToken: true, token: process.env.AUTH_TOKEN.trim() };
@@ -242,6 +250,7 @@ export async function resolveManagerAuth(): Promise<AuthSourceShape & { token: s
 export async function createManagerClient() {
   const baseUrl = getManagerBaseUrl();
   const auth = await resolveManagerAuth();
+  const workerTaskApiBasePath = getWorkerTaskApiBasePath();
 
   async function request<T>(method: "GET" | "POST", pathname: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = {
@@ -294,14 +303,14 @@ export async function createManagerClient() {
       if (input.leaseDurationSeconds) {
         params.set("leaseDurationSeconds", String(input.leaseDurationSeconds));
       }
-      return request<ManagerTask | null>("GET", `/api/character-lora-training/worker/tasks/next?${params}`);
+      return request<ManagerTask | null>("GET", `${workerTaskApiBasePath}/next?${params}`);
     },
     heartbeatTask: (taskId: string, body: { leaseOwner?: string; leaseDurationSeconds?: number; progressJson?: CharacterLoraTrainingProgress | Record<string, unknown> }) =>
-      request<unknown>("POST", `/api/character-lora-training/worker/tasks/${encodeURIComponent(taskId)}/heartbeat`, body),
+      request<unknown>("POST", `${workerTaskApiBasePath}/${encodeURIComponent(taskId)}/heartbeat`, body),
     completeTask: (taskId: string, body: { leaseOwner?: string; output?: unknown }) =>
-      request<unknown>("POST", `/api/character-lora-training/worker/tasks/${encodeURIComponent(taskId)}/complete`, body),
+      request<unknown>("POST", `${workerTaskApiBasePath}/${encodeURIComponent(taskId)}/complete`, body),
     failTask: (taskId: string, body: { leaseOwner?: string; errorSummary: string; providerError?: { httpStatus?: number; backendError: string; retryable: boolean } }) =>
-      request<unknown>("POST", `/api/character-lora-training/worker/tasks/${encodeURIComponent(taskId)}/fail`, body),
+      request<unknown>("POST", `${workerTaskApiBasePath}/${encodeURIComponent(taskId)}/fail`, body),
     getJob: (jobId: string) =>
       request<ManagerJob>("GET", `/api/character-lora-training/jobs/${encodeURIComponent(jobId)}`),
     getJobReport: (jobId: string) =>

@@ -226,6 +226,13 @@ const TRAINING_API_MANIFEST = {
         fail: { method: "POST", path: "/api/training/worker/training-runs/:trainingRunId/fail" },
       },
     },
+    workerTasks: {
+      status: { method: "GET", path: "/api/training/worker/status" },
+      next: { method: "GET", path: "/api/training/worker/tasks/next" },
+      heartbeat: { method: "POST", path: "/api/training/worker/tasks/:taskId/heartbeat" },
+      complete: { method: "POST", path: "/api/training/worker/tasks/:taskId/complete" },
+      fail: { method: "POST", path: "/api/training/worker/tasks/:taskId/fail" },
+    },
     taxonomy: {
       sceneCategories: { method: "GET", path: "/api/training/scene-description/categories" },
       createSceneCategory: { method: "POST", path: "/api/training/scene-description/categories" },

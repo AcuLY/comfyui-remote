@@ -107,7 +107,10 @@ async function main() {
 
     const child = spawn(process.execPath, args, {
       cwd: process.cwd(),
-      env: process.env,
+      env: {
+        ...process.env,
+        TRAINING_MANAGER_API_NAMESPACE: "training",
+      },
       stdio: ["ignore", "pipe", "pipe"],
     });
     const worker: RunningWorker = {

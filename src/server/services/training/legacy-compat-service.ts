@@ -1,10 +1,14 @@
 import {
+  completeCharacterLoraTask,
   freezeCharacterLoraDataset,
   getCharacterLoraWorkerQueueStatus,
+  heartbeatCharacterLoraTask,
+  leaseNextCharacterLoraTask,
   listCharacterLoraCandidateImages,
   listCharacterLoraDatasetRevisions,
   mapCharacterLoraPhase3Error,
   enqueueCharacterLoraSectionGenerationRun,
+  failCharacterLoraTask,
   reviewCharacterLoraImages,
   updateCharacterLoraImageCaption,
 } from "@/server/services/character-lora-training/phase3-service";
@@ -153,6 +157,12 @@ export const enqueueLegacyTrainingSectionGenerationRun = enqueueCharacterLoraSec
 export const reviewLegacyTrainingImages = reviewCharacterLoraImages;
 export const updateLegacyTrainingImageCaption = updateCharacterLoraImageCaption;
 export const cancelLegacyTrainingGenerationRun = cancelCharacterLoraGenerationRun;
+
+export const getLegacyTrainingWorkerQueueStatus = getCharacterLoraWorkerQueueStatus;
+export const leaseNextLegacyTrainingWorkerTask = leaseNextCharacterLoraTask;
+export const heartbeatLegacyTrainingWorkerTask = heartbeatCharacterLoraTask;
+export const completeLegacyTrainingWorkerTask = completeCharacterLoraTask;
+export const failLegacyTrainingWorkerTask = failCharacterLoraTask;
 
 export const enqueueLegacyTrainingRun = enqueueCharacterLoraTrainingRun;
 export const cancelLegacyTrainingRun = cancelTrainingRun;

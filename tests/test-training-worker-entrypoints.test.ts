@@ -30,6 +30,55 @@ test("training worker supervisor does not expose legacy-only workers by default"
   assert.doesNotMatch(source, /character-lora:workers/);
 });
 
+test("training worker supervisor targets Training-named worker task HTTP routes", async () => {
+  const workerQueuePath = join(process.cwd(), "scripts/training/worker-queue.ts");
+  const workerCommonPath = join(process.cwd(), "scripts/character-lora-training/worker-common.ts");
+  const requiredRouteFiles = [
+    "src/app/api/training/worker/status/route.ts",
+    "src/app/api/training/worker/tasks/next/route.ts",
+    "src/app/api/training/worker/tasks/[taskId]/heartbeat/route.ts",
+    "src/app/api/training/worker/tasks/[taskId]/complete/route.ts",
+    "src/app/api/training/worker/tasks/[taskId]/fail/route.ts",
+  ];
+
+  for (const routeFile of requiredRouteFiles) {
+    assert.equal(existsSync(join(process.cwd(), routeFile)), true, `${routeFile} should exist`);
+  }
+
+  const workerQueueSource = readFileSync(workerQueuePath, "utf8");
+  const workerCommonSource = readFileSync(workerCommonPath, "utf8");
+  assert.match(
+    workerQueueSource,
+    /TRAINING_MANAGER_API_NAMESPACE:\s*"training"/,
+    "training supervisor should force child workers onto the Training worker task namespace",
+  );
+  assert.match(
+    workerCommonSource,
+    /TRAINING_MANAGER_API_NAMESPACE/,
+    "shared worker client should support a Training worker task namespace without changing legacy defaults",
+  );
+  assert.match(
+    workerCommonSource,
+    /\/api\/training\/worker\/tasks/,
+    "shared worker client should be able to call Training worker task routes",
+  );
+  assert.match(
+    workerCommonSource,
+    /\/api\/character-lora-training\/worker\/tasks/,
+    "shared worker client should keep the old Character LoRA worker task routes as the default",
+  );
+
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+
+  assert.equal(payload.data.resources.workerTasks.status.path, "/api/training/worker/status");
+  assert.equal(payload.data.resources.workerTasks.next.path, "/api/training/worker/tasks/next");
+  assert.equal(payload.data.resources.workerTasks.heartbeat.path, "/api/training/worker/tasks/:taskId/heartbeat");
+  assert.equal(payload.data.resources.workerTasks.complete.path, "/api/training/worker/tasks/:taskId/complete");
+  assert.equal(payload.data.resources.workerTasks.fail.path, "/api/training/worker/tasks/:taskId/fail");
+});
+
 test("training API manifest tells agents how to run the training worker supervisor", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
