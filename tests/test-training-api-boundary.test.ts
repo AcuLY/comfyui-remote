@@ -1100,15 +1100,35 @@ test("training text revision service uses Training repository boundaries", () =>
   );
 });
 
-test("training generation task draft service uses Training-named legacy adapter aliases", () => {
+test("training generation task draft service uses the Training generation-task repository boundary", () => {
   const draftServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/generation-task-draft-service.ts"), "utf8");
+  const repositorySource = readFileSync(join(process.cwd(), "src/server/repositories/training/generation-tasks.ts"), "utf8");
 
-  assert.match(draftServiceSource, /LegacyTrainingProviderInputImage/);
-  assert.match(draftServiceSource, /createLegacyTrainingProjectArtifact/);
-  assert.match(draftServiceSource, /enqueueLegacyTrainingSectionGenerationRun/);
-  assert.match(draftServiceSource, /mapLegacyTrainingGenerationError/);
-  assert.match(draftServiceSource, /writeLegacyTrainingBufferArtifact/);
+  assert.match(
+    draftServiceSource,
+    /@\/server\/repositories\/training\/generation-tasks/,
+    "Training generation task draft service should call the Training generation-task repository boundary.",
+  );
+  assert.match(draftServiceSource, /TrainingProviderInputImage/);
+  assert.match(draftServiceSource, /createTrainingProjectArtifact/);
+  assert.match(draftServiceSource, /enqueueTrainingSectionGenerationRun/);
+  assert.match(draftServiceSource, /getTrainingProductionProjectRecord/);
+  assert.match(draftServiceSource, /getTrainingProductionSectionRecord/);
+  assert.match(draftServiceSource, /mapTrainingGenerationError/);
+  assert.match(draftServiceSource, /writeTrainingBufferArtifact/);
   assert.match(draftServiceSource, /buildTrainingSupplementalInputImages/);
+  assert.doesNotMatch(
+    draftServiceSource,
+    /@\/server\/services\/training\/legacy-compat-service|LegacyTrainingProviderInputImage|createLegacyTrainingProjectArtifact|enqueueLegacyTrainingSectionGenerationRun|getExistingJob|getExistingSection|mapLegacyTrainingGenerationError|writeLegacyTrainingBufferArtifact/,
+    "Training generation task draft service should not import production generation task operations from legacy compat directly.",
+  );
+  assert.match(repositorySource, /LegacyTrainingProviderInputImage/);
+  assert.match(repositorySource, /createLegacyTrainingProjectArtifact/);
+  assert.match(repositorySource, /enqueueLegacyTrainingSectionGenerationRun/);
+  assert.match(repositorySource, /getExistingJob/);
+  assert.match(repositorySource, /getExistingSection/);
+  assert.match(repositorySource, /mapLegacyTrainingGenerationError/);
+  assert.match(repositorySource, /writeLegacyTrainingBufferArtifact/);
   assert.doesNotMatch(
     draftServiceSource,
     /CharacterLora|getCharacterLora|createCharacterLora|enqueueCharacterLora|writeCharacterLora|mapCharacterLora/,

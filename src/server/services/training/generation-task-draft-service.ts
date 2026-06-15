@@ -7,17 +7,17 @@ import {
   type TrainingGenerationKind,
   type TrainingGenerationTaskType,
 } from "@/lib/training/schemas";
+import type { TrainingProviderInputImage } from "@/server/repositories/training/generation-tasks";
+import {
+  createTrainingProjectArtifact,
+  enqueueTrainingSectionGenerationRun,
+  getTrainingProductionProjectRecord,
+  getTrainingProductionSectionRecord,
+  mapTrainingGenerationError,
+  writeTrainingBufferArtifact,
+} from "@/server/repositories/training/generation-tasks";
 import { getTrainingProject, mapTrainingReadError } from "@/server/services/training/read-service";
 import { enqueueManagedTrainingSectionGenerationRun, getManagedTrainingProject, mapTrainingProjectError } from "@/server/services/training/project-service";
-import type { LegacyTrainingProviderInputImage } from "@/server/services/training/legacy-compat-service";
-import {
-  createLegacyTrainingProjectArtifact,
-  enqueueLegacyTrainingSectionGenerationRun,
-  getExistingJob,
-  getExistingSection,
-  mapLegacyTrainingGenerationError,
-  writeLegacyTrainingBufferArtifact,
-} from "@/server/services/training/legacy-compat-service";
 
 const TRAINING_GENERATION_TASK_DRAFTS_PATH = join(process.cwd(), "data", "training-generation-task-drafts.json");
 const TRAINING_GENERATION_TASK_DRAFT_IMAGE_ROOT = join(process.cwd(), "data", "images", "training-managed");
@@ -197,7 +197,7 @@ function mapLegacyGenerationRunToTrainingRun(input: {
   finalInput: string;
   generationKind?: TrainingGenerationKind;
   project: Awaited<ReturnType<typeof getTrainingProject>>;
-  run: Awaited<ReturnType<typeof enqueueLegacyTrainingSectionGenerationRun>>;
+  run: Awaited<ReturnType<typeof enqueueTrainingSectionGenerationRun>>;
   section: Awaited<ReturnType<typeof getTrainingProject>>["sections"][number];
   taskType?: TrainingGenerationTaskType;
   taskTypeLabel?: string;
@@ -608,11 +608,11 @@ function resolveDraftSupplementalImageAbsolutePath(relativePath: string) {
 
 async function buildTrainingSupplementalInputImages(taskId: string, sectionId: string, supplementalImages: GenerationTaskDraftSupplementalImage[]) {
   if (supplementalImages.length === 0) {
-    return [] as LegacyTrainingProviderInputImage[];
+    return [] as TrainingProviderInputImage[];
   }
 
-  const section = await getExistingSection(sectionId);
-  const job = await getExistingJob(section.jobId);
+  const section = await getTrainingProductionSectionRecord(sectionId);
+  const job = await getTrainingProductionProjectRecord(section.jobId);
 
   return Promise.all(supplementalImages.map(async (image, index) => {
     const extension = extname(image.relativePath).toLowerCase() || ".png";
@@ -631,8 +631,8 @@ async function buildTrainingSupplementalInputImages(taskId: string, sectionId: s
       });
     }
 
-    const artifactStat = await writeLegacyTrainingBufferArtifact(job.artifactRoot, relativePath, buffer);
-    const artifact = await createLegacyTrainingProjectArtifact({
+    const artifactStat = await writeTrainingBufferArtifact(job.artifactRoot, relativePath, buffer);
+    const artifact = await createTrainingProjectArtifact({
       absolutePath: artifactStat.absolutePath,
       byteSize: BigInt(artifactStat.byteSize),
       jobId: job.id,
@@ -653,7 +653,7 @@ async function buildTrainingSupplementalInputImages(taskId: string, sectionId: s
       relativePath: artifactStat.relativePath,
       role: "local_reference",
       sha256: artifactStat.sha256,
-    } satisfies LegacyTrainingProviderInputImage;
+    } satisfies TrainingProviderInputImage;
   }));
 }
 
@@ -701,7 +701,7 @@ export async function runManagedGenerationTask(taskId: string) {
     };
   } else {
     const projectIsManaged = Boolean(await getManagedTrainingProject(draft.projectId));
-    const legacyRun = await enqueueLegacyTrainingSectionGenerationRun(section.id, {
+    const productionRun = await enqueueTrainingSectionGenerationRun(section.id, {
       previousCandidateImageIds,
       supplementalInputImages: projectIsManaged
         ? []
@@ -709,14 +709,14 @@ export async function runManagedGenerationTask(taskId: string) {
       sourceImageIds,
       userInstruction: `${taskMetadata.taskTypeLabel}\n\n${preview.finalInput}`,
     }).catch((error) => {
-      const mapped = mapLegacyTrainingGenerationError(error);
+      const mapped = mapTrainingGenerationError(error);
       throw new TrainingGenerationTaskDraftServiceError(mapped.message, mapped.status, mapped.details);
     });
     run = mapLegacyGenerationRunToTrainingRun({
       finalInput: preview.finalInput,
       generationKind: taskMetadata.generationKind,
       project,
-      run: legacyRun,
+      run: productionRun,
       section,
       taskType: taskMetadata.taskType,
       taskTypeLabel: taskMetadata.taskTypeLabel,
