@@ -479,6 +479,75 @@ test("GET /api/training full workflow declares every dynamic path parameter bind
   );
 });
 
+test("GET /api/training full workflow declares response paths for every produced handoff", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  ) as { steps: Array<{ id?: string; produces?: string[]; responsePaths?: Record<string, string> }> } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(fullWorkflow, "agent manifest should include the full training workflow");
+
+  const missingResponsePaths = fullWorkflow.steps.flatMap((step) => (
+    step.produces ?? []
+  ).filter((handoffId) => !step.responsePaths?.[handoffId])
+    .map((handoffId) => `${step.id ?? "unknown"}:${handoffId}`));
+
+  assert.deepEqual(
+    missingResponsePaths,
+    [],
+    "Every produced handoff should declare the JSON response path an agent can extract after the step completes.",
+  );
+
+  const responsePathByStep = new Map(fullWorkflow.steps.map((step) => [step.id, step.responsePaths ?? {}]));
+
+  assert.deepEqual(
+    Object.fromEntries(responsePathByStep.entries()),
+    {
+      create_project: { projectId: "$.data.id" },
+      upload_reference_image: { imageId: "$.data.id" },
+      save_profile: {},
+      create_section: { sectionId: "$.data.id" },
+      add_scene_block: { blockId: "$.data.id" },
+      create_generation_task: { taskId: "$.data.id" },
+      attach_generation_inputs: {},
+      preview_generation_task: { preview: "$.data" },
+      run_generation_task: { queuedGenerationTaskId: "$.data.id" },
+      tick_generation_scheduler: { workerTaskQueued: "$.data.id" },
+      lease_generation_worker_task: { workerTaskId: "$.data.id" },
+      heartbeat_generation_worker_task: {},
+      complete_generation_task: {
+        imageResultId: "$.data.outputResultIds[0]",
+        outputId: "$.data.outputResultIds[0]",
+      },
+      complete_generation_worker_task: {},
+      list_generation_outputs: {
+        imageResultId: "$.data[0].id",
+        outputId: "$.data[0].id",
+      },
+      apply_output_to_reference: { imageId: "$.data.result.id" },
+      review_image_result: {},
+      generate_missing_captions: {},
+      read_dataset_readiness: {},
+      freeze_dataset_revision: { revisionId: "$.data.revision.id" },
+      create_training_run: { trainingRunId: "$.data.id" },
+      tick_training_scheduler: { workerTaskQueued: "$.data.id" },
+      lease_training_worker_task: { workerTaskId: "$.data.id" },
+      heartbeat_training_worker_task: {},
+      report_training_progress: {},
+      complete_training_run: { finalLoraArtifactId: "$.data.finalLoraArtifactId" },
+      complete_training_worker_task: {},
+      poll_training_run: {},
+      cleanup_training_run: {},
+      create_preset_from_training_run: { presetId: "$.data.id" },
+    },
+    "Full workflow response paths should match the current API response envelopes and handoff names.",
+  );
+});
+
 test("training route operation inventory includes re-exported route handlers", async () => {
   const routeOperations = await listRouteOperations();
 

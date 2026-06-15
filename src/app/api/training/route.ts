@@ -101,6 +101,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/projects",
           produces: ["projectId"],
+          responsePaths: { projectId: "$.data.id" },
         },
         {
           id: "upload_reference_image",
@@ -110,6 +111,7 @@ const TRAINING_API_MANIFEST = {
           requires: ["projectId"],
           pathParams: { projectId: "projectId" },
           produces: ["imageId"],
+          responsePaths: { imageId: "$.data.id" },
         },
         {
           id: "save_profile",
@@ -127,6 +129,7 @@ const TRAINING_API_MANIFEST = {
           requires: ["projectId"],
           pathParams: { projectId: "projectId" },
           produces: ["sectionId"],
+          responsePaths: { sectionId: "$.data.id" },
         },
         {
           id: "add_scene_block",
@@ -136,6 +139,7 @@ const TRAINING_API_MANIFEST = {
           requires: ["sectionId"],
           pathParams: { sectionId: "sectionId" },
           produces: ["blockId"],
+          responsePaths: { blockId: "$.data.id" },
         },
         {
           id: "create_generation_task",
@@ -145,6 +149,7 @@ const TRAINING_API_MANIFEST = {
           requires: ["projectId", "sectionId"],
           pathParams: { projectId: "projectId" },
           produces: ["taskId"],
+          responsePaths: { taskId: "$.data.id" },
         },
         {
           id: "attach_generation_inputs",
@@ -162,6 +167,7 @@ const TRAINING_API_MANIFEST = {
           requires: ["taskId"],
           pathParams: { taskId: "taskId" },
           produces: ["preview"],
+          responsePaths: { preview: "$.data" },
         },
         {
           id: "run_generation_task",
@@ -171,6 +177,7 @@ const TRAINING_API_MANIFEST = {
           requires: ["taskId"],
           pathParams: { taskId: "taskId" },
           produces: ["queuedGenerationTaskId"],
+          responsePaths: { queuedGenerationTaskId: "$.data.id" },
         },
         {
           id: "tick_generation_scheduler",
@@ -179,6 +186,7 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/scheduler/tick",
           requires: ["taskId"],
           produces: ["workerTaskQueued"],
+          responsePaths: { workerTaskQueued: "$.data.id" },
         },
         {
           id: "lease_generation_worker_task",
@@ -187,6 +195,7 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/worker/tasks/next",
           requires: ["workerTaskQueued"],
           produces: ["workerTaskId"],
+          responsePaths: { workerTaskId: "$.data.id" },
         },
         {
           id: "heartbeat_generation_worker_task",
@@ -204,6 +213,10 @@ const TRAINING_API_MANIFEST = {
           requires: ["taskId"],
           pathParams: { taskId: "taskId" },
           produces: ["outputId", "imageResultId"],
+          responsePaths: {
+            outputId: "$.data.outputResultIds[0]",
+            imageResultId: "$.data.outputResultIds[0]",
+          },
         },
         {
           id: "complete_generation_worker_task",
@@ -221,6 +234,10 @@ const TRAINING_API_MANIFEST = {
           requires: ["taskId"],
           pathParams: { taskId: "taskId" },
           produces: ["outputId", "imageResultId"],
+          responsePaths: {
+            outputId: "$.data[0].id",
+            imageResultId: "$.data[0].id",
+          },
         },
         {
           id: "apply_output_to_reference",
@@ -230,6 +247,7 @@ const TRAINING_API_MANIFEST = {
           requires: ["outputId"],
           pathParams: { outputId: "outputId" },
           produces: ["imageId"],
+          responsePaths: { imageId: "$.data.result.id" },
         },
         {
           id: "review_image_result",
@@ -263,6 +281,7 @@ const TRAINING_API_MANIFEST = {
           requires: ["projectId"],
           pathParams: { projectId: "projectId" },
           produces: ["revisionId"],
+          responsePaths: { revisionId: "$.data.revision.id" },
         },
         {
           id: "create_training_run",
@@ -272,6 +291,7 @@ const TRAINING_API_MANIFEST = {
           requires: ["projectId", "revisionId"],
           pathParams: { projectId: "projectId" },
           produces: ["trainingRunId"],
+          responsePaths: { trainingRunId: "$.data.id" },
         },
         {
           id: "tick_training_scheduler",
@@ -280,6 +300,7 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/scheduler/tick",
           requires: ["trainingRunId"],
           produces: ["workerTaskQueued"],
+          responsePaths: { workerTaskQueued: "$.data.id" },
         },
         {
           id: "lease_training_worker_task",
@@ -288,6 +309,7 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/worker/tasks/next",
           requires: ["workerTaskQueued"],
           produces: ["workerTaskId"],
+          responsePaths: { workerTaskId: "$.data.id" },
         },
         {
           id: "heartbeat_training_worker_task",
@@ -313,6 +335,7 @@ const TRAINING_API_MANIFEST = {
           requires: ["trainingRunId"],
           pathParams: { trainingRunId: "trainingRunId" },
           produces: ["finalLoraArtifactId"],
+          responsePaths: { finalLoraArtifactId: "$.data.finalLoraArtifactId" },
         },
         {
           id: "complete_training_worker_task",
@@ -346,6 +369,7 @@ const TRAINING_API_MANIFEST = {
           requires: ["trainingRunId", "finalLoraArtifactId"],
           pathParams: { trainingRunId: "trainingRunId" },
           produces: ["presetId"],
+          responsePaths: { presetId: "$.data.id" },
         },
       ],
     },
