@@ -2,13 +2,17 @@ import { ok } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
-const WORKER_TASK_LEASE_HANDOFF_METADATA = {
+const WORKER_TASK_LEASE_TARGET_METADATA = {
   produces: ["workerTaskId", "workerTaskTargetType", "workerTaskTargetId"],
   responsePaths: {
     workerTaskId: "$.data.id",
     workerTaskTargetType: "$.data.targetType",
     workerTaskTargetId: "$.data.targetId",
   },
+};
+
+const WORKER_TASK_LEASE_HANDOFF_METADATA = {
+  ...WORKER_TASK_LEASE_TARGET_METADATA,
   conditionalProduces: [
     {
       when: { workerTaskTargetType: "generationRun" },
@@ -370,16 +374,16 @@ const TRAINING_API_MANIFEST = {
         },
         {
           id: "lease_generation_worker_task",
-          description: "Lease the next worker task and persist its worker task id.",
+          description: "Lease the next generation worker task and verify it matches the queued generation task.",
           method: "GET",
           path: "/api/training/worker/tasks/next",
-          requires: ["workerTaskQueued"],
+          requires: ["workerTaskQueued", "taskId"],
           queryParams: {
             workerType: "image_generation",
             leaseOwner: "agent",
           },
-          produces: ["workerTaskId"],
-          responsePaths: { workerTaskId: "$.data.id" },
+          ...WORKER_TASK_LEASE_TARGET_METADATA,
+          expectedTarget: { type: "generationRun", idHandoff: "taskId" },
         },
         {
           id: "heartbeat_generation_worker_task",
@@ -524,16 +528,16 @@ const TRAINING_API_MANIFEST = {
         },
         {
           id: "lease_training_worker_task",
-          description: "Lease the next training worker task and persist its worker task id.",
+          description: "Lease the next training worker task and verify it matches the queued training run.",
           method: "GET",
           path: "/api/training/worker/tasks/next",
-          requires: ["workerTaskQueued"],
+          requires: ["workerTaskQueued", "trainingRunId"],
           queryParams: {
             workerType: "training",
             leaseOwner: "agent",
           },
-          produces: ["workerTaskId"],
-          responsePaths: { workerTaskId: "$.data.id" },
+          ...WORKER_TASK_LEASE_TARGET_METADATA,
+          expectedTarget: { type: "trainingRun", idHandoff: "trainingRunId" },
         },
         {
           id: "heartbeat_training_worker_task",

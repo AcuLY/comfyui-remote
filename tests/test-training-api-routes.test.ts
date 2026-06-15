@@ -974,7 +974,11 @@ test("GET /api/training full workflow declares response paths for every produced
       preview_generation_task: { preview: "$.data" },
       run_generation_task: { queuedGenerationTaskId: "$.data.id" },
       tick_generation_scheduler: { workerTaskQueued: "$.data.id" },
-      lease_generation_worker_task: { workerTaskId: "$.data.id" },
+      lease_generation_worker_task: {
+        workerTaskId: "$.data.id",
+        workerTaskTargetId: "$.data.targetId",
+        workerTaskTargetType: "$.data.targetType",
+      },
       heartbeat_generation_worker_task: {},
       complete_generation_task: {
         imageResultId: "$.data.outputResultIds[0]",
@@ -992,7 +996,11 @@ test("GET /api/training full workflow declares response paths for every produced
       freeze_dataset_revision: { revisionId: "$.data.revision.id" },
       create_training_run: { trainingRunId: "$.data.id" },
       tick_training_scheduler: { workerTaskQueued: "$.data.id" },
-      lease_training_worker_task: { workerTaskId: "$.data.id" },
+      lease_training_worker_task: {
+        workerTaskId: "$.data.id",
+        workerTaskTargetId: "$.data.targetId",
+        workerTaskTargetType: "$.data.targetType",
+      },
       heartbeat_training_worker_task: {},
       report_training_progress: {},
       complete_training_run: { finalLoraArtifactId: "$.data.finalLoraArtifactId" },
@@ -1203,6 +1211,74 @@ test("GET /api/training full workflow scopes worker leases by worker type", asyn
     workerLeaseStepsMissingWorkerType,
     [],
     "Every full workflow worker lease should declare workerType so agents do not lease unrelated queued work.",
+  );
+});
+
+test("GET /api/training full workflow worker leases declare target verification metadata", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  ) as {
+    steps: Array<{
+      id?: string;
+      expectedTarget?: { idHandoff: string; type: string };
+      produces?: string[];
+      requires?: string[];
+      responsePaths?: Record<string, string>;
+    }>;
+  } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(fullWorkflow, "agent manifest should include the full training workflow");
+
+  const steps = new Map(fullWorkflow.steps.map((step) => [step.id, step]));
+
+  assert.deepEqual(
+    steps.get("lease_generation_worker_task"),
+    {
+      id: "lease_generation_worker_task",
+      description: "Lease the next generation worker task and verify it matches the queued generation task.",
+      method: "GET",
+      path: "/api/training/worker/tasks/next",
+      requires: ["workerTaskQueued", "taskId"],
+      queryParams: {
+        workerType: "image_generation",
+        leaseOwner: "agent",
+      },
+      produces: ["workerTaskId", "workerTaskTargetType", "workerTaskTargetId"],
+      responsePaths: {
+        workerTaskId: "$.data.id",
+        workerTaskTargetType: "$.data.targetType",
+        workerTaskTargetId: "$.data.targetId",
+      },
+      expectedTarget: { type: "generationRun", idHandoff: "taskId" },
+    },
+    "Generation worker leases should expose and verify the target returned by the worker task API.",
+  );
+  assert.deepEqual(
+    steps.get("lease_training_worker_task"),
+    {
+      id: "lease_training_worker_task",
+      description: "Lease the next training worker task and verify it matches the queued training run.",
+      method: "GET",
+      path: "/api/training/worker/tasks/next",
+      requires: ["workerTaskQueued", "trainingRunId"],
+      queryParams: {
+        workerType: "training",
+        leaseOwner: "agent",
+      },
+      produces: ["workerTaskId", "workerTaskTargetType", "workerTaskTargetId"],
+      responsePaths: {
+        workerTaskId: "$.data.id",
+        workerTaskTargetType: "$.data.targetType",
+        workerTaskTargetId: "$.data.targetId",
+      },
+      expectedTarget: { type: "trainingRun", idHandoff: "trainingRunId" },
+    },
+    "Training worker leases should expose and verify the target returned by the worker task API.",
   );
 });
 
