@@ -20,6 +20,7 @@ const trainingAppClientPath = resolve(repoRoot, "src/app/training/training-app-c
 const trainingFeatureAppPath = resolve(repoRoot, "src/features/training/app.tsx");
 const trainingRuntimePath = resolve(repoRoot, "src/features/training/runtime.ts");
 const trainingShellPath = resolve(repoRoot, "src/features/training/shell.tsx");
+const trainingHeaderSpecsPath = resolve(repoRoot, "src/features/training/header-specs.ts");
 const trainingRoutesPath = resolve(repoRoot, "src/features/training/routes.ts");
 const trainingThemePath = resolve(repoRoot, "src/features/training/theme.ts");
 
@@ -37,6 +38,7 @@ const trainingAppClientSource = existsSync(trainingAppClientPath) ? readFileSync
 const trainingFeatureAppSource = existsSync(trainingFeatureAppPath) ? readFileSync(trainingFeatureAppPath, "utf8") : "";
 const trainingRuntimeSource = existsSync(trainingRuntimePath) ? readFileSync(trainingRuntimePath, "utf8") : "";
 const trainingShellSource = existsSync(trainingShellPath) ? readFileSync(trainingShellPath, "utf8") : "";
+const trainingHeaderSpecsSource = existsSync(trainingHeaderSpecsPath) ? readFileSync(trainingHeaderSpecsPath, "utf8") : "";
 const trainingRoutesSource = existsSync(trainingRoutesPath) ? readFileSync(trainingRoutesPath, "utf8") : "";
 const trainingThemeSource = existsSync(trainingThemePath) ? readFileSync(trainingThemePath, "utf8") : "";
 
@@ -301,10 +303,34 @@ test("training routes render a production shell without the /design-demos prefix
     /navigationLinks=\{buildTrainingNavigationLinks\(data\)\}/,
     "training shell should inject training-owned navigation links into the shared shell",
   );
+  assert.ok(
+    existsSync(trainingHeaderSpecsPath),
+    "training shell should own route header specs in the training feature layer",
+  );
+  assert.match(
+    trainingShellSource,
+    /findTrainingHeaderSpecForRoute\(data,\s*currentRoute\)/,
+    "training shell should derive route headers from training-owned header specs",
+  );
+  assert.match(
+    trainingShellSource,
+    /routeHeaderConfig=\{findTrainingHeaderSpecForRoute\(data,\s*currentRoute\)\}/,
+    "training shell should inject training-owned route headers into the shared shell",
+  );
   assert.doesNotMatch(
     trainingShellSource,
     /@\/app\/design-demos\/routing/,
     "training shell should not import design-demo routing to build production training navigation",
+  );
+  assert.match(
+    trainingHeaderSpecsSource,
+    /from "\.\/routes"/,
+    "training header specs should read route matching from the local training route module",
+  );
+  assert.doesNotMatch(
+    trainingHeaderSpecsSource,
+    /@\/app\/design-demos/,
+    "training header specs should not depend on design-demo routing, data, or fixtures",
   );
   assert.match(
     shellSource,
@@ -315,6 +341,16 @@ test("training routes render a production shell without the /design-demos prefix
     shellSource,
     /navigationLinks \?\? buildWorkModeNavLinks\(workMode\)/,
     "shared shell should fall back to demo navigation only when no module-owned navigation is provided",
+  );
+  assert.match(
+    shellSource,
+    /routeHeaderConfig\?:/,
+    "shared shell should expose a route header injection point for production modules",
+  );
+  assert.match(
+    shellSource,
+    /routeHeaderConfig === undefined \? defaultRouteHeaderConfig : routeHeaderConfig/,
+    "shared shell should fall back to demo route headers only when no module-owned route header is provided",
   );
   assert.match(
     trainingRuntimeSource,

@@ -10,6 +10,7 @@ import {
   type WorkModeResourceTarget,
 } from "@/lib/work-mode-resources";
 import type { TrainingShellData } from "./data";
+import { findTrainingHeaderSpecForRoute } from "./header-specs";
 import type { TrainingTheme } from "./theme";
 
 const TRAINING_NAV_ICONS: Record<WorkModeResourceKey, DesignDemoShellNavLink["icon"]> = {
@@ -82,6 +83,7 @@ export function TrainingShell({
       hrefForRoute={hrefForRoute}
       initialTheme={initialTheme}
       navigationLinks={buildTrainingNavigationLinks(data)}
+      routeHeaderConfig={findTrainingHeaderSpecForRoute(data, currentRoute)}
     >
       {children}
     </DesignDemoShell>

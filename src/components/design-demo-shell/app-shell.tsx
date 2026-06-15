@@ -27,10 +27,10 @@ import {
 } from "@/app/design-demos/routing";
 import type { DemoTheme, DesignDemoWorkMode, NavLinkDef } from "@/app/design-demos/routing";
 import { findHeaderSpecForRoute } from "@/app/design-demos/routing/header-specs";
-import type { HeaderSpec } from "@/app/design-demos/routing/header-specs";
 import s from "./app-shell.module.css";
 import { getHeaderActionSlots } from "./header-action-slots";
 import { RouteHeaderSurface } from "./header-surface";
+import type { HeaderSpec } from "./header-types";
 
 export type DesignDemoShellNavLink = NavLinkDef;
 
@@ -298,6 +298,7 @@ export function DesignDemoShell({
   hrefForRoute,
   initialTheme,
   navigationLinks,
+  routeHeaderConfig,
 }: {
   children: ReactNode;
   currentRoute: string;
@@ -305,6 +306,7 @@ export function DesignDemoShell({
   hrefForRoute?: (route: string) => string;
   initialTheme: DemoTheme;
   navigationLinks?: DesignDemoShellNavLink[];
+  routeHeaderConfig?: HeaderSpec | null;
 }) {
   const contentFrameRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -321,8 +323,9 @@ export function DesignDemoShell({
   const [routeHeaderCompact, setRouteHeaderCompact] = useState(false);
   const [routeHeaderHidden, setRouteHeaderHidden] = useState(false);
   const isLightTheme = theme === "light";
-  const routeHeaderConfig = useMemo(() => findHeaderSpecForRoute(data, currentRoute), [currentRoute, data]);
-  const hasRouteHeader = Boolean(routeHeaderConfig);
+  const defaultRouteHeaderConfig = useMemo(() => findHeaderSpecForRoute(data, currentRoute), [currentRoute, data]);
+  const resolvedRouteHeaderConfig = routeHeaderConfig === undefined ? defaultRouteHeaderConfig : routeHeaderConfig;
+  const hasRouteHeader = Boolean(resolvedRouteHeaderConfig);
   const setRouteHeaderNode = useCallback((node: HTMLElement | null) => {
     routeHeaderRef.current = node;
   }, []);
@@ -381,7 +384,7 @@ export function DesignDemoShell({
 
   useEffect(() => {
     routeHeaderInsetRef.current = 0;
-  }, [routeHeaderCompact, routeHeaderConfig?.key]);
+  }, [routeHeaderCompact, resolvedRouteHeaderConfig?.key]);
 
   useEffect(() => {
     const frame = contentFrameRef.current;
@@ -411,7 +414,7 @@ export function DesignDemoShell({
       observer.disconnect();
       window.removeEventListener("resize", syncHeaderInset);
     };
-  }, [hasRouteHeader, routeHeaderCompact, routeHeaderConfig?.key]);
+  }, [hasRouteHeader, routeHeaderCompact, resolvedRouteHeaderConfig?.key]);
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 760px)");
@@ -557,9 +560,9 @@ export function DesignDemoShell({
               navLinks={navLinks}
             />
             <div className={cx(s.contentFrame, hasRouteHeader && s.contentFrameWithRouteHeader)} ref={contentFrameRef}>
-              {routeHeaderConfig ? (
+              {resolvedRouteHeaderConfig ? (
                 <DemoRouteHeader
-                  config={routeHeaderConfig}
+                  config={resolvedRouteHeaderConfig}
                   compact={routeHeaderCompact}
                   data={data}
                   hidden={routeHeaderHidden}
