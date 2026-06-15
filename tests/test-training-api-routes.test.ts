@@ -100,6 +100,32 @@ function collectManifestOperations(value: unknown, operations = new Set<string>(
   return operations;
 }
 
+function operationMatchesPattern(operation: string, pattern: string) {
+  const [operationMethod, operationPath] = operation.split(" ");
+  const [patternMethod, patternPath] = pattern.split(" ");
+  if (operationMethod !== patternMethod || !operationPath || !patternPath) return false;
+
+  const operationSegments = operationPath.split("/").filter(Boolean);
+  const patternSegments = patternPath.split("/").filter(Boolean);
+  return (
+    operationSegments.length === patternSegments.length
+    && operationSegments.every((segment, index) => (
+      segment === patternSegments[index]
+      || segment.startsWith(":")
+      || patternSegments[index].startsWith(":")
+    ))
+  );
+}
+
+function collectBackendDesignOperations() {
+  const designSource = readFileSync(
+    join(process.cwd(), "docs", "plans", "2026-06-07-manager-lora-training-backend-api-schema-design.md"),
+    "utf8",
+  );
+  return [...designSource.matchAll(/\| `(GET|POST|PATCH|DELETE|PUT)` \| `([^`]+)` \|/g)]
+    .map((match) => `${match[1]} ${match[2]}`);
+}
+
 async function listProjects() {
   const { GET } = await import("../src/app/api/training/projects/route");
   const response = await GET(new Request("http://localhost/api/training/projects"));
@@ -348,6 +374,24 @@ test("training route operation inventory includes re-exported route handlers", a
   assert.ok(
     routeOperations.includes("DELETE /api/training/scene-description/presets/:presetId"),
     "operation inventory should include DELETE handlers re-exported from another route module",
+  );
+});
+
+test("implemented training API routes cover the backend design operation table", async () => {
+  const routeOperations = await listRouteOperations();
+  const designOperations = collectBackendDesignOperations();
+  const missingOperations = designOperations.filter((designOperation) =>
+    !routeOperations.some((routeOperation) => operationMatchesPattern(routeOperation, designOperation))
+  );
+
+  assert.ok(
+    designOperations.length >= 80,
+    "backend design operation table should stay broad enough to verify the training HTTP surface",
+  );
+  assert.deepEqual(
+    missingOperations,
+    [],
+    "Every /api/training operation listed in the backend design document should have a matching route handler.",
   );
 });
 
