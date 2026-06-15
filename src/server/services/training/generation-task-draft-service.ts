@@ -7,7 +7,7 @@ import {
   type TrainingGenerationKind,
   type TrainingGenerationTaskType,
 } from "@/lib/training/schemas";
-import { getTrainingProject } from "@/server/services/training/read-service";
+import { getTrainingProject, mapTrainingReadError } from "@/server/services/training/read-service";
 import { enqueueManagedTrainingSectionGenerationRun, getManagedTrainingProject, mapTrainingProjectError } from "@/server/services/training/project-service";
 import type { LegacyTrainingProviderInputImage } from "@/server/services/training/legacy-compat-service";
 import {
@@ -360,6 +360,29 @@ export async function getManagedGenerationTaskDraft(taskId: string) {
   const draft = drafts.find((item) => item.id === taskId);
   if (!draft) return null;
   return buildGenerationTaskDraftView(draft);
+}
+
+export async function listManagedGenerationTaskDrafts(projectId: string, filters: {
+  status?: string | null;
+  taskType?: string | null;
+} = {}) {
+  if (filters.status?.trim() && filters.status.trim() !== "draft") {
+    return [];
+  }
+
+  await getTrainingProject(projectId).catch((error) => {
+    const mapped = mapTrainingReadError(error);
+    throw new TrainingGenerationTaskDraftServiceError(mapped.message, mapped.status, mapped.details);
+  });
+
+  const taskType = filters.taskType?.trim() ? normalizeGenerationTaskType(filters.taskType) : null;
+  const drafts = await readGenerationTaskDrafts();
+  const projectDrafts = drafts.filter((draft) => draft.projectId === projectId);
+  const views = await Promise.all(projectDrafts.map(buildGenerationTaskDraftView));
+
+  return views
+    .map((view) => ({ ...view, status: "draft" as const }))
+    .filter((view) => !taskType || view.taskType === taskType);
 }
 
 export async function createManagedGenerationTaskDraft(projectId: string, input: {

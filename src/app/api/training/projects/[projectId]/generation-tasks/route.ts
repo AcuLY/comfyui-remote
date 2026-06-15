@@ -2,20 +2,35 @@ import { fail, ok } from "@/lib/api-response";
 import { listTrainingRuns, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
   createManagedGenerationTaskDraft,
+  listManagedGenerationTaskDrafts,
   mapTrainingGenerationTaskDraftError,
 } from "@/server/services/training/generation-task-draft-service";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
+  const url = new URL(request.url);
+  const status = url.searchParams.get("status");
+  const taskType = url.searchParams.get("taskType");
+
   try {
     const { projectId } = await params;
+    if (status === "draft") {
+      const data = await listManagedGenerationTaskDrafts(projectId, { status, taskType });
+      return ok(data);
+    }
+
     const data = await listTrainingRuns({ kind: "generation", projectId });
     return ok(data);
   } catch (error) {
+    if (status === "draft") {
+      const mapped = mapTrainingGenerationTaskDraftError(error);
+      return fail(mapped.message, mapped.status, mapped.details);
+    }
+
     const mapped = mapTrainingReadError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }

@@ -1187,6 +1187,37 @@ test("GET /api/training full workflow declares request body bindings for non-pat
   );
 });
 
+test("GET /api/training generation task resources declare draft list filters", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.deepEqual(
+    payload.data.resources.generationTasks.projectList,
+    {
+      method: "GET",
+      path: "/api/training/projects/:projectId/generation-tasks",
+      queryParamSchema: {
+        optionalFields: ["status", "taskType"],
+        enumValues: {
+          status: ["draft"],
+          taskType: [
+            "profile_text_generation",
+            "scene_description_generation",
+            "image_prompt_generation",
+            "caption_generation",
+            "trainingset_generation",
+            "reference_image_generation",
+          ],
+        },
+      },
+    },
+    "Agents should not need to infer how to rediscover draft generation tasks after handoff.",
+  );
+});
+
 test("GET /api/training full workflow declares body expectations for every write step", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
@@ -6191,6 +6222,23 @@ test("managed training project generation task draft lifecycle works through /ap
   });
   assert.equal(patchTaskPayload.data.taskType, "trainingset_generation");
   assert.equal(patchTaskPayload.data.taskTypeLabel, "训练集图片生成");
+
+  const listDraftsResponse = await projectGenerationTasksRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/generation-tasks?status=draft&taskType=trainingset_generation`),
+    { params: Promise.resolve({ projectId }) },
+  );
+  const listDraftsPayload = await listDraftsResponse.json();
+  assert.equal(listDraftsResponse.status, 200);
+  assert.equal(listDraftsPayload.ok, true);
+  const listedDraft = listDraftsPayload.data.find((task: { id: string }) => task.id === taskId);
+  assert.ok(listedDraft, "Project generation task lists should expose draft tasks for agent handoff recovery.");
+  assert.equal(listedDraft.status, "draft");
+  assert.equal(listedDraft.generationKind, "image_generation");
+  assert.equal(listedDraft.taskType, "trainingset_generation");
+  assert.deepEqual(listedDraft.paramsJson, {
+    providerModel: "gpt-image-2",
+    temperature: 0.35,
+  });
 
   const addInputResponse = await generationTaskInputsRoute.POST(
     new Request(`http://localhost/api/training/generation-tasks/${taskId}/inputs`, {

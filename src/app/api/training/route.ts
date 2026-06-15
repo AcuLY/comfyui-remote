@@ -723,7 +723,17 @@ const TRAINING_API_MANIFEST = {
       },
     },
     generationTasks: {
-      projectList: { method: "GET", path: "/api/training/projects/:projectId/generation-tasks" },
+      projectList: {
+        method: "GET",
+        path: "/api/training/projects/:projectId/generation-tasks",
+        queryParamSchema: {
+          optionalFields: ["status", "taskType"],
+          enumValues: {
+            status: ["draft"],
+            taskType: TRAINING_GENERATION_TASK_TYPES,
+          },
+        },
+      },
       projectCreate: { method: "POST", path: "/api/training/projects/:projectId/generation-tasks" },
       detail: { method: "GET", path: "/api/training/generation-tasks/:taskId" },
       update: { method: "PATCH", path: "/api/training/generation-tasks/:taskId" },
