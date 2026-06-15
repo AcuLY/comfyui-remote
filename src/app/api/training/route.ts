@@ -186,6 +186,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/worker/tasks/:taskId/heartbeat",
           requires: ["workerTaskId"],
+          pathParams: { taskId: "workerTaskId" },
         },
         {
           id: "complete_generation_task",
@@ -201,6 +202,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/worker/tasks/:taskId/complete",
           requires: ["workerTaskId"],
+          pathParams: { taskId: "workerTaskId" },
         },
         {
           id: "list_generation_outputs",
@@ -277,6 +279,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/worker/tasks/:taskId/heartbeat",
           requires: ["workerTaskId"],
+          pathParams: { taskId: "workerTaskId" },
         },
         {
           id: "report_training_progress",
@@ -299,6 +302,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/worker/tasks/:taskId/complete",
           requires: ["workerTaskId"],
+          pathParams: { taskId: "workerTaskId" },
         },
         {
           id: "poll_training_run",

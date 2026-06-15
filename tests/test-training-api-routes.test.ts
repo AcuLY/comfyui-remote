@@ -406,6 +406,41 @@ test("GET /api/training full workflow steps include machine-actionable handoff m
   );
 });
 
+test("GET /api/training full workflow disambiguates reused route parameter names for agents", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  ) as { steps: Array<{ id?: string; path: string; pathParams?: Record<string, string>; requires?: string[] }> } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(fullWorkflow, "agent manifest should include the full training workflow");
+
+  assert.deepEqual(
+    fullWorkflow.steps
+      .filter((step) => step.path.includes("/worker/tasks/:taskId/"))
+      .map((step) => [step.id, step.pathParams?.taskId]),
+    [
+      ["heartbeat_generation_worker_task", "workerTaskId"],
+      ["complete_generation_worker_task", "workerTaskId"],
+      ["heartbeat_training_worker_task", "workerTaskId"],
+      ["complete_training_worker_task", "workerTaskId"],
+    ],
+    "Worker task routes reuse :taskId, so workflow metadata must bind it to workerTaskId instead of a generation task id.",
+  );
+
+  assert.deepEqual(
+    fullWorkflow.steps
+      .filter((step) => step.pathParams)
+      .filter((step) => Object.values(step.pathParams ?? {}).some((handoffId) => !step.requires?.includes(handoffId)))
+      .map((step) => step.id),
+    [],
+    "Every declared path parameter binding should point at a required handoff id that the agent already has.",
+  );
+});
+
 test("training route operation inventory includes re-exported route handlers", async () => {
   const routeOperations = await listRouteOperations();
 
