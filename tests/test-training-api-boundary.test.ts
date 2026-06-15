@@ -1063,14 +1063,36 @@ test("training read service reads worker status through the Training worker task
   );
 });
 
-test("training text revision service uses Training-named legacy adapter aliases", () => {
+test("training text revision service uses Training repository boundaries", () => {
   const textRevisionServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/text-revision-service.ts"), "utf8");
+  const imageResultRepositorySource = readFileSync(join(process.cwd(), "src/server/repositories/training/image-results.ts"), "utf8");
+  const profileTextRepositorySource = readFileSync(join(process.cwd(), "src/server/repositories/training/profile-text.ts"), "utf8");
 
-  assert.match(textRevisionServiceSource, /createLegacyTrainingPromptCardVersion/);
-  assert.match(textRevisionServiceSource, /getLegacyTrainingCandidateImage/);
-  assert.match(textRevisionServiceSource, /getLegacyTrainingProject/);
-  assert.match(textRevisionServiceSource, /listLegacyTrainingPromptCardVersions/);
-  assert.match(textRevisionServiceSource, /updateLegacyTrainingImageCaption/);
+  assert.match(
+    textRevisionServiceSource,
+    /@\/server\/repositories\/training\/image-results/,
+    "Training text revision service should call the Training image-result repository boundary.",
+  );
+  assert.match(
+    textRevisionServiceSource,
+    /@\/server\/repositories\/training\/profile-text/,
+    "Training text revision service should call the Training profile text repository boundary.",
+  );
+  assert.match(textRevisionServiceSource, /createTrainingPromptCardVersion/);
+  assert.match(textRevisionServiceSource, /getTrainingCandidateImage/);
+  assert.match(textRevisionServiceSource, /getTrainingProductionProject/);
+  assert.match(textRevisionServiceSource, /listTrainingPromptCardVersions/);
+  assert.match(textRevisionServiceSource, /updateTrainingCandidateImageCaption/);
+  assert.doesNotMatch(
+    textRevisionServiceSource,
+    /@\/server\/services\/training\/legacy-compat-service|createLegacyTrainingPromptCardVersion|getLegacyTrainingCandidateImage|getLegacyTrainingProject|listLegacyTrainingPromptCardVersions|updateLegacyTrainingImageCaption/,
+    "Training text revision service should not import production text revision operations from legacy compat directly.",
+  );
+  assert.match(imageResultRepositorySource, /getLegacyTrainingCandidateImage/);
+  assert.match(imageResultRepositorySource, /getLegacyTrainingProject/);
+  assert.match(imageResultRepositorySource, /updateLegacyTrainingImageCaption/);
+  assert.match(profileTextRepositorySource, /createLegacyTrainingPromptCardVersion/);
+  assert.match(profileTextRepositorySource, /listLegacyTrainingPromptCardVersions/);
   assert.doesNotMatch(
     textRevisionServiceSource,
     /CharacterLora|getCharacterLora|listCharacterLora|createCharacterLora|updateCharacterLora/,

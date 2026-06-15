@@ -2,12 +2,14 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import {
-  createLegacyTrainingPromptCardVersion,
-  getLegacyTrainingCandidateImage,
-  getLegacyTrainingProject,
-  listLegacyTrainingPromptCardVersions,
-  updateLegacyTrainingImageCaption,
-} from "@/server/services/training/legacy-compat-service";
+  getTrainingCandidateImage,
+  updateTrainingCandidateImageCaption,
+} from "@/server/repositories/training/image-results";
+import {
+  createTrainingPromptCardVersion,
+  getTrainingProductionProject,
+  listTrainingPromptCardVersions,
+} from "@/server/repositories/training/profile-text";
 import {
   getManagedTrainingImageResult,
   getManagedTrainingProject,
@@ -131,7 +133,7 @@ async function assertTrainingProjectExists(projectId: string) {
   const managed = await getManagedTrainingProject(projectId);
   if (managed) return { managed: true as const };
 
-  await getLegacyTrainingProject(projectId);
+  await getTrainingProductionProject(projectId);
   return { managed: false as const };
 }
 
@@ -188,7 +190,7 @@ async function assertSupportedTextTarget(projectId: string, input: {
       return ownership;
     }
 
-    const productionResult = await getLegacyTrainingCandidateImage(input.entityId);
+    const productionResult = await getTrainingCandidateImage(input.entityId);
     if (!productionResult || productionResult.jobId !== projectId) {
       throw new TrainingTextRevisionServiceError("Training image result not found", 404, {
         imageResultId: input.entityId,
@@ -213,8 +215,8 @@ async function readCurrentProfileTextValue(projectId: string, fieldName: string)
   }
 
   const [job, promptCardVersions] = await Promise.all([
-    getLegacyTrainingProject(projectId),
-    listLegacyTrainingPromptCardVersions(projectId),
+    getTrainingProductionProject(projectId),
+    listTrainingPromptCardVersions(projectId),
   ]);
   const currentPromptCard = promptCardVersions.find((version) => version.id === job.currentPromptCardVersionId) ?? promptCardVersions.at(-1) ?? null;
 
@@ -243,7 +245,7 @@ async function readCurrentImageResultTextValue(projectId: string, imageResultId:
   const managedResult = await getManagedTrainingImageResult(imageResultId);
   if (managedResult) return managedResult.caption ?? "";
 
-  const productionResult = await getLegacyTrainingCandidateImage(imageResultId);
+  const productionResult = await getTrainingCandidateImage(imageResultId);
   if (!productionResult || productionResult.jobId !== projectId) {
     throw new TrainingTextRevisionServiceError("Training image result not found", 404, {
       imageResultId,
@@ -268,13 +270,13 @@ async function applyProfileRevision(projectId: string, fieldName: string, textVa
   }
 
   const [job, promptCardVersions] = await Promise.all([
-    getLegacyTrainingProject(projectId),
-    listLegacyTrainingPromptCardVersions(projectId),
+    getTrainingProductionProject(projectId),
+    listTrainingPromptCardVersions(projectId),
   ]);
   const currentPromptCard = promptCardVersions.find((version) => version.id === job.currentPromptCardVersionId) ?? promptCardVersions.at(-1) ?? null;
 
   if (fieldName === "loraUsagePrompt") {
-    return createLegacyTrainingPromptCardVersion(projectId, {
+    return createTrainingPromptCardVersion(projectId, {
       canonicalVersionId: currentPromptCard?.canonicalVersionId ?? job.currentCanonicalVersionId ?? null,
       triggerToken: job.triggerToken,
       identityTraits: currentPromptCard?.identityTraits ?? {},
@@ -299,7 +301,7 @@ async function applyProfileRevision(projectId: string, fieldName: string, textVa
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
       throw new TrainingTextRevisionServiceError("characterDetailPrompt revision must be a JSON object string", 400);
     }
-    return createLegacyTrainingPromptCardVersion(projectId, {
+    return createTrainingPromptCardVersion(projectId, {
       canonicalVersionId: currentPromptCard?.canonicalVersionId ?? job.currentCanonicalVersionId ?? null,
       triggerToken: job.triggerToken,
       identityTraits: parsed.identityTraits ?? currentPromptCard?.identityTraits ?? {},
@@ -330,7 +332,7 @@ async function applyImageResultRevision(projectId: string, imageResultId: string
     return data;
   }
 
-  return updateLegacyTrainingImageCaption(imageResultId, {
+  return updateTrainingCandidateImageCaption(imageResultId, {
     captionDraft: textValue,
   });
 }
