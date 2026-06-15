@@ -4,9 +4,9 @@ import type {
   LoraTrainingTaskStatus,
 } from "@/features/training/types";
 import {
-  getLegacyTrainingWorkerQueueStatus,
-  mapLegacyTrainingGenerationError,
-} from "@/server/services/training/legacy-compat-service";
+  getTrainingWorkerQueueStatus,
+  mapTrainingWorkerTaskError,
+} from "@/server/worker/training/task-api";
 import {
   getTrainingSceneDescriptionPreset,
   listTrainingSceneDescriptionPresets,
@@ -194,7 +194,7 @@ export async function getTrainingSchedulerStatus() {
   const snapshot = await loadTrainingSnapshot();
 
   try {
-    const workerQueueStatus = await getLegacyTrainingWorkerQueueStatus();
+    const workerQueueStatus = await getTrainingWorkerQueueStatus();
     return {
       workerQueueStatus,
       summary: {
@@ -205,7 +205,7 @@ export async function getTrainingSchedulerStatus() {
       },
     };
   } catch (error) {
-    const mapped = mapLegacyTrainingGenerationError(error);
+    const mapped = mapTrainingWorkerTaskError(error);
     return {
       workerQueueStatus: {
         error: mapped.message,

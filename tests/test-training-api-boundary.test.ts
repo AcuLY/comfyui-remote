@@ -980,11 +980,21 @@ test("training project service uses Training-named legacy adapter aliases", () =
   );
 });
 
-test("training read service uses Training-named legacy adapter aliases", () => {
+test("training read service reads worker status through the Training worker task boundary", () => {
   const readServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/read-service.ts"), "utf8");
 
-  assert.match(readServiceSource, /getLegacyTrainingWorkerQueueStatus/);
-  assert.match(readServiceSource, /mapLegacyTrainingGenerationError/);
+  assert.match(
+    readServiceSource,
+    /@\/server\/worker\/training\/task-api/,
+    "Training read service should consume the Training worker task boundary instead of the legacy compat adapter.",
+  );
+  assert.match(readServiceSource, /getTrainingWorkerQueueStatus/);
+  assert.match(readServiceSource, /mapTrainingWorkerTaskError/);
+  assert.doesNotMatch(
+    readServiceSource,
+    /@\/server\/services\/training\/legacy-compat-service|getLegacyTrainingWorkerQueueStatus|mapLegacyTrainingGenerationError/,
+    "Training read service should not read worker status through legacy adapter aliases.",
+  );
   assert.doesNotMatch(
     readServiceSource,
     /CharacterLora|getCharacterLora|mapCharacterLora/,
