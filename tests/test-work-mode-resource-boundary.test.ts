@@ -21,6 +21,7 @@ const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/train
 const generationProjectDetailSource = readFileSync(resolve(repoRoot, "src/server/repositories/project-view-repository/detail-view.ts"), "utf8");
 const generationQueuePageSource = readFileSync(resolve(repoRoot, "src/app/queue/page.tsx"), "utf8");
 const generationQueueDataRouteSource = readFileSync(resolve(repoRoot, "src/app/api/queue-data/route.ts"), "utf8");
+const generationWorkerStatusRouteSource = readFileSync(resolve(repoRoot, "src/app/api/worker/status/route.ts"), "utf8");
 const generationTemplateCrudSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-crud.ts"), "utf8");
 const generationTemplateImportSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-import.ts"), "utf8");
 const generationPresetReplacementSource = readFileSync(resolve(repoRoot, "src/server/services/preset-section-replacement-service.ts"), "utf8");
@@ -433,6 +434,24 @@ test("generation queue auxiliary lists reuse the generation project boundary", (
       `${label} project-title lookup must not fetch projects by id without the generation project boundary.`,
     );
   }
+});
+
+test("generation worker status uses the generation project boundary", () => {
+  assert.match(
+    generationWorkerStatusRouteSource,
+    /buildGenerationProjectWhere/,
+    "Generation worker status should not aggregate training-owned run resources.",
+  );
+  assert.match(
+    generationWorkerStatusRouteSource,
+    /run\.count\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation worker status queued/running counts should filter through generation-owned projects.",
+  );
+  assert.match(
+    generationWorkerStatusRouteSource,
+    /run\.findMany\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation worker status recent runs should filter through generation-owned projects.",
+  );
 });
 
 test("resource target contract documents every production resource owner", () => {

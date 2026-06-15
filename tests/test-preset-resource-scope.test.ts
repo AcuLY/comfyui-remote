@@ -763,6 +763,12 @@ test("ordinary preset folder and group reads do not expose LoRA training resourc
         categoryId: "training-readable-category",
         name: "Training Folder",
       },
+      {
+        id: "training-readable-child-under-ordinary-folder",
+        categoryId: "training-readable-category",
+        parentId: "ordinary-readable-folder",
+        name: "Training Child Under Ordinary Folder",
+      },
     ],
   });
   await prisma.presetGroup.createMany({
@@ -779,6 +785,13 @@ test("ordinary preset folder and group reads do not expose LoRA training resourc
         name: "Training Group",
         slug: "training-readable-group",
       },
+      {
+        id: "training-readable-group-in-ordinary-folder",
+        categoryId: "training-readable-category",
+        name: "Training Group In Ordinary Folder",
+        slug: "training-readable-group-in-ordinary-folder",
+        folderId: "ordinary-readable-folder",
+      },
     ],
   });
   await prisma.preset.createMany({
@@ -794,6 +807,13 @@ test("ordinary preset folder and group reads do not expose LoRA training resourc
         categoryId: "training-readable-category",
         name: "Training Readable Preset",
         slug: "training-readable-preset",
+      },
+      {
+        id: "training-readable-preset-in-ordinary-folder",
+        categoryId: "training-readable-category",
+        name: "Training Readable Preset In Ordinary Folder",
+        slug: "training-readable-preset-in-ordinary-folder",
+        folderId: "ordinary-readable-folder",
       },
     ],
   });
@@ -850,6 +870,20 @@ test("ordinary preset folder and group reads do not expose LoRA training resourc
     await getPresetFolders({ categoryId: "training-readable-category" }),
     [],
     "ordinary preset folder APIs must not leak training folders when called with a training category id",
+  );
+  assert.deepEqual(
+    (await getPresetFolder("ordinary-readable-folder")),
+    {
+      id: "ordinary-readable-folder",
+      categoryId: "ordinary-readable-category",
+      name: "Ordinary Folder",
+      parentId: null,
+      sortOrder: 0,
+      presetCount: 0,
+      groupCount: 0,
+      childCount: 0,
+    },
+    "ordinary preset folder counts must not include training-owned presets, groups, or child folders",
   );
   assert.equal(await getPresetFolder("training-readable-folder"), null);
   const ordinaryGroups = await getPresetGroups();

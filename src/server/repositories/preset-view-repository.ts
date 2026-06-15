@@ -893,9 +893,9 @@ export async function getPresetFolders(filters: {
     include: {
       _count: {
         select: {
-          presets: { where: buildGenerationPresetWhere() },
-          groups: true,
-          children: true,
+          presets: { where: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }) },
+          groups: { where: { category: { type: ordinaryPresetLibraryCategoryTypeWhere() } } },
+          children: { where: { category: { type: ordinaryPresetLibraryCategoryTypeWhere() } } },
         },
       },
     },
@@ -922,9 +922,9 @@ export async function getPresetFolder(folderId: string): Promise<PresetFolderIte
     include: {
       _count: {
         select: {
-          presets: { where: buildGenerationPresetWhere() },
-          groups: true,
-          children: true,
+          presets: { where: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }) },
+          groups: { where: { category: { type: ordinaryPresetLibraryCategoryTypeWhere() } } },
+          children: { where: { category: { type: ordinaryPresetLibraryCategoryTypeWhere() } } },
         },
       },
     },

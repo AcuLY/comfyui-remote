@@ -7,6 +7,7 @@
 import { fail, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 async function pingComfyUI(): Promise<boolean> {
   try {
@@ -23,10 +24,10 @@ export async function GET() {
   try {
     const [queuedCount, runningCount, recentDone, recentFailed, comfyReachable] =
       await Promise.all([
-        prisma.run.count({ where: { status: "queued" } }),
-        prisma.run.count({ where: { status: "running" } }),
+        prisma.run.count({ where: { status: "queued", project: buildGenerationProjectWhere() } }),
+        prisma.run.count({ where: { status: "running", project: buildGenerationProjectWhere() } }),
         prisma.run.findMany({
-          where: { status: "done" },
+          where: { status: "done", project: buildGenerationProjectWhere() },
           orderBy: { finishedAt: "desc" },
           take: 5,
           include: {
@@ -36,7 +37,7 @@ export async function GET() {
           },
         }),
         prisma.run.findMany({
-          where: { status: "failed" },
+          where: { status: "failed", project: buildGenerationProjectWhere() },
           orderBy: { finishedAt: "desc" },
           take: 5,
           include: {

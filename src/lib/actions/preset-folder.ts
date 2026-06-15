@@ -3,11 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import {
+  ORDINARY_PRESET_CATEGORY_TYPE,
   assertOrdinaryPresetFolder,
   assertOrdinaryPresetGroup,
   assertOrdinaryPreset,
   assertOrdinaryPresetLibraryCategory,
+  ordinaryPresetLibraryCategoryTypeWhere,
 } from "./preset-resource-scope";
+import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // PresetFolder CRUD
@@ -52,9 +55,24 @@ export async function deletePresetFolder(id: string) {
   await assertOrdinaryPresetFolder(id);
   // Only allow deleting empty folders (no children, no presets, no groups)
   const [childCount, presetCount, groupCount] = await Promise.all([
-    prisma.presetFolder.count({ where: { parentId: id } }),
-    prisma.preset.count({ where: { folderId: id } }),
-    prisma.presetGroup.count({ where: { folderId: id } }),
+    prisma.presetFolder.count({
+      where: {
+        parentId: id,
+        category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
+      },
+    }),
+    prisma.preset.count({
+      where: buildGenerationPresetWhere({
+        folderId: id,
+        category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+      }),
+    }),
+    prisma.presetGroup.count({
+      where: {
+        folderId: id,
+        category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
+      },
+    }),
   ]);
   if (childCount + presetCount + groupCount > 0) {
     throw new Error(`文件夹不为空，包含 ${childCount} 个子文件夹、${presetCount} 个预制、${groupCount} 个预制组`);
