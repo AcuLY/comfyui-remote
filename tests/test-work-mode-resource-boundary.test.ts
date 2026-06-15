@@ -99,6 +99,20 @@ test("work mode inference treats the production training root as LoRA training-o
   );
 });
 
+test("work mode inference keeps generation preset group detail pages generation-owned", () => {
+  assert.equal(inferWorkModeFromPathname("/assets/preset-groups/group-1"), "generation");
+  assert.equal(
+    resolveWorkModeForPathname("/assets/preset-groups/group-1", "lora_training"),
+    "generation",
+    "generation preset group detail pages must not inherit a stored training mode and expose training resources",
+  );
+  assert.deepEqual(
+    buildWorkModeResourceTargets("generation").presets.activePrefix,
+    ["/assets/presets", "/assets/preset-groups"],
+    "generation preset navigation should own both preset and preset-group routes",
+  );
+});
+
 test("module-owned frontend pages do not fetch the other module's resource APIs", () => {
   const generationPageFiles = sourceFilesFromRoots(
     "src/app/projects",

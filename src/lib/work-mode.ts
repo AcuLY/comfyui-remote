@@ -7,6 +7,7 @@ const GENERATION_ROUTE_PREFIXES = [
   "/queue",
   "/projects",
   "/assets/presets",
+  "/assets/preset-groups",
   "/assets/templates",
 ] as const;
 

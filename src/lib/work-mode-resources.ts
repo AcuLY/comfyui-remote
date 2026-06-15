@@ -56,6 +56,7 @@ export const WORK_MODE_RESOURCE_TARGETS = {
       href: "/assets/presets",
       label: "预制",
       owner: "generation",
+      activePrefix: ["/assets/presets", "/assets/preset-groups"],
     },
     templates: {
       key: "templates",
