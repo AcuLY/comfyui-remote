@@ -2069,9 +2069,9 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
   }));
   const [isMutatingSections, setIsMutatingSections] = useState(false);
   if (!project) return <EmptyPage title="没有训练小节数据" />;
+  const localSections = localSectionState.projectId === project.id ? localSectionState.sections : project.sections;
+  const orderedSectionIds = orderedSectionState.projectId === project.id ? orderedSectionState.ids : project.sections.map((section) => section.id);
   const activeProject = project;
-  const localSections = localSectionState.projectId === activeProject.id ? localSectionState.sections : activeProject.sections;
-  const orderedSectionIds = orderedSectionState.projectId === activeProject.id ? orderedSectionState.ids : activeProject.sections.map((section) => section.id);
   const sectionMap = new Map(localSections.map((section) => [section.id, section]));
   const sections = orderedSectionIds
     .map((sectionId) => sectionMap.get(sectionId))
