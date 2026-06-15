@@ -8,6 +8,7 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(testDir, "..");
 const layoutPath = resolve(repoRoot, "src/app/layout.tsx");
 const bottomNavPath = resolve(repoRoot, "src/components/persistent-bottom-nav.tsx");
+const settingsPagePath = resolve(repoRoot, "src/app/settings/page.tsx");
 const shellPath = resolve(repoRoot, "src/components/design-demo-shell/app-shell.tsx");
 const headerSurfacePath = resolve(repoRoot, "src/components/design-demo-shell/header-surface.tsx");
 const buttonPath = resolve(repoRoot, "src/components/design-demo-ui/primitives/button/index.tsx");
@@ -21,6 +22,7 @@ const trainingThemePath = resolve(repoRoot, "src/features/training/theme.ts");
 
 const layoutSource = readFileSync(layoutPath, "utf8");
 const bottomNavSource = readFileSync(bottomNavPath, "utf8");
+const settingsPageSource = readFileSync(settingsPagePath, "utf8");
 const shellSource = readFileSync(shellPath, "utf8");
 const headerSurfaceSource = readFileSync(headerSurfacePath, "utf8");
 const buttonSource = readFileSync(buttonPath, "utf8");
@@ -73,6 +75,41 @@ test("production training routes do not own the shared model manager page", () =
   );
 });
 
+test("production bottom nav resolves module-owned resources from the current work mode", () => {
+  assert.doesNotMatch(
+    bottomNavSource,
+    /label:\s*"LoRA训练"/,
+    "LoRA training should not remain a seventh standalone production nav item.",
+  );
+  assert.doesNotMatch(
+    bottomNavSource,
+    /label:\s*"待审核"/,
+    "The shared run entry should be product-facing as 运行 instead of the old generation-only 待审核 label.",
+  );
+  for (const label of ["运行", "项目", "预制", "模板", "模型", "设置"]) {
+    assert.match(bottomNavSource, new RegExp(`label:\\s*"${label}"`), `production bottom nav should include ${label}`);
+  }
+  for (const href of ["/queue", "/projects", "/assets/presets", "/assets/templates", "/training/runs", "/training/projects", "/training/presets", "/training/templates"]) {
+    assert.match(bottomNavSource, new RegExp(`href:\\s*"${href.replace(/\//g, "\\/")}"`), `production bottom nav should be able to route to ${href}`);
+  }
+  assert.match(bottomNavSource, /WORK_MODE_STORAGE_KEY/, "production bottom nav should read the persisted work mode.");
+  assert.match(bottomNavSource, /WORK_MODE_CHANGE_EVENT/, "production bottom nav should update when settings changes the work mode.");
+  assert.match(bottomNavSource, /aria-label=\{modeLabel\}/, "the mode indicator should expose the current mode without becoming a seventh nav link.");
+});
+
+test("production settings page exposes the work mode switch", () => {
+  assert.match(
+    settingsPageSource,
+    /WorkModeToggle/,
+    "settings should be the production place for switching generation vs LoRA training work mode.",
+  );
+  assert.doesNotMatch(
+    settingsPageSource,
+    /href=\{?["']\/training\/runs["']\}?/,
+    "settings should switch mode in place instead of acting as a training shortcut.",
+  );
+});
+
 test("production training route inventory is exported and every route renders a page", () => {
   const routes = extractTrainingRouteKeys();
   const pageCases = extractTrainingPageSwitchCases();
@@ -98,11 +135,11 @@ test("production training route inventory is exported and every route renders a 
   );
 });
 
-test("persistent bottom nav points LoRA entry at production training routes", () => {
-  assert.match(
+test("persistent bottom nav no longer exposes LoRA as a separate production route entry", () => {
+  assert.doesNotMatch(
     bottomNavSource,
     /href: "\/training\/runs", label: "LoRA训练"/,
-    "LoRA nav entry should point at the production training route root",
+    "LoRA training should be selected through work mode resource routing instead of a separate nav item.",
   );
   assert.doesNotMatch(
     bottomNavSource,

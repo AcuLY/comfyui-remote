@@ -8,26 +8,63 @@ import {
   FlaskConical,
   FolderOpen,
   Images,
+  ImageIcon,
   LayoutTemplate,
   Settings,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
+
+import {
+  resolveStoredWorkMode,
+  resolveWorkModeForPathname,
+  WORK_MODE_CHANGE_EVENT,
+  WORK_MODE_STORAGE_KEY,
+  type WorkMode,
+} from "@/lib/work-mode";
 
 type NavItem = {
+  activePrefix?: string | string[];
   href: string;
   label: string;
   icon: LucideIcon;
 };
 
-const navItems: NavItem[] = [
-  { href: "/queue", label: "待审核", icon: Images },
-  { href: "/projects", label: "项目", icon: FolderOpen },
-  { href: "/assets/presets", label: "预制", icon: BookOpen },
-  { href: "/assets/templates", label: "模板", icon: LayoutTemplate },
-  { href: "/assets/models", label: "模型", icon: Database },
-  { href: "/training/runs", label: "LoRA训练", icon: FlaskConical },
-  { href: "/settings", label: "设置", icon: Settings },
+const modeAwareNavItems: Array<{
+  generation: Pick<NavItem, "href" | "activePrefix">;
+  icon: LucideIcon;
+  label: string;
+  lora_training: Pick<NavItem, "href" | "activePrefix">;
+}> = [
+  {
+    label: "运行",
+    icon: Images,
+    generation: { href: "/queue" },
+    lora_training: { href: "/training/runs", activePrefix: "/training/runs" },
+  },
+  {
+    label: "项目",
+    icon: FolderOpen,
+    generation: { href: "/projects" },
+    lora_training: { href: "/training/projects", activePrefix: "/training/projects" },
+  },
+  {
+    label: "预制",
+    icon: BookOpen,
+    generation: { href: "/assets/presets" },
+    lora_training: { href: "/training/presets", activePrefix: "/training/presets" },
+  },
+  {
+    label: "模板",
+    icon: LayoutTemplate,
+    generation: { href: "/assets/templates" },
+    lora_training: { href: "/training/templates", activePrefix: "/training/templates" },
+  },
+];
+
+const sharedNavItems: NavItem[] = [
+  { href: "/assets/models", label: "模型", icon: Database, activePrefix: ["/assets/models", "/assets/loras"] },
+  { href: "/settings", label: "设置", icon: Settings, activePrefix: "/settings" },
 ];
 
 const LAST_ROUTE_PREFIX = "comfyui-manager:last-route:";
@@ -45,8 +82,24 @@ function normalizeStoredRoute(route: string | null, fallback: string) {
   return route;
 }
 
-function matchNavItem(pathname: string) {
-  return navItems.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)) ?? null;
+function isNavItemActive(pathname: string, item: NavItem) {
+  const prefixes = Array.isArray(item.activePrefix) ? item.activePrefix : [item.activePrefix ?? item.href];
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function buildNavItems(workMode: WorkMode): NavItem[] {
+  return [
+    ...modeAwareNavItems.map((item) => ({
+      ...item[workMode],
+      label: item.label,
+      icon: item.icon,
+    })),
+    ...sharedNavItems,
+  ];
+}
+
+function matchNavItem(pathname: string, navItems: NavItem[]) {
+  return navItems.find((item) => isNavItemActive(pathname, item)) ?? null;
 }
 
 function readCurrentUrl(pathname: string, searchParams: URLSearchParams) {
@@ -55,8 +108,8 @@ function readCurrentUrl(pathname: string, searchParams: URLSearchParams) {
   return `${pathname}${query ? `?${query}` : ""}${hash}`;
 }
 
-function saveCurrentRoute(pathname: string, searchParams: URLSearchParams) {
-  const activeItem = matchNavItem(pathname);
+function saveCurrentRoute(pathname: string, searchParams: URLSearchParams, navItems: NavItem[]) {
+  const activeItem = navItems.find((item) => isNavItemActive(pathname, item));
   if (!activeItem) {
     return;
   }
@@ -65,6 +118,23 @@ function saveCurrentRoute(pathname: string, searchParams: URLSearchParams) {
     storageKey(LAST_ROUTE_PREFIX, activeItem.href),
     readCurrentUrl(pathname, searchParams),
   );
+}
+
+function subscribeWorkMode(onStoreChange: () => void) {
+  window.addEventListener(WORK_MODE_CHANGE_EVENT, onStoreChange);
+  window.addEventListener("storage", onStoreChange);
+  return () => {
+    window.removeEventListener(WORK_MODE_CHANGE_EVENT, onStoreChange);
+    window.removeEventListener("storage", onStoreChange);
+  };
+}
+
+function getStoredWorkModeSnapshot() {
+  return resolveStoredWorkMode(window.localStorage.getItem(WORK_MODE_STORAGE_KEY));
+}
+
+function getStoredWorkModeServerSnapshot(): WorkMode {
+  return "generation";
 }
 
 function readRestoredRoute(href: string) {
@@ -82,6 +152,16 @@ export function PersistentBottomNav() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const storedWorkMode = useSyncExternalStore(
+    subscribeWorkMode,
+    getStoredWorkModeSnapshot,
+    getStoredWorkModeServerSnapshot,
+  );
+  const workMode = resolveWorkModeForPathname(pathname, storedWorkMode);
+  const navItems = useMemo(() => buildNavItems(workMode), [workMode]);
+  const modeText = workMode === "lora_training" ? "LoRA 训练" : "生图模式";
+  const modeLabel = `当前模式：${modeText}`;
+  const ModeIcon = workMode === "lora_training" ? FlaskConical : ImageIcon;
 
   const currentUrl = useMemo(
     () => readCurrentUrl(pathname, searchParams),
@@ -89,13 +169,13 @@ export function PersistentBottomNav() {
   );
 
   useEffect(() => {
-    const activeItem = matchNavItem(pathname);
+    const activeItem = matchNavItem(pathname, navItems);
     if (!activeItem) {
       return;
     }
 
-    saveCurrentRoute(pathname, searchParams);
-  }, [currentUrl, pathname, searchParams]);
+    saveCurrentRoute(pathname, searchParams, navItems);
+  }, [currentUrl, navItems, pathname, searchParams]);
 
   useEffect(() => {
     const scrollKey = storageKey(SCROLL_PREFIX, currentUrl);
@@ -121,16 +201,17 @@ export function PersistentBottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[var(--panel)]/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
-      <div className="mx-auto grid max-w-5xl grid-cols-7 gap-0.5 px-1.5 py-2 sm:gap-1 sm:px-2">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`);
+      <div className="mx-auto grid max-w-5xl grid-cols-[repeat(6,minmax(0,1fr))_minmax(3.25rem,0.72fr)] gap-0.5 px-1.5 py-2 sm:gap-1 sm:px-2">
+        {navItems.map((item) => {
+          const { href, label, icon: Icon } = item;
+          const active = isNavItemActive(pathname, item);
 
           return (
             <Link
               key={href}
               href={href}
               onClick={(event) => {
-                saveCurrentRoute(pathname, searchParams);
+                saveCurrentRoute(pathname, searchParams, navItems);
                 if (active) {
                   return;
                 }
@@ -152,6 +233,14 @@ export function PersistentBottomNav() {
             </Link>
           );
         })}
+        <div
+          aria-label={modeLabel}
+          title={modeLabel}
+          className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-sky-400/20 bg-sky-500/10 px-0.5 py-2 text-[10px] text-sky-200 sm:rounded-2xl sm:px-1 sm:text-[11px]"
+        >
+          <ModeIcon className="size-4" aria-hidden="true" />
+          <span className="max-w-full truncate whitespace-nowrap leading-tight">{modeText}</span>
+        </div>
       </div>
     </nav>
   );
