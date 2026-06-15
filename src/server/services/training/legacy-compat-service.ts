@@ -155,6 +155,8 @@ export const registerLegacyTrainingReferenceImageAsResult = registerCharacterLor
 export const freezeLegacyTrainingDataset = freezeCharacterLoraDataset;
 export const enqueueLegacyTrainingSectionGenerationRun = enqueueCharacterLoraSectionGenerationRun;
 export const reviewLegacyTrainingImages = reviewCharacterLoraImages;
+export const getLegacyTrainingCandidateImage = getCharacterLoraCandidateImage;
+export const listLegacyTrainingCandidateImages = listCharacterLoraCandidateImages;
 export const updateLegacyTrainingImageCaption = updateCharacterLoraImageCaption;
 export const cancelLegacyTrainingGenerationRun = cancelCharacterLoraGenerationRun;
 

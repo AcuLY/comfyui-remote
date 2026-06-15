@@ -261,6 +261,20 @@ test("training worker task DTO schemas live under src/lib/training", async () =>
   );
 });
 
+test("training caption service uses Training-named legacy adapter aliases", () => {
+  const captionServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/caption-service.ts"), "utf8");
+
+  assert.match(captionServiceSource, /getLegacyTrainingCandidateImage/);
+  assert.match(captionServiceSource, /getLegacyTrainingProject/);
+  assert.match(captionServiceSource, /listLegacyTrainingCandidateImages/);
+  assert.match(captionServiceSource, /updateLegacyTrainingImageCaption/);
+  assert.doesNotMatch(
+    captionServiceSource,
+    /CharacterLora|getCharacterLora|listCharacterLora|updateCharacterLora/,
+    "Training caption service should keep legacy CharacterLora symbol names inside the adapter boundary.",
+  );
+});
+
 test("training project archive and restore routes use the project service boundary", () => {
   const routeFiles = [
     "src/app/api/training/projects/[projectId]/archive/route.ts",
