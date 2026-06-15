@@ -10,8 +10,11 @@ import {
 
 const repoRoot = process.cwd();
 const bottomNavSource = readFileSync(resolve(repoRoot, "src/components/persistent-bottom-nav.tsx"), "utf8");
+const appShellSource = readFileSync(resolve(repoRoot, "src/components/app-shell.tsx"), "utf8");
 const demoRoutesSource = readFileSync(resolve(repoRoot, "src/app/design-demos/routing/routes.ts"), "utf8");
 const settingsPageSource = readFileSync(resolve(repoRoot, "src/app/design-demos/features/settings/settings-page.tsx"), "utf8");
+const trainingShellSource = readFileSync(resolve(repoRoot, "src/features/training/shell.tsx"), "utf8");
+const trainingRoutesSource = readFileSync(resolve(repoRoot, "src/features/training/routes.ts"), "utf8");
 const trainingNotFoundSource = readFileSync(resolve(repoRoot, "src/features/training/not-found-page.tsx"), "utf8");
 const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/training/route.ts"), "utf8");
 
@@ -37,6 +40,13 @@ function findMatchingSources(paths: string[], pattern: RegExp) {
 
 function sourceFilesFromRoots(...roots: string[]) {
   return roots.flatMap((root) => listSourceFiles(resolve(repoRoot, root)));
+}
+
+function renderLinesContaining(source: string, pattern: string) {
+  return source
+    .split("\n")
+    .filter((line) => line.includes(pattern))
+    .map((line) => line.trim());
 }
 
 test("work mode resource targets isolate generation and training-owned resources", () => {
@@ -164,6 +174,46 @@ test("persistent production navigation consumes the shared work mode resource co
     /const sharedNavItems/,
     "Shared navigation targets should live in the shared resource contract.",
   );
+});
+
+test("production shell keeps generation task-panel resources out of training mode", () => {
+  assert.match(
+    appShellSource,
+    /resolveWorkModeForPathname/,
+    "The production shell should derive the active work mode from the current route.",
+  );
+  assert.match(
+    appShellSource,
+    /workMode === "generation" \? <TaskPanelContainer \/> : null/,
+    "The legacy generation task panel should only render in generation mode.",
+  );
+  assert.deepEqual(
+    renderLinesContaining(appShellSource, "<TaskPanelContainer"),
+    ['{workMode === "generation" ? <TaskPanelContainer /> : null}'],
+    "The task panel must not be mounted unconditionally, because it still owns generation/legacy task resources.",
+  );
+});
+
+test("production training shell and routes expose only training-owned resources plus shared navigation", () => {
+  assert.match(
+    trainingShellSource,
+    /buildWorkModeResourceTargetList\("lora_training"\)/,
+    "Training navigation should be generated from the LoRA training resource contract.",
+  );
+  assert.doesNotMatch(
+    trainingShellSource,
+    /"generation"|["`]\/(?:assets\/presets|assets\/templates|queue|projects)\b/,
+    "Training shell should not hard-code generation-owned resources.",
+  );
+  assert.doesNotMatch(
+    trainingRoutesSource,
+    /pattern:\s*["`]\/(?:assets\/presets|assets\/templates|queue|projects)\b/,
+    "Training route matcher should not mount generation-owned resource routes.",
+  );
+  assert.match(trainingRoutesSource, /\/training\/runs/);
+  assert.match(trainingRoutesSource, /\/training\/projects/);
+  assert.match(trainingRoutesSource, /\/training\/presets/);
+  assert.match(trainingRoutesSource, /\/training\/templates/);
 });
 
 test("design-demo shell navigation consumes the shared work mode resource contract", async () => {
