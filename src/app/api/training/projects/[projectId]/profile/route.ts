@@ -4,15 +4,13 @@ import {
   updateManagedTrainingProjectProfile,
 } from "@/server/services/training/project-service";
 import {
-  getCharacterLoraTrainingJobOverview,
-  mapCharacterLoraTrainingJobError,
-  getCharacterLoraTrainingJob,
-} from "@/server/services/character-lora-training/job-service";
-import {
-  createCharacterLoraPromptCardVersion,
-  listCharacterLoraPromptCardVersions,
-  mapCharacterLoraPromptCardError,
-} from "@/server/services/character-lora-training/prompt-card-service";
+  createLegacyTrainingPromptCardVersion,
+  getLegacyTrainingProject,
+  getLegacyTrainingProjectOverview,
+  listLegacyTrainingPromptCardVersions,
+  mapLegacyTrainingProjectError,
+  mapLegacyTrainingPromptCardError,
+} from "@/server/services/training/legacy-compat-service";
 
 export const dynamic = "force-dynamic";
 
@@ -27,8 +25,8 @@ export async function GET(
       return ok(managedProfile);
     }
     const [overview, promptCardVersions] = await Promise.all([
-      getCharacterLoraTrainingJobOverview(projectId),
-      listCharacterLoraPromptCardVersions(projectId),
+      getLegacyTrainingProjectOverview(projectId),
+      listLegacyTrainingPromptCardVersions(projectId),
     ]);
     const latestPromptCard = promptCardVersions.at(-1) ?? null;
 
@@ -53,7 +51,7 @@ export async function GET(
       canonicalVersionId: overview.personaReference.currentCanonicalVersionId,
     });
   } catch (error) {
-    const mapped = mapCharacterLoraTrainingJobError(error);
+    const mapped = mapLegacyTrainingProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
@@ -101,8 +99,8 @@ export async function PATCH(
     }
 
     const [job, promptCardVersions] = await Promise.all([
-      getCharacterLoraTrainingJob(projectId),
-      listCharacterLoraPromptCardVersions(projectId),
+      getLegacyTrainingProject(projectId),
+      listLegacyTrainingPromptCardVersions(projectId),
     ]);
     const currentPromptCard = promptCardVersions.find((version) => version.id === job.currentPromptCardVersionId) ?? promptCardVersions.at(-1) ?? null;
 
@@ -124,7 +122,7 @@ export async function PATCH(
       }
     }
 
-    const data = await createCharacterLoraPromptCardVersion(projectId, {
+    const data = await createLegacyTrainingPromptCardVersion(projectId, {
       canonicalVersionId: currentPromptCard?.canonicalVersionId ?? job.currentCanonicalVersionId ?? null,
       triggerToken: job.triggerToken,
       identityTraits: detailPayload.identityTraits ?? currentPromptCard?.identityTraits ?? {},
@@ -136,12 +134,12 @@ export async function PATCH(
 
     return ok(data);
   } catch (error) {
-    const promptCardMapped = mapCharacterLoraPromptCardError(error);
+    const promptCardMapped = mapLegacyTrainingPromptCardError(error);
     if (promptCardMapped.status !== 500 || promptCardMapped.message !== "Unexpected character LoRA prompt card error") {
       return fail(promptCardMapped.message, promptCardMapped.status, promptCardMapped.details);
     }
 
-    const mapped = mapCharacterLoraTrainingJobError(error);
+    const mapped = mapLegacyTrainingProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

@@ -1,9 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
 import { updateManagedTrainingImageResult } from "@/server/services/training/project-service";
 import {
-  mapCharacterLoraPhase3Error,
-  reviewCharacterLoraImages,
-} from "@/server/services/character-lora-training/phase3-service";
+  mapLegacyTrainingGenerationError,
+  reviewLegacyTrainingImages,
+} from "@/server/services/training/legacy-compat-service";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ export async function POST(
     if (managed) {
       return ok(managed);
     }
-    const data = await reviewCharacterLoraImages({
+    const data = await reviewLegacyTrainingImages({
       images: [
         {
           imageId: imageResultId,
@@ -39,7 +39,7 @@ export async function POST(
     });
     return ok(data);
   } catch (error) {
-    const mapped = mapCharacterLoraPhase3Error(error);
+    const mapped = mapLegacyTrainingGenerationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

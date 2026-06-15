@@ -2,13 +2,11 @@ import { fail, ok } from "@/lib/api-response";
 import { enqueueManagedTrainingRun, mapTrainingProjectError } from "@/server/services/training/project-service";
 import { listTrainingRuns, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
-  freezeCharacterLoraDataset,
-  mapCharacterLoraPhase3Error,
-} from "@/server/services/character-lora-training/phase3-service";
-import {
-  enqueueCharacterLoraTrainingRun,
-  mapCharacterLoraTrainingError,
-} from "@/server/services/character-lora-training/training-service";
+  enqueueLegacyTrainingRun,
+  freezeLegacyTrainingDataset,
+  mapLegacyTrainingGenerationError,
+  mapLegacyTrainingRunError,
+} from "@/server/services/training/legacy-compat-service";
 
 export const dynamic = "force-dynamic";
 
@@ -55,14 +53,14 @@ export async function POST(
     delete enqueueInput.config;
 
     const resolvedRevisionId = revisionId ?? await (async () => {
-      const frozen = await freezeCharacterLoraDataset(projectId, {});
+      const frozen = await freezeLegacyTrainingDataset(projectId, {});
       if (!("revision" in frozen) || !frozen.revision?.id) {
         throw new Error("Dataset freeze did not return a revision id");
       }
       return frozen.revision.id;
     })();
 
-    const data = await enqueueCharacterLoraTrainingRun(resolvedRevisionId, enqueueInput);
+    const data = await enqueueLegacyTrainingRun(resolvedRevisionId, enqueueInput);
     return ok(data, { status: 201 });
   } catch (error) {
     const managedMapped = mapTrainingProjectError(error);
@@ -76,12 +74,12 @@ export async function POST(
         : null;
     if (mapped) return fail(mapped.message, mapped.status, mapped.details);
 
-    const trainingMapped = mapCharacterLoraTrainingError(error);
+    const trainingMapped = mapLegacyTrainingRunError(error);
     if (trainingMapped.status !== 400 || trainingMapped.message !== "Unexpected character LoRA training error") {
       return fail(trainingMapped.message, trainingMapped.status, trainingMapped.details);
     }
 
-    const phase3Mapped = mapCharacterLoraPhase3Error(error);
+    const phase3Mapped = mapLegacyTrainingGenerationError(error);
     return fail(phase3Mapped.message, phase3Mapped.status, phase3Mapped.details);
   }
 }

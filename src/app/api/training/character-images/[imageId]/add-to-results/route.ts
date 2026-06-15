@@ -1,10 +1,10 @@
 import { fail, ok } from "@/lib/api-response";
 import { addManagedTrainingReferenceImageToResults } from "@/server/services/training/project-service";
 import {
-  getCharacterLoraSourceImage,
-  registerCharacterLoraSourceImageAsCandidate,
-} from "@/server/repositories/character-lora-training/source-image-repository";
-import { mapCharacterLoraSourceImageError } from "@/server/services/character-lora-training/source-image-service";
+  getLegacyTrainingReferenceImage,
+  mapLegacyTrainingReferenceImageError,
+  registerLegacyTrainingReferenceImageAsResult,
+} from "@/server/services/training/legacy-compat-service";
 
 export const dynamic = "force-dynamic";
 
@@ -31,13 +31,13 @@ export async function POST(
     if (managedResult) {
       return ok(managedResult, { status: 201 });
     }
-    const sourceImage = await getCharacterLoraSourceImage(imageId);
+    const sourceImage = await getLegacyTrainingReferenceImage(imageId);
 
     if (!sourceImage) {
-      return fail("Character LoRA source image not found", 404);
+      return fail("Training reference image not found", 404);
     }
 
-    const data = await registerCharacterLoraSourceImageAsCandidate({
+    const data = await registerLegacyTrainingReferenceImageAsResult({
       jobId: sourceImage.jobId,
       sourceImageId: imageId,
       reviewStatus: typeof payload.reviewStatus === "string" ? payload.reviewStatus as never : undefined,
@@ -45,7 +45,7 @@ export async function POST(
     });
     return ok(data, { status: 201 });
   } catch (error) {
-    const mapped = mapCharacterLoraSourceImageError(error);
+    const mapped = mapLegacyTrainingReferenceImageError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

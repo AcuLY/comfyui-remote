@@ -5,11 +5,11 @@ import {
   uploadManagedTrainingProjectReferenceImage,
 } from "@/server/services/training/project-service";
 import {
-  listCharacterLoraSourceImages,
-  registerCharacterLoraSourceImageFromArtifact,
-  mapCharacterLoraSourceImageError,
-  uploadCharacterLoraSourceImage,
-} from "@/server/services/character-lora-training/source-image-service";
+  listLegacyTrainingReferenceImages,
+  mapLegacyTrainingReferenceImageError,
+  registerLegacyTrainingReferenceImageFromArtifact,
+  uploadLegacyTrainingReferenceImage,
+} from "@/server/services/training/legacy-compat-service";
 
 export const dynamic = "force-dynamic";
 
@@ -23,14 +23,14 @@ export async function GET(
     if (managedImages) {
       return ok(managedImages);
     }
-    const data = await listCharacterLoraSourceImages(projectId);
+    const data = await listLegacyTrainingReferenceImages(projectId);
     return ok(data);
   } catch (error) {
     const managedMapped = mapTrainingProjectError(error);
     if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
       return fail(managedMapped.message, managedMapped.status, managedMapped.details);
     }
-    const mapped = mapCharacterLoraSourceImageError(error);
+    const mapped = mapLegacyTrainingReferenceImageError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
@@ -48,7 +48,7 @@ export async function POST(
       if (!body || typeof body !== "object") {
         return fail("Invalid JSON body", 400);
       }
-      const data = await registerCharacterLoraSourceImageFromArtifact(projectId, body);
+      const data = await registerLegacyTrainingReferenceImageFromArtifact(projectId, body);
       return ok(data, { status: 201 });
     }
 
@@ -63,14 +63,14 @@ export async function POST(
     if (managedUpload) {
       return ok(managedUpload, { status: 201 });
     }
-    const data = await uploadCharacterLoraSourceImage(projectId, formData);
+    const data = await uploadLegacyTrainingReferenceImage(projectId, formData);
     return ok(data, { status: 201 });
   } catch (error) {
     const managedMapped = mapTrainingProjectError(error);
     if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
       return fail(managedMapped.message, managedMapped.status, managedMapped.details);
     }
-    const mapped = mapCharacterLoraSourceImageError(error);
+    const mapped = mapLegacyTrainingReferenceImageError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

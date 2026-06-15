@@ -2,9 +2,9 @@ import { fail, ok } from "@/lib/api-response";
 import { freezeManagedTrainingDataset, mapTrainingProjectError } from "@/server/services/training/project-service";
 import { getTrainingProject, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
-  freezeCharacterLoraDataset,
-  mapCharacterLoraPhase3Error,
-} from "@/server/services/character-lora-training/phase3-service";
+  freezeLegacyTrainingDataset,
+  mapLegacyTrainingGenerationError,
+} from "@/server/services/training/legacy-compat-service";
 
 export const dynamic = "force-dynamic";
 
@@ -41,14 +41,14 @@ export async function POST(
     if (managed) {
       return ok(managed, { status: 201 });
     }
-    const data = await freezeCharacterLoraDataset(projectId, body);
+    const data = await freezeLegacyTrainingDataset(projectId, body);
     return ok(data, { status: 201 });
   } catch (error) {
     const managedMapped = mapTrainingProjectError(error);
     if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
       return fail(managedMapped.message, managedMapped.status, managedMapped.details);
     }
-    const mapped = mapCharacterLoraPhase3Error(error);
+    const mapped = mapLegacyTrainingGenerationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

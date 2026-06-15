@@ -13,9 +13,9 @@ import {
   mapTrainingProjectVisibilityError,
 } from "@/server/services/training/project-visibility-service";
 import {
-  mapCharacterLoraTrainingJobError,
-  updateCharacterLoraTrainingJob,
-} from "@/server/services/character-lora-training/job-service";
+  mapLegacyTrainingProjectError,
+  updateLegacyTrainingProject,
+} from "@/server/services/training/legacy-compat-service";
 
 export const dynamic = "force-dynamic";
 
@@ -51,14 +51,14 @@ export async function PATCH(
     if (managed) {
       return ok(managed);
     }
-    const data = await updateCharacterLoraTrainingJob(projectId, body);
+    const data = await updateLegacyTrainingProject(projectId, body);
     return ok(data);
   } catch (error) {
     const managedMapped = mapTrainingProjectError(error);
     if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
       return fail(managedMapped.message, managedMapped.status, managedMapped.details);
     }
-    const mapped = mapCharacterLoraTrainingJobError(error);
+    const mapped = mapLegacyTrainingProjectError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

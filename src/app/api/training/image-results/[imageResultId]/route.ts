@@ -5,10 +5,10 @@ import {
   updateManagedTrainingImageResult,
 } from "@/server/services/training/project-service";
 import {
-  mapCharacterLoraPhase3Error,
-  reviewCharacterLoraImages,
-  updateCharacterLoraImageCaption,
-} from "@/server/services/character-lora-training/phase3-service";
+  mapLegacyTrainingGenerationError,
+  reviewLegacyTrainingImages,
+  updateLegacyTrainingImageCaption,
+} from "@/server/services/training/legacy-compat-service";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +38,11 @@ export async function PATCH(
     const operations: unknown[] = [];
 
     if (typeof payload.captionDraft === "string") {
-      operations.push(updateCharacterLoraImageCaption(imageResultId, { captionDraft: payload.captionDraft }));
+      operations.push(updateLegacyTrainingImageCaption(imageResultId, { captionDraft: payload.captionDraft }));
     }
 
     if (typeof payload.reviewStatus === "string") {
-      operations.push(reviewCharacterLoraImages({
+      operations.push(reviewLegacyTrainingImages({
         images: [
           {
             imageId: imageResultId,
@@ -61,7 +61,7 @@ export async function PATCH(
     const data = await Promise.all(operations);
     return ok(data.length === 1 ? data[0] : data);
   } catch (error) {
-    const mapped = mapCharacterLoraPhase3Error(error);
+    const mapped = mapLegacyTrainingGenerationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
