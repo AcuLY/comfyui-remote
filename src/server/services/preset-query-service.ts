@@ -22,16 +22,29 @@ function normalizeBoolean(value?: string | null) {
 function linkedVariantsFromRows(variant: {
   outgoingLinks: Array<{
     linkedVariantId: string;
-    linkedVariant: { presetId: string };
+    linkedVariant: {
+      presetId: string;
+      preset: { category: { type: string } };
+    };
   }>;
 }) {
-  return variant.outgoingLinks.map((link) => ({
-    presetId: link.linkedVariant.presetId,
-    variantId: link.linkedVariantId,
-  }));
+  return variant.outgoingLinks
+    .filter((link) => link.linkedVariant.preset.category.type === "preset")
+    .map((link) => ({
+      presetId: link.linkedVariant.presetId,
+      variantId: link.linkedVariantId,
+    }));
 }
 
-function variantResponse<Variant extends { outgoingLinks: Array<{ linkedVariantId: string; linkedVariant: { presetId: string } }> }>(
+function variantResponse<Variant extends {
+  outgoingLinks: Array<{
+    linkedVariantId: string;
+    linkedVariant: {
+      presetId: string;
+      preset: { category: { type: string } };
+    };
+  }>;
+}>(
   variant: Variant,
 ) {
   const { outgoingLinks, ...rest } = variant;
@@ -105,7 +118,12 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
             orderBy: { sortOrder: "asc" },
             select: {
               linkedVariantId: true,
-              linkedVariant: { select: { presetId: true } },
+              linkedVariant: {
+                select: {
+                  presetId: true,
+                  preset: { select: { category: { select: { type: true } } } },
+                },
+              },
             },
           },
           sortOrder: true,
@@ -164,7 +182,12 @@ export async function getPresetById(presetId: string, includeInactive = false) {
             orderBy: { sortOrder: "asc" },
             select: {
               linkedVariantId: true,
-              linkedVariant: { select: { presetId: true } },
+              linkedVariant: {
+                select: {
+                  presetId: true,
+                  preset: { select: { category: { select: { type: true } } } },
+                },
+              },
             },
           },
           sortOrder: true,

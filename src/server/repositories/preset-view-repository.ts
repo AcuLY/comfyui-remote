@@ -32,15 +32,20 @@ type ResolvedNameMaps = {
 type LinkedVariantSource = {
   outgoingLinks: Array<{
     linkedVariantId: string;
-    linkedVariant: { presetId: string };
+    linkedVariant: {
+      presetId: string;
+      preset: { category: { type: string } };
+    };
   }>;
 };
 
 function linkedVariantRefs(variant: LinkedVariantSource): LinkedVariantRef[] {
-  return variant.outgoingLinks.map((link) => ({
-    presetId: link.linkedVariant.presetId,
-    variantId: link.linkedVariantId,
-  }));
+  return variant.outgoingLinks
+    .filter((link) => link.linkedVariant.preset.category.type === ORDINARY_PRESET_CATEGORY_TYPE)
+    .map((link) => ({
+      presetId: link.linkedVariant.presetId,
+      variantId: link.linkedVariantId,
+    }));
 }
 
 function slotTemplateFromRows(
@@ -211,6 +216,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
         },
       },
       ownedSlots: {
+        where: { slotCategory: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
         orderBy: { sortOrder: "asc" },
         select: {
           slotCategoryId: true,
@@ -230,7 +236,12 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
                 orderBy: { sortOrder: "asc" },
                 select: {
                   linkedVariantId: true,
-                  linkedVariant: { select: { presetId: true } },
+                  linkedVariant: {
+                    select: {
+                      presetId: true,
+                      preset: { select: { category: { select: { type: true } } } },
+                    },
+                  },
                 },
               },
             },
@@ -379,6 +390,7 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
           },
         },
         ownedSlots: {
+          where: { slotCategory: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
           orderBy: { sortOrder: "asc" },
           select: {
             slotCategoryId: true,
@@ -438,7 +450,12 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
               orderBy: { sortOrder: "asc" },
               select: {
                 linkedVariantId: true,
-                linkedVariant: { select: { presetId: true } },
+                linkedVariant: {
+                  select: {
+                    presetId: true,
+                    preset: { select: { category: { select: { type: true } } } },
+                  },
+                },
               },
             },
           },
@@ -611,6 +628,7 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
     orderBy: { sortOrder: "asc" },
     include: {
       ownedSlots: {
+        where: { slotCategory: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
         orderBy: { sortOrder: "asc" },
         select: { slotCategoryId: true, label: true },
       },
@@ -639,7 +657,12 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
                 orderBy: { sortOrder: "asc" },
                 select: {
                   linkedVariantId: true,
-                  linkedVariant: { select: { presetId: true } },
+                  linkedVariant: {
+                    select: {
+                      presetId: true,
+                      preset: { select: { category: { select: { type: true } } } },
+                    },
+                  },
                 },
               },
             },

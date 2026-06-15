@@ -152,9 +152,11 @@ let resolveVariantContent: typeof PresetVariantResolveActions.resolveVariantCont
 let getPresetFolders: typeof ServerData.getPresetFolders;
 let getPresetFolder: typeof ServerData.getPresetFolder;
 let getPresetCategoriesWithPresets: typeof ServerData.getPresetCategoriesWithPresets;
+let getPresetLibraryV2: typeof ServerData.getPresetLibraryV2;
 let getPresetGroups: typeof ServerData.getPresetGroups;
 let getPresetGroup: typeof ServerData.getPresetGroup;
 let listPresets: typeof PresetQueryService.listPresets;
+let getPresetById: typeof PresetQueryService.getPresetById;
 let resolveTemplatePresetImports: typeof TemplateCrudActions.resolveTemplatePresetImports;
 let createTrainingSceneDescriptionPreset: typeof TrainingPresetService.createTrainingSceneDescriptionPreset;
 
@@ -183,9 +185,11 @@ test.before(async () => {
   getPresetFolders = serverData.getPresetFolders;
   getPresetFolder = serverData.getPresetFolder;
   getPresetCategoriesWithPresets = serverData.getPresetCategoriesWithPresets;
+  getPresetLibraryV2 = serverData.getPresetLibraryV2;
   getPresetGroups = serverData.getPresetGroups;
   getPresetGroup = serverData.getPresetGroup;
   listPresets = presetQueryService.listPresets;
+  getPresetById = presetQueryService.getPresetById;
   resolveTemplatePresetImports = templateCrudActions.resolveTemplatePresetImports;
   createTrainingSceneDescriptionPreset = trainingPresetService.createTrainingSceneDescriptionPreset;
 });
@@ -417,6 +421,156 @@ test("ordinary preset category and list reads do not expose LoRA training preset
     await listPresets({ categoryId: "training-list-readable-category", includeInactive: true }),
     [],
     "ordinary preset API must not expose training presets even when called with a training category id",
+  );
+});
+
+test("ordinary preset reads do not expose LoRA training resources through linked variants or slots", async () => {
+  await prisma.presetCategory.createMany({
+    data: [
+      {
+        id: "ordinary-linked-source-category",
+        name: "Ordinary Linked Source",
+        slug: "ordinary-linked-source",
+        type: "preset",
+      },
+      {
+        id: "ordinary-linked-target-category",
+        name: "Ordinary Linked Target",
+        slug: "ordinary-linked-target",
+        type: "preset",
+      },
+      {
+        id: "training-linked-hidden-category",
+        name: "Training Linked Hidden",
+        slug: "training-linked-hidden",
+        type: "training_scene_description",
+      },
+    ],
+  });
+  await prisma.presetCategorySlot.createMany({
+    data: [
+      {
+        id: "ordinary-slot-to-ordinary",
+        categoryId: "ordinary-linked-source-category",
+        slotKey: "ordinary-target",
+        slotCategoryId: "ordinary-linked-target-category",
+        label: "Ordinary Target",
+        sortOrder: 0,
+      },
+      {
+        id: "ordinary-slot-to-training",
+        categoryId: "ordinary-linked-source-category",
+        slotKey: "training-target",
+        slotCategoryId: "training-linked-hidden-category",
+        label: "Training Target",
+        sortOrder: 1,
+      },
+    ],
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "ordinary-linked-source-preset",
+        categoryId: "ordinary-linked-source-category",
+        name: "Ordinary Linked Source Preset",
+        slug: "ordinary-linked-source-preset",
+      },
+      {
+        id: "ordinary-linked-target-preset",
+        categoryId: "ordinary-linked-target-category",
+        name: "Ordinary Linked Target Preset",
+        slug: "ordinary-linked-target-preset",
+      },
+      {
+        id: "training-linked-hidden-preset",
+        categoryId: "training-linked-hidden-category",
+        name: "Training Linked Hidden Preset",
+        slug: "training-linked-hidden-preset",
+      },
+    ],
+  });
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "ordinary-linked-source-variant",
+        presetId: "ordinary-linked-source-preset",
+        name: "Ordinary Source Variant",
+        slug: "ordinary-source-variant",
+        prompt: "ordinary source prompt",
+      },
+      {
+        id: "ordinary-linked-target-variant",
+        presetId: "ordinary-linked-target-preset",
+        name: "Ordinary Target Variant",
+        slug: "ordinary-target-variant",
+        prompt: "ordinary target prompt",
+      },
+      {
+        id: "training-linked-hidden-variant",
+        presetId: "training-linked-hidden-preset",
+        name: "Training Hidden Variant",
+        slug: "training-hidden-variant",
+        prompt: "training linked prompt must not leak",
+      },
+    ],
+  });
+  await prisma.presetVariantLink.createMany({
+    data: [
+      {
+        id: "ordinary-link-to-ordinary",
+        sourceVariantId: "ordinary-linked-source-variant",
+        linkedVariantId: "ordinary-linked-target-variant",
+        sortOrder: 0,
+      },
+      {
+        id: "ordinary-link-to-training",
+        sourceVariantId: "ordinary-linked-source-variant",
+        linkedVariantId: "training-linked-hidden-variant",
+        sortOrder: 1,
+      },
+    ],
+  });
+
+  const categories = await getPresetCategoriesWithPresets();
+  const sourceCategory = categories.find((category) => category.id === "ordinary-linked-source-category");
+  const sourcePreset = sourceCategory?.presets.find((preset) => preset.id === "ordinary-linked-source-preset");
+
+  assert.deepEqual(
+    sourceCategory?.slotTemplate.map((slot) => slot.categoryId),
+    ["ordinary-linked-target-category"],
+    "ordinary preset category slot templates must not expose training-owned categories",
+  );
+  assert.deepEqual(
+    sourcePreset?.variants[0]?.linkedVariants,
+    [{ presetId: "ordinary-linked-target-preset", variantId: "ordinary-linked-target-variant" }],
+    "ordinary preset page data must not expose linked variants owned by training presets",
+  );
+
+  const apiPreset = (await listPresets({ categoryId: "ordinary-linked-source-category", includeInactive: true }))[0];
+  assert.deepEqual(
+    apiPreset?.variants[0]?.linkedVariants,
+    [{ presetId: "ordinary-linked-target-preset", variantId: "ordinary-linked-target-variant" }],
+    "ordinary preset API list must not expose linked variants owned by training presets",
+  );
+  const detailPreset = await getPresetById("ordinary-linked-source-preset", true);
+  assert.deepEqual(
+    detailPreset?.variants[0]?.linkedVariants,
+    [{ presetId: "ordinary-linked-target-preset", variantId: "ordinary-linked-target-variant" }],
+    "ordinary preset API detail must not expose linked variants owned by training presets",
+  );
+
+  const libraryV2Category = (await getPresetLibraryV2()).categories.find(
+    (category) => category.id === "ordinary-linked-source-category",
+  );
+  assert.deepEqual(
+    libraryV2Category?.slotTemplate.map((slot) => slot.categoryId),
+    ["ordinary-linked-target-category"],
+    "ordinary block-editor preset library must not expose training-owned slot categories",
+  );
+  assert.deepEqual(
+    libraryV2Category?.presets[0]?.variants[0]?.linkedVariants,
+    [{ presetId: "ordinary-linked-target-preset", variantId: "ordinary-linked-target-variant" }],
+    "ordinary block-editor preset library must not expose linked variants owned by training presets",
   );
 });
 
