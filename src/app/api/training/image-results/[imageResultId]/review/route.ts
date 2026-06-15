@@ -1,9 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
-import { updateManagedTrainingImageResult } from "@/server/services/training/project-service";
 import {
-  mapLegacyTrainingGenerationError,
-  reviewLegacyTrainingImages,
-} from "@/server/services/training/legacy-compat-service";
+  mapTrainingGenerationRunMutationError,
+  reviewTrainingImageResult,
+} from "@/server/services/training/project-service";
 
 export const dynamic = "force-dynamic";
 
@@ -23,23 +22,12 @@ export async function POST(
 
   try {
     const { imageResultId } = await params;
-    const managed = await updateManagedTrainingImageResult(imageResultId, {
-      reviewStatus: typeof payload.reviewStatus === "string" ? String(payload.reviewStatus) : undefined,
-    });
-    if (managed) {
-      return ok(managed);
-    }
-    const data = await reviewLegacyTrainingImages({
-      images: [
-        {
-          imageId: imageResultId,
-          reviewStatus: payload.reviewStatus,
-        },
-      ],
+    const data = await reviewTrainingImageResult(imageResultId, {
+      reviewStatus: payload.reviewStatus,
     });
     return ok(data);
   } catch (error) {
-    const mapped = mapLegacyTrainingGenerationError(error);
+    const mapped = mapTrainingGenerationRunMutationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

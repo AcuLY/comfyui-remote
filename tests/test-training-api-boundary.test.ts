@@ -187,3 +187,29 @@ test("training run enqueue routes use the project service boundary", () => {
   assert.match(projectService, /export async function enqueueTrainingSectionGenerationRun/);
   assert.match(projectService, /export async function enqueueTrainingRun/);
 });
+
+test("training image result routes use the project service boundary", () => {
+  const routeFiles = [
+    "src/app/api/training/image-results/[imageResultId]/route.ts",
+    "src/app/api/training/image-results/[imageResultId]/review/route.ts",
+  ];
+
+  for (const routeFile of routeFiles) {
+    const source = readFileSync(join(process.cwd(), routeFile), "utf8");
+
+    assert.match(
+      source,
+      /@\/server\/services\/training\/project-service/,
+      `${routeFile} should route image result mutations through project-service`,
+    );
+    assert.doesNotMatch(
+      source,
+      /@\/server\/services\/training\/legacy-compat-service/,
+      `${routeFile} should not fallback to legacy compat from the route layer`,
+    );
+  }
+
+  const projectService = readFileSync(join(process.cwd(), "src/server/services/training/project-service.ts"), "utf8");
+  assert.match(projectService, /export async function updateTrainingImageResult/);
+  assert.match(projectService, /export async function reviewTrainingImageResult/);
+});

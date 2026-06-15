@@ -2,13 +2,9 @@ import { fail, ok } from "@/lib/api-response";
 import {
   deleteManagedTrainingImageResult,
   mapTrainingProjectError,
-  updateManagedTrainingImageResult,
+  mapTrainingGenerationRunMutationError,
+  updateTrainingImageResult,
 } from "@/server/services/training/project-service";
-import {
-  mapLegacyTrainingGenerationError,
-  reviewLegacyTrainingImages,
-  updateLegacyTrainingImageCaption,
-} from "@/server/services/training/legacy-compat-service";
 
 export const dynamic = "force-dynamic";
 
@@ -28,40 +24,13 @@ export async function PATCH(
 
   try {
     const { imageResultId } = await params;
-    const managed = await updateManagedTrainingImageResult(imageResultId, {
+    const data = await updateTrainingImageResult(imageResultId, {
       reviewStatus: typeof payload.reviewStatus === "string" ? String(payload.reviewStatus) : undefined,
       captionDraft: typeof payload.captionDraft === "string" ? payload.captionDraft : null,
     });
-    if (managed) {
-      return ok(managed);
-    }
-    const operations: unknown[] = [];
-
-    if (typeof payload.captionDraft === "string") {
-      operations.push(updateLegacyTrainingImageCaption(imageResultId, { captionDraft: payload.captionDraft }));
-    }
-
-    if (typeof payload.reviewStatus === "string") {
-      operations.push(reviewLegacyTrainingImages({
-        images: [
-          {
-            imageId: imageResultId,
-            reviewStatus: payload.reviewStatus,
-          },
-        ],
-      }));
-    }
-
-    if (operations.length === 0) {
-      return fail("At least one supported field is required", 400, {
-        supportedFields: ["captionDraft", "reviewStatus"],
-      });
-    }
-
-    const data = await Promise.all(operations);
-    return ok(data.length === 1 ? data[0] : data);
+    return ok(data);
   } catch (error) {
-    const mapped = mapLegacyTrainingGenerationError(error);
+    const mapped = mapTrainingGenerationRunMutationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

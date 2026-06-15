@@ -29,6 +29,8 @@ import {
   mapLegacyTrainingProjectError,
   mapLegacyTrainingRunError,
   restoreLegacyTrainingProject,
+  reviewLegacyTrainingImages,
+  updateLegacyTrainingImageCaption,
   updateCharacterLoraSourceImage,
   uploadCharacterLoraSourceImage,
 } from "@/server/services/training/legacy-compat-service";
@@ -1091,6 +1093,51 @@ export async function updateManagedTrainingImageResult(
     return nextProjects
       .find((project) => project.id === refreshed.project.id)
       ?.resultPool.find((result) => result.id === imageResultId) ?? null;
+  });
+}
+
+export async function updateTrainingImageResult(
+  imageResultId: string,
+  input: { reviewStatus?: string; captionDraft?: string | null },
+) {
+  const managedResult = await updateManagedTrainingImageResult(imageResultId, input);
+  if (managedResult) return managedResult;
+
+  const operations: unknown[] = [];
+  if (typeof input.captionDraft === "string") {
+    operations.push(updateLegacyTrainingImageCaption(imageResultId, { captionDraft: input.captionDraft }));
+  }
+  if (typeof input.reviewStatus === "string") {
+    operations.push(reviewLegacyTrainingImages({
+      images: [
+        {
+          imageId: imageResultId,
+          reviewStatus: input.reviewStatus,
+        },
+      ],
+    }));
+  }
+  if (operations.length === 0) {
+    throw new TrainingProjectServiceError("At least one supported field is required", 400, {
+      supportedFields: ["captionDraft", "reviewStatus"],
+    });
+  }
+
+  const data = await Promise.all(operations);
+  return data.length === 1 ? data[0] : data;
+}
+
+export async function reviewTrainingImageResult(imageResultId: string, input: { reviewStatus?: unknown }) {
+  const reviewStatus = typeof input.reviewStatus === "string" ? input.reviewStatus : undefined;
+  const managedResult = await updateManagedTrainingImageResult(imageResultId, { reviewStatus });
+  if (managedResult) return managedResult;
+  return reviewLegacyTrainingImages({
+    images: [
+      {
+        imageId: imageResultId,
+        reviewStatus: input.reviewStatus,
+      },
+    ],
   });
 }
 
