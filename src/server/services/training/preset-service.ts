@@ -3,9 +3,6 @@ import { dirname, join } from "node:path";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import type { LoraTrainingPreset } from "@/features/training/types";
-import {
-  TRAINING_SCENE_DESCRIPTION_PRESET_CATEGORY_TYPE as TRAINING_PRESET_CATEGORY_TYPE,
-} from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
 import {
   trainingPresetInputSchema,
@@ -28,8 +25,6 @@ import {
 } from "@/server/repositories/training/scene-description-presets";
 import { slugifyForRepository } from "@/server/services/training/legacy-compat-service";
 
-const TRAINING_PRESET_VARIANT_NAME = "场景描述";
-const TRAINING_PRESET_VARIANT_SLUG = "scene-description";
 const TRAINING_PRESET_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-presets.json");
 const TRAINING_PRESET_CATEGORY_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-categories.json");
 const TRAINING_PRESET_FOLDER_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-folders.json");
@@ -247,7 +242,6 @@ function formatUpdatedAt(value: Date | string) {
 }
 
 function mapTrainingPreset(row: TrainingPresetRow): LoraTrainingPreset {
-  const primaryVariant = row.variants[0];
   const usage = defaultUsageForPreset(row.id);
   return {
     id: row.id,
@@ -256,7 +250,7 @@ function mapTrainingPreset(row: TrainingPresetRow): LoraTrainingPreset {
     folder: row.folder?.name ?? "未归档",
     status: row.isActive ? "active" : "inactive",
     updatedAt: formatUpdatedAt(row.updatedAt),
-    sceneDescriptionText: primaryVariant?.prompt ?? row.notes ?? "",
+    sceneDescriptionText: row.sceneDescriptionText,
     projectUsage: usage.projectUsage,
     templateUsage: usage.templateUsage,
   };
@@ -270,7 +264,7 @@ function mapTrainingSceneCategory(row: TrainingSceneCategoryRow): TrainingSceneD
     icon: row.icon,
     color: row.color,
     sortOrder: row.sortOrder,
-    sceneDescriptionOrder: row.positivePromptOrder,
+    sceneDescriptionOrder: row.sceneDescriptionOrder,
   };
 }
 
@@ -362,7 +356,7 @@ function nextFallbackUpdatedAt() {
 
 function shouldUseTrainingPresetFileFallback(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
-  return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003/i.test(message);
+  return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003|P2021/i.test(message);
 }
 
 function nextFallbackCategoryId(slug: string) {
@@ -493,97 +487,37 @@ function parseTrainingSceneFolderUpdateInput(input: unknown) {
 }
 
 async function resolveDefaultTrainingCategoryId(tx: Prisma.TransactionClient, preset: TrainingPresetDefault) {
-  const existingTrainingCategory = await tx.presetCategory.findFirst({
+  const existingTrainingCategory = await tx.trainingSceneDescriptionPresetCategory.findFirst({
     where: {
       slug: preset.categorySlug,
-      type: TRAINING_PRESET_CATEGORY_TYPE,
     },
     select: { id: true },
   });
 
   if (existingTrainingCategory) {
-    await tx.presetCategory.update({
+    await tx.trainingSceneDescriptionPresetCategory.update({
       where: { id: existingTrainingCategory.id },
       data: {
         name: preset.categoryName,
         sortOrder: preset.categorySortOrder,
+        sceneDescriptionOrder: preset.categorySortOrder,
       },
     });
     return existingTrainingCategory.id;
   }
 
-  let categorySlug = preset.categorySlug;
-  let suffix = 2;
-
-  while (true) {
-    const slugOwner = await tx.presetCategory.findUnique({
-      where: { slug: categorySlug },
-      select: { id: true, type: true },
-    });
-
-    if (!slugOwner) {
-      const createdCategory = await tx.presetCategory.create({
-        data: {
-          id: `training-category-${categorySlug}`,
-          name: preset.categoryName,
-          slug: categorySlug,
-          type: TRAINING_PRESET_CATEGORY_TYPE,
-          sortOrder: preset.categorySortOrder,
-        },
-        select: { id: true },
-      });
-      return createdCategory.id;
-    }
-
-    if (slugOwner.type === TRAINING_PRESET_CATEGORY_TYPE) {
-      await tx.presetCategory.update({
-        where: { id: slugOwner.id },
-        data: {
-          name: preset.categoryName,
-          sortOrder: preset.categorySortOrder,
-        },
-      });
-      return slugOwner.id;
-    }
-
-    categorySlug = `${preset.categorySlug}-${suffix}`;
-    suffix += 1;
-  }
-}
-
-async function resolveDefaultTrainingPresetId(tx: Prisma.TransactionClient, desiredPresetId: string) {
-  const existingPreset = await tx.preset.findUnique({
-    where: { id: desiredPresetId },
-    select: {
-      id: true,
-      category: { select: { type: true } },
+  const createdCategory = await tx.trainingSceneDescriptionPresetCategory.create({
+    data: {
+      id: `training-category-${preset.categorySlug}`,
+      name: preset.categoryName,
+      slug: preset.categorySlug,
+      sortOrder: preset.categorySortOrder,
+      sceneDescriptionOrder: preset.categorySortOrder,
     },
+    select: { id: true },
   });
 
-  if (!existingPreset || existingPreset.category.type === TRAINING_PRESET_CATEGORY_TYPE) {
-    return desiredPresetId;
-  }
-
-  const basePresetId = `training-scene-${desiredPresetId}`;
-  let candidatePresetId = basePresetId;
-  let suffix = 2;
-
-  while (true) {
-    const candidateOwner = await tx.preset.findUnique({
-      where: { id: candidatePresetId },
-      select: {
-        id: true,
-        category: { select: { type: true } },
-      },
-    });
-
-    if (!candidateOwner || candidateOwner.category.type === TRAINING_PRESET_CATEGORY_TYPE) {
-      return candidatePresetId;
-    }
-
-    candidatePresetId = `${basePresetId}-${suffix}`;
-    suffix += 1;
-  }
+  return createdCategory.id;
 }
 
 async function ensureDefaultTrainingPresets() {
@@ -601,7 +535,7 @@ async function ensureDefaultTrainingPresets() {
       const folderKey = `${categoryId}:${preset.folderName}`;
       let folderId = folderIds.get(folderKey);
       if (!folderId) {
-        const existingFolder = await tx.presetFolder.findFirst({
+        const existingFolder = await tx.trainingSceneDescriptionPresetFolder.findFirst({
           where: {
             categoryId,
             parentId: null,
@@ -611,12 +545,12 @@ async function ensureDefaultTrainingPresets() {
         });
         if (existingFolder) {
           folderId = existingFolder.id;
-          await tx.presetFolder.update({
+          await tx.trainingSceneDescriptionPresetFolder.update({
             where: { id: folderId },
             data: { sortOrder: preset.folderSortOrder },
           });
         } else {
-          const createdFolder = await tx.presetFolder.create({
+          const createdFolder = await tx.trainingSceneDescriptionPresetFolder.create({
             data: {
               id: `training-folder-${preset.id}`,
               categoryId,
@@ -631,55 +565,35 @@ async function ensureDefaultTrainingPresets() {
         folderIds.set(folderKey, folderId);
       }
 
-      const presetId = await resolveDefaultTrainingPresetId(tx, preset.id);
-      const existingPreset = await tx.preset.findUnique({
+      const presetId = preset.id;
+      const existingPreset = await tx.trainingSceneDescriptionPreset.findUnique({
         where: { id: presetId },
         select: { id: true },
       });
 
       if (!existingPreset) {
-        await tx.preset.create({
+        await tx.trainingSceneDescriptionPreset.create({
           data: {
             id: presetId,
             categoryId,
             folderId,
             name: preset.title,
             slug: presetId,
+            sceneDescriptionText: preset.sceneDescriptionText,
             isActive: preset.isActive,
             sortOrder: preset.sortOrder,
           },
         });
       } else {
-        await tx.preset.update({
+        await tx.trainingSceneDescriptionPreset.update({
           where: { id: presetId },
           data: {
             categoryId,
             folderId,
             name: preset.title,
+            sceneDescriptionText: preset.sceneDescriptionText,
             isActive: preset.isActive,
             sortOrder: preset.sortOrder,
-          },
-        });
-      }
-
-      const existingVariant = await tx.presetVariant.findFirst({
-        where: { presetId },
-        select: { id: true },
-      });
-
-      if (!existingVariant) {
-        await tx.presetVariant.create({
-          data: {
-            id: `${presetId}-scene`,
-            presetId,
-            name: TRAINING_PRESET_VARIANT_NAME,
-            slug: TRAINING_PRESET_VARIANT_SLUG,
-            prompt: preset.sceneDescriptionText,
-            negativePrompt: null,
-            lora1: Prisma.DbNull,
-            lora2: Prisma.DbNull,
-            sortOrder: 0,
-            isActive: true,
           },
         });
       }
@@ -722,7 +636,7 @@ async function createUniqueCategorySlug(name: string) {
   let candidate = base;
   let suffix = 2;
 
-  while (await prisma.presetCategory.findUnique({ where: { slug: candidate }, select: { id: true } })) {
+  while (await prisma.trainingSceneDescriptionPresetCategory.findUnique({ where: { slug: candidate }, select: { id: true } })) {
     candidate = `${base}-${suffix}`;
     suffix += 1;
   }
@@ -736,7 +650,7 @@ async function createUniquePresetSlug(categoryId: string, title: string, exclude
   let suffix = 2;
 
   while (true) {
-    const existing = await prisma.preset.findUnique({
+    const existing = await prisma.trainingSceneDescriptionPreset.findUnique({
       where: {
         categoryId_slug: {
           categoryId,
@@ -753,9 +667,8 @@ async function createUniquePresetSlug(categoryId: string, title: string, exclude
 
 async function resolveTrainingPresetCategoryId(name: string) {
   const normalized = name.trim();
-  const existing = await prisma.presetCategory.findFirst({
+  const existing = await prisma.trainingSceneDescriptionPresetCategory.findFirst({
     where: {
-      type: TRAINING_PRESET_CATEGORY_TYPE,
       name: normalized,
     },
     select: { id: true },
@@ -764,16 +677,15 @@ async function resolveTrainingPresetCategoryId(name: string) {
   if (existing) return existing.id;
 
   const slug = await createUniqueCategorySlug(normalized);
-  const maxOrder = await prisma.presetCategory.aggregate({
-    where: { type: TRAINING_PRESET_CATEGORY_TYPE },
+  const maxOrder = await prisma.trainingSceneDescriptionPresetCategory.aggregate({
     _max: { sortOrder: true },
   });
-  const created = await prisma.presetCategory.create({
+  const created = await prisma.trainingSceneDescriptionPresetCategory.create({
     data: {
       name: normalized,
       slug,
-      type: TRAINING_PRESET_CATEGORY_TYPE,
       sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
+      sceneDescriptionOrder: (maxOrder._max.sortOrder ?? -1) + 1,
     },
     select: { id: true },
   });
@@ -785,7 +697,7 @@ async function resolveTrainingPresetFolderId(categoryId: string, folderName: str
   const normalized = folderName.trim();
   if (!normalized || normalized === "未归档") return null;
 
-  const existing = await prisma.presetFolder.findFirst({
+  const existing = await prisma.trainingSceneDescriptionPresetFolder.findFirst({
     where: {
       categoryId,
       parentId: null,
@@ -796,11 +708,11 @@ async function resolveTrainingPresetFolderId(categoryId: string, folderName: str
 
   if (existing) return existing.id;
 
-  const maxOrder = await prisma.presetFolder.aggregate({
+  const maxOrder = await prisma.trainingSceneDescriptionPresetFolder.aggregate({
     where: { categoryId, parentId: null },
     _max: { sortOrder: true },
   });
-  const created = await prisma.presetFolder.create({
+  const created = await prisma.trainingSceneDescriptionPresetFolder.create({
     data: {
       categoryId,
       parentId: null,
@@ -974,24 +886,22 @@ export async function listTrainingSceneDescriptionTree(options: { includeInactiv
 export async function createTrainingSceneDescriptionCategory(input: unknown) {
   const parsed = parseTrainingSceneCategoryCreateInput(input);
   try {
-    const current = await prisma.presetCategory.findUnique({ where: { slug: parsed.slug }, select: { id: true } });
+    const current = await prisma.trainingSceneDescriptionPresetCategory.findUnique({ where: { slug: parsed.slug }, select: { id: true } });
     if (current) {
       throw new TrainingPresetServiceError("Training preset category slug already exists", 409, { slug: parsed.slug });
     }
 
-    const maxOrder = await prisma.presetCategory.aggregate({
-      where: { type: TRAINING_PRESET_CATEGORY_TYPE },
+    const maxOrder = await prisma.trainingSceneDescriptionPresetCategory.aggregate({
       _max: { sortOrder: true },
     });
-    const created = await prisma.presetCategory.create({
+    const created = await prisma.trainingSceneDescriptionPresetCategory.create({
       data: {
         name: parsed.name,
         slug: parsed.slug,
         icon: parsed.icon?.trim() || null,
         color: parsed.color?.trim() || null,
         sortOrder: parsed.sortOrder ?? ((maxOrder._max.sortOrder ?? -1) + 1),
-        positivePromptOrder: parsed.sceneDescriptionOrder ?? 0,
-        type: TRAINING_PRESET_CATEGORY_TYPE,
+        sceneDescriptionOrder: parsed.sceneDescriptionOrder ?? 0,
       },
       select: {
         id: true,
@@ -1000,8 +910,7 @@ export async function createTrainingSceneDescriptionCategory(input: unknown) {
         icon: true,
         color: true,
         sortOrder: true,
-        positivePromptOrder: true,
-        type: true,
+        sceneDescriptionOrder: true,
       },
     });
     revalidateTrainingPresetPaths();
@@ -1043,13 +952,13 @@ export async function updateTrainingSceneDescriptionCategory(categoryId: string,
       throw new TrainingPresetServiceError("Training preset category not found", 404, { categoryId });
     }
     if (parsed.slug && parsed.slug !== current.slug) {
-      const duplicate = await prisma.presetCategory.findUnique({ where: { slug: parsed.slug }, select: { id: true } });
+      const duplicate = await prisma.trainingSceneDescriptionPresetCategory.findUnique({ where: { slug: parsed.slug }, select: { id: true } });
       if (duplicate) {
         throw new TrainingPresetServiceError("Training preset category slug already exists", 409, { slug: parsed.slug });
       }
     }
 
-    const updated = await prisma.presetCategory.update({
+    const updated = await prisma.trainingSceneDescriptionPresetCategory.update({
       where: { id: categoryId },
       data: {
         name: parsed.name ?? current.name,
@@ -1057,7 +966,7 @@ export async function updateTrainingSceneDescriptionCategory(categoryId: string,
         icon: Object.prototype.hasOwnProperty.call(parsed, "icon") ? (parsed.icon?.trim() || null) : current.icon,
         color: Object.prototype.hasOwnProperty.call(parsed, "color") ? (parsed.color?.trim() || null) : current.color,
         sortOrder: parsed.sortOrder ?? current.sortOrder,
-        positivePromptOrder: parsed.sceneDescriptionOrder ?? current.positivePromptOrder,
+        sceneDescriptionOrder: parsed.sceneDescriptionOrder ?? current.sceneDescriptionOrder,
       },
       select: {
         id: true,
@@ -1066,8 +975,7 @@ export async function updateTrainingSceneDescriptionCategory(categoryId: string,
         icon: true,
         color: true,
         sortOrder: true,
-        positivePromptOrder: true,
-        type: true,
+        sceneDescriptionOrder: true,
       },
     });
     revalidateTrainingPresetPaths();
@@ -1122,17 +1030,15 @@ export async function deleteTrainingSceneDescriptionCategory(categoryId: string)
     }
 
     const [folderCount, activePresetCount] = await Promise.all([
-      prisma.presetFolder.count({
+      prisma.trainingSceneDescriptionPresetFolder.count({
         where: {
           categoryId,
-          category: { type: TRAINING_PRESET_CATEGORY_TYPE },
         },
       }),
-      prisma.preset.count({
+      prisma.trainingSceneDescriptionPreset.count({
         where: {
           categoryId,
           isActive: true,
-          category: { type: TRAINING_PRESET_CATEGORY_TYPE },
         },
       }),
     ]);
@@ -1145,14 +1051,13 @@ export async function deleteTrainingSceneDescriptionCategory(categoryId: string)
     }
 
     await prisma.$transaction([
-      prisma.preset.deleteMany({
+      prisma.trainingSceneDescriptionPreset.deleteMany({
         where: {
           categoryId,
           isActive: false,
-          category: { type: TRAINING_PRESET_CATEGORY_TYPE },
         },
       }),
-      prisma.presetCategory.delete({ where: { id: categoryId } }),
+      prisma.trainingSceneDescriptionPresetCategory.delete({ where: { id: categoryId } }),
     ]);
     revalidateTrainingPresetPaths();
     return { success: true };
@@ -1204,14 +1109,14 @@ export async function createTrainingSceneDescriptionFolder(input: unknown) {
       }
     }
 
-    const siblingMax = await prisma.presetFolder.aggregate({
+    const siblingMax = await prisma.trainingSceneDescriptionPresetFolder.aggregate({
       where: {
         categoryId: parsed.categoryId,
         parentId: parsed.parentId ?? null,
       },
       _max: { sortOrder: true },
     });
-    const created = await prisma.presetFolder.create({
+    const created = await prisma.trainingSceneDescriptionPresetFolder.create({
       data: {
         categoryId: parsed.categoryId,
         parentId: parsed.parentId ?? null,
@@ -1272,10 +1177,9 @@ export async function updateTrainingSceneDescriptionFolder(folderId: string, inp
 
     const nextCategoryId = parsed.categoryId ?? current.categoryId;
     if (nextCategoryId !== current.categoryId) {
-      const presetCount = await prisma.preset.count({
+      const presetCount = await prisma.trainingSceneDescriptionPreset.count({
         where: {
           folderId,
-          category: { type: TRAINING_PRESET_CATEGORY_TYPE },
         },
       });
       if (presetCount > 0) {
@@ -1301,7 +1205,7 @@ export async function updateTrainingSceneDescriptionFolder(folderId: string, inp
       }
     }
 
-    const updated = await prisma.presetFolder.update({
+    const updated = await prisma.trainingSceneDescriptionPresetFolder.update({
       where: { id: folderId },
       data: {
         categoryId: nextCategoryId,
@@ -1389,12 +1293,11 @@ export async function deleteTrainingSceneDescriptionFolder(folderId: string) {
     }
 
     const [childFolderCount, activePresetCount] = await Promise.all([
-      prisma.presetFolder.count({ where: { parentId: folderId } }),
-      prisma.preset.count({
+      prisma.trainingSceneDescriptionPresetFolder.count({ where: { parentId: folderId } }),
+      prisma.trainingSceneDescriptionPreset.count({
         where: {
           folderId,
           isActive: true,
-          category: { type: TRAINING_PRESET_CATEGORY_TYPE },
         },
       }),
     ]);
@@ -1407,14 +1310,13 @@ export async function deleteTrainingSceneDescriptionFolder(folderId: string) {
     }
 
     await prisma.$transaction([
-      prisma.preset.deleteMany({
+      prisma.trainingSceneDescriptionPreset.deleteMany({
         where: {
           folderId,
           isActive: false,
-          category: { type: TRAINING_PRESET_CATEGORY_TYPE },
         },
       }),
-      prisma.presetFolder.delete({ where: { id: folderId } }),
+      prisma.trainingSceneDescriptionPresetFolder.delete({ where: { id: folderId } }),
     ]);
     revalidateTrainingPresetPaths();
     return { success: true };
@@ -1463,36 +1365,23 @@ export async function createTrainingSceneDescriptionPreset(input: unknown) {
     const categoryId = await resolveTrainingPresetCategoryId(parsed.category);
     const folderId = await resolveTrainingPresetFolderId(categoryId, parsed.folder);
     const slug = await createUniquePresetSlug(categoryId, parsed.title);
-    const maxOrder = await prisma.preset.aggregate({
+    const maxOrder = await prisma.trainingSceneDescriptionPreset.aggregate({
       where: { categoryId },
       _max: { sortOrder: true },
     });
 
     const created = await prisma.$transaction(async (tx) => {
-      const preset = await tx.preset.create({
+      const preset = await tx.trainingSceneDescriptionPreset.create({
         data: {
           categoryId,
           folderId,
           name: parsed.title,
           slug,
+          sceneDescriptionText: parsed.sceneDescriptionText,
           isActive: true,
           sortOrder: (maxOrder._max.sortOrder ?? -1) + 1,
         },
         select: { id: true },
-      });
-
-      await tx.presetVariant.create({
-        data: {
-          presetId: preset.id,
-          name: TRAINING_PRESET_VARIANT_NAME,
-          slug: TRAINING_PRESET_VARIANT_SLUG,
-          prompt: parsed.sceneDescriptionText,
-          negativePrompt: null,
-          lora1: Prisma.DbNull,
-          lora2: Prisma.DbNull,
-          sortOrder: 0,
-          isActive: true,
-        },
       });
 
       return preset.id;
@@ -1544,45 +1433,16 @@ export async function updateTrainingSceneDescriptionPreset(presetId: string, inp
     const slug = await createUniquePresetSlug(categoryId, parsed.title, presetId);
 
     await prisma.$transaction(async (tx) => {
-      await tx.preset.update({
+      await tx.trainingSceneDescriptionPreset.update({
         where: { id: presetId },
         data: {
           categoryId,
           folderId,
           name: parsed.title,
           slug,
+          sceneDescriptionText: parsed.sceneDescriptionText,
         },
       });
-
-      const firstVariant = await tx.presetVariant.findFirst({
-        where: {
-          presetId,
-          isActive: true,
-        },
-        orderBy: { sortOrder: "asc" },
-        select: { id: true },
-      });
-
-      if (firstVariant) {
-        await tx.presetVariant.update({
-          where: { id: firstVariant.id },
-          data: { prompt: parsed.sceneDescriptionText },
-        });
-      } else {
-        await tx.presetVariant.create({
-          data: {
-            presetId,
-            name: TRAINING_PRESET_VARIANT_NAME,
-            slug: TRAINING_PRESET_VARIANT_SLUG,
-            prompt: parsed.sceneDescriptionText,
-            negativePrompt: null,
-            lora1: Prisma.DbNull,
-            lora2: Prisma.DbNull,
-            sortOrder: 0,
-            isActive: true,
-          },
-        });
-      }
     });
 
     revalidateTrainingPresetPaths(presetId);
@@ -1626,7 +1486,7 @@ export async function deleteTrainingSceneDescriptionPreset(presetId: string) {
       throw new TrainingPresetServiceError("Training preset not found", 404, { presetId });
     }
 
-    await prisma.preset.update({
+    await prisma.trainingSceneDescriptionPreset.update({
       where: { id: presetId },
       data: { isActive: false },
     });
@@ -1694,8 +1554,7 @@ export async function saveTrainingSceneDescriptionPresetSortRules(input: unknown
   const { categoryOrder, presetOrder } = result.data;
 
   try {
-    const categories = await prisma.presetCategory.findMany({
-      where: { type: TRAINING_PRESET_CATEGORY_TYPE },
+    const categories = await prisma.trainingSceneDescriptionPresetCategory.findMany({
       select: { id: true, name: true },
     });
     const categoryByName = new Map(categories.map((category) => [category.name, category]));
@@ -1704,10 +1563,7 @@ export async function saveTrainingSceneDescriptionPresetSortRules(input: unknown
       throw new TrainingPresetServiceError("Training preset category not found", 404, { missingCategories });
     }
 
-    const presets = await prisma.preset.findMany({
-      where: {
-        category: { type: TRAINING_PRESET_CATEGORY_TYPE },
-      },
+    const presets = await prisma.trainingSceneDescriptionPreset.findMany({
       select: {
         id: true,
         categoryId: true,
@@ -1729,13 +1585,13 @@ export async function saveTrainingSceneDescriptionPresetSortRules(input: unknown
 
     await prisma.$transaction([
       ...categoryOrder.map((name, index) =>
-        prisma.presetCategory.update({
+        prisma.trainingSceneDescriptionPresetCategory.update({
           where: { id: categoryByName.get(name)!.id },
           data: { sortOrder: index },
         })),
       ...[...groupedPresetIds.entries()].flatMap(([, ids]) =>
         ids.map((presetId, index) =>
-          prisma.preset.update({
+          prisma.trainingSceneDescriptionPreset.update({
             where: { id: presetId },
             data: { sortOrder: index },
           }),

@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/prisma";
-import { trainingSceneDescriptionPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { createTrainingSceneDescriptionPreset } from "@/server/services/training/preset-service";
 import { getTrainingRun, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
@@ -39,16 +38,15 @@ async function resolvePresetCategory(input: CreateTrainingRunPresetInput) {
   if (input.category?.trim()) return input.category.trim();
   if (input.categoryId?.trim()) {
     try {
-      const category = await prisma.presetCategory.findFirst({
+      const category = await prisma.trainingSceneDescriptionPresetCategory.findFirst({
         where: {
           id: input.categoryId.trim(),
-          type: trainingSceneDescriptionPresetCategoryTypeWhere(),
         },
         select: { name: true },
       });
       if (category?.name?.trim()) return category.name.trim();
     } catch {
-      // Fall through to the default training category when the shared DB is unavailable.
+      // Fall through to the default training category when the DB is unavailable.
     }
   }
   return "训练产物";

@@ -1,25 +1,14 @@
 import { Prisma } from "@/generated/prisma";
-import {
-  TRAINING_SCENE_DESCRIPTION_PRESET_CATEGORY_TYPE,
-  trainingSceneDescriptionPresetCategoryTypeWhere,
-} from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
 
-export const TRAINING_PRESET_CATEGORY_TYPE = TRAINING_SCENE_DESCRIPTION_PRESET_CATEGORY_TYPE;
-
-export type TrainingPresetRow = Prisma.PresetGetPayload<{
+export type TrainingPresetRow = Prisma.TrainingSceneDescriptionPresetGetPayload<{
   include: {
-    category: { select: { id: true; name: true; slug: true; sortOrder: true; type: true } };
+    category: { select: { id: true; name: true; slug: true; sortOrder: true; sceneDescriptionOrder: true } };
     folder: { select: { id: true; name: true; sortOrder: true } };
-    variants: {
-      where: { isActive: true };
-      orderBy: { sortOrder: "asc" };
-      select: { id: true; prompt: true; sortOrder: true };
-    };
   };
 }>;
 
-export type TrainingSceneCategoryRow = Prisma.PresetCategoryGetPayload<{
+export type TrainingSceneCategoryRow = Prisma.TrainingSceneDescriptionPresetCategoryGetPayload<{
   select: {
     id: true;
     name: true;
@@ -27,12 +16,11 @@ export type TrainingSceneCategoryRow = Prisma.PresetCategoryGetPayload<{
     icon: true;
     color: true;
     sortOrder: true;
-    positivePromptOrder: true;
-    type: true;
+    sceneDescriptionOrder: true;
   };
 }>;
 
-export type TrainingSceneFolderRow = Prisma.PresetFolderGetPayload<{
+export type TrainingSceneFolderRow = Prisma.TrainingSceneDescriptionPresetFolderGetPayload<{
   select: {
     id: true;
     categoryId: true;
@@ -43,12 +31,7 @@ export type TrainingSceneFolderRow = Prisma.PresetFolderGetPayload<{
 }>;
 
 export async function listTrainingSceneDescriptionPresetRows() {
-  return prisma.preset.findMany({
-    where: {
-      category: {
-        type: trainingSceneDescriptionPresetCategoryTypeWhere(),
-      },
-    },
+  return prisma.trainingSceneDescriptionPreset.findMany({
     orderBy: [
       { category: { sortOrder: "asc" } },
       { sortOrder: "asc" },
@@ -61,22 +44,13 @@ export async function listTrainingSceneDescriptionPresetRows() {
           name: true,
           slug: true,
           sortOrder: true,
-          type: true,
+          sceneDescriptionOrder: true,
         },
       },
       folder: {
         select: {
           id: true,
           name: true,
-          sortOrder: true,
-        },
-      },
-      variants: {
-        where: { isActive: true },
-        orderBy: { sortOrder: "asc" },
-        select: {
-          id: true,
-          prompt: true,
           sortOrder: true,
         },
       },
@@ -85,12 +59,9 @@ export async function listTrainingSceneDescriptionPresetRows() {
 }
 
 export async function getTrainingSceneDescriptionPresetRow(presetId: string) {
-  return prisma.preset.findFirst({
+  return prisma.trainingSceneDescriptionPreset.findFirst({
     where: {
       id: presetId,
-      category: {
-        type: trainingSceneDescriptionPresetCategoryTypeWhere(),
-      },
     },
     include: {
       category: {
@@ -99,7 +70,7 @@ export async function getTrainingSceneDescriptionPresetRow(presetId: string) {
           name: true,
           slug: true,
           sortOrder: true,
-          type: true,
+          sceneDescriptionOrder: true,
         },
       },
       folder: {
@@ -109,25 +80,15 @@ export async function getTrainingSceneDescriptionPresetRow(presetId: string) {
           sortOrder: true,
         },
       },
-      variants: {
-        where: { isActive: true },
-        orderBy: { sortOrder: "asc" },
-        select: {
-          id: true,
-          prompt: true,
-          sortOrder: true,
-        },
-      },
     },
   });
 }
 
 export async function listTrainingSceneDescriptionCategoryRows() {
-  return prisma.presetCategory.findMany({
-    where: { type: trainingSceneDescriptionPresetCategoryTypeWhere() },
+  return prisma.trainingSceneDescriptionPresetCategory.findMany({
     orderBy: [
       { sortOrder: "asc" },
-      { positivePromptOrder: "asc" },
+      { sceneDescriptionOrder: "asc" },
       { createdAt: "asc" },
     ],
     select: {
@@ -137,17 +98,15 @@ export async function listTrainingSceneDescriptionCategoryRows() {
       icon: true,
       color: true,
       sortOrder: true,
-      positivePromptOrder: true,
-      type: true,
+      sceneDescriptionOrder: true,
     },
   });
 }
 
 export async function getTrainingSceneDescriptionCategoryRow(categoryId: string) {
-  return prisma.presetCategory.findFirst({
+  return prisma.trainingSceneDescriptionPresetCategory.findFirst({
     where: {
       id: categoryId,
-      type: trainingSceneDescriptionPresetCategoryTypeWhere(),
     },
     select: {
       id: true,
@@ -156,19 +115,13 @@ export async function getTrainingSceneDescriptionCategoryRow(categoryId: string)
       icon: true,
       color: true,
       sortOrder: true,
-      positivePromptOrder: true,
-      type: true,
+      sceneDescriptionOrder: true,
     },
   });
 }
 
 export async function listTrainingSceneDescriptionFolderRows() {
-  return prisma.presetFolder.findMany({
-    where: {
-      category: {
-        type: trainingSceneDescriptionPresetCategoryTypeWhere(),
-      },
-    },
+  return prisma.trainingSceneDescriptionPresetFolder.findMany({
     orderBy: [
       { categoryId: "asc" },
       { parentId: "asc" },
@@ -186,12 +139,9 @@ export async function listTrainingSceneDescriptionFolderRows() {
 }
 
 export async function getTrainingSceneDescriptionFolderRow(folderId: string) {
-  return prisma.presetFolder.findFirst({
+  return prisma.trainingSceneDescriptionPresetFolder.findFirst({
     where: {
       id: folderId,
-      category: {
-        type: trainingSceneDescriptionPresetCategoryTypeWhere(),
-      },
     },
     select: {
       id: true,

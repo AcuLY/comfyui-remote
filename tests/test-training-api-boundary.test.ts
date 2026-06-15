@@ -335,10 +335,10 @@ test("preset resource lists stay scoped to their owning work mode except shared 
     join(process.cwd(), "src/server/repositories/training/scene-description-presets.ts"),
     "utf8",
   );
-  assert.match(
+  assert.doesNotMatch(
     trainingPresetRepositorySource,
     /@\/lib\/actions\/preset-resource-scope/,
-    "Training preset repository should consume the shared resource-scope contract.",
+    "Training preset repository should not depend on generation preset resource-scope filters after moving to dedicated tables.",
   );
   assert.doesNotMatch(
     trainingPresetRepositorySource,
@@ -347,25 +347,40 @@ test("preset resource lists stay scoped to their owning work mode except shared 
   );
   assert.match(
     trainingPresetRepositorySource,
-    /category:\s*\{[\s\S]*?type:\s*trainingSceneDescriptionPresetCategoryTypeWhere\(\)[\s\S]*?\}/,
-    "Training preset rows should only read through the training scene-description scope helper.",
+    /trainingSceneDescriptionPreset\.findMany/,
+    "Training preset rows should read from the dedicated training scene-description preset table.",
   );
   assert.match(
     trainingPresetRepositorySource,
-    /where:\s*\{\s*type:\s*trainingSceneDescriptionPresetCategoryTypeWhere\(\)\s*\}/,
-    "Training preset category rows should be isolated through the training scene-description scope helper.",
+    /trainingSceneDescriptionPresetCategory\.findMany/,
+    "Training preset category rows should read from the dedicated training scene-description category table.",
+  );
+  assert.match(
+    trainingPresetRepositorySource,
+    /trainingSceneDescriptionPresetFolder\.findMany/,
+    "Training preset folder rows should read from the dedicated training scene-description folder table.",
+  );
+  assert.doesNotMatch(
+    trainingPresetRepositorySource,
+    /prisma\.preset(?:Category|Folder)?\./,
+    "Training preset repository must not read from generation preset tables.",
   );
 
   const trainingPresetServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/preset-service.ts"), "utf8");
   assert.match(
     trainingPresetServiceSource,
-    /presetCategory\.findFirst\(\{\s*where:\s*\{[\s\S]*?slug:\s*preset\.categorySlug,[\s\S]*?type:\s*TRAINING_PRESET_CATEGORY_TYPE/,
-    "Training default presets should only reuse an existing category when it is already training-owned.",
+    /trainingSceneDescriptionPresetCategory\.findFirst\(\{\s*where:\s*\{[\s\S]*?slug:\s*preset\.categorySlug/,
+    "Training default presets should only reuse dedicated training scene-description categories.",
   );
   assert.doesNotMatch(
     trainingPresetServiceSource,
     /presetCategory\.findUnique\(\{\s*where:\s*\{\s*slug:\s*preset\.categorySlug\s*\}/,
     "Training default presets must not claim an ordinary generation category just because the slug matches.",
+  );
+  assert.doesNotMatch(
+    trainingPresetServiceSource,
+    /(?:prisma|tx)\.preset(?:Category|Folder|Variant)?\./,
+    "Training scene-description preset CRUD must not write to generation preset tables.",
   );
 
   const { buildWorkModeNavLinks } = await import("../src/app/design-demos/routing/routes");
@@ -523,17 +538,12 @@ test("training run create-preset category hints only resolve training-owned cate
   const runPresetServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/run-preset-service.ts"), "utf8");
   assert.match(
     runPresetServiceSource,
-    /trainingSceneDescriptionPresetCategoryTypeWhere/,
-    "Training run create-preset should reuse the shared training preset scope helper.",
-  );
-  assert.match(
-    runPresetServiceSource,
-    /presetCategory\.findFirst\(\{\s*where:\s*\{[\s\S]*?id:\s*input\.categoryId\.trim\(\),[\s\S]*?type:\s*trainingSceneDescriptionPresetCategoryTypeWhere\(\)/,
-    "Training run create-preset should resolve categoryId hints only when they are training-owned categories.",
+    /trainingSceneDescriptionPresetCategory\.findFirst/,
+    "Training run create-preset should resolve category hints through the dedicated training category table.",
   );
   assert.doesNotMatch(
     runPresetServiceSource,
-    /presetCategory\.findUnique\(\{\s*where:\s*\{\s*id:\s*input\.categoryId\.trim\(\)\s*\}/,
+    /prisma\.presetCategory\./,
     "Training run create-preset must not derive training preset categories from generation preset category ids.",
   );
 });
