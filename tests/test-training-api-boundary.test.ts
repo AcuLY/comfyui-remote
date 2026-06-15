@@ -252,6 +252,74 @@ test("training scene-description row reads go through a Training repository boun
   );
 });
 
+test("preset resource lists stay scoped to their owning work mode except shared models and settings", async () => {
+  const generationPresetQuerySource = readFileSync(join(process.cwd(), "src/server/services/preset-query-service.ts"), "utf8");
+  assert.match(
+    generationPresetQuerySource,
+    /category:\s*\{\s*type:\s*"preset"\s*\}/,
+    "Generation preset APIs should only read ordinary preset categories.",
+  );
+
+  const generationPresetViewSource = readFileSync(join(process.cwd(), "src/server/repositories/preset-view-repository.ts"), "utf8");
+  assert.match(
+    generationPresetViewSource,
+    /where:\s*\{\s*type:\s*"preset"\s*\}/,
+    "Generation preset pages should not include training scene-description categories.",
+  );
+
+  const trainingPresetRepositorySource = readFileSync(
+    join(process.cwd(), "src/server/repositories/training/scene-description-presets.ts"),
+    "utf8",
+  );
+  assert.match(trainingPresetRepositorySource, /TRAINING_PRESET_CATEGORY_TYPE\s*=\s*"training_scene_description"/);
+  assert.match(
+    trainingPresetRepositorySource,
+    /category:\s*\{[\s\S]*?type:\s*TRAINING_PRESET_CATEGORY_TYPE[\s\S]*?\}/,
+    "Training preset rows should only read training scene-description categories.",
+  );
+  assert.match(
+    trainingPresetRepositorySource,
+    /where:\s*\{\s*type:\s*TRAINING_PRESET_CATEGORY_TYPE\s*\}/,
+    "Training preset category rows should be isolated from ordinary generation preset categories.",
+  );
+
+  const trainingPresetServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/preset-service.ts"), "utf8");
+  assert.match(
+    trainingPresetServiceSource,
+    /presetCategory\.findFirst\(\{\s*where:\s*\{[\s\S]*?slug:\s*preset\.categorySlug,[\s\S]*?type:\s*TRAINING_PRESET_CATEGORY_TYPE/,
+    "Training default presets should only reuse an existing category when it is already training-owned.",
+  );
+  assert.doesNotMatch(
+    trainingPresetServiceSource,
+    /presetCategory\.findUnique\(\{\s*where:\s*\{\s*slug:\s*preset\.categorySlug\s*\}/,
+    "Training default presets must not claim an ordinary generation category just because the slug matches.",
+  );
+
+  const { buildWorkModeNavLinks } = await import("../src/app/design-demos/routing/routes");
+  const generationHrefs = buildWorkModeNavLinks("generation").map((link) => link.href);
+  const trainingHrefs = buildWorkModeNavLinks("lora_training").map((link) => link.href);
+
+  assert.equal(
+    generationHrefs.some((href) => href.startsWith("/training/")),
+    false,
+    "Generation navigation should not surface training-owned resources.",
+  );
+  assert.equal(
+    trainingHrefs.includes("/assets/presets") || trainingHrefs.includes("/presets"),
+    false,
+    "Training navigation should not point at generation preset resources.",
+  );
+  assert.equal(
+    trainingHrefs.includes("/assets/templates") || trainingHrefs.includes("/templates"),
+    false,
+    "Training navigation should not point at generation template resources.",
+  );
+  assert.equal(generationHrefs.includes("/assets/models"), true, "Models remain a shared resource.");
+  assert.equal(trainingHrefs.includes("/assets/models"), true, "Models remain a shared resource.");
+  assert.equal(generationHrefs.includes("/settings"), true, "Settings remain a shared resource.");
+  assert.equal(trainingHrefs.includes("/settings"), true, "Settings remain a shared resource.");
+});
+
 test("training worker task routes go through the Training worker boundary", () => {
   const taskApiPath = join(process.cwd(), "src/server/worker/training/task-api.ts");
   assert.equal(existsSync(taskApiPath), true, "Training worker task API boundary should exist under src/server/worker/training");

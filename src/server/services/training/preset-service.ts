@@ -490,6 +490,100 @@ function parseTrainingSceneFolderUpdateInput(input: unknown) {
   });
 }
 
+async function resolveDefaultTrainingCategoryId(tx: Prisma.TransactionClient, preset: TrainingPresetDefault) {
+  const existingTrainingCategory = await tx.presetCategory.findFirst({
+    where: {
+      slug: preset.categorySlug,
+      type: TRAINING_PRESET_CATEGORY_TYPE,
+    },
+    select: { id: true },
+  });
+
+  if (existingTrainingCategory) {
+    await tx.presetCategory.update({
+      where: { id: existingTrainingCategory.id },
+      data: {
+        name: preset.categoryName,
+        sortOrder: preset.categorySortOrder,
+      },
+    });
+    return existingTrainingCategory.id;
+  }
+
+  let categorySlug = preset.categorySlug;
+  let suffix = 2;
+
+  while (true) {
+    const slugOwner = await tx.presetCategory.findUnique({
+      where: { slug: categorySlug },
+      select: { id: true, type: true },
+    });
+
+    if (!slugOwner) {
+      const createdCategory = await tx.presetCategory.create({
+        data: {
+          id: `training-category-${categorySlug}`,
+          name: preset.categoryName,
+          slug: categorySlug,
+          type: TRAINING_PRESET_CATEGORY_TYPE,
+          sortOrder: preset.categorySortOrder,
+        },
+        select: { id: true },
+      });
+      return createdCategory.id;
+    }
+
+    if (slugOwner.type === TRAINING_PRESET_CATEGORY_TYPE) {
+      await tx.presetCategory.update({
+        where: { id: slugOwner.id },
+        data: {
+          name: preset.categoryName,
+          sortOrder: preset.categorySortOrder,
+        },
+      });
+      return slugOwner.id;
+    }
+
+    categorySlug = `${preset.categorySlug}-${suffix}`;
+    suffix += 1;
+  }
+}
+
+async function resolveDefaultTrainingPresetId(tx: Prisma.TransactionClient, desiredPresetId: string) {
+  const existingPreset = await tx.preset.findUnique({
+    where: { id: desiredPresetId },
+    select: {
+      id: true,
+      category: { select: { type: true } },
+    },
+  });
+
+  if (!existingPreset || existingPreset.category.type === TRAINING_PRESET_CATEGORY_TYPE) {
+    return desiredPresetId;
+  }
+
+  const basePresetId = `training-scene-${desiredPresetId}`;
+  let candidatePresetId = basePresetId;
+  let suffix = 2;
+
+  while (true) {
+    const candidateOwner = await tx.preset.findUnique({
+      where: { id: candidatePresetId },
+      select: {
+        id: true,
+        category: { select: { type: true } },
+      },
+    });
+
+    if (!candidateOwner || candidateOwner.category.type === TRAINING_PRESET_CATEGORY_TYPE) {
+      return candidatePresetId;
+    }
+
+    candidatePresetId = `${basePresetId}-${suffix}`;
+    suffix += 1;
+  }
+}
+
 async function ensureDefaultTrainingPresets() {
   await prisma.$transaction(async (tx) => {
     const categoryIds = new Map<string, string>();
@@ -498,33 +592,7 @@ async function ensureDefaultTrainingPresets() {
     for (const preset of DEFAULT_TRAINING_PRESETS) {
       let categoryId = categoryIds.get(preset.categorySlug);
       if (!categoryId) {
-        const existingCategory = await tx.presetCategory.findUnique({
-          where: { slug: preset.categorySlug },
-          select: { id: true },
-        });
-        if (existingCategory) {
-          categoryId = existingCategory.id;
-          await tx.presetCategory.update({
-            where: { id: categoryId },
-            data: {
-              name: preset.categoryName,
-              sortOrder: preset.categorySortOrder,
-              type: TRAINING_PRESET_CATEGORY_TYPE,
-            },
-          });
-        } else {
-          const createdCategory = await tx.presetCategory.create({
-            data: {
-              id: `training-category-${preset.categorySlug}`,
-              name: preset.categoryName,
-              slug: preset.categorySlug,
-              type: TRAINING_PRESET_CATEGORY_TYPE,
-              sortOrder: preset.categorySortOrder,
-            },
-            select: { id: true },
-          });
-          categoryId = createdCategory.id;
-        }
+        categoryId = await resolveDefaultTrainingCategoryId(tx, preset);
         categoryIds.set(preset.categorySlug, categoryId);
       }
 
@@ -561,19 +629,31 @@ async function ensureDefaultTrainingPresets() {
         folderIds.set(folderKey, folderId);
       }
 
+      const presetId = await resolveDefaultTrainingPresetId(tx, preset.id);
       const existingPreset = await tx.preset.findUnique({
-        where: { id: preset.id },
+        where: { id: presetId },
         select: { id: true },
       });
 
       if (!existingPreset) {
         await tx.preset.create({
           data: {
-            id: preset.id,
+            id: presetId,
             categoryId,
             folderId,
             name: preset.title,
-            slug: preset.id,
+            slug: presetId,
+            isActive: preset.isActive,
+            sortOrder: preset.sortOrder,
+          },
+        });
+      } else {
+        await tx.preset.update({
+          where: { id: presetId },
+          data: {
+            categoryId,
+            folderId,
+            name: preset.title,
             isActive: preset.isActive,
             sortOrder: preset.sortOrder,
           },
@@ -581,15 +661,15 @@ async function ensureDefaultTrainingPresets() {
       }
 
       const existingVariant = await tx.presetVariant.findFirst({
-        where: { presetId: preset.id },
+        where: { presetId },
         select: { id: true },
       });
 
       if (!existingVariant) {
         await tx.presetVariant.create({
           data: {
-            id: `${preset.id}-scene`,
-            presetId: preset.id,
+            id: `${presetId}-scene`,
+            presetId,
             name: TRAINING_PRESET_VARIANT_NAME,
             slug: TRAINING_PRESET_VARIANT_SLUG,
             prompt: preset.sceneDescriptionText,
