@@ -11,6 +11,7 @@ import type * as SectionActions from "../src/lib/actions/section";
 import type * as PromptBlockService from "../src/server/services/prompt-block-service";
 import type * as TemplateImportActions from "../src/lib/actions/template-import";
 import type * as TemplateCrudActions from "../src/lib/actions/template-crud";
+import type * as TemplateSaveActions from "../src/lib/actions/template-save";
 import type * as ProjectActions from "../src/lib/actions/project";
 
 process.env.DB_PROVIDER = "sqlite";
@@ -138,6 +139,15 @@ setupDb.exec(`
     "extraParams" JSONB,
     "promptBlocks" JSONB
   );
+  CREATE TABLE "ProjectTemplateSectionFolder" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectTemplateId" TEXT NOT NULL,
+    "parentId" TEXT,
+    "name" TEXT NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
   CREATE TABLE "TemplateSectionPresetBinding" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "projectTemplateSectionId" TEXT NOT NULL,
@@ -235,6 +245,15 @@ setupDb.exec(`
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE "ProjectSectionFolder" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectId" TEXT NOT NULL,
+    "parentId" TEXT,
+    "name" TEXT NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
   CREATE TABLE "SectionPresetBinding" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "projectSectionId" TEXT NOT NULL,
@@ -325,8 +344,10 @@ let createProjectTemplate: typeof TemplateCrudActions.createProjectTemplate;
 let updateProjectTemplate: typeof TemplateCrudActions.updateProjectTemplate;
 let updateProjectTemplateSection: typeof TemplateCrudActions.updateProjectTemplateSection;
 let copyProjectTemplateSection: typeof TemplateCrudActions.copyProjectTemplateSection;
+let saveProjectAsTemplate: typeof TemplateSaveActions.saveProjectAsTemplate;
 let createProject: typeof ProjectActions.createProject;
 let updateProject: typeof ProjectActions.updateProject;
+let copyProject: typeof ProjectActions.copyProject;
 let applyParamToAllSections: typeof ProjectActions.applyParamToAllSections;
 
 let sequence = 0;
@@ -342,6 +363,7 @@ test.before(async () => {
   const promptBlockService = await import("../src/server/services/prompt-block-service");
   const templateImportActions = await import("../src/lib/actions/template-import");
   const templateCrudActions = await import("../src/lib/actions/template-crud");
+  const templateSaveActions = await import("../src/lib/actions/template-save");
   const projectActions = await import("../src/lib/actions/project");
 
   prisma = prismaModule.prisma;
@@ -361,8 +383,10 @@ test.before(async () => {
   updateProjectTemplate = templateCrudActions.updateProjectTemplate;
   updateProjectTemplateSection = templateCrudActions.updateProjectTemplateSection;
   copyProjectTemplateSection = templateCrudActions.copyProjectTemplateSection;
+  saveProjectAsTemplate = templateSaveActions.saveProjectAsTemplate;
   createProject = projectActions.createProject;
   updateProject = projectActions.updateProject;
+  copyProject = projectActions.copyProject;
   applyParamToAllSections = projectActions.applyParamToAllSections;
 });
 
@@ -1293,6 +1317,101 @@ test("importTemplateToProject imports template project binding sections without 
   assert.equal(promptRow.sectionBindingId, bindings[0].id);
 });
 
+test("importTemplateToProject rejects LoRA training preset bindings stored in generation templates", async () => {
+  const seed = await seedProjectWithPreset();
+  await seedTrainingPresetResource(seed);
+  const template = await prisma.projectTemplate.create({
+    data: { id: `${seed.key}-training-template-import`, name: `${seed.key} Training Import Template` },
+  });
+  const templateSection = await prisma.projectTemplateSection.create({
+    data: {
+      id: `${seed.key}-training-template-import-section`,
+      projectTemplateId: template.id,
+      sortOrder: 0,
+      name: `${seed.key} Training Import Section`,
+    },
+  });
+  await prisma.projectTemplatePresetBinding.create({
+    data: {
+      projectTemplateId: template.id,
+      categoryId: `${seed.key}-training-category`,
+      presetId: `${seed.key}-training-preset`,
+      variantId: `${seed.key}-training-variant`,
+      sortOrder: 0,
+    },
+  });
+  await prisma.templateSectionPresetBinding.create({
+    data: {
+      projectTemplateSectionId: templateSection.id,
+      bindingKey: `${seed.key}-training-template-binding`,
+      categoryId: `${seed.key}-training-category`,
+      presetId: `${seed.key}-training-preset`,
+      variantId: `${seed.key}-training-variant`,
+      sortOrder: 0,
+    },
+  });
+
+  await assert.rejects(
+    () => importTemplateToProject(seed.project.id, template.id),
+    /ordinary preset/i,
+    "generation template imports must reject historical training-owned preset bindings",
+  );
+  assert.equal(
+    await prisma.sectionPresetBinding.count({
+      where: { categoryId: `${seed.key}-training-category` },
+    }),
+    0,
+    "failed imports must not write training preset bindings into generation project sections",
+  );
+});
+
+test("saveProjectAsTemplate rejects LoRA training preset bindings stored in generation projects", async () => {
+  const seed = await seedProjectWithPreset();
+  await seedTrainingPresetResource(seed);
+  await prisma.projectPresetBinding.create({
+    data: {
+      projectId: seed.project.id,
+      categoryId: `${seed.key}-training-category`,
+      presetId: `${seed.key}-training-preset`,
+      variantId: `${seed.key}-training-variant`,
+      sortOrder: 0,
+    },
+  });
+  const sectionBinding = await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: seed.section.id,
+      bindingKey: `${seed.key}-training-section-binding`,
+      categoryId: `${seed.key}-training-category`,
+      presetId: `${seed.key}-training-preset`,
+      variantId: `${seed.key}-training-variant`,
+      sortOrder: 0,
+    },
+  });
+  await prisma.sectionPromptBlock.create({
+    data: {
+      projectSectionId: seed.section.id,
+      sectionBindingId: sectionBinding.id,
+      type: "preset",
+      sortOrder: 0,
+    },
+  });
+
+  await assert.rejects(
+    () => ignoreStaticRevalidateError(() =>
+      saveProjectAsTemplate(seed.project.id, `${seed.key} Training Save Template`)
+    ),
+    /ordinary preset/i,
+    "saving generation projects as templates must reject historical training-owned preset bindings",
+  );
+  assert.equal(
+    await prisma.projectTemplatePresetBinding.count({
+      where: { categoryId: `${seed.key}-training-category` },
+    }),
+    0,
+    "failed saves must not copy training preset bindings into generation templates",
+  );
+});
+
 test("template CRUD converts submitted prompt and manual lora data into template relation rows", async () => {
   const seed = await seedProjectWithPreset();
 
@@ -1433,6 +1552,48 @@ test("template CRUD writes reject LoRA training preset resources", async () => {
   );
 });
 
+test("copyProjectTemplateSection rejects LoRA training preset bindings stored in generation templates", async () => {
+  const seed = await seedProjectWithPreset();
+  await seedTrainingPresetResource(seed);
+  const template = await prisma.projectTemplate.create({
+    data: { id: `${seed.key}-copy-training-template`, name: `${seed.key} Copy Training Template` },
+  });
+  const section = await prisma.projectTemplateSection.create({
+    data: {
+      id: `${seed.key}-copy-training-template-section`,
+      projectTemplateId: template.id,
+      sortOrder: 0,
+      name: `${seed.key} Copy Training Section`,
+    },
+  });
+  await prisma.templateSectionPresetBinding.create({
+    data: {
+      projectTemplateSectionId: section.id,
+      bindingKey: `${seed.key}-copy-training-binding`,
+      categoryId: `${seed.key}-training-category`,
+      presetId: `${seed.key}-training-preset`,
+      variantId: `${seed.key}-training-variant`,
+      sortOrder: 0,
+    },
+  });
+
+  await assert.rejects(
+    () => copyProjectTemplateSection(section.id),
+    /ordinary preset/i,
+    "copying generation template sections must reject historical training-owned preset bindings",
+  );
+  assert.equal(
+    await prisma.templateSectionPresetBinding.count({
+      where: {
+        categoryId: `${seed.key}-training-category`,
+        projectTemplateSectionId: { not: section.id },
+      },
+    }),
+    0,
+    "failed template section copies must not duplicate training preset bindings",
+  );
+});
+
 test("copyProjectTemplateSection inserts the copy immediately after the source section", async () => {
   const seed = await seedProjectWithPreset();
   const template = await prisma.projectTemplate.create({
@@ -1563,6 +1724,120 @@ test("project preset binding writes reject LoRA training preset resources", asyn
     }),
     /ordinary preset/i,
     "generation project updates must reject training-owned preset bindings",
+  );
+});
+
+test("addSection rejects LoRA training project preset bindings before creating a generation section", async () => {
+  const seed = await seedProjectWithPreset();
+  await seedTrainingPresetResource(seed);
+  await prisma.projectPresetBinding.create({
+    data: {
+      projectId: seed.project.id,
+      categoryId: `${seed.key}-training-category`,
+      presetId: `${seed.key}-training-preset`,
+      variantId: `${seed.key}-training-variant`,
+      sortOrder: 0,
+    },
+  });
+  const sectionCountBefore = await prisma.projectSection.count({ where: { projectId: seed.project.id } });
+
+  await assert.rejects(
+    () => addSection(seed.project.id, `${seed.key} Training Section`),
+    /ordinary preset/i,
+    "adding generation sections must reject historical training-owned project preset bindings",
+  );
+  assert.equal(
+    await prisma.projectSection.count({ where: { projectId: seed.project.id } }),
+    sectionCountBefore,
+    "failed section creation must not leave a generation section behind",
+  );
+});
+
+test("applyParamToAllSections rejects LoRA training project preset bindings", async () => {
+  const seed = await seedProjectWithPreset();
+  await seedTrainingPresetResource(seed);
+  await prisma.projectPresetBinding.create({
+    data: {
+      projectId: seed.project.id,
+      categoryId: `${seed.key}-training-category`,
+      presetId: `${seed.key}-training-preset`,
+      variantId: `${seed.key}-training-variant`,
+      sortOrder: 0,
+    },
+  });
+
+  const result = await applyParamToAllSections(seed.project.id, "presets", null);
+
+  assert.equal(result.ok, false);
+  assert.match(result.error ?? "", /ordinary preset/i);
+  assert.equal(
+    await prisma.sectionPresetBinding.count({
+      where: { categoryId: `${seed.key}-training-category` },
+    }),
+    0,
+    "failed preset application must not write training preset bindings into generation sections",
+  );
+});
+
+test("copySection rejects LoRA training preset bindings stored in generation sections", async () => {
+  const seed = await seedProjectWithPreset();
+  await seedTrainingPresetResource(seed);
+  await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: seed.section.id,
+      bindingKey: `${seed.key}-training-copy-section-binding`,
+      categoryId: `${seed.key}-training-category`,
+      presetId: `${seed.key}-training-preset`,
+      variantId: `${seed.key}-training-variant`,
+      sortOrder: 0,
+    },
+  });
+
+  await assert.rejects(
+    () => copySection(seed.section.id),
+    /ordinary preset/i,
+    "copying generation sections must reject historical training-owned preset bindings",
+  );
+  assert.equal(
+    await prisma.sectionPresetBinding.count({
+      where: {
+        categoryId: `${seed.key}-training-category`,
+        projectSectionId: { not: seed.section.id },
+      },
+    }),
+    0,
+    "failed section copies must not duplicate training preset bindings",
+  );
+});
+
+test("copyProject rejects LoRA training preset bindings stored in generation sections", async () => {
+  const seed = await seedProjectWithPreset();
+  await seedTrainingPresetResource(seed);
+  await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: seed.section.id,
+      bindingKey: `${seed.key}-training-copy-project-binding`,
+      categoryId: `${seed.key}-training-category`,
+      presetId: `${seed.key}-training-preset`,
+      variantId: `${seed.key}-training-variant`,
+      sortOrder: 0,
+    },
+  });
+
+  await assert.rejects(
+    () => ignoreStaticRevalidateError(() => copyProject(seed.project.id)),
+    /ordinary preset/i,
+    "copying generation projects must reject historical training-owned section preset bindings",
+  );
+  assert.equal(
+    await prisma.sectionPresetBinding.count({
+      where: {
+        categoryId: `${seed.key}-training-category`,
+        projectSectionId: { not: seed.section.id },
+      },
+    }),
+    0,
+    "failed project copies must not duplicate training preset bindings",
   );
 });
 

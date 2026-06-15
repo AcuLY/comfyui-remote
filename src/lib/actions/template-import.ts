@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import {
+  assertOrdinaryPresetLibraryBindingRefs,
+  assertOrdinaryProjectPresetBindingRefs,
+} from "./preset-resource-scope";
+import {
   buildProjectSectionDataForTemplateImport,
   buildProjectSectionRowsForTemplateImport,
   type SectionManualLoraEntryWrite,
@@ -55,6 +59,33 @@ function safeRevalidatePath(path: string) {
     }
     throw error;
   }
+}
+
+async function assertOrdinaryTemplateImportBindings(input: {
+  projectLevelBindings: readonly {
+    categoryId: string;
+    presetId: string;
+    variantId?: string | null;
+  }[];
+  templateProjectBindings: readonly {
+    categoryId: string;
+    presetId: string;
+    variantId?: string | null;
+  }[];
+  templateSectionBindings: readonly {
+    categoryId: string;
+    presetId?: string | null;
+    variantId?: string | null;
+    presetGroupId?: string | null;
+  }[];
+}) {
+  const projectBindings = [
+    ...input.projectLevelBindings,
+    ...input.templateProjectBindings,
+  ];
+
+  await assertOrdinaryProjectPresetBindingRefs(projectBindings);
+  await assertOrdinaryPresetLibraryBindingRefs(input.templateSectionBindings);
 }
 
 async function createImportedSectionRows(
@@ -130,6 +161,7 @@ export async function importTemplateToProject(
               categoryId: true,
               presetId: true,
               variantId: true,
+              presetGroupId: true,
               groupBindingKey: true,
               sortOrder: true,
               category: {
@@ -220,6 +252,12 @@ export async function importTemplateToProject(
     },
   });
   if (!project) throw new Error("PROJECT_NOT_FOUND");
+
+  await assertOrdinaryTemplateImportBindings({
+    projectLevelBindings: project.presetBindingRows,
+    templateProjectBindings: template.presetBindingRows,
+    templateSectionBindings: template.sections.flatMap((section) => section.presetBindingRows),
+  });
 
   const currentSectionCount = project.sections.length;
   const existingSectionNames = new Set(

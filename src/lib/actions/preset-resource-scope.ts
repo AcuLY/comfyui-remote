@@ -19,6 +19,24 @@ function uniqueIds(ids: string[]) {
   return [...new Set(ids.filter(Boolean))];
 }
 
+type PresetScopeDbClient = Pick<
+  typeof prisma,
+  "presetCategory" | "preset" | "presetVariant" | "presetGroup"
+>;
+
+type ProjectPresetBindingRef = {
+  categoryId: string;
+  presetId: string;
+  variantId?: string | null;
+};
+
+type PresetLibraryBindingRef = {
+  categoryId: string;
+  presetId?: string | null;
+  variantId?: string | null;
+  presetGroupId?: string | null;
+};
+
 export function ordinaryPresetLibraryCategoryTypeWhere() {
   return { in: [...ORDINARY_PRESET_LIBRARY_CATEGORY_TYPES] };
 }
@@ -190,5 +208,118 @@ export async function assertOrdinaryPresetVariants(variantIds: string[]) {
 
   if (count !== ids.length) {
     throw new PresetResourceScopeError("Ordinary preset variants include non-generation resources");
+  }
+}
+
+export async function assertOrdinaryProjectPresetBindingRefs(
+  bindings: readonly ProjectPresetBindingRef[],
+  client: PresetScopeDbClient = prisma,
+) {
+  const categoryIds = uniqueIds(bindings.map((binding) => binding.categoryId));
+  const presetIds = uniqueIds(bindings.map((binding) => binding.presetId));
+  const variantIds = uniqueIds(
+    bindings
+      .map((binding) => binding.variantId)
+      .filter((variantId): variantId is string => Boolean(variantId)),
+  );
+
+  if (categoryIds.length > 0) {
+    const categoryCount = await client.presetCategory.count({
+      where: { id: { in: categoryIds }, type: ORDINARY_PRESET_CATEGORY_TYPE },
+    });
+    if (categoryCount !== categoryIds.length) {
+      throw new PresetResourceScopeError("Ordinary preset categories include non-generation resources");
+    }
+  }
+
+  if (presetIds.length > 0) {
+    const presetCount = await client.preset.count({
+      where: {
+        id: { in: presetIds },
+        category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+      },
+    });
+    if (presetCount !== presetIds.length) {
+      throw new PresetResourceScopeError("Ordinary presets include non-generation resources");
+    }
+  }
+
+  if (variantIds.length > 0) {
+    const variantCount = await client.presetVariant.count({
+      where: {
+        id: { in: variantIds },
+        preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+      },
+    });
+    if (variantCount !== variantIds.length) {
+      throw new PresetResourceScopeError("Ordinary preset variants include non-generation resources");
+    }
+  }
+}
+
+export async function assertOrdinaryPresetLibraryBindingRefs(
+  bindings: readonly PresetLibraryBindingRef[],
+  client: PresetScopeDbClient = prisma,
+) {
+  const categoryIds = uniqueIds(bindings.map((binding) => binding.categoryId));
+  const presetIds = uniqueIds(
+    bindings
+      .map((binding) => binding.presetId)
+      .filter((presetId): presetId is string => Boolean(presetId)),
+  );
+  const variantIds = uniqueIds(
+    bindings
+      .map((binding) => binding.variantId)
+      .filter((variantId): variantId is string => Boolean(variantId)),
+  );
+  const presetGroupIds = uniqueIds(
+    bindings
+      .map((binding) => binding.presetGroupId)
+      .filter((presetGroupId): presetGroupId is string => Boolean(presetGroupId)),
+  );
+
+  if (categoryIds.length > 0) {
+    const categoryCount = await client.presetCategory.count({
+      where: { id: { in: categoryIds }, type: ordinaryPresetLibraryCategoryTypeWhere() },
+    });
+    if (categoryCount !== categoryIds.length) {
+      throw new PresetResourceScopeError("Ordinary preset categories include non-generation resources");
+    }
+  }
+
+  if (presetIds.length > 0) {
+    const presetCount = await client.preset.count({
+      where: {
+        id: { in: presetIds },
+        category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+      },
+    });
+    if (presetCount !== presetIds.length) {
+      throw new PresetResourceScopeError("Ordinary presets include non-generation resources");
+    }
+  }
+
+  if (variantIds.length > 0) {
+    const variantCount = await client.presetVariant.count({
+      where: {
+        id: { in: variantIds },
+        preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+      },
+    });
+    if (variantCount !== variantIds.length) {
+      throw new PresetResourceScopeError("Ordinary preset variants include non-generation resources");
+    }
+  }
+
+  if (presetGroupIds.length > 0) {
+    const groupCount = await client.presetGroup.count({
+      where: {
+        id: { in: presetGroupIds },
+        category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
+      },
+    });
+    if (groupCount !== presetGroupIds.length) {
+      throw new PresetResourceScopeError("Ordinary preset groups include non-generation resources");
+    }
   }
 }

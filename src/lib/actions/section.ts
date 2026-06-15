@@ -6,6 +6,10 @@ import { rm } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
 import { cleanupProjectSectionFiles } from "@/server/services/section-cleanup-service";
 import { createBindingId } from "./_helpers";
+import {
+  assertOrdinaryPresetLibraryBindingRefs,
+  assertOrdinaryProjectPresetBindingRefs,
+} from "./preset-resource-scope";
 import { importPresetGroupToSection, importPresetToSection } from "./prompt-block";
 import { switchBindingVariant } from "./prompt-block";
 
@@ -80,6 +84,7 @@ export async function addSection(projectId: string, name?: string, folderId?: st
   });
 
   if (!project) throw new Error("PROJECT_NOT_FOUND");
+  await assertOrdinaryProjectPresetBindingRefs(project.presetBindingRows);
   if (folderId) {
     const folder = await prisma.projectSectionFolder.findFirst({
       where: { id: folderId, projectId },
@@ -304,6 +309,7 @@ export async function copySection(sectionId: string): Promise<string | null> {
   });
 
   if (!section) return null;
+  await assertOrdinaryPresetLibraryBindingRefs(section.presetBindingRows);
 
   const newSection = await prisma.$transaction(async (tx) => {
     const insertSortOrder = section.sortOrder + 1;

@@ -8,9 +8,8 @@ import { copyProject as copyProjectRepo } from "@/server/repositories/project-re
 import { archiveProject as archiveProjectService } from "@/server/services/project-archive-service";
 import { deleteProjectCompletely } from "@/server/services/project-deletion-service";
 import {
-  assertOrdinaryPresetCategories,
-  assertOrdinaryPresets,
-  assertOrdinaryPresetVariants,
+  assertOrdinaryProjectPresetBindingRefs,
+  PresetResourceScopeError,
 } from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------
@@ -102,11 +101,7 @@ function normalizeProjectPresetBindings(bindings: readonly PresetBinding[]) {
 
 async function assertOrdinaryProjectPresetBindings(bindings: readonly PresetBinding[]) {
   const normalized = normalizeProjectPresetBindings(bindings);
-  await assertOrdinaryPresetCategories(normalized.map((binding) => binding.categoryId));
-  await assertOrdinaryPresets(normalized.map((binding) => binding.presetId));
-  await assertOrdinaryPresetVariants(
-    normalized.flatMap((binding) => binding.variantId ? [binding.variantId] : []),
-  );
+  await assertOrdinaryProjectPresetBindingRefs(normalized);
 }
 
 async function replaceProjectPresetBindingRows(
@@ -317,6 +312,7 @@ export async function applyParamToAllSections(
 
     if (param === "presets") {
       const currentBindings = project.presetBindingRows;
+      await assertOrdinaryProjectPresetBindingRefs(currentBindings);
       const sections = await prisma.projectSection.findMany({
         where: { projectId },
         orderBy: { sortOrder: "asc" },
@@ -431,7 +427,13 @@ export async function applyParamToAllSections(
     safeRevalidatePath(`/projects/${projectId}`);
     return { ok: true, count: result.count };
   } catch (e) {
-    console.error("Failed to apply param to all sections:", e);
-    return { ok: false, count: 0, error: "应用失败" };
+    if (!(e instanceof PresetResourceScopeError)) {
+      console.error("Failed to apply param to all sections:", e);
+    }
+    return {
+      ok: false,
+      count: 0,
+      error: e instanceof Error ? e.message : "应用失败",
+    };
   }
 }

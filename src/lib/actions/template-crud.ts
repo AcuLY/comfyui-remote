@@ -12,10 +12,7 @@ import {
 } from "@/server/prompt-config/template-resolver";
 import { resolveVariantContent } from "./preset-variant";
 import {
-  assertOrdinaryPresetGroup,
-  assertOrdinaryPresetLibraryCategories,
-  assertOrdinaryPresets,
-  assertOrdinaryPresetVariants,
+  assertOrdinaryPresetLibraryBindingRefs,
   ordinaryPresetCategoryTypeWhere,
 } from "./preset-resource-scope";
 
@@ -166,18 +163,7 @@ async function assertOrdinaryTemplateSections(sections: readonly ProjectTemplate
     }).presetBindings
   );
 
-  await assertOrdinaryPresetLibraryCategories(bindingRows.map((binding) => binding.categoryId));
-  await assertOrdinaryPresets(
-    bindingRows.flatMap((binding) => binding.presetId ? [binding.presetId] : []),
-  );
-  await assertOrdinaryPresetVariants(
-    bindingRows.flatMap((binding) => binding.variantId ? [binding.variantId] : []),
-  );
-  await Promise.all(
-    bindingRows
-      .flatMap((binding) => binding.presetGroupId ? [binding.presetGroupId] : [])
-      .map((groupId) => assertOrdinaryPresetGroup(groupId)),
-  );
+  await assertOrdinaryPresetLibraryBindingRefs(bindingRows);
 }
 
 // ---------------------------------------------------------------------------
@@ -362,6 +348,7 @@ export async function copyProjectTemplateSection(sectionId: string): Promise<str
   });
 
   if (!section) return null;
+  await assertOrdinaryPresetLibraryBindingRefs(section.presetBindingRows);
 
   const copied = await prisma.$transaction(async (tx) => {
     const insertSortOrder = section.sortOrder + 1;
@@ -406,6 +393,7 @@ export async function copyProjectTemplateSection(sectionId: string): Promise<str
           categoryId: row.categoryId,
           presetId: row.presetId,
           variantId: row.variantId,
+          presetGroupId: row.presetGroupId,
           groupBindingKey: row.groupBindingKey,
           sortOrder: row.sortOrder,
         },

@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma";
 import { JobStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
+import { assertOrdinaryPresetLibraryBindingRefs } from "@/lib/actions/preset-resource-scope";
 import { detectProvider } from "@/lib/prisma";
 import {
   type ProjectUpdateInput,
@@ -589,6 +590,10 @@ export async function copyProject(projectId: string) {
     if (!project) {
       throw new Error("JOB_NOT_FOUND");
     }
+    await assertOrdinaryPresetLibraryBindingRefs(
+      project.sections.flatMap((section) => section.presetBindingRows),
+      tx,
+    );
 
     const identity = await resolveUniqueProjectCopyIdentity(tx, project);
     const copiedProject = await tx.project.create({
