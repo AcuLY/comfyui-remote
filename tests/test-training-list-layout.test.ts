@@ -32,6 +32,16 @@ function classHasDeclaration(css: string, className: string, declaration: RegExp
   return rulesForClass(css, className).some((rule) => declaration.test(rule.declarations));
 }
 
+function twoColumnContainerBreakpoint(css: string, className: string) {
+  const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = css.match(
+    new RegExp(
+      `@container\\s*\\(min-width:\\s*(\\d+)px\\)\\s*\\{\\s*\\.${escaped}\\b[^{}]*\\{[^{}]*grid-template-columns:\\s*repeat\\(2,\\s*minmax\\(0,\\s*1fr\\)\\)`,
+    ),
+  );
+  return match?.[1] ? Number(match[1]) : null;
+}
+
 function hasMobileSingleColumnOverride(css: string, className: string) {
   return new RegExp(
     `@media\\s*\\(max-width:\\s*639px\\)\\s*\\{[\\s\\S]*?\\.${className}\\b[\\s\\S]*?grid-template-columns:\\s*(?:minmax\\(0,\\s*)?1fr`,
@@ -83,11 +93,16 @@ test("training list surfaces are real grids before responsive column rules apply
   }
 });
 
-test("training run list uses the same two-column breakpoint as the generation queue demo", () => {
-  assert.match(
-    runsCss,
-    /@container\s*\(min-width:\s*520px\)\s*\{[\s\S]*?\.runRows\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
-    "Training run groups should expand at the queue-demo 520px container breakpoint",
+test("training run task cards wait for desktop workspace width before splitting", () => {
+  const breakpoint = twoColumnContainerBreakpoint(runsCss, "runRows");
+
+  if (breakpoint === null) {
+    assert.fail("Training run groups should still expand to two columns when there is enough width");
+  }
+
+  assert.ok(
+    breakpoint >= 900,
+    "Training run task cards should not split at tablet-width containers because thumbnails and row actions crowd the card body",
   );
 });
 

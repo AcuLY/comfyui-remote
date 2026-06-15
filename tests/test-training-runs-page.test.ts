@@ -114,6 +114,19 @@ test("completed training generation rows prioritize recent output thumbnails", (
   assert.match(cssSource, /data-demo-ui-image-thumb-small/, "thumbnail sizing should target shared small image thumbs");
 });
 
+test("training run thumbnail layout queries the individual task card width", () => {
+  assert.match(
+    cssSource,
+    /\.runRow\s*\{[\s\S]*?container-type:\s*inline-size/,
+    "Each task card should be a container root so thumbnail/text layout does not key off the wider project group.",
+  );
+  assert.match(
+    cssSource,
+    /@container\s*\(min-width:\s*780px\)\s*\{[\s\S]*?\.runMainWithThumbs\s*\{[\s\S]*?grid-template-columns:\s*minmax\(150px,\s*0\.62fr\)\s*minmax\(180px,\s*1fr\)/,
+    "Thumbnail/text split should only trigger when the individual card is wide enough.",
+  );
+});
+
 test("failed training runs can be retried in local front-end state", () => {
   assert.match(pageSource, /retriedRunIds/, "runs page should track retried failed runs locally");
   assert.match(pageSource, /setRetriedRunIds/, "retry actions should update retried run state");
@@ -209,6 +222,11 @@ test("training run row actions stay compact in the mobile shell", () => {
     cssSource,
     /\.rowActions :where\(\[data-demo-ui-button="true"\]\)\s*\{[\s\S]*?width:\s*34px;[\s\S]*?height:\s*34px;/,
     "run row actions should keep a compact icon-button footprint by default",
+  );
+  assert.match(
+    cssSource,
+    /\.rowActions\s*\{[\s\S]*?justify-self:\s*end;[\s\S]*?width:\s*max-content;/,
+    "run row action columns should shrink to their icon buttons instead of reserving a wide auto column",
   );
   assert.doesNotMatch(
     cssSource,

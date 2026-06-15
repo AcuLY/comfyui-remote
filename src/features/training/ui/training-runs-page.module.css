@@ -342,6 +342,7 @@
 
 .runRow {
   display: grid;
+  container-type: inline-size;
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
@@ -388,7 +389,7 @@
   grid-area: secondary;
 }
 
-@container (min-width: 520px) {
+@container (min-width: 900px) {
   .runRows {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -580,6 +581,8 @@
 
 .rowActions {
   display: inline-flex;
+  justify-self: end;
+  width: max-content;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
