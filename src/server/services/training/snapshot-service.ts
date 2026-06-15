@@ -12,16 +12,16 @@ import type {
 } from "@/features/training/types";
 import { toImageUrl } from "@/lib/image-url";
 import {
-  getLegacyTrainingGenerationRun,
-  getLegacyTrainingProjectOverview,
-  listLegacyTrainingCandidateImages,
-  listLegacyTrainingDatasetRevisions,
-  listLegacyTrainingProjectSections,
-  listLegacyTrainingPromptCardVersions,
-  listLegacyTrainingProjects,
-  listLegacyTrainingReferenceImages,
-  listLegacyTrainingRuns,
-} from "@/server/services/training/legacy-compat-service";
+  getTrainingGenerationRun,
+  getTrainingProjectOverview,
+  listTrainingCandidateImages,
+  listTrainingDatasetRevisions,
+  listTrainingProjectSections,
+  listTrainingPromptCardVersions,
+  listTrainingProductionProjects,
+  listTrainingReferenceImages,
+  listTrainingRuns,
+} from "@/server/repositories/training/snapshot";
 import { listTrainingSceneDescriptionPresets } from "@/server/services/training/preset-service";
 import { listManagedTrainingTemplates } from "@/server/services/training/template-service";
 import { listManagedTrainingProjects } from "@/server/services/training/project-service";
@@ -93,7 +93,7 @@ function buildDemoImage(relativePath: string, label: string, status: TrainingIma
   };
 }
 
-function buildReferenceImages(sourceImages: Awaited<ReturnType<typeof listLegacyTrainingReferenceImages>>): LoraTrainingReferenceImage[] {
+function buildReferenceImages(sourceImages: Awaited<ReturnType<typeof listTrainingReferenceImages>>): LoraTrainingReferenceImage[] {
   return sourceImages
     .map((image, index) => {
       const demoImage = buildDemoImage(image.relativePath, String(index + 1).padStart(2, "0"), "pending", index);
@@ -118,7 +118,7 @@ function buildReferenceImages(sourceImages: Awaited<ReturnType<typeof listLegacy
 }
 
 function buildResultPool(input: {
-  candidateImages: Awaited<ReturnType<typeof listLegacyTrainingCandidateImages>>;
+  candidateImages: Awaited<ReturnType<typeof listTrainingCandidateImages>>;
   sectionNames: Map<string, string>;
 }): LoraTrainingImageResult[] {
   return input.candidateImages
@@ -205,7 +205,7 @@ function normalizeGenerationInputImages(value: unknown): Array<{
 function buildTrainingRuns(
   project: { id: string; title: string },
   resultPool: LoraTrainingImageResult[],
-  trainingRuns: Awaited<ReturnType<typeof listLegacyTrainingRuns>>,
+  trainingRuns: Awaited<ReturnType<typeof listTrainingRuns>>,
   revisionMap: Map<string, Set<string>>,
 ): LoraTrainingRun[] {
   return trainingRuns.map((run) => ({
@@ -243,7 +243,7 @@ function buildTrainingRuns(
 }
 
 async function buildGenerationRuns(input: {
-  candidateImages: Awaited<ReturnType<typeof listLegacyTrainingCandidateImages>>;
+  candidateImages: Awaited<ReturnType<typeof listTrainingCandidateImages>>;
   jobId: string;
   projectTitle: string;
   sectionNames: Map<string, string>;
@@ -257,7 +257,7 @@ async function buildGenerationRuns(input: {
 
   const runs: Array<LoraTrainingRun | null> = await Promise.all(
     [...grouped.entries()].map(async ([generationRunId, images]) => {
-      const run = await getLegacyTrainingGenerationRun(generationRunId);
+      const run = await getTrainingGenerationRun(generationRunId);
       if (!run) return null;
       const sectionTitle = images[0]?.sectionId ? input.sectionNames.get(images[0].sectionId) ?? "训练小节" : "未分组";
       return {
@@ -428,7 +428,7 @@ async function loadTrainingSnapshotFallback() {
 }
 
 async function mapRealTrainingProjects(): Promise<LoraTrainingData> {
-  const jobs = await listLegacyTrainingProjects({ page: 1, pageSize: 20 });
+  const jobs = await listTrainingProductionProjects({ page: 1, pageSize: 20 });
   const managedProjects = await listManagedTrainingProjects().catch(() => []);
   if (!jobs.jobs.length) {
     const [managedRuns, fallbackPresets, fallbackTemplates, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds, runPresetStates, orderedProjectIds] = await Promise.all([
@@ -470,13 +470,13 @@ async function mapRealTrainingProjects(): Promise<LoraTrainingData> {
 
   const projects = await Promise.all(jobs.jobs.map(async (job) => {
     const [overview, sourceImages, promptCardVersions, sections, candidateImages, revisions, trainingRuns] = await Promise.all([
-      getLegacyTrainingProjectOverview(job.id),
-      listLegacyTrainingReferenceImages(job.id),
-      listLegacyTrainingPromptCardVersions(job.id),
-      listLegacyTrainingProjectSections(job.id),
-      listLegacyTrainingCandidateImages(job.id, {}),
-      listLegacyTrainingDatasetRevisions(job.id),
-      listLegacyTrainingRuns(job.id),
+      getTrainingProjectOverview(job.id),
+      listTrainingReferenceImages(job.id),
+      listTrainingPromptCardVersions(job.id),
+      listTrainingProjectSections(job.id),
+      listTrainingCandidateImages(job.id, {}),
+      listTrainingDatasetRevisions(job.id),
+      listTrainingRuns(job.id),
     ]);
 
     const latestPromptCard = promptCardVersions.find((version) => version.id === job.currentPromptCardVersionId) ?? promptCardVersions.at(-1) ?? null;
@@ -575,8 +575,8 @@ async function mapRealTrainingProjects(): Promise<LoraTrainingData> {
 
   const runsByProject = await Promise.all(projects.map(async (project) => {
     const [candidateImages, trainingRuns] = await Promise.all([
-      listLegacyTrainingCandidateImages(project.id, {}),
-      listLegacyTrainingRuns(project.id),
+      listTrainingCandidateImages(project.id, {}),
+      listTrainingRuns(project.id),
     ]);
     const sectionNames = new Map(project.sections.map((section) => [section.id, section.title]));
     const resultPool = project.resultPool;

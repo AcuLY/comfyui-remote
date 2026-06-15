@@ -12,6 +12,8 @@ const trainingRouteLoaderPath = resolve(testDir, "../src/features/training/load-
 const trainingRouteLoaderSource = existsSync(trainingRouteLoaderPath) ? readFileSync(trainingRouteLoaderPath, "utf8") : "";
 const trainingSnapshotServicePath = resolve(testDir, "../src/server/services/training/snapshot-service.ts");
 const trainingSnapshotServiceSource = existsSync(trainingSnapshotServicePath) ? readFileSync(trainingSnapshotServicePath, "utf8") : "";
+const trainingSnapshotRepositoryPath = resolve(testDir, "../src/server/repositories/training/snapshot.ts");
+const trainingSnapshotRepositorySource = existsSync(trainingSnapshotRepositoryPath) ? readFileSync(trainingSnapshotRepositoryPath, "utf8") : "";
 const trainingFeatureDataPath = resolve(testDir, "../src/features/training/data.ts");
 const trainingFeatureDataSource = existsSync(trainingFeatureDataPath) ? readFileSync(trainingFeatureDataPath, "utf8") : "";
 const trainingFeatureAppPath = resolve(testDir, "../src/features/training/app.tsx");
@@ -49,24 +51,38 @@ test("production training routes use a dedicated loader instead of the generic d
 test("dedicated training snapshot service projects real legacy training data into the training route payload", () => {
   assert.match(
     trainingSnapshotServiceSource,
-    /listLegacyTrainingProjects/,
+    /@\/server\/repositories\/training\/snapshot/,
+    "training snapshot service should read real training jobs through the Training snapshot repository boundary",
+  );
+  assert.match(
+    trainingSnapshotServiceSource,
+    /listTrainingProductionProjects/,
     "training snapshot service should read real training jobs",
   );
   assert.match(
     trainingSnapshotServiceSource,
-    /getLegacyTrainingProjectOverview/,
+    /getTrainingProjectOverview/,
     "training snapshot service should read project-level overview data",
   );
   assert.match(
     trainingSnapshotServiceSource,
-    /listLegacyTrainingReferenceImages/,
+    /listTrainingReferenceImages/,
     "training snapshot service should read real reference images",
   );
   assert.match(
     trainingSnapshotServiceSource,
-    /listLegacyTrainingCandidateImages/,
+    /listTrainingCandidateImages/,
     "training snapshot service should read real result-pool candidates",
   );
+  assert.doesNotMatch(
+    trainingSnapshotServiceSource,
+    /listLegacyTrainingProjects|getLegacyTrainingProjectOverview|listLegacyTrainingReferenceImages|listLegacyTrainingCandidateImages/,
+    "training snapshot service should keep legacy read names inside the repository boundary",
+  );
+  assert.match(trainingSnapshotRepositorySource, /listLegacyTrainingProjects/);
+  assert.match(trainingSnapshotRepositorySource, /getLegacyTrainingProjectOverview/);
+  assert.match(trainingSnapshotRepositorySource, /listLegacyTrainingReferenceImages/);
+  assert.match(trainingSnapshotRepositorySource, /listLegacyTrainingCandidateImages/);
   assert.match(
     trainingSnapshotServiceSource,
     /provenanceLabel|typeof provenance\\?\\.label === "string"/,

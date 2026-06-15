@@ -984,18 +984,38 @@ test("training generation output service uses the Training image-result reposito
   );
 });
 
-test("training snapshot service uses Training-named legacy adapter aliases", () => {
+test("training snapshot service uses the Training snapshot repository boundary", () => {
   const snapshotServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/snapshot-service.ts"), "utf8");
+  const repositorySource = readFileSync(join(process.cwd(), "src/server/repositories/training/snapshot.ts"), "utf8");
 
-  assert.match(snapshotServiceSource, /getLegacyTrainingGenerationRun/);
-  assert.match(snapshotServiceSource, /getLegacyTrainingProjectOverview/);
-  assert.match(snapshotServiceSource, /listLegacyTrainingCandidateImages/);
-  assert.match(snapshotServiceSource, /listLegacyTrainingDatasetRevisions/);
-  assert.match(snapshotServiceSource, /listLegacyTrainingProjectSections/);
-  assert.match(snapshotServiceSource, /listLegacyTrainingPromptCardVersions/);
-  assert.match(snapshotServiceSource, /listLegacyTrainingReferenceImages/);
-  assert.match(snapshotServiceSource, /listLegacyTrainingProjects/);
-  assert.match(snapshotServiceSource, /listLegacyTrainingRuns/);
+  assert.match(
+    snapshotServiceSource,
+    /@\/server\/repositories\/training\/snapshot/,
+    "Training snapshot service should call the Training snapshot repository boundary.",
+  );
+  assert.match(snapshotServiceSource, /getTrainingGenerationRun/);
+  assert.match(snapshotServiceSource, /getTrainingProjectOverview/);
+  assert.match(snapshotServiceSource, /listTrainingCandidateImages/);
+  assert.match(snapshotServiceSource, /listTrainingDatasetRevisions/);
+  assert.match(snapshotServiceSource, /listTrainingProjectSections/);
+  assert.match(snapshotServiceSource, /listTrainingPromptCardVersions/);
+  assert.match(snapshotServiceSource, /listTrainingProductionProjects/);
+  assert.match(snapshotServiceSource, /listTrainingReferenceImages/);
+  assert.match(snapshotServiceSource, /listTrainingRuns/);
+  assert.doesNotMatch(
+    snapshotServiceSource,
+    /@\/server\/services\/training\/legacy-compat-service|getLegacyTrainingGenerationRun|getLegacyTrainingProjectOverview|listLegacyTrainingCandidateImages|listLegacyTrainingDatasetRevisions|listLegacyTrainingProjectSections|listLegacyTrainingPromptCardVersions|listLegacyTrainingProjects|listLegacyTrainingReferenceImages|listLegacyTrainingRuns/,
+    "Training snapshot service should not import production snapshot reads from legacy compat directly.",
+  );
+  assert.match(repositorySource, /getLegacyTrainingGenerationRun/);
+  assert.match(repositorySource, /getLegacyTrainingProjectOverview/);
+  assert.match(repositorySource, /listLegacyTrainingCandidateImages/);
+  assert.match(repositorySource, /listLegacyTrainingDatasetRevisions/);
+  assert.match(repositorySource, /listLegacyTrainingProjectSections/);
+  assert.match(repositorySource, /listLegacyTrainingPromptCardVersions/);
+  assert.match(repositorySource, /listLegacyTrainingProjects/);
+  assert.match(repositorySource, /listLegacyTrainingReferenceImages/);
+  assert.match(repositorySource, /listLegacyTrainingRuns/);
   assert.doesNotMatch(
     snapshotServiceSource,
     /CharacterLora|getCharacterLora|listCharacterLora/,
