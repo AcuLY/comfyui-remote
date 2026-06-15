@@ -679,10 +679,54 @@ const TRAINING_API_MANIFEST = {
     },
     workerTasks: {
       status: { method: "GET", path: "/api/training/worker/status" },
-      next: { method: "GET", path: "/api/training/worker/tasks/next" },
-      heartbeat: { method: "POST", path: "/api/training/worker/tasks/:taskId/heartbeat" },
-      complete: { method: "POST", path: "/api/training/worker/tasks/:taskId/complete" },
-      fail: { method: "POST", path: "/api/training/worker/tasks/:taskId/fail" },
+      next: {
+        method: "GET",
+        path: "/api/training/worker/tasks/next",
+        queryParamSchema: {
+          requiredFields: ["workerType"],
+          optionalFields: ["leaseOwner", "leaseDurationSeconds"],
+          enumValues: {
+            workerType: [
+              "image_generation",
+              "dataset_freeze",
+              "training",
+              "benchmark",
+              "promotion",
+              "prompt_card_draft",
+            ],
+          },
+        },
+        produces: ["workerTaskId"],
+        responsePaths: { workerTaskId: "$.data.id" },
+      },
+      heartbeat: {
+        method: "POST",
+        path: "/api/training/worker/tasks/:taskId/heartbeat",
+        pathParams: { taskId: "workerTaskId" },
+        requestBody: {
+          contentType: "application/json",
+          optionalFields: ["leaseOwner", "leaseDurationSeconds", "progressJson"],
+        },
+      },
+      complete: {
+        method: "POST",
+        path: "/api/training/worker/tasks/:taskId/complete",
+        pathParams: { taskId: "workerTaskId" },
+        requestBody: {
+          contentType: "application/json",
+          optionalFields: ["leaseOwner", "output"],
+        },
+      },
+      fail: {
+        method: "POST",
+        path: "/api/training/worker/tasks/:taskId/fail",
+        pathParams: { taskId: "workerTaskId" },
+        requestBody: {
+          contentType: "application/json",
+          requiredFields: ["errorSummary"],
+          optionalFields: ["leaseOwner", "providerError"],
+        },
+      },
     },
     taxonomy: {
       sceneCategories: { method: "GET", path: "/api/training/scene-description/categories" },

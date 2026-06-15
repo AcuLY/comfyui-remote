@@ -410,6 +410,77 @@ test("GET /api/training worker execution workflow declares machine-actionable ta
   );
 });
 
+test("GET /api/training worker task resources declare request and response contracts", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const workerTasks = payload.data.resources.workerTasks;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.deepEqual(
+    workerTasks.next,
+    {
+      method: "GET",
+      path: "/api/training/worker/tasks/next",
+      queryParamSchema: {
+        requiredFields: ["workerType"],
+        optionalFields: ["leaseOwner", "leaseDurationSeconds"],
+        enumValues: {
+          workerType: [
+            "image_generation",
+            "dataset_freeze",
+            "training",
+            "benchmark",
+            "promotion",
+            "prompt_card_draft",
+          ],
+        },
+      },
+      produces: ["workerTaskId"],
+      responsePaths: { workerTaskId: "$.data.id" },
+    },
+    "workerTasks.next should be directly executable from resources metadata without reading workflow prose.",
+  );
+  assert.deepEqual(
+    workerTasks.heartbeat,
+    {
+      method: "POST",
+      path: "/api/training/worker/tasks/:taskId/heartbeat",
+      pathParams: { taskId: "workerTaskId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["leaseOwner", "leaseDurationSeconds", "progressJson"],
+      },
+    },
+  );
+  assert.deepEqual(
+    workerTasks.complete,
+    {
+      method: "POST",
+      path: "/api/training/worker/tasks/:taskId/complete",
+      pathParams: { taskId: "workerTaskId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["leaseOwner", "output"],
+      },
+    },
+  );
+  assert.deepEqual(
+    workerTasks.fail,
+    {
+      method: "POST",
+      path: "/api/training/worker/tasks/:taskId/fail",
+      pathParams: { taskId: "workerTaskId" },
+      requestBody: {
+        contentType: "application/json",
+        requiredFields: ["errorSummary"],
+        optionalFields: ["leaseOwner", "providerError"],
+      },
+    },
+  );
+});
+
 test("GET /api/training manifest exposes an end-to-end HTTP workflow for agents", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
