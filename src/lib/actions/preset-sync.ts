@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { assertOrdinaryPreset } from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -59,6 +60,7 @@ function addUsageEntry(
 
 /** Check which sections reference a given preset via normalized binding rows. */
 export async function getPresetUsage(presetId: string): Promise<PresetUsageInfo> {
+  await assertOrdinaryPreset(presetId);
   const [
     sectionBindings,
     templateSectionBindings,
@@ -151,6 +153,7 @@ export async function getPresetUsage(presetId: string): Promise<PresetUsageInfo>
 
 /** Delete preset and cascade-remove all related normalized section rows. */
 export async function deletePresetCascade(presetId: string) {
+  await assertOrdinaryPreset(presetId);
   await prisma.$transaction(async (tx) => {
     const presetVariantIds = (await tx.presetVariant.findMany({
       where: { presetId },

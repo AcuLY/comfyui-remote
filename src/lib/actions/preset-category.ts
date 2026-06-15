@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import {
+  ORDINARY_PRESET_CATEGORY_TYPE,
+  assertOrdinaryPresetCategories,
+  assertOrdinaryPresetCategory,
+} from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -64,19 +69,30 @@ async function replaceCategorySlotTemplate(
 // ---------------------------------------------------------------------------
 
 export async function createPresetCategory(input: PresetCategoryInput) {
-  // Auto-assign sortOrder if not provided
-  if (input.sortOrder === undefined) {
-    const maxOrder = await prisma.presetCategory.aggregate({ _max: { sortOrder: true } });
-    input.sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
+  let sortOrder = input.sortOrder;
+  if (sortOrder === undefined) {
+    const maxOrder = await prisma.presetCategory.aggregate({
+      where: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+      _max: { sortOrder: true },
+    });
+    sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
   }
-  // Auto-generate a random HSL color if not provided
-  if (!input.color) {
+
+  let color = input.color;
+  if (!color) {
     const hue = Math.floor(Math.random() * 360);
-    input.color = `${hue} 50% 55%`;
+    color = `${hue} 50% 55%`;
   }
   const { slotTemplate, ...rest } = input;
   const cat = await prisma.$transaction(async (tx) => {
-    const created = await tx.presetCategory.create({ data: rest });
+    const created = await tx.presetCategory.create({
+      data: {
+        ...rest,
+        color,
+        sortOrder,
+        type: ORDINARY_PRESET_CATEGORY_TYPE,
+      },
+    });
     if (slotTemplate !== undefined) {
       await replaceCategorySlotTemplate(tx, created.id, slotTemplate);
     }
@@ -87,7 +103,13 @@ export async function createPresetCategory(input: PresetCategoryInput) {
 }
 
 export async function updatePresetCategory(id: string, input: Partial<PresetCategoryInput>) {
+  await assertOrdinaryPresetCategory(id);
+  if (input.slotTemplate) {
+    await assertOrdinaryPresetCategories(input.slotTemplate.map((slot) => slot.categoryId));
+  }
+
   const { slotTemplate, ...rest } = input;
+  delete rest.type;
   const cat = await prisma.$transaction(async (tx) => {
     const updated = await tx.presetCategory.update({ where: { id }, data: rest });
     if (slotTemplate !== undefined) {
@@ -100,6 +122,7 @@ export async function updatePresetCategory(id: string, input: Partial<PresetCate
 }
 
 export async function deletePresetCategory(id: string) {
+  await assertOrdinaryPresetCategory(id);
   // Only allow deletion if no presets or groups exist in this category
   const presetCount = await prisma.preset.count({ where: { categoryId: id } });
   if (presetCount > 0) {
@@ -114,6 +137,7 @@ export async function deletePresetCategory(id: string) {
 }
 
 export async function reorderPresetCategories(ids: string[]) {
+  await assertOrdinaryPresetCategories(ids);
   await prisma.$transaction(
     ids.map((id, index) =>
       prisma.presetCategory.update({ where: { id }, data: { sortOrder: index } }),
@@ -132,6 +156,7 @@ export async function updateCategorySortOrders(dimension: SortDimension, ids: st
   if (!validDimensions.includes(dimension)) {
     throw new Error(`Invalid dimension: ${dimension}`);
   }
+  await assertOrdinaryPresetCategories(ids);
   await prisma.$transaction(
     ids.map((id, index) =>
       prisma.presetCategory.update({
@@ -152,6 +177,8 @@ export async function updateCategorySlotTemplate(
   categoryId: string,
   slotTemplate: Array<{ categoryId: string; label?: string }>,
 ) {
+  await assertOrdinaryPresetCategory(categoryId);
+  await assertOrdinaryPresetCategories(slotTemplate.map((slot) => slot.categoryId));
   await prisma.$transaction(async (tx) => {
     await replaceCategorySlotTemplate(tx, categoryId, slotTemplate);
   });
