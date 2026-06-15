@@ -10,6 +10,7 @@ import {
 
 const repoRoot = process.cwd();
 const bottomNavSource = readFileSync(resolve(repoRoot, "src/components/persistent-bottom-nav.tsx"), "utf8");
+const demoRoutesSource = readFileSync(resolve(repoRoot, "src/app/design-demos/routing/routes.ts"), "utf8");
 const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/training/route.ts"), "utf8");
 
 const MODULE_OWNED_RESOURCE_KEYS = ["runs", "projects", "presets", "templates"] as const;
@@ -112,6 +113,46 @@ test("persistent production navigation consumes the shared work mode resource co
     /const sharedNavItems/,
     "Shared navigation targets should live in the shared resource contract.",
   );
+});
+
+test("design-demo shell navigation consumes the shared work mode resource contract", async () => {
+  assert.match(
+    demoRoutesSource,
+    /@\/lib\/work-mode-resources/,
+    "Design-demo shell navigation should not hand-maintain a second resource ownership map.",
+  );
+
+  const { buildWorkModeNavLinks, normalizeProductRoute } = await import("../src/app/design-demos/routing/routes");
+  const generationLinks = buildWorkModeNavLinks("generation");
+  const trainingLinks = buildWorkModeNavLinks("lora_training");
+
+  for (const key of MODULE_OWNED_RESOURCE_KEYS) {
+    const generationTarget = WORK_MODE_RESOURCE_TARGETS.generation[key];
+    const trainingTarget = WORK_MODE_RESOURCE_TARGETS.lora_training[key];
+    const generationLink = generationLinks.find((link) => link.label === generationTarget.label);
+    const trainingLink = trainingLinks.find((link) => link.label === trainingTarget.label);
+
+    assert.equal(
+      generationLink?.href,
+      normalizeProductRoute(generationTarget.href),
+      `${generationTarget.label} should point to the generation-owned route in generation mode.`,
+    );
+    assert.equal(
+      trainingLink?.href,
+      trainingTarget.href,
+      `${trainingTarget.label} should point to the training-owned route in LoRA training mode.`,
+    );
+  }
+
+  for (const key of SHARED_RESOURCE_KEYS) {
+    const generationTarget = WORK_MODE_RESOURCE_TARGETS.generation[key];
+    const trainingTarget = WORK_MODE_RESOURCE_TARGETS.lora_training[key];
+    const generationLink = generationLinks.find((link) => link.label === generationTarget.label);
+    const trainingLink = trainingLinks.find((link) => link.label === trainingTarget.label);
+
+    assert.equal(generationLink?.href, generationTarget.href);
+    assert.equal(trainingLink?.href, trainingTarget.href);
+  }
 });
 
 test("training manifest advertises only training-owned APIs plus shared resources", () => {
