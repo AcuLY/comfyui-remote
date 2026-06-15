@@ -14,13 +14,17 @@ import type {
 import { toImageUrl } from "@/lib/image-url";
 import {
   archiveLegacyTrainingProject,
+  cancelLegacyTrainingGenerationRun,
+  cancelLegacyTrainingRun,
   createCharacterLoraTrainingProject,
   getCharacterLoraCandidateImage,
   getCharacterLoraJobSection,
   getCharacterLoraTrainingJob,
   listCharacterLoraSourceImages,
   mapCharacterLoraTrainingJobError,
+  mapLegacyTrainingGenerationError,
   mapLegacyTrainingProjectError,
+  mapLegacyTrainingRunError,
   restoreLegacyTrainingProject,
   updateCharacterLoraSourceImage,
   uploadCharacterLoraSourceImage,
@@ -1335,6 +1339,12 @@ export async function cancelManagedTrainingRun(trainingRunId: string) {
   });
 }
 
+export async function cancelTrainingRun(trainingRunId: string, input: unknown = {}) {
+  const managedRun = await cancelManagedTrainingRun(trainingRunId);
+  if (managedRun) return managedRun;
+  return cancelLegacyTrainingRun(trainingRunId, input);
+}
+
 export async function cancelManagedGenerationRun(taskId: string) {
   const runs = await readFallbackTrainingRuns();
   const currentRun = runs.find((run) => run.id === taskId && run.kind === "generation");
@@ -1356,6 +1366,12 @@ export async function cancelManagedGenerationRun(taskId: string) {
     await writeFallbackTrainingRuns(nextRuns);
     return nextRuns.find((run) => run.id === taskId) ?? null;
   });
+}
+
+export async function cancelTrainingGenerationRun(taskId: string, input: unknown = {}) {
+  const managedRun = await cancelManagedGenerationRun(taskId);
+  if (managedRun) return managedRun;
+  return cancelLegacyTrainingGenerationRun(taskId, input);
 }
 
 export async function tickManagedTrainingScheduler() {
@@ -1659,4 +1675,22 @@ export function mapTrainingProjectMutationError(error: unknown) {
   }
 
   return mapLegacyTrainingProjectError(error);
+}
+
+export function mapTrainingGenerationRunMutationError(error: unknown) {
+  const mapped = mapTrainingProjectError(error);
+  if (mapped.status !== 500 || mapped.message !== "Unexpected training project error") {
+    return mapped;
+  }
+
+  return mapLegacyTrainingGenerationError(error);
+}
+
+export function mapTrainingRunMutationError(error: unknown) {
+  const mapped = mapTrainingProjectError(error);
+  if (mapped.status !== 500 || mapped.message !== "Unexpected training project error") {
+    return mapped;
+  }
+
+  return mapLegacyTrainingRunError(error);
 }
