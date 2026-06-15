@@ -96,6 +96,7 @@ const TRAINING_API_MANIFEST = {
     presets: {
       list: { method: "GET", path: "/api/training/presets" },
       create: { method: "POST", path: "/api/training/presets" },
+      detail: { method: "GET", path: "/api/training/presets/:presetId" },
       update: { method: "PATCH", path: "/api/training/presets/:presetId" },
       remove: { method: "DELETE", path: "/api/training/presets/:presetId" },
       sortRules: { method: "POST", path: "/api/training/presets/sort-rules" },
@@ -103,6 +104,7 @@ const TRAINING_API_MANIFEST = {
     templates: {
       list: { method: "GET", path: "/api/training/templates" },
       create: { method: "POST", path: "/api/training/templates" },
+      detail: { method: "GET", path: "/api/training/templates/:templateId" },
       update: { method: "PATCH", path: "/api/training/templates/:templateId" },
       remove: { method: "DELETE", path: "/api/training/templates/:templateId" },
       reorder: { method: "POST", path: "/api/training/templates/reorder" },
@@ -170,6 +172,8 @@ const TRAINING_API_MANIFEST = {
       },
     },
     generationTasks: {
+      projectList: { method: "GET", path: "/api/training/projects/:projectId/generation-tasks" },
+      projectCreate: { method: "POST", path: "/api/training/projects/:projectId/generation-tasks" },
       detail: { method: "GET", path: "/api/training/generation-tasks/:taskId" },
       update: { method: "PATCH", path: "/api/training/generation-tasks/:taskId" },
       remove: { method: "DELETE", path: "/api/training/generation-tasks/:taskId" },
@@ -185,6 +189,21 @@ const TRAINING_API_MANIFEST = {
     sectionRuns: {
       detail: { method: "GET", path: "/api/training/section-runs/:runId" },
       cancel: { method: "POST", path: "/api/training/section-runs/:runId/cancel" },
+    },
+    datasetRevisions: {
+      projectList: { method: "GET", path: "/api/training/projects/:projectId/dataset-revisions" },
+      create: { method: "POST", path: "/api/training/projects/:projectId/dataset-revisions" },
+      detail: { method: "GET", path: "/api/training/dataset-revisions/:revisionId" },
+    },
+    trainingRuns: {
+      projectList: { method: "GET", path: "/api/training/projects/:projectId/training-runs" },
+      create: { method: "POST", path: "/api/training/projects/:projectId/training-runs" },
+      detail: { method: "GET", path: "/api/training/training-runs/:trainingRunId" },
+      remove: { method: "DELETE", path: "/api/training/training-runs/:trainingRunId" },
+      poll: { method: "POST", path: "/api/training/training-runs/:trainingRunId/poll" },
+      cancel: { method: "POST", path: "/api/training/training-runs/:trainingRunId/cancel" },
+      cleanup: { method: "POST", path: "/api/training/training-runs/:trainingRunId/cleanup" },
+      createPreset: { method: "POST", path: "/api/training/training-runs/:trainingRunId/create-preset" },
     },
     scheduler: {
       status: { method: "GET", path: "/api/training/scheduler/status" },

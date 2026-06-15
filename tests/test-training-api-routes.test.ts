@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative } from "node:path";
 import test from "node:test";
@@ -33,6 +34,18 @@ function routeFileToTrainingApiPath(filePath: string) {
   return `/api/training/${segments.join("/")}`;
 }
 
+async function listRouteOperations() {
+  const routeFiles = await listRouteFiles(join(process.cwd(), "src", "app", "api", "training"));
+  return routeFiles.flatMap((filePath) => {
+    const routePath = routeFileToTrainingApiPath(filePath);
+    if (routePath === "/api/training") return [];
+
+    const source = readFileSync(filePath, "utf8");
+    return [...source.matchAll(/^export async function (GET|POST|PATCH|DELETE|PUT)/gm)]
+      .map((match) => `${match[1]} ${routePath}`);
+  }).sort();
+}
+
 function collectManifestPaths(value: unknown, paths = new Set<string>()) {
   if (typeof value === "string" && value.startsWith("/api/training")) {
     paths.add(value.split("?")[0] ?? value);
@@ -48,6 +61,24 @@ function collectManifestPaths(value: unknown, paths = new Set<string>()) {
   }
 
   return paths;
+}
+
+function collectManifestOperations(value: unknown, operations = new Set<string>()) {
+  if (!value || typeof value !== "object") return operations;
+  if (
+    "method" in value
+    && typeof value.method === "string"
+    && "path" in value
+    && typeof value.path === "string"
+  ) {
+    operations.add(`${value.method} ${value.path.split("?")[0] ?? value.path}`);
+  }
+
+  for (const child of Object.values(value)) {
+    collectManifestOperations(child, operations);
+  }
+
+  return operations;
 }
 
 async function listProjects() {
@@ -227,6 +258,21 @@ test("GET /api/training manifest covers every implemented training API route", a
     .sort();
   const manifestPaths = collectManifestPaths(payload.data);
   const missingFromManifest = routePaths.filter((path) => !manifestPaths.has(path));
+
+  assert.deepEqual(missingFromManifest, []);
+});
+
+test("GET /api/training manifest covers every implemented training HTTP operation", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+
+  const routeOperations = await listRouteOperations();
+  const manifestOperations = collectManifestOperations(payload.data);
+  const missingFromManifest = routeOperations.filter((operation) => !manifestOperations.has(operation));
 
   assert.deepEqual(missingFromManifest, []);
 });
