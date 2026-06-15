@@ -349,6 +349,39 @@ test("GET /api/training exposes a machine-readable workflow manifest", async () 
   );
 });
 
+test("GET /api/training manifest declares module-owned resources and shared exceptions", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.deepEqual(payload.data.resourceBoundary.moduleOwnedResources, {
+    runs: { uiRoute: "/training/runs", apiEntrypoint: "/api/training/runs" },
+    projects: { uiRoute: "/training/projects", apiEntrypoint: "/api/training/projects" },
+    presets: { uiRoute: "/training/presets", apiEntrypoint: "/api/training/presets" },
+    templates: { uiRoute: "/training/templates", apiEntrypoint: "/api/training/templates" },
+  });
+  assert.deepEqual(payload.data.resourceBoundary.sharedResources, {
+    models: {
+      uiRoute: "/assets/models",
+      apiEntrypoints: ["/api/models?kind=checkpoint", "/api/models?kind=lora"],
+    },
+    settings: { uiRoute: "/settings", apiEntrypoints: [] },
+  });
+  assert.deepEqual(payload.data.resourceBoundary.forbiddenGenerationEntrypoints, [
+    "/api/projects",
+    "/api/presets",
+    "/api/templates",
+    "/api/queue",
+    "/api/runs",
+  ]);
+  assert.match(
+    payload.data.resourceBoundary.guidance,
+    /Only models and settings are shared/i,
+  );
+});
+
 test("GET /api/training manifest exposes production worker supervisor metadata without mock commands", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();

@@ -338,9 +338,13 @@ test("training fallback navigation consumes the shared work mode resource contra
 });
 
 test("training manifest advertises only training-owned APIs plus shared resources", () => {
+  const advertisedManifestSource = trainingManifestSource.replace(
+    /forbiddenGenerationEntrypoints:\s*\[[\s\S]*?\],\n\s*guidance:/,
+    "forbiddenGenerationEntrypoints: [],\n    guidance:",
+  );
   for (const forbiddenPath of ["/api/projects", "/api/presets", "/api/templates", "/api/queue", "/api/runs"]) {
     assert.doesNotMatch(
-      trainingManifestSource,
+      advertisedManifestSource,
       new RegExp(forbiddenPath.replaceAll("/", "\\/")),
       `Training manifest should not advertise generation-owned ${forbiddenPath}.`,
     );
