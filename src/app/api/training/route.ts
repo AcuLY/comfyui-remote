@@ -685,13 +685,6 @@ const TRAINING_API_MANIFEST = {
         remove: { method: "DELETE", path: "/api/training/reference-images/:imageId" },
         addToResults: { method: "POST", path: "/api/training/reference-images/:imageId/add-to-results" },
       },
-      legacyCharacterImages: {
-        list: { method: "GET", path: "/api/training/projects/:projectId/character-images" },
-        create: { method: "POST", path: "/api/training/projects/:projectId/character-images" },
-        update: { method: "PATCH", path: "/api/training/character-images/:imageId" },
-        remove: { method: "DELETE", path: "/api/training/character-images/:imageId" },
-        addToResults: { method: "POST", path: "/api/training/character-images/:imageId/add-to-results" },
-      },
       imageResults: {
         list: { method: "GET", path: "/api/training/projects/:projectId/image-results" },
         upload: { method: "POST", path: "/api/training/projects/:projectId/image-results/upload" },

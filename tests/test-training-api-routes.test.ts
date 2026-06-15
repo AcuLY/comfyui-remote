@@ -10,6 +10,11 @@ const TRAINING_MANAGED_RUNS_PATH = join(process.cwd(), "data", "training-managed
 const TRAINING_PROJECTS_PATH = join(process.cwd(), "data", "training-projects.json");
 const TRAINING_TEMPLATE_ORDER_PATH = join(process.cwd(), "data", "training-template-order.json");
 const TRAINING_ROUTE_METHODS = new Set(["GET", "POST", "PATCH", "DELETE", "PUT"]);
+const UNADVERTISED_TRAINING_COMPATIBILITY_ALIAS_PATHS = new Set([
+  "/api/training/projects/:projectId/character-images",
+  "/api/training/character-images/:imageId",
+  "/api/training/character-images/:imageId/add-to-results",
+]);
 let trainingManagedStoreSnapshotQueue: Promise<unknown> = Promise.resolve();
 
 async function listRouteFiles(dir: string): Promise<string[]> {
@@ -98,6 +103,15 @@ function collectManifestOperations(value: unknown, operations = new Set<string>(
   }
 
   return operations;
+}
+
+function shouldAdvertiseTrainingRoutePath(path: string) {
+  return !UNADVERTISED_TRAINING_COMPATIBILITY_ALIAS_PATHS.has(path);
+}
+
+function shouldAdvertiseTrainingRouteOperation(operation: string) {
+  const [, path] = operation.split(" ");
+  return Boolean(path && shouldAdvertiseTrainingRoutePath(path));
 }
 
 function operationMatchesPattern(operation: string, pattern: string) {
@@ -1450,11 +1464,28 @@ test("GET /api/training manifest covers every implemented training API route", a
   const routePaths = routeFiles
     .map(routeFileToTrainingApiPath)
     .filter((path) => path !== "/api/training")
+    .filter(shouldAdvertiseTrainingRoutePath)
     .sort();
   const manifestPaths = collectManifestPaths(payload.data);
   const missingFromManifest = routePaths.filter((path) => !manifestPaths.has(path));
 
   assert.deepEqual(missingFromManifest, []);
+});
+
+test("GET /api/training manifest keeps legacy character-image aliases out of the agent contract", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+
+  const manifestText = JSON.stringify(payload.data);
+  assert.doesNotMatch(
+    manifestText,
+    /character-images|legacyCharacterImages/i,
+    "Compatibility aliases can exist as route handlers, but the agent manifest should advertise reference-images only.",
+  );
 });
 
 test("GET /api/training manifest covers every implemented training HTTP operation", async () => {
@@ -1465,7 +1496,7 @@ test("GET /api/training manifest covers every implemented training HTTP operatio
   assert.equal(response.status, 200);
   assert.equal(payload.ok, true);
 
-  const routeOperations = await listRouteOperations();
+  const routeOperations = (await listRouteOperations()).filter(shouldAdvertiseTrainingRouteOperation);
   const manifestOperations = collectManifestOperations(payload.data);
   const missingFromManifest = routeOperations.filter((operation) => !manifestOperations.has(operation));
 
