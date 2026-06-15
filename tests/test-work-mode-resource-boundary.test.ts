@@ -12,6 +12,7 @@ const repoRoot = process.cwd();
 const bottomNavSource = readFileSync(resolve(repoRoot, "src/components/persistent-bottom-nav.tsx"), "utf8");
 const demoRoutesSource = readFileSync(resolve(repoRoot, "src/app/design-demos/routing/routes.ts"), "utf8");
 const settingsPageSource = readFileSync(resolve(repoRoot, "src/app/design-demos/features/settings/settings-page.tsx"), "utf8");
+const trainingNotFoundSource = readFileSync(resolve(repoRoot, "src/features/training/not-found-page.tsx"), "utf8");
 const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/training/route.ts"), "utf8");
 
 const MODULE_OWNED_RESOURCE_KEYS = ["runs", "projects", "presets", "templates"] as const;
@@ -32,6 +33,10 @@ function findMatchingSources(paths: string[], pattern: RegExp) {
     .map((path) => ({ path, source: readFileSync(path, "utf8") }))
     .filter(({ source }) => pattern.test(source))
     .map(({ path }) => path.replace(`${repoRoot}/`, ""));
+}
+
+function sourceFilesFromRoots(...roots: string[]) {
+  return roots.flatMap((root) => listSourceFiles(resolve(repoRoot, root)));
 }
 
 test("work mode resource targets isolate generation and training-owned resources", () => {
@@ -75,16 +80,13 @@ test("work mode resource targets isolate generation and training-owned resources
 });
 
 test("module-owned frontend pages do not fetch the other module's resource APIs", () => {
-  const generationPageFiles = [
-    ...listSourceFiles(resolve(repoRoot, "src/app/projects")),
-    ...listSourceFiles(resolve(repoRoot, "src/app/assets/presets")),
-    ...listSourceFiles(resolve(repoRoot, "src/app/assets/templates")),
-    ...listSourceFiles(resolve(repoRoot, "src/app/queue")),
-  ];
-  const trainingPageFiles = [
-    ...listSourceFiles(resolve(repoRoot, "src/app/training")),
-    ...listSourceFiles(resolve(repoRoot, "src/features/training/ui")),
-  ];
+  const generationPageFiles = sourceFilesFromRoots(
+    "src/app/projects",
+    "src/app/assets/presets",
+    "src/app/assets/templates",
+    "src/app/queue",
+  );
+  const trainingPageFiles = sourceFilesFromRoots("src/app/training", "src/features/training/ui");
 
   assert.deepEqual(
     findMatchingSources(generationPageFiles, /fetch\((?:`|")\/api\/training\b/),
@@ -95,6 +97,54 @@ test("module-owned frontend pages do not fetch the other module's resource APIs"
     findMatchingSources(trainingPageFiles, /fetch\((?:`|")\/api\/(?:projects|presets|templates|project-folders|preset-library|queue|runs)\b/),
     [],
     "Training-owned pages must not fetch generation-owned resource APIs; /api/models remains the shared exception.",
+  );
+});
+
+test("module-owned frontend pages do not import or link to the other module's resources", () => {
+  const generationPageFiles = sourceFilesFromRoots(
+    "src/app/projects",
+    "src/app/assets/presets",
+    "src/app/assets/templates",
+    "src/app/queue",
+  );
+  const trainingPageFiles = sourceFilesFromRoots("src/app/training", "src/features/training/ui");
+
+  assert.deepEqual(
+    findMatchingSources(
+      generationPageFiles,
+      /@\/features\/training|@\/server\/services\/training|@\/server\/repositories\/training|href=\{?["`]\/training\b|router\.push\(["`]\/training\b/,
+    ),
+    [],
+    "Generation-owned pages must not import or link to training-owned resources.",
+  );
+  assert.deepEqual(
+    findMatchingSources(
+      trainingPageFiles,
+      /@\/lib\/actions\/(?:project|template|template-crud|template-import|template-save)\b|@\/server\/services\/(?:project|template|preset-query-service|preset-section-replacement-service)\b|href=\{?["`]\/(?:projects|queue|assets\/presets|assets\/templates)\b|router\.push\(["`]\/(?:projects|queue|assets\/presets|assets\/templates)\b/,
+    ),
+    [],
+    "Training-owned pages must not import or link to generation-owned projects, runs, presets, or templates.",
+  );
+});
+
+test("module-owned API routes do not import the other module's resource services", () => {
+  const generationApiFiles = sourceFilesFromRoots(
+    "src/app/api/projects",
+    "src/app/api/presets",
+    "src/app/api/templates",
+    "src/app/api/preset-library",
+  );
+  const trainingApiFiles = sourceFilesFromRoots("src/app/api/training");
+
+  assert.deepEqual(
+    findMatchingSources(generationApiFiles, /@\/server\/services\/training|@\/server\/repositories\/training|@\/features\/training/),
+    [],
+    "Generation-owned API routes must not import training-owned services.",
+  );
+  assert.deepEqual(
+    findMatchingSources(trainingApiFiles, /@\/lib\/actions\/(?:project|template|template-crud|template-import|template-save)\b|@\/server\/services\/(?:project|template|preset-query-service|preset-section-replacement-service)\b/),
+    [],
+    "Training-owned API routes must not import generation-owned projects, templates, or preset services.",
   );
 });
 
@@ -171,6 +221,19 @@ test("settings work-mode resource preview consumes the shared resource contract"
     settingsPageSource,
     /route:\s*"\/(?:training|presets|projects|templates|runs)/,
     "Settings should not hard-code module-owned resource routes outside the shared contract.",
+  );
+});
+
+test("training fallback navigation consumes the shared work mode resource contract", () => {
+  assert.match(
+    trainingNotFoundSource,
+    /@\/lib\/work-mode-resources/,
+    "Training fallback navigation should not hand-maintain module-owned resource routes.",
+  );
+  assert.doesNotMatch(
+    trainingNotFoundSource,
+    /const\s+TRAINING_ENTRY_ROUTES/,
+    "Training fallback navigation should derive entries from the shared resource contract.",
   );
 });
 
