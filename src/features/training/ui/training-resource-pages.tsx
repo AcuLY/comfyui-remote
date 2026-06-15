@@ -252,7 +252,7 @@ function TrainingPresetSortPanel({
       </div>
       <div className={s.trainingPresetSortFooter}>
         <span>拖拽排序后保存</span>
-        <Button icon={Save} ariaLabel={`保存排序组：${title}`} onClick={() => onSave(title, orderedIds, items)} feedback={{ title: `${title} 保存草稿已记录` }}>保存此组</Button>
+        <Button icon={Save} ariaLabel={`保存排序组：${title}`} onClick={() => onSave(title, orderedIds, items)}>保存此组</Button>
       </div>
     </section>
   );

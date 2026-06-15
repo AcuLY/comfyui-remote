@@ -872,6 +872,21 @@ test("training preset sort rules save through the formal HTTP API on production 
   assert.match(sortSource, /pushToast/, "training preset sort rules should surface API success or failure through the shared feedback system");
 });
 
+test("training preset sort panel save buttons do not override HTTP result feedback", () => {
+  const panelStart = pageSource.indexOf("function TrainingPresetSortPanel");
+  const panelEnd = pageSource.indexOf("function TrainingPresetSortableSortRow");
+  assert.notEqual(panelStart, -1);
+  assert.notEqual(panelEnd, -1);
+
+  const panelSource = pageSource.slice(panelStart, panelEnd);
+
+  assert.doesNotMatch(
+    panelSource,
+    /feedback=\{\{[\s\S]*?保存草稿已记录/,
+    "Sort panel save buttons should let the route-level HTTP save handler own success/failure feedback.",
+  );
+});
+
 test("training preset sort mobile footer keeps save actions compact", () => {
   assert.doesNotMatch(
     cssSource,
