@@ -792,11 +792,13 @@ function SceneBlockCard({
 function ReferencePicker({
   onPreviewReference,
   onAddReference,
+  onRemoveReference,
   previewReference,
   referenceSourceTree,
   selectedReferenceIds: controlledSelectedReferenceIds,
 }: {
   onAddReference?: (candidate: ReferenceCandidate) => void;
+  onRemoveReference?: (candidate: ReferenceCandidate) => void;
   onPreviewReference: (candidate: ReferenceCandidate) => void;
   previewReference: ReferenceCandidate | null;
   referenceSourceTree: ReferenceSourceGroup[];
@@ -816,6 +818,18 @@ function ReferencePicker({
       return;
     }
     setLocalSelectedReferenceIds((current) => new Set([...current, previewReference.id]));
+  }
+
+  function handleRemoveReference(candidate: ReferenceCandidate) {
+    if (onRemoveReference) {
+      onRemoveReference(candidate);
+      return;
+    }
+    setLocalSelectedReferenceIds((current) => {
+      const next = new Set(current);
+      next.delete(candidate.id);
+      return next;
+    });
   }
 
   return (
@@ -865,7 +879,19 @@ function ReferencePicker({
           <div className={s.selectedReferenceList} aria-label="已添加引用">
             <strong>已添加引用</strong>
             {selectedReferences.map((reference) => (
-              <span key={reference.id}>{reference.title}</span>
+              <span className={s.selectedReferenceItem} key={reference.id}>
+                <span className={s.selectedReferenceItemLabel}>{reference.title}</span>
+                <Button
+                  size="sm"
+                  tone="danger"
+                  icon={Trash2}
+                  onClick={() => handleRemoveReference(reference)}
+                  ariaLabel={`移除引用：${reference.title}`}
+                  feedback={{ tone: "warning", title: "已移除引用", detail: reference.title }}
+                >
+                  移除
+                </Button>
+              </span>
             ))}
           </div>
         ) : null}
@@ -3130,6 +3156,22 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     });
   }
 
+  function handleRemoveTaskReference(candidate: ReferenceCandidate) {
+    setReferenceSelectionState((current) => {
+      const selectedReferenceIds = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.selectedReferenceIds : new Set<string>();
+      const nextSelectedReferenceIds = new Set(selectedReferenceIds);
+      nextSelectedReferenceIds.delete(candidate.id);
+      return {
+        previewReference: current.projectId === activeProject.id && current.sectionId === activeSection.id
+          ? current.previewReference
+          : activePreviewReference,
+        projectId: activeProject.id,
+        sectionId: activeSection.id,
+        selectedReferenceIds: nextSelectedReferenceIds,
+      };
+    });
+  }
+
   function handleAddSupplementalImage(candidate: SupplementalImageAttachment) {
     setSupplementalImageAttachments((current) => {
       const activeAttachments = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.attachments : [];
@@ -3410,6 +3452,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
             previewReference={activePreviewReference}
             onPreviewReference={handlePreviewTaskReference}
             onAddReference={handleAddTaskReference}
+            onRemoveReference={handleRemoveTaskReference}
             selectedReferenceIds={selectedReferenceIds}
           />
         </Panel>

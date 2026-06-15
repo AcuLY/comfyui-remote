@@ -503,6 +503,22 @@ test("reference picker disables references that have already been added", () => 
   assert.match(pickerSource, /disabled=\{!previewReference \|\| previewAlreadyAdded\}/, "add button should be disabled after a reference is already selected");
 });
 
+test("reference picker can remove explicitly added references", () => {
+  const pickerSource = sourceBetween("function ReferencePicker", "export function LoraTrainingProjectFormPage");
+  const composePage = sourceBetween(
+    "export function LoraTrainingGenerationComposePage",
+    "export function LoraTrainingProjectResultsPage",
+  );
+
+  assert.match(pickerSource, /onRemoveReference/, "reference picker should accept a remove callback");
+  assert.match(pickerSource, /handleRemoveReference/, "reference picker should expose an explicit remove handler");
+  assert.match(pickerSource, /setLocalSelectedReferenceIds\(\(current\) => \{[\s\S]*?next\.delete\(candidate\.id\)/, "local picker state should delete the selected reference id");
+  assert.match(pickerSource, /ariaLabel=\{`移除引用：\$\{reference\.title\}`\}/, "selected references should render an accessible remove action");
+  assert.match(composePage, /handleRemoveTaskReference/, "compose page should own reference removal in route-scoped state");
+  assert.match(composePage, /onRemoveReference=\{handleRemoveTaskReference\}/, "compose page should pass the remove action into the reference picker");
+  assert.match(cssSource, /\.selectedReferenceItem\b/, "selected references should have a row style for the remove button");
+});
+
 test("generation compose carries explicitly added references into the task draft", () => {
   const composePage = sourceBetween(
     "export function LoraTrainingGenerationComposePage",

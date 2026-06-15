@@ -1423,8 +1423,8 @@
   padding-top: 9px;
 }
 
-.selectedReferenceList strong,
-.selectedReferenceList span {
+.selectedReferenceList > strong,
+.selectedReferenceItem {
   display: inline-flex;
   min-height: 24px;
   align-items: center;
@@ -1435,19 +1435,31 @@
   padding: 5px 7px;
 }
 
-.selectedReferenceList strong {
+.selectedReferenceList > strong {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-green-soft);
   color: var(--demo-green);
 }
 
-.selectedReferenceList span {
+.selectedReferenceItem {
   max-width: 100%;
   overflow: hidden;
+  gap: 4px;
   background: var(--demo-field-bg);
   color: var(--demo-muted);
+}
+
+.selectedReferenceItemLabel {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.selectedReferenceItem :where([data-demo-ui-button="true"]) {
+  min-height: 18px;
+  padding: 2px 5px;
+  font-size: 9px;
 }
 
 .supplementalImageBlock {
