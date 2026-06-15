@@ -16,6 +16,8 @@ export async function GET(request: Request) {
       leaseDurationSeconds: searchParams.get("leaseDurationSeconds")
         ? Number(searchParams.get("leaseDurationSeconds"))
         : undefined,
+      targetType: searchParams.get("targetType") ?? undefined,
+      targetId: searchParams.get("targetId") ?? undefined,
     });
     return ok(data);
   } catch (error) {

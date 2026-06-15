@@ -116,12 +116,16 @@ export async function leaseNextCharacterLoraWorkerTask(input: {
   workerType: CharacterLoraWorkerType;
   leaseOwner: string;
   leaseExpiresAt: Date;
+  targetType?: string;
+  targetId?: string;
 }) {
   const task = await db.$transaction(async (tx) => {
     const now = new Date();
     const queued = await tx.characterLoraWorkerTask.findFirst({
       where: {
         workerType: input.workerType,
+        targetType: input.targetType,
+        targetId: input.targetId,
         OR: [
           { status: CharacterLoraRunStatus.queued },
           {

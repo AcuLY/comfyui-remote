@@ -115,7 +115,7 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/worker/tasks/next",
           queryParamSchema: {
             requiredFields: ["workerType"],
-            optionalFields: ["leaseOwner", "leaseDurationSeconds"],
+            optionalFields: ["leaseOwner", "leaseDurationSeconds", "targetType", "targetId"],
             enumValues: {
               workerType: [
                 "image_generation",
@@ -381,7 +381,9 @@ const TRAINING_API_MANIFEST = {
           queryParams: {
             workerType: "image_generation",
             leaseOwner: "agent",
+            targetType: "generationRun",
           },
+          queryParamBindings: { targetId: "taskId" },
           ...WORKER_TASK_LEASE_TARGET_METADATA,
           expectedTarget: { type: "generationRun", idHandoff: "taskId" },
         },
@@ -535,7 +537,9 @@ const TRAINING_API_MANIFEST = {
           queryParams: {
             workerType: "training",
             leaseOwner: "agent",
+            targetType: "trainingRun",
           },
+          queryParamBindings: { targetId: "trainingRunId" },
           ...WORKER_TASK_LEASE_TARGET_METADATA,
           expectedTarget: { type: "trainingRun", idHandoff: "trainingRunId" },
         },
@@ -817,7 +821,7 @@ const TRAINING_API_MANIFEST = {
         path: "/api/training/worker/tasks/next",
         queryParamSchema: {
           requiredFields: ["workerType"],
-          optionalFields: ["leaseOwner", "leaseDurationSeconds"],
+          optionalFields: ["leaseOwner", "leaseDurationSeconds", "targetType", "targetId"],
           enumValues: {
             workerType: [
               "image_generation",

@@ -652,7 +652,19 @@ export const characterLoraWorkerTaskLeaseRequestSchema = z.object({
   workerType: characterLoraWorkerTypeSchema,
   leaseOwner: z.string().trim().min(1).optional(),
   leaseDurationSeconds: z.number().int().min(30).max(86_400).optional(),
-}).strict();
+  targetType: z.string().trim().min(1).optional(),
+  targetId: z.string().trim().min(1).optional(),
+}).strict().superRefine((value, ctx) => {
+  if (Boolean(value.targetType) === Boolean(value.targetId)) {
+    return;
+  }
+
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    path: value.targetType ? ["targetId"] : ["targetType"],
+    message: "targetType and targetId must be provided together when filtering worker leases",
+  });
+});
 
 export const characterLoraWorkerTaskHeartbeatRequestSchema = z.object({
   leaseOwner: z.string().trim().min(1).optional(),

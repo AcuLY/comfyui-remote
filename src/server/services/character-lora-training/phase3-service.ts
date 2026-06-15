@@ -154,6 +154,8 @@ export async function leaseNextCharacterLoraTask(input: unknown) {
     workerType: parsed.workerType as CharacterLoraWorkerType,
     leaseOwner,
     leaseExpiresAt: new Date(Date.now() + (parsed.leaseDurationSeconds ?? DEFAULT_LEASE_SECONDS) * 1000),
+    targetType: parsed.targetType,
+    targetId: parsed.targetId,
   });
 }
 

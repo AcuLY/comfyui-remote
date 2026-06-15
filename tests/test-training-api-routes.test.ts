@@ -345,7 +345,7 @@ test("GET /api/training worker execution workflow declares machine-actionable ta
     steps.get("lease_worker_task")?.queryParamSchema,
     {
       requiredFields: ["workerType"],
-      optionalFields: ["leaseOwner", "leaseDurationSeconds"],
+      optionalFields: ["leaseOwner", "leaseDurationSeconds", "targetType", "targetId"],
       enumValues: {
         workerType: [
           "image_generation",
@@ -615,7 +615,7 @@ test("GET /api/training worker task resources declare request and response contr
       path: "/api/training/worker/tasks/next",
       queryParamSchema: {
         requiredFields: ["workerType"],
-        optionalFields: ["leaseOwner", "leaseDurationSeconds"],
+        optionalFields: ["leaseOwner", "leaseDurationSeconds", "targetType", "targetId"],
         enumValues: {
           workerType: [
             "image_generation",
@@ -685,6 +685,42 @@ test("GET /api/training worker task resources declare request and response contr
       },
     },
   );
+});
+
+test("worker task lease contract accepts target filters for exact agent leases", async () => {
+  const { characterLoraWorkerTaskLeaseRequestSchema } = await import("../src/server/character-lora-training/contracts");
+  const parsed = characterLoraWorkerTaskLeaseRequestSchema.parse({
+    workerType: "image_generation",
+    leaseOwner: "agent",
+    leaseDurationSeconds: 120,
+    targetType: "generationRun",
+    targetId: "generation-run-1",
+  });
+
+  assert.equal(parsed.targetType, "generationRun");
+  assert.equal(parsed.targetId, "generation-run-1");
+});
+
+test("worker task lease route and repository preserve target filter query params", async () => {
+  const routeSource = await readFile(
+    join(process.cwd(), "src", "app", "api", "training", "worker", "tasks", "next", "route.ts"),
+    "utf8",
+  );
+  const serviceSource = await readFile(
+    join(process.cwd(), "src", "server", "services", "character-lora-training", "phase3-service.ts"),
+    "utf8",
+  );
+  const repositorySource = await readFile(
+    join(process.cwd(), "src", "server", "repositories", "character-lora-training", "worker-task-repository.ts"),
+    "utf8",
+  );
+
+  assert.match(routeSource, /targetType:\s*searchParams\.get\("targetType"\)\s*\?\?\s*undefined/);
+  assert.match(routeSource, /targetId:\s*searchParams\.get\("targetId"\)\s*\?\?\s*undefined/);
+  assert.match(serviceSource, /targetType:\s*parsed\.targetType/);
+  assert.match(serviceSource, /targetId:\s*parsed\.targetId/);
+  assert.match(repositorySource, /targetType:\s*input\.targetType/);
+  assert.match(repositorySource, /targetId:\s*input\.targetId/);
 });
 
 test("GET /api/training domain worker callback resources declare request and response contracts", async () => {
@@ -1174,6 +1210,7 @@ test("GET /api/training full workflow scopes worker leases by worker type", asyn
     steps: Array<{
       id?: string;
       path: string;
+      queryParamBindings?: Record<string, string>;
       queryParams?: Record<string, string>;
       requires?: string[];
     }>;
@@ -1189,6 +1226,7 @@ test("GET /api/training full workflow scopes worker leases by worker type", asyn
     steps.get("lease_generation_worker_task")?.queryParams,
     {
       leaseOwner: "agent",
+      targetType: "generationRun",
       workerType: "image_generation",
     },
     "Generation workers should lease only image_generation worker tasks.",
@@ -1197,9 +1235,20 @@ test("GET /api/training full workflow scopes worker leases by worker type", asyn
     steps.get("lease_training_worker_task")?.queryParams,
     {
       leaseOwner: "agent",
+      targetType: "trainingRun",
       workerType: "training",
     },
     "Training workers should lease only training worker tasks.",
+  );
+  assert.deepEqual(
+    steps.get("lease_generation_worker_task")?.queryParamBindings,
+    { targetId: "taskId" },
+    "Generation workers should bind the queued generation task id into the targetId query parameter.",
+  );
+  assert.deepEqual(
+    steps.get("lease_training_worker_task")?.queryParamBindings,
+    { targetId: "trainingRunId" },
+    "Training workers should bind the queued training run id into the targetId query parameter.",
   );
 
   const workerLeaseStepsMissingWorkerType = fullWorkflow.steps
@@ -1247,7 +1296,9 @@ test("GET /api/training full workflow worker leases declare target verification 
       queryParams: {
         workerType: "image_generation",
         leaseOwner: "agent",
+        targetType: "generationRun",
       },
+      queryParamBindings: { targetId: "taskId" },
       produces: ["workerTaskId", "workerTaskTargetType", "workerTaskTargetId"],
       responsePaths: {
         workerTaskId: "$.data.id",
@@ -1269,7 +1320,9 @@ test("GET /api/training full workflow worker leases declare target verification 
       queryParams: {
         workerType: "training",
         leaseOwner: "agent",
+        targetType: "trainingRun",
       },
+      queryParamBindings: { targetId: "trainingRunId" },
       produces: ["workerTaskId", "workerTaskTargetType", "workerTaskTargetId"],
       responsePaths: {
         workerTaskId: "$.data.id",
@@ -4319,6 +4372,209 @@ test("production generation tasks can be cancelled through /api/training when th
   assert.equal(detailPayload.ok, true);
   assert.equal(detailPayload.data.id, generationTaskId);
   assert.equal(detailPayload.data.status, "cancelled");
+});
+
+test("production training worker lease can target a specific queued generation run", async () => {
+  const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
+  try {
+    await listCharacterLoraTrainingJobs({ page: 1, pageSize: 1 });
+  } catch (error) {
+    if (isProductionTrainingDatabaseUnavailable(error)) {
+      return;
+    }
+    throw error;
+  }
+
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
+  const workerTaskNextRoute = await import("../src/app/api/training/worker/tasks/next/route");
+  const { db } = await import("../src/lib/db");
+  const title = `真实定向租约项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_targeted_worker_lease_${Date.now()}`,
+        templateId: "character_identity_default",
+        trainingTemplateId: "character_identity_default",
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        usagePrompt: "真实定向租约提示词",
+        detailPrompt: "真实定向租约细节",
+        selectedReferenceIds: [],
+        sections: [
+          {
+            id: "targeted-lease-section-a",
+            title: "定向租约小节 A",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "targeted-lease-block-a",
+                source: "本地",
+                title: "定向租约 block A",
+                text: "定向租约场景 A",
+              },
+            ],
+            resolvedScene: "定向租约场景 A",
+            scenePreview: "定向租约场景 A",
+          },
+          {
+            id: "targeted-lease-section-b",
+            title: "定向租约小节 B",
+            enabled: true,
+            blockCount: 1,
+            blocks: [
+              {
+                id: "targeted-lease-block-b",
+                source: "本地",
+                title: "定向租约 block B",
+                text: "定向租约场景 B",
+              },
+            ],
+            resolvedScene: "定向租约场景 B",
+            scenePreview: "定向租约场景 B",
+          },
+        ],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+
+  const firstSectionId = createPayload.data.sections[0].id as string;
+  const secondSectionId = createPayload.data.sections[1].id as string;
+  const firstGenerationResponse = await sectionRunRoute.POST(
+    new Request(`http://localhost/api/training/sections/${firstSectionId}/runs`, {
+      method: "POST",
+      body: JSON.stringify({ userInstruction: "first queued generation" }),
+    }),
+    { params: Promise.resolve({ sectionId: firstSectionId }) },
+  );
+  const firstGenerationPayload = await firstGenerationResponse.json();
+  assert.equal(firstGenerationResponse.status, 201);
+  assert.equal(firstGenerationPayload.ok, true);
+
+  const secondGenerationResponse = await sectionRunRoute.POST(
+    new Request(`http://localhost/api/training/sections/${secondSectionId}/runs`, {
+      method: "POST",
+      body: JSON.stringify({ userInstruction: "second queued generation" }),
+    }),
+    { params: Promise.resolve({ sectionId: secondSectionId }) },
+  );
+  const secondGenerationPayload = await secondGenerationResponse.json();
+  assert.equal(secondGenerationResponse.status, 201);
+  assert.equal(secondGenerationPayload.ok, true);
+
+  const firstGenerationRunId = firstGenerationPayload.data.id as string;
+  const secondGenerationRunId = secondGenerationPayload.data.id as string;
+  assert.notEqual(firstGenerationRunId, secondGenerationRunId);
+
+  await db.characterLoraWorkerTask.updateMany({
+    where: { targetType: "generationRun", targetId: firstGenerationRunId },
+    data: {
+      status: "queued",
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      createdAt: new Date(Date.now() - 60_000),
+    },
+  });
+  await db.characterLoraWorkerTask.updateMany({
+    where: { targetType: "generationRun", targetId: secondGenerationRunId },
+    data: {
+      status: "queued",
+      leaseOwner: null,
+      leaseExpiresAt: null,
+      createdAt: new Date(),
+    },
+  });
+
+  const leaseResponse = await workerTaskNextRoute.GET(
+    new Request(
+      `http://localhost/api/training/worker/tasks/next?workerType=image_generation&leaseOwner=targeted-test&targetType=generationRun&targetId=${secondGenerationRunId}`,
+    ),
+  );
+  const leasePayload = await leaseResponse.json();
+  assert.equal(leaseResponse.status, 200);
+  assert.equal(leasePayload.ok, true);
+  assert.equal(leasePayload.data.targetType, "generationRun");
+  assert.equal(leasePayload.data.targetId, secondGenerationRunId);
+  assert.notEqual(leasePayload.data.targetId, firstGenerationRunId);
+});
+
+test("production worker task lease route filters queued tasks by target query params", async () => {
+  const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
+  try {
+    await listCharacterLoraTrainingJobs({ page: 1, pageSize: 1 });
+  } catch (error) {
+    if (isProductionTrainingDatabaseUnavailable(error)) {
+      return;
+    }
+    throw error;
+  }
+
+  const { db } = await import("../src/lib/db");
+  const workerTaskNextRoute = await import("../src/app/api/training/worker/tasks/next/route");
+  const unique = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const firstTargetId = `first-target-${unique}`;
+  const secondTargetId = `second-target-${unique}`;
+  const job = await db.characterLoraTrainingJob.create({
+    data: {
+      slug: `targeted-lease-${unique}`,
+      characterName: "Targeted Lease",
+      triggerToken: `targeted_lease_${Date.now()}`,
+      trainingScope: {},
+      artifactRoot: `test-artifacts/targeted-lease-${unique}`,
+    },
+    select: { id: true },
+  });
+
+  try {
+    await db.characterLoraWorkerTask.createMany({
+      data: [
+        {
+          jobId: job.id,
+          workerType: "prompt_card_draft",
+          targetType: "targetedLeaseTest",
+          targetId: firstTargetId,
+          status: "queued",
+          payload: { taskType: "prompt_card_draft", marker: "first" },
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+        {
+          jobId: job.id,
+          workerType: "prompt_card_draft",
+          targetType: "targetedLeaseTest",
+          targetId: secondTargetId,
+          status: "queued",
+          payload: { taskType: "prompt_card_draft", marker: "second" },
+          createdAt: new Date("2026-01-01T00:00:01.000Z"),
+        },
+      ],
+    });
+
+    const leaseResponse = await workerTaskNextRoute.GET(
+      new Request(
+        `http://localhost/api/training/worker/tasks/next?workerType=prompt_card_draft&leaseOwner=targeted-route-test&targetType=targetedLeaseTest&targetId=${secondTargetId}`,
+      ),
+    );
+    const leasePayload = await leaseResponse.json();
+    assert.equal(leaseResponse.status, 200);
+    assert.equal(leasePayload.ok, true);
+    assert.equal(leasePayload.data.targetType, "targetedLeaseTest");
+    assert.equal(leasePayload.data.targetId, secondTargetId);
+    assert.notEqual(leasePayload.data.targetId, firstTargetId);
+  } finally {
+    await db.characterLoraTrainingJob.deleteMany({ where: { id: job.id } });
+  }
 });
 
 test("production generation task draft lifecycle works through /api/training when the training database is available", async () => {
