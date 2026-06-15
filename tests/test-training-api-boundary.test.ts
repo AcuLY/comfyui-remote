@@ -96,28 +96,35 @@ test("production training API route tests use reference-image routes instead of 
   assert.deepEqual(
     productionTestsUsingLegacyReferenceAliases,
     [],
-    "Production training API behavior tests should exercise /reference-images; /character-images is only a compatibility alias.",
+    "Production training API behavior tests should exercise /reference-images; /character-images has been removed.",
   );
 });
 
-test("training API behavior tests reserve legacy character-image routes for explicit compatibility coverage", () => {
+test("production training API no longer ships legacy character-image alias routes", () => {
+  const routeFiles = listFiles(join(process.cwd(), "src/app/api/training"), (name) => name === "route.ts")
+    .map((path) => relative(process.cwd(), path))
+    .filter((path) => path.includes("character-images"));
   const routeTestSource = readFileSync(join(process.cwd(), "tests/test-training-api-routes.test.ts"), "utf8");
-  const testsUsingLegacyReferenceAliasesOutsideCompatibility: string[] = [];
-  const testBlockPattern = /test\("([^"]+)", async \(\) => \{([\s\S]*?)(?=\n\}\);\n\ntest\("|$)/g;
-
-  for (const match of routeTestSource.matchAll(testBlockPattern)) {
-    const [, title, body] = match;
-    const isCompatibilityCoverage = /legacy|compatib/i.test(title);
-
-    if (!isCompatibilityCoverage && body.includes("/character-images")) {
-      testsUsingLegacyReferenceAliasesOutsideCompatibility.push(title);
-    }
-  }
 
   assert.deepEqual(
-    testsUsingLegacyReferenceAliasesOutsideCompatibility,
+    routeFiles,
     [],
-    "Training API behavior tests should exercise /reference-images; /character-images should only appear in explicit legacy compatibility tests.",
+    "Training reference images should only be exposed through /reference-images route handlers.",
+  );
+  assert.doesNotMatch(
+    routeTestSource,
+    /\/character-images|legacy training character image aliases/i,
+    "Training API behavior tests should not keep compatibility coverage for removed character-image aliases.",
+  );
+});
+
+test("training API behavior tests use only reference-image routes", () => {
+  const routeTestSource = readFileSync(join(process.cwd(), "tests/test-training-api-routes.test.ts"), "utf8");
+
+  assert.doesNotMatch(
+    routeTestSource,
+    /\/character-images/,
+    "Training API behavior tests should exercise /reference-images and not legacy character-image aliases.",
   );
 });
 

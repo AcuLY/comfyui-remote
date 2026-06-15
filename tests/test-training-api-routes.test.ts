@@ -11,11 +11,6 @@ const TRAINING_PROJECTS_PATH = join(process.cwd(), "data", "training-projects.js
 const TRAINING_TEMPLATE_ORDER_PATH = join(process.cwd(), "data", "training-template-order.json");
 const TRAINING_ROUTE_METHODS = new Set(["GET", "POST", "PATCH", "DELETE", "PUT"]);
 const TRAINING_API_OPERATION_PREFIX = " /api/training";
-const UNADVERTISED_TRAINING_COMPATIBILITY_ALIAS_PATHS = new Set([
-  "/api/training/projects/:projectId/character-images",
-  "/api/training/character-images/:imageId",
-  "/api/training/character-images/:imageId/add-to-results",
-]);
 let trainingManagedStoreSnapshotQueue: Promise<unknown> = Promise.resolve();
 
 async function listRouteFiles(dir: string): Promise<string[]> {
@@ -104,15 +99,6 @@ function collectManifestOperations(value: unknown, operations = new Set<string>(
   }
 
   return operations;
-}
-
-function shouldAdvertiseTrainingRoutePath(path: string) {
-  return !UNADVERTISED_TRAINING_COMPATIBILITY_ALIAS_PATHS.has(path);
-}
-
-function shouldAdvertiseTrainingRouteOperation(operation: string) {
-  const [, path] = operation.split(" ");
-  return Boolean(path && shouldAdvertiseTrainingRoutePath(path));
 }
 
 function operationMatchesPattern(operation: string, pattern: string) {
@@ -1552,7 +1538,6 @@ test("GET /api/training manifest covers every implemented training API route", a
   const routePaths = routeFiles
     .map(routeFileToTrainingApiPath)
     .filter((path) => path !== "/api/training")
-    .filter(shouldAdvertiseTrainingRoutePath)
     .sort();
   const manifestPaths = collectManifestPaths(payload.data);
   const missingFromManifest = routePaths.filter((path) => !manifestPaths.has(path));
@@ -1560,7 +1545,7 @@ test("GET /api/training manifest covers every implemented training API route", a
   assert.deepEqual(missingFromManifest, []);
 });
 
-test("GET /api/training manifest keeps legacy character-image aliases out of the agent contract", async () => {
+test("GET /api/training manifest uses reference-image route names only", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
   const payload = await response.json();
@@ -1569,10 +1554,11 @@ test("GET /api/training manifest keeps legacy character-image aliases out of the
   assert.equal(payload.ok, true);
 
   const manifestText = JSON.stringify(payload.data);
+  const legacyReferenceRouteFragment = ["character", "images"].join("-");
   assert.doesNotMatch(
     manifestText,
-    /character-images|legacyCharacterImages/i,
-    "Compatibility aliases can exist as route handlers, but the agent manifest should advertise reference-images only.",
+    new RegExp(`${legacyReferenceRouteFragment}|legacyCharacterImages`, "i"),
+    "The training agent manifest should advertise reference-images only.",
   );
 });
 
@@ -1584,7 +1570,7 @@ test("GET /api/training manifest covers every implemented training HTTP operatio
   assert.equal(response.status, 200);
   assert.equal(payload.ok, true);
 
-  const routeOperations = (await listRouteOperations()).filter(shouldAdvertiseTrainingRouteOperation);
+  const routeOperations = await listRouteOperations();
   const manifestOperations = collectManifestOperations(payload.data);
   const missingFromManifest = routeOperations.filter((operation) => !manifestOperations.has(operation));
 
@@ -7461,36 +7447,6 @@ test("training asset and review routes exist under /api/training and return JSON
     [patchResponse, payloads[5]],
     [imageCaptionResponse, payloads[6]],
     [bulkCaptionsResponse, payloads[7]],
-  ] as const) {
-    assert.ok(response.status >= 400);
-    assert.equal(payload.ok, false);
-    assert.equal(typeof payload.error.message, "string");
-  }
-});
-
-test("legacy training character image aliases return JSON error contracts", async () => {
-  const characterImagesRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
-  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
-
-  const missingProjectParams = { params: Promise.resolve({ projectId: "missing-project" }) };
-  const missingImageParams = { params: Promise.resolve({ imageId: "missing-image" }) };
-
-  const [listResponse, uploadResponse, addToResultsResponse] = await Promise.all([
-    characterImagesRoute.GET(new Request("http://localhost/api/training/projects/missing-project/character-images"), missingProjectParams),
-    characterImagesRoute.POST(new Request("http://localhost/api/training/projects/missing-project/character-images", { method: "POST" }), missingProjectParams),
-    addToResultsRoute.POST(new Request("http://localhost/api/training/character-images/missing-image/add-to-results", { method: "POST", body: "{}" }), missingImageParams),
-  ]);
-
-  const payloads = await Promise.all([
-    listResponse.json(),
-    uploadResponse.json(),
-    addToResultsResponse.json(),
-  ]);
-
-  for (const [response, payload] of [
-    [listResponse, payloads[0]],
-    [uploadResponse, payloads[1]],
-    [addToResultsResponse, payloads[2]],
   ] as const) {
     assert.ok(response.status >= 400);
     assert.equal(payload.ok, false);
