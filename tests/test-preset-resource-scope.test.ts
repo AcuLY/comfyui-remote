@@ -22,6 +22,7 @@ process.env.DB_PROVIDER = "sqlite";
 const tempDir = mkdtempSync(path.join(tmpdir(), "preset-resource-scope-"));
 const dbPath = path.join(tempDir, "preset-resource-scope.db");
 process.env.DATABASE_URL = `file:${dbPath}`;
+process.env.TRAINING_PRESET_FALLBACK_DIR = path.join(tempDir, "training-fallback");
 
 const setupDb = new Database(dbPath);
 setupDb.exec(`
@@ -1256,7 +1257,7 @@ test("ordinary preset group copies do not preserve LoRA training members", async
   );
 });
 
-test("training preset creation never reuses ordinary generation preset categories", async () => {
+test("training preset creation never writes through ordinary generation preset tables", async () => {
   await prisma.presetCategory.create({
     data: {
       id: "shared-name-ordinary-category",
@@ -1265,6 +1266,8 @@ test("training preset creation never reuses ordinary generation preset categorie
       type: "preset",
     },
   });
+  const ordinaryPresetCountBefore = await prisma.preset.count();
+  const ordinaryCategoryCountBefore = await prisma.presetCategory.count();
 
   const created = await createTrainingSceneDescriptionPreset({
     category: "Shared Scene",
@@ -1272,13 +1275,24 @@ test("training preset creation never reuses ordinary generation preset categorie
     sceneDescriptionText: "训练场景描述。",
     title: "Training Scene Preset",
   });
-  const createdRow = await prisma.preset.findUniqueOrThrow({
-    where: { id: created.id },
-    include: { category: true },
-  });
 
-  assert.notEqual(createdRow.categoryId, "shared-name-ordinary-category");
-  assert.equal(createdRow.category.type, "training_scene_description");
+  assert.equal(created.category, "Shared Scene");
+  assert.equal(created.sceneDescriptionText, "训练场景描述。");
+  assert.equal(
+    await prisma.preset.findUnique({ where: { id: created.id } }),
+    null,
+    "training scene-description preset creation must not write into ordinary generation Preset rows",
+  );
+  assert.equal(
+    await prisma.preset.count(),
+    ordinaryPresetCountBefore,
+    "training scene-description preset creation must not add ordinary generation presets",
+  );
+  assert.equal(
+    await prisma.presetCategory.count(),
+    ordinaryCategoryCountBefore,
+    "training scene-description preset creation must not add ordinary generation categories",
+  );
   assert.equal(
     (await prisma.presetCategory.findUniqueOrThrow({ where: { id: "shared-name-ordinary-category" } })).type,
     "preset",

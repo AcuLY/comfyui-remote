@@ -25,9 +25,10 @@ import {
 } from "@/server/repositories/training/scene-description-presets";
 import { slugifyForTrainingRepository } from "@/server/repositories/training/helpers";
 
-const TRAINING_PRESET_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-presets.json");
-const TRAINING_PRESET_CATEGORY_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-categories.json");
-const TRAINING_PRESET_FOLDER_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-folders.json");
+const TRAINING_PRESET_FALLBACK_ROOT = process.env.TRAINING_PRESET_FALLBACK_DIR ?? join(process.cwd(), "data");
+const TRAINING_PRESET_FALLBACK_PATH = join(TRAINING_PRESET_FALLBACK_ROOT, "training-scene-description-presets.json");
+const TRAINING_PRESET_CATEGORY_FALLBACK_PATH = join(TRAINING_PRESET_FALLBACK_ROOT, "training-scene-description-categories.json");
+const TRAINING_PRESET_FOLDER_FALLBACK_PATH = join(TRAINING_PRESET_FALLBACK_ROOT, "training-scene-description-folders.json");
 
 export type TrainingSceneDescriptionCategory = {
   id: string;
@@ -356,7 +357,7 @@ function nextFallbackUpdatedAt() {
 
 function shouldUseTrainingPresetFileFallback(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
-  return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003|P2021/i.test(message);
+  return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003|P2021|no such table|table .* does not exist/i.test(message);
 }
 
 function nextFallbackCategoryId(slug: string) {
