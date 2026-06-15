@@ -2356,6 +2356,8 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   async function handleCopySection(section: LoraTrainingSection) {
+    if (isProductionTrainingRoute && isMutatingSections) return;
+
     const copyNumber = nextProjectSectionCopyNumber(localSections, section.id);
     const copyId = `${section.id}-copy-${copyNumber}`;
     const copy: LoraTrainingSection = {
@@ -2387,7 +2389,6 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
     setOrderedSectionIds({ ids: nextIds, projectId: activeProject.id });
 
     if (!isProductionTrainingRoute) return;
-    if (isMutatingSections) return;
 
     setIsMutatingSections(true);
     try {
@@ -2445,13 +2446,14 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
   }
 
   async function handleDeleteSection(sectionId: string) {
+    if (isProductionTrainingRoute && isMutatingSections) return;
+
     const nextSections = localSections.filter((section) => section.id !== sectionId);
     const nextIds = orderedSectionIds.filter((id) => id !== sectionId);
     setLocalSections({ projectId: activeProject.id, sections: nextSections });
     setOrderedSectionIds({ ids: nextIds, projectId: activeProject.id });
 
     if (!isProductionTrainingRoute) return;
-    if (isMutatingSections) return;
 
     setIsMutatingSections(true);
     try {
@@ -2488,10 +2490,11 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
   }
 
   async function handleReorderSections(nextSectionIds: string[]) {
+    if (isProductionTrainingRoute && isMutatingSections) return;
+
     setOrderedSectionIds({ ids: nextSectionIds, projectId: activeProject.id });
 
     if (!isProductionTrainingRoute) return;
-    if (isMutatingSections) return;
 
     const previousIds = orderedSectionIds;
     setIsMutatingSections(true);
@@ -2529,6 +2532,8 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
   }
 
   async function handleAddSection() {
+    if (isProductionTrainingRoute && isMutatingSections) return;
+
     const source = localSections[0];
     const draftNumber = nextProjectSectionDraftNumber(localSections);
     const draftId = `new-section-${draftNumber}`;
@@ -2557,7 +2562,6 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
     setOrderedSectionIds({ ids: [...orderedSectionIds, draft.id], projectId: activeProject.id });
 
     if (!isProductionTrainingRoute) return;
-    if (isMutatingSections) return;
 
     setIsMutatingSections(true);
     try {

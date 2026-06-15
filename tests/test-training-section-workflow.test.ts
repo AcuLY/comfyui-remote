@@ -17,6 +17,17 @@ function sourceBetween(startMarker: string, endMarker: string) {
   return pagesSource.slice(start, end);
 }
 
+function nestedFunctionSource(source: string, functionName: string) {
+  const start = source.indexOf(`async function ${functionName}`);
+  assert.notEqual(start, -1, `${functionName} should exist`);
+
+  const nextFunction = source.indexOf("\n  async function ", start + 1);
+  const returnStart = source.indexOf("\n  return (", start + 1);
+  const endCandidates = [nextFunction, returnStart].filter((index) => index !== -1);
+  assert.ok(endCandidates.length > 0, `${functionName} should have a bounded source range`);
+  return source.slice(start, Math.min(...endCandidates));
+}
+
 test("training section list uses the same management shell as design-demo sections", () => {
   const sectionsPage = sourceBetween(
     "export function LoraTrainingProjectSectionsPage",
@@ -53,7 +64,7 @@ test("training section list uses the project-demo container-driven two-column la
   );
 });
 
-test("training section list copy and delete actions update local front-end state", () => {
+test("training section list copy and delete actions use HTTP-backed production mutations", () => {
   const sectionsPage = sourceBetween(
     "export function LoraTrainingProjectSectionsPage",
     "export function LoraTrainingProjectSectionDetailPage",
@@ -61,13 +72,41 @@ test("training section list copy and delete actions update local front-end state
   const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
 
   assert.match(sectionsPage, /localSections/, "section list should keep a local editable section list");
-  assert.match(sectionsPage, /setLocalSections/, "section copy/delete should update local state without needing backend calls");
+  assert.match(sectionsPage, /isProductionTrainingRoute/, "section mutations should distinguish production /training routes from reusable demos");
   assert.match(sectionsPage, /handleCopySection/, "section list should define a copy action");
   assert.match(sectionsPage, /handleDeleteSection/, "section list should define a delete action");
+  assert.match(sectionsPage, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/sections`/, "copy should call the project section collection API");
+  assert.match(sectionsPage, /sourceSectionId:\s*section\.id/, "copy should send the source section id to the API");
+  assert.match(sectionsPage, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/sections\/\$\{sectionId\}`/, "delete should call the project section detail API");
+  assert.match(sectionsPage, /method:\s*"DELETE"/, "delete should use the formal DELETE operation");
   assert.match(sectionsPage, /sections=\{sections\}/, "section rail should follow the same local list as the cards");
   assert.match(sectionCard, /onCopy\?\.\(section\)/, "copy button should call the section copy handler");
   assert.match(sectionCard, /onDelete\?\.\(section\.id\)/, "delete button should call the section delete handler");
   assert.doesNotMatch(sectionCard, /删除小节需要确认/, "delete feedback should describe the local section removal, not a confirmation placeholder");
+});
+
+test("training section list mutation handlers guard concurrent actions before optimistic local state", () => {
+  const sectionsPage = sourceBetween(
+    "export function LoraTrainingProjectSectionsPage",
+    "export function LoraTrainingProjectSectionDetailPage",
+  );
+
+  for (const functionName of ["handleCopySection", "handleDeleteSection", "handleReorderSections", "handleAddSection"]) {
+    const handler = nestedFunctionSource(sectionsPage, functionName);
+    const guardMatch = handler.match(/if\s*\(\s*(?:isProductionTrainingRoute\s*&&\s*)?isMutatingSections\s*\)\s*return;/);
+    const guardIndex = guardMatch?.index ?? -1;
+    const localMutationIndexes = [
+      handler.indexOf("setLocalSections("),
+      handler.indexOf("setOrderedSectionIds("),
+    ].filter((index) => index !== -1);
+
+    assert.notEqual(guardIndex, -1, `${functionName} should guard against concurrent section mutations`);
+    assert.ok(localMutationIndexes.length > 0, `${functionName} should still update local optimistic state after it is allowed to run`);
+    assert.ok(
+      guardIndex < Math.min(...localMutationIndexes),
+      `${functionName} should not mutate local state when the production HTTP operation is already in flight`,
+    );
+  }
 });
 
 test("training section list keeps local section state scoped to the active project", () => {
@@ -83,7 +122,7 @@ test("training section list keeps local section state scoped to the active proje
   assert.doesNotMatch(sectionsPage, /const \[orderedSectionIds, setOrderedSectionIds\] = useState\(\(\) => project\?\.sections\.map\(\(section\) => section\.id\) \?\? \[\]\)/, "local section order should not be a project-agnostic state array");
 });
 
-test("training section list drag handles reorder the local section list", () => {
+test("training section list drag handles reorder through the project section API on production routes", () => {
   const sectionsPage = sourceBetween(
     "export function LoraTrainingProjectSectionsPage",
     "export function LoraTrainingProjectSectionDetailPage",
@@ -94,6 +133,8 @@ test("training section list drag handles reorder the local section list", () => 
   assert.match(sectionsPage, /handleReorderSections/, "section list should define a local reorder handler");
   assert.match(sectionsPage, /<SortableList items=\{orderedSectionIds\} onReorder=\{handleReorderSections\}>/, "section list should wrap cards in SortableList");
   assert.match(sectionsPage, /orderedSectionIds\.map/, "section cards should render in the local drag order");
+  assert.match(sectionsPage, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/sections\/reorder`/, "section reorder should call the formal reorder API");
+  assert.match(sectionsPage, /orderedSectionIds:\s*nextSectionIds/, "section reorder should submit the next id order");
   assert.match(sectionCard, /useDemoSortable\(section\.id\)/, "section card drag handle should be connected to sortable state");
   assert.match(sectionCard, /\{\.\.\.handleProps\}/, "section card drag handle should receive sortable handle props");
 });
@@ -111,14 +152,15 @@ test("training section copy inserts the duplicate directly after the source sect
   assert.doesNotMatch(sectionsPage, /setOrderedSectionIds\(\(current\) => \[\.\.\.current, copyId\]\)/, "copy should not append to the end of the section order");
 });
 
-test("training section list can add a local draft section without backend calls", () => {
+test("training section list can add a section through the project section API on production routes", () => {
   const sectionsPage = sourceBetween(
     "export function LoraTrainingProjectSectionsPage",
     "export function LoraTrainingProjectSectionDetailPage",
   );
 
-  assert.match(sectionsPage, /handleAddSection/, "section list should define a local add action");
+  assert.match(sectionsPage, /handleAddSection/, "section list should define an add action");
   assert.match(sectionsPage, /新小节/, "local add action should create a readable draft section title");
+  assert.match(sectionsPage, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/sections`/, "add should call the project section collection API");
   assert.match(sectionsPage, /onClick=\{handleAddSection\}/, "new section button should call the local add action");
 });
 

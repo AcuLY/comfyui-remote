@@ -358,6 +358,112 @@ test("preset resource lists stay scoped to their owning work mode except shared 
   assert.equal(trainingHrefs.includes("/settings"), true, "Settings remain a shared resource.");
 });
 
+test("resource navigation and loaders do not mix generation and training owned resources", async () => {
+  const { buildWorkModeResourceTargetList } = await import("../src/lib/work-mode-resources");
+  const generationTargets = buildWorkModeResourceTargetList("generation");
+  const trainingTargets = buildWorkModeResourceTargetList("lora_training");
+
+  const routePrefixesFor = (target: (typeof generationTargets)[number]) => {
+    const activePrefixes = target.activePrefix
+      ? Array.isArray(target.activePrefix) ? target.activePrefix : [target.activePrefix]
+      : [];
+    return [target.href, ...activePrefixes];
+  };
+  const routeTouches = (route: string, prefix: string) => route === prefix || route.startsWith(`${prefix}/`);
+  const generationOwnedPrefixes = generationTargets
+    .filter((target) => target.owner === "generation")
+    .flatMap(routePrefixesFor);
+  const trainingOwnedPrefixes = trainingTargets
+    .filter((target) => target.owner === "lora_training")
+    .flatMap(routePrefixesFor);
+
+  for (const target of generationTargets.filter((item) => item.owner === "generation")) {
+    for (const route of routePrefixesFor(target)) {
+      assert.equal(
+        trainingOwnedPrefixes.some((prefix) => routeTouches(route, prefix)),
+        false,
+        `Generation resource ${target.key} should not point at training-owned route ${route}`,
+      );
+    }
+  }
+
+  for (const target of trainingTargets.filter((item) => item.owner === "lora_training")) {
+    for (const route of routePrefixesFor(target)) {
+      assert.equal(
+        generationOwnedPrefixes.some((prefix) => routeTouches(route, prefix)),
+        false,
+        `Training resource ${target.key} should not point at generation-owned route ${route}`,
+      );
+    }
+  }
+
+  for (const key of ["runs", "projects", "presets", "templates"] as const) {
+    assert.notEqual(
+      generationTargets.find((target) => target.key === key)?.href,
+      trainingTargets.find((target) => target.key === key)?.href,
+      `${key} should have separate generation and training resource routes`,
+    );
+  }
+
+  for (const key of ["models", "settings"] as const) {
+    assert.equal(
+      generationTargets.find((target) => target.key === key)?.href,
+      trainingTargets.find((target) => target.key === key)?.href,
+      `${key} should stay a shared resource route`,
+    );
+  }
+
+  const trainingUiFiles = [
+    "src/features/training/header-specs.ts",
+    "src/features/training/not-found-page.tsx",
+    "src/features/training/shell.tsx",
+    "src/features/training/ui/training-project-pages.tsx",
+    "src/features/training/ui/training-resource-pages.tsx",
+    "src/features/training/ui/training-run-detail-page.tsx",
+  ];
+  for (const relativePath of trainingUiFiles) {
+    const source = readFileSync(join(process.cwd(), relativePath), "utf8");
+    assert.doesNotMatch(
+      source,
+      /["'`]\/assets\/(?:presets|templates)\b/,
+      `${relativePath} should not link training pages to generation-owned resource pages.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /["'`]\/api\/(?:presets|preset-library|templates)\b/,
+      `${relativePath} should not call generation-owned preset/template APIs from training pages.`,
+    );
+  }
+
+  const generationResourceUiFiles = [
+    ...listFiles(join(process.cwd(), "src/app/assets/presets"), (name) => name.endsWith(".ts") || name.endsWith(".tsx")),
+    ...listFiles(join(process.cwd(), "src/app/assets/templates"), (name) => name.endsWith(".ts") || name.endsWith(".tsx")),
+  ];
+  for (const filePath of generationResourceUiFiles) {
+    const relativePath = relative(process.cwd(), filePath);
+    const source = readFileSync(filePath, "utf8");
+    assert.doesNotMatch(
+      source,
+      /["'`]\/training\/(?:presets|templates)\b/,
+      `${relativePath} should not link generation resource pages to training-owned resources.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /["'`]\/api\/training\/(?:presets|scene-description|templates)\b/,
+      `${relativePath} should not call training-owned preset/template APIs from generation pages.`,
+    );
+  }
+
+  const trainingSnapshotSource = readFileSync(join(process.cwd(), "src/server/services/training/snapshot-service.ts"), "utf8");
+  assert.match(trainingSnapshotSource, /listTrainingSceneDescriptionPresets/, "Training snapshots should load training scene-description presets.");
+  assert.match(trainingSnapshotSource, /listManagedTrainingTemplates/, "Training snapshots should load training templates.");
+  assert.doesNotMatch(
+    trainingSnapshotSource,
+    /getPresetCategoriesWithPresets|getPresetLibraryV2|listProjectTemplates/,
+    "Training snapshots should not load ordinary generation preset or template lists.",
+  );
+});
+
 test("generation preset list workspaces reuse the ordinary preset scope contract", () => {
   const scopedGenerationPresetListFiles = [
     "src/app/assets/presets/sort-rules/page.tsx",
