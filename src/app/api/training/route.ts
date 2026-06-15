@@ -396,7 +396,7 @@ const TRAINING_API_MANIFEST = {
           pathParams: { taskId: "workerTaskId" },
           requestBody: {
             contentType: "application/json",
-            optionalFields: ["progress", "message", "currentStep", "targetSteps"],
+            optionalFields: ["leaseOwner", "leaseDurationSeconds", "progressJson"],
           },
         },
         {
@@ -552,7 +552,7 @@ const TRAINING_API_MANIFEST = {
           pathParams: { taskId: "workerTaskId" },
           requestBody: {
             contentType: "application/json",
-            optionalFields: ["progress", "message", "currentStep", "targetSteps"],
+            optionalFields: ["leaseOwner", "leaseDurationSeconds", "progressJson"],
           },
         },
         {

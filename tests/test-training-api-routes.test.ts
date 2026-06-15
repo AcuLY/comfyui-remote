@@ -1200,6 +1200,38 @@ test("GET /api/training full workflow declares body expectations for every write
   );
 });
 
+test("GET /api/training full workflow heartbeat steps reuse the worker task HTTP contract", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  ) as {
+    steps: Array<{
+      id?: string;
+      requestBody?: unknown;
+    }>;
+  } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(fullWorkflow, "agent manifest should include the full training workflow");
+
+  const steps = new Map(fullWorkflow.steps.map((step) => [step.id, step]));
+  const workerHeartbeatRequestBody = payload.data.resources.workerTasks.heartbeat.requestBody;
+
+  assert.deepEqual(
+    steps.get("heartbeat_generation_worker_task")?.requestBody,
+    workerHeartbeatRequestBody,
+    "Generation heartbeat should use the same JSON body contract as /api/training/worker/tasks/:taskId/heartbeat.",
+  );
+  assert.deepEqual(
+    steps.get("heartbeat_training_worker_task")?.requestBody,
+    workerHeartbeatRequestBody,
+    "Training heartbeat should use the same JSON body contract as /api/training/worker/tasks/:taskId/heartbeat.",
+  );
+});
+
 test("GET /api/training full workflow scopes worker leases by worker type", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
@@ -1444,6 +1476,27 @@ test("GET /api/training manifest covers every implemented training HTTP operatio
   const missingFromManifest = routeOperations.filter((operation) => !manifestOperations.has(operation));
 
   assert.deepEqual(missingFromManifest, []);
+});
+
+test("GET /api/training manifest only advertises implemented training HTTP operations", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+
+  const routeOperations = await listRouteOperations();
+  const manifestOperations = [...collectManifestOperations(payload.data)].sort();
+  const missingRoutes = manifestOperations.filter((manifestOperation) => !routeOperations.some((routeOperation) =>
+    operationMatchesPattern(routeOperation, manifestOperation)
+  ));
+
+  assert.deepEqual(
+    missingRoutes,
+    [],
+    "Every /api/training operation advertised to agents should have a matching route handler.",
+  );
 });
 
 test("GET /api/training/models lists checkpoint or LoRA assets for training workflows", async () => {
@@ -6103,12 +6156,104 @@ test("managed section run route honors project scope when section ids overlap", 
   });
 });
 
+test("managed scheduler exposes running generation runs through target-scoped worker leases", async () => {
+  await withTrainingManagedStoreSnapshot(async () => {
+    const seedProject = await createManagedReferenceSeedProject();
+    const projectsRoute = await import("../src/app/api/training/projects/route");
+    const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
+    const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
+    const workerTaskNextRoute = await import("../src/app/api/training/worker/tasks/next/route");
+    const title = `测试 managed worker lease ${Date.now()}`;
+
+    const createResponse = await projectsRoute.POST(
+      new Request("http://localhost/api/training/projects", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          characterName: title,
+          projectName: title,
+          triggerToken: `managed_worker_lease_${Date.now()}`,
+          templateId: "character_identity_default",
+          trainingTemplateId: "character_identity_default",
+          checkpointRelativePath: "models/checkpoints/mock.safetensors",
+          usagePrompt: "managed worker lease usage",
+          detailPrompt: "managed worker lease detail",
+          selectedReferenceIds: [seedProject.projectSelectionId],
+          sections: [
+            {
+              id: "managed-worker-lease-section",
+              title: "Managed Worker Lease Section",
+              enabled: true,
+              blockCount: 1,
+              blocks: [
+                {
+                  id: "managed-worker-lease-block",
+                  source: "本地",
+                  title: "Managed Worker Lease Block",
+                  text: "managed worker lease scene",
+                },
+              ],
+              resolvedScene: "managed worker lease scene",
+              scenePreview: "managed worker lease scene",
+            },
+          ],
+          trainingDefaults: {
+            autoGenerateSamples: false,
+            autoFreezeDataset: false,
+          },
+        }),
+      }),
+    );
+    const createPayload = await createResponse.json();
+    assert.equal(createResponse.status, 201);
+    assert.equal(createPayload.ok, true);
+
+    const sectionId = createPayload.data.sections[0].id as string;
+    const generationResponse = await sectionRunRoute.POST(
+      new Request(`http://localhost/api/training/sections/${sectionId}/runs`, {
+        method: "POST",
+        body: JSON.stringify({
+          userInstruction: "managed target lease generation",
+        }),
+      }),
+      { params: Promise.resolve({ sectionId }) },
+    );
+    const generationPayload = await generationResponse.json();
+    assert.equal(generationResponse.status, 201);
+    assert.equal(generationPayload.ok, true);
+    const generationRunId = generationPayload.data.id as string;
+
+    const tickResponse = await schedulerTickRoute.POST();
+    const tickPayload = await tickResponse.json();
+    assert.equal(tickResponse.status, 200);
+    assert.equal(tickPayload.ok, true);
+    assert.equal(tickPayload.data.id, generationRunId);
+
+    const leaseResponse = await workerTaskNextRoute.GET(
+      new Request(
+        `http://localhost/api/training/worker/tasks/next?workerType=image_generation&leaseOwner=managed-agent&targetType=generationRun&targetId=${generationRunId}`,
+      ),
+    );
+    const leasePayload = await leaseResponse.json();
+    assert.equal(leaseResponse.status, 200);
+    assert.equal(leasePayload.ok, true);
+    assert.equal(leasePayload.data.workerType, "image_generation");
+    assert.equal(leasePayload.data.targetType, "generationRun");
+    assert.equal(leasePayload.data.targetId, generationRunId);
+    assert.equal(leasePayload.data.status, "running");
+    assert.equal(leasePayload.data.leaseOwner, "managed-agent");
+  });
+});
+
 test("managed scheduler and worker endpoints can advance generation and training runs through completion", async () => {
   await withTrainingManagedStoreSnapshot(async () => {
     const seedProject = await createManagedReferenceSeedProject();
     const projectsRoute = await import("../src/app/api/training/projects/route");
     const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
     const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
+    const workerTaskNextRoute = await import("../src/app/api/training/worker/tasks/next/route");
+    const workerTaskHeartbeatRoute = await import("../src/app/api/training/worker/tasks/[taskId]/heartbeat/route");
+    const workerTaskCompleteRoute = await import("../src/app/api/training/worker/tasks/[taskId]/complete/route");
     const workerGenerationCompleteRoute = await import("../src/app/api/training/worker/generation-tasks/[taskId]/complete/route");
     const datasetRevisionRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
     const trainingRunRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
@@ -6185,6 +6330,32 @@ test("managed scheduler and worker endpoints can advance generation and training
     assert.equal(tickGenerationPayload.data.id, generationTaskId);
     assert.equal(tickGenerationPayload.data.status, "running");
 
+    const generationLeaseResponse = await workerTaskNextRoute.GET(
+      new Request(
+        `http://localhost/api/training/worker/tasks/next?workerType=image_generation&leaseOwner=managed-worker-flow&targetType=generationRun&targetId=${generationTaskId}`,
+      ),
+    );
+    const generationLeasePayload = await generationLeaseResponse.json();
+    assert.equal(generationLeaseResponse.status, 200);
+    assert.equal(generationLeasePayload.ok, true);
+    assert.equal(generationLeasePayload.data.targetId, generationTaskId);
+    const generationWorkerTaskId = generationLeasePayload.data.id as string;
+
+    const generationHeartbeatResponse = await workerTaskHeartbeatRoute.POST(
+      new Request(`http://localhost/api/training/worker/tasks/${generationWorkerTaskId}/heartbeat`, {
+        method: "POST",
+        body: JSON.stringify({
+          leaseOwner: "managed-worker-flow",
+          progressJson: { phase: "generating" },
+        }),
+      }),
+      { params: Promise.resolve({ taskId: generationWorkerTaskId }) },
+    );
+    const generationHeartbeatPayload = await generationHeartbeatResponse.json();
+    assert.equal(generationHeartbeatResponse.status, 200);
+    assert.equal(generationHeartbeatPayload.ok, true);
+    assert.deepEqual(generationHeartbeatPayload.data.progressJson, { phase: "generating" });
+
     const completeGenerationResponse = await workerGenerationCompleteRoute.POST(
       new Request(`http://localhost/api/training/worker/generation-tasks/${generationTaskId}/complete`, {
         method: "POST",
@@ -6200,6 +6371,20 @@ test("managed scheduler and worker endpoints can advance generation and training
     assert.equal(completeGenerationPayload.ok, true);
     assert.equal(completeGenerationPayload.data.id, generationTaskId);
     assert.equal(completeGenerationPayload.data.status, "completed");
+
+    const completeGenerationWorkerResponse = await workerTaskCompleteRoute.POST(
+      new Request(`http://localhost/api/training/worker/tasks/${generationWorkerTaskId}/complete`, {
+        method: "POST",
+        body: JSON.stringify({
+          leaseOwner: "managed-worker-flow",
+        }),
+      }),
+      { params: Promise.resolve({ taskId: generationWorkerTaskId }) },
+    );
+    const completeGenerationWorkerPayload = await completeGenerationWorkerResponse.json();
+    assert.equal(completeGenerationWorkerResponse.status, 200);
+    assert.equal(completeGenerationWorkerPayload.ok, true);
+    assert.equal(completeGenerationWorkerPayload.data.status, "succeeded");
 
     const generationDetailResponse = await generationTaskDetailRoute.GET(
       new Request(`http://localhost/api/training/generation-tasks/${generationTaskId}`),
@@ -6252,6 +6437,32 @@ test("managed scheduler and worker endpoints can advance generation and training
     assert.equal(tickTrainingPayload.data.id, trainingRunId);
     assert.equal(tickTrainingPayload.data.status, "running");
 
+    const trainingLeaseResponse = await workerTaskNextRoute.GET(
+      new Request(
+        `http://localhost/api/training/worker/tasks/next?workerType=training&leaseOwner=managed-worker-flow&targetType=trainingRun&targetId=${trainingRunId}`,
+      ),
+    );
+    const trainingLeasePayload = await trainingLeaseResponse.json();
+    assert.equal(trainingLeaseResponse.status, 200);
+    assert.equal(trainingLeasePayload.ok, true);
+    assert.equal(trainingLeasePayload.data.targetId, trainingRunId);
+    const trainingWorkerTaskId = trainingLeasePayload.data.id as string;
+
+    const trainingHeartbeatResponse = await workerTaskHeartbeatRoute.POST(
+      new Request(`http://localhost/api/training/worker/tasks/${trainingWorkerTaskId}/heartbeat`, {
+        method: "POST",
+        body: JSON.stringify({
+          leaseOwner: "managed-worker-flow",
+          progressJson: { phase: "training", currentStep: 600, targetSteps: 1200 },
+        }),
+      }),
+      { params: Promise.resolve({ taskId: trainingWorkerTaskId }) },
+    );
+    const trainingHeartbeatPayload = await trainingHeartbeatResponse.json();
+    assert.equal(trainingHeartbeatResponse.status, 200);
+    assert.equal(trainingHeartbeatPayload.ok, true);
+    assert.deepEqual(trainingHeartbeatPayload.data.progressJson, { phase: "training", currentStep: 600, targetSteps: 1200 });
+
     const progressResponse = await workerTrainingProgressRoute.POST(
       new Request(`http://localhost/api/training/worker/training-runs/${trainingRunId}/progress`, {
         method: "POST",
@@ -6283,6 +6494,20 @@ test("managed scheduler and worker endpoints can advance generation and training
     assert.equal(completeTrainingPayload.ok, true);
     assert.equal(completeTrainingPayload.data.status, "completed");
     assert.equal(completeTrainingPayload.data.artifactName, "worker_complete.safetensors");
+
+    const completeTrainingWorkerResponse = await workerTaskCompleteRoute.POST(
+      new Request(`http://localhost/api/training/worker/tasks/${trainingWorkerTaskId}/complete`, {
+        method: "POST",
+        body: JSON.stringify({
+          leaseOwner: "managed-worker-flow",
+        }),
+      }),
+      { params: Promise.resolve({ taskId: trainingWorkerTaskId }) },
+    );
+    const completeTrainingWorkerPayload = await completeTrainingWorkerResponse.json();
+    assert.equal(completeTrainingWorkerResponse.status, 200);
+    assert.equal(completeTrainingWorkerPayload.ok, true);
+    assert.equal(completeTrainingWorkerPayload.data.status, "succeeded");
 
     const trainingDetailResponse = await trainingRunDetailRoute.GET(
       new Request(`http://localhost/api/training/training-runs/${trainingRunId}`),
