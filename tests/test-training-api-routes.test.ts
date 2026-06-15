@@ -5237,9 +5237,9 @@ test("managed training project updates through /api/training/projects/:projectId
 
 test("managed training project references flow into result review through /api/training", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
-  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
-  const referenceDetailRoute = await import("../src/app/api/training/character-images/[imageId]/route");
-  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
+  const referenceDetailRoute = await import("../src/app/api/training/reference-images/[imageId]/route");
+  const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
   const reviewRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
   const patchResultRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
   await withTrainingManagedStoreSnapshot(async () => {
@@ -5294,7 +5294,7 @@ test("managed training project references flow into result review through /api/t
     const params = { params: Promise.resolve({ projectId }) };
 
     const beforeResponse = await referenceRoute.GET(
-      new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+      new Request(`http://localhost/api/training/projects/${projectId}/reference-images`),
       params,
     );
     const beforePayload = await beforeResponse.json();
@@ -5307,7 +5307,7 @@ test("managed training project references flow into result review through /api/t
     uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "managed-reference-source.png", { type: "image/png" }));
     uploadReferenceFormData.append("role", "source");
     const uploadReferenceResponse = await referenceRoute.POST(
-      new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+      new Request(`http://localhost/api/training/projects/${projectId}/reference-images`, {
         method: "POST",
         body: uploadReferenceFormData,
       }),
@@ -5319,7 +5319,7 @@ test("managed training project references flow into result review through /api/t
     const imageId = uploadReferencePayload.data.id as string;
 
     const patchReferenceResponse = await referenceDetailRoute.PATCH(
-      new Request(`http://localhost/api/training/character-images/${imageId}`, {
+      new Request(`http://localhost/api/training/reference-images/${imageId}`, {
         method: "PATCH",
         body: JSON.stringify({
           label: "已更新参考图",
@@ -5338,7 +5338,7 @@ test("managed training project references flow into result review through /api/t
     assert.equal(patchReferencePayload.data.kind, "generated");
 
     const addToResultsResponse = await addToResultsRoute.POST(
-      new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+      new Request(`http://localhost/api/training/reference-images/${imageId}/add-to-results`, {
         method: "POST",
         body: JSON.stringify({ reviewStatus: "pending", captionDraft: "初始说明文本" }),
       }),
@@ -5390,7 +5390,7 @@ test("managed training project references flow into result review through /api/t
     assert.equal(deleteResultPayload.data.id, imageResultId);
 
     const deleteReferenceResponse = await referenceDetailRoute.DELETE(
-      new Request(`http://localhost/api/training/character-images/${imageId}`, {
+      new Request(`http://localhost/api/training/reference-images/${imageId}`, {
         method: "DELETE",
       }),
       { params: Promise.resolve({ imageId }) },
@@ -5402,10 +5402,10 @@ test("managed training project references flow into result review through /api/t
   });
 });
 
-test("production training character images support patch, delete, and artifact registration through /api/training", async () => {
-  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/character-images/route");
-  const referenceDetailRoute = await import("../src/app/api/training/character-images/[imageId]/route");
-  const addToResultsRoute = await import("../src/app/api/training/character-images/[imageId]/add-to-results/route");
+test("production training reference images support patch, delete, and artifact registration through /api/training", async () => {
+  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
+  const referenceDetailRoute = await import("../src/app/api/training/reference-images/[imageId]/route");
+  const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
   const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
   let productionProjects;
   try {
@@ -5425,7 +5425,7 @@ test("production training character images support patch, delete, and artifact r
   uploadFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "production-reference-source.png", { type: "image/png" }));
   uploadFormData.append("role", "source");
   const uploadResponse = await referenceRoute.POST(
-    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`, {
       method: "POST",
       body: uploadFormData,
     }),
@@ -5437,7 +5437,7 @@ test("production training character images support patch, delete, and artifact r
   const imageId = uploadPayload.data.id as string;
 
   const patchReferenceResponse = await referenceDetailRoute.PATCH(
-    new Request(`http://localhost/api/training/character-images/${imageId}`, {
+    new Request(`http://localhost/api/training/reference-images/${imageId}`, {
       method: "PATCH",
       body: JSON.stringify({
         label: "已更新生产参考图",
@@ -5456,7 +5456,7 @@ test("production training character images support patch, delete, and artifact r
   assert.equal(patchReferencePayload.data.provenance.kind, "generated");
 
   const addToResultsResponse = await addToResultsRoute.POST(
-    new Request(`http://localhost/api/training/character-images/${imageId}/add-to-results`, {
+    new Request(`http://localhost/api/training/reference-images/${imageId}/add-to-results`, {
       method: "POST",
       body: JSON.stringify({ reviewStatus: "pending", captionDraft: "候选图用于注册参考图" }),
     }),
@@ -5469,7 +5469,7 @@ test("production training character images support patch, delete, and artifact r
   assert.equal(typeof candidateArtifactId, "string");
 
   const registerResponse = await referenceRoute.POST(
-    new Request(`http://localhost/api/training/projects/${projectId}/character-images`, {
+    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -5490,7 +5490,7 @@ test("production training character images support patch, delete, and artifact r
   const registeredImageId = registerPayload.data.id as string;
 
   const referencesListResponse = await referenceRoute.GET(
-    new Request(`http://localhost/api/training/projects/${projectId}/character-images`),
+    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`),
     projectParams,
   );
   const referencesListPayload = await referencesListResponse.json();
@@ -5500,7 +5500,7 @@ test("production training character images support patch, delete, and artifact r
   assert.ok(referencesListPayload.data.some((image: { id: string }) => image.id === registeredImageId));
 
   const deleteReferenceResponse = await referenceDetailRoute.DELETE(
-    new Request(`http://localhost/api/training/character-images/${registeredImageId}`, {
+    new Request(`http://localhost/api/training/reference-images/${registeredImageId}`, {
       method: "DELETE",
     }),
     { params: Promise.resolve({ imageId: registeredImageId }) },
