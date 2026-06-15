@@ -262,3 +262,23 @@ test("training reference image routes use the project service boundary", () => {
   assert.match(projectService, /export async function deleteTrainingReferenceImage/);
   assert.match(projectService, /export async function addTrainingReferenceImageToResults/);
 });
+
+test("training profile route uses the project service boundary", () => {
+  const routeFile = "src/app/api/training/projects/[projectId]/profile/route.ts";
+  const source = readFileSync(join(process.cwd(), routeFile), "utf8");
+
+  assert.match(
+    source,
+    /@\/server\/services\/training\/project-service/,
+    `${routeFile} should route profile reads and writes through project-service`,
+  );
+  assert.doesNotMatch(
+    source,
+    /@\/server\/services\/training\/legacy-compat-service/,
+    `${routeFile} should not read or write legacy prompt cards from the route layer`,
+  );
+
+  const projectService = readFileSync(join(process.cwd(), "src/server/services/training/project-service.ts"), "utf8");
+  assert.match(projectService, /export async function getTrainingProjectProfile/);
+  assert.match(projectService, /export async function updateTrainingProjectProfile/);
+});

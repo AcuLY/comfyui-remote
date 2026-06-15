@@ -16,6 +16,7 @@ import {
   archiveLegacyTrainingProject,
   cancelLegacyTrainingGenerationRun,
   cancelLegacyTrainingRun,
+  createLegacyTrainingPromptCardVersion,
   createCharacterLoraTrainingProject,
   deleteLegacyTrainingReferenceImage,
   enqueueLegacyTrainingRun,
@@ -24,13 +25,17 @@ import {
   getCharacterLoraCandidateImage,
   getCharacterLoraJobSection,
   getCharacterLoraTrainingJob,
+  getLegacyTrainingProject,
+  getLegacyTrainingProjectOverview,
   getLegacyTrainingReferenceImage,
   getLegacyTrainingReferenceImageFromRepository,
   listCharacterLoraSourceImages,
+  listLegacyTrainingPromptCardVersions,
   listLegacyTrainingReferenceImages,
   mapCharacterLoraTrainingJobError,
   mapLegacyTrainingGenerationError,
   mapLegacyTrainingProjectError,
+  mapLegacyTrainingPromptCardError,
   mapLegacyTrainingReferenceImageError,
   mapLegacyTrainingRunError,
   registerLegacyTrainingReferenceImageAsResult,
@@ -650,6 +655,93 @@ export async function updateManagedTrainingProjectProfile(
     };
     await writeFallbackTrainingProjects(next);
     return next[currentIndex];
+  });
+}
+
+export async function getTrainingProjectProfile(projectId: string) {
+  const managedProfile = await getManagedTrainingProjectProfile(projectId);
+  if (managedProfile) return managedProfile;
+
+  const [overview, promptCardVersions] = await Promise.all([
+    getLegacyTrainingProjectOverview(projectId),
+    listLegacyTrainingPromptCardVersions(projectId),
+  ]);
+  const latestPromptCard = promptCardVersions.at(-1) ?? null;
+
+  return {
+    projectId,
+    triggerToken: overview.job.triggerToken,
+    characterName: overview.job.characterName,
+    loraUsagePrompt: latestPromptCard?.finalPromptDraft ?? null,
+    characterDetailPrompt: latestPromptCard
+      ? JSON.stringify(
+          {
+            identityTraits: latestPromptCard.identityTraits,
+            outfitTraits: latestPromptCard.outfitTraits,
+            negativeTraits: latestPromptCard.negativeTraits,
+          },
+          null,
+          2,
+        )
+      : null,
+    promptCardVersionId: latestPromptCard?.id ?? null,
+    sourceImageCount: overview.sourceImages.count,
+    canonicalVersionId: overview.personaReference.currentCanonicalVersionId,
+  };
+}
+
+export async function updateTrainingProjectProfile(
+  projectId: string,
+  input: {
+    loraUsagePrompt?: string | null;
+    characterDetailPrompt?: string | null;
+    profileSummary?: string | null;
+  },
+) {
+  const managedProfile = await getManagedTrainingProjectProfile(projectId);
+  if (managedProfile) {
+    const data = await updateManagedTrainingProjectProfile(projectId, input);
+    if (!data) {
+      throw new TrainingProjectServiceError("Training project profile not found", 404, { projectId });
+    }
+    return data;
+  }
+
+  const loraUsagePrompt = input.loraUsagePrompt?.trim() ?? "";
+  const characterDetailPrompt = input.characterDetailPrompt?.trim() ?? "";
+  const [job, promptCardVersions] = await Promise.all([
+    getLegacyTrainingProject(projectId),
+    listLegacyTrainingPromptCardVersions(projectId),
+  ]);
+  const currentPromptCard = promptCardVersions.find((version) => version.id === job.currentPromptCardVersionId) ?? promptCardVersions.at(-1) ?? null;
+
+  let detailPayload: {
+    identityTraits?: Record<string, unknown>;
+    outfitTraits?: Record<string, unknown>;
+    negativeTraits?: unknown[] | null;
+  } = {};
+
+  if (characterDetailPrompt) {
+    try {
+      const parsed = JSON.parse(characterDetailPrompt);
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new TrainingProjectServiceError("characterDetailPrompt must be a JSON object string", 400);
+      }
+      detailPayload = parsed as typeof detailPayload;
+    } catch (error) {
+      if (error instanceof TrainingProjectServiceError) throw error;
+      throw new TrainingProjectServiceError("characterDetailPrompt must be a JSON object string", 400);
+    }
+  }
+
+  return createLegacyTrainingPromptCardVersion(projectId, {
+    canonicalVersionId: currentPromptCard?.canonicalVersionId ?? job.currentCanonicalVersionId ?? null,
+    triggerToken: job.triggerToken,
+    identityTraits: detailPayload.identityTraits ?? currentPromptCard?.identityTraits ?? {},
+    outfitTraits: detailPayload.outfitTraits ?? currentPromptCard?.outfitTraits ?? {},
+    negativeTraits: detailPayload.negativeTraits ?? currentPromptCard?.negativeTraits ?? null,
+    finalPromptDraft: loraUsagePrompt || currentPromptCard?.finalPromptDraft || job.triggerToken,
+    changeReason: "Updated via training profile API",
   });
 }
 
@@ -1839,6 +1931,20 @@ export function mapTrainingProjectMutationError(error: unknown) {
   const mapped = mapTrainingProjectError(error);
   if (mapped.status !== 500 || mapped.message !== "Unexpected training project error") {
     return mapped;
+  }
+
+  return mapLegacyTrainingProjectError(error);
+}
+
+export function mapTrainingProjectProfileError(error: unknown) {
+  const mapped = mapTrainingProjectError(error);
+  if (mapped.status !== 500 || mapped.message !== "Unexpected training project error") {
+    return mapped;
+  }
+
+  const promptCardMapped = mapLegacyTrainingPromptCardError(error);
+  if (promptCardMapped.status !== 500 || promptCardMapped.message !== "Unexpected character LoRA prompt card error") {
+    return promptCardMapped;
   }
 
   return mapLegacyTrainingProjectError(error);
