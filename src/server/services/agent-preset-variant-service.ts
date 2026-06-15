@@ -1,4 +1,5 @@
 import { switchBindingVariant } from "@/lib/actions";
+import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
 
 export type SwitchVariantUpdate = {
@@ -152,7 +153,7 @@ async function findPresetByNameOrSlug(nameOrSlug: string) {
   return prisma.preset.findFirst({
     where: {
       isActive: true,
-      category: { type: "preset" },
+      category: { type: ordinaryPresetCategoryTypeWhere() },
       OR: [{ name: nameOrSlug }, { slug: nameOrSlug }],
     },
     include: {

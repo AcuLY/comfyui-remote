@@ -3,6 +3,7 @@ import {
   CharacterLoraImageReviewStatus,
   CharacterLoraJobStatus,
 } from "@/generated/prisma/enums";
+import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/actions/preset-resource-scope";
 import { detectProvider } from "@/lib/prisma";
 import type { CharacterLoraTrainingCompleteOutput } from "@/server/character-lora-training/contracts";
 
@@ -314,7 +315,7 @@ export async function ensurePresetCategory(
       lora1Order: 10,
       lora2Order: 10,
       sortOrder: 10,
-      type: "preset",
+      type: ORDINARY_PRESET_CATEGORY_TYPE,
     },
     select: { id: true, name: true, slug: true },
   });

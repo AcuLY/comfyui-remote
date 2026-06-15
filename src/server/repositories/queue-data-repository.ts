@@ -1,4 +1,5 @@
 import { Prisma } from "@/generated/prisma";
+import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
 import fs from "node:fs";
@@ -28,7 +29,7 @@ export async function batchResolvePresetNames(presetIds: string[]): Promise<Map<
   const presets = await prisma.preset.findMany({
     where: {
       id: { in: presetIds },
-      category: { type: "preset" },
+      category: { type: ordinaryPresetCategoryTypeWhere() },
     },
     select: { id: true, name: true },
   });

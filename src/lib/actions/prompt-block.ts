@@ -11,7 +11,7 @@ import {
 import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-binding-service";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import { resolveVariantContent } from "./preset-variant";
-import { ordinaryPresetLibraryCategoryTypeWhere } from "./preset-resource-scope";
+import { ordinaryPresetCategoryTypeWhere, ordinaryPresetLibraryCategoryTypeWhere } from "./preset-resource-scope";
 import {
   createBindingId,
 } from "./_helpers";
@@ -562,7 +562,7 @@ export async function importPresetToSection(
   const preset = await prisma.preset.findFirst({
     where: {
       id: presetId,
-      category: { type: "preset" },
+      category: { type: ordinaryPresetCategoryTypeWhere() },
     },
     include: {
       category: { select: { id: true, name: true, color: true, positivePromptOrder: true, lora1Order: true, lora2Order: true } },

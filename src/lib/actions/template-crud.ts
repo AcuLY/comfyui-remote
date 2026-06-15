@@ -11,6 +11,7 @@ import {
   type TemplateSectionPromptBlockWrite,
 } from "@/server/prompt-config/template-resolver";
 import { resolveVariantContent } from "./preset-variant";
+import { ordinaryPresetCategoryTypeWhere } from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -446,7 +447,7 @@ export async function resolveTemplatePresetImports(
   const presets = await prisma.preset.findMany({
     where: {
       id: { in: presetIds },
-      category: { type: "preset" },
+      category: { type: ordinaryPresetCategoryTypeWhere() },
     },
     include: {
       category: {

@@ -392,8 +392,8 @@ test("generation preset import and replacement helpers keep training presets out
   const promptBlockSource = readFileSync(join(process.cwd(), "src/lib/actions/prompt-block.ts"), "utf8");
   assert.match(
     promptBlockSource,
-    /export async function importPresetToSection[\s\S]*?prisma\.preset\.findFirst\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
-    "Generation section preset imports should only resolve ordinary preset resources.",
+    /ordinaryPresetCategoryTypeWhere|ordinaryPresetLibraryCategoryTypeWhere|ORDINARY_PRESET_CATEGORY_TYPE/,
+    "Generation section preset imports should reuse the shared ordinary preset scope helper.",
   );
   assert.doesNotMatch(
     promptBlockSource,
@@ -404,8 +404,8 @@ test("generation preset import and replacement helpers keep training presets out
   const templateCrudSource = readFileSync(join(process.cwd(), "src/lib/actions/template-crud.ts"), "utf8");
   assert.match(
     templateCrudSource,
-    /export async function resolveTemplatePresetImports[\s\S]*?prisma\.preset\.findMany\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
-    "Generation template preset imports should only resolve ordinary preset resources.",
+    /ordinaryPresetCategoryTypeWhere|ordinaryPresetLibraryCategoryTypeWhere|ORDINARY_PRESET_CATEGORY_TYPE/,
+    "Generation template preset imports should reuse the shared ordinary preset scope helper.",
   );
 
   const replacementSource = readFileSync(
@@ -414,34 +414,85 @@ test("generation preset import and replacement helpers keep training presets out
   );
   assert.match(
     replacementSource,
-    /async function loadReplacementPresets[\s\S]*?prisma\.preset\.findMany\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
-    "Generation preset replacement helpers should only load ordinary preset resources.",
+    /ordinaryPresetCategoryTypeWhere|ordinaryPresetLibraryCategoryTypeWhere|ORDINARY_PRESET_CATEGORY_TYPE/,
+    "Generation preset replacement helpers should reuse the shared ordinary preset scope helper.",
   );
 
   const flowSource = readFileSync(join(process.cwd(), "src/server/services/agent-preset-variant-flow-service.ts"), "utf8");
   assert.match(
     flowSource,
-    /async function inferPresetNameFromProject[\s\S]*?prisma\.preset\.findMany\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
-    "Generation agent preset inference should ignore training preset resources.",
-  );
-  assert.match(
-    flowSource,
-    /async function findPresetForVerification[\s\S]*?prisma\.preset\.findFirst\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
-    "Generation agent preset verification should ignore training preset resources.",
+    /ordinaryPresetCategoryTypeWhere|ordinaryPresetLibraryCategoryTypeWhere|ORDINARY_PRESET_CATEGORY_TYPE/,
+    "Generation agent preset flows should reuse the shared ordinary preset scope helper.",
   );
 
   const agentSyncSource = readFileSync(join(process.cwd(), "src/server/services/agent-preset-variant-service.ts"), "utf8");
   assert.match(
     agentSyncSource,
-    /async function findPresetByNameOrSlug[\s\S]*?prisma\.preset\.findFirst\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
-    "Generation agent preset sync should ignore training preset resources.",
+    /ordinaryPresetCategoryTypeWhere|ordinaryPresetLibraryCategoryTypeWhere|ORDINARY_PRESET_CATEGORY_TYPE/,
+    "Generation agent preset sync should reuse the shared ordinary preset scope helper.",
   );
 
   const queueDataSource = readFileSync(join(process.cwd(), "src/server/repositories/queue-data-repository.ts"), "utf8");
   assert.match(
     queueDataSource,
-    /export async function batchResolvePresetNames[\s\S]*?prisma\.preset\.findMany\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
-    "Generation queue preset display names should not resolve training preset resources.",
+    /ordinaryPresetCategoryTypeWhere|ordinaryPresetLibraryCategoryTypeWhere|ORDINARY_PRESET_CATEGORY_TYPE/,
+    "Generation queue preset display names should reuse the shared ordinary preset scope helper.",
+  );
+
+  for (const [label, source] of [
+    ["prompt block imports", promptBlockSource],
+    ["template preset imports", templateCrudSource],
+    ["preset replacement", replacementSource],
+    ["agent preset flow", flowSource],
+    ["agent preset sync", agentSyncSource],
+    ["queue preset display", queueDataSource],
+  ] as const) {
+    assert.doesNotMatch(
+      source,
+      /category:\s*\{\s*type:\s*"preset"\s*\}/,
+      `${label} should not hand-write generation preset category filters.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /where:\s*\{\s*type:\s*"preset"\s*\}/,
+      `${label} should not hand-write generation preset category filters.`,
+    );
+  }
+});
+
+test("generation project option loaders use the shared ordinary preset scope", () => {
+  for (const relativePath of ["src/server/repositories/project-view-repository/form-view.ts"]) {
+    const source = readFileSync(join(process.cwd(), relativePath), "utf8");
+    assert.match(
+      source,
+      /ordinaryPresetCategoryTypeWhere|ordinaryPresetLibraryCategoryTypeWhere|ORDINARY_PRESET_CATEGORY_TYPE/,
+      `${relativePath} should reuse the shared ordinary preset scope contract.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /category:\s*\{\s*type:\s*"preset"\s*\}/,
+      `${relativePath} should not hand-write generation preset category filters.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /where:\s*\{\s*type:\s*"preset"\s*\}/,
+      `${relativePath} should not hand-write generation preset category filters.`,
+    );
+  }
+});
+
+test("legacy training compatibility cannot create generation preset categories with a raw scope string", () => {
+  const helperSource = readFileSync(join(process.cwd(), "src/server/repositories/character-lora-training/helpers.ts"), "utf8");
+
+  assert.match(
+    helperSource,
+    /ORDINARY_PRESET_CATEGORY_TYPE/,
+    "Legacy training compatibility should import the shared ordinary preset category constant.",
+  );
+  assert.doesNotMatch(
+    helperSource,
+    /type:\s*"preset"/,
+    "Legacy training compatibility should not hand-write generation preset category type strings.",
   );
 });
 

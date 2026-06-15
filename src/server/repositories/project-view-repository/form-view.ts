@@ -1,3 +1,4 @@
+import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
 import { resolveSectionConfigsById } from "@/server/repositories/project-repository/helpers";
 
@@ -35,7 +36,7 @@ export type ProjectFormOptions = {
 
 export async function getProjectFormOptions(): Promise<ProjectFormOptions> {
   const categories = await prisma.presetCategory.findMany({
-    where: { type: "preset" },
+    where: { type: ordinaryPresetCategoryTypeWhere() },
     orderBy: { sortOrder: "asc" },
     include: {
       presets: {

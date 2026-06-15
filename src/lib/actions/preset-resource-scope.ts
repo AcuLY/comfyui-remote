@@ -23,6 +23,10 @@ export function ordinaryPresetLibraryCategoryTypeWhere() {
   return { in: [...ORDINARY_PRESET_LIBRARY_CATEGORY_TYPES] };
 }
 
+export function ordinaryPresetCategoryTypeWhere() {
+  return ORDINARY_PRESET_CATEGORY_TYPE;
+}
+
 export function trainingSceneDescriptionPresetCategoryTypeWhere() {
   return TRAINING_SCENE_DESCRIPTION_PRESET_CATEGORY_TYPE;
 }
