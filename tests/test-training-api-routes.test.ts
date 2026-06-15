@@ -360,6 +360,52 @@ test("GET /api/training manifest exposes an end-to-end HTTP workflow for agents"
   );
 });
 
+test("GET /api/training full workflow steps include machine-actionable handoff metadata", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  ) as { steps: Array<{ description?: string; id?: string; produces?: string[]; requires?: string[] }> } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(fullWorkflow, "agent manifest should include the full training workflow");
+
+  const stepIds = fullWorkflow.steps.map((step) => step.id);
+
+  assert.deepEqual(
+    fullWorkflow.steps.filter((step) => !step.id || !step.description),
+    [],
+    "Every full workflow step should have a stable id and execution description for agents.",
+  );
+  assert.equal(
+    new Set(stepIds).size,
+    stepIds.length,
+    "Full workflow step ids should be unique so agents can persist checkpoints.",
+  );
+  assert.ok(
+    fullWorkflow.steps.some((step) => step.produces?.includes("projectId")),
+    "Full workflow should declare where the projectId is produced.",
+  );
+  assert.ok(
+    fullWorkflow.steps.some((step) => step.requires?.includes("projectId")),
+    "Full workflow should declare which later steps require projectId.",
+  );
+  assert.ok(
+    fullWorkflow.steps.some((step) => step.produces?.includes("taskId")),
+    "Full workflow should declare where generation task ids are produced.",
+  );
+  assert.ok(
+    fullWorkflow.steps.some((step) => step.produces?.includes("trainingRunId")),
+    "Full workflow should declare where trainingRunId is produced.",
+  );
+  assert.ok(
+    fullWorkflow.steps.some((step) => step.produces?.includes("presetId")),
+    "Full workflow should declare where the reusable preset id is produced.",
+  );
+});
+
 test("training route operation inventory includes re-exported route handlers", async () => {
   const routeOperations = await listRouteOperations();
 
