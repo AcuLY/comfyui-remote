@@ -621,6 +621,84 @@ test("GET /api/training full workflow declares request body bindings for non-pat
   );
 });
 
+test("GET /api/training full workflow declares body expectations for every write step", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  ) as {
+    steps: Array<{
+      id?: string;
+      method: string;
+      requestBody?: {
+        contentType?: string;
+        contentTypes?: string[];
+        optionalFields?: string[];
+        requiredFields?: string[];
+        requiredOneOf?: string[];
+      };
+    }>;
+  } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(fullWorkflow, "agent manifest should include the full training workflow");
+
+  const writeSteps = fullWorkflow.steps.filter((step) => step.method !== "GET");
+  const missingBodyExpectations = writeSteps
+    .filter((step) => !step.requestBody)
+    .map((step) => step.id ?? "unknown");
+  const missingContentType = writeSteps
+    .filter((step) => step.requestBody)
+    .filter((step) => !step.requestBody?.contentType && !step.requestBody?.contentTypes?.length)
+    .map((step) => step.id ?? "unknown");
+
+  assert.deepEqual(
+    missingBodyExpectations,
+    [],
+    "Every write step should tell agents whether to send JSON, multipart data, or no body.",
+  );
+  assert.deepEqual(
+    missingContentType,
+    [],
+    "Every requestBody declaration should include contentType or contentTypes.",
+  );
+
+  const bodyByStep = new Map(fullWorkflow.steps.map((step) => [step.id, step.requestBody]));
+
+  assert.deepEqual(
+    bodyByStep.get("upload_reference_image")?.contentTypes,
+    ["application/json", "multipart/form-data"],
+    "Reference image upload supports artifact registration and multipart upload modes.",
+  );
+  assert.deepEqual(
+    bodyByStep.get("save_profile")?.requiredOneOf,
+    ["loraUsagePrompt", "characterDetailPrompt", "profileSummary"],
+    "Profile updates require at least one supported profile field.",
+  );
+  assert.deepEqual(
+    bodyByStep.get("preview_generation_task"),
+    { contentType: "none" },
+    "Previewing a generation task reads the draft and does not need a request body.",
+  );
+  assert.deepEqual(
+    bodyByStep.get("run_generation_task"),
+    { contentType: "none" },
+    "Queueing a generation draft reads the draft and does not need a request body.",
+  );
+  assert.deepEqual(
+    bodyByStep.get("review_image_result")?.requiredFields,
+    ["reviewStatus"],
+    "Image review requires a reviewStatus body field.",
+  );
+  assert.deepEqual(
+    bodyByStep.get("complete_training_run")?.optionalFields,
+    ["artifactName"],
+    "Training completion can optionally name the final LoRA artifact.",
+  );
+});
+
 test("training route operation inventory includes re-exported route handlers", async () => {
   const routeOperations = await listRouteOperations();
 

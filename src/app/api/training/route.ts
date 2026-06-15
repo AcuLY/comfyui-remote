@@ -100,6 +100,11 @@ const TRAINING_API_MANIFEST = {
           description: "Create the managed training project and persist the returned project id.",
           method: "POST",
           path: "/api/training/projects",
+          requestBody: {
+            contentType: "application/json",
+            requiredFields: ["title", "triggerToken", "templateId", "trainingTemplateId", "checkpointRelativePath"],
+            optionalFields: ["characterName", "projectName", "usagePrompt", "detailPrompt", "selectedReferenceIds", "sections", "trainingDefaults"],
+          },
           produces: ["projectId"],
           responsePaths: { projectId: "$.data.id" },
         },
@@ -110,6 +115,11 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/projects/:projectId/character-images",
           requires: ["projectId"],
           pathParams: { projectId: "projectId" },
+          requestBody: {
+            contentTypes: ["application/json", "multipart/form-data"],
+            requiredOneOf: ["artifactId", "file"],
+            optionalFields: ["role", "kind", "relativePath"],
+          },
           produces: ["imageId"],
           responsePaths: { imageId: "$.data.id" },
         },
@@ -120,6 +130,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/projects/:projectId/profile",
           requires: ["projectId"],
           pathParams: { projectId: "projectId" },
+          requestBody: {
+            contentType: "application/json",
+            requiredOneOf: ["loraUsagePrompt", "characterDetailPrompt", "profileSummary"],
+          },
         },
         {
           id: "create_section",
@@ -128,6 +142,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/projects/:projectId/sections",
           requires: ["projectId"],
           pathParams: { projectId: "projectId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["sourceSectionId"],
+          },
           produces: ["sectionId"],
           responsePaths: { sectionId: "$.data.id" },
         },
@@ -138,6 +156,11 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/sections/:sectionId/blocks",
           requires: ["sectionId"],
           pathParams: { sectionId: "sectionId" },
+          requestBody: {
+            contentType: "application/json",
+            requiredFields: ["title", "text"],
+            optionalFields: ["source", "sourceId", "variantId"],
+          },
           produces: ["blockId"],
           responsePaths: { blockId: "$.data.id" },
         },
@@ -177,6 +200,7 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/generation-tasks/:taskId/preview",
           requires: ["taskId"],
           pathParams: { taskId: "taskId" },
+          requestBody: { contentType: "none" },
           produces: ["preview"],
           responsePaths: { preview: "$.data" },
         },
@@ -187,6 +211,7 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/generation-tasks/:taskId/run",
           requires: ["taskId"],
           pathParams: { taskId: "taskId" },
+          requestBody: { contentType: "none" },
           produces: ["queuedGenerationTaskId"],
           responsePaths: { queuedGenerationTaskId: "$.data.id" },
         },
@@ -196,6 +221,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/scheduler/tick",
           requires: ["taskId"],
+          requestBody: { contentType: "none" },
           produces: ["workerTaskQueued"],
           responsePaths: { workerTaskQueued: "$.data.id" },
         },
@@ -215,6 +241,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/worker/tasks/:taskId/heartbeat",
           requires: ["workerTaskId"],
           pathParams: { taskId: "workerTaskId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["progress", "message", "currentStep", "targetSteps"],
+          },
         },
         {
           id: "complete_generation_task",
@@ -223,6 +253,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/worker/generation-tasks/:taskId/complete",
           requires: ["taskId"],
           pathParams: { taskId: "taskId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["resultImageResultId", "captionDraft", "reviewStatus"],
+          },
           produces: ["outputId", "imageResultId"],
           responsePaths: {
             outputId: "$.data.outputResultIds[0]",
@@ -236,6 +270,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/worker/tasks/:taskId/complete",
           requires: ["workerTaskId"],
           pathParams: { taskId: "workerTaskId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["result", "summary", "artifactIds"],
+          },
         },
         {
           id: "list_generation_outputs",
@@ -257,6 +295,11 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/generation-outputs/:outputId/apply",
           requires: ["outputId"],
           pathParams: { outputId: "outputId" },
+          requestBody: {
+            contentType: "application/json",
+            requiredFields: ["targetEntityType"],
+            optionalFields: ["targetEntityId", "targetField"],
+          },
           produces: ["imageId"],
           responsePaths: { imageId: "$.data.result.id" },
         },
@@ -267,6 +310,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/image-results/:imageResultId/review",
           requires: ["imageResultId"],
           pathParams: { imageResultId: "imageResultId" },
+          requestBody: {
+            contentType: "application/json",
+            requiredFields: ["reviewStatus"],
+          },
         },
         {
           id: "generate_missing_captions",
@@ -275,6 +322,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/projects/:projectId/captions/generate",
           requires: ["projectId"],
           pathParams: { projectId: "projectId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["mode", "imageResultIds"],
+          },
         },
         {
           id: "read_dataset_readiness",
@@ -291,6 +342,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/projects/:projectId/dataset-revisions",
           requires: ["projectId"],
           pathParams: { projectId: "projectId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["notes", "label"],
+          },
           produces: ["revisionId"],
           responsePaths: { revisionId: "$.data.revision.id" },
         },
@@ -316,6 +371,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/scheduler/tick",
           requires: ["trainingRunId"],
+          requestBody: { contentType: "none" },
           produces: ["workerTaskQueued"],
           responsePaths: { workerTaskQueued: "$.data.id" },
         },
@@ -335,6 +391,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/worker/tasks/:taskId/heartbeat",
           requires: ["workerTaskId"],
           pathParams: { taskId: "workerTaskId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["progress", "message", "currentStep", "targetSteps"],
+          },
         },
         {
           id: "report_training_progress",
@@ -343,6 +403,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/worker/training-runs/:trainingRunId/progress",
           requires: ["trainingRunId"],
           pathParams: { trainingRunId: "trainingRunId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["currentStep", "targetSteps", "schedulerMessage"],
+          },
         },
         {
           id: "complete_training_run",
@@ -351,6 +415,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/worker/training-runs/:trainingRunId/complete",
           requires: ["trainingRunId"],
           pathParams: { trainingRunId: "trainingRunId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["artifactName"],
+          },
           produces: ["finalLoraArtifactId"],
           responsePaths: { finalLoraArtifactId: "$.data.finalLoraArtifactId" },
         },
@@ -361,6 +429,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/worker/tasks/:taskId/complete",
           requires: ["workerTaskId"],
           pathParams: { taskId: "workerTaskId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["result", "summary", "artifactIds"],
+          },
         },
         {
           id: "poll_training_run",
@@ -369,6 +441,7 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/training-runs/:trainingRunId/poll",
           requires: ["trainingRunId"],
           pathParams: { trainingRunId: "trainingRunId" },
+          requestBody: { contentType: "none" },
         },
         {
           id: "cleanup_training_run",
@@ -377,6 +450,7 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/training-runs/:trainingRunId/cleanup",
           requires: ["trainingRunId"],
           pathParams: { trainingRunId: "trainingRunId" },
+          requestBody: { contentType: "none" },
         },
         {
           id: "create_preset_from_training_run",
@@ -385,6 +459,10 @@ const TRAINING_API_MANIFEST = {
           path: "/api/training/training-runs/:trainingRunId/create-preset",
           requires: ["trainingRunId", "finalLoraArtifactId"],
           pathParams: { trainingRunId: "trainingRunId" },
+          requestBody: {
+            contentType: "application/json",
+            optionalFields: ["title", "presetName", "category", "categoryId", "folder"],
+          },
           produces: ["presetId"],
           responsePaths: { presetId: "$.data.id" },
         },
