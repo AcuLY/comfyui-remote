@@ -197,6 +197,10 @@ test("training API manifest tells agents how to run the training worker supervis
   const payload = await response.json();
 
   assert.equal(payload.data.workerSupervisor.defaultCommand, "cmd /c npm run training:workers");
-  assert.equal(payload.data.workerSupervisor.mockCommand, "cmd /c npm run training:workers:mock");
   assert.deepEqual(payload.data.workerSupervisor.defaultWorkers, ["image", "dataset-freeze", "training"]);
+  assert.equal(
+    Object.hasOwn(payload.data.workerSupervisor, "mockCommand"),
+    false,
+    "agent-facing manifest should not advertise local debug/mock worker commands",
+  );
 });
