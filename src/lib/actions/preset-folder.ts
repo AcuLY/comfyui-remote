@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import {
-  assertOrdinaryPreset,
-  assertOrdinaryPresetCategory,
   assertOrdinaryPresetFolder,
   assertOrdinaryPresetGroup,
+  assertOrdinaryPreset,
+  assertOrdinaryPresetLibraryCategory,
 } from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ export async function createPresetFolder(
   parentId: string | null,
   name: string,
 ) {
-  await assertOrdinaryPresetCategory(categoryId);
+  await assertOrdinaryPresetLibraryCategory(categoryId);
   if (parentId) {
     const parent = await assertOrdinaryPresetFolder(parentId);
     if (parent.categoryId !== categoryId) {
@@ -90,7 +90,7 @@ export async function reorderPresetFolders(
   parentId: string | null,
   ids: string[],
 ) {
-  await assertOrdinaryPresetCategory(categoryId);
+  await assertOrdinaryPresetLibraryCategory(categoryId);
   if (parentId) await assertOrdinaryPresetFolder(parentId);
   await Promise.all(ids.map((id) => assertOrdinaryPresetFolder(id)));
   await prisma.$transaction(

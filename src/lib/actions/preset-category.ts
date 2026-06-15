@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import {
+  ORDINARY_PRESET_GROUP_CATEGORY_TYPE,
   ORDINARY_PRESET_CATEGORY_TYPE,
   assertOrdinaryPresetCategories,
   assertOrdinaryPresetCategory,
@@ -69,10 +70,17 @@ async function replaceCategorySlotTemplate(
 // ---------------------------------------------------------------------------
 
 export async function createPresetCategory(input: PresetCategoryInput) {
+  const categoryType = input.type === ORDINARY_PRESET_GROUP_CATEGORY_TYPE
+    ? ORDINARY_PRESET_GROUP_CATEGORY_TYPE
+    : ORDINARY_PRESET_CATEGORY_TYPE;
+  if (input.slotTemplate) {
+    await assertOrdinaryPresetCategories(input.slotTemplate.map((slot) => slot.categoryId));
+  }
+
   let sortOrder = input.sortOrder;
   if (sortOrder === undefined) {
     const maxOrder = await prisma.presetCategory.aggregate({
-      where: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+      where: { type: categoryType },
       _max: { sortOrder: true },
     });
     sortOrder = (maxOrder._max.sortOrder ?? -1) + 1;
@@ -90,7 +98,7 @@ export async function createPresetCategory(input: PresetCategoryInput) {
         ...rest,
         color,
         sortOrder,
-        type: ORDINARY_PRESET_CATEGORY_TYPE,
+        type: categoryType,
       },
     });
     if (slotTemplate !== undefined) {

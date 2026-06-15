@@ -263,7 +263,12 @@ test("preset resource lists stay scoped to their owning work mode except shared 
   const generationPresetViewSource = readFileSync(join(process.cwd(), "src/server/repositories/preset-view-repository.ts"), "utf8");
   assert.match(
     generationPresetViewSource,
-    /where:\s*\{\s*type:\s*"preset"\s*\}/,
+    /ordinaryPresetLibraryCategoryTypeWhere/,
+    "Generation preset pages should use the ordinary preset-library scope for preset and group categories.",
+  );
+  assert.doesNotMatch(
+    generationPresetViewSource,
+    /training_scene_description|TRAINING_PRESET_CATEGORY_TYPE/,
     "Generation preset pages should not include training scene-description categories.",
   );
 

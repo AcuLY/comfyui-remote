@@ -29,6 +29,7 @@ export type SectionLoraConfig = {
 export type PresetVariantRow = {
   id: string;
   presetId: string;
+  preset?: { category?: { type?: string | null } | null } | null;
   name?: string | null;
   prompt: string;
   negativePrompt: string | null;
@@ -55,6 +56,7 @@ export type PresetVariantLinkRow = {
 export type PresetCategoryRow = {
   id: string;
   name: string;
+  type?: string | null;
   color?: string | null;
   positivePromptOrder?: number | null;
   negativePromptOrder?: number | null;

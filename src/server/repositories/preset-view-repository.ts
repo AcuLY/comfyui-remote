@@ -2,6 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { buildFolderScopedItemOrder } from "@/lib/folder-navigation";
 import { normalizeCivitaiLinks } from "@/lib/utils";
 import {
+  ORDINARY_PRESET_CATEGORY_TYPE,
+  ordinaryPresetLibraryCategoryTypeWhere,
+} from "@/lib/actions/preset-resource-scope";
+import {
   groupPresetGroupHistory,
   groupPresetHistory,
   type PresetChangeDimension,
@@ -86,7 +90,7 @@ async function resolveMemberNames(
       ? prisma.preset.findMany({
           where: {
             id: { in: [...allPresetIds] },
-            category: { type: "preset" },
+            category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
           },
           select: { id: true, name: true },
         })
@@ -95,7 +99,7 @@ async function resolveMemberNames(
       ? prisma.presetVariant.findMany({
           where: {
             id: { in: [...allVariantIds] },
-            preset: { category: { type: "preset" } },
+            preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
           },
           select: { id: true, name: true },
         })
@@ -104,7 +108,7 @@ async function resolveMemberNames(
       ? prisma.presetGroup.findMany({
           where: {
             id: { in: [...allGroupIds] },
-            category: { type: "preset" },
+            category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
           },
           select: { id: true, name: true },
         })
@@ -197,7 +201,7 @@ export type PresetFull = PresetItem & {
 
 export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFull[]> {
   const categories = await prisma.presetCategory.findMany({
-    where: { type: "preset" },
+    where: { type: ordinaryPresetLibraryCategoryTypeWhere() },
     orderBy: { sortOrder: "asc" },
     include: {
       _count: {
@@ -346,7 +350,7 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
     where: {
       id: groupId,
       isActive: true,
-      category: { type: "preset" },
+      category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
     },
     include: {
       members: { orderBy: { sortOrder: "asc" } },
@@ -365,7 +369,7 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
 
   const [categories, contentVariants] = await Promise.all([
     prisma.presetCategory.findMany({
-      where: { type: "preset" },
+      where: { type: ordinaryPresetLibraryCategoryTypeWhere() },
       orderBy: { sortOrder: "asc" },
       include: {
         _count: {
@@ -603,7 +607,7 @@ export type PresetLibraryV2 = {
 
 export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
   const categories = await prisma.presetCategory.findMany({
-    where: { type: "preset" },
+    where: { type: ordinaryPresetLibraryCategoryTypeWhere() },
     orderBy: { sortOrder: "asc" },
     include: {
       ownedSlots: {
@@ -747,7 +751,7 @@ export async function getPresetGroups(): Promise<PresetGroupItem[]> {
   const groups = await prisma.presetGroup.findMany({
     where: {
       isActive: true,
-      category: { type: "preset" },
+      category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
     },
     orderBy: { sortOrder: "asc" },
     include: {
@@ -798,7 +802,7 @@ export async function getPresetFolders(filters: {
 } = {}): Promise<PresetFolderItem[]> {
   const folders = await prisma.presetFolder.findMany({
     where: {
-      category: { type: "preset" },
+      category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
       ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
       ...(filters.parentId !== undefined ? { parentId: filters.parentId } : {}),
     },
@@ -830,7 +834,7 @@ export async function getPresetFolder(folderId: string): Promise<PresetFolderIte
   const folder = await prisma.presetFolder.findFirst({
     where: {
       id: folderId,
-      category: { type: "preset" },
+      category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
     },
     include: {
       _count: {

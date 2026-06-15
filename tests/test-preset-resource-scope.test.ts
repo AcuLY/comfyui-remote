@@ -204,6 +204,18 @@ test("ordinary preset writes cannot create or mutate LoRA training preset resour
     "preset",
     "ordinary preset category creation must stay ordinary even if the request asks for a training type",
   );
+  await ignoreStaticRevalidateError(() =>
+    createPresetCategory({
+      name: "普通预制组分类",
+      slug: "ordinary-group-entry-category",
+      type: "group",
+    }),
+  );
+  assert.equal(
+    (await prisma.presetCategory.findUniqueOrThrow({ where: { slug: "ordinary-group-entry-category" } })).type,
+    "group",
+    "ordinary preset category creation must preserve generation group categories",
+  );
 
   await prisma.presetCategory.create({
     data: {
@@ -320,6 +332,12 @@ test("ordinary preset folder and group reads do not expose LoRA training resourc
         type: "preset",
       },
       {
+        id: "ordinary-readable-group-category",
+        name: "Ordinary Readable Groups",
+        slug: "ordinary-readable-groups",
+        type: "group",
+      },
+      {
         id: "training-readable-category",
         name: "Training Readable",
         slug: "training-readable",
@@ -335,6 +353,11 @@ test("ordinary preset folder and group reads do not expose LoRA training resourc
         name: "Ordinary Folder",
       },
       {
+        id: "ordinary-readable-group-folder",
+        categoryId: "ordinary-readable-group-category",
+        name: "Ordinary Group Folder",
+      },
+      {
         id: "training-readable-folder",
         categoryId: "training-readable-category",
         name: "Training Folder",
@@ -345,7 +368,7 @@ test("ordinary preset folder and group reads do not expose LoRA training resourc
     data: [
       {
         id: "ordinary-readable-group",
-        categoryId: "ordinary-readable-category",
+        categoryId: "ordinary-readable-group-category",
         name: "Ordinary Group",
         slug: "ordinary-readable-group",
       },
@@ -394,8 +417,8 @@ test("ordinary preset folder and group reads do not expose LoRA training resourc
 
   assert.deepEqual(
     (await getPresetFolders()).map((folder) => folder.id),
-    ["ordinary-readable-folder"],
-    "ordinary preset folder lists must hide training-owned folders",
+    ["ordinary-readable-folder", "ordinary-readable-group-folder"],
+    "ordinary preset folder lists must include generation preset/group folders and hide training-owned folders",
   );
   assert.deepEqual(
     await getPresetFolders({ categoryId: "training-readable-category" }),

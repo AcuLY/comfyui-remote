@@ -683,6 +683,83 @@ test("importPresetGroupToSection stores one group binding and returns resolved m
   assert.deepEqual(result.lora1.map((entry) => entry.path), [`/${seed.key}-earlier.safetensors`, `/${seed.key}-a.safetensors`]);
 });
 
+test("importPresetGroupToSection ignores LoRA training preset members", async () => {
+  const seed = await seedProjectWithPreset();
+  const trainingCategory = await prisma.presetCategory.create({
+    data: {
+      id: `${seed.key}-training-category`,
+      name: `${seed.key} Training Category`,
+      slug: `${seed.key}-training-category`,
+      type: "training_scene_description",
+      positivePromptOrder: 1,
+    },
+  });
+  const trainingPreset = await prisma.preset.create({
+    data: {
+      id: `${seed.key}-training-preset`,
+      categoryId: trainingCategory.id,
+      name: `${seed.key} Training Preset`,
+      slug: `${seed.key}-training-preset`,
+    },
+  });
+  const trainingVariant = await prisma.presetVariant.create({
+    data: {
+      id: `${seed.key}-training-variant`,
+      presetId: trainingPreset.id,
+      name: "Training",
+      slug: `${seed.key}-training-variant`,
+      prompt: `${seed.key} training prompt must not leak`,
+      negativePrompt: `${seed.key} training negative must not leak`,
+      lora1: [{ path: `/${seed.key}-training.safetensors`, weight: 1, enabled: true }],
+      lora2: [],
+      sortOrder: 0,
+    },
+  });
+  const groupCategory = await prisma.presetCategory.create({
+    data: {
+      id: `${seed.key}-safe-group-category`,
+      name: `${seed.key} Safe Group Category`,
+      slug: `${seed.key}-safe-group-category`,
+      type: "group",
+      positivePromptOrder: 99,
+    },
+  });
+  const group = await prisma.presetGroup.create({
+    data: {
+      id: `${seed.key}-safe-group`,
+      categoryId: groupCategory.id,
+      name: `${seed.key} Safe Group`,
+      slug: `${seed.key}-safe-group`,
+    },
+  });
+  await prisma.presetGroupMember.createMany({
+    data: [
+      {
+        id: `${seed.key}-safe-member-training`,
+        groupId: group.id,
+        presetId: trainingPreset.id,
+        variantId: trainingVariant.id,
+        sortOrder: 0,
+      },
+      {
+        id: `${seed.key}-safe-member-ordinary`,
+        groupId: group.id,
+        presetId: seed.preset.id,
+        variantId: seed.variantA.id,
+        sortOrder: 1,
+      },
+    ],
+  });
+
+  const result = await importPresetGroupToSection(seed.section.id, group.id);
+
+  assert.ok(result);
+  assert.deepEqual(result.blocks.map((block) => block.sourceId), [seed.preset.id]);
+  assert.deepEqual(result.blocks.map((block) => block.variantId), [seed.variantA.id]);
+  assert.equal(result.blocks.some((block) => block.positive.includes("training prompt")), false);
+  assert.deepEqual(result.lora1.map((entry) => entry.path), [`/${seed.key}-a.safetensors`]);
+});
+
 test("removeImportedPresetFromSection cascades a group import by group binding key", async () => {
   const seed = await seedProjectWithPreset();
   const groupCategory = await prisma.presetCategory.create({

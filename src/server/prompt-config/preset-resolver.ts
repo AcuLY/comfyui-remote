@@ -3,6 +3,7 @@ import {
   joinPromptParts,
   sortBySortOrder,
 } from "./order";
+import { isOrdinaryPresetCategoryType } from "@/lib/actions/preset-resource-scope";
 import type {
   LoraBinding,
   MissingReference,
@@ -28,6 +29,11 @@ const emptyResolvedVariant = (missingReferences: MissingReference[] = []): Resol
   lora2: [],
   missingReferences,
 });
+
+function isOrdinaryPresetVariantRow(variant: PresetVariantRow) {
+  const categoryType = variant.preset?.category?.type;
+  return categoryType === undefined || categoryType === null || isOrdinaryPresetCategoryType(categoryType);
+}
 
 function isLoraBinding(value: unknown): value is LoraBinding {
   return (
@@ -80,10 +86,17 @@ export async function loadReachablePresetVariantGraph(
           lora2: true,
           sortOrder: true,
           isActive: true,
+          preset: {
+            select: {
+              category: {
+                select: { type: true },
+              },
+            },
+          },
         },
       });
 
-      if (!variant) {
+      if (!variant || !isOrdinaryPresetVariantRow(variant)) {
         missingVariantIds.add(currentVariantId);
         continue;
       }

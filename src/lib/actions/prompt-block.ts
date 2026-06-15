@@ -11,6 +11,7 @@ import {
 import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-binding-service";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import { resolveVariantContent } from "./preset-variant";
+import { ordinaryPresetLibraryCategoryTypeWhere } from "./preset-resource-scope";
 import {
   createBindingId,
 } from "./_helpers";
@@ -675,7 +676,7 @@ export async function importPresetGroupToSection(
   const group = await prisma.presetGroup.findFirst({
     where: {
       id: presetGroupId,
-      category: { type: "preset" },
+      category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
     },
     select: { id: true, categoryId: true, name: true, isActive: true },
   });

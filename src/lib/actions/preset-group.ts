@@ -9,6 +9,7 @@ import {
   assertOrdinaryPresetCategory,
   assertOrdinaryPresetFolder,
   assertOrdinaryPresetGroup,
+  assertOrdinaryPresetLibraryCategory,
   assertOrdinaryPresetVariant,
 } from "./preset-resource-scope";
 
@@ -106,7 +107,7 @@ function schedulePresetGroupMemberChangeEffects(input: {
 // ---------------------------------------------------------------------------
 
 export async function createPresetGroup(input: PresetGroupInput) {
-  await assertOrdinaryPresetCategory(input.categoryId);
+  await assertOrdinaryPresetLibraryCategory(input.categoryId);
   if (input.folderId) {
     const folder = await assertOrdinaryPresetFolder(input.folderId);
     if (folder.categoryId !== input.categoryId) {
@@ -431,7 +432,7 @@ export async function updateGroupMember(memberId: string, input: PresetGroupMemb
 }
 
 export async function reorderPresetGroups(categoryId: string, ids: string[]) {
-  await assertOrdinaryPresetCategory(categoryId);
+  await assertOrdinaryPresetLibraryCategory(categoryId);
   await Promise.all(ids.map((id) => assertOrdinaryPresetGroup(id)));
   await prisma.$transaction(
     ids.map((id, index) =>
