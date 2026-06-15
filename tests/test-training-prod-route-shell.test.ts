@@ -110,6 +110,18 @@ test("production bottom nav resolves module-owned resources from the current wor
   assert.match(bottomNavSource, /aria-label=\{modeLabel\}/, "the mode indicator should expose the current mode without becoming a seventh nav link.");
 });
 
+test("production training route headers keep caption copy product-facing", () => {
+  for (const term of [
+    /caption\s*缺失/i,
+    /caption\s*快照/i,
+    /补\s*caption/i,
+    /训练前\s*readiness/i,
+  ]) {
+    assert.doesNotMatch(trainingHeaderSpecsSource, term, `training route headers should not expose ${term}`);
+  }
+  assert.match(trainingHeaderSpecsSource, /说明文本/, "training route headers should describe captions as user-facing text.");
+});
+
 test("production app shell hides generation task panel while LoRA training mode owns resource links", () => {
   assert.match(
     appShellSource,

@@ -65,7 +65,7 @@ function projectMeta(project: LoraTrainingProject | undefined) {
   return [
     `${project.sectionCount} 小节`,
     `${project.keptCount} 已保留`,
-    `${project.captionMissingCount} caption 缺失`,
+    `${project.captionMissingCount} 缺说明文本`,
   ];
 }
 
@@ -162,7 +162,7 @@ function projectRouteSpec(data: TrainingShellData, match: Match): HeaderSpec {
         group: "LoRA 训练",
         eyebrow: "结果池",
         title,
-        subtitle: "审核、保留和补 caption 的训练集候选图片。",
+        subtitle: "审核、保留和补全说明文本的训练集候选图片。",
         back: projectBack(projectId),
         meta: project ? [`${project.resultPool.length} 结果`, `${project.keptCount} 已保留`] : undefined,
         status: "结果池",
@@ -174,7 +174,7 @@ function projectRouteSpec(data: TrainingShellData, match: Match): HeaderSpec {
         group: "LoRA 训练",
         eyebrow: "数据集",
         title,
-        subtitle: "冻结数据集版本并检查训练前 readiness。",
+        subtitle: "冻结数据集版本并检查训练前准备状态。",
         back: projectBack(projectId),
         actions: [headerAction("训练记录", Activity, "default", `/training/projects/${projectId}/training-runs`)],
         meta: project ? [project.datasetVersion, project.readiness, `${project.datasetRevisions.length} 版本`] : undefined,
@@ -302,11 +302,11 @@ export function findTrainingHeaderSpecForRoute(data: TrainingShellData, route: s
         group: "LoRA 训练",
         eyebrow: found?.project.title ?? "数据集版本",
         title: found?.revision.version ?? "数据集版本",
-        subtitle: "查看冻结数据集样本、caption 快照和关联训练任务。",
+        subtitle: "查看冻结数据集样本、说明文本快照和关联训练任务。",
         back: found
           ? { href: `/training/projects/${found.project.id}/dataset`, label: "返回数据集" }
           : { href: "/training/projects", label: "返回项目" },
-        meta: found ? [`${found.revision.itemCount} 样本`, `${found.revision.captionMissingCount} caption 缺失`, found.revision.status] : undefined,
+        meta: found ? [`${found.revision.itemCount} 样本`, `${found.revision.captionMissingCount} 缺说明文本`, found.revision.status] : undefined,
         status: "数据集版本",
       };
     }
