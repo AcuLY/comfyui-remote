@@ -91,7 +91,7 @@ test("work mode navigation keeps shared models out of the LoRA training workspac
     "/projects",
     "/presets",
     "/templates",
-    "/models",
+    "/assets/models",
     "/settings",
   ]);
   assert.deepEqual(trainingLinks.map((link) => link.href), [
@@ -99,10 +99,12 @@ test("work mode navigation keeps shared models out of the LoRA training workspac
     "/training/projects",
     "/training/presets",
     "/training/templates",
+    "/assets/models",
     "/settings",
   ]);
   assert.equal(matchRoute("/training/models").key, "not-found", "Models should remain a shared resource page, not a LoRA training module route");
-  assert.equal(trainingLinks.some((link) => link.href === "/models"), false, "Training mode should not include models in its primary workspace nav");
+  assert.equal(trainingLinks.some((link) => link.href === "/training/models"), false, "Training mode should not include a training-owned models route");
+  assert.equal(trainingLinks.some((link) => link.href === "/assets/models"), true, "Training mode should keep the shared model manager in navigation");
   assert.deepEqual(trainingLinks.slice(0, 4).map((link) => link.activePrefix), [
     "/training/runs",
     "/training/projects",

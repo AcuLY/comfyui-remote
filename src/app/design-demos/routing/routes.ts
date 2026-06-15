@@ -180,20 +180,18 @@ export function buildWorkModeNavLinks(workMode: DesignDemoWorkMode): NavLinkDef[
     group: "工作区",
     icon: link.icon,
   }));
-  const sharedResourceLinks: NavLinkDef[] = workMode === "generation"
-    ? [{
-        href: "/models",
-        label: "模型",
-        group: "资源",
-        icon: Database,
-        count: (data) => data.models.length,
-        activePrefix: ["/models", "/loras"],
-      }]
-    : [];
+  const sharedModelLink: NavLinkDef = {
+    href: "/assets/models",
+    label: "模型",
+    group: "资源",
+    icon: Database,
+    count: (data) => data.models.length,
+    activePrefix: ["/assets/models", "/assets/loras", "/models", "/loras"],
+  };
 
   return [
     ...resourceLinks,
-    ...sharedResourceLinks,
+    sharedModelLink,
     { href: "/settings", label: "设置", group: "系统", icon: Settings, activePrefix: "/settings" },
   ];
 }
