@@ -5,8 +5,8 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const featureUiDir = resolve(testDir, "../../../../features/training/ui");
-const projectsCss = readFileSync(resolve(testDir, "../../../../features/training/ui/training-projects-page.module.css"), "utf8");
+const featureUiDir = resolve(testDir, "../src/features/training/ui");
+const projectsCss = readFileSync(resolve(featureUiDir, "training-projects-page.module.css"), "utf8");
 const projectPagesCss = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 const resourcesCss = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
 const runsCss = readFileSync(resolve(featureUiDir, "training-runs-page.module.css"), "utf8");

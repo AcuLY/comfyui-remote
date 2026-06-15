@@ -5,14 +5,14 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const featureUiDir = resolve(testDir, "../../../../features/training/ui");
+const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const featureProjectPagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
-const featureRoot = resolve(testDir, "../../../../features/training");
+const featureRoot = resolve(testDir, "../src/features/training");
 const detailSource = readFileSync(resolve(featureUiDir, "training-run-detail-page.tsx"), "utf8");
 const detailCss = readFileSync(resolve(featureUiDir, "training-run-detail-page.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
-const legacyDetailSource = readFileSync(resolve(testDir, "training-run-detail-page.tsx"), "utf8");
+const legacyDetailSource = readFileSync(resolve(testDir, "../src/app/design-demos/features/lora-training/training-run-detail-page.tsx"), "utf8");
 
 test("training run detail implementation is owned by the training feature layer", () => {
   assert.match(

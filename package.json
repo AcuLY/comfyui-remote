@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --import tsx --test tests/*.test.ts src/app/design-demos/features/lora-training/*.test.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
     "prisma:generate": "prisma generate",
     "prisma:generate:sqlite": "DB_PROVIDER=sqlite prisma generate",
     "prisma:generate:all": "prisma generate && DB_PROVIDER=sqlite prisma generate",

@@ -5,13 +5,13 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const featureUiDir = resolve(testDir, "../../../../features/training/ui");
+const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const itemSource = readFileSync(resolve(featureUiDir, "training-project-list-item.tsx"), "utf8");
 const itemCss = readFileSync(resolve(featureUiDir, "training-project-list-item.module.css"), "utf8");
 const projectsPageSource = readFileSync(resolve(featureUiDir, "training-projects-page.tsx"), "utf8");
 const projectsCss = readFileSync(resolve(featureUiDir, "training-projects-page.module.css"), "utf8");
-const legacyItemSource = readFileSync(resolve(testDir, "training-project-list-item.tsx"), "utf8");
-const legacyProjectsPageSource = readFileSync(resolve(testDir, "training-projects-page.tsx"), "utf8");
+const legacyItemSource = readFileSync(resolve(testDir, "../src/app/design-demos/features/lora-training/training-project-list-item.tsx"), "utf8");
+const legacyProjectsPageSource = readFileSync(resolve(testDir, "../src/app/design-demos/features/lora-training/training-projects-page.tsx"), "utf8");
 
 test("training project list keeps the project-demo header hierarchy", () => {
   const headerStart = projectsPageSource.indexOf("<PageHeader");

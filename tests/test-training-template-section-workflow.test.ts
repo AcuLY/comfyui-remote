@@ -5,8 +5,8 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const featureUiDir = resolve(testDir, "../../../../features/training/ui");
-const featureRoot = resolve(testDir, "../../../../features/training");
+const featureUiDir = resolve(testDir, "../src/features/training/ui");
+const featureRoot = resolve(testDir, "../src/features/training");
 const resourceSource = readFileSync(resolve(featureUiDir, "training-resource-pages.tsx"), "utf8");
 const cssSource = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");

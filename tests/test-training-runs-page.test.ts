@@ -5,10 +5,10 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const featureUiDir = resolve(testDir, "../../../../features/training/ui");
+const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const pageSource = readFileSync(resolve(featureUiDir, "training-runs-page.tsx"), "utf8");
 const cssSource = readFileSync(resolve(featureUiDir, "training-runs-page.module.css"), "utf8");
-const legacyPageSource = readFileSync(resolve(testDir, "training-runs-page.tsx"), "utf8");
+const legacyPageSource = readFileSync(resolve(testDir, "../src/app/design-demos/features/lora-training/training-runs-page.tsx"), "utf8");
 
 test("training runs page implementation is owned by the training feature layer", () => {
   assert.match(
