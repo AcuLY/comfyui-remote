@@ -249,7 +249,7 @@ test("training section detail imports training presets into local scene blocks",
     "export function LoraTrainingGenerationComposePage",
   );
 
-  assert.match(detailPage, /const training = buildLoraTrainingDemoData\(data\)/, "section detail should read available training presets");
+  assert.match(detailPage, /const training = buildLoraTrainingData\(data\)/, "section detail should read available training presets");
   assert.match(detailPage, /handleImportPresetBlock/, "section detail should define a preset import action");
   assert.match(detailPage, /presetImportOpen/, "preset import should open a visible candidate picker");
   assert.match(detailPage, /selectedTrainingPresetId/, "preset import should track the selected training preset");

@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/design-demo-ui/primitives/checkbox";
 import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
 import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
 import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
-import { buildLoraTrainingDemoData } from "@/features/training/build";
+import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData } from "@/features/training/data";
 import type { LoraTrainingRun, LoraTrainingTaskKind, LoraTrainingTaskStatus } from "@/features/training/types";
 import s from "./training-runs-page.module.css";
@@ -64,7 +64,7 @@ function timestampRank(value: string) {
   return Number(match[1]) * 60 + Number(match[2]);
 }
 
-function runPreviewImages(run: LoraTrainingRun, projects: ReturnType<typeof buildLoraTrainingDemoData>["projects"]) {
+function runPreviewImages(run: LoraTrainingRun, projects: ReturnType<typeof buildLoraTrainingData>["projects"]) {
   if (run.kind === "training") {
     return (run.datasetSamples ?? []).map((sample) => sample.image).slice(0, 4);
   }
@@ -218,7 +218,7 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
   const hrefForRoute = useRouteHref();
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   const [kind, setKind] = useState<LoraTrainingTaskKind>("generation");
   const [status, setStatus] = useState<LoraTrainingTaskStatus>("completed");
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());

@@ -1,4 +1,4 @@
-import type { LoraTrainingDemoData, TrainingImage } from "./types";
+import type { LoraTrainingData, TrainingImage } from "./types";
 
 export type TrainingModelOption = {
   modelType: string;
@@ -33,12 +33,12 @@ export type TrainingShellData = {
   models: never[];
   auditLogs: never[];
   images: never[];
-  loraTraining?: LoraTrainingDemoData;
+  loraTraining?: LoraTrainingData;
 };
 
 export type TrainingAppData = {
   images: TrainingImage[];
-  loraTraining?: LoraTrainingDemoData;
+  loraTraining?: LoraTrainingData;
   models: TrainingModelOption[];
   shellData?: TrainingShellData;
 };
@@ -47,7 +47,7 @@ export function resolveTrainingShellData(data: TrainingAppData): TrainingShellDa
   return data.shellData ?? null;
 }
 
-export function buildTrainingShellData(loraTraining: LoraTrainingDemoData): TrainingShellData {
+export function buildTrainingShellData(loraTraining: LoraTrainingData): TrainingShellData {
   const sectionCount = loraTraining.projects.reduce((sum, project) => sum + project.sections.length, 0);
   const pendingImages = loraTraining.projects.reduce(
     (sum, project) => sum + project.resultPool.filter((result) => result.reviewStatus === "pending").length,

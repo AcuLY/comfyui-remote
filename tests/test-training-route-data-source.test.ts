@@ -94,7 +94,7 @@ test("dedicated training snapshot service projects real legacy training data int
   );
 });
 
-test("buildLoraTrainingDemoData prefers an injected production training payload when present", () => {
+test("buildLoraTrainingData prefers an injected production training payload when present", () => {
   assert.match(
     trainingFeatureBuildSource,
     /data\.loraTraining/,
@@ -102,7 +102,7 @@ test("buildLoraTrainingDemoData prefers an injected production training payload 
   );
   assert.match(
     trainingDataSource,
-    /export \{ buildLoraTrainingDemoData \} from "@\/features\/training\/build";/,
+    /buildLoraTrainingData as buildLoraTrainingDemoData/,
     "legacy design-demo training data file should become a compatibility re-export from the shared feature build module",
   );
   assert.doesNotMatch(
@@ -110,6 +110,36 @@ test("buildLoraTrainingDemoData prefers an injected production training payload 
     /data\.projects\.flatMap/,
     "training feature build should not depend on the full DemoData project list for fallback images anymore",
   );
+});
+
+test("production training data model uses Training names instead of demo compatibility names", () => {
+  const productionSources = [
+    ["training build", trainingFeatureBuildSource],
+    ["training data", trainingFeatureDataSource],
+    ["training types", sharedTrainingTypesSource],
+    ["training snapshot service", trainingSnapshotServiceSource],
+    ["training runs page", readFileSync(resolve(testDir, "../src/features/training/ui/training-runs-page.tsx"), "utf8")],
+    ["training run detail page", readFileSync(resolve(testDir, "../src/features/training/ui/training-run-detail-page.tsx"), "utf8")],
+    ["training projects page", readFileSync(resolve(testDir, "../src/features/training/ui/training-projects-page.tsx"), "utf8")],
+    ["training project pages", readFileSync(resolve(testDir, "../src/features/training/ui/training-project-pages.tsx"), "utf8")],
+    ["training resource pages", readFileSync(resolve(testDir, "../src/features/training/ui/training-resource-pages.tsx"), "utf8")],
+  ] as const;
+
+  assert.match(sharedTrainingTypesSource, /export type LoraTrainingData =/);
+  assert.match(trainingFeatureBuildSource, /export function buildLoraTrainingData/);
+  assert.match(
+    trainingDataSource,
+    /buildLoraTrainingDemoData/,
+    "design-demo data entry may keep the old export as a compatibility alias",
+  );
+
+  for (const [label, source] of productionSources) {
+    assert.doesNotMatch(
+      source,
+      /LoraTrainingDemoData|buildLoraTrainingDemoData/,
+      `${label} should use production Training data names, leaving demo aliases at the design-demo boundary.`,
+    );
+  }
 });
 
 test("production training route loader delegates snapshot assembly to a dedicated training service", () => {
@@ -219,7 +249,7 @@ test("training read APIs use the dedicated training snapshot service instead of 
   );
   assert.doesNotMatch(
     trainingReadServiceSource,
-    /buildLoraTrainingDemoData/,
+    /buildLoraTrainingData/,
     "training read service should not rebuild snapshots through the design-demos adapter",
   );
 });
@@ -237,7 +267,7 @@ test("template/project copy flows use the shared training snapshot service inste
   );
   assert.doesNotMatch(
     projectTemplateCopyServiceSource,
-    /buildLoraTrainingDemoData/,
+    /buildLoraTrainingData/,
     "project/template copy service should not rebuild snapshots through the design-demos adapter",
   );
 });

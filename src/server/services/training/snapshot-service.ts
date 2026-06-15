@@ -1,7 +1,7 @@
 import type {
   LoraTrainingDatasetRevision,
   LoraTrainingDatasetRevisionItem,
-  LoraTrainingDemoData,
+  LoraTrainingData,
   LoraTrainingImageResult,
   LoraTrainingProject,
   LoraTrainingReferenceImage,
@@ -288,10 +288,10 @@ async function buildGenerationRuns(input: {
 }
 
 function applyTrainingProjectSectionOverrides(
-  training: LoraTrainingDemoData,
+  training: LoraTrainingData,
   sectionCollections: Awaited<ReturnType<typeof listTrainingProjectSectionCollections>>,
   sectionOverrides: Awaited<ReturnType<typeof listTrainingProjectSectionOverrides>>,
-): LoraTrainingDemoData {
+): LoraTrainingData {
   return {
     ...training,
     projects: training.projects.map((project) => ({
@@ -316,9 +316,9 @@ function applyTrainingProjectSectionOverrides(
 }
 
 function filterHiddenTrainingRuns(
-  training: LoraTrainingDemoData,
+  training: LoraTrainingData,
   hiddenRunIds: string[],
-): LoraTrainingDemoData {
+): LoraTrainingData {
   if (hiddenRunIds.length === 0) return training;
   const hidden = new Set(hiddenRunIds);
   return {
@@ -328,9 +328,9 @@ function filterHiddenTrainingRuns(
 }
 
 function filterHiddenTrainingProjects(
-  training: LoraTrainingDemoData,
+  training: LoraTrainingData,
   hiddenProjectIds: string[],
-): LoraTrainingDemoData {
+): LoraTrainingData {
   if (hiddenProjectIds.length === 0) return training;
   const hidden = new Set(hiddenProjectIds);
   return {
@@ -341,9 +341,9 @@ function filterHiddenTrainingProjects(
 }
 
 function applyTrainingProjectOrder(
-  training: LoraTrainingDemoData,
+  training: LoraTrainingData,
   orderedProjectIds: string[],
-): LoraTrainingDemoData {
+): LoraTrainingData {
   return {
     ...training,
     projects: orderTrainingProjectsByStoredIds(training.projects, orderedProjectIds),
@@ -351,9 +351,9 @@ function applyTrainingProjectOrder(
 }
 
 function applyTrainingRunPresetStates(
-  training: LoraTrainingDemoData,
+  training: LoraTrainingData,
   runPresetStates: Record<string, { createdAt: string; presetId: string }>,
-): LoraTrainingDemoData {
+): LoraTrainingData {
   const stateEntries = Object.entries(runPresetStates);
   if (stateEntries.length === 0) return training;
 
@@ -376,11 +376,11 @@ function buildTrainingSnapshotFallback(input: {
   managedProjects: LoraTrainingProject[];
   managedRuns: LoraTrainingRun[];
   orderedProjectIds?: string[];
-  presets: LoraTrainingDemoData["presets"];
+  presets: LoraTrainingData["presets"];
   runPresetStates?: Record<string, { createdAt: string; presetId: string }>;
   sectionCollections?: Awaited<ReturnType<typeof listTrainingProjectSectionCollections>>;
   sectionOverrides?: Awaited<ReturnType<typeof listTrainingProjectSectionOverrides>>;
-  templates: LoraTrainingDemoData["templates"];
+  templates: LoraTrainingData["templates"];
 }) {
   return applyTrainingProjectOrder(applyTrainingRunPresetStates(
     filterHiddenTrainingRuns(
@@ -427,7 +427,7 @@ async function loadTrainingSnapshotFallback() {
   });
 }
 
-async function mapRealTrainingProjects(): Promise<LoraTrainingDemoData> {
+async function mapRealTrainingProjects(): Promise<LoraTrainingData> {
   const jobs = await listLegacyTrainingProjects({ page: 1, pageSize: 20 });
   const managedProjects = await listManagedTrainingProjects().catch(() => []);
   if (!jobs.jobs.length) {
@@ -620,7 +620,7 @@ async function mapRealTrainingProjects(): Promise<LoraTrainingDemoData> {
   }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds), runPresetStates), orderedProjectIds);
 }
 
-export async function loadTrainingSnapshot(): Promise<LoraTrainingDemoData> {
+export async function loadTrainingSnapshot(): Promise<LoraTrainingData> {
   try {
     return await mapRealTrainingProjects();
   } catch {

@@ -1,1 +1,1 @@
-export { buildLoraTrainingDemoData } from "@/features/training/build";
+export { buildLoraTrainingData, buildLoraTrainingData as buildLoraTrainingDemoData } from "@/features/training/build";

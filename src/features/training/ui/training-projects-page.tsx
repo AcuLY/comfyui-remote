@@ -11,7 +11,7 @@ import { Button, ButtonLink } from "@/components/design-demo-ui/primitives/butto
 import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
 import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
 import { SortableList } from "@/components/design-demo-ui/primitives/sortable";
-import { buildLoraTrainingDemoData } from "@/features/training/build";
+import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData } from "@/features/training/data";
 import type { LoraTrainingProject } from "@/features/training/types";
 import { TrainingProjectListItem } from "./training-project-list-item";
@@ -38,7 +38,7 @@ function orderTrainingProjectsByIds(projects: LoraTrainingProject[], orderedIds:
 export function LoraTrainingProjectsPage({ data }: { data: TrainingAppData }) {
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   const [scope, setScope] = useState<ProjectScope>("current");
   const [viewMode, setViewMode] = useState<ProjectViewMode>("card");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());

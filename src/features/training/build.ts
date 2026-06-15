@@ -2,7 +2,7 @@ import type { TrainingAppData } from "./data";
 import type {
   LoraTrainingDatasetRevision,
   LoraTrainingDatasetSample,
-  LoraTrainingDemoData,
+  LoraTrainingData,
   LoraTrainingImageResult,
   LoraTrainingPreset,
   LoraTrainingProject,
@@ -240,7 +240,7 @@ const defaultTrainingConfig = [
   { label: "执行方式", value: "本地训练", detail: "本地调度器" },
 ];
 
-export function buildLoraTrainingDemoData(data: TrainingAppData): LoraTrainingDemoData {
+export function buildLoraTrainingData(data: TrainingAppData): LoraTrainingData {
   if (data.loraTraining) {
     return data.loraTraining;
   }

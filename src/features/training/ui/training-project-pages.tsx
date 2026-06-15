@@ -44,7 +44,7 @@ import { SortableList, useDemoSortable } from "@/components/design-demo-ui/primi
 import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 import { SwitchRow } from "@/components/design-demo-ui/primitives/switch-row";
 import { SelectionBatchBar } from "@/components/design-demo-ui/patterns";
-import { buildLoraTrainingDemoData } from "@/features/training/build";
+import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData, TrainingModelOption } from "@/features/training/data";
 import type { TrainingImage as DemoImage, LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "@/features/training/types";
 import s from "./training-project-pages.module.css";
@@ -102,7 +102,7 @@ type NewProjectTemplateHints = {
 };
 
 function useTraining(data: TrainingAppData) {
-  return buildLoraTrainingDemoData(data);
+  return buildLoraTrainingData(data);
 }
 
 function isTrainingModelOption(value: unknown): value is TrainingModelOption {
@@ -115,7 +115,7 @@ function isTrainingModelOption(value: unknown): value is TrainingModelOption {
 
 function findProject(data: TrainingAppData, projectId?: string) {
   if (!projectId) return undefined;
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   return training.projects.find((project) => project.id === projectId);
 }
 
@@ -2356,7 +2356,7 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
 export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionId }: { data: TrainingAppData; projectId?: string; sectionId?: string }) {
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
   const [sectionSceneBlocksByKey, setSectionSceneBlocksByKey] = useState<Record<string, LoraTrainingSectionBlock[]>>(() => (

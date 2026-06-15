@@ -179,7 +179,7 @@ export type LoraTrainingTemplate = {
   }>;
 };
 
-export type LoraTrainingDemoData = {
+export type LoraTrainingData = {
   projects: LoraTrainingProject[];
   runs: LoraTrainingRun[];
   presets: LoraTrainingPreset[];

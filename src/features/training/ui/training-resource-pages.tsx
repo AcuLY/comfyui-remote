@@ -19,7 +19,7 @@ import { Panel } from "@/components/design-demo-ui/primitives/panel";
 import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 import { SortableList, useDemoSortable } from "@/components/design-demo-ui/primitives/sortable";
 import { EditorBlock, FolderBreadcrumb, FolderRow, SelectionBatchBar, SortableRowShell, UnitRowShell, WorkbenchSurface } from "@/components/design-demo-ui/patterns";
-import { buildLoraTrainingDemoData } from "@/features/training/build";
+import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData } from "@/features/training/data";
 import type { LoraTrainingPreset, LoraTrainingProject, LoraTrainingSectionBlock, LoraTrainingTemplate } from "@/features/training/types";
 import s from "./training-resource-pages.module.css";
@@ -52,13 +52,13 @@ function presetStatus(preset: LoraTrainingPreset) {
 
 function findPreset(data: TrainingAppData, presetId?: string) {
   if (!presetId) return undefined;
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   return training.presets.find((preset) => preset.id === presetId);
 }
 
 function findTemplate(data: TrainingAppData, templateId?: string) {
   if (!templateId) return undefined;
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   return training.templates.find((template) => template.id === templateId);
 }
 
@@ -413,7 +413,7 @@ function TrainingPresetCategoryRailItem({
 export function LoraTrainingPresetsPage({ data }: { data: TrainingAppData }) {
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   const categories = uniquePresetCategories(training.presets);
   const [orderedPresetCategories, setOrderedPresetCategories] = useState(() => categories);
   const [activeCategory, setActiveCategory] = useState(categories[0] ?? "");
@@ -995,7 +995,7 @@ function LoraTrainingPresetDetailContent({
 export function LoraTrainingPresetSortRulesPage({ data }: { data: TrainingAppData }) {
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   const categories = [...new Set(training.presets.map((preset) => preset.category))];
   const categoryItems = categories.map((category) => ({
     id: category,
@@ -1317,7 +1317,7 @@ function TemplateEditorSectionRow({
 export function LoraTrainingTemplatesPage({ data }: { data: TrainingAppData }) {
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   const listRef = useRef<HTMLDivElement>(null);
   const [fromTemplateId] = useState(readAndClearTrainingTemplateListAnchor);
   const [orderedTemplateIds, setOrderedTemplateIds] = useState(() => training.templates.reduce<string[]>((ids, template) => [...ids, template.id], []));
@@ -1578,7 +1578,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   const pathname = usePathname();
   const router = useRouter();
   const { pushToast } = useDemoFeedback();
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   const urlSearch = useUrlSearch();
   const newTemplateHints = mode === "new" ? readNewTemplateHints(urlSearch) : { projectId: "", sections: "", sourceProject: "" };
   const template = mode === "edit" ? findTemplate(data, templateId) : undefined;
@@ -2145,7 +2145,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
 export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex }: { data: TrainingAppData; templateId?: string; sectionIndex?: string }) {
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   const template = findTemplate(data, templateId);
   const index = Number(sectionIndex);
   const section = template && Number.isInteger(index) && index >= 0 ? template.sections[index] : undefined;

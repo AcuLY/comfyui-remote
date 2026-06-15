@@ -95,7 +95,7 @@ test("training template section scene-block actions persist through formal HTTP 
 test("training template section imports training presets into local scene blocks", () => {
   const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
 
-  assert.match(templateSectionPage, /const training = buildLoraTrainingDemoData\(data\)/, "template section should read available training presets");
+  assert.match(templateSectionPage, /const training = buildLoraTrainingData\(data\)/, "template section should read available training presets");
   assert.match(templateSectionPage, /handleImportTemplatePresetBlock/, "template section should define a preset import action");
   assert.match(templateSectionPage, /templatePresetImportOpen/, "template preset import should open a visible candidate picker");
   assert.match(templateSectionPage, /selectedTemplatePresetId/, "template preset import should track the selected preset");

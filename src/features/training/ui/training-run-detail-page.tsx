@@ -14,7 +14,7 @@ import { Field } from "@/components/design-demo-ui/primitives/field";
 import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
 import { Panel } from "@/components/design-demo-ui/primitives/panel";
 import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
-import { buildLoraTrainingDemoData } from "@/features/training/build";
+import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData } from "@/features/training/data";
 import type { LoraTrainingImageResult, LoraTrainingProject, LoraTrainingReviewStatus, LoraTrainingRun, LoraTrainingTaskKind } from "@/features/training/types";
 import s from "./training-run-detail-page.module.css";
@@ -73,7 +73,7 @@ function reviewResultToastTitle(reviewStatus: LoraTrainingReviewStatus) {
 
 function findRun(data: TrainingAppData, kind: LoraTrainingTaskKind, runId: string | undefined) {
   if (!runId) return undefined;
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   return training.runs.find((run) => run.kind === kind && run.id === runId);
 }
 
@@ -268,7 +268,7 @@ export function LoraTrainingRunDetailPage({
   const [isCancellingTrainingRun, setIsCancellingTrainingRun] = useState(false);
   const [isCreatingTrainingPreset, setIsCreatingTrainingPreset] = useState(false);
   const [isReviewingGenerationOutput, setIsReviewingGenerationOutput] = useState(false);
-  const training = buildLoraTrainingDemoData(data);
+  const training = buildLoraTrainingData(data);
   const run = findRun(data, kind, runId);
   const project = run ? training.projects.find((item) => item.id === run.projectId) : undefined;
   const percent = run ? progressPercent(run) : 0;
