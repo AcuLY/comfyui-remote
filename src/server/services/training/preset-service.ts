@@ -12,9 +12,20 @@ import {
   trainingSceneFolderCreateSchema,
   trainingSceneFolderUpdateSchema,
 } from "@/lib/training/schemas";
+import {
+  TRAINING_PRESET_CATEGORY_TYPE,
+  getTrainingSceneDescriptionCategoryRow as getTrainingSceneCategoryRowFromRepository,
+  getTrainingSceneDescriptionFolderRow as getTrainingSceneFolderRowFromRepository,
+  getTrainingSceneDescriptionPresetRow as getTrainingPresetRowFromRepository,
+  listTrainingSceneDescriptionCategoryRows as listTrainingSceneCategoryRowsFromRepository,
+  listTrainingSceneDescriptionFolderRows as listTrainingSceneFolderRowsFromRepository,
+  listTrainingSceneDescriptionPresetRows as listTrainingPresetRowsFromRepository,
+  type TrainingPresetRow,
+  type TrainingSceneCategoryRow,
+  type TrainingSceneFolderRow,
+} from "@/server/repositories/training/scene-description-presets";
 import { slugifyForRepository } from "@/server/services/training/legacy-compat-service";
 
-const TRAINING_PRESET_CATEGORY_TYPE = "training_scene_description";
 const TRAINING_PRESET_VARIANT_NAME = "场景描述";
 const TRAINING_PRESET_VARIANT_SLUG = "scene-description";
 const TRAINING_PRESET_FALLBACK_PATH = join(process.cwd(), "data", "training-scene-description-presets.json");
@@ -117,41 +128,6 @@ const DEFAULT_TRAINING_PRESETS: TrainingPresetDefault[] = [
     templateUsage: [],
   },
 ];
-
-type TrainingPresetRow = Prisma.PresetGetPayload<{
-  include: {
-    category: { select: { id: true; name: true; slug: true; sortOrder: true; type: true } };
-    folder: { select: { id: true; name: true; sortOrder: true } };
-    variants: {
-      where: { isActive: true };
-      orderBy: { sortOrder: "asc" };
-      select: { id: true; prompt: true; sortOrder: true };
-    };
-  };
-}>;
-
-type TrainingSceneCategoryRow = Prisma.PresetCategoryGetPayload<{
-  select: {
-    id: true;
-    name: true;
-    slug: true;
-    icon: true;
-    color: true;
-    sortOrder: true;
-    positivePromptOrder: true;
-    type: true;
-  };
-}>;
-
-type TrainingSceneFolderRow = Prisma.PresetFolderGetPayload<{
-  select: {
-    id: true;
-    categoryId: true;
-    parentId: true;
-    name: true;
-    sortOrder: true;
-  };
-}>;
 
 export class TrainingPresetServiceError extends Error {
   details?: unknown;
@@ -631,169 +607,32 @@ async function ensureDefaultTrainingPresets() {
 
 async function listTrainingPresetRows() {
   await ensureDefaultTrainingPresets();
-  return prisma.preset.findMany({
-    where: {
-      category: {
-        type: TRAINING_PRESET_CATEGORY_TYPE,
-      },
-    },
-    orderBy: [
-      { category: { sortOrder: "asc" } },
-      { sortOrder: "asc" },
-      { createdAt: "asc" },
-    ],
-    include: {
-      category: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          sortOrder: true,
-          type: true,
-        },
-      },
-      folder: {
-        select: {
-          id: true,
-          name: true,
-          sortOrder: true,
-        },
-      },
-      variants: {
-        where: { isActive: true },
-        orderBy: { sortOrder: "asc" },
-        select: {
-          id: true,
-          prompt: true,
-          sortOrder: true,
-        },
-      },
-    },
-  });
+  return listTrainingPresetRowsFromRepository();
 }
 
 async function getTrainingPresetRow(presetId: string) {
   await ensureDefaultTrainingPresets();
-  return prisma.preset.findFirst({
-    where: {
-      id: presetId,
-      category: {
-        type: TRAINING_PRESET_CATEGORY_TYPE,
-      },
-    },
-    include: {
-      category: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          sortOrder: true,
-          type: true,
-        },
-      },
-      folder: {
-        select: {
-          id: true,
-          name: true,
-          sortOrder: true,
-        },
-      },
-      variants: {
-        where: { isActive: true },
-        orderBy: { sortOrder: "asc" },
-        select: {
-          id: true,
-          prompt: true,
-          sortOrder: true,
-        },
-      },
-    },
-  });
+  return getTrainingPresetRowFromRepository(presetId);
 }
 
 async function listTrainingSceneCategoryRows() {
   await ensureDefaultTrainingPresets();
-  return prisma.presetCategory.findMany({
-    where: { type: TRAINING_PRESET_CATEGORY_TYPE },
-    orderBy: [
-      { sortOrder: "asc" },
-      { positivePromptOrder: "asc" },
-      { createdAt: "asc" },
-    ],
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      icon: true,
-      color: true,
-      sortOrder: true,
-      positivePromptOrder: true,
-      type: true,
-    },
-  });
+  return listTrainingSceneCategoryRowsFromRepository();
 }
 
 async function getTrainingSceneCategoryRow(categoryId: string) {
   await ensureDefaultTrainingPresets();
-  return prisma.presetCategory.findFirst({
-    where: {
-      id: categoryId,
-      type: TRAINING_PRESET_CATEGORY_TYPE,
-    },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      icon: true,
-      color: true,
-      sortOrder: true,
-      positivePromptOrder: true,
-      type: true,
-    },
-  });
+  return getTrainingSceneCategoryRowFromRepository(categoryId);
 }
 
 async function listTrainingSceneFolderRows() {
   await ensureDefaultTrainingPresets();
-  return prisma.presetFolder.findMany({
-    where: {
-      category: {
-        type: TRAINING_PRESET_CATEGORY_TYPE,
-      },
-    },
-    orderBy: [
-      { categoryId: "asc" },
-      { parentId: "asc" },
-      { sortOrder: "asc" },
-      { createdAt: "asc" },
-    ],
-    select: {
-      id: true,
-      categoryId: true,
-      parentId: true,
-      name: true,
-      sortOrder: true,
-    },
-  });
+  return listTrainingSceneFolderRowsFromRepository();
 }
 
 async function getTrainingSceneFolderRow(folderId: string) {
   await ensureDefaultTrainingPresets();
-  return prisma.presetFolder.findFirst({
-    where: {
-      id: folderId,
-      category: {
-        type: TRAINING_PRESET_CATEGORY_TYPE,
-      },
-    },
-    select: {
-      id: true,
-      categoryId: true,
-      parentId: true,
-      name: true,
-      sortOrder: true,
-    },
-  });
+  return getTrainingSceneFolderRowFromRepository(folderId);
 }
 
 async function createUniqueCategorySlug(name: string) {

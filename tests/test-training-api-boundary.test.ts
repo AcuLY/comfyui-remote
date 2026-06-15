@@ -156,6 +156,31 @@ test("training scene-description DTO schemas live under src/lib/training", async
   );
 });
 
+test("training scene-description row reads go through a Training repository boundary", () => {
+  const repositoryPath = join(process.cwd(), "src/server/repositories/training/scene-description-presets.ts");
+
+  assert.equal(
+    existsSync(repositoryPath),
+    true,
+    "Training scene-description preset row reads should live under src/server/repositories/training",
+  );
+
+  const repositorySource = readFileSync(repositoryPath, "utf8");
+  assert.match(repositorySource, /export async function listTrainingSceneDescriptionPresetRows/);
+  assert.match(repositorySource, /export async function getTrainingSceneDescriptionPresetRow/);
+  assert.match(repositorySource, /export async function listTrainingSceneDescriptionCategoryRows/);
+  assert.match(repositorySource, /export async function getTrainingSceneDescriptionCategoryRow/);
+  assert.match(repositorySource, /export async function listTrainingSceneDescriptionFolderRows/);
+  assert.match(repositorySource, /export async function getTrainingSceneDescriptionFolderRow/);
+
+  const presetServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/preset-service.ts"), "utf8");
+  assert.match(
+    presetServiceSource,
+    /@\/server\/repositories\/training\/scene-description-presets/,
+    "Training preset service should call repository functions for scene-description row reads",
+  );
+});
+
 test("training worker task routes go through the Training worker boundary", () => {
   const taskApiPath = join(process.cwd(), "src/server/worker/training/task-api.ts");
   assert.equal(existsSync(taskApiPath), true, "Training worker task API boundary should exist under src/server/worker/training");
