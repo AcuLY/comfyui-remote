@@ -14,6 +14,12 @@ const TRAINING_API_MANIFEST = {
     templates: "/api/training/templates",
     scheduler: "/api/training/scheduler/status",
   },
+  workerSupervisor: {
+    defaultCommand: "cmd /c npm run training:workers",
+    mockCommand: "cmd /c npm run training:workers:mock",
+    defaultWorkers: ["image", "dataset-freeze", "training"],
+    script: "scripts/training/worker-queue.ts",
+  },
   workflows: [
     {
       id: "project_setup",
