@@ -266,7 +266,7 @@ export async function resolvePresetGroupContent(
   client: PresetGroupResolverDbClient,
 ): Promise<ResolvedPresetGroupContent | null> {
   const group = await loadPresetGroup(groupId, client);
-  if (!group || group.isActive === false) return null;
+  if (!group || group.isActive === false || !isOrdinaryPresetLibraryCategoryRow(group.category)) return null;
 
   const missingReferences: MissingReference[] = [];
   const concreteMembers = sortConcreteMembersByPresetCategory(
