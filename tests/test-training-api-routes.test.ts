@@ -441,6 +441,44 @@ test("GET /api/training full workflow disambiguates reused route parameter names
   );
 });
 
+test("GET /api/training full workflow declares every dynamic path parameter binding", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  ) as { steps: Array<{ id?: string; path: string; pathParams?: Record<string, string>; requires?: string[] }> } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(fullWorkflow, "agent manifest should include the full training workflow");
+
+  const missingParamBindings = fullWorkflow.steps.flatMap((step) => {
+    const params = [...step.path.matchAll(/:([A-Za-z][A-Za-z0-9_]*)/g)].map((match) => match[1]);
+    return params
+      .filter((param) => !step.pathParams?.[param])
+      .map((param) => `${step.id ?? step.path}:${param}`);
+  });
+
+  assert.deepEqual(
+    missingParamBindings,
+    [],
+    "Every dynamic full-workflow path parameter should declare which handoff id fills it.",
+  );
+
+  const pathParamsWithoutRequiredHandoff = fullWorkflow.steps
+    .filter((step) => step.pathParams)
+    .flatMap((step) => Object.entries(step.pathParams ?? {})
+      .filter(([, handoffId]) => !step.requires?.includes(handoffId))
+      .map(([param, handoffId]) => `${step.id ?? step.path}:${param}->${handoffId}`));
+
+  assert.deepEqual(
+    pathParamsWithoutRequiredHandoff,
+    [],
+    "Every path parameter binding should reference a handoff id listed in the same step's requires array.",
+  );
+});
+
 test("training route operation inventory includes re-exported route handlers", async () => {
   const routeOperations = await listRouteOperations();
 

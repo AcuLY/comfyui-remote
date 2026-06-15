@@ -108,6 +108,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/projects/:projectId/character-images",
           requires: ["projectId"],
+          pathParams: { projectId: "projectId" },
           produces: ["imageId"],
         },
         {
@@ -116,6 +117,7 @@ const TRAINING_API_MANIFEST = {
           method: "PATCH",
           path: "/api/training/projects/:projectId/profile",
           requires: ["projectId"],
+          pathParams: { projectId: "projectId" },
         },
         {
           id: "create_section",
@@ -123,6 +125,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/projects/:projectId/sections",
           requires: ["projectId"],
+          pathParams: { projectId: "projectId" },
           produces: ["sectionId"],
         },
         {
@@ -131,6 +134,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/sections/:sectionId/blocks",
           requires: ["sectionId"],
+          pathParams: { sectionId: "sectionId" },
           produces: ["blockId"],
         },
         {
@@ -139,6 +143,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/projects/:projectId/generation-tasks",
           requires: ["projectId", "sectionId"],
+          pathParams: { projectId: "projectId" },
           produces: ["taskId"],
         },
         {
@@ -147,6 +152,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/generation-tasks/:taskId/inputs",
           requires: ["taskId"],
+          pathParams: { taskId: "taskId" },
         },
         {
           id: "preview_generation_task",
@@ -154,6 +160,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/generation-tasks/:taskId/preview",
           requires: ["taskId"],
+          pathParams: { taskId: "taskId" },
           produces: ["preview"],
         },
         {
@@ -162,6 +169,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/generation-tasks/:taskId/run",
           requires: ["taskId"],
+          pathParams: { taskId: "taskId" },
           produces: ["queuedGenerationTaskId"],
         },
         {
@@ -194,6 +202,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/worker/generation-tasks/:taskId/complete",
           requires: ["taskId"],
+          pathParams: { taskId: "taskId" },
           produces: ["outputId", "imageResultId"],
         },
         {
@@ -210,6 +219,7 @@ const TRAINING_API_MANIFEST = {
           method: "GET",
           path: "/api/training/generation-tasks/:taskId/outputs",
           requires: ["taskId"],
+          pathParams: { taskId: "taskId" },
           produces: ["outputId", "imageResultId"],
         },
         {
@@ -218,6 +228,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/generation-outputs/:outputId/apply",
           requires: ["outputId"],
+          pathParams: { outputId: "outputId" },
           produces: ["imageId"],
         },
         {
@@ -226,6 +237,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/image-results/:imageResultId/review",
           requires: ["imageResultId"],
+          pathParams: { imageResultId: "imageResultId" },
         },
         {
           id: "generate_missing_captions",
@@ -233,6 +245,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/projects/:projectId/captions/generate",
           requires: ["projectId"],
+          pathParams: { projectId: "projectId" },
         },
         {
           id: "read_dataset_readiness",
@@ -240,6 +253,7 @@ const TRAINING_API_MANIFEST = {
           method: "GET",
           path: "/api/training/projects/:projectId/dataset-readiness",
           requires: ["projectId"],
+          pathParams: { projectId: "projectId" },
         },
         {
           id: "freeze_dataset_revision",
@@ -247,6 +261,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/projects/:projectId/dataset-revisions",
           requires: ["projectId"],
+          pathParams: { projectId: "projectId" },
           produces: ["revisionId"],
         },
         {
@@ -255,6 +270,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/projects/:projectId/training-runs",
           requires: ["projectId", "revisionId"],
+          pathParams: { projectId: "projectId" },
           produces: ["trainingRunId"],
         },
         {
@@ -287,6 +303,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/worker/training-runs/:trainingRunId/progress",
           requires: ["trainingRunId"],
+          pathParams: { trainingRunId: "trainingRunId" },
         },
         {
           id: "complete_training_run",
@@ -294,6 +311,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/worker/training-runs/:trainingRunId/complete",
           requires: ["trainingRunId"],
+          pathParams: { trainingRunId: "trainingRunId" },
           produces: ["finalLoraArtifactId"],
         },
         {
@@ -310,6 +328,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/training-runs/:trainingRunId/poll",
           requires: ["trainingRunId"],
+          pathParams: { trainingRunId: "trainingRunId" },
         },
         {
           id: "cleanup_training_run",
@@ -317,6 +336,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/training-runs/:trainingRunId/cleanup",
           requires: ["trainingRunId"],
+          pathParams: { trainingRunId: "trainingRunId" },
         },
         {
           id: "create_preset_from_training_run",
@@ -324,6 +344,7 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/training-runs/:trainingRunId/create-preset",
           requires: ["trainingRunId", "finalLoraArtifactId"],
+          pathParams: { trainingRunId: "trainingRunId" },
           produces: ["presetId"],
         },
       ],
