@@ -293,8 +293,28 @@ test("training routes render a production shell without the /design-demos prefix
   );
   assert.match(
     trainingShellSource,
-    /export \{ DesignDemoShell as TrainingShell \}/,
-    "training shell compatibility wrapper should rename the shared shell at the training feature boundary",
+    /buildWorkModeResourceTargetList\("lora_training"\)/,
+    "training shell should derive its navigation from the shared work-mode resource contract",
+  );
+  assert.match(
+    trainingShellSource,
+    /navigationLinks=\{buildTrainingNavigationLinks\(data\)\}/,
+    "training shell should inject training-owned navigation links into the shared shell",
+  );
+  assert.doesNotMatch(
+    trainingShellSource,
+    /@\/app\/design-demos\/routing/,
+    "training shell should not import design-demo routing to build production training navigation",
+  );
+  assert.match(
+    shellSource,
+    /navigationLinks\?:/,
+    "shared shell should expose a navigation injection point for production modules",
+  );
+  assert.match(
+    shellSource,
+    /navigationLinks \?\? buildWorkModeNavLinks\(workMode\)/,
+    "shared shell should fall back to demo navigation only when no module-owned navigation is provided",
   );
   assert.match(
     trainingRuntimeSource,

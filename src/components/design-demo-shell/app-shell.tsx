@@ -32,6 +32,8 @@ import s from "./app-shell.module.css";
 import { getHeaderActionSlots } from "./header-action-slots";
 import { RouteHeaderSurface } from "./header-surface";
 
+export type DesignDemoShellNavLink = NavLinkDef;
+
 function readStoredWorkMode(): DesignDemoWorkMode {
   if (typeof window === "undefined") return "generation";
   try {
@@ -295,12 +297,14 @@ export function DesignDemoShell({
   data,
   hrefForRoute,
   initialTheme,
+  navigationLinks,
 }: {
   children: ReactNode;
   currentRoute: string;
   data: DemoData;
   hrefForRoute?: (route: string) => string;
   initialTheme: DemoTheme;
+  navigationLinks?: DesignDemoShellNavLink[];
 }) {
   const contentFrameRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
@@ -323,7 +327,7 @@ export function DesignDemoShell({
     routeHeaderRef.current = node;
   }, []);
   const workMode = resolveWorkModeForRoute(currentRoute, storedWorkMode);
-  const navLinks = useMemo(() => buildWorkModeNavLinks(workMode), [workMode]);
+  const navLinks = useMemo(() => navigationLinks ?? buildWorkModeNavLinks(workMode), [navigationLinks, workMode]);
   const activeNav = useMemo(
     () => navLinks.find((link) => isNavActive(currentRoute, link.href, link.activePrefix)) ?? navLinks[0],
     [currentRoute, navLinks],
