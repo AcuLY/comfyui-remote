@@ -61,7 +61,10 @@ async function loadReplacementPresets(rules: readonly PresetSectionReplacementRu
   if (presetIds.length === 0) return [];
 
   const presets = await prisma.preset.findMany({
-    where: { id: { in: presetIds } },
+    where: {
+      id: { in: presetIds },
+      category: { type: "preset" },
+    },
     select: {
       id: true,
       name: true,

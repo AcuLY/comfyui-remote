@@ -444,7 +444,10 @@ export async function resolveTemplatePresetImports(
   if (presetIds.length === 0) return [];
 
   const presets = await prisma.preset.findMany({
-    where: { id: { in: presetIds } },
+    where: {
+      id: { in: presetIds },
+      category: { type: "preset" },
+    },
     include: {
       category: {
         select: {

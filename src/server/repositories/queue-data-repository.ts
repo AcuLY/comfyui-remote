@@ -26,7 +26,10 @@ export const PROJECT_PRESET_BINDING_DISPLAY_SELECT = {
 export async function batchResolvePresetNames(presetIds: string[]): Promise<Map<string, { name: string }>> {
   if (presetIds.length === 0) return new Map();
   const presets = await prisma.preset.findMany({
-    where: { id: { in: presetIds } },
+    where: {
+      id: { in: presetIds },
+      category: { type: "preset" },
+    },
     select: { id: true, name: true },
   });
   return new Map(presets.map((p) => [p.id, { name: p.name }]));

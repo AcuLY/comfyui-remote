@@ -95,7 +95,11 @@ async function inferPresetNameFromProject(projectId: string, explicitPresetName:
   }
 
   const presets = await prisma.preset.findMany({
-    where: { id: { in: presetIds }, isActive: true },
+    where: {
+      id: { in: presetIds },
+      isActive: true,
+      category: { type: "preset" },
+    },
     select: {
       id: true,
       name: true,
@@ -136,6 +140,7 @@ async function findPresetForVerification(nameOrSlug: string): Promise<FlowTarget
   const preset = await prisma.preset.findFirst({
     where: {
       isActive: true,
+      category: { type: "preset" },
       OR: [{ name: nameOrSlug }, { slug: nameOrSlug }],
     },
     select: {

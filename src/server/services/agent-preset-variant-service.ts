@@ -152,6 +152,7 @@ async function findPresetByNameOrSlug(nameOrSlug: string) {
   return prisma.preset.findFirst({
     where: {
       isActive: true,
+      category: { type: "preset" },
       OR: [{ name: nameOrSlug }, { slug: nameOrSlug }],
     },
     include: {

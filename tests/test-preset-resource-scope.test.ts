@@ -10,6 +10,9 @@ import type * as PresetCategoryActions from "../src/lib/actions/preset-category"
 import type * as PresetFolderActions from "../src/lib/actions/preset-folder";
 import type * as PresetGroupActions from "../src/lib/actions/preset-group";
 import type * as PresetVariantCrudActions from "../src/lib/actions/preset-variant-crud";
+import type * as PresetVariantResolveActions from "../src/lib/actions/preset-variant-resolve";
+import type * as ServerData from "../src/lib/server-data";
+import type * as TemplateCrudActions from "../src/lib/actions/template-crud";
 import type * as TrainingPresetService from "../src/server/services/training/preset-service";
 
 process.env.DB_PROVIDER = "sqlite";
@@ -106,6 +109,15 @@ setupDb.exec(`
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
   CREATE UNIQUE INDEX "PresetGroup_categoryId_slug_key" ON "PresetGroup"("categoryId", "slug");
+  CREATE TABLE "PresetGroupMember" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "groupId" TEXT NOT NULL,
+    "presetId" TEXT,
+    "variantId" TEXT,
+    "subGroupId" TEXT,
+    "slotCategoryId" TEXT,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0
+  );
   CREATE TABLE "PresetGroupChangeLog" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "presetGroupId" TEXT NOT NULL,
@@ -126,14 +138,23 @@ let createPresetGroup: typeof PresetGroupActions.createPresetGroup;
 let createPreset: typeof PresetVariantCrudActions.createPreset;
 let updatePreset: typeof PresetVariantCrudActions.updatePreset;
 let deletePreset: typeof PresetVariantCrudActions.deletePreset;
+let resolveVariantContent: typeof PresetVariantResolveActions.resolveVariantContent;
+let getPresetFolders: typeof ServerData.getPresetFolders;
+let getPresetFolder: typeof ServerData.getPresetFolder;
+let getPresetGroups: typeof ServerData.getPresetGroups;
+let getPresetGroup: typeof ServerData.getPresetGroup;
+let resolveTemplatePresetImports: typeof TemplateCrudActions.resolveTemplatePresetImports;
 let createTrainingSceneDescriptionPreset: typeof TrainingPresetService.createTrainingSceneDescriptionPreset;
 
 test.before(async () => {
   const prismaModule = await import("../src/lib/prisma");
+  const serverData = await import("../src/lib/server-data");
   const presetCategoryActions = await import("../src/lib/actions/preset-category");
   const presetFolderActions = await import("../src/lib/actions/preset-folder");
   const presetGroupActions = await import("../src/lib/actions/preset-group");
   const presetVariantCrudActions = await import("../src/lib/actions/preset-variant-crud");
+  const presetVariantResolveActions = await import("../src/lib/actions/preset-variant-resolve");
+  const templateCrudActions = await import("../src/lib/actions/template-crud");
   const trainingPresetService = await import("../src/server/services/training/preset-service");
 
   prisma = prismaModule.prisma;
@@ -145,6 +166,12 @@ test.before(async () => {
   createPreset = presetVariantCrudActions.createPreset;
   updatePreset = presetVariantCrudActions.updatePreset;
   deletePreset = presetVariantCrudActions.deletePreset;
+  resolveVariantContent = presetVariantResolveActions.resolveVariantContent;
+  getPresetFolders = serverData.getPresetFolders;
+  getPresetFolder = serverData.getPresetFolder;
+  getPresetGroups = serverData.getPresetGroups;
+  getPresetGroup = serverData.getPresetGroup;
+  resolveTemplatePresetImports = templateCrudActions.resolveTemplatePresetImports;
   createTrainingSceneDescriptionPreset = trainingPresetService.createTrainingSceneDescriptionPreset;
 });
 
@@ -281,6 +308,246 @@ test("ordinary preset folder and group writes cannot use LoRA training categorie
     /ordinary preset category/i,
   );
   assert.equal(await prisma.presetGroup.count({ where: { slug: "leaked-group" } }), 0);
+});
+
+test("ordinary preset folder and group reads do not expose LoRA training resources", async () => {
+  await prisma.presetCategory.createMany({
+    data: [
+      {
+        id: "ordinary-readable-category",
+        name: "Ordinary Readable",
+        slug: "ordinary-readable",
+        type: "preset",
+      },
+      {
+        id: "training-readable-category",
+        name: "Training Readable",
+        slug: "training-readable",
+        type: "training_scene_description",
+      },
+    ],
+  });
+  await prisma.presetFolder.createMany({
+    data: [
+      {
+        id: "ordinary-readable-folder",
+        categoryId: "ordinary-readable-category",
+        name: "Ordinary Folder",
+      },
+      {
+        id: "training-readable-folder",
+        categoryId: "training-readable-category",
+        name: "Training Folder",
+      },
+    ],
+  });
+  await prisma.presetGroup.createMany({
+    data: [
+      {
+        id: "ordinary-readable-group",
+        categoryId: "ordinary-readable-category",
+        name: "Ordinary Group",
+        slug: "ordinary-readable-group",
+      },
+      {
+        id: "training-readable-group",
+        categoryId: "training-readable-category",
+        name: "Training Group",
+        slug: "training-readable-group",
+      },
+    ],
+  });
+  await prisma.preset.create({
+    data: {
+      id: "training-readable-preset",
+      categoryId: "training-readable-category",
+      name: "Training Readable Preset",
+      slug: "training-readable-preset",
+    },
+  });
+  await prisma.presetVariant.create({
+    data: {
+      id: "training-readable-variant",
+      presetId: "training-readable-preset",
+      name: "Training Readable Variant",
+      slug: "training-readable-variant",
+      prompt: "training readable prompt",
+    },
+  });
+  await prisma.presetGroupMember.createMany({
+    data: [
+      {
+        id: "ordinary-member-training-preset",
+        groupId: "ordinary-readable-group",
+        presetId: "training-readable-preset",
+        variantId: "training-readable-variant",
+        sortOrder: 0,
+      },
+      {
+        id: "ordinary-member-training-subgroup",
+        groupId: "ordinary-readable-group",
+        subGroupId: "training-readable-group",
+        sortOrder: 1,
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    (await getPresetFolders()).map((folder) => folder.id),
+    ["ordinary-readable-folder"],
+    "ordinary preset folder lists must hide training-owned folders",
+  );
+  assert.deepEqual(
+    await getPresetFolders({ categoryId: "training-readable-category" }),
+    [],
+    "ordinary preset folder APIs must not leak training folders when called with a training category id",
+  );
+  assert.equal(await getPresetFolder("training-readable-folder"), null);
+  const ordinaryGroups = await getPresetGroups();
+  assert.deepEqual(
+    ordinaryGroups.map((group) => group.id),
+    ["ordinary-readable-group"],
+    "ordinary preset group lists must hide training-owned groups",
+  );
+  assert.deepEqual(
+    ordinaryGroups[0]?.members.map((member) => ({
+      presetName: member.presetName,
+      variantName: member.variantName,
+      subGroupName: member.subGroupName,
+    })),
+    [
+      { presetName: undefined, variantName: undefined, subGroupName: undefined },
+      { presetName: undefined, variantName: undefined, subGroupName: undefined },
+    ],
+    "ordinary preset group member summaries must not resolve training-owned resource names",
+  );
+  assert.equal(await getPresetGroup("training-readable-group"), null);
+});
+
+test("ordinary preset variant resolution ignores LoRA training variants", async () => {
+  await prisma.presetCategory.createMany({
+    data: [
+      {
+        id: "ordinary-resolvable-category",
+        name: "Ordinary Resolvable",
+        slug: "ordinary-resolvable",
+        type: "preset",
+      },
+      {
+        id: "training-resolvable-category",
+        name: "Training Resolvable",
+        slug: "training-resolvable",
+        type: "training_scene_description",
+      },
+    ],
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "ordinary-resolvable-preset",
+        categoryId: "ordinary-resolvable-category",
+        name: "Ordinary Resolvable Preset",
+        slug: "ordinary-resolvable-preset",
+      },
+      {
+        id: "training-resolvable-preset",
+        categoryId: "training-resolvable-category",
+        name: "Training Resolvable Preset",
+        slug: "training-resolvable-preset",
+      },
+    ],
+  });
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "ordinary-resolvable-variant",
+        presetId: "ordinary-resolvable-preset",
+        name: "Ordinary Variant",
+        slug: "ordinary-variant",
+        prompt: "ordinary prompt",
+      },
+      {
+        id: "training-resolvable-variant",
+        presetId: "training-resolvable-preset",
+        name: "Training Variant",
+        slug: "training-variant",
+        prompt: "training prompt must not leak",
+      },
+    ],
+  });
+
+  assert.equal((await resolveVariantContent("ordinary-resolvable-variant")).prompt, "ordinary prompt");
+  assert.deepEqual(
+    await resolveVariantContent("training-resolvable-variant"),
+    { prompt: "", negativePrompt: null, lora1: [], lora2: [] },
+    "ordinary preset variant resolution must treat training-owned variants as out of scope",
+  );
+});
+
+test("ordinary template preset imports do not resolve LoRA training presets", async () => {
+  await prisma.presetCategory.createMany({
+    data: [
+      {
+        id: "ordinary-template-import-category",
+        name: "Ordinary Template Import",
+        slug: "ordinary-template-import",
+        color: "160 50% 55%",
+        type: "preset",
+      },
+      {
+        id: "training-template-import-category",
+        name: "Training Template Import",
+        slug: "training-template-import",
+        color: "210 50% 55%",
+        type: "training_scene_description",
+      },
+    ],
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "ordinary-template-import-preset",
+        categoryId: "ordinary-template-import-category",
+        name: "Ordinary Template Import Preset",
+        slug: "ordinary-template-import-preset",
+      },
+      {
+        id: "training-template-import-preset",
+        categoryId: "training-template-import-category",
+        name: "Training Template Import Preset",
+        slug: "training-template-import-preset",
+      },
+    ],
+  });
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "ordinary-template-import-variant",
+        presetId: "ordinary-template-import-preset",
+        name: "Ordinary Import Variant",
+        slug: "ordinary-import-variant",
+        prompt: "ordinary template prompt",
+      },
+      {
+        id: "training-template-import-variant",
+        presetId: "training-template-import-preset",
+        name: "Training Import Variant",
+        slug: "training-import-variant",
+        prompt: "training template prompt must not leak",
+      },
+    ],
+  });
+
+  const imports = await resolveTemplatePresetImports([
+    { presetId: "ordinary-template-import-preset", variantId: "ordinary-template-import-variant" },
+    { presetId: "training-template-import-preset", variantId: "training-template-import-variant" },
+  ]);
+
+  assert.deepEqual(
+    imports.map((item) => ({ presetId: item.presetId, prompt: item.prompt })),
+    [{ presetId: "ordinary-template-import-preset", prompt: "ordinary template prompt" }],
+    "ordinary template preset imports must ignore training-owned presets even when called by id",
+  );
 });
 
 test("training preset creation never reuses ordinary generation preset categories", async () => {

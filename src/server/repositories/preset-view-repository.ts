@@ -83,13 +83,31 @@ async function resolveMemberNames(
 
   const [presetNames, variantNames, groupNames] = await Promise.all([
     allPresetIds.size > 0
-      ? prisma.preset.findMany({ where: { id: { in: [...allPresetIds] } }, select: { id: true, name: true } })
+      ? prisma.preset.findMany({
+          where: {
+            id: { in: [...allPresetIds] },
+            category: { type: "preset" },
+          },
+          select: { id: true, name: true },
+        })
       : [],
     allVariantIds.size > 0
-      ? prisma.presetVariant.findMany({ where: { id: { in: [...allVariantIds] } }, select: { id: true, name: true } })
+      ? prisma.presetVariant.findMany({
+          where: {
+            id: { in: [...allVariantIds] },
+            preset: { category: { type: "preset" } },
+          },
+          select: { id: true, name: true },
+        })
       : [],
     allGroupIds.size > 0
-      ? prisma.presetGroup.findMany({ where: { id: { in: [...allGroupIds] } }, select: { id: true, name: true } })
+      ? prisma.presetGroup.findMany({
+          where: {
+            id: { in: [...allGroupIds] },
+            category: { type: "preset" },
+          },
+          select: { id: true, name: true },
+        })
       : [],
   ]);
 
@@ -325,7 +343,11 @@ export type PresetGroupEditData = {
 
 export async function getPresetGroupEditData(groupId: string): Promise<PresetGroupEditData | null> {
   const currentGroup = await prisma.presetGroup.findFirst({
-    where: { id: groupId, isActive: true },
+    where: {
+      id: groupId,
+      isActive: true,
+      category: { type: "preset" },
+    },
     include: {
       members: { orderBy: { sortOrder: "asc" } },
       changeLogs: {
@@ -723,7 +745,10 @@ export type PresetGroupItem = {
 
 export async function getPresetGroups(): Promise<PresetGroupItem[]> {
   const groups = await prisma.presetGroup.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+      category: { type: "preset" },
+    },
     orderBy: { sortOrder: "asc" },
     include: {
       members: {
@@ -773,6 +798,7 @@ export async function getPresetFolders(filters: {
 } = {}): Promise<PresetFolderItem[]> {
   const folders = await prisma.presetFolder.findMany({
     where: {
+      category: { type: "preset" },
       ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
       ...(filters.parentId !== undefined ? { parentId: filters.parentId } : {}),
     },
@@ -801,8 +827,11 @@ export async function getPresetFolders(filters: {
 }
 
 export async function getPresetFolder(folderId: string): Promise<PresetFolderItem | null> {
-  const folder = await prisma.presetFolder.findUnique({
-    where: { id: folderId },
+  const folder = await prisma.presetFolder.findFirst({
+    where: {
+      id: folderId,
+      category: { type: "preset" },
+    },
     include: {
       _count: {
         select: {

@@ -320,6 +320,63 @@ test("preset resource lists stay scoped to their owning work mode except shared 
   assert.equal(trainingHrefs.includes("/settings"), true, "Settings remain a shared resource.");
 });
 
+test("generation preset import and replacement helpers keep training presets out of ordinary reads", () => {
+  const promptBlockSource = readFileSync(join(process.cwd(), "src/lib/actions/prompt-block.ts"), "utf8");
+  assert.match(
+    promptBlockSource,
+    /export async function importPresetToSection[\s\S]*?prisma\.preset\.findFirst\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
+    "Generation section preset imports should only resolve ordinary preset resources.",
+  );
+  assert.doesNotMatch(
+    promptBlockSource,
+    /export async function importPresetToSection[\s\S]*?prisma\.preset\.findUnique\(\{[\s\S]*?where:\s*\{\s*id:\s*presetId\s*\}/,
+    "Generation section preset imports must not fetch presets by id without a resource type filter.",
+  );
+
+  const templateCrudSource = readFileSync(join(process.cwd(), "src/lib/actions/template-crud.ts"), "utf8");
+  assert.match(
+    templateCrudSource,
+    /export async function resolveTemplatePresetImports[\s\S]*?prisma\.preset\.findMany\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
+    "Generation template preset imports should only resolve ordinary preset resources.",
+  );
+
+  const replacementSource = readFileSync(
+    join(process.cwd(), "src/server/services/preset-section-replacement-service.ts"),
+    "utf8",
+  );
+  assert.match(
+    replacementSource,
+    /async function loadReplacementPresets[\s\S]*?prisma\.preset\.findMany\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
+    "Generation preset replacement helpers should only load ordinary preset resources.",
+  );
+
+  const flowSource = readFileSync(join(process.cwd(), "src/server/services/agent-preset-variant-flow-service.ts"), "utf8");
+  assert.match(
+    flowSource,
+    /async function inferPresetNameFromProject[\s\S]*?prisma\.preset\.findMany\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
+    "Generation agent preset inference should ignore training preset resources.",
+  );
+  assert.match(
+    flowSource,
+    /async function findPresetForVerification[\s\S]*?prisma\.preset\.findFirst\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
+    "Generation agent preset verification should ignore training preset resources.",
+  );
+
+  const agentSyncSource = readFileSync(join(process.cwd(), "src/server/services/agent-preset-variant-service.ts"), "utf8");
+  assert.match(
+    agentSyncSource,
+    /async function findPresetByNameOrSlug[\s\S]*?prisma\.preset\.findFirst\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
+    "Generation agent preset sync should ignore training preset resources.",
+  );
+
+  const queueDataSource = readFileSync(join(process.cwd(), "src/server/repositories/queue-data-repository.ts"), "utf8");
+  assert.match(
+    queueDataSource,
+    /export async function batchResolvePresetNames[\s\S]*?prisma\.preset\.findMany\(\{[\s\S]*?category:\s*\{\s*type:\s*"preset"\s*\}/,
+    "Generation queue preset display names should not resolve training preset resources.",
+  );
+});
+
 test("training worker task routes go through the Training worker boundary", () => {
   const taskApiPath = join(process.cwd(), "src/server/worker/training/task-api.ts");
   assert.equal(existsSync(taskApiPath), true, "Training worker task API boundary should exist under src/server/worker/training");

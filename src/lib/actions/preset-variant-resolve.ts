@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 
+const ORDINARY_PRESET_CATEGORY_TYPE = "preset";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -20,9 +22,16 @@ export type ResolvedVariantContent = {
 
 export async function findPresetIdsAffectedByVariantChange(variantId: string, presetId: string) {
   const variants = await prisma.presetVariant.findMany({
+    where: {
+      preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+    },
     select: { id: true, presetId: true },
   });
   const relationLinks = await prisma.presetVariantLink.findMany({
+    where: {
+      sourceVariant: { preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } } },
+      linkedVariant: { preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } } },
+    },
     select: { sourceVariantId: true, linkedVariantId: true },
   });
   const variantById = new Map(variants.map((variant) => [variant.id, variant]));
@@ -81,7 +90,12 @@ export async function resolveVariantContent(
   if (visited.has(variantId)) return empty;
   visited.add(variantId);
 
-  const variant = await prisma.presetVariant.findUnique({ where: { id: variantId } });
+  const variant = await prisma.presetVariant.findFirst({
+    where: {
+      id: variantId,
+      preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+    },
+  });
   if (!variant || !variant.isActive) return empty;
 
   let prompt = variant.prompt;
