@@ -6,7 +6,7 @@ import type {
 import {
   getCharacterLoraWorkerQueueStatus,
   mapCharacterLoraPhase3Error,
-} from "@/server/services/character-lora-training/phase3-service";
+} from "@/server/services/training/legacy-compat-service";
 import {
   getTrainingSceneDescriptionPreset,
   listTrainingSceneDescriptionPresets,

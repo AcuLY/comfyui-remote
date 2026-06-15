@@ -1,17 +1,13 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { getCharacterLoraCandidateImage } from "@/server/repositories/character-lora-training";
-import {
-  getCharacterLoraTrainingJob,
-} from "@/server/services/character-lora-training/job-service";
 import {
   createCharacterLoraPromptCardVersion,
+  getCharacterLoraCandidateImage,
+  getCharacterLoraTrainingJob,
   listCharacterLoraPromptCardVersions,
-} from "@/server/services/character-lora-training/prompt-card-service";
-import {
   updateCharacterLoraImageCaption,
-} from "@/server/services/character-lora-training/phase3-service";
+} from "@/server/services/training/legacy-compat-service";
 import {
   getManagedTrainingImageResult,
   getManagedTrainingProject,

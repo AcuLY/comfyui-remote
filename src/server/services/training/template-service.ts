@@ -7,9 +7,9 @@ import {
   listCharacterLoraTrainingTemplates,
   mapCharacterLoraSectionTemplateError,
   updateCharacterLoraTrainingTemplate,
-} from "@/server/services/character-lora-training/section-template-service";
+  upsertCharacterLoraTrainingTemplates,
+} from "@/server/services/training/legacy-compat-service";
 import { listTrainingTemplateOrderIds, orderTrainingTemplatesByStoredIds } from "@/server/services/training/template-order-service";
-import { upsertCharacterLoraTrainingTemplates } from "@/server/repositories/character-lora-training-repository";
 import { z } from "zod";
 
 const TRAINING_TEMPLATE_FALLBACK_PATH = join(process.cwd(), "data", "training-templates.json");

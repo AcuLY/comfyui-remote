@@ -7,9 +7,9 @@ import {
   findCharacterLoraSourceImageDuplicate,
   getCharacterLoraCandidateImage,
   getCharacterLoraSourceImage,
-  getCharacterLoraTrainingJob,
-  listCharacterLoraSourceImages,
-} from "@/server/repositories/character-lora-training";
+  getCharacterLoraTrainingJobFromRepository as getCharacterLoraTrainingJob,
+  listCharacterLoraSourceImagesFromRepository as listCharacterLoraSourceImages,
+} from "@/server/services/training/legacy-compat-service";
 import {
   applyManagedTrainingImageResultToReferenceImage,
   getManagedTrainingProject,

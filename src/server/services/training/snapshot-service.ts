@@ -11,21 +11,17 @@ import type {
   TrainingImageStatus,
 } from "@/features/training/types";
 import { toImageUrl } from "@/lib/image-url";
-import { getCharacterLoraGenerationRun } from "@/server/repositories/character-lora-training";
 import {
-  listCharacterLoraPromptCardVersions,
-} from "@/server/services/character-lora-training/prompt-card-service";
-import {
+  getCharacterLoraGenerationRun,
   getCharacterLoraTrainingJobOverview,
-  listCharacterLoraTrainingJobs,
-} from "@/server/services/character-lora-training/job-service";
-import {
   listCharacterLoraCandidateImages,
   listCharacterLoraDatasetRevisions,
-} from "@/server/services/character-lora-training/phase3-service";
-import { listCharacterLoraJobSections } from "@/server/services/character-lora-training/section-template-service";
-import { listCharacterLoraSourceImages } from "@/server/services/character-lora-training/source-image-service";
-import { listCharacterLoraTrainingRuns } from "@/server/services/character-lora-training/training-service";
+  listCharacterLoraJobSections,
+  listCharacterLoraPromptCardVersions,
+  listCharacterLoraSourceImages,
+  listCharacterLoraTrainingJobs,
+  listCharacterLoraTrainingRuns,
+} from "@/server/services/training/legacy-compat-service";
 import { listTrainingSceneDescriptionPresets } from "@/server/services/training/preset-service";
 import { listManagedTrainingTemplates } from "@/server/services/training/template-service";
 import { listManagedTrainingProjects } from "@/server/services/training/project-service";

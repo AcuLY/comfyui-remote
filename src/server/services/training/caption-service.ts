@@ -1,6 +1,9 @@
-import { getCharacterLoraCandidateImage } from "@/server/repositories/character-lora-training";
-import { updateCharacterLoraImageCaption, listCharacterLoraCandidateImages } from "@/server/services/character-lora-training/phase3-service";
-import { getCharacterLoraTrainingJob } from "@/server/services/character-lora-training/job-service";
+import {
+  getCharacterLoraCandidateImage,
+  getCharacterLoraTrainingJob,
+  listCharacterLoraCandidateImages,
+  updateCharacterLoraImageCaption,
+} from "@/server/services/training/legacy-compat-service";
 import {
   getManagedTrainingImageResultContext,
   getManagedTrainingProject,

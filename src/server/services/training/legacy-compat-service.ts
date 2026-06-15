@@ -1,14 +1,19 @@
 import {
   freezeCharacterLoraDataset,
+  getCharacterLoraWorkerQueueStatus,
+  listCharacterLoraCandidateImages,
+  listCharacterLoraDatasetRevisions,
   mapCharacterLoraPhase3Error,
+  enqueueCharacterLoraSectionGenerationRun,
   reviewCharacterLoraImages,
   updateCharacterLoraImageCaption,
-  enqueueCharacterLoraSectionGenerationRun,
 } from "@/server/services/character-lora-training/phase3-service";
 import {
+  createCharacterLoraTrainingProject,
   archiveCharacterLoraTrainingJob,
   getCharacterLoraTrainingJob,
   getCharacterLoraTrainingJobOverview,
+  listCharacterLoraTrainingJobs,
   mapCharacterLoraTrainingJobError,
   restoreCharacterLoraTrainingJob,
   updateCharacterLoraTrainingJob,
@@ -30,17 +35,94 @@ import {
   uploadCharacterLoraSourceImage,
 } from "@/server/services/character-lora-training/source-image-service";
 import {
+  createCharacterLoraTrainingTemplate,
+  getCharacterLoraTrainingTemplateSnapshot,
+  listCharacterLoraJobSections,
+  listCharacterLoraTrainingTemplates,
+  mapCharacterLoraSectionTemplateError,
+  updateCharacterLoraTrainingTemplate,
+} from "@/server/services/character-lora-training/section-template-service";
+import {
   cancelTrainingRun,
   enqueueCharacterLoraTrainingRun,
+  listCharacterLoraTrainingRuns,
   mapCharacterLoraTrainingError,
 } from "@/server/services/character-lora-training/training-service";
 import {
-  getCharacterLoraSourceImage,
+  writeCharacterLoraBufferArtifact,
+} from "@/server/services/character-lora-training/artifact-service";
+import {
+  getExistingJob,
+  getExistingSection,
+} from "@/server/services/character-lora-training/phase3-internal";
+import type {
+  CharacterLoraProviderInputImage,
+} from "@/server/character-lora-training/contracts";
+import {
+  createCharacterLoraJobArtifact,
+  createCharacterLoraSourceImage,
+  findCharacterLoraSourceImageDuplicate,
+  getCharacterLoraCandidateImage,
+  getCharacterLoraGenerationRun,
+  getCharacterLoraJobSection,
+  getCharacterLoraSourceImage as getCharacterLoraSourceImageFromRepository,
+  getCharacterLoraTrainingJob as getCharacterLoraTrainingJobFromRepository,
+  listCharacterLoraSourceImages as listCharacterLoraSourceImagesFromRepository,
+} from "@/server/repositories/character-lora-training";
+import {
+  getCharacterLoraSourceImage as getCharacterLoraSourceImageFromSourceImageRepository,
   registerCharacterLoraSourceImageAsCandidate,
 } from "@/server/repositories/character-lora-training/source-image-repository";
 import {
-  getCharacterLoraSourceImage as getCharacterLoraSourceImageFromRepository,
-} from "@/server/repositories/character-lora-training";
+  slugifyForRepository,
+} from "@/server/repositories/character-lora-training/helpers";
+import {
+  upsertCharacterLoraTrainingTemplates,
+} from "@/server/repositories/character-lora-training-repository";
+
+export type { CharacterLoraProviderInputImage };
+
+export {
+  createCharacterLoraJobArtifact,
+  createCharacterLoraPromptCardVersion,
+  createCharacterLoraSourceImage,
+  createCharacterLoraTrainingProject,
+  createCharacterLoraTrainingTemplate,
+  enqueueCharacterLoraSectionGenerationRun,
+  findCharacterLoraSourceImageDuplicate,
+  getCharacterLoraCandidateImage,
+  getCharacterLoraGenerationRun,
+  getCharacterLoraJobSection,
+  getCharacterLoraSourceImageFromRepository as getCharacterLoraSourceImage,
+  getCharacterLoraTrainingJob,
+  getCharacterLoraTrainingJobFromRepository,
+  getCharacterLoraTrainingJobOverview,
+  getCharacterLoraTrainingTemplateSnapshot,
+  getCharacterLoraWorkerQueueStatus,
+  getExistingJob,
+  getExistingSection,
+  listCharacterLoraCandidateImages,
+  listCharacterLoraDatasetRevisions,
+  listCharacterLoraJobSections,
+  listCharacterLoraPromptCardVersions,
+  listCharacterLoraSourceImages,
+  listCharacterLoraSourceImagesFromRepository,
+  listCharacterLoraTrainingJobs,
+  listCharacterLoraTrainingRuns,
+  listCharacterLoraTrainingTemplates,
+  mapCharacterLoraPhase3Error,
+  mapCharacterLoraPromptCardError,
+  mapCharacterLoraSectionTemplateError,
+  mapCharacterLoraTrainingError,
+  mapCharacterLoraTrainingJobError,
+  slugifyForRepository,
+  updateCharacterLoraImageCaption,
+  updateCharacterLoraSourceImage,
+  updateCharacterLoraTrainingTemplate,
+  upsertCharacterLoraTrainingTemplates,
+  uploadCharacterLoraSourceImage,
+  writeCharacterLoraBufferArtifact,
+};
 
 export const mapLegacyTrainingProjectError = mapCharacterLoraTrainingJobError;
 export const mapLegacyTrainingPromptCardError = mapCharacterLoraPromptCardError;
@@ -62,7 +144,7 @@ export const registerLegacyTrainingReferenceImageFromArtifact = registerCharacte
 export const uploadLegacyTrainingReferenceImage = uploadCharacterLoraSourceImage;
 export const updateLegacyTrainingReferenceImage = updateCharacterLoraSourceImage;
 export const deleteLegacyTrainingReferenceImage = deleteCharacterLoraSourceImage;
-export const getLegacyTrainingReferenceImage = getCharacterLoraSourceImage;
+export const getLegacyTrainingReferenceImage = getCharacterLoraSourceImageFromSourceImageRepository;
 export const getLegacyTrainingReferenceImageFromRepository = getCharacterLoraSourceImageFromRepository;
 export const registerLegacyTrainingReferenceImageAsResult = registerCharacterLoraSourceImageAsCandidate;
 

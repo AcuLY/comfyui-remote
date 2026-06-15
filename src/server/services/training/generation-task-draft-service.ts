@@ -2,12 +2,16 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, extname, join } from "node:path";
 import type { LoraTrainingRun } from "@/features/training/types";
 import { getTrainingProject } from "@/server/services/training/read-service";
-import type { CharacterLoraProviderInputImage } from "@/server/character-lora-training/contracts";
-import { createCharacterLoraJobArtifact } from "@/server/repositories/character-lora-training";
-import { writeCharacterLoraBufferArtifact } from "@/server/services/character-lora-training/artifact-service";
-import { getExistingJob, getExistingSection } from "@/server/services/character-lora-training/phase3-internal";
 import { enqueueManagedTrainingSectionGenerationRun, getManagedTrainingProject, mapTrainingProjectError } from "@/server/services/training/project-service";
-import { enqueueCharacterLoraSectionGenerationRun, mapCharacterLoraPhase3Error } from "@/server/services/character-lora-training/phase3-service";
+import type { CharacterLoraProviderInputImage } from "@/server/services/training/legacy-compat-service";
+import {
+  createCharacterLoraJobArtifact,
+  enqueueCharacterLoraSectionGenerationRun,
+  getExistingJob,
+  getExistingSection,
+  mapCharacterLoraPhase3Error,
+  writeCharacterLoraBufferArtifact,
+} from "@/server/services/training/legacy-compat-service";
 
 const TRAINING_GENERATION_TASK_DRAFTS_PATH = join(process.cwd(), "data", "training-generation-task-drafts.json");
 const TRAINING_GENERATION_TASK_DRAFT_IMAGE_ROOT = join(process.cwd(), "data", "images", "training-managed");

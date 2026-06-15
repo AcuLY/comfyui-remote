@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import type { LoraTrainingPreset } from "@/features/training/types";
 import { prisma } from "@/lib/prisma";
-import { slugifyForRepository } from "@/server/repositories/character-lora-training/helpers";
+import { slugifyForRepository } from "@/server/services/training/legacy-compat-service";
 import { z } from "zod";
 
 const TRAINING_PRESET_CATEGORY_TYPE = "training_scene_description";

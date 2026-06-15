@@ -13,23 +13,17 @@ import type {
 } from "@/features/training/types";
 import { toImageUrl } from "@/lib/image-url";
 import {
+  createCharacterLoraTrainingProject,
   getCharacterLoraCandidateImage,
   getCharacterLoraJobSection,
-} from "@/server/repositories/character-lora-training";
-import {
   getCharacterLoraTrainingJob,
-} from "@/server/services/character-lora-training/job-service";
-import {
-  uploadCharacterLoraSourceImage,
   listCharacterLoraSourceImages,
+  mapCharacterLoraTrainingJobError,
   updateCharacterLoraSourceImage,
-} from "@/server/services/character-lora-training/source-image-service";
+  uploadCharacterLoraSourceImage,
+} from "@/server/services/training/legacy-compat-service";
 import { setTrainingProjectSectionCollection } from "@/server/services/training/project-section-service";
 import { getManagedTrainingTemplate } from "@/server/services/training/template-service";
-import {
-  createCharacterLoraTrainingProject,
-  mapCharacterLoraTrainingJobError,
-} from "@/server/services/character-lora-training/job-service";
 import { z } from "zod";
 
 const TRAINING_PROJECT_FALLBACK_PATH = join(process.cwd(), "data", "training-projects.json");
