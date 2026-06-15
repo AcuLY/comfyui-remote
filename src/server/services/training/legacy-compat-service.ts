@@ -140,8 +140,10 @@ export const mapLegacyTrainingRunError = mapCharacterLoraTrainingError;
 export const updateLegacyTrainingProject = updateCharacterLoraTrainingJob;
 export const archiveLegacyTrainingProject = archiveCharacterLoraTrainingJob;
 export const restoreLegacyTrainingProject = restoreCharacterLoraTrainingJob;
+export const createLegacyTrainingProject = createCharacterLoraTrainingProject;
 export const getLegacyTrainingProject = getCharacterLoraTrainingJob;
 export const getLegacyTrainingProjectOverview = getCharacterLoraTrainingJobOverview;
+export const listLegacyTrainingProjects = listCharacterLoraTrainingJobs;
 
 export const createLegacyTrainingPromptCardVersion = createCharacterLoraPromptCardVersion;
 export const listLegacyTrainingPromptCardVersions = listCharacterLoraPromptCardVersions;
@@ -159,8 +161,12 @@ export const findLegacyTrainingReferenceImageDuplicate = findCharacterLoraSource
 export const TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE = CHARACTER_LORA_UNDIFFERENTIATED_SOURCE_ROLE;
 
 export const freezeLegacyTrainingDataset = freezeCharacterLoraDataset;
+export const listLegacyTrainingDatasetRevisions = listCharacterLoraDatasetRevisions;
+export const getLegacyTrainingProjectSection = getCharacterLoraJobSection;
+export const listLegacyTrainingProjectSections = listCharacterLoraJobSections;
 export const enqueueLegacyTrainingSectionGenerationRun = enqueueCharacterLoraSectionGenerationRun;
 export const reviewLegacyTrainingImages = reviewCharacterLoraImages;
+export const getLegacyTrainingGenerationRun = getCharacterLoraGenerationRun;
 export const getLegacyTrainingCandidateImage = getCharacterLoraCandidateImage;
 export const listLegacyTrainingCandidateImages = listCharacterLoraCandidateImages;
 export const updateLegacyTrainingImageCaption = updateCharacterLoraImageCaption;
@@ -174,3 +180,4 @@ export const failLegacyTrainingWorkerTask = failCharacterLoraTask;
 
 export const enqueueLegacyTrainingRun = enqueueCharacterLoraTrainingRun;
 export const cancelLegacyTrainingRun = cancelTrainingRun;
+export const listLegacyTrainingRuns = listCharacterLoraTrainingRuns;

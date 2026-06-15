@@ -17,22 +17,19 @@ import {
   cancelLegacyTrainingGenerationRun,
   cancelLegacyTrainingRun,
   createLegacyTrainingPromptCardVersion,
-  createCharacterLoraTrainingProject,
+  createLegacyTrainingProject,
   deleteLegacyTrainingReferenceImage,
   enqueueLegacyTrainingRun,
   enqueueLegacyTrainingSectionGenerationRun,
   freezeLegacyTrainingDataset,
-  getCharacterLoraCandidateImage,
-  getCharacterLoraJobSection,
-  getCharacterLoraTrainingJob,
+  getLegacyTrainingCandidateImage,
   getLegacyTrainingProject,
+  getLegacyTrainingProjectSection,
   getLegacyTrainingProjectOverview,
   getLegacyTrainingReferenceImage,
   getLegacyTrainingReferenceImageFromRepository,
-  listCharacterLoraSourceImages,
   listLegacyTrainingPromptCardVersions,
   listLegacyTrainingReferenceImages,
-  mapCharacterLoraTrainingJobError,
   mapLegacyTrainingGenerationError,
   mapLegacyTrainingProjectError,
   mapLegacyTrainingPromptCardError,
@@ -45,9 +42,7 @@ import {
   updateLegacyTrainingImageCaption,
   updateLegacyTrainingProject,
   updateLegacyTrainingReferenceImage,
-  updateCharacterLoraSourceImage,
   uploadLegacyTrainingReferenceImage,
-  uploadCharacterLoraSourceImage,
 } from "@/server/services/training/legacy-compat-service";
 import { setTrainingProjectSectionCollection } from "@/server/services/training/project-section-service";
 import { getManagedTrainingTemplate } from "@/server/services/training/template-service";
@@ -283,8 +278,8 @@ async function deriveReferenceImages(
 
       try {
         const [job, sourceImages] = await Promise.all([
-          getCharacterLoraTrainingJob(projectId),
-          listCharacterLoraSourceImages(projectId),
+          getLegacyTrainingProject(projectId),
+          listLegacyTrainingReferenceImages(projectId),
         ]);
         const firstSourceImage = sourceImages[0];
         if (!firstSourceImage) return null;
@@ -316,11 +311,11 @@ async function deriveReferenceImages(
       }
 
       try {
-        const candidate = await getCharacterLoraCandidateImage(resultId);
+        const candidate = await getLegacyTrainingCandidateImage(resultId);
         if (!candidate) return null;
         const [job, section] = await Promise.all([
-          getCharacterLoraTrainingJob(candidate.jobId).catch(() => null),
-          candidate.sectionId ? getCharacterLoraJobSection(candidate.sectionId).catch(() => null) : Promise.resolve(null),
+          getLegacyTrainingProject(candidate.jobId).catch(() => null),
+          candidate.sectionId ? getLegacyTrainingProjectSection(candidate.sectionId).catch(() => null) : Promise.resolve(null),
         ]);
         const label = job?.characterName
           ? `${job.characterName} / ${section?.name ?? "结果池"}`
@@ -390,8 +385,8 @@ async function syncSelectedReferenceImagesToTrainingProject(
     formData.append("role", "source");
     formData.append("sortOrder", String(index));
 
-    const uploaded = await uploadCharacterLoraSourceImage(projectId, formData);
-    await updateCharacterLoraSourceImage(projectId, uploaded.id, {
+    const uploaded = await uploadLegacyTrainingReferenceImage(projectId, formData);
+    await updateLegacyTrainingReferenceImage(projectId, uploaded.id, {
       label: reference.label,
       note: reference.note,
       sortOrder: index,
@@ -1862,7 +1857,7 @@ export async function createManagedTrainingProject(input: unknown) {
     if (!checkpointRelativePath) {
       throw new TrainingProjectServiceError("checkpointRelativePath is required", 400);
     }
-    const created = await createCharacterLoraTrainingProject({
+    const created = await createLegacyTrainingProject({
       characterName: title,
       projectName: title,
       triggerToken,
@@ -1881,7 +1876,7 @@ export async function createManagedTrainingProject(input: unknown) {
       throw error;
     }
     if (!shouldUseTrainingProjectFileFallback(error)) {
-      const mapped = mapCharacterLoraTrainingJobError(error);
+      const mapped = mapLegacyTrainingProjectError(error);
       throw new TrainingProjectServiceError(mapped.message, mapped.status, mapped.details);
     }
   }

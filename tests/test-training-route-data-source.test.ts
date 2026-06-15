@@ -46,25 +46,25 @@ test("production training routes use a dedicated loader instead of the generic d
   );
 });
 
-test("dedicated training snapshot service projects real CharacterLora data into the training route payload", () => {
+test("dedicated training snapshot service projects real legacy training data into the training route payload", () => {
   assert.match(
     trainingSnapshotServiceSource,
-    /listCharacterLoraTrainingJobs/,
+    /listLegacyTrainingProjects/,
     "training snapshot service should read real training jobs",
   );
   assert.match(
     trainingSnapshotServiceSource,
-    /getCharacterLoraTrainingJobOverview/,
+    /getLegacyTrainingProjectOverview/,
     "training snapshot service should read project-level overview data",
   );
   assert.match(
     trainingSnapshotServiceSource,
-    /listCharacterLoraSourceImages/,
+    /listLegacyTrainingReferenceImages/,
     "training snapshot service should read real reference images",
   );
   assert.match(
     trainingSnapshotServiceSource,
-    /listCharacterLoraCandidateImages/,
+    /listLegacyTrainingCandidateImages/,
     "training snapshot service should read real result-pool candidates",
   );
   assert.match(

@@ -291,6 +291,43 @@ test("training generation output service uses Training-named legacy adapter alia
   );
 });
 
+test("training snapshot service uses Training-named legacy adapter aliases", () => {
+  const snapshotServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/snapshot-service.ts"), "utf8");
+
+  assert.match(snapshotServiceSource, /getLegacyTrainingGenerationRun/);
+  assert.match(snapshotServiceSource, /getLegacyTrainingProjectOverview/);
+  assert.match(snapshotServiceSource, /listLegacyTrainingCandidateImages/);
+  assert.match(snapshotServiceSource, /listLegacyTrainingDatasetRevisions/);
+  assert.match(snapshotServiceSource, /listLegacyTrainingProjectSections/);
+  assert.match(snapshotServiceSource, /listLegacyTrainingPromptCardVersions/);
+  assert.match(snapshotServiceSource, /listLegacyTrainingReferenceImages/);
+  assert.match(snapshotServiceSource, /listLegacyTrainingProjects/);
+  assert.match(snapshotServiceSource, /listLegacyTrainingRuns/);
+  assert.doesNotMatch(
+    snapshotServiceSource,
+    /CharacterLora|getCharacterLora|listCharacterLora/,
+    "Training snapshot service should keep legacy CharacterLora symbol names inside the adapter boundary.",
+  );
+});
+
+test("training project service uses Training-named legacy adapter aliases", () => {
+  const projectServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/project-service.ts"), "utf8");
+
+  assert.match(projectServiceSource, /createLegacyTrainingProject/);
+  assert.match(projectServiceSource, /getLegacyTrainingCandidateImage/);
+  assert.match(projectServiceSource, /getLegacyTrainingProject/);
+  assert.match(projectServiceSource, /getLegacyTrainingProjectSection/);
+  assert.match(projectServiceSource, /listLegacyTrainingReferenceImages/);
+  assert.match(projectServiceSource, /mapLegacyTrainingProjectError/);
+  assert.match(projectServiceSource, /updateLegacyTrainingReferenceImage/);
+  assert.match(projectServiceSource, /uploadLegacyTrainingReferenceImage/);
+  assert.doesNotMatch(
+    projectServiceSource,
+    /CharacterLora|getCharacterLora|listCharacterLora|createCharacterLora|updateCharacterLora|uploadCharacterLora|mapCharacterLora/,
+    "Training project service should keep legacy CharacterLora symbol names inside the adapter boundary.",
+  );
+});
+
 test("training project archive and restore routes use the project service boundary", () => {
   const routeFiles = [
     "src/app/api/training/projects/[projectId]/archive/route.ts",
