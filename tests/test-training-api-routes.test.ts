@@ -308,6 +308,108 @@ test("GET /api/training manifest exposes scheduler and worker operations for age
   );
 });
 
+test("GET /api/training worker execution workflow declares machine-actionable task metadata", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const workerExecutionWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "worker_execution"
+  ) as {
+    steps: Array<{
+      id?: string;
+      path: string;
+      requires?: string[];
+      pathParams?: Record<string, string>;
+      queryParamSchema?: {
+        requiredFields?: string[];
+        optionalFields?: string[];
+        enumValues?: Record<string, string[]>;
+      };
+      requestBody?: {
+        contentType?: string;
+        requiredFields?: string[];
+        optionalFields?: string[];
+      };
+      produces?: string[];
+      responsePaths?: Record<string, string>;
+    }>;
+  } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(workerExecutionWorkflow, "agent manifest should include the worker execution workflow");
+
+  const steps = new Map(workerExecutionWorkflow.steps.map((step) => [step.id, step]));
+
+  assert.deepEqual(
+    steps.get("lease_worker_task")?.queryParamSchema,
+    {
+      requiredFields: ["workerType"],
+      optionalFields: ["leaseOwner", "leaseDurationSeconds"],
+      enumValues: {
+        workerType: [
+          "image_generation",
+          "dataset_freeze",
+          "training",
+          "benchmark",
+          "promotion",
+          "prompt_card_draft",
+        ],
+      },
+    },
+    "Generic worker leases should declare query params and workerType values instead of forcing agents to infer them.",
+  );
+  assert.deepEqual(steps.get("lease_worker_task")?.produces, ["workerTaskId"]);
+  assert.deepEqual(steps.get("lease_worker_task")?.responsePaths, { workerTaskId: "$.data.id" });
+
+  assert.deepEqual(
+    steps.get("heartbeat_worker_task"),
+    {
+      id: "heartbeat_worker_task",
+      description: "Heartbeat a leased worker task and optionally extend the lease or report structured progress.",
+      method: "POST",
+      path: "/api/training/worker/tasks/:taskId/heartbeat",
+      requires: ["workerTaskId"],
+      pathParams: { taskId: "workerTaskId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["leaseOwner", "leaseDurationSeconds", "progressJson"],
+      },
+    },
+  );
+  assert.deepEqual(
+    steps.get("complete_worker_task"),
+    {
+      id: "complete_worker_task",
+      description: "Mark a leased worker task complete after the domain-specific callback has persisted outputs.",
+      method: "POST",
+      path: "/api/training/worker/tasks/:taskId/complete",
+      requires: ["workerTaskId"],
+      pathParams: { taskId: "workerTaskId" },
+      requestBody: {
+        contentType: "application/json",
+        optionalFields: ["leaseOwner", "output"],
+      },
+    },
+  );
+  assert.deepEqual(
+    steps.get("fail_worker_task"),
+    {
+      id: "fail_worker_task",
+      description: "Mark a leased worker task failed with a concise error summary and optional provider details.",
+      method: "POST",
+      path: "/api/training/worker/tasks/:taskId/fail",
+      requires: ["workerTaskId"],
+      pathParams: { taskId: "workerTaskId" },
+      requestBody: {
+        contentType: "application/json",
+        requiredFields: ["errorSummary"],
+        optionalFields: ["leaseOwner", "providerError"],
+      },
+    },
+  );
+});
+
 test("GET /api/training manifest exposes an end-to-end HTTP workflow for agents", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
