@@ -640,37 +640,62 @@ test("ordinary preset folder and group reads do not expose LoRA training resourc
       },
     ],
   });
-  await prisma.preset.create({
-    data: {
-      id: "training-readable-preset",
-      categoryId: "training-readable-category",
-      name: "Training Readable Preset",
-      slug: "training-readable-preset",
-    },
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "ordinary-readable-preset",
+        categoryId: "ordinary-readable-category",
+        name: "Ordinary Readable Preset",
+        slug: "ordinary-readable-preset",
+      },
+      {
+        id: "training-readable-preset",
+        categoryId: "training-readable-category",
+        name: "Training Readable Preset",
+        slug: "training-readable-preset",
+      },
+    ],
   });
-  await prisma.presetVariant.create({
-    data: {
-      id: "training-readable-variant",
-      presetId: "training-readable-preset",
-      name: "Training Readable Variant",
-      slug: "training-readable-variant",
-      prompt: "training readable prompt",
-    },
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "ordinary-readable-variant",
+        presetId: "ordinary-readable-preset",
+        name: "Ordinary Readable Variant",
+        slug: "ordinary-readable-variant",
+        prompt: "ordinary readable prompt",
+      },
+      {
+        id: "training-readable-variant",
+        presetId: "training-readable-preset",
+        name: "Training Readable Variant",
+        slug: "training-readable-variant",
+        prompt: "training readable prompt",
+      },
+    ],
   });
   await prisma.presetGroupMember.createMany({
     data: [
+      {
+        id: "ordinary-member-ordinary-preset",
+        groupId: "ordinary-readable-group",
+        presetId: "ordinary-readable-preset",
+        variantId: "ordinary-readable-variant",
+        slotCategoryId: "ordinary-readable-category",
+        sortOrder: 0,
+      },
       {
         id: "ordinary-member-training-preset",
         groupId: "ordinary-readable-group",
         presetId: "training-readable-preset",
         variantId: "training-readable-variant",
-        sortOrder: 0,
+        sortOrder: 1,
       },
       {
         id: "ordinary-member-training-subgroup",
         groupId: "ordinary-readable-group",
         subGroupId: "training-readable-group",
-        sortOrder: 1,
+        sortOrder: 2,
       },
     ],
   });
@@ -693,16 +718,48 @@ test("ordinary preset folder and group reads do not expose LoRA training resourc
     "ordinary preset group lists must hide training-owned groups",
   );
   assert.deepEqual(
+    ordinaryGroups[0]?.members.map((member) => member.id),
+    ["ordinary-member-ordinary-preset"],
+    "ordinary preset group lists must omit members that point at training-owned presets or groups",
+  );
+  assert.deepEqual(
     ordinaryGroups[0]?.members.map((member) => ({
+      presetId: member.presetId,
+      variantId: member.variantId,
+      subGroupId: member.subGroupId,
+      slotCategoryId: member.slotCategoryId,
       presetName: member.presetName,
       variantName: member.variantName,
       subGroupName: member.subGroupName,
     })),
     [
-      { presetName: undefined, variantName: undefined, subGroupName: undefined },
-      { presetName: undefined, variantName: undefined, subGroupName: undefined },
+      {
+        presetId: "ordinary-readable-preset",
+        variantId: "ordinary-readable-variant",
+        subGroupId: null,
+        slotCategoryId: "ordinary-readable-category",
+        presetName: "Ordinary Readable Preset",
+        variantName: "Ordinary Readable Variant",
+        subGroupName: undefined,
+      },
     ],
-    "ordinary preset group member summaries must not resolve training-owned resource names",
+    "ordinary preset group member summaries must not expose training-owned resource identities",
+  );
+  const ordinaryPresetPageGroup = (await getPresetCategoriesWithPresets())
+    .flatMap((category) => category.groups)
+    .find((group) => group.id === "ordinary-readable-group");
+  assert.deepEqual(
+    ordinaryPresetPageGroup?.members.map((member) => member.id),
+    ["ordinary-member-ordinary-preset"],
+    "ordinary preset page data must omit members that point at training-owned presets or groups",
+  );
+  const ordinaryLibraryGroup = (await getPresetLibraryV2()).categories
+    .flatMap((category) => category.groups)
+    .find((group) => group.id === "ordinary-readable-group");
+  assert.deepEqual(
+    ordinaryLibraryGroup?.members.map((member) => member.id),
+    ["ordinary-member-ordinary-preset"],
+    "ordinary block-editor preset library must omit members that point at training-owned presets or groups",
   );
   assert.equal(await getPresetGroup("training-readable-group"), null);
 });
