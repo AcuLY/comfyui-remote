@@ -811,6 +811,31 @@ test("training template list follows the template-list surface with local delete
   assert.match(cssSource, /\.trainingTemplateListItem\b/, "template cards should use a dedicated list-item class");
 });
 
+test("training template list compresses repeated destructive actions on mobile", () => {
+  const itemStart = pageSource.indexOf("function TrainingTemplateListItem");
+  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  assert.notEqual(itemStart, -1);
+  assert.notEqual(templatesStart, -1);
+
+  const itemSource = pageSource.slice(itemStart, templatesStart);
+
+  assert.match(
+    itemSource,
+    /className=\{s\.trainingTemplateListDeleteButton\}/,
+    "template row delete action should expose a dedicated class for responsive density",
+  );
+  assert.match(
+    cssSource,
+    /@media \(max-width: 639px\) \{[\s\S]*?\.trainingTemplateListDeleteButton:where\(\[data-demo-ui-button="true"\]\) \{[\s\S]*?width:\s*30px;[\s\S]*?min-width:\s*30px;[\s\S]*?padding:\s*0;/,
+    "template row delete action should collapse to an icon-sized button on mobile",
+  );
+  assert.match(
+    cssSource,
+    /@media \(max-width: 639px\) \{[\s\S]*?\.trainingTemplateListDeleteButton\s+:where\(\[data-demo-ui-button-label="true"\]\) \{[\s\S]*?display:\s*none;/,
+    "template row delete action should hide repeated visible text on mobile while keeping its aria label",
+  );
+});
+
 test("training template list deletes through the formal HTTP API on production routes", () => {
   const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
   const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");

@@ -1279,6 +1279,18 @@
     justify-content: flex-start;
   }
 
+  .trainingTemplateListDeleteButton:where([data-demo-ui-button="true"]) {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
+    padding: 0;
+  }
+
+  .trainingTemplateListDeleteButton :where([data-demo-ui-button-label="true"]) {
+    display: none;
+  }
+
   .trainingTemplateListItem {
     grid-template-columns: 28px minmax(0, 1fr);
   }

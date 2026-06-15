@@ -1256,7 +1256,16 @@ function TrainingTemplateListItem({
           <div className={s.trainingTemplateListActions}>
             <ButtonLink href={createProjectHref} icon={CopyPlus} ariaLabel={`用训练模板创建项目：${template.title}`}>创建项目</ButtonLink>
             <ButtonLink href={`/training/templates/${template.id}/edit`} icon={Edit3} ariaLabel={`编辑训练模板：${template.title}`}>编辑</ButtonLink>
-            <Button tone="danger" icon={Trash2} ariaLabel={`删除训练模板：${template.title}`} onClick={onDelete} feedback={{ tone: "warning", title: "训练模板已移除", detail: template.title }}>删除</Button>
+            <Button
+              className={s.trainingTemplateListDeleteButton}
+              tone="danger"
+              icon={Trash2}
+              ariaLabel={`删除训练模板：${template.title}`}
+              onClick={onDelete}
+              feedback={{ tone: "warning", title: "训练模板已移除", detail: template.title }}
+            >
+              删除
+            </Button>
           </div>
         </div>
       </article>
