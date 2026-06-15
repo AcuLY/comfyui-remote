@@ -224,6 +224,7 @@ export async function deletePresetCascade(presetId: string) {
  * is retained for callers but no longer rewrites prompt block or section caches.
  */
 export async function syncPresetToSections(presetId: string) {
+  await assertOrdinaryPreset(presetId);
   revalidatePath("/projects");
   revalidatePath("/assets/templates");
   return { ok: true, presetId, skipped: true as const };

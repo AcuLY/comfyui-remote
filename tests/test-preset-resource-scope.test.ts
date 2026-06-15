@@ -11,6 +11,7 @@ import type * as PresetFolderActions from "../src/lib/actions/preset-folder";
 import type * as PresetGroupActions from "../src/lib/actions/preset-group";
 import type * as PresetVariantCrudActions from "../src/lib/actions/preset-variant-crud";
 import type * as PresetVariantResolveActions from "../src/lib/actions/preset-variant-resolve";
+import type * as PresetSyncActions from "../src/lib/actions/preset-sync";
 import type * as ServerData from "../src/lib/server-data";
 import type * as PresetQueryService from "../src/server/services/preset-query-service";
 import type * as TemplateCrudActions from "../src/lib/actions/template-crud";
@@ -151,6 +152,7 @@ let copyPreset: typeof PresetVariantCrudActions.copyPreset;
 let updatePreset: typeof PresetVariantCrudActions.updatePreset;
 let deletePreset: typeof PresetVariantCrudActions.deletePreset;
 let resolveVariantContent: typeof PresetVariantResolveActions.resolveVariantContent;
+let syncPresetToSections: typeof PresetSyncActions.syncPresetToSections;
 let getPresetFolders: typeof ServerData.getPresetFolders;
 let getPresetFolder: typeof ServerData.getPresetFolder;
 let getPresetCategoriesWithPresets: typeof ServerData.getPresetCategoriesWithPresets;
@@ -170,6 +172,7 @@ test.before(async () => {
   const presetGroupActions = await import("../src/lib/actions/preset-group");
   const presetVariantCrudActions = await import("../src/lib/actions/preset-variant-crud");
   const presetVariantResolveActions = await import("../src/lib/actions/preset-variant-resolve");
+  const presetSyncActions = await import("../src/lib/actions/preset-sync");
   const presetQueryService = await import("../src/server/services/preset-query-service");
   const templateCrudActions = await import("../src/lib/actions/template-crud");
   const trainingPresetService = await import("../src/server/services/training/preset-service");
@@ -186,6 +189,7 @@ test.before(async () => {
   updatePreset = presetVariantCrudActions.updatePreset;
   deletePreset = presetVariantCrudActions.deletePreset;
   resolveVariantContent = presetVariantResolveActions.resolveVariantContent;
+  syncPresetToSections = presetSyncActions.syncPresetToSections;
   getPresetFolders = serverData.getPresetFolders;
   getPresetFolder = serverData.getPresetFolder;
   getPresetCategoriesWithPresets = serverData.getPresetCategoriesWithPresets;
@@ -1081,5 +1085,30 @@ test("training preset creation never reuses ordinary generation preset categorie
   assert.equal(
     (await prisma.presetCategory.findUniqueOrThrow({ where: { id: "shared-name-ordinary-category" } })).type,
     "preset",
+  );
+});
+
+test("ordinary preset sync rejects LoRA training preset ids", async () => {
+  await prisma.presetCategory.create({
+    data: {
+      id: "training-sync-hidden-category",
+      name: "Training Sync Hidden",
+      slug: "training-sync-hidden",
+      type: "training_scene_description",
+    },
+  });
+  await prisma.preset.create({
+    data: {
+      id: "training-sync-hidden-preset",
+      categoryId: "training-sync-hidden-category",
+      name: "Training Sync Hidden Preset",
+      slug: "training-sync-hidden-preset",
+    },
+  });
+
+  await assert.rejects(
+    () => ignoreStaticRevalidateError(() => syncPresetToSections("training-sync-hidden-preset")),
+    /Ordinary preset not found/i,
+    "ordinary preset sync must reject training-owned preset ids instead of returning success",
   );
 });
