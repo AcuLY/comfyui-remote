@@ -13,37 +13,37 @@ import type {
 } from "@/features/training/types";
 import { toImageUrl } from "@/lib/image-url";
 import {
-  archiveLegacyTrainingProject,
-  cancelLegacyTrainingGenerationRun,
-  cancelLegacyTrainingRun,
-  createLegacyTrainingPromptCardVersion,
-  createLegacyTrainingProject,
-  deleteLegacyTrainingReferenceImage,
-  enqueueLegacyTrainingRun,
-  enqueueLegacyTrainingSectionGenerationRun,
-  freezeLegacyTrainingDataset,
-  getLegacyTrainingCandidateImage,
-  getLegacyTrainingProject,
-  getLegacyTrainingProjectSection,
-  getLegacyTrainingProjectOverview,
-  getLegacyTrainingReferenceImage,
-  getLegacyTrainingReferenceImageFromRepository,
-  listLegacyTrainingPromptCardVersions,
-  listLegacyTrainingReferenceImages,
-  mapLegacyTrainingGenerationError,
-  mapLegacyTrainingProjectError,
-  mapLegacyTrainingPromptCardError,
-  mapLegacyTrainingReferenceImageError,
-  mapLegacyTrainingRunError,
-  registerLegacyTrainingReferenceImageAsResult,
-  registerLegacyTrainingReferenceImageFromArtifact,
-  restoreLegacyTrainingProject,
-  reviewLegacyTrainingImages,
-  updateLegacyTrainingImageCaption,
-  updateLegacyTrainingProject,
-  updateLegacyTrainingReferenceImage,
-  uploadLegacyTrainingReferenceImage,
-} from "@/server/services/training/legacy-compat-service";
+  archiveTrainingProductionProject,
+  cancelTrainingProductionGenerationRun,
+  cancelTrainingProductionRun,
+  createTrainingProductionProject,
+  createTrainingPromptCardVersion,
+  deleteTrainingReferenceImageRecord,
+  enqueueTrainingProductionRun,
+  enqueueTrainingProductionSectionGenerationRun,
+  freezeTrainingProductionDataset,
+  getTrainingCandidateImage,
+  getTrainingProductionProject,
+  getTrainingProductionProjectOverview,
+  getTrainingProductionProjectSection,
+  getTrainingReferenceImageRecord,
+  getTrainingReferenceImageRecordFromRepository,
+  listTrainingPromptCardVersions,
+  listTrainingReferenceImagesForProject,
+  mapTrainingGenerationError,
+  mapTrainingProductionProjectError,
+  mapTrainingPromptCardError,
+  mapTrainingReferenceImageError,
+  mapTrainingRunError,
+  registerTrainingReferenceImageAsResult,
+  registerTrainingReferenceImageFromArtifact as registerTrainingReferenceImageFromArtifactInRepository,
+  restoreTrainingProductionProject,
+  reviewTrainingImages,
+  updateTrainingCandidateImageCaption,
+  updateTrainingProductionProject,
+  updateTrainingReferenceImageRecord,
+  uploadTrainingReferenceImage,
+} from "@/server/repositories/training/projects";
 import { setTrainingProjectSectionCollection } from "@/server/services/training/project-section-service";
 import { getManagedTrainingTemplate } from "@/server/services/training/template-service";
 import { z } from "zod";
@@ -278,8 +278,8 @@ async function deriveReferenceImages(
 
       try {
         const [job, sourceImages] = await Promise.all([
-          getLegacyTrainingProject(projectId),
-          listLegacyTrainingReferenceImages(projectId),
+          getTrainingProductionProject(projectId),
+          listTrainingReferenceImagesForProject(projectId),
         ]);
         const firstSourceImage = sourceImages[0];
         if (!firstSourceImage) return null;
@@ -311,11 +311,11 @@ async function deriveReferenceImages(
       }
 
       try {
-        const candidate = await getLegacyTrainingCandidateImage(resultId);
+        const candidate = await getTrainingCandidateImage(resultId);
         if (!candidate) return null;
         const [job, section] = await Promise.all([
-          getLegacyTrainingProject(candidate.jobId).catch(() => null),
-          candidate.sectionId ? getLegacyTrainingProjectSection(candidate.sectionId).catch(() => null) : Promise.resolve(null),
+          getTrainingProductionProject(candidate.jobId).catch(() => null),
+          candidate.sectionId ? getTrainingProductionProjectSection(candidate.sectionId).catch(() => null) : Promise.resolve(null),
         ]);
         const label = job?.characterName
           ? `${job.characterName} / ${section?.name ?? "结果池"}`
@@ -385,8 +385,8 @@ async function syncSelectedReferenceImagesToTrainingProject(
     formData.append("role", "source");
     formData.append("sortOrder", String(index));
 
-    const uploaded = await uploadLegacyTrainingReferenceImage(projectId, formData);
-    await updateLegacyTrainingReferenceImage(projectId, uploaded.id, {
+    const uploaded = await uploadTrainingReferenceImage(projectId, formData);
+    await updateTrainingReferenceImageRecord(projectId, uploaded.id, {
       label: reference.label,
       note: reference.note,
       sortOrder: index,
@@ -520,7 +520,7 @@ export async function updateManagedTrainingProject(projectId: string, input: unk
 export async function updateTrainingProject(projectId: string, input: unknown) {
   const managedProject = await updateManagedTrainingProject(projectId, input);
   if (managedProject) return managedProject;
-  return updateLegacyTrainingProject(projectId, input);
+  return updateTrainingProductionProject(projectId, input);
 }
 
 export async function archiveManagedTrainingProject(projectId: string) {
@@ -544,7 +544,7 @@ export async function archiveManagedTrainingProject(projectId: string) {
 export async function archiveTrainingProject(projectId: string) {
   const managedProject = await archiveManagedTrainingProject(projectId);
   if (managedProject) return managedProject;
-  return archiveLegacyTrainingProject(projectId);
+  return archiveTrainingProductionProject(projectId);
 }
 
 export async function restoreManagedTrainingProject(projectId: string) {
@@ -568,7 +568,7 @@ export async function restoreManagedTrainingProject(projectId: string) {
 export async function restoreTrainingProject(projectId: string) {
   const managedProject = await restoreManagedTrainingProject(projectId);
   if (managedProject) return managedProject;
-  return restoreLegacyTrainingProject(projectId);
+  return restoreTrainingProductionProject(projectId);
 }
 
 export async function deleteManagedTrainingProject(projectId: string) {
@@ -658,8 +658,8 @@ export async function getTrainingProjectProfile(projectId: string) {
   if (managedProfile) return managedProfile;
 
   const [overview, promptCardVersions] = await Promise.all([
-    getLegacyTrainingProjectOverview(projectId),
-    listLegacyTrainingPromptCardVersions(projectId),
+    getTrainingProductionProjectOverview(projectId),
+    listTrainingPromptCardVersions(projectId),
   ]);
   const latestPromptCard = promptCardVersions.at(-1) ?? null;
 
@@ -705,8 +705,8 @@ export async function updateTrainingProjectProfile(
   const loraUsagePrompt = input.loraUsagePrompt?.trim() ?? "";
   const characterDetailPrompt = input.characterDetailPrompt?.trim() ?? "";
   const [job, promptCardVersions] = await Promise.all([
-    getLegacyTrainingProject(projectId),
-    listLegacyTrainingPromptCardVersions(projectId),
+    getTrainingProductionProject(projectId),
+    listTrainingPromptCardVersions(projectId),
   ]);
   const currentPromptCard = promptCardVersions.find((version) => version.id === job.currentPromptCardVersionId) ?? promptCardVersions.at(-1) ?? null;
 
@@ -729,7 +729,7 @@ export async function updateTrainingProjectProfile(
     }
   }
 
-  return createLegacyTrainingPromptCardVersion(projectId, {
+  return createTrainingPromptCardVersion(projectId, {
     canonicalVersionId: currentPromptCard?.canonicalVersionId ?? job.currentCanonicalVersionId ?? null,
     triggerToken: job.triggerToken,
     identityTraits: detailPayload.identityTraits ?? currentPromptCard?.identityTraits ?? {},
@@ -842,7 +842,7 @@ export async function listManagedTrainingProjectReferenceImages(projectId: strin
 export async function listTrainingProjectReferenceImages(projectId: string) {
   const managedImages = await listManagedTrainingProjectReferenceImages(projectId);
   if (managedImages) return managedImages;
-  return listLegacyTrainingReferenceImages(projectId);
+  return listTrainingReferenceImagesForProject(projectId);
 }
 
 export async function uploadManagedTrainingImageResult(projectId: string, formData: FormData) {
@@ -949,11 +949,11 @@ export async function uploadManagedTrainingProjectReferenceImage(projectId: stri
 export async function uploadTrainingProjectReferenceImage(projectId: string, formData: FormData) {
   const managedUpload = await uploadManagedTrainingProjectReferenceImage(projectId, formData);
   if (managedUpload) return managedUpload;
-  return uploadLegacyTrainingReferenceImage(projectId, formData);
+  return uploadTrainingReferenceImage(projectId, formData);
 }
 
 export async function registerTrainingReferenceImageFromArtifact(projectId: string, input: unknown) {
-  return registerLegacyTrainingReferenceImageFromArtifact(projectId, input);
+  return registerTrainingReferenceImageFromArtifactInRepository(projectId, input);
 }
 
 async function findManagedReferenceOwner(imageId: string) {
@@ -1047,12 +1047,12 @@ export async function updateTrainingReferenceImage(imageId: string, input: Recor
   });
   if (managedImage) return managedImage;
 
-  const sourceImage = await getLegacyTrainingReferenceImageFromRepository(imageId).catch(() => null);
+  const sourceImage = await getTrainingReferenceImageRecordFromRepository(imageId).catch(() => null);
   const productionProjectId = sourceImage?.jobId ?? null;
   if (!productionProjectId) {
     throw new TrainingProjectServiceError("Training reference image not found", 404, { imageId });
   }
-  return updateLegacyTrainingReferenceImage(productionProjectId, imageId, input);
+  return updateTrainingReferenceImageRecord(productionProjectId, imageId, input);
 }
 
 export async function applyManagedTrainingImageResultToReferenceImage(
@@ -1158,12 +1158,12 @@ export async function deleteTrainingReferenceImage(imageId: string) {
   const managedImage = await deleteManagedTrainingReferenceImage(imageId);
   if (managedImage) return managedImage;
 
-  const sourceImage = await getLegacyTrainingReferenceImageFromRepository(imageId).catch(() => null);
+  const sourceImage = await getTrainingReferenceImageRecordFromRepository(imageId).catch(() => null);
   const productionProjectId = sourceImage?.jobId ?? null;
   if (!productionProjectId) {
     throw new TrainingProjectServiceError("Training reference image not found", 404, { imageId });
   }
-  return deleteLegacyTrainingReferenceImage(productionProjectId, imageId);
+  return deleteTrainingReferenceImageRecord(productionProjectId, imageId);
 }
 
 export async function addManagedTrainingReferenceImageToResults(
@@ -1210,12 +1210,12 @@ export async function addTrainingReferenceImageToResults(imageId: string, input:
   });
   if (managedResult) return managedResult;
 
-  const sourceImage = await getLegacyTrainingReferenceImage(imageId);
+  const sourceImage = await getTrainingReferenceImageRecord(imageId);
   if (!sourceImage) {
     throw new TrainingProjectServiceError("Training reference image not found", 404, { imageId });
   }
 
-  return registerLegacyTrainingReferenceImageAsResult({
+  return registerTrainingReferenceImageAsResult({
     jobId: sourceImage.jobId,
     sourceImageId: imageId,
     reviewStatus: typeof input.reviewStatus === "string" ? input.reviewStatus as never : undefined,
@@ -1272,10 +1272,10 @@ export async function updateTrainingImageResult(
 
   const operations: unknown[] = [];
   if (typeof input.captionDraft === "string") {
-    operations.push(updateLegacyTrainingImageCaption(imageResultId, { captionDraft: input.captionDraft }));
+    operations.push(updateTrainingCandidateImageCaption(imageResultId, { captionDraft: input.captionDraft }));
   }
   if (typeof input.reviewStatus === "string") {
-    operations.push(reviewLegacyTrainingImages({
+    operations.push(reviewTrainingImages({
       images: [
         {
           imageId: imageResultId,
@@ -1298,7 +1298,7 @@ export async function reviewTrainingImageResult(imageResultId: string, input: { 
   const reviewStatus = typeof input.reviewStatus === "string" ? input.reviewStatus : undefined;
   const managedResult = await updateManagedTrainingImageResult(imageResultId, { reviewStatus });
   if (managedResult) return managedResult;
-  return reviewLegacyTrainingImages({
+  return reviewTrainingImages({
     images: [
       {
         imageId: imageResultId,
@@ -1383,7 +1383,7 @@ export async function freezeManagedTrainingDataset(projectId: string) {
 export async function freezeTrainingDataset(projectId: string, input: unknown = {}) {
   const managedRevision = await freezeManagedTrainingDataset(projectId);
   if (managedRevision) return managedRevision;
-  return freezeLegacyTrainingDataset(projectId, input);
+  return freezeTrainingProductionDataset(projectId, input);
 }
 
 export async function enqueueManagedTrainingSectionGenerationRun(
@@ -1450,7 +1450,7 @@ export async function enqueueTrainingSectionGenerationRun(sectionId: string, inp
   const managedInput = typeof input === "object" && input ? input as Record<string, unknown> : {};
   const managedRun = await enqueueManagedTrainingSectionGenerationRun(sectionId, managedInput);
   if (managedRun) return managedRun;
-  return enqueueLegacyTrainingSectionGenerationRun(sectionId, input);
+  return enqueueTrainingProductionSectionGenerationRun(sectionId, input);
 }
 
 export async function enqueueManagedTrainingRun(
@@ -1563,14 +1563,14 @@ export async function enqueueTrainingRun(projectId: string, input: Record<string
   delete enqueueInput.config;
 
   const resolvedRevisionId = revisionId ?? await (async () => {
-    const frozen = await freezeLegacyTrainingDataset(projectId, {});
+    const frozen = await freezeTrainingProductionDataset(projectId, {});
     if (!("revision" in frozen) || !frozen.revision?.id) {
       throw new TrainingProjectServiceError("Dataset freeze did not return a revision id", 409);
     }
     return frozen.revision.id;
   })();
 
-  return enqueueLegacyTrainingRun(resolvedRevisionId, enqueueInput);
+  return enqueueTrainingProductionRun(resolvedRevisionId, enqueueInput);
 }
 
 export async function cancelManagedTrainingRun(trainingRunId: string) {
@@ -1599,7 +1599,7 @@ export async function cancelManagedTrainingRun(trainingRunId: string) {
 export async function cancelTrainingRun(trainingRunId: string, input: unknown = {}) {
   const managedRun = await cancelManagedTrainingRun(trainingRunId);
   if (managedRun) return managedRun;
-  return cancelLegacyTrainingRun(trainingRunId, input);
+  return cancelTrainingProductionRun(trainingRunId, input);
 }
 
 export async function cancelManagedGenerationRun(taskId: string) {
@@ -1628,7 +1628,7 @@ export async function cancelManagedGenerationRun(taskId: string) {
 export async function cancelTrainingGenerationRun(taskId: string, input: unknown = {}) {
   const managedRun = await cancelManagedGenerationRun(taskId);
   if (managedRun) return managedRun;
-  return cancelLegacyTrainingGenerationRun(taskId, input);
+  return cancelTrainingProductionGenerationRun(taskId, input);
 }
 
 export async function tickManagedTrainingScheduler() {
@@ -1856,7 +1856,7 @@ export async function createManagedTrainingProject(input: unknown) {
     if (!checkpointRelativePath) {
       throw new TrainingProjectServiceError("checkpointRelativePath is required", 400);
     }
-    const created = await createLegacyTrainingProject({
+    const created = await createTrainingProductionProject({
       characterName: title,
       projectName: title,
       triggerToken,
@@ -1873,7 +1873,7 @@ export async function createManagedTrainingProject(input: unknown) {
       throw error;
     }
     if (!shouldUseTrainingProjectFileFallback(error)) {
-      const mapped = mapLegacyTrainingProjectError(error);
+      const mapped = mapTrainingProductionProjectError(error);
       throw new TrainingProjectServiceError(mapped.message, mapped.status, mapped.details);
     }
   }
@@ -1925,7 +1925,7 @@ export function mapTrainingProjectMutationError(error: unknown) {
     return mapped;
   }
 
-  return mapLegacyTrainingProjectError(error);
+  return mapTrainingProductionProjectError(error);
 }
 
 export function mapTrainingProjectProfileError(error: unknown) {
@@ -1934,12 +1934,12 @@ export function mapTrainingProjectProfileError(error: unknown) {
     return mapped;
   }
 
-  const promptCardMapped = mapLegacyTrainingPromptCardError(error);
+  const promptCardMapped = mapTrainingPromptCardError(error);
   if (promptCardMapped.status !== 500 || promptCardMapped.message !== "Unexpected character LoRA prompt card error") {
     return promptCardMapped;
   }
 
-  return mapLegacyTrainingProjectError(error);
+  return mapTrainingProductionProjectError(error);
 }
 
 export function mapTrainingReferenceImageMutationError(error: unknown) {
@@ -1948,7 +1948,7 @@ export function mapTrainingReferenceImageMutationError(error: unknown) {
     return mapped;
   }
 
-  return mapLegacyTrainingReferenceImageError(error);
+  return mapTrainingReferenceImageError(error);
 }
 
 export function mapTrainingGenerationRunMutationError(error: unknown) {
@@ -1957,7 +1957,7 @@ export function mapTrainingGenerationRunMutationError(error: unknown) {
     return mapped;
   }
 
-  return mapLegacyTrainingGenerationError(error);
+  return mapTrainingGenerationError(error);
 }
 
 export function mapTrainingRunMutationError(error: unknown) {
@@ -1966,7 +1966,7 @@ export function mapTrainingRunMutationError(error: unknown) {
     return mapped;
   }
 
-  return mapLegacyTrainingRunError(error);
+  return mapTrainingRunError(error);
 }
 
 export function mapTrainingRunCreationError(error: unknown) {
@@ -1975,10 +1975,10 @@ export function mapTrainingRunCreationError(error: unknown) {
     return mapped;
   }
 
-  const trainingMapped = mapLegacyTrainingRunError(error);
+  const trainingMapped = mapTrainingRunError(error);
   if (trainingMapped.status !== 400 || trainingMapped.message !== "Unexpected character LoRA training error") {
     return trainingMapped;
   }
 
-  return mapLegacyTrainingGenerationError(error);
+  return mapTrainingGenerationError(error);
 }

@@ -20,6 +20,7 @@ const trainingNotFoundSource = readFileSync(resolve(repoRoot, "src/features/trai
 const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/training/route.ts"), "utf8");
 const generationProjectDetailSource = readFileSync(resolve(repoRoot, "src/server/repositories/project-view-repository/detail-view.ts"), "utf8");
 const generationQueuePageSource = readFileSync(resolve(repoRoot, "src/app/queue/page.tsx"), "utf8");
+const generationQueueDataRouteSource = readFileSync(resolve(repoRoot, "src/app/api/queue-data/route.ts"), "utf8");
 const generationTemplateCrudSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-crud.ts"), "utf8");
 const generationTemplateImportSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-import.ts"), "utf8");
 const generationPresetReplacementSource = readFileSync(resolve(repoRoot, "src/server/services/preset-section-replacement-service.ts"), "utf8");
@@ -407,26 +408,31 @@ test("generation template action entrypoints reuse generation resource boundarie
 });
 
 test("generation queue auxiliary lists reuse the generation project boundary", () => {
-  assert.match(
-    generationQueuePageSource,
-    /buildGenerationProjectWhere/,
-    "Generation queue auxiliary lists should import the generation project boundary.",
-  );
-  assert.match(
-    generationQueuePageSource,
-    /censoringTask\.groupBy\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
-    "Active censoring progress should not include training-owned projects.",
-  );
-  assert.match(
-    generationQueuePageSource,
-    /censoringTask\.findMany\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
-    "Censoring history should not include training-owned projects.",
-  );
-  assert.doesNotMatch(
-    generationQueuePageSource,
-    /project\.findMany\(\{[\s\S]*where:\s*\{\s*id:\s*\{\s*in:\s*projectIds\s*\}/,
-    "Generation queue project-title lookup must not fetch projects by id without the generation project boundary.",
-  );
+  for (const [label, source] of [
+    ["generation queue page", generationQueuePageSource],
+    ["generation queue data API", generationQueueDataRouteSource],
+  ] as const) {
+    assert.match(
+      source,
+      /buildGenerationProjectWhere/,
+      `${label} auxiliary lists should import the generation project boundary.`,
+    );
+    assert.match(
+      source,
+      /censoringTask\.groupBy\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+      `${label} active censoring progress should not include training-owned projects.`,
+    );
+    assert.match(
+      source,
+      /censoringTask\.findMany\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+      `${label} censoring history should not include training-owned projects.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /project\.findMany\(\{[\s\S]*where:\s*\{\s*id:\s*\{\s*in:\s*projectIds\s*\}/,
+      `${label} project-title lookup must not fetch projects by id without the generation project boundary.`,
+    );
+  }
 });
 
 test("resource target contract documents every production resource owner", () => {

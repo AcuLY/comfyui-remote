@@ -1023,17 +1023,64 @@ test("training snapshot service uses the Training snapshot repository boundary",
   );
 });
 
-test("training project service uses Training-named legacy adapter aliases", () => {
+test("training project service uses the Training project repository boundary", () => {
   const projectServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/project-service.ts"), "utf8");
+  const repositorySource = readFileSync(join(process.cwd(), "src/server/repositories/training/projects.ts"), "utf8");
 
-  assert.match(projectServiceSource, /createLegacyTrainingProject/);
-  assert.match(projectServiceSource, /getLegacyTrainingCandidateImage/);
-  assert.match(projectServiceSource, /getLegacyTrainingProject/);
-  assert.match(projectServiceSource, /getLegacyTrainingProjectSection/);
-  assert.match(projectServiceSource, /listLegacyTrainingReferenceImages/);
-  assert.match(projectServiceSource, /mapLegacyTrainingProjectError/);
-  assert.match(projectServiceSource, /updateLegacyTrainingReferenceImage/);
-  assert.match(projectServiceSource, /uploadLegacyTrainingReferenceImage/);
+  assert.match(
+    projectServiceSource,
+    /@\/server\/repositories\/training\/projects/,
+    "Training project service should call the Training project repository boundary.",
+  );
+  for (const symbol of [
+    "archiveTrainingProductionProject",
+    "cancelTrainingProductionGenerationRun",
+    "cancelTrainingProductionRun",
+    "createTrainingProductionProject",
+    "enqueueTrainingProductionRun",
+    "enqueueTrainingProductionSectionGenerationRun",
+    "freezeTrainingProductionDataset",
+    "getTrainingProductionProject",
+    "getTrainingProductionProjectSection",
+    "getTrainingProductionProjectOverview",
+    "listTrainingReferenceImagesForProject",
+    "mapTrainingProductionProjectError",
+    "updateTrainingReferenceImageRecord",
+    "uploadTrainingReferenceImage",
+  ]) {
+    assert.match(projectServiceSource, new RegExp(`\\b${symbol}\\b`), `${symbol} should be used by project-service.`);
+  }
+  assert.doesNotMatch(
+    projectServiceSource,
+    /@\/server\/services\/training\/legacy-compat-service|archiveLegacyTrainingProject|cancelLegacyTrainingGenerationRun|cancelLegacyTrainingRun|createLegacyTrainingPromptCardVersion|createLegacyTrainingProject|deleteLegacyTrainingReferenceImage|enqueueLegacyTrainingRun|enqueueLegacyTrainingSectionGenerationRun|freezeLegacyTrainingDataset|getLegacyTrainingCandidateImage|getLegacyTrainingProject|getLegacyTrainingProjectSection|getLegacyTrainingProjectOverview|getLegacyTrainingReferenceImage|listLegacyTrainingPromptCardVersions|listLegacyTrainingReferenceImages|mapLegacyTraining|registerLegacyTrainingReferenceImage|restoreLegacyTrainingProject|reviewLegacyTrainingImages|updateLegacyTrainingImageCaption|updateLegacyTrainingProject|updateLegacyTrainingReferenceImage|uploadLegacyTrainingReferenceImage/,
+    "Training project service should not import production project operations from legacy compat directly.",
+  );
+  assert.match(
+    projectServiceSource,
+    /registerTrainingReferenceImageFromArtifactInRepository/,
+    "Training project service should call the repository alias for artifact registration instead of recursively calling itself.",
+  );
+  assert.doesNotMatch(
+    projectServiceSource,
+    /export async function registerTrainingReferenceImageFromArtifact[\s\S]*?return registerTrainingReferenceImageFromArtifact\(/,
+    "Training project service wrapper must not recursively call itself.",
+  );
+  for (const legacySymbol of [
+    "archiveLegacyTrainingProject",
+    "cancelLegacyTrainingGenerationRun",
+    "cancelLegacyTrainingRun",
+    "createLegacyTrainingProject",
+    "enqueueLegacyTrainingRun",
+    "enqueueLegacyTrainingSectionGenerationRun",
+    "freezeLegacyTrainingDataset",
+    "getLegacyTrainingProject",
+    "listLegacyTrainingReferenceImages",
+    "mapLegacyTrainingProjectError",
+    "updateLegacyTrainingReferenceImage",
+    "uploadLegacyTrainingReferenceImage",
+  ]) {
+    assert.match(repositorySource, new RegExp(`\\b${legacySymbol}\\b`), `${legacySymbol} should stay behind the repository boundary.`);
+  }
   assert.doesNotMatch(
     projectServiceSource,
     /CharacterLora|getCharacterLora|listCharacterLora|createCharacterLora|updateCharacterLora|uploadCharacterLora|mapCharacterLora/,

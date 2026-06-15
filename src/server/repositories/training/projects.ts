@@ -1,0 +1,63 @@
+import {
+  archiveLegacyTrainingProject,
+  cancelLegacyTrainingGenerationRun,
+  cancelLegacyTrainingRun,
+  createLegacyTrainingPromptCardVersion,
+  createLegacyTrainingProject,
+  deleteLegacyTrainingReferenceImage,
+  enqueueLegacyTrainingRun,
+  enqueueLegacyTrainingSectionGenerationRun,
+  freezeLegacyTrainingDataset,
+  getLegacyTrainingCandidateImage,
+  getLegacyTrainingProject,
+  getLegacyTrainingProjectOverview,
+  getLegacyTrainingProjectSection,
+  getLegacyTrainingReferenceImage,
+  getLegacyTrainingReferenceImageFromRepository,
+  listLegacyTrainingPromptCardVersions,
+  listLegacyTrainingReferenceImages,
+  mapLegacyTrainingGenerationError,
+  mapLegacyTrainingProjectError,
+  mapLegacyTrainingPromptCardError,
+  mapLegacyTrainingReferenceImageError,
+  mapLegacyTrainingRunError,
+  registerLegacyTrainingReferenceImageAsResult,
+  registerLegacyTrainingReferenceImageFromArtifact,
+  restoreLegacyTrainingProject,
+  reviewLegacyTrainingImages,
+  updateLegacyTrainingImageCaption,
+  updateLegacyTrainingProject,
+  updateLegacyTrainingReferenceImage,
+  uploadLegacyTrainingReferenceImage,
+} from "@/server/services/training/legacy-compat-service";
+
+export const archiveTrainingProductionProject = archiveLegacyTrainingProject;
+export const cancelTrainingProductionGenerationRun = cancelLegacyTrainingGenerationRun;
+export const cancelTrainingProductionRun = cancelLegacyTrainingRun;
+export const createTrainingPromptCardVersion = createLegacyTrainingPromptCardVersion;
+export const createTrainingProductionProject = createLegacyTrainingProject;
+export const deleteTrainingReferenceImageRecord = deleteLegacyTrainingReferenceImage;
+export const enqueueTrainingProductionRun = enqueueLegacyTrainingRun;
+export const enqueueTrainingProductionSectionGenerationRun = enqueueLegacyTrainingSectionGenerationRun;
+export const freezeTrainingProductionDataset = freezeLegacyTrainingDataset;
+export const getTrainingCandidateImage = getLegacyTrainingCandidateImage;
+export const getTrainingProductionProject = getLegacyTrainingProject;
+export const getTrainingProductionProjectOverview = getLegacyTrainingProjectOverview;
+export const getTrainingProductionProjectSection = getLegacyTrainingProjectSection;
+export const getTrainingReferenceImageRecord = getLegacyTrainingReferenceImage;
+export const getTrainingReferenceImageRecordFromRepository = getLegacyTrainingReferenceImageFromRepository;
+export const listTrainingPromptCardVersions = listLegacyTrainingPromptCardVersions;
+export const listTrainingReferenceImagesForProject = listLegacyTrainingReferenceImages;
+export const mapTrainingGenerationError = mapLegacyTrainingGenerationError;
+export const mapTrainingProductionProjectError = mapLegacyTrainingProjectError;
+export const mapTrainingPromptCardError = mapLegacyTrainingPromptCardError;
+export const mapTrainingReferenceImageError = mapLegacyTrainingReferenceImageError;
+export const mapTrainingRunError = mapLegacyTrainingRunError;
+export const registerTrainingReferenceImageAsResult = registerLegacyTrainingReferenceImageAsResult;
+export const registerTrainingReferenceImageFromArtifact = registerLegacyTrainingReferenceImageFromArtifact;
+export const restoreTrainingProductionProject = restoreLegacyTrainingProject;
+export const reviewTrainingImages = reviewLegacyTrainingImages;
+export const updateTrainingCandidateImageCaption = updateLegacyTrainingImageCaption;
+export const updateTrainingProductionProject = updateLegacyTrainingProject;
+export const updateTrainingReferenceImageRecord = updateLegacyTrainingReferenceImage;
+export const uploadTrainingReferenceImage = uploadLegacyTrainingReferenceImage;

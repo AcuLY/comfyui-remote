@@ -4,6 +4,7 @@ import { getQueueRunsPage, getRunningRuns, getFailedRuns, getTrashItems } from "
 import { recoverStaleRuns } from "@/server/services/run-executor";
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 function readPositiveInteger(value: string | null) {
   if (!value) return undefined;
@@ -33,7 +34,10 @@ export async function GET(request: NextRequest) {
   // Get censoring progress - find projects with active (queued/running/paused) tasks
   const activeCensoringProjects = await prisma.censoringTask.groupBy({
     by: ["projectId"],
-    where: { status: { in: ["queued", "running", "paused"] } },
+    where: {
+      status: { in: ["queued", "running", "paused"] },
+      project: buildGenerationProjectWhere(),
+    },
   });
 
   const censoringProgress: Array<{
@@ -44,24 +48,29 @@ export async function GET(request: NextRequest) {
     running: number;
     queued: number;
     failed: number;
+    paused: number;
   }> = [];
 
   if (activeCensoringProjects.length > 0) {
     const projectIds = activeCensoringProjects.map((p) => p.projectId);
     const projects = await prisma.project.findMany({
-      where: { id: { in: projectIds } },
+      where: buildGenerationProjectWhere({ id: { in: projectIds } }),
       select: { id: true, title: true },
     });
     const projectMap = new Map(projects.map((p) => [p.id, p.title]));
+    const visibleProjectIds = projects.map((p) => p.id);
 
     const taskCounts = await prisma.censoringTask.groupBy({
       by: ["projectId", "status"],
-      where: { projectId: { in: projectIds } },
+      where: {
+        projectId: { in: visibleProjectIds },
+        project: buildGenerationProjectWhere(),
+      },
       _count: { _all: true },
     });
 
     // Aggregate per project
-    for (const pid of projectIds) {
+    for (const pid of visibleProjectIds) {
       const counts = { total: 0, done: 0, running: 0, queued: 0, failed: 0, paused: 0 };
       for (const group of taskCounts) {
         if (group.projectId !== pid) continue;
@@ -83,7 +92,10 @@ export async function GET(request: NextRequest) {
 
   // Get censoring history — last 50 completed/failed tasks for the "打码" tab
   const censoringHistory = await prisma.censoringTask.findMany({
-    where: { status: { in: ["done", "failed"] } },
+    where: {
+      status: { in: ["done", "failed"] },
+      project: buildGenerationProjectWhere(),
+    },
     orderBy: { finishedAt: "desc" },
     take: 50,
     select: {
