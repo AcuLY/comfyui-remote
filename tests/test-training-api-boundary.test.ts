@@ -371,6 +371,25 @@ test("generation preset list workspaces reuse the ordinary preset scope contract
   }
 });
 
+test("training run create-preset category hints only resolve training-owned categories", () => {
+  const runPresetServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/run-preset-service.ts"), "utf8");
+  assert.match(
+    runPresetServiceSource,
+    /trainingSceneDescriptionPresetCategoryTypeWhere/,
+    "Training run create-preset should reuse the shared training preset scope helper.",
+  );
+  assert.match(
+    runPresetServiceSource,
+    /presetCategory\.findFirst\(\{\s*where:\s*\{[\s\S]*?id:\s*input\.categoryId\.trim\(\),[\s\S]*?type:\s*trainingSceneDescriptionPresetCategoryTypeWhere\(\)/,
+    "Training run create-preset should resolve categoryId hints only when they are training-owned categories.",
+  );
+  assert.doesNotMatch(
+    runPresetServiceSource,
+    /presetCategory\.findUnique\(\{\s*where:\s*\{\s*id:\s*input\.categoryId\.trim\(\)\s*\}/,
+    "Training run create-preset must not derive training preset categories from generation preset category ids.",
+  );
+});
+
 test("shared model resources are not re-exposed as training-owned resources", () => {
   assert.equal(
     existsSync(join(process.cwd(), "src/app/api/training/models/route.ts")),

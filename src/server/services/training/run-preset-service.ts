@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { trainingSceneDescriptionPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { createTrainingSceneDescriptionPreset } from "@/server/services/training/preset-service";
 import { getTrainingRun, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
@@ -38,8 +39,11 @@ async function resolvePresetCategory(input: CreateTrainingRunPresetInput) {
   if (input.category?.trim()) return input.category.trim();
   if (input.categoryId?.trim()) {
     try {
-      const category = await prisma.presetCategory.findUnique({
-        where: { id: input.categoryId.trim() },
+      const category = await prisma.presetCategory.findFirst({
+        where: {
+          id: input.categoryId.trim(),
+          type: trainingSceneDescriptionPresetCategoryTypeWhere(),
+        },
         select: { name: true },
       });
       if (category?.name?.trim()) return category.name.trim();
