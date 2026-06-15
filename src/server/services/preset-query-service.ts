@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/actions/preset-resource-scope";
 import { normalizeCivitaiLinks } from "@/lib/utils";
 
 export type PresetQueryFilters = {
@@ -29,7 +30,7 @@ function linkedVariantsFromRows(variant: {
   }>;
 }) {
   return variant.outgoingLinks
-    .filter((link) => link.linkedVariant.preset.category.type === "preset")
+    .filter((link) => link.linkedVariant.preset.category.type === ORDINARY_PRESET_CATEGORY_TYPE)
     .map((link) => ({
       presetId: link.linkedVariant.presetId,
       variantId: link.linkedVariantId,
@@ -74,14 +75,14 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
 
   const presets = await prisma.preset.findMany({
     where: {
-      category: { type: "preset" },
+      category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
       ...(filters.includeInactive ? {} : { isActive: true }),
       ...(name ? { name } : {}),
       ...(slug ? { slug } : {}),
       ...(categoryId ? { categoryId } : {}),
       ...(category ? {
         category: {
-          type: "preset",
+          type: ORDINARY_PRESET_CATEGORY_TYPE,
           OR: [
             { id: category },
             { name: { contains: category } },
@@ -152,7 +153,7 @@ export async function getPresetById(presetId: string, includeInactive = false) {
   const preset = await prisma.preset.findFirst({
     where: {
       id: presetId,
-      category: { type: "preset" },
+      category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
       ...(includeInactive ? {} : { isActive: true }),
     },
     include: {

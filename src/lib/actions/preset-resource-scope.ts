@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 export const ORDINARY_PRESET_CATEGORY_TYPE = "preset";
 export const ORDINARY_PRESET_GROUP_CATEGORY_TYPE = "group";
+export const TRAINING_SCENE_DESCRIPTION_PRESET_CATEGORY_TYPE = "training_scene_description";
 export const ORDINARY_PRESET_LIBRARY_CATEGORY_TYPES = [
   ORDINARY_PRESET_CATEGORY_TYPE,
   ORDINARY_PRESET_GROUP_CATEGORY_TYPE,
@@ -22,6 +23,10 @@ export function ordinaryPresetLibraryCategoryTypeWhere() {
   return { in: [...ORDINARY_PRESET_LIBRARY_CATEGORY_TYPES] };
 }
 
+export function trainingSceneDescriptionPresetCategoryTypeWhere() {
+  return TRAINING_SCENE_DESCRIPTION_PRESET_CATEGORY_TYPE;
+}
+
 export function isOrdinaryPresetLibraryCategoryType(type: string | null | undefined) {
   return ORDINARY_PRESET_LIBRARY_CATEGORY_TYPES.includes(
     type as (typeof ORDINARY_PRESET_LIBRARY_CATEGORY_TYPES)[number],
@@ -30,6 +35,10 @@ export function isOrdinaryPresetLibraryCategoryType(type: string | null | undefi
 
 export function isOrdinaryPresetCategoryType(type: string | null | undefined) {
   return type === ORDINARY_PRESET_CATEGORY_TYPE;
+}
+
+export function isTrainingSceneDescriptionPresetCategoryType(type: string | null | undefined) {
+  return type === TRAINING_SCENE_DESCRIPTION_PRESET_CATEGORY_TYPE;
 }
 
 export async function assertOrdinaryPresetCategory(categoryId: string) {

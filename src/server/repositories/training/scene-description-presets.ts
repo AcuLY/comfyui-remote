@@ -1,7 +1,11 @@
 import { Prisma } from "@/generated/prisma";
+import {
+  TRAINING_SCENE_DESCRIPTION_PRESET_CATEGORY_TYPE,
+  trainingSceneDescriptionPresetCategoryTypeWhere,
+} from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
 
-export const TRAINING_PRESET_CATEGORY_TYPE = "training_scene_description";
+export const TRAINING_PRESET_CATEGORY_TYPE = TRAINING_SCENE_DESCRIPTION_PRESET_CATEGORY_TYPE;
 
 export type TrainingPresetRow = Prisma.PresetGetPayload<{
   include: {
@@ -42,7 +46,7 @@ export async function listTrainingSceneDescriptionPresetRows() {
   return prisma.preset.findMany({
     where: {
       category: {
-        type: TRAINING_PRESET_CATEGORY_TYPE,
+        type: trainingSceneDescriptionPresetCategoryTypeWhere(),
       },
     },
     orderBy: [
@@ -85,7 +89,7 @@ export async function getTrainingSceneDescriptionPresetRow(presetId: string) {
     where: {
       id: presetId,
       category: {
-        type: TRAINING_PRESET_CATEGORY_TYPE,
+        type: trainingSceneDescriptionPresetCategoryTypeWhere(),
       },
     },
     include: {
@@ -120,7 +124,7 @@ export async function getTrainingSceneDescriptionPresetRow(presetId: string) {
 
 export async function listTrainingSceneDescriptionCategoryRows() {
   return prisma.presetCategory.findMany({
-    where: { type: TRAINING_PRESET_CATEGORY_TYPE },
+    where: { type: trainingSceneDescriptionPresetCategoryTypeWhere() },
     orderBy: [
       { sortOrder: "asc" },
       { positivePromptOrder: "asc" },
@@ -143,7 +147,7 @@ export async function getTrainingSceneDescriptionCategoryRow(categoryId: string)
   return prisma.presetCategory.findFirst({
     where: {
       id: categoryId,
-      type: TRAINING_PRESET_CATEGORY_TYPE,
+      type: trainingSceneDescriptionPresetCategoryTypeWhere(),
     },
     select: {
       id: true,
@@ -162,7 +166,7 @@ export async function listTrainingSceneDescriptionFolderRows() {
   return prisma.presetFolder.findMany({
     where: {
       category: {
-        type: TRAINING_PRESET_CATEGORY_TYPE,
+        type: trainingSceneDescriptionPresetCategoryTypeWhere(),
       },
     },
     orderBy: [
@@ -186,7 +190,7 @@ export async function getTrainingSceneDescriptionFolderRow(folderId: string) {
     where: {
       id: folderId,
       category: {
-        type: TRAINING_PRESET_CATEGORY_TYPE,
+        type: trainingSceneDescriptionPresetCategoryTypeWhere(),
       },
     },
     select: {

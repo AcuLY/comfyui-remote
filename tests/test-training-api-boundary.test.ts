@@ -253,11 +253,28 @@ test("training scene-description row reads go through a Training repository boun
 });
 
 test("preset resource lists stay scoped to their owning work mode except shared models and settings", async () => {
+  const presetScopeSource = readFileSync(join(process.cwd(), "src/lib/actions/preset-resource-scope.ts"), "utf8");
+  assert.match(
+    presetScopeSource,
+    /TRAINING_SCENE_DESCRIPTION_PRESET_CATEGORY_TYPE\s*=\s*"training_scene_description"/,
+    "Training scene-description preset category type should live in the shared preset resource scope contract.",
+  );
+  assert.match(
+    presetScopeSource,
+    /trainingSceneDescriptionPresetCategoryTypeWhere/,
+    "Training preset queries should reuse a named scope helper instead of hand-writing category type filters.",
+  );
+
   const generationPresetQuerySource = readFileSync(join(process.cwd(), "src/server/services/preset-query-service.ts"), "utf8");
   assert.match(
     generationPresetQuerySource,
-    /category:\s*\{\s*type:\s*"preset"\s*\}/,
-    "Generation preset APIs should only read ordinary preset categories.",
+    /ORDINARY_PRESET_CATEGORY_TYPE/,
+    "Generation preset APIs should use the ordinary preset category scope constant.",
+  );
+  assert.doesNotMatch(
+    generationPresetQuerySource,
+    /type:\s*"preset"/,
+    "Generation preset APIs should not hand-write the ordinary category type string.",
   );
 
   const generationPresetViewSource = readFileSync(join(process.cwd(), "src/server/repositories/preset-view-repository.ts"), "utf8");
@@ -276,16 +293,25 @@ test("preset resource lists stay scoped to their owning work mode except shared 
     join(process.cwd(), "src/server/repositories/training/scene-description-presets.ts"),
     "utf8",
   );
-  assert.match(trainingPresetRepositorySource, /TRAINING_PRESET_CATEGORY_TYPE\s*=\s*"training_scene_description"/);
   assert.match(
     trainingPresetRepositorySource,
-    /category:\s*\{[\s\S]*?type:\s*TRAINING_PRESET_CATEGORY_TYPE[\s\S]*?\}/,
-    "Training preset rows should only read training scene-description categories.",
+    /@\/lib\/actions\/preset-resource-scope/,
+    "Training preset repository should consume the shared resource-scope contract.",
+  );
+  assert.doesNotMatch(
+    trainingPresetRepositorySource,
+    /TRAINING_PRESET_CATEGORY_TYPE\s*=\s*"training_scene_description"/,
+    "Training preset repository should not own a second training category type constant.",
   );
   assert.match(
     trainingPresetRepositorySource,
-    /where:\s*\{\s*type:\s*TRAINING_PRESET_CATEGORY_TYPE\s*\}/,
-    "Training preset category rows should be isolated from ordinary generation preset categories.",
+    /category:\s*\{[\s\S]*?type:\s*trainingSceneDescriptionPresetCategoryTypeWhere\(\)[\s\S]*?\}/,
+    "Training preset rows should only read through the training scene-description scope helper.",
+  );
+  assert.match(
+    trainingPresetRepositorySource,
+    /where:\s*\{\s*type:\s*trainingSceneDescriptionPresetCategoryTypeWhere\(\)\s*\}/,
+    "Training preset category rows should be isolated through the training scene-description scope helper.",
   );
 
   const trainingPresetServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/preset-service.ts"), "utf8");

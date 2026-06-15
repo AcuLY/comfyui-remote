@@ -3,6 +3,9 @@ import { dirname, join } from "node:path";
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import type { LoraTrainingPreset } from "@/features/training/types";
+import {
+  TRAINING_SCENE_DESCRIPTION_PRESET_CATEGORY_TYPE as TRAINING_PRESET_CATEGORY_TYPE,
+} from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
 import {
   trainingPresetInputSchema,
@@ -13,7 +16,6 @@ import {
   trainingSceneFolderUpdateSchema,
 } from "@/lib/training/schemas";
 import {
-  TRAINING_PRESET_CATEGORY_TYPE,
   getTrainingSceneDescriptionCategoryRow as getTrainingSceneCategoryRowFromRepository,
   getTrainingSceneDescriptionFolderRow as getTrainingSceneFolderRowFromRepository,
   getTrainingSceneDescriptionPresetRow as getTrainingPresetRowFromRepository,
