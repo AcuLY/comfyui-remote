@@ -9,6 +9,7 @@ const repoRoot = resolve(testDir, "..");
 const layoutPath = resolve(repoRoot, "src/app/layout.tsx");
 const appShellPath = resolve(repoRoot, "src/components/app-shell.tsx");
 const bottomNavPath = resolve(repoRoot, "src/components/persistent-bottom-nav.tsx");
+const workModeResourcesPath = resolve(repoRoot, "src/lib/work-mode-resources.ts");
 const settingsPagePath = resolve(repoRoot, "src/app/settings/page.tsx");
 const shellPath = resolve(repoRoot, "src/components/design-demo-shell/app-shell.tsx");
 const headerSurfacePath = resolve(repoRoot, "src/components/design-demo-shell/header-surface.tsx");
@@ -24,6 +25,7 @@ const trainingThemePath = resolve(repoRoot, "src/features/training/theme.ts");
 const layoutSource = readFileSync(layoutPath, "utf8");
 const appShellSource = readFileSync(appShellPath, "utf8");
 const bottomNavSource = readFileSync(bottomNavPath, "utf8");
+const workModeResourcesSource = readFileSync(workModeResourcesPath, "utf8");
 const settingsPageSource = readFileSync(settingsPagePath, "utf8");
 const shellSource = readFileSync(shellPath, "utf8");
 const headerSurfaceSource = readFileSync(headerSurfacePath, "utf8");
@@ -66,14 +68,19 @@ test("production training routes do not own the shared model manager page", () =
     "models should remain a shared resource page instead of a LoRA training module route",
   );
   assert.match(
-    bottomNavSource,
+    workModeResourcesSource,
     /href:\s*"\/assets\/models"/,
-    "persistent navigation should keep model management on the shared asset route",
+    "the shared resource contract should keep model management on the shared asset route",
   );
   assert.doesNotMatch(
-    bottomNavSource,
+    workModeResourcesSource,
     /href:\s*"\/training\/models"/,
-    "persistent navigation should not add a training-owned models page",
+    "the shared resource contract should not add a training-owned models page",
+  );
+  assert.match(
+    bottomNavSource,
+    /@\/lib\/work-mode-resources/,
+    "persistent navigation should consume the shared resource contract.",
   );
 });
 
@@ -89,10 +96,10 @@ test("production bottom nav resolves module-owned resources from the current wor
     "The shared run entry should be product-facing as 运行 instead of the old generation-only 待审核 label.",
   );
   for (const label of ["运行", "项目", "预制", "模板", "模型", "设置"]) {
-    assert.match(bottomNavSource, new RegExp(`label:\\s*"${label}"`), `production bottom nav should include ${label}`);
+    assert.match(workModeResourcesSource, new RegExp(`label:\\s*"${label}"`), `production resource contract should include ${label}`);
   }
   for (const href of ["/queue", "/projects", "/assets/presets", "/assets/templates", "/training/runs", "/training/projects", "/training/presets", "/training/templates"]) {
-    assert.match(bottomNavSource, new RegExp(`href:\\s*"${href.replace(/\//g, "\\/")}"`), `production bottom nav should be able to route to ${href}`);
+    assert.match(workModeResourcesSource, new RegExp(`href:\\s*"${href.replace(/\//g, "\\/")}"`), `production resource contract should be able to route to ${href}`);
   }
   assert.match(bottomNavSource, /WORK_MODE_STORAGE_KEY/, "production bottom nav should read the persisted work mode.");
   assert.match(bottomNavSource, /WORK_MODE_CHANGE_EVENT/, "production bottom nav should update when settings changes the work mode.");

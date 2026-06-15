@@ -1,0 +1,143 @@
+import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import test from "node:test";
+
+import {
+  WORK_MODE_RESOURCE_TARGETS,
+  buildWorkModeResourceTargets,
+} from "../src/lib/work-mode-resources";
+
+const repoRoot = process.cwd();
+const bottomNavSource = readFileSync(resolve(repoRoot, "src/components/persistent-bottom-nav.tsx"), "utf8");
+const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/training/route.ts"), "utf8");
+
+const MODULE_OWNED_RESOURCE_KEYS = ["runs", "projects", "presets", "templates"] as const;
+const SHARED_RESOURCE_KEYS = ["models", "settings"] as const;
+
+function listSourceFiles(root: string): string[] {
+  return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const path = resolve(root, entry.name);
+    if (entry.isDirectory()) {
+      return listSourceFiles(path);
+    }
+    return entry.isFile() && /\.(ts|tsx)$/.test(entry.name) ? [path] : [];
+  });
+}
+
+function findMatchingSources(paths: string[], pattern: RegExp) {
+  return paths
+    .map((path) => ({ path, source: readFileSync(path, "utf8") }))
+    .filter(({ source }) => pattern.test(source))
+    .map(({ path }) => path.replace(`${repoRoot}/`, ""));
+}
+
+test("work mode resource targets isolate generation and training-owned resources", () => {
+  const generationTargets = buildWorkModeResourceTargets("generation");
+  const trainingTargets = buildWorkModeResourceTargets("lora_training");
+
+  for (const key of MODULE_OWNED_RESOURCE_KEYS) {
+    assert.equal(
+      generationTargets[key].owner,
+      "generation",
+      `${key} should be generation-owned in generation mode.`,
+    );
+    assert.equal(
+      trainingTargets[key].owner,
+      "lora_training",
+      `${key} should be training-owned in LoRA training mode.`,
+    );
+    assert.equal(
+      generationTargets[key].href.startsWith("/training/"),
+      false,
+      `${key} should not send generation users into training-owned routes.`,
+    );
+    assert.equal(
+      ["/queue", "/projects", "/assets/presets", "/assets/templates"].some(
+        (href) => trainingTargets[key].href === href || trainingTargets[key].href.startsWith(`${href}/`),
+      ),
+      false,
+      `${key} should not send training users into generation-owned routes.`,
+    );
+  }
+
+  for (const key of SHARED_RESOURCE_KEYS) {
+    assert.equal(generationTargets[key].owner, "shared", `${key} should remain shared.`);
+    assert.equal(trainingTargets[key].owner, "shared", `${key} should remain shared.`);
+    assert.equal(
+      generationTargets[key].href,
+      trainingTargets[key].href,
+      `${key} should use the same route from both work modes.`,
+    );
+  }
+});
+
+test("module-owned frontend pages do not fetch the other module's resource APIs", () => {
+  const generationPageFiles = [
+    ...listSourceFiles(resolve(repoRoot, "src/app/projects")),
+    ...listSourceFiles(resolve(repoRoot, "src/app/assets/presets")),
+    ...listSourceFiles(resolve(repoRoot, "src/app/assets/templates")),
+    ...listSourceFiles(resolve(repoRoot, "src/app/queue")),
+  ];
+  const trainingPageFiles = [
+    ...listSourceFiles(resolve(repoRoot, "src/app/training")),
+    ...listSourceFiles(resolve(repoRoot, "src/features/training/ui")),
+  ];
+
+  assert.deepEqual(
+    findMatchingSources(generationPageFiles, /fetch\((?:`|")\/api\/training\b/),
+    [],
+    "Generation-owned pages must not fetch training-owned APIs.",
+  );
+  assert.deepEqual(
+    findMatchingSources(trainingPageFiles, /fetch\((?:`|")\/api\/(?:projects|presets|templates|project-folders|preset-library|queue|runs)\b/),
+    [],
+    "Training-owned pages must not fetch generation-owned resource APIs; /api/models remains the shared exception.",
+  );
+});
+
+test("persistent production navigation consumes the shared work mode resource contract", () => {
+  assert.match(
+    bottomNavSource,
+    /@\/lib\/work-mode-resources/,
+    "Persistent navigation should not duplicate the work-mode resource boundary map locally.",
+  );
+  assert.doesNotMatch(
+    bottomNavSource,
+    /const modeAwareNavItems/,
+    "Module-owned navigation targets should live in the shared resource contract.",
+  );
+  assert.doesNotMatch(
+    bottomNavSource,
+    /const sharedNavItems/,
+    "Shared navigation targets should live in the shared resource contract.",
+  );
+});
+
+test("training manifest advertises only training-owned APIs plus shared resources", () => {
+  for (const forbiddenPath of ["/api/projects", "/api/presets", "/api/templates", "/api/queue", "/api/runs"]) {
+    assert.doesNotMatch(
+      trainingManifestSource,
+      new RegExp(forbiddenPath.replaceAll("/", "\\/")),
+      `Training manifest should not advertise generation-owned ${forbiddenPath}.`,
+    );
+  }
+
+  assert.match(trainingManifestSource, /\/api\/training\/projects/);
+  assert.match(trainingManifestSource, /\/api\/training\/presets/);
+  assert.match(trainingManifestSource, /\/api\/training\/templates/);
+  assert.match(trainingManifestSource, /\/api\/training\/runs/);
+  assert.match(trainingManifestSource, /\/api\/models\?kind=checkpoint/);
+  assert.match(trainingManifestSource, /\/api\/models\?kind=lora/);
+});
+
+test("resource target contract documents every production resource owner", () => {
+  assert.deepEqual(
+    Object.keys(WORK_MODE_RESOURCE_TARGETS.generation),
+    ["runs", "projects", "presets", "templates", "models", "settings"],
+  );
+  assert.deepEqual(
+    Object.keys(WORK_MODE_RESOURCE_TARGETS.lora_training),
+    ["runs", "projects", "presets", "templates", "models", "settings"],
+  );
+});

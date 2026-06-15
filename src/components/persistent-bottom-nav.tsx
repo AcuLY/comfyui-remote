@@ -16,6 +16,11 @@ import {
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 
 import {
+  buildWorkModeResourceTargetList,
+  type WorkModeResourceKey,
+  type WorkModeResourceTarget,
+} from "@/lib/work-mode-resources";
+import {
   resolveStoredWorkMode,
   resolveWorkModeForPathname,
   WORK_MODE_CHANGE_EVENT,
@@ -28,44 +33,16 @@ type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+} & Pick<WorkModeResourceTarget, "key" | "owner">;
+
+const navItemIcons: Record<WorkModeResourceKey, LucideIcon> = {
+  runs: Images,
+  projects: FolderOpen,
+  presets: BookOpen,
+  templates: LayoutTemplate,
+  models: Database,
+  settings: Settings,
 };
-
-const modeAwareNavItems: Array<{
-  generation: Pick<NavItem, "href" | "activePrefix">;
-  icon: LucideIcon;
-  label: string;
-  lora_training: Pick<NavItem, "href" | "activePrefix">;
-}> = [
-  {
-    label: "运行",
-    icon: Images,
-    generation: { href: "/queue" },
-    lora_training: { href: "/training/runs", activePrefix: "/training/runs" },
-  },
-  {
-    label: "项目",
-    icon: FolderOpen,
-    generation: { href: "/projects" },
-    lora_training: { href: "/training/projects", activePrefix: "/training/projects" },
-  },
-  {
-    label: "预制",
-    icon: BookOpen,
-    generation: { href: "/assets/presets" },
-    lora_training: { href: "/training/presets", activePrefix: "/training/presets" },
-  },
-  {
-    label: "模板",
-    icon: LayoutTemplate,
-    generation: { href: "/assets/templates" },
-    lora_training: { href: "/training/templates", activePrefix: "/training/templates" },
-  },
-];
-
-const sharedNavItems: NavItem[] = [
-  { href: "/assets/models", label: "模型", icon: Database, activePrefix: ["/assets/models", "/assets/loras"] },
-  { href: "/settings", label: "设置", icon: Settings, activePrefix: "/settings" },
-];
 
 const LAST_ROUTE_PREFIX = "comfyui-manager:last-route:";
 const SCROLL_PREFIX = "comfyui-manager:scroll:";
@@ -88,14 +65,10 @@ function isNavItemActive(pathname: string, item: NavItem) {
 }
 
 function buildNavItems(workMode: WorkMode): NavItem[] {
-  return [
-    ...modeAwareNavItems.map((item) => ({
-      ...item[workMode],
-      label: item.label,
-      icon: item.icon,
-    })),
-    ...sharedNavItems,
-  ];
+  return buildWorkModeResourceTargetList(workMode).map((item) => ({
+    ...item,
+    icon: navItemIcons[item.key],
+  }));
 }
 
 function matchNavItem(pathname: string, navItems: NavItem[]) {
