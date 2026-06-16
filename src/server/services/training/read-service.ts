@@ -14,6 +14,9 @@ import {
   listTrainingSceneDescriptionPresets,
 } from "@/server/services/training/preset-service";
 import {
+  listTrainingTemplates as listTrainingTemplatesFromPrisma,
+} from "@/server/services/training/template-service";
+import {
   getTrainingGenerationRun as getTrainingGenerationRunRecord,
 } from "@/server/repositories/training/snapshot";
 import {
@@ -261,8 +264,7 @@ export async function getTrainingPreset(presetId: string) {
 }
 
 export async function listTrainingTemplates() {
-  const snapshot = await loadTrainingSnapshot();
-  return snapshot.templates;
+  return listTrainingTemplatesFromPrisma();
 }
 
 export async function getTrainingSchedulerStatus() {

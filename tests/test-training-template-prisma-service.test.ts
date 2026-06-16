@@ -5,6 +5,7 @@ import test from "node:test";
 
 const rootDir = process.cwd();
 const templateServiceSource = readFileSync(resolve(rootDir, "src/server/services/training/template-service.ts"), "utf8");
+const trainingReadServiceSource = readFileSync(resolve(rootDir, "src/server/services/training/read-service.ts"), "utf8");
 const templateCollectionRouteSource = readFileSync(resolve(rootDir, "src/app/api/training/templates/route.ts"), "utf8");
 const templateDetailRouteSource = readFileSync(resolve(rootDir, "src/app/api/training/templates/[templateId]/route.ts"), "utf8");
 const templateReorderRouteSource = readFileSync(resolve(rootDir, "src/app/api/training/templates/reorder/route.ts"), "utf8");
@@ -65,10 +66,20 @@ test("training template service exposes Prisma TrainingTemplate operations", () 
 });
 
 test("training template routes call TrainingTemplate service APIs instead of snapshot or managed names", () => {
-  assert.doesNotMatch(
+  assert.match(
     templateCollectionRouteSource,
     /@\/server\/services\/training\/read-service/,
-    "template collection GET should list real Prisma templates, not snapshot templates.",
+    "template collection GET should enter through the shared Training read boundary.",
+  );
+  assert.match(
+    trainingReadServiceSource,
+    /listTrainingTemplates\s+as\s+listTrainingTemplatesFromPrisma/,
+    "Training read-service should delegate template list reads to the Prisma-backed template service.",
+  );
+  assert.match(
+    trainingReadServiceSource,
+    /return\s+listTrainingTemplatesFromPrisma\(\)/,
+    "Training read-service template list should not return snapshot templates.",
   );
 
   const routeSources = [
