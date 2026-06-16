@@ -31,6 +31,14 @@ const trainingProjectListRouteSource = readFileSync(resolve(repoRoot, "src/app/a
 const trainingRunListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/training/runs/route.ts"), "utf8");
 const trainingPresetListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/training/presets/route.ts"), "utf8");
 const trainingTemplateListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/training/templates/route.ts"), "utf8");
+const generationPresetQueryServiceSource = readFileSync(resolve(repoRoot, "src/server/services/preset-query-service.ts"), "utf8");
+const generationPresetViewRepositorySource = readFileSync(resolve(repoRoot, "src/server/repositories/preset-view-repository.ts"), "utf8");
+const trainingPresetServiceSource = readFileSync(resolve(repoRoot, "src/server/services/training/preset-service.ts"), "utf8");
+const trainingRunPresetServiceSource = readFileSync(resolve(repoRoot, "src/server/services/training/run-preset-service.ts"), "utf8");
+const trainingSceneDescriptionPresetRepositorySource = readFileSync(
+  resolve(repoRoot, "src/server/repositories/training/scene-description-presets.ts"),
+  "utf8",
+);
 const generationRunLifecycleSource = readFileSync(resolve(repoRoot, "src/lib/actions/run-lifecycle.ts"), "utf8");
 const generationRunWorkflowRouteSource = readFileSync(resolve(repoRoot, "src/app/api/runs/[runId]/workflow/route.ts"), "utf8");
 const generationWorkerStatusRouteSource = readFileSync(resolve(repoRoot, "src/app/api/worker/status/route.ts"), "utf8");
@@ -307,6 +315,46 @@ test("module-owned list API routes stay on their owning resource services", () =
       source,
       /@\/lib\/server-data|@\/server\/services\/(?:project-service|preset-query-service)|listProjectTemplates|\/api\/(?:projects|presets|templates|queue)\b/,
       `${label} must not read generation-owned list resources.`,
+    );
+  }
+});
+
+test("module-owned preset services keep generation and training preset storage separate", () => {
+  for (const [label, source] of [
+    ["generation preset query service", generationPresetQueryServiceSource],
+    ["generation preset view repository", generationPresetViewRepositorySource],
+  ] as const) {
+    assert.match(
+      source,
+      /buildGenerationPresetWhere/,
+      `${label} must use the generation preset boundary before returning preset resources.`,
+    );
+    assert.match(
+      source,
+      /ORDINARY_PRESET_CATEGORY_TYPE|ordinaryPresetLibraryCategoryTypeWhere/,
+      `${label} must scope visible preset resources to ordinary generation preset categories.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /trainingSceneDescriptionPreset|TrainingSceneDescriptionPreset|@\/server\/repositories\/training\/scene-description-presets|@\/server\/services\/training\/preset-service/,
+      `${label} must not read training scene-description preset storage.`,
+    );
+  }
+
+  for (const [label, source] of [
+    ["training preset service", trainingPresetServiceSource],
+    ["training run preset service", trainingRunPresetServiceSource],
+    ["training scene-description preset repository", trainingSceneDescriptionPresetRepositorySource],
+  ] as const) {
+    assert.match(
+      source,
+      /trainingSceneDescriptionPreset/,
+      `${label} must read/write dedicated training scene-description preset storage.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /buildGenerationPresetWhere|ORDINARY_PRESET_CATEGORY_TYPE|ordinaryPresetLibraryCategoryTypeWhere|prisma\.preset(?:Category|Folder|Group|Variant)?\b|@\/server\/services\/preset-query-service|@\/server\/repositories\/preset-view-repository/,
+      `${label} must not read generation preset storage; models/settings are the only shared resource classes.`,
     );
   }
 });
