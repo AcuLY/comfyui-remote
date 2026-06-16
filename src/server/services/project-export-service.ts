@@ -4,7 +4,7 @@ import { join, resolve, sep } from "node:path";
 import archiver from "archiver";
 import sharp from "sharp";
 import { prisma } from "@/lib/prisma";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 const EXPORT_ROOT = resolve(process.cwd(), "data", "export");
 

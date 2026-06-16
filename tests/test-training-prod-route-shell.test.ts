@@ -179,8 +179,8 @@ test("training mobile bottom navigation reserves columns for every resource link
   const { buildWorkModeResourceTargetList } = await import("../src/lib/work-mode-resources");
   const trainingLinkCount = buildWorkModeResourceTargetList("lora_training").length;
   const trainingMobileRule = shellCssSource.match(
-    /\.mobileBottomNav\[data-work-mode="lora_training"\]\s*\{(?<body>[\s\S]*?)\n\s*\}/,
-  )?.groups?.body ?? "";
+    /\.mobileBottomNav\[data-work-mode="lora_training"\]\s*\{([\s\S]*?)\n\s*\}/,
+  )?.[1] ?? "";
 
   assert.equal(trainingLinkCount, 6, "training navigation should expose the six resource slots from the shared registry.");
   assert.match(

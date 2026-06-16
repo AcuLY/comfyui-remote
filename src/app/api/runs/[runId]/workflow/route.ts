@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { fail } from "@/lib/api-response";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 export async function GET(
   _req: Request,

@@ -25,9 +25,9 @@ import { prisma } from "@/lib/prisma";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import {
   buildGenerationProjectWhere,
-  LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR,
-  hasLegacyTrainingBenchmarkPurposeNotes,
-} from "@/server/repositories/legacy-training-resource-boundary";
+  TRAINING_RESERVED_RESOURCE_WRITE_ERROR,
+  hasReservedTrainingPurposeNotes,
+} from "@/server/repositories/generation-resource-boundary";
 
 // Project service logger
 const log = createLogger({ module: "project-service" });
@@ -231,11 +231,11 @@ function normalizeNullableNotesField(value: unknown, fieldName: string) {
 }
 
 function assertGenerationProjectNotes(notes: string | null) {
-  if (!hasLegacyTrainingBenchmarkPurposeNotes(notes)) return;
+  if (!hasReservedTrainingPurposeNotes(notes)) return;
 
-  throw new ProjectServiceError(LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR, 400, {
+  throw new ProjectServiceError(TRAINING_RESERVED_RESOURCE_WRITE_ERROR, 400, {
     resourceBoundary: "generation.projects",
-    forbiddenPurpose: "character_lora_benchmark",
+    forbiddenPurpose: "training_benchmark",
   });
 }
 

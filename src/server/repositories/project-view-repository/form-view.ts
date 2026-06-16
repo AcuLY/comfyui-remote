@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import {
   buildGenerationPresetWhere,
   buildGenerationProjectWhere,
-} from "@/server/repositories/legacy-training-resource-boundary";
+} from "@/server/repositories/generation-resource-boundary";
 import { resolveSectionConfigsById } from "@/server/repositories/project-repository/helpers";
 
 // ---------------------------------------------------------------------------

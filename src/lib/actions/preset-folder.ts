@@ -10,7 +10,7 @@ import {
   assertOrdinaryPresetLibraryCategory,
   ordinaryPresetLibraryCategoryTypeWhere,
 } from "./preset-resource-scope";
-import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // PresetFolder CRUD

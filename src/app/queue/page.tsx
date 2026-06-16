@@ -2,7 +2,7 @@ import { QueuePageClient } from "./queue-page-client";
 import { getQueueRunsPage, getRunningRuns, getFailedRuns, getTrashItems } from "@/lib/server-data";
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 export const dynamic = "force-dynamic";
 

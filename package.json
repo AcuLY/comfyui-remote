@@ -23,9 +23,7 @@
     "quality:review": "tsx scripts/quality/review.ts",
     "quality:verify": "tsx scripts/quality/verify.ts",
     "training:workers": "tsx scripts/training/worker-queue.ts",
-    "training:workers:mock": "tsx scripts/training/worker-queue.ts --mock-image --dry-run-training --mock-complete-training",
-    "character-lora:workers": "tsx scripts/character-lora-training/worker-queue.ts",
-    "character-lora:workers:mock": "tsx scripts/character-lora-training/worker-queue.ts --mock-image --dry-run-training --mock-complete-training --benchmark-skip-wait"
+    "training:workers:mock": "tsx scripts/training/worker-queue.ts --mock-image --dry-run-training --mock-complete-training"
   },
   "prisma": {
     "seed": "node --experimental-strip-types prisma/seed.ts"

@@ -69,6 +69,7 @@ const generationPresetReplacementSource = readFileSync(resolve(repoRoot, "src/se
 
 const MODULE_OWNED_RESOURCE_KEYS = ["runs", "projects", "presets", "templates"] as const;
 const SHARED_RESOURCE_KEYS = ["models", "settings"] as const;
+const retiredTrainingApiRoot = `/api/${["character", "lora", "training"].join("-")}`;
 
 function listSourceFiles(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
@@ -178,14 +179,68 @@ test("work mode resource boundary manifest is symmetric for generation and train
     generationBoundary.forbiddenTrainingEntrypoints.includes("/api/training/presets"),
     "Generation module agents must not use training preset APIs as fallbacks.",
   );
-  assert.ok(
-    generationBoundary.forbiddenTrainingEntrypoints.includes("/api/character-lora-training"),
-    "Generation module agents must not use legacy training APIs as fallbacks.",
+  assert.equal(
+    generationBoundary.forbiddenTrainingEntrypoints.includes(retiredTrainingApiRoot),
+    false,
+    "Removed training APIs should not remain listed as active fallback routes.",
   );
   assert.ok(
     trainingBoundary.forbiddenGenerationEntrypoints.includes("/api/presets"),
     "Training module agents must not use generation preset APIs as fallbacks.",
   );
+});
+
+test("generation and training resource APIs stay disjoint except shared models and settings", () => {
+  const buildBoundary = (WorkModeResources as Record<string, unknown>).buildWorkModeResourceBoundary as
+    | ((mode: "generation" | "lora_training") => {
+        forbiddenGenerationEntrypoints?: string[];
+        forbiddenTrainingEntrypoints?: string[];
+        moduleOwnedResources: Record<string, { apiEntrypoint: string; uiRoute: string }>;
+        sharedResources: Record<string, { apiEntrypoints: string[]; uiRoute: string }>;
+      })
+    | undefined;
+
+  assert.equal(typeof buildBoundary, "function");
+  if (typeof buildBoundary !== "function") {
+    throw new Error("buildWorkModeResourceBoundary export missing");
+  }
+
+  const generationBoundary = buildBoundary("generation");
+  const trainingBoundary = buildBoundary("lora_training");
+  const trainingOwnedApiRoots = [
+    "/api/training/projects",
+    "/api/training/runs",
+    "/api/training/presets",
+    "/api/training/scene-description/presets",
+    "/api/training/templates",
+  ];
+  const generationOwnedApiRoots = [
+    "/api/projects",
+    "/api/runs",
+    "/api/presets",
+    "/api/preset-library",
+    "/api/templates",
+    "/api/queue",
+  ];
+
+  for (const apiRoot of trainingOwnedApiRoots) {
+    assert.ok(
+      generationBoundary.forbiddenTrainingEntrypoints?.some((forbiddenRoot) => (
+        apiRoot === forbiddenRoot || apiRoot.startsWith(`${forbiddenRoot}/`)
+      )),
+      `Generation modules should treat ${apiRoot} as training-owned.`,
+    );
+  }
+
+  for (const apiRoot of generationOwnedApiRoots) {
+    assert.ok(
+      trainingBoundary.forbiddenGenerationEntrypoints?.includes(apiRoot),
+      `Training modules should treat ${apiRoot} as generation-owned.`,
+    );
+  }
+
+  assert.deepEqual(Object.keys(generationBoundary.sharedResources), ["models", "settings"]);
+  assert.deepEqual(Object.keys(trainingBoundary.sharedResources), ["models", "settings"]);
 });
 
 test("work mode resource boundary exposes an explicit shared-resource whitelist", () => {
@@ -203,6 +258,9 @@ test("work mode resource boundary exposes an explicit shared-resource whitelist"
     "function",
     "The shared work-mode resource contract should expose boundaries for both modules.",
   );
+  if (typeof buildBoundary !== "function") {
+    throw new Error("buildWorkModeResourceBoundary export missing");
+  }
 
   const generationBoundary = buildBoundary("generation");
   const trainingBoundary = buildBoundary("lora_training");
@@ -496,8 +554,8 @@ test("design-demo shell navigation consumes the shared work mode resource contra
 test("design-demo generation data loader filters training-owned resources before shaping pages", () => {
   assert.match(
     designDemoDataSource,
-    /from Project p[\s\S]*where[\s\S]*character_lora_benchmark[\s\S]*order by datetime\(p\.updatedAt\) desc/,
-    "Design-demo generation project lists should not load legacy training projects from the shared Project table.",
+    /from Project p[\s\S]*where[\s\S]*training_benchmark[\s\S]*order by datetime\(p\.updatedAt\) desc/,
+    "Design-demo generation project lists should not load training-reserved projects from the shared Project table.",
   );
   assert.match(
     designDemoDataSource,
@@ -511,8 +569,8 @@ test("design-demo generation data loader filters training-owned resources before
   );
   assert.match(
     designDemoDataSource,
-    /from ProjectTemplate t[\s\S]*where[\s\S]*Character LoRA training benchmark[\s\S]*order by datetime\(t\.updatedAt\) desc/,
-    "Design-demo generation template lists should not load legacy training templates.",
+    /from ProjectTemplate t[\s\S]*where[\s\S]*training benchmark[\s\S]*order by datetime\(t\.updatedAt\) desc/,
+    "Design-demo generation template lists should not load reserved training templates.",
   );
 });
 

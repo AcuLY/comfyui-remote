@@ -3,7 +3,7 @@ import { JobStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
 import { assertOrdinaryPresetLibraryBindingRefs } from "@/lib/actions/preset-resource-scope";
 import { detectProvider } from "@/lib/prisma";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import {
   type ProjectUpdateInput,
   type ProjectCreateInput,

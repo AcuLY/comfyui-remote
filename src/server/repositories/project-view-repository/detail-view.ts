@@ -7,7 +7,7 @@ import {
   formatDate,
   PROJECT_PRESET_BINDING_DISPLAY_SELECT,
 } from "@/server/repositories/queue-data-repository";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { resolveSectionConfigsById } from "@/server/repositories/project-repository/helpers";
 import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
 import { listProjectNavigationItems } from "./list-view";

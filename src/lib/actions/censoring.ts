@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { wakeUpCensoringProcessor } from "@/server/services/censoring-executor";
 import { CENSORING_CANCELLABLE_STATUSES } from "@/lib/actions/cancellation-helpers";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 const CENSORING_ACTIVE_STATUSES = [...CENSORING_CANCELLABLE_STATUSES];
 

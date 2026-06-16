@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { recordPresetChange } from "@/server/services/preset-change-history-service";
-import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 import { toJsonValue } from "./_helpers";
 import {
   ORDINARY_PRESET_CATEGORY_TYPE,

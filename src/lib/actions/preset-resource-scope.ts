@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 
 export const ORDINARY_PRESET_CATEGORY_TYPE = "preset";
 export const ORDINARY_PRESET_GROUP_CATEGORY_TYPE = "group";

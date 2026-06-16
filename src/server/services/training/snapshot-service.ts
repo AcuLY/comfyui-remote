@@ -274,8 +274,8 @@ async function buildGenerationRuns(input: {
           : run.startedAt
             ? formatTimestamp(run.startedAt, "开始于")
             : formatTimestamp(run.createdAt, "创建于"),
-        provider: run.imageModel ?? run.hostModel ?? run.provider,
-        finalInput: run.visualPrompt ?? run.hostInstruction,
+        provider: run.imageModel ?? run.hostModel ?? run.provider ?? undefined,
+        finalInput: run.visualPrompt ?? run.hostInstruction ?? undefined,
         inputImages: buildGenerationInputImages(normalizeGenerationInputImages(run.inputImages)),
         errorMessage: typeof run.errorSummary === "string" ? run.errorSummary : run.errorSummary ? JSON.stringify(run.errorSummary) : undefined,
         outputLabel: `输出 ${images.length} 张图片`,

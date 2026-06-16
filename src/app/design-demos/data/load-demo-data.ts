@@ -62,8 +62,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
              p.id is null
              or p.notes is null
              or (
-               p.notes not like '%"purpose":"character_lora_benchmark"%'
-               and p.notes not like '%"purpose": "character_lora_benchmark"%'
+               p.notes not like '%"purpose":"training_benchmark"%'
+               and p.notes not like '%"purpose": "training_benchmark"%'
              )
            )
          order by datetime(i.createdAt) desc
@@ -89,8 +89,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
              p.id is null
              or p.notes is null
              or (
-               p.notes not like '%"purpose":"character_lora_benchmark"%'
-               and p.notes not like '%"purpose": "character_lora_benchmark"%'
+               p.notes not like '%"purpose":"training_benchmark"%'
+               and p.notes not like '%"purpose": "training_benchmark"%'
              )
            )
          order by datetime(i.createdAt) desc
@@ -124,8 +124,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
            and (
              p.notes is null
              or (
-               p.notes not like '%"purpose":"character_lora_benchmark"%'
-               and p.notes not like '%"purpose": "character_lora_benchmark"%'
+               p.notes not like '%"purpose":"training_benchmark"%'
+               and p.notes not like '%"purpose": "training_benchmark"%'
              )
            )
          order by p.sortOrder asc`,
@@ -142,8 +142,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
          where (
            p.notes is null
            or (
-             p.notes not like '%"purpose":"character_lora_benchmark"%'
-             and p.notes not like '%"purpose": "character_lora_benchmark"%'
+             p.notes not like '%"purpose":"training_benchmark"%'
+             and p.notes not like '%"purpose": "training_benchmark"%'
            )
          )
          order by datetime(p.updatedAt) desc
@@ -175,8 +175,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
               and (
                 p.notes is null
                 or (
-                  p.notes not like '%"purpose":"character_lora_benchmark"%'
-                  and p.notes not like '%"purpose": "character_lora_benchmark"%'
+                  p.notes not like '%"purpose":"training_benchmark"%'
+                  and p.notes not like '%"purpose": "training_benchmark"%'
                 )
               )) as projectCount,
            (select count(*) from ProjectFolder c where c.parentId = f.id) as childCount
@@ -295,8 +295,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
            p.id is null
            or p.notes is null
            or (
-             p.notes not like '%"purpose":"character_lora_benchmark"%'
-             and p.notes not like '%"purpose": "character_lora_benchmark"%'
+             p.notes not like '%"purpose":"training_benchmark"%'
+             and p.notes not like '%"purpose": "training_benchmark"%'
            )
          )
          group by r.id
@@ -340,15 +340,15 @@ export async function loadDesignDemoData(): Promise<DemoData> {
              and (
                sourcePreset.notes is null
                or (
-                 sourcePreset.notes not like '%"purpose":"character_lora_benchmark"%'
-                 and sourcePreset.notes not like '%"purpose": "character_lora_benchmark"%'
+                 sourcePreset.notes not like '%"purpose":"training_benchmark"%'
+                 and sourcePreset.notes not like '%"purpose": "training_benchmark"%'
                )
              )
              and (
                linkedPreset.notes is null
                or (
-                 linkedPreset.notes not like '%"purpose":"character_lora_benchmark"%'
-                 and linkedPreset.notes not like '%"purpose": "character_lora_benchmark"%'
+                 linkedPreset.notes not like '%"purpose":"training_benchmark"%'
+                 and linkedPreset.notes not like '%"purpose": "training_benchmark"%'
                )
              )
            order by l.sourceVariantId asc, l.sortOrder asc`,
@@ -374,8 +374,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
              and (
                p.notes is null
                or (
-                 p.notes not like '%"purpose":"character_lora_benchmark"%'
-                 and p.notes not like '%"purpose": "character_lora_benchmark"%'
+                 p.notes not like '%"purpose":"training_benchmark"%'
+                 and p.notes not like '%"purpose": "training_benchmark"%'
                )
              )
            order by v.presetId asc, v.sortOrder asc
@@ -431,8 +431,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
              and (
                p.notes is null
                or (
-                 p.notes not like '%"purpose":"character_lora_benchmark"%'
-                 and p.notes not like '%"purpose": "character_lora_benchmark"%'
+                 p.notes not like '%"purpose":"training_benchmark"%'
+                 and p.notes not like '%"purpose": "training_benchmark"%'
                )
              )
            order by p.categoryId asc, p.sortOrder asc
@@ -475,8 +475,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
                      and (
                        memberPreset.notes is null
                        or (
-                         memberPreset.notes not like '%"purpose":"character_lora_benchmark"%'
-                         and memberPreset.notes not like '%"purpose": "character_lora_benchmark"%'
+                         memberPreset.notes not like '%"purpose":"training_benchmark"%'
+                         and memberPreset.notes not like '%"purpose": "training_benchmark"%'
                        )
                      )
                    )
@@ -541,12 +541,12 @@ export async function loadDesignDemoData(): Promise<DemoData> {
         `select s.id, s.projectTemplateId, s.name, s.sortOrder, s.aspectRatio, s.batchSize, s.notes
            from ProjectTemplateSection s
            join ProjectTemplate t on t.id = s.projectTemplateId
-           where t.name not like '%角色 lora 测试%'
-             and t.name not like '%角色 LoRA 测试%'
-             and lower(t.name) not like '%character lora%'
+           where t.name not like '%训练测试%'
+             and t.name not like '%训练测试%'
+             and lower(t.name) not like '%training benchmark%'
              and (
                t.description is null
-               or t.description not like '%Character LoRA training benchmark%'
+               or t.description not like '%training benchmark%'
              )
            order by s.projectTemplateId asc, s.sortOrder asc`,
       )
@@ -567,12 +567,12 @@ export async function loadDesignDemoData(): Promise<DemoData> {
       .prepare(
         `select t.id, t.name, t.description, t.updatedAt
            from ProjectTemplate t
-           where t.name not like '%角色 lora 测试%'
-             and t.name not like '%角色 LoRA 测试%'
-             and lower(t.name) not like '%character lora%'
+           where t.name not like '%训练测试%'
+             and t.name not like '%训练测试%'
+             and lower(t.name) not like '%training benchmark%'
              and (
                t.description is null
-               or t.description not like '%Character LoRA training benchmark%'
+               or t.description not like '%training benchmark%'
              )
            order by datetime(t.updatedAt) desc
            limit 12`,
@@ -630,23 +630,23 @@ export async function loadDesignDemoData(): Promise<DemoData> {
            (select count(*) from Project p
             where p.notes is null
               or (
-                p.notes not like '%"purpose":"character_lora_benchmark"%'
-                and p.notes not like '%"purpose": "character_lora_benchmark"%'
+                p.notes not like '%"purpose":"training_benchmark"%'
+                and p.notes not like '%"purpose": "training_benchmark"%'
               )) as projects,
            (select count(*) from ProjectSection s
             join Project p on p.id = s.projectId
             where p.notes is null
               or (
-                p.notes not like '%"purpose":"character_lora_benchmark"%'
-                and p.notes not like '%"purpose": "character_lora_benchmark"%'
+                p.notes not like '%"purpose":"training_benchmark"%'
+                and p.notes not like '%"purpose": "training_benchmark"%'
               )) as sections,
            (select count(*) from Run r
             left join Project p on p.id = r.projectId
             where p.id is null
               or p.notes is null
               or (
-                p.notes not like '%"purpose":"character_lora_benchmark"%'
-                and p.notes not like '%"purpose": "character_lora_benchmark"%'
+                p.notes not like '%"purpose":"training_benchmark"%'
+                and p.notes not like '%"purpose": "training_benchmark"%'
               )) as runs,
            (select count(*) from ImageResult i
             left join Run r on r.id = i.runId
@@ -656,8 +656,8 @@ export async function loadDesignDemoData(): Promise<DemoData> {
                 p.id is null
                 or p.notes is null
                 or (
-                  p.notes not like '%"purpose":"character_lora_benchmark"%'
-                  and p.notes not like '%"purpose": "character_lora_benchmark"%'
+                  p.notes not like '%"purpose":"training_benchmark"%'
+                  and p.notes not like '%"purpose": "training_benchmark"%'
                 )
               )) as pendingImages,
            (select count(*) from Preset p
@@ -666,17 +666,17 @@ export async function loadDesignDemoData(): Promise<DemoData> {
               and (
                 p.notes is null
                 or (
-                  p.notes not like '%"purpose":"character_lora_benchmark"%'
-                  and p.notes not like '%"purpose": "character_lora_benchmark"%'
+                  p.notes not like '%"purpose":"training_benchmark"%'
+                  and p.notes not like '%"purpose": "training_benchmark"%'
                 )
               )) as presets,
            (select count(*) from ProjectTemplate t
-            where t.name not like '%角色 lora 测试%'
-              and t.name not like '%角色 LoRA 测试%'
-              and lower(t.name) not like '%character lora%'
+            where t.name not like '%训练测试%'
+              and t.name not like '%训练测试%'
+              and lower(t.name) not like '%training benchmark%'
               and (
                 t.description is null
-                or t.description not like '%Character LoRA training benchmark%'
+                or t.description not like '%training benchmark%'
               )) as templates,
            (select count(*) from LoraAsset) as loras`,
       )

@@ -2,7 +2,7 @@ import {
   isOrdinaryPresetCategoryType,
   isOrdinaryPresetLibraryCategoryType,
 } from "@/lib/actions/preset-resource-scope";
-import { isLegacyTrainingBenchmarkResourceNotes } from "@/server/repositories/legacy-training-resource-boundary";
+import { isReservedTrainingResourceNotes } from "@/server/repositories/generation-resource-boundary";
 import { dedupeLoraBindingsByPath, joinPromptParts, sortBySortOrder } from "./order";
 import {
   loadReachablePresetVariantGraph,
@@ -179,7 +179,7 @@ async function loadConcreteGroupMembers(
     if (
       !preset
       || !isOrdinaryPresetCategoryRow(preset.category)
-      || isLegacyTrainingBenchmarkResourceNotes(preset.notes)
+      || isReservedTrainingResourceNotes(preset.notes)
     ) {
       missingReferences.push({ kind: "preset", id: member.presetId, ownerId: groupId });
       continue;

@@ -184,7 +184,6 @@ export const WORK_MODE_FORBIDDEN_GENERATION_ENTRYPOINTS_FOR_TRAINING = [
 ] as const;
 
 export const WORK_MODE_FORBIDDEN_TRAINING_ENTRYPOINTS_FOR_GENERATION = [
-  "/api/character-lora-training",
   "/api/training",
   "/api/training/projects",
   "/api/training/runs",
@@ -265,6 +264,6 @@ export function buildWorkModeResourceBoundary(workMode: WorkMode): WorkModeResou
     forbiddenTrainingEntrypoints: [...WORK_MODE_FORBIDDEN_TRAINING_ENTRYPOINTS_FOR_GENERATION],
     forbiddenTrainingUiRoutes: [...WORK_MODE_FORBIDDEN_TRAINING_UI_ROUTES_FOR_GENERATION],
     guidance:
-      "Use generation APIs and generation UI routes for generation-owned runs, projects, presets, and templates. Do not use /api/training, legacy /api/character-lora-training APIs, or /training UI routes as generation fallbacks. Only models and settings are shared with the training module.",
+      "Use generation APIs and generation UI routes for generation-owned runs, projects, presets, and templates. Do not use /api/training APIs or /training UI routes as generation fallbacks. Only models and settings are shared with the training module.",
   };
 }

@@ -9,7 +9,7 @@ import {
 import {
   extractPresetNames,
 } from "@/server/repositories/queue-data-repository";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 type ReviewableImage = {
   id: string;

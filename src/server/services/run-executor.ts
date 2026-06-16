@@ -35,7 +35,7 @@ import { rm } from "node:fs/promises";
 import { resolve } from "node:path";
 import { audit } from "@/server/services/audit-service";
 import { buildComfyPromptDraft } from "@/server/worker/payload-builder";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import {
   completeWorkerRun,
   getWorkerRun,

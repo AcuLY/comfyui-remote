@@ -5,7 +5,12 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
+const featureRoot = resolve(testDir, "../src/features/training");
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
+const shellSource = readFileSync(resolve(featureRoot, "shell.tsx"), "utf8");
+const appSource = readFileSync(resolve(featureRoot, "app.tsx"), "utf8");
+const projectCardSource = readFileSync(resolve(featureUiDir, "training-project-list-item.tsx"), "utf8");
+const projectCardCss = readFileSync(resolve(featureUiDir, "training-project-list-item.module.css"), "utf8");
 const projectsCss = readFileSync(resolve(featureUiDir, "training-projects-page.module.css"), "utf8");
 const projectPagesCss = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 const resourcesCss = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
@@ -67,6 +72,21 @@ test("training list surfaces expand to two columns when there is enough width", 
   assert.ok(hasResponsiveColumns(resourcesCss, "usageList"), "Preset/template usage lists should use responsive two-column rows");
 });
 
+test("training shell navigation only exposes module-owned training surfaces", () => {
+  assert.match(
+    shellSource,
+    /TRAINING_MODULE_NAV_KEYS\s*=\s*new Set<WorkModeResourceKey>\(\[\s*"runs",\s*"projects",\s*"presets",\s*"templates",?\s*\]\)/,
+    "Training shell should explicitly keep only runs, projects, presets, and templates in module navigation",
+  );
+  assert.match(
+    shellSource,
+    /buildWorkModeResourceTargetList\("lora_training"\)\s*\.filter\(\(target\) => TRAINING_MODULE_NAV_KEYS\.has\(target\.key\)\)/,
+    "Training navigation should filter shared work-mode targets before passing links to the shell",
+  );
+  assert.doesNotMatch(shellSource, /\bmodels:\s*Database\b|\bsettings:\s*Settings\b|case "models"|case "settings"/, "Models and settings should not be private training nav entries");
+  assert.doesNotMatch(appSource, /training-(?:models|settings)|\/training\/(?:models|settings)/, "Training app should not route private model or settings pages");
+});
+
 test("training list surfaces are real grids before responsive column rules apply", () => {
   const gridSurfaces = [
     [projectsCss, "projectGrid"],
@@ -91,6 +111,81 @@ test("training list surfaces are real grids before responsive column rules apply
     assert.ok(classHasDeclaration(css, className, /display:\s*grid/), `${className} should be a grid container`);
     assert.ok(classHasDeclaration(css, className, /min-width:\s*0/), `${className} should avoid overflow in constrained shells`);
   }
+});
+
+test("training managed lists keep explicit item gaps and independent rounded rows", () => {
+  const listSurfaces = [
+    [projectsCss, "projectGrid"],
+    [runsCss, "currentRunList"],
+    [runsCss, "runGroupList"],
+    [runsCss, "runRows"],
+    [resourcesCss, "trainingPresetFolderGrid"],
+    [resourcesCss, "trainingPresetItemList"],
+    [resourcesCss, "trainingTemplateList"],
+    [resourcesCss, "trainingTemplateSectionList"],
+  ] as const;
+  const rowSurfaces = [
+    [runsCss, "currentRunItem"],
+    [runsCss, "runProjectHeader"],
+    [runsCss, "runRow"],
+    [resourcesCss, "resourceRow"],
+    [resourcesCss, "templateRow"],
+    [resourcesCss, "trainingTemplateListItem"],
+    [resourcesCss, "trainingTemplateSectionRow"],
+  ] as const;
+
+  for (const [css, className] of listSurfaces) {
+    assert.ok(classHasDeclaration(css, className, /gap:\s*(?:8|9|10|11|12)px/), `${className} should separate each managed row with a visible gap`);
+  }
+  for (const [css, className] of rowSurfaces) {
+    assert.ok(classHasDeclaration(css, className, /border-radius:\s*(?:8|9|10|11|12px|var\(--demo-radius\))/), `${className} should own its rounded row shape`);
+  }
+});
+
+test("training project cards keep demo-like list anatomy without importing design-demos project rows", () => {
+  assert.match(
+    projectCardSource,
+    /export function TrainingProjectCardShell[\s\S]*?<UnitRowShell[\s\S]*className=\{cx\(s\.trainingProjectCard/,
+    "Training project cards should own a module-specific row shell built on shared primitives",
+  );
+  assert.doesNotMatch(
+    projectCardSource,
+    /from\s+["'][^"']*design-demos\/features\/projects\/project-list-item|project-list-item\.projects/,
+    "Production training projects should not import the design-demos project row implementation",
+  );
+  assert.match(
+    projectCardSource,
+    /leading=\{\([\s\S]*<Checkbox[\s\S]*className=\{s\.trainingProjectSelectCheckbox\}[\s\S]*className=\{s\.trainingProjectDragHandle\}/,
+    "Training project cards should preserve the left checkbox and drag-handle control rail",
+  );
+  assert.match(
+    projectCardSource,
+    /title=\{\([\s\S]*s\.trainingProjectTitleRow[\s\S]*s\.trainingProjectTitleLink[\s\S]*<strong>\{project\.title\}<\/strong>[\s\S]*<span>\{sectionCountLabel\}<\/span>[\s\S]*s\.trainingProjectActions[\s\S]*ariaLabel=\{`删除训练项目/,
+    "Training project cards should keep a clean title row with short section label and right-side delete action",
+  );
+  assert.match(
+    projectCardSource,
+    /body=\{\([\s\S]*s\.trainingProjectRecentResults[\s\S]*<ImageListSmall[\s\S]*className=\{s\.recentResultImages\}[\s\S]*s\.trainingProjectMeta[\s\S]*更新：\{project\.updatedAt\}[\s\S]*<StatusBadge/,
+    "Training project cards should keep the recent-result thumbnail strip and lightweight bottom metadata",
+  );
+  assert.ok(
+    classHasDeclaration(projectCardCss, "trainingProjectControls", /grid-template-rows:\s*var\(--training-project-title-row-height\)\s+minmax\(0,\s*1fr\)/),
+    "Project card controls should align checkbox with the title row and drag handle with the body",
+  );
+  assert.ok(
+    classHasDeclaration(projectCardCss, "trainingProjectTitleRow", /display:\s*flex/) &&
+      classHasDeclaration(projectCardCss, "trainingProjectTitleRow", /justify-content:\s*space-between/),
+    "Project card title rows should keep title content separate from the delete action",
+  );
+  assert.ok(
+    classHasDeclaration(projectCardCss, "trainingProjectRecentResults", /border-block:\s*1px\s+solid\s+var\(--demo-border\)/),
+    "Project card thumbnail strips should remain visually separated from title and metadata",
+  );
+  assert.match(
+    projectCardCss,
+    /\.trainingProjectCardCompact\s+\.trainingProjectTitleLink\s+span,\s*\.trainingProjectCardCompact\s+\.trainingProjectRecentResults,\s*\.trainingProjectCardCompact\s+\.trainingProjectMeta,\s*\.trainingProjectCardCompact\s+\.trainingProjectBody\s*\{[\s\S]*?display:\s*none/,
+    "Compact training project cards should hide the short label, thumbnail strip, metadata, and body",
+  );
 });
 
 test("training run task cards wait for desktop workspace width before splitting", () => {
@@ -169,8 +264,13 @@ test("training preset sort panels use the shared container-driven list breakpoin
 });
 
 test("training managed lists stay single column in the mobile shell", () => {
+  assert.ok(hasMobileSingleColumnOverride(projectsCss, "projectGrid"), "Project cards should stay single column in the mobile shell");
   assert.ok(hasMobileSingleColumnOverride(runsCss, "runRows"), "Run groups should not split into narrow mobile columns");
   assert.ok(hasMobileSingleColumnOverride(projectPagesCss, "sectionSeedList"), "Initial project sections should stay single column on mobile");
+  assert.ok(hasMobileSingleColumnOverride(resourcesCss, "trainingPresetFolderGrid"), "Preset folders should stay single column on mobile");
+  assert.ok(hasMobileSingleColumnOverride(resourcesCss, "trainingPresetItemList"), "Preset cards should stay single column on mobile");
+  assert.ok(hasMobileSingleColumnOverride(resourcesCss, "trainingTemplateList"), "Template cards should stay single column on mobile");
+  assert.ok(hasMobileSingleColumnOverride(resourcesCss, "trainingTemplateSectionList"), "Template sections should stay single column on mobile");
   assert.ok(hasMobileSingleColumnOverride(resourcesCss, "trainingPresetSortGrid"), "Preset sort groups should stay single column on mobile");
 });
 

@@ -1,7 +1,7 @@
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { processCensorTasksBatch, type ProcessCensorTaskResult } from "@/server/services/censoring-service";
 
 const log = createLogger({ module: "censoring-executor" });

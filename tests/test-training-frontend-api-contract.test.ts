@@ -12,6 +12,16 @@ const TRAINING_UI_FILES = [
   "src/features/training/ui/training-run-detail-page.tsx",
   "src/features/training/ui/training-runs-page.tsx",
 ];
+const retiredTrainingApiSlug = ["character", "lora", "training"].join("-");
+const retiredTrainingPascalPrefix = ["Character", "Lora"].join("");
+const retiredTrainingCamelPrefix = ["character", "Lora"].join("");
+const retiredProviderPrefix = ["Legacy", "Training"].join("");
+const retiredFrontendTokens = [
+  retiredTrainingApiSlug,
+  retiredTrainingPascalPrefix,
+  retiredTrainingCamelPrefix,
+  retiredProviderPrefix,
+];
 
 type RouteOperation = {
   method: string;
@@ -230,5 +240,20 @@ test("training manifest advertises every production training UI API path referen
     missingPaths,
     [],
     "Every production training UI API path reference should be advertised by GET /api/training for agent discovery.",
+  );
+});
+
+test("training frontend API contract does not reference retired training API or DTO names", () => {
+  const hits = TRAINING_UI_FILES.flatMap((file) => {
+    const source = readFileSync(join(process.cwd(), file), "utf8");
+    return retiredFrontendTokens
+      .filter((token) => source.includes(token))
+      .map((token) => ({ file, token }));
+  });
+
+  assert.deepEqual(
+    hits,
+    [],
+    "Production training UI should call the Training v2 HTTP surface directly, without retired API paths or DTO names.",
   );
 });

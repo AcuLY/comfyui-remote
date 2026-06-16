@@ -14,8 +14,8 @@ import {
 } from "@/server/services/preset-change-history-service";
 import {
   buildGenerationPresetWhere,
-  isLegacyTrainingBenchmarkResourceNotes,
-} from "@/server/repositories/legacy-training-resource-boundary";
+  isReservedTrainingResourceNotes,
+} from "@/server/repositories/generation-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Shared helper: resolve display names for group members
@@ -50,7 +50,7 @@ function linkedVariantRefs(variant: LinkedVariantSource): LinkedVariantRef[] {
   return variant.outgoingLinks
     .filter((link) => (
       link.linkedVariant.preset.category.type === ORDINARY_PRESET_CATEGORY_TYPE
-      && !isLegacyTrainingBenchmarkResourceNotes(link.linkedVariant.preset.notes)
+      && !isReservedTrainingResourceNotes(link.linkedVariant.preset.notes)
     ))
     .map((link) => ({
       presetId: link.linkedVariant.presetId,

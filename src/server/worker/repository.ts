@@ -2,7 +2,7 @@ import { Prisma } from "@/generated/prisma";
 import { JobStatus, RunStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { WorkerRunSnapshot } from "@/server/worker/types";
 
 const workerRunInclude = {

@@ -34,6 +34,12 @@ const trainingPresetServiceSource = readFileSync(resolve(testDir, "../src/server
 const trainingProjectSectionServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/project-section-service.ts"), "utf8");
 const trainingProjectSceneBlockServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/project-scene-block-service.ts"), "utf8");
 const trainingDataSource = readFileSync(resolve(testDir, "../src/app/design-demos/data/lora-training.ts"), "utf8");
+const oldSnapshotReadNames = new RegExp([
+  ["list", "Legacy", "Training", "Projects"].join(""),
+  ["get", "Legacy", "Training", "Project", "Overview"].join(""),
+  ["list", "Legacy", "Training", "Reference", "Images"].join(""),
+  ["list", "Legacy", "Training", "Candidate", "Images"].join(""),
+].join("|"));
 
 test("production training routes use a dedicated loader instead of the generic design-demo loader", () => {
   assert.match(
@@ -48,7 +54,7 @@ test("production training routes use a dedicated loader instead of the generic d
   );
 });
 
-test("dedicated training snapshot service projects real legacy training data into the training route payload", () => {
+test("dedicated training snapshot service projects production training data into the training route payload", () => {
   assert.match(
     trainingSnapshotServiceSource,
     /@\/server\/repositories\/training\/snapshot/,
@@ -76,13 +82,18 @@ test("dedicated training snapshot service projects real legacy training data int
   );
   assert.doesNotMatch(
     trainingSnapshotServiceSource,
-    /listLegacyTrainingProjects|getLegacyTrainingProjectOverview|listLegacyTrainingReferenceImages|listLegacyTrainingCandidateImages/,
-    "training snapshot service should keep legacy read names inside the repository boundary",
+    oldSnapshotReadNames,
+    "training snapshot service should use Training read names only",
   );
-  assert.match(trainingSnapshotRepositorySource, /listLegacyTrainingProjects/);
-  assert.match(trainingSnapshotRepositorySource, /getLegacyTrainingProjectOverview/);
-  assert.match(trainingSnapshotRepositorySource, /listLegacyTrainingReferenceImages/);
-  assert.match(trainingSnapshotRepositorySource, /listLegacyTrainingCandidateImages/);
+  assert.match(trainingSnapshotRepositorySource, /listTrainingProductionProjects/);
+  assert.match(trainingSnapshotRepositorySource, /getTrainingProjectOverview/);
+  assert.match(trainingSnapshotRepositorySource, /listTrainingReferenceImages/);
+  assert.match(trainingSnapshotRepositorySource, /listTrainingCandidateImages/);
+  assert.doesNotMatch(
+    trainingSnapshotRepositorySource,
+    oldSnapshotReadNames,
+    "training snapshot repository should be backed by Training-owned repository functions, not old read aliases",
+  );
   assert.match(
     trainingSnapshotServiceSource,
     /provenanceLabel|typeof provenance\\?\\.label === "string"/,

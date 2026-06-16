@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import {
   assertOrdinaryPresetLibraryBindingRefs,
   assertOrdinaryProjectPresetBindingRefs,

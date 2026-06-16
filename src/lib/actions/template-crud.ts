@@ -16,11 +16,11 @@ import {
   ordinaryPresetCategoryTypeWhere,
 } from "./preset-resource-scope";
 import {
-  LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR,
+  TRAINING_RESERVED_RESOURCE_WRITE_ERROR,
   buildGenerationPresetWhere,
   buildGenerationProjectTemplateWhere,
-  hasLegacyCharacterLoraBenchmarkTemplateIdentity,
-} from "@/server/repositories/legacy-training-resource-boundary";
+  hasReservedTrainingTemplateIdentity,
+} from "@/server/repositories/generation-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -176,8 +176,8 @@ function assertGenerationTemplateIdentity(
   name: string | null | undefined,
   description: string | null | undefined,
 ) {
-  if (!hasLegacyCharacterLoraBenchmarkTemplateIdentity(name, description)) return;
-  throw new Error(LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR);
+  if (!hasReservedTrainingTemplateIdentity(name, description)) return;
+  throw new Error(TRAINING_RESERVED_RESOURCE_WRITE_ERROR);
 }
 
 // ---------------------------------------------------------------------------

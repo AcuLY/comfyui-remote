@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ClipboardList, Database, FileText, FolderTree, Settings, Tags } from "lucide-react";
+import { ClipboardList, FileText, FolderTree, Tags } from "lucide-react";
 
 import { DesignDemoShell, type DesignDemoShellNavLink } from "@/components/design-demo-shell/app-shell";
 import {
@@ -13,19 +13,24 @@ import type { TrainingShellData } from "./data";
 import { findTrainingHeaderSpecForRoute } from "./header-specs";
 import { TRAINING_THEME_PERSISTENCE, type TrainingTheme } from "./theme";
 
-const TRAINING_NAV_ICONS: Record<WorkModeResourceKey, DesignDemoShellNavLink["icon"]> = {
+type TrainingModuleNavKey = "runs" | "projects" | "presets" | "templates";
+
+const TRAINING_NAV_ICONS: Record<TrainingModuleNavKey, DesignDemoShellNavLink["icon"]> = {
   runs: ClipboardList,
   projects: FolderTree,
   presets: Tags,
   templates: FileText,
-  models: Database,
-  settings: Settings,
 };
 
+const TRAINING_MODULE_NAV_KEYS = new Set<WorkModeResourceKey>([
+  "runs",
+  "projects",
+  "presets",
+  "templates",
+]);
+
 function trainingNavigationGroup(target: WorkModeResourceTarget) {
-  if (target.key === "settings") return "系统";
-  if (target.owner === "shared") return "资源";
-  return "工作区";
+  return target.owner === "shared" ? "资源" : "工作区";
 }
 
 function countForTrainingResource(
@@ -41,22 +46,20 @@ function countForTrainingResource(
       return () => data.metrics.presets;
     case "templates":
       return () => data.metrics.templates;
-    case "models":
-      return () => data.models.length;
-    case "settings":
+    default:
       return undefined;
   }
 }
 
 function buildTrainingNavigationLinks(data: TrainingShellData): DesignDemoShellNavLink[] {
-  return buildWorkModeResourceTargetList("lora_training").map((target) => {
+  return buildWorkModeResourceTargetList("lora_training").filter((target) => TRAINING_MODULE_NAV_KEYS.has(target.key)).map((target) => {
     const count = countForTrainingResource(target.key, data);
 
     return {
       href: target.href,
       label: target.label,
       group: trainingNavigationGroup(target),
-      icon: TRAINING_NAV_ICONS[target.key],
+      icon: TRAINING_NAV_ICONS[target.key as TrainingModuleNavKey],
       ...(target.activePrefix ? { activePrefix: target.activePrefix } : {}),
       ...(count ? { count } : {}),
     };

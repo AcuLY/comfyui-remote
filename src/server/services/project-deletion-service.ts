@@ -16,7 +16,7 @@ import {
 } from "@/server/services/comfyui-service";
 import { cleanupProjectSectionFiles } from "@/server/services/section-cleanup-service";
 import { cleanupProjectExportDirectory } from "@/server/services/project-file-cleanup-service";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 const log = createLogger({ module: "project-deletion" });
 

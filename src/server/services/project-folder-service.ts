@@ -1,7 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { listProjectFolders as listProjectFoldersInRepository } from "@/server/repositories/project-view-repository";
 import {
   ServiceValidationError,

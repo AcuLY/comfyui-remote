@@ -1,64 +1,530 @@
-import {
-  completeLegacyTrainingWorkerTask,
-  failLegacyTrainingWorkerTask,
-  getLegacyTrainingWorkerQueueStatus,
-  heartbeatLegacyTrainingWorkerTask,
-  leaseNextLegacyTrainingWorkerTask,
-  mapLegacyTrainingGenerationError,
-} from "@/server/services/training/legacy-compat-service";
+import { createHash } from "node:crypto";
+
+import { Prisma } from "@/generated/prisma";
+import { prisma } from "@/lib/prisma";
 import {
   TRAINING_WORKER_TYPES,
   trainingWorkerTaskCompleteRequestSchema,
   trainingWorkerTaskFailRequestSchema,
   trainingWorkerTaskHeartbeatRequestSchema,
   trainingWorkerTaskLeaseRequestSchema,
-  type TrainingWorkerType,
 } from "@/lib/training/schemas";
-import { listManagedTrainingRuns } from "@/server/services/training/project-service";
-import type { LoraTrainingRun } from "@/features/training/types";
 
-const MANAGED_WORKER_TASK_ID_PREFIX = "managed-worker-task-";
+const GENERATION_WORKER_TASK_PREFIX = "training-generation-worker-task-";
+const DATASET_WORKER_TASK_PREFIX = "training-dataset-worker-task-";
+const TRAINING_WORKER_TASK_PREFIX = "training-run-worker-task-";
 
-type ManagedWorkerTaskInput = {
+type TrainingWorkerType = (typeof TRAINING_WORKER_TYPES)[number];
+type WorkerTargetType = "generationRun" | "datasetRevision" | "trainingRun";
+
+type WorkerTarget = {
+  id: string;
+  projectId: string;
+  status: string;
+  targetType: WorkerTargetType;
+  workerType: TrainingWorkerType;
+};
+
+type SerializedWorkerTaskInput = {
+  errorSummary?: string | null;
   leaseOwner?: string | null;
   progressJson?: unknown;
   status?: "running" | "succeeded" | "failed";
-  errorSummary?: string | null;
 };
 
-function getRunWorkerMetadata(run: LoraTrainingRun) {
-  if (run.kind === "generation") {
+export class TrainingWorkerTaskError extends Error {
+  details?: unknown;
+  status: number;
+
+  constructor(message: string, status: number, details?: unknown) {
+    super(message);
+    this.name = "TrainingWorkerTaskError";
+    this.status = status;
+    this.details = details;
+  }
+}
+
+function normalizeJson(value: unknown): Prisma.InputJsonValue {
+  if (value === null || typeof value === "undefined") return {};
+  if (typeof value === "object") return value as Prisma.InputJsonValue;
+  return { value } as Prisma.InputJsonValue;
+}
+
+function getWorkerTaskPrefix(workerType: TrainingWorkerType) {
+  if (workerType === "training") return TRAINING_WORKER_TASK_PREFIX;
+  if (workerType === "dataset_freeze") return DATASET_WORKER_TASK_PREFIX;
+  return GENERATION_WORKER_TASK_PREFIX;
+}
+
+function getWorkerTaskId(target: WorkerTarget) {
+  return `${getWorkerTaskPrefix(target.workerType)}${target.id}`;
+}
+
+function parseWorkerTaskId(taskId: string): { targetId: string; targetType: WorkerTargetType; workerType: TrainingWorkerType } | null {
+  if (taskId.startsWith(GENERATION_WORKER_TASK_PREFIX)) {
     return {
-      workerType: "image_generation",
+      targetId: taskId.slice(GENERATION_WORKER_TASK_PREFIX.length),
       targetType: "generationRun",
+      workerType: "image_generation",
     };
   }
+  if (taskId.startsWith(DATASET_WORKER_TASK_PREFIX)) {
+    return {
+      targetId: taskId.slice(DATASET_WORKER_TASK_PREFIX.length),
+      targetType: "datasetRevision",
+      workerType: "dataset_freeze",
+    };
+  }
+  if (taskId.startsWith(TRAINING_WORKER_TASK_PREFIX)) {
+    return {
+      targetId: taskId.slice(TRAINING_WORKER_TASK_PREFIX.length),
+      targetType: "trainingRun",
+      workerType: "training",
+    };
+  }
+  return null;
+}
 
+function serializeWorkerTask(target: WorkerTarget, input: SerializedWorkerTaskInput = {}) {
+  const now = new Date().toISOString();
   return {
-    workerType: "training",
-    targetType: "trainingRun",
+    id: getWorkerTaskId(target),
+    jobId: target.projectId,
+    workerType: target.workerType,
+    targetType: target.targetType,
+    targetId: target.id,
+    status: input.status ?? "running",
+    payload: {
+      projectId: target.projectId,
+      taskType: target.workerType,
+    },
+    leaseOwner: input.leaseOwner ?? null,
+    leaseExpiresAt: null,
+    attemptCount: 1,
+    progressJson: input.progressJson ?? null,
+    startedAt: target.status === "running" ? now : null,
+    heartbeatAt: input.progressJson ? now : null,
+    finishedAt: input.status === "succeeded" || input.status === "failed" ? now : null,
+    errorSummary: input.errorSummary ?? null,
+    createdAt: now,
+    updatedAt: now,
   };
 }
 
-function createEmptyManagedWorkerTypeStatus() {
+function mapGenerationTaskToTarget(row: {
+  id: string;
+  status: string;
+  trainingProjectId: string;
+}): WorkerTarget {
   return {
+    id: row.id,
+    projectId: row.trainingProjectId,
+    status: row.status,
+    targetType: "generationRun",
+    workerType: "image_generation",
+  };
+}
+
+function mapDatasetRevisionToTarget(row: {
+  id: string;
+  status: string;
+  trainingProjectId: string;
+}): WorkerTarget {
+  return {
+    id: row.id,
+    projectId: row.trainingProjectId,
+    status: row.status,
+    targetType: "datasetRevision",
+    workerType: "dataset_freeze",
+  };
+}
+
+function mapTrainingRunToTarget(row: {
+  id: string;
+  status: string;
+  trainingProjectId: string;
+}): WorkerTarget {
+  return {
+    id: row.id,
+    projectId: row.trainingProjectId,
+    status: row.status,
+    targetType: "trainingRun",
+    workerType: "training",
+  };
+}
+
+async function countWorkerTargets(workerType: TrainingWorkerType, status: "queued" | "running") {
+  if (workerType === "image_generation") {
+    return prisma.trainingGenerationTask.count({
+      where: {
+        generationKind: "image_generation",
+        status,
+      },
+    });
+  }
+  if (workerType === "dataset_freeze") {
+    return prisma.trainingDatasetRevision.count({
+      where: {
+        status: status === "queued" ? "draft" : "freezing",
+      },
+    });
+  }
+  return prisma.trainingRun.count({
+    where: {
+      status,
+    },
+  });
+}
+
+async function findRunningWorkerTarget(workerType: TrainingWorkerType, targetId?: string, targetType?: string) {
+  if (workerType === "image_generation") {
+    if (targetType && targetType !== "generationRun") return null;
+    const row = await prisma.trainingGenerationTask.findFirst({
+      where: {
+        generationKind: "image_generation",
+        id: targetId,
+        status: "running",
+      },
+      orderBy: {
+        updatedAt: "asc",
+      },
+    });
+    return row ? mapGenerationTaskToTarget(row) : null;
+  }
+  if (workerType === "dataset_freeze") {
+    if (targetType && targetType !== "datasetRevision") return null;
+    const row = await prisma.trainingDatasetRevision.findFirst({
+      where: {
+        id: targetId,
+        status: "freezing",
+      },
+      orderBy: {
+        updatedAt: "asc",
+      },
+    });
+    return row ? mapDatasetRevisionToTarget(row) : null;
+  }
+  if (targetType && targetType !== "trainingRun") return null;
+  const row = await prisma.trainingRun.findFirst({
+    where: {
+      id: targetId,
+      status: "running",
+    },
+    orderBy: {
+      updatedAt: "asc",
+    },
+  });
+  return row ? mapTrainingRunToTarget(row) : null;
+}
+
+async function findQueuedWorkerTarget(workerType: TrainingWorkerType, targetId?: string, targetType?: string) {
+  if (workerType === "image_generation") {
+    if (targetType && targetType !== "generationRun") return null;
+    const row = await prisma.trainingGenerationTask.findFirst({
+      where: {
+        generationKind: "image_generation",
+        id: targetId,
+        status: "queued",
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+    return row ? mapGenerationTaskToTarget(row) : null;
+  }
+  if (workerType === "dataset_freeze") {
+    if (targetType && targetType !== "datasetRevision") return null;
+    const row = await prisma.trainingDatasetRevision.findFirst({
+      where: {
+        id: targetId,
+        status: "draft",
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+    return row ? mapDatasetRevisionToTarget(row) : null;
+  }
+  if (targetType && targetType !== "trainingRun") return null;
+  const row = await prisma.trainingRun.findFirst({
+    where: {
+      id: targetId,
+      status: "queued",
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+  return row ? mapTrainingRunToTarget(row) : null;
+}
+
+async function markWorkerTargetRunning(target: WorkerTarget, leaseOwner?: string | null) {
+  const now = new Date();
+  if (target.workerType === "image_generation") {
+    const updated = await prisma.trainingGenerationTask.update({
+      where: { id: target.id },
+      data: {
+        paramsJson: {
+          ...(leaseOwner ? { leaseOwner } : {}),
+        },
+        startedAt: now,
+        status: "running",
+        sectionRuns: {
+          updateMany: {
+            where: {},
+            data: {
+              startedAt: now,
+              status: "running",
+            },
+          },
+        },
+      },
+    });
+    return mapGenerationTaskToTarget(updated);
+  }
+  if (target.workerType === "dataset_freeze") {
+    const updated = await prisma.trainingDatasetRevision.update({
+      where: { id: target.id },
+      data: {
+        status: "freezing",
+      },
+    });
+    return mapDatasetRevisionToTarget(updated);
+  }
+  const updated = await prisma.trainingRun.update({
+    where: { id: target.id },
+    data: {
+      progressJson: {
+        ...(leaseOwner ? { leaseOwner } : {}),
+      },
+      startedAt: now,
+      status: "running",
+    },
+  });
+  return mapTrainingRunToTarget(updated);
+}
+
+async function findWorkerTargetByTaskId(taskId: string) {
+  const parsed = parseWorkerTaskId(taskId);
+  if (!parsed) return null;
+  if (parsed.workerType === "image_generation") {
+    const row = await prisma.trainingGenerationTask.findUnique({
+      where: { id: parsed.targetId },
+    });
+    return row ? mapGenerationTaskToTarget(row) : null;
+  }
+  if (parsed.workerType === "dataset_freeze") {
+    const row = await prisma.trainingDatasetRevision.findUnique({
+      where: { id: parsed.targetId },
+    });
+    return row ? mapDatasetRevisionToTarget(row) : null;
+  }
+  const row = await prisma.trainingRun.findUnique({
+    where: { id: parsed.targetId },
+  });
+  return row ? mapTrainingRunToTarget(row) : null;
+}
+
+async function writeArtifact(input: {
+  metadata?: unknown;
+  mimeType?: string | null;
+  projectId: string;
+  relativePath: string;
+  role: string;
+  sha256?: string | null;
+  width?: number | null;
+  height?: number | null;
+}) {
+  return prisma.trainingArtifact.upsert({
+    where: {
+      trainingProjectId_storageKey: {
+        trainingProjectId: input.projectId,
+        storageKey: input.relativePath,
+      },
+    },
+    update: {
+      filePath: input.relativePath,
+      lifecycleStatus: "active",
+      metadata: input.metadata === undefined ? undefined : normalizeJson(input.metadata),
+      mimeType: input.mimeType ?? undefined,
+      sha256: input.sha256 ?? undefined,
+      storageRole: input.role,
+      width: input.width ?? undefined,
+      height: input.height ?? undefined,
+    },
+    create: {
+      trainingProjectId: input.projectId,
+      storageKey: input.relativePath,
+      filePath: input.relativePath,
+      lifecycleStatus: "active",
+      metadata: input.metadata === undefined ? Prisma.JsonNull : normalizeJson(input.metadata),
+      mimeType: input.mimeType ?? null,
+      sha256: input.sha256 ?? null,
+      storageRole: input.role,
+      width: input.width ?? null,
+      height: input.height ?? null,
+    },
+  });
+}
+
+async function completeGenerationTarget(target: WorkerTarget, output: unknown) {
+  const task = await prisma.trainingGenerationTask.findUnique({
+    where: { id: target.id },
+    include: {
+      sectionRuns: true,
+    },
+  });
+  if (!task) return;
+
+  const now = new Date();
+  if (output && typeof output === "object" && !Array.isArray(output) && Array.isArray((output as { images?: unknown }).images)) {
+    const images = (output as { images: Array<Record<string, unknown>> }).images;
+    const sectionRun = task.sectionRuns[0] ?? null;
+    await prisma.$transaction(async (tx) => {
+      for (const [index, image] of images.entries()) {
+        const relativePath = typeof image.relativePath === "string" ? image.relativePath : "";
+        if (!relativePath) continue;
+        const sha256 = typeof image.sha256 === "string" ? image.sha256 : createHash("sha256").update(relativePath).digest("hex");
+        const artifact = await tx.trainingArtifact.upsert({
+          where: {
+            trainingProjectId_storageKey: {
+              trainingProjectId: task.trainingProjectId,
+              storageKey: relativePath,
+            },
+          },
+          update: {
+            filePath: relativePath,
+            lifecycleStatus: "active",
+            metadata: normalizeJson({ index, purpose: "generation_output" }),
+            sha256,
+            storageRole: "generation_output",
+            width: typeof image.width === "number" ? image.width : undefined,
+            height: typeof image.height === "number" ? image.height : undefined,
+          },
+          create: {
+            trainingProjectId: task.trainingProjectId,
+            storageKey: relativePath,
+            filePath: relativePath,
+            lifecycleStatus: "active",
+            metadata: normalizeJson({ index, purpose: "generation_output" }),
+            sha256,
+            storageRole: "generation_output",
+            width: typeof image.width === "number" ? image.width : null,
+            height: typeof image.height === "number" ? image.height : null,
+          },
+        });
+        const generationOutput = await tx.trainingGenerationTaskOutput.create({
+          data: {
+            trainingGenerationTaskId: task.id,
+            outputKind: "image",
+            artifactId: artifact.id,
+            filePath: relativePath,
+            targetEntityType: "training_image_result",
+          },
+        });
+        await tx.trainingImageResult.create({
+          data: {
+            trainingProjectId: task.trainingProjectId,
+            trainingCharacterProfileId: sectionRun?.trainingCharacterProfileId ?? null,
+            artifactId: artifact.id,
+            sourceType: "generation_task",
+            trainingSectionRunId: sectionRun?.id ?? null,
+            generationTaskOutputId: generationOutput.id,
+            reviewStatus: "pending",
+            trainingCaption: null,
+            filePathSnapshot: relativePath,
+            width: typeof image.width === "number" ? image.width : null,
+            height: typeof image.height === "number" ? image.height : null,
+            sha256,
+          },
+        });
+      }
+    });
+  }
+
+  await prisma.trainingGenerationTask.update({
+    where: { id: task.id },
+    data: {
+      finishedAt: now,
+      status: "done",
+      sectionRuns: {
+        updateMany: {
+          where: {},
+          data: {
+            finishedAt: now,
+            status: "done",
+          },
+        },
+      },
+    },
+  });
+}
+
+async function completeTrainingTarget(target: WorkerTarget, output: unknown) {
+  const run = await prisma.trainingRun.findUnique({
+    where: { id: target.id },
+  });
+  if (!run) return;
+
+  const data = output && typeof output === "object" && !Array.isArray(output) ? output as Record<string, unknown> : {};
+  const finalArtifactInput = data.finalSafetensorsArtifact && typeof data.finalSafetensorsArtifact === "object" && !Array.isArray(data.finalSafetensorsArtifact)
+    ? data.finalSafetensorsArtifact as Record<string, unknown>
+    : null;
+  const logArtifactInput = data.trainingLogArtifact && typeof data.trainingLogArtifact === "object" && !Array.isArray(data.trainingLogArtifact)
+    ? data.trainingLogArtifact as Record<string, unknown>
+    : null;
+  const finalRelativePath = typeof finalArtifactInput?.relativePath === "string" ? finalArtifactInput.relativePath : null;
+  const logRelativePath = typeof logArtifactInput?.relativePath === "string" ? logArtifactInput.relativePath : null;
+  const finalArtifact = finalRelativePath
+    ? await writeArtifact({
+      metadata: { purpose: "training_final_lora" },
+      projectId: run.trainingProjectId,
+      relativePath: finalRelativePath,
+      role: "final_lora",
+      sha256: typeof finalArtifactInput?.sha256 === "string" ? finalArtifactInput.sha256 : null,
+    })
+    : null;
+  const logArtifact = logRelativePath
+    ? await writeArtifact({
+      metadata: { purpose: "training_log" },
+      mimeType: "text/plain",
+      projectId: run.trainingProjectId,
+      relativePath: logRelativePath,
+      role: "training_log",
+      sha256: null,
+    })
+    : null;
+  await prisma.trainingRun.update({
+    where: { id: run.id },
+    data: {
+      finalLoraArtifactId: finalArtifact?.id ?? run.finalLoraArtifactId,
+      finishedAt: new Date(),
+      progressJson: normalizeJson(data.metadataSummary ?? data),
+      status: "done",
+      trainingLogArtifactId: logArtifact?.id ?? run.trainingLogArtifactId,
+    },
+  });
+}
+
+export async function getTrainingWorkerQueueStatus() {
+  const byWorkerType = {
     image_generation: {
-      queued: 0,
-      running: 0,
-      totalActive: 0,
+      queued: await countWorkerTargets("image_generation", "queued"),
+      running: await countWorkerTargets("image_generation", "running"),
       targetType: "generationRun",
+      totalActive: 0,
     },
     dataset_freeze: {
-      queued: 0,
-      running: 0,
-      totalActive: 0,
+      queued: await countWorkerTargets("dataset_freeze", "queued"),
+      running: await countWorkerTargets("dataset_freeze", "running"),
       targetType: "datasetRevision",
+      totalActive: 0,
     },
     training: {
-      queued: 0,
-      running: 0,
-      totalActive: 0,
+      queued: await countWorkerTargets("training", "queued"),
+      running: await countWorkerTargets("training", "running"),
       targetType: "trainingRun",
+      totalActive: 0,
     },
   } satisfies Record<TrainingWorkerType, {
     queued: number;
@@ -66,20 +532,9 @@ function createEmptyManagedWorkerTypeStatus() {
     targetType: string;
     totalActive: number;
   }>;
-}
 
-async function getManagedTrainingWorkerQueueStatus() {
-  const byWorkerType = createEmptyManagedWorkerTypeStatus();
-  const runs = await listManagedTrainingRuns();
-
-  for (const run of runs) {
-    if (run.status !== "queued" && run.status !== "running") continue;
-
-    const workerType = getRunWorkerMetadata(run).workerType;
-    const status = byWorkerType[workerType];
-    if (run.status === "queued") status.queued += 1;
-    if (run.status === "running") status.running += 1;
-    status.totalActive += 1;
+  for (const workerType of TRAINING_WORKER_TYPES) {
+    byWorkerType[workerType].totalActive = byWorkerType[workerType].queued + byWorkerType[workerType].running;
   }
 
   return {
@@ -92,123 +547,161 @@ async function getManagedTrainingWorkerQueueStatus() {
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function getManagedWorkerTaskId(runId: string) {
-  return `${MANAGED_WORKER_TASK_ID_PREFIX}${runId}`;
-}
-
-function getManagedRunIdFromTaskId(taskId: string) {
-  return taskId.startsWith(MANAGED_WORKER_TASK_ID_PREFIX)
-    ? taskId.slice(MANAGED_WORKER_TASK_ID_PREFIX.length)
-    : null;
-}
-
-function serializeManagedWorkerTask(run: LoraTrainingRun, input: ManagedWorkerTaskInput = {}) {
-  const metadata = getRunWorkerMetadata(run);
-  const now = new Date().toISOString();
-
-  return {
-    id: getManagedWorkerTaskId(run.id),
-    jobId: run.projectId,
-    workerType: metadata.workerType,
-    targetType: metadata.targetType,
-    targetId: run.id,
-    status: input.status ?? "running",
-    payload: {
-      taskType: metadata.workerType,
-      projectId: run.projectId,
-      projectTitle: run.projectTitle,
-      runKind: run.kind,
-    },
-    leaseOwner: input.leaseOwner ?? null,
-    leaseExpiresAt: null,
-    attemptCount: 1,
-    progressJson: input.progressJson ?? null,
-    startedAt: null,
-    heartbeatAt: input.progressJson ? now : null,
-    finishedAt: input.status === "succeeded" || input.status === "failed" ? now : null,
-    errorSummary: input.errorSummary ?? null,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-async function findManagedRunForWorkerTask(
-  taskId: string,
-  expectedStatus: LoraTrainingRun["status"] | null = "running",
-) {
-  const runId = getManagedRunIdFromTaskId(taskId);
-  if (!runId) return null;
-
-  const runs = await listManagedTrainingRuns();
-  const run = runs.find((candidate) => candidate.id === runId);
-  if (!run) return null;
-  if (expectedStatus && run.status !== expectedStatus) return null;
-
-  return run;
-}
-
-async function leaseNextManagedTrainingWorkerTask(input: unknown) {
+export async function leaseNextTrainingWorkerTask(input: unknown) {
   const parsed = trainingWorkerTaskLeaseRequestSchema.safeParse(input);
-  if (!parsed.success) return null;
+  if (!parsed.success) {
+    throw new TrainingWorkerTaskError("Invalid training worker lease request", 400, {
+      issues: parsed.error.issues,
+    });
+  }
 
-  const runs = await listManagedTrainingRuns();
-  const run = runs.find((candidate) => {
-    if (candidate.status !== "running") return false;
+  const running = await findRunningWorkerTarget(
+    parsed.data.workerType,
+    parsed.data.targetId,
+    parsed.data.targetType,
+  );
+  if (running) {
+    return serializeWorkerTask(running, {
+      leaseOwner: parsed.data.leaseOwner ?? null,
+    });
+  }
 
-    const metadata = getRunWorkerMetadata(candidate);
-    if (metadata.workerType !== parsed.data.workerType) return false;
-    if (parsed.data.targetType && metadata.targetType !== parsed.data.targetType) return false;
-    if (parsed.data.targetId && candidate.id !== parsed.data.targetId) return false;
+  if (await countWorkerTargets(parsed.data.workerType, "running") > 0) {
+    return null;
+  }
 
-    return true;
-  });
+  const queued = await findQueuedWorkerTarget(
+    parsed.data.workerType,
+    parsed.data.targetId,
+    parsed.data.targetType,
+  );
+  if (!queued) return null;
 
-  if (!run) return null;
-
-  return serializeManagedWorkerTask(run, {
+  const target = await markWorkerTargetRunning(queued, parsed.data.leaseOwner ?? null);
+  return serializeWorkerTask(target, {
     leaseOwner: parsed.data.leaseOwner ?? null,
   });
 }
 
-async function heartbeatManagedTrainingWorkerTask(taskId: string, input: unknown) {
+export async function heartbeatTrainingWorkerTask(taskId: string, input: unknown = {}) {
   const parsed = trainingWorkerTaskHeartbeatRequestSchema.safeParse(input);
-  if (!parsed.success) return null;
+  if (!parsed.success) {
+    throw new TrainingWorkerTaskError("Invalid training worker heartbeat request", 400, {
+      issues: parsed.error.issues,
+    });
+  }
+  const target = await findWorkerTargetByTaskId(taskId);
+  if (!target) return null;
 
-  const run = await findManagedRunForWorkerTask(taskId);
-  if (!run) return null;
+  if (target.workerType === "image_generation") {
+    await prisma.trainingGenerationTask.update({
+      where: { id: target.id },
+      data: {
+        paramsJson: normalizeJson({
+          heartbeatAt: new Date().toISOString(),
+          leaseOwner: parsed.data.leaseOwner ?? null,
+          progressJson: parsed.data.progressJson ?? null,
+        }),
+      },
+    });
+  } else if (target.workerType === "training") {
+    await prisma.trainingRun.update({
+      where: { id: target.id },
+      data: {
+        currentStep: typeof parsed.data.progressJson?.currentStep === "number" ? parsed.data.progressJson.currentStep : undefined,
+        progressJson: normalizeJson(parsed.data.progressJson ?? {}),
+        schedulerMessage: typeof parsed.data.progressJson?.phase === "string" ? parsed.data.progressJson.phase : undefined,
+        totalSteps: typeof parsed.data.progressJson?.targetSteps === "number" ? parsed.data.progressJson.targetSteps : undefined,
+      },
+    });
+  }
 
-  return serializeManagedWorkerTask(run, {
+  return serializeWorkerTask(target, {
     leaseOwner: parsed.data.leaseOwner ?? null,
     progressJson: parsed.data.progressJson ?? null,
   });
 }
 
-async function completeManagedTrainingWorkerTask(taskId: string, input: unknown) {
+export async function completeTrainingWorkerTask(taskId: string, input: unknown) {
   const parsed = trainingWorkerTaskCompleteRequestSchema.safeParse(input);
-  if (!parsed.success) return null;
+  if (!parsed.success) {
+    throw new TrainingWorkerTaskError("Invalid training worker complete request", 400, {
+      issues: parsed.error.issues,
+    });
+  }
+  const target = await findWorkerTargetByTaskId(taskId);
+  if (!target) return null;
 
-  const run = await findManagedRunForWorkerTask(taskId, null);
-  if (!run) return null;
+  if (target.workerType === "image_generation") {
+    await completeGenerationTarget(target, parsed.data.output);
+  } else if (target.workerType === "training") {
+    await completeTrainingTarget(target, parsed.data.output);
+  } else if (target.workerType === "dataset_freeze") {
+    await prisma.trainingDatasetRevision.update({
+      where: { id: target.id },
+      data: {
+        frozenAt: new Date(),
+        status: "ready",
+      },
+    });
+  }
 
-  return serializeManagedWorkerTask(run, {
+  return serializeWorkerTask(target, {
     leaseOwner: parsed.data.leaseOwner ?? null,
     progressJson: parsed.data.output ?? null,
     status: "succeeded",
   });
 }
 
-async function failManagedTrainingWorkerTask(taskId: string, input: unknown) {
+export async function failTrainingWorkerTask(taskId: string, input: unknown) {
   const parsed = trainingWorkerTaskFailRequestSchema.safeParse(input);
-  if (!parsed.success) return null;
+  if (!parsed.success) {
+    throw new TrainingWorkerTaskError("Invalid training worker fail request", 400, {
+      issues: parsed.error.issues,
+    });
+  }
+  const target = await findWorkerTargetByTaskId(taskId);
+  if (!target) return null;
+  const now = new Date();
 
-  const run = await findManagedRunForWorkerTask(taskId, null);
-  if (!run) return null;
+  if (target.workerType === "image_generation") {
+    await prisma.trainingGenerationTask.update({
+      where: { id: target.id },
+      data: {
+        errorMessage: parsed.data.errorSummary,
+        finishedAt: now,
+        status: "failed",
+        sectionRuns: {
+          updateMany: {
+            where: {},
+            data: {
+              errorMessage: parsed.data.errorSummary,
+              finishedAt: now,
+              status: "failed",
+            },
+          },
+        },
+      },
+    });
+  } else if (target.workerType === "dataset_freeze") {
+    await prisma.trainingDatasetRevision.update({
+      where: { id: target.id },
+      data: {
+        status: "failed",
+      },
+    });
+  } else {
+    await prisma.trainingRun.update({
+      where: { id: target.id },
+      data: {
+        errorMessage: parsed.data.errorSummary,
+        finishedAt: now,
+        status: "failed",
+      },
+    });
+  }
 
-  return serializeManagedWorkerTask(run, {
+  return serializeWorkerTask(target, {
     errorSummary: parsed.data.errorSummary,
     leaseOwner: parsed.data.leaseOwner ?? null,
     progressJson: parsed.data.providerError ?? null,
@@ -216,65 +709,17 @@ async function failManagedTrainingWorkerTask(taskId: string, input: unknown) {
   });
 }
 
-export async function getTrainingWorkerQueueStatus() {
-  const managedQueueStatus = await getManagedTrainingWorkerQueueStatus();
-
-  try {
-    const legacyQueueStatus = await getLegacyTrainingWorkerQueueStatus();
+export function mapTrainingWorkerTaskError(error: unknown) {
+  if (error instanceof TrainingWorkerTaskError) {
     return {
-      ...(isRecord(legacyQueueStatus) ? legacyQueueStatus : {}),
-      legacyQueueStatus,
-      managedQueueStatus,
-    };
-  } catch (error) {
-    const mapped = mapLegacyTrainingGenerationError(error);
-    return {
-      legacyQueueStatus: {
-        details: mapped.details,
-        error: mapped.message,
-        status: mapped.status,
-        unavailable: true,
-      },
-      managedQueueStatus,
+      details: error.details,
+      message: error.message,
+      status: error.status,
     };
   }
+  return {
+    details: error instanceof Error ? error.message : String(error),
+    message: "Unexpected training worker task error",
+    status: 500,
+  };
 }
-
-export async function leaseNextTrainingWorkerTask(input: unknown) {
-  const managedTask = await leaseNextManagedTrainingWorkerTask(input);
-  if (managedTask) return managedTask;
-
-  const parsed = trainingWorkerTaskLeaseRequestSchema.safeParse(input);
-  if (
-    parsed.success
-    && parsed.data.targetId?.startsWith("managed-")
-    && (parsed.data.targetType === "generationRun" || parsed.data.targetType === "trainingRun")
-  ) {
-    return null;
-  }
-
-  return leaseNextLegacyTrainingWorkerTask(input);
-}
-
-export async function heartbeatTrainingWorkerTask(taskId: string, input: unknown = {}) {
-  const managedTask = await heartbeatManagedTrainingWorkerTask(taskId, input);
-  if (managedTask) return managedTask;
-
-  return heartbeatLegacyTrainingWorkerTask(taskId, input);
-}
-
-export async function completeTrainingWorkerTask(taskId: string, input: unknown) {
-  const managedTask = await completeManagedTrainingWorkerTask(taskId, input);
-  if (managedTask) return managedTask;
-
-  return completeLegacyTrainingWorkerTask(taskId, input);
-}
-
-export async function failTrainingWorkerTask(taskId: string, input: unknown) {
-  const managedTask = await failManagedTrainingWorkerTask(taskId, input);
-  if (managedTask) return managedTask;
-
-  return failLegacyTrainingWorkerTask(taskId, input);
-}
-
-export const mapTrainingWorkerTaskError = mapLegacyTrainingGenerationError;

@@ -4,7 +4,7 @@ import { getQueueRunsPage, getRunningRuns, getFailedRuns, getTrashItems } from "
 import { recoverStaleRuns } from "@/server/services/run-executor";
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 function readPositiveInteger(value: string | null) {
   if (!value) return undefined;

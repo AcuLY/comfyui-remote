@@ -5,7 +5,7 @@ import { toImageUrl } from "@/lib/image-url";
 import {
   buildGenerationPresetWhere,
   buildGenerationProjectWhere,
-} from "@/server/repositories/legacy-training-resource-boundary";
+} from "@/server/repositories/generation-resource-boundary";
 import fs from "node:fs";
 import path from "node:path";
 import type { QueuePagination, QueueRun, RunningRun, FailedRun, ReviewGroup, ReviewImage, ReviewStatus } from "@/lib/types";

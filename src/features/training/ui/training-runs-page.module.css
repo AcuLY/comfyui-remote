@@ -675,6 +675,11 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .currentRunList,
+  .runGroupList {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .runSurfaceHeader {
     align-items: center;
     gap: 8px;

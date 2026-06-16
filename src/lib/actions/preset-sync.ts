@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import {
   buildGenerationProjectTemplateWhere,
   buildGenerationProjectWhere,
-} from "@/server/repositories/legacy-training-resource-boundary";
+} from "@/server/repositories/generation-resource-boundary";
 import { assertOrdinaryPreset } from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------

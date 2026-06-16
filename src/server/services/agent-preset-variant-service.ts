@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import {
   buildGenerationPresetWhere,
   buildGenerationProjectWhere,
-} from "@/server/repositories/legacy-training-resource-boundary";
+} from "@/server/repositories/generation-resource-boundary";
 
 export type SwitchVariantUpdate = {
   sectionId: string;

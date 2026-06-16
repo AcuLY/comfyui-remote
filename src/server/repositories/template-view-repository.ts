@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { formatDate } from "@/server/repositories/queue-data-repository";
-import { buildGenerationProjectTemplateWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectTemplateWhere } from "@/server/repositories/generation-resource-boundary";
 import { resolveTemplateSectionConfig } from "@/server/prompt-config/template-resolver";
 
 // ---------------------------------------------------------------------------

@@ -212,6 +212,7 @@ model TrainingSceneDescriptionPresetCategory {
   folders        TrainingSceneDescriptionPresetFolder[]
   presets        TrainingSceneDescriptionPreset[]
   templateBlocks TrainingTemplateSectionSceneDescriptionBlock[]
+  projectBlocks  TrainingSceneDescriptionBlock[]
 
   @@index([sortOrder])
   @@index([sceneDescriptionOrder])
@@ -250,6 +251,7 @@ model TrainingSceneDescriptionPreset {
   category       TrainingSceneDescriptionPresetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   folder         TrainingSceneDescriptionPresetFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
   templateBlocks TrainingTemplateSectionSceneDescriptionBlock[]
+  projectBlocks  TrainingSceneDescriptionBlock[]
 
   @@unique([categoryId, slug])
   @@unique([categoryId, id])
@@ -312,6 +314,405 @@ model TrainingTemplateSectionSceneDescriptionBlock {
   @@index([trainingTemplateSectionId, sortOrder])
   @@index([sceneDescriptionPresetCategoryId], map: "training_template_block_category_idx")
   @@index([sceneDescriptionPresetId], map: "training_template_block_preset_idx")
+}
+
+// ── Training Projects and Runs ──
+
+model TrainingProject {
+  id                    String    @id @default(cuid())
+  name                  String
+  slug                  String    @unique
+  status                String    @default("active")
+  archivedAt            DateTime?
+  imagePromptGuidance   String
+  imagePromptFormat     String
+  captioningGuidance    String
+  trainingCaptionFormat String
+  trainingDefaultsJson  Json?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  profile          TrainingCharacterProfile?
+  sections         TrainingSection[]
+  sectionRuns      TrainingSectionRun[]
+  generationTasks  TrainingGenerationTask[]
+  datasetRevisions TrainingDatasetRevision[]
+  trainingRuns     TrainingRun[]
+  textRevisions    TrainingTextRevision[]
+  artifacts        TrainingArtifact[]
+  imageResults     TrainingImageResult[]
+
+  @@index([status, updatedAt])
+  @@index([createdAt])
+}
+
+model TrainingCharacterProfile {
+  id                                    String   @id @default(cuid())
+  trainingProjectId                     String   @unique
+  loraUsagePrompt                       String   @default("")
+  characterDetailPrompt                 String   @default("")
+  loraUsagePromptGenerationTaskId       String?
+  characterDetailPromptGenerationTaskId String?
+  createdAt                             DateTime @default(now())
+  updatedAt                             DateTime @updatedAt
+
+  project         TrainingProject          @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  referenceImages TrainingCharacterImage[]
+  sectionRuns     TrainingSectionRun[]
+  imageResults    TrainingImageResult[]
+
+  @@index([trainingProjectId])
+}
+
+model TrainingCharacterImage {
+  id                           String   @id @default(cuid())
+  trainingCharacterProfileId   String
+  artifactId                   String
+  imageType                    String
+  label                        String?
+  note                         String?
+  sortOrder                    Int      @default(0)
+  sourceGenerationTaskOutputId String?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+
+  profile                    TrainingCharacterProfile    @relation(fields: [trainingCharacterProfileId], references: [id], onDelete: Cascade)
+  artifact                   TrainingArtifact            @relation("TrainingCharacterImageArtifact", fields: [artifactId], references: [id], onDelete: Restrict)
+  sourceGenerationTaskOutput TrainingGenerationTaskOutput? @relation("TrainingCharacterImageSourceOutput", fields: [sourceGenerationTaskOutputId], references: [id], onDelete: SetNull)
+
+  @@index([trainingCharacterProfileId, sortOrder])
+  @@index([artifactId])
+  @@index([sourceGenerationTaskOutputId])
+}
+
+model TrainingArtifact {
+  id              String   @id @default(cuid())
+  trainingProjectId String
+  storageKey      String
+  filePath        String?
+  storageRole     String   @default("mutable_source")
+  mimeType        String?
+  fileSize        BigInt?
+  sha256          String?
+  width           Int?
+  height          Int?
+  lifecycleStatus String   @default("active")
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  project                          TrainingProject                    @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  characterImages                  TrainingCharacterImage[]           @relation("TrainingCharacterImageArtifact")
+  generationInputArtifacts         TrainingGenerationInputReference[] @relation("TrainingGenerationInputArtifact")
+  generationInputSnapshotArtifacts TrainingGenerationInputReference[] @relation("TrainingGenerationInputSnapshotArtifact")
+  generationOutputs                TrainingGenerationTaskOutput[]     @relation("TrainingGenerationOutputArtifact")
+  imageResults                     TrainingImageResult[]              @relation("TrainingImageResultArtifact")
+  imageResultThumbnails            TrainingImageResult[]              @relation("TrainingImageResultThumbnailArtifact")
+  datasetRevisionManifests         TrainingDatasetRevision[]          @relation("TrainingDatasetRevisionManifestArtifact")
+  datasetItemSourceArtifacts       TrainingDatasetRevisionItem[]      @relation("TrainingDatasetItemSourceArtifact")
+  datasetItemSnapshotArtifacts     TrainingDatasetRevisionItem[]      @relation("TrainingDatasetItemSnapshotArtifact")
+  runConfigArtifacts               TrainingRun[]                      @relation("TrainingRunConfigArtifact")
+  runLogArtifacts                  TrainingRun[]                      @relation("TrainingRunLogArtifact")
+  runFinalArtifacts                TrainingRun[]                      @relation("TrainingRunFinalArtifact")
+
+  @@unique([trainingProjectId, storageKey])
+  @@index([trainingProjectId, storageRole])
+  @@index([sha256])
+  @@index([lifecycleStatus])
+}
+
+model TrainingSection {
+  id                  String   @id @default(cuid())
+  trainingProjectId   String
+  name                String?
+  sortOrder           Int      @default(0)
+  enabled             Boolean  @default(true)
+  sectionDefaultsJson Json?
+  latestRunId         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  project TrainingProject                 @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  blocks  TrainingSceneDescriptionBlock[]
+  runs    TrainingSectionRun[]
+
+  @@index([trainingProjectId, sortOrder])
+  @@index([latestRunId])
+}
+
+model TrainingSceneDescriptionBlock {
+  id                               String   @id @default(cuid())
+  trainingSectionId                String
+  sceneDescriptionPresetCategoryId String?
+  sceneDescriptionPresetId         String?
+  sourceType                       String
+  title                            String
+  localText                        String?
+  sortOrder                        Int      @default(0)
+  enabled                          Boolean  @default(true)
+  createdAt                        DateTime @default(now())
+  updatedAt                        DateTime @updatedAt
+
+  section  TrainingSection                         @relation(fields: [trainingSectionId], references: [id], onDelete: Cascade)
+  category TrainingSceneDescriptionPresetCategory? @relation(fields: [sceneDescriptionPresetCategoryId], references: [id], onDelete: SetNull)
+  preset   TrainingSceneDescriptionPreset?         @relation(fields: [sceneDescriptionPresetId], references: [id], onDelete: SetNull)
+
+  @@index([trainingSectionId, sortOrder])
+  @@index([sceneDescriptionPresetCategoryId], map: "training_project_block_category_idx")
+  @@index([sceneDescriptionPresetId], map: "training_project_block_preset_idx")
+}
+
+model TrainingSectionRun {
+  id                         String   @id @default(cuid())
+  trainingProjectId          String
+  trainingSectionId          String
+  trainingCharacterProfileId String
+  generationTaskId           String
+  runIndex                   Int      @default(1)
+  sceneDescriptionText       String
+  imagePromptText            String
+  provider                   String?
+  model                      String?
+  generationParamsJson       Json?
+  status                     String   @default("queued")
+  errorMessage               String?
+  startedAt                  DateTime?
+  finishedAt                 DateTime?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  project        TrainingProject          @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  section        TrainingSection          @relation(fields: [trainingSectionId], references: [id], onDelete: Cascade)
+  profile        TrainingCharacterProfile @relation(fields: [trainingCharacterProfileId], references: [id], onDelete: Restrict)
+  generationTask TrainingGenerationTask   @relation("TrainingSectionRunGenerationTask", fields: [generationTaskId], references: [id], onDelete: Restrict)
+  imageResults   TrainingImageResult[]
+
+  @@index([trainingProjectId, status])
+  @@index([trainingSectionId, createdAt])
+  @@index([generationTaskId])
+}
+
+model TrainingImageResult {
+  id                         String   @id @default(cuid())
+  trainingProjectId          String
+  trainingCharacterProfileId String?
+  artifactId                 String
+  sourceType                 String
+  trainingSectionRunId       String?
+  generationTaskOutputId     String?
+  reviewStatus               String   @default("pending")
+  trainingCaption            String?
+  captionGenerationTaskId    String?
+  supplementalPrompt         String?
+  removedAt                  DateTime?
+  removeReason               String?
+  filePathSnapshot           String?
+  thumbnailArtifactId        String?
+  width                      Int?
+  height                     Int?
+  mimeType                   String?
+  fileSize                   BigInt?
+  sha256                     String?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  project               TrainingProject              @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  profile               TrainingCharacterProfile?     @relation(fields: [trainingCharacterProfileId], references: [id], onDelete: SetNull)
+  artifact              TrainingArtifact              @relation("TrainingImageResultArtifact", fields: [artifactId], references: [id], onDelete: Restrict)
+  thumbnailArtifact     TrainingArtifact?             @relation("TrainingImageResultThumbnailArtifact", fields: [thumbnailArtifactId], references: [id], onDelete: SetNull)
+  sectionRun            TrainingSectionRun?           @relation(fields: [trainingSectionRunId], references: [id], onDelete: SetNull)
+  generationTaskOutput  TrainingGenerationTaskOutput? @relation("TrainingImageResultGenerationOutput", fields: [generationTaskOutputId], references: [id], onDelete: SetNull)
+  captionGenerationTask TrainingGenerationTask?       @relation("TrainingImageResultCaptionTask", fields: [captionGenerationTaskId], references: [id], onDelete: SetNull)
+  datasetItems          TrainingDatasetRevisionItem[]
+
+  @@index([trainingProjectId, reviewStatus])
+  @@index([trainingSectionRunId])
+  @@index([artifactId])
+  @@index([removedAt])
+}
+
+model TrainingGenerationTask {
+  id                 String   @id @default(cuid())
+  trainingProjectId  String
+  generationKind     String
+  taskType           String
+  supplementalPrompt String?
+  status             String   @default("queued")
+  provider           String?
+  model              String?
+  paramsJson         Json?
+  errorMessage       String?
+  startedAt          DateTime?
+  finishedAt         DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  project               TrainingProject                    @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  inputs                TrainingGenerationInputReference[]
+  outputs               TrainingGenerationTaskOutput[]
+  sectionRuns           TrainingSectionRun[]               @relation("TrainingSectionRunGenerationTask")
+  captionedImageResults TrainingImageResult[]              @relation("TrainingImageResultCaptionTask")
+
+  @@index([trainingProjectId, status])
+  @@index([taskType, status])
+  @@index([status, createdAt])
+}
+
+model TrainingGenerationInputReference {
+  id                       String   @id @default(cuid())
+  trainingGenerationTaskId String
+  inputKind                String
+  sourceEntityType         String?
+  sourceEntityId           String?
+  sourceField              String?
+  artifactId               String?
+  snapshotText             String?
+  snapshotArtifactId       String?
+  snapshotFilePath         String?
+  role                     String?
+  purpose                  String?
+  sortOrder                Int      @default(0)
+  createdAt                DateTime @default(now())
+
+  task             TrainingGenerationTask @relation(fields: [trainingGenerationTaskId], references: [id], onDelete: Cascade)
+  artifact         TrainingArtifact?      @relation("TrainingGenerationInputArtifact", fields: [artifactId], references: [id], onDelete: SetNull)
+  snapshotArtifact TrainingArtifact?      @relation("TrainingGenerationInputSnapshotArtifact", fields: [snapshotArtifactId], references: [id], onDelete: SetNull)
+
+  @@index([trainingGenerationTaskId, sortOrder])
+  @@index([sourceEntityType, sourceEntityId])
+  @@index([artifactId])
+}
+
+model TrainingGenerationTaskOutput {
+  id                       String   @id @default(cuid())
+  trainingGenerationTaskId String
+  outputKind               String
+  textValue                String?
+  artifactId               String?
+  filePath                 String?
+  targetEntityType         String?
+  targetEntityId           String?
+  targetField              String?
+  appliedAt                DateTime?
+  createdAt                DateTime @default(now())
+
+  task            TrainingGenerationTask  @relation(fields: [trainingGenerationTaskId], references: [id], onDelete: Cascade)
+  artifact        TrainingArtifact?       @relation("TrainingGenerationOutputArtifact", fields: [artifactId], references: [id], onDelete: SetNull)
+  characterImages TrainingCharacterImage[] @relation("TrainingCharacterImageSourceOutput")
+  imageResults    TrainingImageResult[]    @relation("TrainingImageResultGenerationOutput")
+
+  @@index([trainingGenerationTaskId, createdAt])
+  @@index([artifactId])
+  @@index([targetEntityType, targetEntityId])
+}
+
+model TrainingDatasetRevision {
+  id                  String   @id @default(cuid())
+  trainingProjectId   String
+  version             Int
+  status              String   @default("ready")
+  itemCount           Int      @default(0)
+  captionMissingCount Int      @default(0)
+  manifestArtifactId  String?
+  manifestName        String?
+  frozenAt            DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  project          TrainingProject               @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  manifestArtifact TrainingArtifact?             @relation("TrainingDatasetRevisionManifestArtifact", fields: [manifestArtifactId], references: [id], onDelete: SetNull)
+  items            TrainingDatasetRevisionItem[]
+  trainingRuns     TrainingRun[]
+
+  @@unique([trainingProjectId, version])
+  @@index([trainingProjectId, status])
+}
+
+model TrainingDatasetRevisionItem {
+  id                          String   @id @default(cuid())
+  trainingDatasetRevisionId   String
+  sourceTrainingImageResultId String
+  sourceArtifactId            String
+  snapshotArtifactId          String
+  filePathSnapshot            String
+  captionSnapshot             String
+  loraUsagePromptSnapshot     String?
+  sceneDescriptionText        String?
+  supplementalPromptSnapshot  String?
+  captionContextSnapshot      Json?
+  width                       Int?
+  height                      Int?
+  aspectBucket                String?
+  sortOrder                   Int      @default(0)
+  createdAt                   DateTime @default(now())
+
+  revision                  TrainingDatasetRevision @relation(fields: [trainingDatasetRevisionId], references: [id], onDelete: Cascade)
+  sourceTrainingImageResult TrainingImageResult     @relation(fields: [sourceTrainingImageResultId], references: [id], onDelete: Restrict)
+  sourceArtifact            TrainingArtifact        @relation("TrainingDatasetItemSourceArtifact", fields: [sourceArtifactId], references: [id], onDelete: Restrict)
+  snapshotArtifact          TrainingArtifact        @relation("TrainingDatasetItemSnapshotArtifact", fields: [snapshotArtifactId], references: [id], onDelete: Restrict)
+
+  @@unique([trainingDatasetRevisionId, sourceTrainingImageResultId])
+  @@index([trainingDatasetRevisionId, sortOrder])
+  @@index([sourceTrainingImageResultId])
+}
+
+model TrainingRun {
+  id                        String   @id @default(cuid())
+  trainingProjectId         String
+  trainingDatasetRevisionId String
+  status                    String   @default("queued")
+  baseCheckpointId          String?
+  configArtifactId          String?
+  trainingLogArtifactId     String?
+  finalLoraArtifactId       String?
+  runSummaryJson            Json?
+  progressJson              Json?
+  currentStep               Int?
+  totalSteps                Int?
+  waitReason                String?
+  waitingSince              DateTime?
+  schedulerMessage          String?
+  runnerType                String   @default("local_wsl_sd_scripts")
+  runnerWorkspacePath       String?
+  errorMessage              String?
+  createdPresetId           String?
+  createdPresetVariantId    String?
+  presetCreatedAt           DateTime?
+  cancelRequestedAt         DateTime?
+  startedAt                 DateTime?
+  finishedAt                DateTime?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  project         TrainingProject         @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  datasetRevision TrainingDatasetRevision @relation(fields: [trainingDatasetRevisionId], references: [id], onDelete: Restrict)
+  configArtifact  TrainingArtifact?       @relation("TrainingRunConfigArtifact", fields: [configArtifactId], references: [id], onDelete: SetNull)
+  logArtifact     TrainingArtifact?       @relation("TrainingRunLogArtifact", fields: [trainingLogArtifactId], references: [id], onDelete: SetNull)
+  finalArtifact   TrainingArtifact?       @relation("TrainingRunFinalArtifact", fields: [finalLoraArtifactId], references: [id], onDelete: SetNull)
+
+  @@index([trainingProjectId, status])
+  @@index([trainingDatasetRevisionId])
+  @@index([status, createdAt])
+  @@index([finalLoraArtifactId])
+}
+
+model TrainingTextRevision {
+  id                String   @id @default(cuid())
+  trainingProjectId String
+  entityType        String
+  entityId          String
+  fieldName         String
+  textValue         String
+  reason            String
+  sourceTaskId      String?
+  sourceRunId       String?
+  createdAt         DateTime @default(now())
+
+  project TrainingProject @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+
+  @@index([trainingProjectId, entityType, entityId, fieldName, createdAt])
+  @@index([sourceTaskId])
+  @@index([sourceRunId])
 }
 
 // ── Project Templates ──
@@ -771,449 +1172,6 @@ model AuditLog {
 
   @@index([entityType, entityId, createdAt])
   @@index([action, createdAt])
-}
-
-// Character LoRA training
-
-model CharacterLoraTrainingTemplate {
-  id                     String                         @id @default(cuid())
-  key                    String                         @unique
-  name                   String
-  description            String?
-  baseFamily             String?
-  captionStrategyDefault String                         @default("controllable_identity")
-  canonicalDefaults      Json
-  promptCardDefaults     Json
-  trainingDefaults       Json
-  benchmarkDefaults      Json
-  promotionDefaults      Json
-  isActive               Boolean                        @default(true)
-  sortOrder              Int                            @default(0)
-  createdAt              DateTime                       @default(now())
-  updatedAt              DateTime                       @updatedAt
-  jobs                   CharacterLoraTrainingJob[]
-  sectionTemplates       CharacterLoraSectionTemplate[]
-
-  @@index([isActive, sortOrder])
-}
-
-model CharacterLoraTrainingJob {
-  id                         String                           @id @default(cuid())
-  slug                       String                           @unique
-  characterName              String
-  triggerToken               String
-  status                     String                           @default("draft")
-  phase                      String?
-  trainingScope              Json
-  captionStrategy            String                           @default("controllable_identity")
-  baseCheckpointName         String?
-  baseCheckpointPath         String?
-  baseCheckpointHash         String?
-  baseFamily                 String?
-  artifactRoot               String
-  currentCanonicalVersionId  String?
-  currentPromptCardVersionId String?
-  selectedDatasetRevisionId  String?
-  promotedPresetId           String?
-  trainingTemplateId         String?
-  trainingTemplateSnapshot   Json?
-  createdBy                  String?
-  failureSummary             String?
-  createdAt                  DateTime                         @default(now())
-  updatedAt                  DateTime                         @updatedAt
-  trainingTemplate           CharacterLoraTrainingTemplate?   @relation(fields: [trainingTemplateId], references: [id], onDelete: SetNull)
-  sourceImages               CharacterLoraSourceImage[]
-  canonicalVersions          CharacterLoraCanonicalVersion[]
-  promptCardVersions         CharacterLoraPromptCardVersion[]
-  sections                   CharacterLoraJobSection[]
-  generationRuns             CharacterLoraGenerationRun[]
-  candidateImages            CharacterLoraCandidateImage[]
-  datasetRevisions           CharacterLoraDatasetRevision[]
-  trainingRuns               CharacterLoraTrainingRun[]
-  benchmarkRuns              CharacterLoraBenchmarkRun[]
-  promotionDecisions         CharacterLoraPromotionDecision[]
-  artifacts                  CharacterLoraArtifact[]
-  workerTasks                CharacterLoraWorkerTask[]
-
-  @@index([status, updatedAt])
-  @@index([triggerToken])
-  @@index([baseCheckpointHash])
-  @@index([trainingTemplateId])
-}
-
-model CharacterLoraSourceImage {
-  id         String                   @id @default(cuid())
-  jobId      String
-  role       String
-  artifactId String
-  filePath   String
-  sha256     String
-  width      Int?
-  height     Int?
-  provenance Json?
-  sortOrder  Int                      @default(0)
-  createdAt  DateTime                 @default(now())
-  job        CharacterLoraTrainingJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  @@unique([jobId, sha256, role])
-  @@index([jobId, sortOrder])
-}
-
-model CharacterLoraCanonicalVersion {
-  id               String                           @id @default(cuid())
-  jobId            String
-  version          Int
-  status           String                           @default("candidate")
-  canonicalView    String?
-  sourceRunId      String?
-  imageArtifactId  String
-  selectedAt       DateTime?
-  notes            String?
-  createdAt        DateTime                         @default(now())
-  job              CharacterLoraTrainingJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  sourceRun        CharacterLoraGenerationRun?      @relation(fields: [sourceRunId], references: [id], onDelete: SetNull)
-  promptCards      CharacterLoraPromptCardVersion[]
-  sections         CharacterLoraJobSection[]
-  datasetRevisions CharacterLoraDatasetRevision[]
-
-  @@unique([jobId, version])
-  @@index([jobId, status])
-  @@index([jobId, canonicalView])
-  @@index([sourceRunId])
-}
-
-model CharacterLoraPromptCardVersion {
-  id                 String                         @id @default(cuid())
-  jobId              String
-  canonicalVersionId String?
-  version            Int
-  triggerToken       String
-  identityTraits     Json
-  outfitTraits       Json
-  negativeTraits     Json?
-  finalPromptDraft   String
-  changeReason       String?
-  createdAt          DateTime                       @default(now())
-  job                CharacterLoraTrainingJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  canonicalVersion   CharacterLoraCanonicalVersion? @relation(fields: [canonicalVersionId], references: [id], onDelete: SetNull)
-  sections           CharacterLoraJobSection[]
-  datasetRevisions   CharacterLoraDatasetRevision[]
-
-  @@unique([jobId, version])
-  @@index([canonicalVersionId])
-}
-
-model CharacterLoraSectionTemplate {
-  id                   String                         @id @default(cuid())
-  trainingTemplateId   String?
-  key                  String                         @unique
-  name                 String
-  description          String?
-  angleTag             String?
-  promptTemplate       String
-  negativeTemplate     String?
-  targetCandidateCount Int                            @default(4)
-  targetKeepCount      Int                            @default(1)
-  sortOrder            Int                            @default(0)
-  isActive             Boolean                        @default(true)
-  trainingTemplate     CharacterLoraTrainingTemplate? @relation(fields: [trainingTemplateId], references: [id], onDelete: SetNull)
-  sections             CharacterLoraJobSection[]
-
-  @@index([isActive, sortOrder])
-  @@index([trainingTemplateId, isActive, sortOrder])
-}
-
-model CharacterLoraJobSection {
-  id                   String                          @id @default(cuid())
-  jobId                String
-  templateId           String?
-  key                  String
-  name                 String
-  canonicalVersionId   String?
-  promptCardVersionId  String?
-  targetCandidateCount Int                             @default(4)
-  targetKeepCount      Int                             @default(1)
-  status               String                          @default("draft")
-  keepCount            Int                             @default(0)
-  rejectCount          Int                             @default(0)
-  pendingCount         Int                             @default(0)
-  sortOrder            Int                             @default(0)
-  createdAt            DateTime                        @default(now())
-  updatedAt            DateTime                        @updatedAt
-  job                  CharacterLoraTrainingJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  template             CharacterLoraSectionTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  canonicalVersion     CharacterLoraCanonicalVersion?  @relation(fields: [canonicalVersionId], references: [id], onDelete: SetNull)
-  promptCardVersion    CharacterLoraPromptCardVersion? @relation(fields: [promptCardVersionId], references: [id], onDelete: SetNull)
-  generationRuns       CharacterLoraGenerationRun[]
-  candidateImages      CharacterLoraCandidateImage[]
-
-  @@unique([jobId, key])
-  @@index([jobId, sortOrder])
-  @@index([templateId])
-}
-
-model CharacterLoraGenerationRun {
-  id                String                          @id @default(cuid())
-  jobId             String
-  sectionId         String?
-  kind              String
-  canonicalView     String?
-  parentRunId       String?
-  status            String                          @default("queued")
-  provider          String
-  hostModel         String?
-  imageModel        String
-  hostInstruction   String
-  visualPrompt      String
-  negativePrompt    String?
-  toolParams        Json
-  inputImages       Json
-  requestArtifactId String?
-  responseSummary   Json?
-  errorSummary      String?
-  startedAt         DateTime?
-  finishedAt        DateTime?
-  createdAt         DateTime                        @default(now())
-  updatedAt         DateTime                        @updatedAt
-  job               CharacterLoraTrainingJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  section           CharacterLoraJobSection?        @relation(fields: [sectionId], references: [id], onDelete: SetNull)
-  parentRun         CharacterLoraGenerationRun?     @relation("CharacterLoraGenerationRunTree", fields: [parentRunId], references: [id], onDelete: SetNull)
-  childRuns         CharacterLoraGenerationRun[]    @relation("CharacterLoraGenerationRunTree")
-  canonicalVersions CharacterLoraCanonicalVersion[]
-  candidateImages   CharacterLoraCandidateImage[]
-
-  @@index([jobId, status])
-  @@index([jobId, canonicalView])
-  @@index([sectionId, createdAt])
-  @@index([parentRunId])
-}
-
-model CharacterLoraCandidateImage {
-  id                        String                        @id @default(cuid())
-  jobId                     String
-  sectionId                 String?
-  generationRunId           String
-  artifactId                String
-  filePath                  String                        @unique
-  sha256                    String
-  width                     Int?
-  height                    Int?
-  fileSize                  BigInt?
-  reviewStatus              String                        @default("pending")
-  rejectReasons             Json?
-  reviewNote                String?
-  captionDraft              String?
-  reviewedAt                DateTime?
-  includedDatasetRevisionId String?
-  createdAt                 DateTime                      @default(now())
-  updatedAt                 DateTime                      @updatedAt
-  job                       CharacterLoraTrainingJob      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  section                   CharacterLoraJobSection?      @relation(fields: [sectionId], references: [id], onDelete: SetNull)
-  generationRun             CharacterLoraGenerationRun    @relation(fields: [generationRunId], references: [id], onDelete: Cascade)
-  includedDatasetRevision   CharacterLoraDatasetRevision? @relation("CharacterLoraIncludedDatasetRevision", fields: [includedDatasetRevisionId], references: [id], onDelete: SetNull)
-  datasetItems              CharacterLoraDatasetItem[]
-
-  @@index([jobId, reviewStatus])
-  @@index([sectionId, reviewStatus])
-  @@index([generationRunId])
-  @@index([includedDatasetRevisionId])
-}
-
-model CharacterLoraDatasetRevision {
-  id                         String                         @id @default(cuid())
-  jobId                      String
-  version                    Int
-  status                     String                         @default("freezing")
-  canonicalVersionId         String
-  promptCardVersionId        String
-  captionStrategy            String                         @default("controllable_identity")
-  itemCount                  Int                            @default(0)
-  sourceCount                Int                            @default(0)
-  syntheticCount             Int                            @default(0)
-  selectedManifestArtifactId String
-  metadataJsonlArtifactId    String
-  captionAuditArtifactId     String?
-  trainDir                   String
-  frozenAt                   DateTime?
-  createdAt                  DateTime                       @default(now())
-  updatedAt                  DateTime                       @updatedAt
-  job                        CharacterLoraTrainingJob       @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  canonicalVersion           CharacterLoraCanonicalVersion  @relation(fields: [canonicalVersionId], references: [id], onDelete: Restrict)
-  promptCardVersion          CharacterLoraPromptCardVersion @relation(fields: [promptCardVersionId], references: [id], onDelete: Restrict)
-  includedCandidateImages    CharacterLoraCandidateImage[]  @relation("CharacterLoraIncludedDatasetRevision")
-  items                      CharacterLoraDatasetItem[]
-  trainingRuns               CharacterLoraTrainingRun[]
-
-  @@unique([jobId, version])
-  @@index([jobId, status])
-  @@index([canonicalVersionId])
-  @@index([promptCardVersionId])
-}
-
-model CharacterLoraDatasetItem {
-  id                String                       @id @default(cuid())
-  datasetRevisionId String
-  candidateImageId  String
-  imageArtifactId   String
-  captionArtifactId String
-  captionText       String
-  repeatCount       Int                          @default(1)
-  sourceWeight      Float?
-  sortOrder         Int                          @default(0)
-  datasetRevision   CharacterLoraDatasetRevision @relation(fields: [datasetRevisionId], references: [id], onDelete: Cascade)
-  candidateImage    CharacterLoraCandidateImage  @relation(fields: [candidateImageId], references: [id], onDelete: Restrict)
-
-  @@unique([datasetRevisionId, candidateImageId])
-  @@index([datasetRevisionId, sortOrder])
-  @@index([candidateImageId])
-}
-
-model CharacterLoraTrainingRun {
-  id                         String                            @id @default(cuid())
-  jobId                      String
-  datasetRevisionId          String
-  status                     String                            @default("queued")
-  launcher                   String
-  resolvedConfig             Json
-  configArtifactId           String
-  dryRunSummaryArtifactId    String?
-  logArtifactId              String?
-  outputDir                  String?
-  finalSafetensorsArtifactId String?
-  finalSha256                String?
-  metadataSummary            Json?
-  currentStep                Int?
-  targetSteps                Int?
-  lossSnapshot               Json?
-  cancelRequestedAt          DateTime?
-  startedAt                  DateTime?
-  finishedAt                 DateTime?
-  createdAt                  DateTime                          @default(now())
-  updatedAt                  DateTime                          @updatedAt
-  job                        CharacterLoraTrainingJob          @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  datasetRevision            CharacterLoraDatasetRevision      @relation(fields: [datasetRevisionId], references: [id], onDelete: Restrict)
-  checkpoints                CharacterLoraTrainingCheckpoint[]
-  benchmarkRuns              CharacterLoraBenchmarkRun[]
-
-  @@index([jobId, status])
-  @@index([datasetRevisionId])
-  @@index([finalSha256])
-}
-
-model CharacterLoraTrainingCheckpoint {
-  id            String                   @id @default(cuid())
-  trainingRunId String
-  step          Int
-  artifactId    String
-  sha256        String
-  metrics       Json?
-  createdAt     DateTime                 @default(now())
-  trainingRun   CharacterLoraTrainingRun @relation(fields: [trainingRunId], references: [id], onDelete: Cascade)
-
-  @@unique([trainingRunId, step])
-  @@index([trainingRunId, step])
-  @@index([sha256])
-}
-
-model CharacterLoraBenchmarkRun {
-  id                   String                           @id @default(cuid())
-  jobId                String
-  trainingRunId        String
-  status               String                           @default("queued")
-  loraAssetId          String?
-  testPresetId         String?
-  testProjectId        String?
-  templateId           String?
-  checkpointMatrix     Json
-  weightMatrix         Json
-  reportArtifactId     String?
-  recommendedWeight    Float?
-  resultSummary        Json?
-  testPresetCleanedAt  DateTime?
-  testProjectCleanedAt DateTime?
-  cleanupSummary       Json?
-  startedAt            DateTime?
-  finishedAt           DateTime?
-  createdAt            DateTime                         @default(now())
-  updatedAt            DateTime                         @updatedAt
-  job                  CharacterLoraTrainingJob         @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  trainingRun          CharacterLoraTrainingRun         @relation(fields: [trainingRunId], references: [id], onDelete: Restrict)
-  promotionDecisions   CharacterLoraPromotionDecision[]
-
-  @@index([jobId, status])
-  @@index([trainingRunId])
-  @@index([testProjectId])
-}
-
-model CharacterLoraPromotionDecision {
-  id                        String                    @id @default(cuid())
-  jobId                     String
-  benchmarkRunId            String
-  status                    String                    @default("draft")
-  selectedLoraAssetId       String
-  selectedCheckpoint        String?
-  defaultRecommendedWeight  Float
-  perVariantWeightOverrides Json?
-  variantPromptDrafts       Json
-  decisionReason            String?
-  rejectedReturnPoint       String?
-  promotedCategoryId        String?
-  promotedPresetId          String?
-  reportArtifactId          String?
-  decidedAt                 DateTime?
-  promotedAt                DateTime?
-  createdAt                 DateTime                  @default(now())
-  updatedAt                 DateTime                  @updatedAt
-  job                       CharacterLoraTrainingJob  @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  benchmarkRun              CharacterLoraBenchmarkRun @relation(fields: [benchmarkRunId], references: [id], onDelete: Restrict)
-
-  @@index([jobId, status])
-  @@index([benchmarkRunId])
-  @@index([selectedLoraAssetId])
-}
-
-model CharacterLoraArtifact {
-  id             String                   @id @default(cuid())
-  jobId          String
-  kind           String
-  relativePath   String
-  absolutePath   String?
-  sha256         String?
-  byteSize       BigInt?
-  mimeType       String?
-  redactionLevel String                   @default("path_only")
-  metadata       Json?
-  createdAt      DateTime                 @default(now())
-  job            CharacterLoraTrainingJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  @@unique([jobId, relativePath])
-  @@index([jobId, kind])
-  @@index([sha256])
-}
-
-model CharacterLoraWorkerTask {
-  id             String                   @id @default(cuid())
-  jobId          String
-  workerType     String
-  targetType     String
-  targetId       String
-  status         String                   @default("queued")
-  payload        Json
-  leaseOwner     String?
-  leaseExpiresAt DateTime?
-  attemptCount   Int                      @default(0)
-  progressJson   Json?
-  startedAt      DateTime?
-  heartbeatAt    DateTime?
-  finishedAt     DateTime?
-  errorSummary   String?
-  createdAt      DateTime                 @default(now())
-  updatedAt      DateTime                 @updatedAt
-  job            CharacterLoraTrainingJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
-
-  @@index([status, leaseExpiresAt])
-  @@index([jobId, workerType, status])
-  @@index([targetType, targetId])
 }
 
 model GpuTaskLock {

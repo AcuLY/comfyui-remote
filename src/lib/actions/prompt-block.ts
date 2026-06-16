@@ -10,7 +10,7 @@ import {
 } from "@/server/prompt-config/preset-group-resolver";
 import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-binding-service";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
-import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 import { resolveVariantContent } from "./preset-variant";
 import { ordinaryPresetCategoryTypeWhere, ordinaryPresetLibraryCategoryTypeWhere } from "./preset-resource-scope";
 import {

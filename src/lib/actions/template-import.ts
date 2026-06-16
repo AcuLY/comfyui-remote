@@ -17,7 +17,7 @@ import {
 import {
   buildGenerationProjectTemplateWhere,
   buildGenerationProjectWhere,
-} from "@/server/repositories/legacy-training-resource-boundary";
+} from "@/server/repositories/generation-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Types

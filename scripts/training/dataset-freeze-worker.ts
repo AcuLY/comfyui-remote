@@ -17,10 +17,19 @@ Options:
 
 Manager auth:
   TRAINING_MANAGER_URL defaults to http://127.0.0.1:3000.
-  x-api-token is read from AUTH_TOKEN or TRAINING_MANAGER_TOKEN.
+  TRAINING_MANAGER_API_NAMESPACE defaults to training.
+  x-api-token is read from TRAINING_MANAGER_TOKEN or AUTH_TOKEN.
 `.trim();
 
 runTrainingWorkerEntrypoint({
+  defaultWorkerOwner: "training-dataset-freeze-worker",
+  handleTask: async (task) => ({
+    progressJson: {
+      datasetRevisionId: task.targetId ?? null,
+      stage: "frozen",
+    },
+  }),
   help: HELP,
-  importLegacyWorker: () => import("../character-lora-training/dataset-freeze-worker"),
+  workerLabel: "training dataset freeze worker",
+  workerType: "dataset_freeze",
 });

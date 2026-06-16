@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { buildFolderScopedItemOrder } from "@/lib/folder-navigation";
 import { toImageUrl } from "@/lib/image-url";
 import type { ProjectCard, ProjectFolderItem, ReviewStatus } from "@/lib/types";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import {
   extractPresetNames,
   formatDate,

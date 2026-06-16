@@ -4,7 +4,7 @@ import {
   sortBySortOrder,
 } from "./order";
 import { isOrdinaryPresetCategoryType } from "@/lib/actions/preset-resource-scope";
-import { isLegacyTrainingBenchmarkResourceNotes } from "@/server/repositories/legacy-training-resource-boundary";
+import { isReservedTrainingResourceNotes } from "@/server/repositories/generation-resource-boundary";
 import type {
   LoraBinding,
   MissingReference,
@@ -36,7 +36,7 @@ function isOrdinaryPresetVariantRow(variant: PresetVariantRow) {
   const presetNotes = variant.preset?.notes;
   return (
     (categoryType === undefined || categoryType === null || isOrdinaryPresetCategoryType(categoryType))
-    && !isLegacyTrainingBenchmarkResourceNotes(presetNotes)
+    && !isReservedTrainingResourceNotes(presetNotes)
   );
 }
 

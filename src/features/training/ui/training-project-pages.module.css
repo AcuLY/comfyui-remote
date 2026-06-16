@@ -1746,6 +1746,9 @@
   .profileDraft,
   .sectionDraftGrid,
   .sectionSeedList,
+  .entityRows,
+  .projectRunRows,
+  .manifestList,
   .trainingDraft,
   .referenceImageGrid,
   .trainingResultGrid {

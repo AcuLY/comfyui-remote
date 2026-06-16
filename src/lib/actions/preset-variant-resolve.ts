@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
-import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Types

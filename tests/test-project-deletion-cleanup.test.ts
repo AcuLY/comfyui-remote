@@ -202,7 +202,7 @@ test("complete project deletion resolves projects through the generation resourc
   assert.deepEqual(events, ["project.findFirst"]);
   assert.match(
     JSON.stringify(projectLookupArgs),
-    /character_lora_benchmark/,
+    /training_benchmark/,
     "project deletion should reuse the generation project boundary instead of a raw id lookup",
   );
 });
@@ -279,7 +279,7 @@ test("project deletion task and trash cleanup queries stay inside generation-own
   for (const query of [...runQueries, ...censoringQueries, ...imageQueries]) {
     assert.match(
       JSON.stringify(query),
-      /character_lora_benchmark/,
+      /training_benchmark/,
       "cleanup subresource queries must retain the generation project boundary",
     );
   }

@@ -21,7 +21,7 @@ import {
   RUN_CANCELLABLE_STATUSES,
   isRunCancellableStatus,
 } from "@/lib/actions/cancellation-helpers";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 const QUEUE_PAUSE_META_KEY = "__queuePause";
 const RUN_ACTIVE_STATUSES = [...RUN_CANCELLABLE_STATUSES];

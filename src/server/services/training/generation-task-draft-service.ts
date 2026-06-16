@@ -220,7 +220,7 @@ function mapLegacyGenerationRunToTrainingRun(input: {
       : input.run.startedAt
         ? formatRunTimestamp(input.run.startedAt, "开始于")
         : formatRunTimestamp(input.run.createdAt, "创建于"),
-    provider: input.run.imageModel ?? input.run.hostModel ?? input.run.provider,
+    provider: input.run.imageModel ?? input.run.hostModel ?? input.run.provider ?? undefined,
     providerModel: input.generationKind === "image_generation"
       ? input.run.imageModel ?? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.model
       : undefined,

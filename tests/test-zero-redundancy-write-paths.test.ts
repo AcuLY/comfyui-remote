@@ -541,11 +541,11 @@ async function seedProjectWithPreset(options: SeedOptions = {}) {
   return { key, category, preset, variantA, variantB, project, section };
 }
 
-test("generation project and template lists hide legacy training benchmark temporary resources", async () => {
+test("generation project and template lists hide reserved training temporary resources", async () => {
   const key = `zrw-benchmark-boundary-${++sequence}`;
   const benchmarkNotes = JSON.stringify({
     temporary: true,
-    purpose: "character_lora_benchmark",
+    purpose: "training_benchmark",
     benchmarkRunId: `${key}-run`,
   }, null, 2);
 
@@ -575,8 +575,8 @@ test("generation project and template lists hide legacy training benchmark tempo
       },
       {
         id: `${key}-hidden-template`,
-        name: "角色 LoRA 测试",
-        description: "Default ProjectTemplate for Character LoRA training benchmark and promotion evidence.",
+        name: "训练测试",
+        description: "Default ProjectTemplate reserved for training benchmark evidence.",
       },
     ],
   });
@@ -590,7 +590,7 @@ test("generation project and template lists hide legacy training benchmark tempo
   assert.equal(
     projectIds.includes(`${key}-hidden-project`),
     false,
-    "generation project list must hide legacy training benchmark temporary projects",
+    "generation project list must hide reserved training temporary projects",
   );
   const apiProjectIds = (await listProjectsForApi()).map((project) => project.id);
   assert.equal(
@@ -601,7 +601,7 @@ test("generation project and template lists hide legacy training benchmark tempo
   assert.equal(
     apiProjectIds.includes(`${key}-hidden-project`),
     false,
-    "generation project API list must hide legacy training benchmark temporary projects",
+    "generation project API list must hide reserved training temporary projects",
   );
 
   const templateIds = (await listProjectTemplates()).map((template) => template.id);
@@ -613,20 +613,20 @@ test("generation project and template lists hide legacy training benchmark tempo
   assert.equal(
     templateIds.includes(`${key}-hidden-template`),
     false,
-    "generation template list must hide legacy training benchmark templates stored in ProjectTemplate",
+    "generation template list must hide reserved training templates stored in ProjectTemplate",
   );
   assert.equal(
     await getProjectTemplateDetail(`${key}-hidden-template`),
     null,
-    "generation template detail must not expose a legacy training benchmark template by direct id",
+    "generation template detail must not expose a reserved training template by direct id",
   );
 });
 
-test("generation project writes reject legacy training benchmark resource notes", async () => {
+test("generation project writes reject reserved training resource notes", async () => {
   const key = `zrw-benchmark-write-boundary-${++sequence}`;
   const benchmarkNotes = JSON.stringify({
     temporary: true,
-    purpose: "character_lora_benchmark",
+    purpose: "training_benchmark",
     benchmarkRunId: `${key}-run`,
   });
 
@@ -636,8 +636,8 @@ test("generation project writes reject legacy training benchmark resource notes"
       checkpointName: `${key}.ckpt`,
       notes: benchmarkNotes,
     }),
-    /training benchmark/i,
-    "the /api/projects service must not create generation projects carrying training benchmark notes",
+    /reserved training/i,
+    "the /api/projects service must not create generation projects carrying reserved training notes",
   );
 
   await assert.rejects(
@@ -647,8 +647,8 @@ test("generation project writes reject legacy training benchmark resource notes"
       presetBindings: [],
       notes: benchmarkNotes,
     }),
-    /training benchmark/i,
-    "legacy generation server actions must not create projects carrying training benchmark notes",
+    /reserved training/i,
+    "ordinary generation server actions must not create projects carrying reserved training notes",
   );
 
   assert.equal(
@@ -667,19 +667,19 @@ test("generation project writes reject legacy training benchmark resource notes"
   );
 });
 
-test("generation template writes reject legacy training benchmark identities", async () => {
+test("generation template writes reject reserved training identities", async () => {
   const key = `zrw-benchmark-template-write-${++sequence}`;
   const benchmarkDescription =
-    "Default ProjectTemplate for Character LoRA training benchmark and promotion evidence.";
+    "Default ProjectTemplate reserved for training benchmark evidence.";
 
   await assert.rejects(
     () => createProjectTemplate({
-      name: "角色 LoRA 测试",
+      name: "训练测试",
       description: `${benchmarkDescription} ${key}`,
       sections: [],
     }),
-    /training benchmark/i,
-    "generation template creation must not create hidden legacy training benchmark templates",
+    /reserved training/i,
+    "generation template creation must not create hidden reserved training templates",
   );
 
   await assert.rejects(
@@ -688,7 +688,7 @@ test("generation template writes reject legacy training benchmark identities", a
       description: `${benchmarkDescription} ${key}`,
       sections: [],
     }),
-    /training benchmark/i,
+    /reserved training/i,
     "generation template creation must reject benchmark descriptions even when the name looks ordinary",
   );
 
@@ -704,9 +704,9 @@ test("generation template writes reject legacy training benchmark identities", a
   await assert.rejects(
     () => updateProjectTemplate({
       id: cleanTemplateId,
-      name: "character lora benchmark",
+      name: "training benchmark",
     }),
-    /training benchmark/i,
+    /reserved training/i,
     "generation template updates must not rename ordinary templates into hidden benchmark templates",
   );
 
@@ -717,18 +717,18 @@ test("generation template writes reject legacy training benchmark identities", a
       },
     }),
     0,
-    "rejected generation template writes must not leave hidden training benchmark templates behind",
+    "rejected generation template writes must not leave hidden reserved training templates behind",
   );
 });
 
-test("generation template direct mutations reject hidden legacy training benchmark templates", async () => {
+test("generation template direct mutations reject hidden reserved training templates", async () => {
   const seed = await seedProjectWithPreset();
   const key = `zrw-benchmark-template-mutation-${++sequence}`;
   const hiddenTemplate = await prisma.projectTemplate.create({
     data: {
       id: `${key}-hidden-template`,
-      name: "角色 LoRA 测试",
-      description: `Default ProjectTemplate for Character LoRA training benchmark and promotion evidence. ${key}`,
+      name: "训练测试",
+      description: `Default ProjectTemplate reserved for training benchmark evidence. ${key}`,
     },
   });
   const hiddenSection = await prisma.projectTemplateSection.create({
@@ -746,7 +746,7 @@ test("generation template direct mutations reject hidden legacy training benchma
       name: `${key} Renamed Through Generation`,
     }),
     /PROJECT_TEMPLATE_NOT_FOUND|not found/i,
-    "generation template update must not mutate hidden legacy training benchmark templates by id",
+    "generation template update must not mutate hidden reserved training templates by id",
   );
 
   await assert.rejects(
@@ -759,13 +759,13 @@ test("generation template direct mutations reject hidden legacy training benchma
       }),
     }),
     /TEMPLATE_SECTION_NOT_FOUND|not found/i,
-    "generation template section update must not mutate hidden legacy training benchmark sections by id",
+    "generation template section update must not mutate hidden reserved training sections by id",
   );
 
   assert.equal(
     await copyProjectTemplateSection(hiddenSection.id),
     null,
-    "generation template section copy must treat hidden legacy training benchmark sections as out of scope",
+    "generation template section copy must treat hidden reserved training sections as out of scope",
   );
 
   await assert.rejects(
@@ -774,13 +774,13 @@ test("generation template direct mutations reject hidden legacy training benchma
       sectionId: hiddenSection.id,
     }),
     /TEMPLATE_SECTION_NOT_FOUND|not found/i,
-    "generation template section delete must not delete hidden legacy training benchmark sections by id",
+    "generation template section delete must not delete hidden reserved training sections by id",
   );
 
   await assert.rejects(
     () => deleteProjectTemplate(hiddenTemplate.id),
     /PROJECT_TEMPLATE_NOT_FOUND|not found/i,
-    "generation template delete must not delete hidden legacy training benchmark templates by id",
+    "generation template delete must not delete hidden reserved training templates by id",
   );
 
   const reloadedTemplate = await prisma.projectTemplate.findUniqueOrThrow({
@@ -789,15 +789,15 @@ test("generation template direct mutations reject hidden legacy training benchma
   const reloadedSection = await prisma.projectTemplateSection.findUniqueOrThrow({
     where: { id: hiddenSection.id },
   });
-  assert.equal(reloadedTemplate.name, "角色 LoRA 测试");
+  assert.equal(reloadedTemplate.name, "训练测试");
   assert.equal(reloadedSection.name, `${key} Hidden Section`);
 });
 
-test("generation run lists hide runs attached to legacy training benchmark temporary projects", async () => {
+test("generation run lists hide runs attached to reserved training temporary projects", async () => {
   const key = `zrw-benchmark-runs-${++sequence}`;
   const benchmarkNotes = JSON.stringify({
     temporary: true,
-    purpose: "character_lora_benchmark",
+    purpose: "training_benchmark",
     benchmarkRunId: `${key}-benchmark`,
   }, null, 2);
 
@@ -902,7 +902,7 @@ test("generation run lists hide runs attached to legacy training benchmark tempo
   assert.equal(
     reviewGroupIds.includes(`${key}-hidden-done-run`),
     false,
-    "generation review queue must hide done runs from legacy training benchmark temporary projects",
+    "generation review queue must hide done runs from reserved training temporary projects",
   );
 
   const runningIds = (await getRunningRuns()).map((run) => run.id);
@@ -910,7 +910,7 @@ test("generation run lists hide runs attached to legacy training benchmark tempo
   assert.equal(
     runningIds.includes(`${key}-hidden-running-run`),
     false,
-    "generation running list must hide active runs from legacy training benchmark temporary projects",
+    "generation running list must hide active runs from reserved training temporary projects",
   );
 
   const failedIds = (await getFailedRuns()).map((run) => run.id);
@@ -918,7 +918,7 @@ test("generation run lists hide runs attached to legacy training benchmark tempo
   assert.equal(
     failedIds.includes(`${key}-hidden-failed-run`),
     false,
-    "generation failed list must hide failed runs from legacy training benchmark temporary projects",
+    "generation failed list must hide failed runs from reserved training temporary projects",
   );
 });
 

@@ -157,18 +157,18 @@ test("DB wrapper loads only reachable variants and per-source relation rows", as
   assert.equal(variantFindManyCalls.length, 0);
 });
 
-test("DB wrapper treats legacy training benchmark linked variants as out of scope", async () => {
+test("DB wrapper treats reserved training linked variants as out of scope", async () => {
   const variants = new Map([
     ["root", variant({ id: "root", prompt: "ordinary prompt" })],
     [
-      "legacy-training",
+      "reserved-training",
       variant({
-        id: "legacy-training",
+        id: "reserved-training",
         prompt: "training prompt must not leak",
         lora1: [{ path: "/training/hidden.safetensors", weight: 1, enabled: true }],
         presetNotes: JSON.stringify({
           temporary: true,
-          purpose: "character_lora_benchmark",
+          purpose: "training_benchmark",
         }),
       }),
     ],
@@ -182,7 +182,7 @@ test("DB wrapper treats legacy training benchmark linked variants as out of scop
     presetVariantLink: {
       async findMany(args: { where: { sourceVariantId: string } }) {
         if (args.where.sourceVariantId === "root") {
-          return [{ sourceVariantId: "root", linkedVariantId: "legacy-training", sortOrder: 0 }];
+          return [{ sourceVariantId: "root", linkedVariantId: "reserved-training", sortOrder: 0 }];
         }
         return [];
       },
@@ -193,5 +193,5 @@ test("DB wrapper treats legacy training benchmark linked variants as out of scop
 
   assert.equal(resolved.prompt, "ordinary prompt");
   assert.deepEqual(resolved.lora1, []);
-  assert.deepEqual(resolved.missingReferences, [{ kind: "presetVariant", id: "legacy-training" }]);
+  assert.deepEqual(resolved.missingReferences, [{ kind: "presetVariant", id: "reserved-training" }]);
 });

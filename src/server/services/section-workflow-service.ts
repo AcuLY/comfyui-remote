@@ -5,7 +5,7 @@ import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
 import { validateComfyPromptDraft } from "@/server/services/comfyui-service";
 import { buildComfyPromptDraft } from "@/server/worker/payload-builder";
 import type { WorkerRunSnapshot } from "@/server/worker/types";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 function sectionSlug(sortOrder: number) {
   return `section_${sortOrder + 1}`;

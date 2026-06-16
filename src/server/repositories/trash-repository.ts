@@ -2,7 +2,7 @@ import type { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import { toImageUrl } from "@/lib/image-url";
 import type { TrashItem } from "@/lib/types";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { formatDate } from "@/server/repositories/queue-data-repository";
 
 type TrashRecordWithImage = Awaited<ReturnType<typeof getActiveTrashRecords>>[number];

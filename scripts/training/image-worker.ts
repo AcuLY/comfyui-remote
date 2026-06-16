@@ -1,4 +1,11 @@
-import { runTrainingWorkerEntrypoint } from "./worker-common";
+import {
+  readStringOption,
+  runTrainingWorkerEntrypoint,
+  WorkerError,
+  type ManagerTask,
+} from "./worker-common";
+
+const MOCK_SHA256 = "0".repeat(64);
 
 const HELP = `
 LoRA training image provider worker
@@ -18,10 +25,44 @@ Options:
 
 Manager auth:
   TRAINING_MANAGER_URL defaults to http://127.0.0.1:3000.
-  x-api-token is read from AUTH_TOKEN or TRAINING_MANAGER_TOKEN.
+  TRAINING_MANAGER_API_NAMESPACE defaults to training.
+  x-api-token is read from TRAINING_MANAGER_TOKEN or AUTH_TOKEN.
 `.trim();
 
 runTrainingWorkerEntrypoint({
+  defaultWorkerOwner: "training-image-worker",
+  handleTask: async (task, context) => {
+    const provider = readStringOption(context.cli.values, "--provider") ?? "task-request";
+    if (provider === "mock-local") {
+      return { output: createMockImageOutput(task) };
+    }
+
+    throw new WorkerError(
+      `Image provider "${provider}" is not configured. Use --provider mock-local for local lifecycle tests or configure a Training image runner before consuming real tasks.`,
+    );
+  },
   help: HELP,
-  importLegacyWorker: () => import("../character-lora-training/image-worker"),
+  workerLabel: "training image worker",
+  workerType: "image_generation",
 });
+
+function createMockImageOutput(task: ManagerTask) {
+  const taskLabel = sanitizePathPart(task.targetId ?? task.id);
+  return {
+    images: [
+      {
+        height: 1024,
+        relativePath: `mock-training/${taskLabel}/image-0001.png`,
+        sha256: MOCK_SHA256,
+        width: 1024,
+      },
+    ],
+    elapsedMs: 0,
+    requestRedactedPath: `mock-training/${taskLabel}/request-redacted.json`,
+    responseSummaryPath: `mock-training/${taskLabel}/response-summary.json`,
+  };
+}
+
+function sanitizePathPart(value: string) {
+  return value.replace(/[^a-zA-Z0-9._-]+/g, "-") || "task";
+}

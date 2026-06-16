@@ -8,7 +8,7 @@ import {
   moveManagedImageFile,
 } from "@/server/services/image-file-service";
 import { listSectionTrashItems } from "@/server/repositories/trash-repository";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 type ReviewImageMutationOptions = {
   revalidate?: boolean;

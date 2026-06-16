@@ -2,7 +2,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { ok, fail } from "@/lib/api-response";
 import { toImageUrl } from "@/lib/image-url";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { persistManualCensoredImage } from "@/server/services/censoring-service";
 
 type RouteContext = {

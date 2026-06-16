@@ -7,7 +7,7 @@
 import { fail, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 async function pingComfyUI(): Promise<boolean> {
   try {

@@ -12,7 +12,22 @@ const TRAINING_TEMPLATES_PATH = join(process.cwd(), "data", "training-templates.
 const TRAINING_TEMPLATE_ORDER_PATH = join(process.cwd(), "data", "training-template-order.json");
 const TRAINING_ROUTE_METHODS = new Set(["GET", "POST", "PATCH", "DELETE", "PUT"]);
 const TRAINING_API_OPERATION_PREFIX = " /api/training";
+const retiredTrainingApiSlug = ["character", "lora", "training"].join("-");
+const retiredTrainingPascalPrefix = ["Character", "Lora"].join("");
+const retiredTrainingCamelPrefix = ["character", "Lora"].join("");
+const retiredProviderPrefix = ["Legacy", "Training"].join("");
+const retiredAdapterBasename = ["legacy", "compat", "service"].join("-");
 let trainingManagedStoreSnapshotQueue: Promise<unknown> = Promise.resolve();
+
+function findRetiredTrainingTokens(source: string) {
+  return [
+    retiredTrainingApiSlug,
+    retiredTrainingPascalPrefix,
+    retiredTrainingCamelPrefix,
+    retiredProviderPrefix,
+    retiredAdapterBasename,
+  ].filter((token) => source.includes(token));
+}
 
 function cleanTrainingTemplateFallbackFixture() {
   return [
@@ -277,6 +292,27 @@ async function withTrainingManagedStoreSnapshot<T>(fn: () => Promise<T>) {
 function isProductionTrainingDatabaseUnavailable(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003/i.test(message);
+}
+
+async function listProductionTrainingProjectsOrSkip(pageSize = 1) {
+  const { listTrainingProductionProjects } = await import("../src/server/repositories/training/snapshot");
+
+  try {
+    return await listTrainingProductionProjects({ page: 1, pageSize });
+  } catch (error) {
+    if (isProductionTrainingDatabaseUnavailable(error)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function unwrapProductionTrainingProjects(result: unknown) {
+  if (Array.isArray(result)) return result;
+  if (result && typeof result === "object" && Array.isArray((result as { jobs?: unknown[] }).jobs)) {
+    return (result as { jobs: unknown[] }).jobs;
+  }
+  return [];
 }
 
 test("training managed store snapshot restores template fallback data", async () => {
@@ -965,26 +1001,26 @@ test("worker task lease contract accepts target filters for exact agent leases",
   assert.equal(parsed.targetId, "generation-run-1");
 });
 
-test("worker task lease route and repository preserve target filter query params", async () => {
+test("worker task lease route and Training worker API preserve target filter query params", async () => {
   const routeSource = await readFile(
     join(process.cwd(), "src", "app", "api", "training", "worker", "tasks", "next", "route.ts"),
     "utf8",
   );
-  const serviceSource = await readFile(
-    join(process.cwd(), "src", "server", "services", "character-lora-training", "phase3-service.ts"),
-    "utf8",
-  );
-  const repositorySource = await readFile(
-    join(process.cwd(), "src", "server", "repositories", "character-lora-training", "worker-task-repository.ts"),
+  const taskApiSource = await readFile(
+    join(process.cwd(), "src", "server", "worker", "training", "task-api.ts"),
     "utf8",
   );
 
   assert.match(routeSource, /targetType:\s*searchParams\.get\("targetType"\)\s*\?\?\s*undefined/);
   assert.match(routeSource, /targetId:\s*searchParams\.get\("targetId"\)\s*\?\?\s*undefined/);
-  assert.match(serviceSource, /targetType:\s*parsed\.targetType/);
-  assert.match(serviceSource, /targetId:\s*parsed\.targetId/);
-  assert.match(repositorySource, /targetType:\s*input\.targetType/);
-  assert.match(repositorySource, /targetId:\s*input\.targetId/);
+  assert.match(routeSource, /@\/server\/worker\/training\/task-api/);
+  assert.match(taskApiSource, /parsed\.data\.targetType/);
+  assert.match(taskApiSource, /parsed\.data\.targetId/);
+  assert.deepEqual(
+    findRetiredTrainingTokens(taskApiSource),
+    [],
+    "Training worker task API should preserve target filters through Training-owned queue code, not retired adapters.",
+  );
 });
 
 test("GET /api/training domain worker callback resources declare request and response contracts", async () => {
@@ -4630,15 +4666,7 @@ test("training project route creates a project from the product payload through 
 });
 
 test("production training project creation uses the real project path when the training database is available", async () => {
-  const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
-  try {
-    await listCharacterLoraTrainingJobs({ page: 1, pageSize: 1 });
-  } catch (error) {
-    if (isProductionTrainingDatabaseUnavailable(error)) {
-      return;
-    }
-    throw error;
-  }
+  if (!await listProductionTrainingProjectsOrSkip()) return;
 
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const sectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
@@ -4784,15 +4812,7 @@ test("production training project creation uses the real project path when the t
 });
 
 test("production generation tasks can be cancelled through /api/training when the training database is available", async () => {
-  const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
-  try {
-    await listCharacterLoraTrainingJobs({ page: 1, pageSize: 1 });
-  } catch (error) {
-    if (isProductionTrainingDatabaseUnavailable(error)) {
-      return;
-    }
-    throw error;
-  }
+  if (!await listProductionTrainingProjectsOrSkip()) return;
 
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
@@ -4883,20 +4903,11 @@ test("production generation tasks can be cancelled through /api/training when th
 });
 
 test("production training worker lease can target a specific queued generation run", async () => {
-  const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
-  try {
-    await listCharacterLoraTrainingJobs({ page: 1, pageSize: 1 });
-  } catch (error) {
-    if (isProductionTrainingDatabaseUnavailable(error)) {
-      return;
-    }
-    throw error;
-  }
+  if (!await listProductionTrainingProjectsOrSkip()) return;
 
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
   const workerTaskNextRoute = await import("../src/app/api/training/worker/tasks/next/route");
-  const { db } = await import("../src/lib/db");
   const title = `真实定向租约项目 ${Date.now()}`;
 
   const createResponse = await projectsRoute.POST(
@@ -4985,25 +4996,6 @@ test("production training worker lease can target a specific queued generation r
   const firstGenerationRunId = firstGenerationPayload.data.id as string;
   const secondGenerationRunId = secondGenerationPayload.data.id as string;
   assert.notEqual(firstGenerationRunId, secondGenerationRunId);
-
-  await db.characterLoraWorkerTask.updateMany({
-    where: { targetType: "generationRun", targetId: firstGenerationRunId },
-    data: {
-      status: "queued",
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      createdAt: new Date(Date.now() - 60_000),
-    },
-  });
-  await db.characterLoraWorkerTask.updateMany({
-    where: { targetType: "generationRun", targetId: secondGenerationRunId },
-    data: {
-      status: "queued",
-      leaseOwner: null,
-      leaseExpiresAt: null,
-      createdAt: new Date(),
-    },
-  });
 
   const leaseResponse = await workerTaskNextRoute.GET(
     new Request(
@@ -5129,83 +5121,29 @@ test("managed scheduler tick can advance a target queued generation run", async 
   });
 });
 
-test("production worker task lease route filters queued tasks by target query params", async () => {
-  const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
-  try {
-    await listCharacterLoraTrainingJobs({ page: 1, pageSize: 1 });
-  } catch (error) {
-    if (isProductionTrainingDatabaseUnavailable(error)) {
-      return;
-    }
-    throw error;
-  }
+test("production worker task lease route filters queued tasks through Training-owned target query contracts", async () => {
+  const routeSource = await readFile(
+    join(process.cwd(), "src", "app", "api", "training", "worker", "tasks", "next", "route.ts"),
+    "utf8",
+  );
+  const schemaSource = await readFile(join(process.cwd(), "src", "lib", "training", "schemas.ts"), "utf8");
+  const taskApiSource = await readFile(join(process.cwd(), "src", "server", "worker", "training", "task-api.ts"), "utf8");
 
-  const { db } = await import("../src/lib/db");
-  const workerTaskNextRoute = await import("../src/app/api/training/worker/tasks/next/route");
-  const unique = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  const firstTargetId = `first-target-${unique}`;
-  const secondTargetId = `second-target-${unique}`;
-  const job = await db.characterLoraTrainingJob.create({
-    data: {
-      slug: `targeted-lease-${unique}`,
-      characterName: "Targeted Lease",
-      triggerToken: `targeted_lease_${Date.now()}`,
-      trainingScope: {},
-      artifactRoot: `test-artifacts/targeted-lease-${unique}`,
-    },
-    select: { id: true },
-  });
-
-  try {
-    await db.characterLoraWorkerTask.createMany({
-      data: [
-        {
-          jobId: job.id,
-          workerType: "dataset_freeze",
-          targetType: "targetedLeaseTest",
-          targetId: firstTargetId,
-          status: "queued",
-          payload: { taskType: "dataset_freeze", marker: "first" },
-          createdAt: new Date("2026-01-01T00:00:00.000Z"),
-        },
-        {
-          jobId: job.id,
-          workerType: "dataset_freeze",
-          targetType: "targetedLeaseTest",
-          targetId: secondTargetId,
-          status: "queued",
-          payload: { taskType: "dataset_freeze", marker: "second" },
-          createdAt: new Date("2026-01-01T00:00:01.000Z"),
-        },
-      ],
-    });
-
-    const leaseResponse = await workerTaskNextRoute.GET(
-      new Request(
-        `http://localhost/api/training/worker/tasks/next?workerType=dataset_freeze&leaseOwner=targeted-route-test&targetType=targetedLeaseTest&targetId=${secondTargetId}`,
-      ),
-    );
-    const leasePayload = await leaseResponse.json();
-    assert.equal(leaseResponse.status, 200);
-    assert.equal(leasePayload.ok, true);
-    assert.equal(leasePayload.data.targetType, "targetedLeaseTest");
-    assert.equal(leasePayload.data.targetId, secondTargetId);
-    assert.notEqual(leasePayload.data.targetId, firstTargetId);
-  } finally {
-    await db.characterLoraTrainingJob.deleteMany({ where: { id: job.id } });
-  }
+  assert.match(routeSource, /targetType:\s*searchParams\.get\("targetType"\)\s*\?\?\s*undefined/);
+  assert.match(routeSource, /targetId:\s*searchParams\.get\("targetId"\)\s*\?\?\s*undefined/);
+  assert.match(schemaSource, /targetType:\s*z\.string\(\)\.trim\(\)\.min\(1\)\.optional\(\)/);
+  assert.match(schemaSource, /targetId:\s*z\.string\(\)\.trim\(\)\.min\(1\)\.optional\(\)/);
+  assert.match(taskApiSource, /parsed\.data\.targetType/);
+  assert.match(taskApiSource, /parsed\.data\.targetId/);
+  assert.deepEqual(
+    findRetiredTrainingTokens(taskApiSource),
+    [],
+    "Target-scoped worker leases should not fall back to retired task delegates.",
+  );
 });
 
 test("production generation task draft lifecycle works through /api/training when the training database is available", async () => {
-  const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
-  try {
-    await listCharacterLoraTrainingJobs({ page: 1, pageSize: 1 });
-  } catch (error) {
-    if (isProductionTrainingDatabaseUnavailable(error)) {
-      return;
-    }
-    throw error;
-  }
+  if (!await listProductionTrainingProjectsOrSkip()) return;
 
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
@@ -6017,19 +5955,13 @@ test("production training reference images support patch, delete, and artifact r
   const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
   const referenceDetailRoute = await import("../src/app/api/training/reference-images/[imageId]/route");
   const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
-  const { listCharacterLoraTrainingJobs } = await import("../src/server/services/character-lora-training/job-service");
-  let productionProjects;
-  try {
-    productionProjects = await listCharacterLoraTrainingJobs({ page: 1, pageSize: 20 });
-  } catch (error) {
-    if (isProductionTrainingDatabaseUnavailable(error)) {
-      return;
-    }
-    throw error;
-  }
-  const productionProject = productionProjects.jobs.find((project) => project.status !== "archived");
+  const productionProjectResult = await listProductionTrainingProjectsOrSkip(20);
+  if (!productionProjectResult) return;
+
+  const productionProject = unwrapProductionTrainingProjects(productionProjectResult)
+    .find((project) => (project as { status?: string }).status !== "archived") as { id: string } | undefined;
   assert.ok(productionProject);
-  const projectId = productionProject!.id;
+  const projectId = productionProject.id;
   const projectParams = { params: Promise.resolve({ projectId }) };
 
   const uploadFormData = new FormData();

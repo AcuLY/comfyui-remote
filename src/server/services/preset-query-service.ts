@@ -3,8 +3,8 @@ import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/actions/preset-resource-sco
 import { normalizeCivitaiLinks } from "@/lib/utils";
 import {
   buildGenerationPresetWhere,
-  isLegacyTrainingBenchmarkResourceNotes,
-} from "@/server/repositories/legacy-training-resource-boundary";
+  isReservedTrainingResourceNotes,
+} from "@/server/repositories/generation-resource-boundary";
 
 export type PresetQueryFilters = {
   name?: string;
@@ -36,7 +36,7 @@ function linkedVariantsFromRows(variant: {
   return variant.outgoingLinks
     .filter((link) => (
       link.linkedVariant.preset.category.type === ORDINARY_PRESET_CATEGORY_TYPE
-      && !isLegacyTrainingBenchmarkResourceNotes(link.linkedVariant.preset.notes)
+      && !isReservedTrainingResourceNotes(link.linkedVariant.preset.notes)
     ))
     .map((link) => ({
       presetId: link.linkedVariant.presetId,

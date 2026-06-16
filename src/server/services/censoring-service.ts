@@ -6,7 +6,7 @@ import sharp from "sharp";
 
 import { createLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { runAutoCensorMosaicBatch } from "@/server/services/auto-censor-runner";
 
 const log = createLogger({ module: "censoring" });

@@ -65,7 +65,6 @@ function hasStaticFileExtension(pathname: string): boolean {
 function isFallbackEligible(pathname: string): boolean {
   if (!pathname || pathname === "/") return false;
   if (pathname === "/design-demos" || pathname.startsWith("/design-demos/")) return false;
-  if (pathname === "/character-lora-training" || pathname.startsWith("/character-lora-training/")) return false;
   if (pathname.startsWith("/api/")) return false;
   if (pathname.startsWith("/_next/")) return false;
   if (hasStaticFileExtension(pathname)) return false;

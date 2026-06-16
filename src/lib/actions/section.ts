@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { resolve } from "node:path";
 import { rm } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { cleanupProjectSectionFiles } from "@/server/services/section-cleanup-service";
 import { createBindingId } from "./_helpers";
 import {

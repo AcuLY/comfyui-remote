@@ -5,10 +5,10 @@ import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 import {
-  LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR,
+  TRAINING_RESERVED_RESOURCE_WRITE_ERROR,
   buildGenerationProjectWhere,
-  hasLegacyTrainingBenchmarkPurposeNotes,
-} from "@/server/repositories/legacy-training-resource-boundary";
+  hasReservedTrainingPurposeNotes,
+} from "@/server/repositories/generation-resource-boundary";
 import { copyProject as copyProjectRepo } from "@/server/repositories/project-repository";
 import { archiveProject as archiveProjectService } from "@/server/services/project-archive-service";
 import { deleteProjectCompletely } from "@/server/services/project-deletion-service";
@@ -110,8 +110,8 @@ async function assertOrdinaryProjectPresetBindings(bindings: readonly PresetBind
 }
 
 function assertGenerationProjectNotes(notes: string | null | undefined) {
-  if (!hasLegacyTrainingBenchmarkPurposeNotes(notes)) return;
-  throw new Error(LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR);
+  if (!hasReservedTrainingPurposeNotes(notes)) return;
+  throw new Error(TRAINING_RESERVED_RESOURCE_WRITE_ERROR);
 }
 
 async function replaceProjectPresetBindingRows(
