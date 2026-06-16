@@ -751,6 +751,19 @@
   gap: 4px;
 }
 
+.referenceImageEditFields {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.referenceImageActions {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 .referenceImageCard span {
   width: fit-content;
   border: 1px solid var(--demo-border);

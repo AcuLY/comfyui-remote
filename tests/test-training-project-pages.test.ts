@@ -217,6 +217,41 @@ test("training profile page renders reference image cards with kind, label, and 
   assert.match(profileSource, /reference\.note/, "reference cards should show notes");
 });
 
+test("training profile page edits reference image label and note from local card state", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /editingReferenceImageId/, "profile should track the reference card currently being edited");
+  assert.match(profileSource, /handleUpdateReferenceImageDraft/, "profile should update reference label and note in local card state");
+  assert.match(profileSource, /label="参考图名称"/, "reference card edit mode should expose an editable label field");
+  assert.match(profileSource, /label="参考图备注"/, "reference card edit mode should expose an editable note field");
+  assert.match(profileSource, /value=\{reference\.label\}/, "reference label input should render from the current local card value");
+  assert.match(profileSource, /value=\{reference\.note\}/, "reference note input should render from the current local card value");
+  assert.match(profileSource, /onClick=\{\(\) => handleSaveReferenceImage\(reference\)\}/, "reference cards should save edited metadata explicitly");
+  assert.match(profileSource, /onClick=\{\(\) => handleDeleteReferenceImage\(reference\.id, reference\.label\)\}/, "reference cards should expose an explicit delete action");
+});
+
+test("training profile page persists reference image metadata and deletion through formal HTTP APIs", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+
+  assert.match(profileSource, /fetch\(`\/api\/training\/reference-images\/\$\{reference\.id\}`/, "reference metadata save should call the formal reference image detail API");
+  assert.match(profileSource, /label:\s*reference\.label/, "reference metadata save should submit the edited label");
+  assert.match(profileSource, /note:\s*reference\.note/, "reference metadata save should submit the edited note");
+  assert.match(profileSource, /fetch\(`\/api\/training\/reference-images\/\$\{referenceId\}`/, "reference delete should call the formal reference image detail API");
+  assert.match(profileSource, /method:\s*"PATCH"/, "reference metadata save should use PATCH");
+  assert.match(profileSource, /method:\s*"DELETE"/, "reference delete should use DELETE");
+  assert.match(profileSource, /参考图(保存|删除)失败/, "reference metadata and delete actions should surface API failures");
+});
+
 test("training profile page uploads reference images into local front-end state", () => {
   const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const sectionsStart = pagesSource.indexOf("function SectionCard");

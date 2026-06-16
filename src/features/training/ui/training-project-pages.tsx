@@ -1760,6 +1760,9 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
     pendingReferenceIds: new Set<string>(),
     projectId: project?.id ?? null,
   }));
+  const [editingReferenceImageId, setEditingReferenceImageId] = useState<string | null>(null);
+  const [savingReferenceImageIds, setSavingReferenceImageIds] = useState<Set<string>>(new Set());
+  const [deletingReferenceImageIds, setDeletingReferenceImageIds] = useState<Set<string>>(new Set());
   const [profileRevisionField, setProfileRevisionField] = useState<TrainingProfileRevisionField | null>(null);
   const [profileRevisionState, setProfileRevisionState] = useState<{
     fieldName: TrainingProfileRevisionField | null;
@@ -1997,6 +2000,145 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
     });
   }
 
+  function handleUpdateReferenceImageDraft(
+    referenceId: string,
+    patch: Partial<Pick<LoraTrainingReferenceImage, "label" | "note">>,
+  ) {
+    setLocalReferenceImages((current) => {
+      const currentImages = current.projectId === activeProject.id ? current.images : activeProject.referenceImages;
+      return {
+        images: currentImages.map((reference) => reference.id === referenceId ? { ...reference, ...patch } : reference),
+        projectId: activeProject.id,
+      };
+    });
+  }
+
+  async function handleSaveReferenceImage(reference: LoraTrainingReferenceImage) {
+    if (!isProductionTrainingRoute) {
+      setEditingReferenceImageId(null);
+      pushToast({
+        tone: "success",
+        title: "参考图已保存",
+        detail: reference.label,
+      });
+      return;
+    }
+
+    if (savingReferenceImageIds.has(reference.id) || deletingReferenceImageIds.has(reference.id)) return;
+
+    setSavingReferenceImageIds((current) => new Set([...current, reference.id]));
+    try {
+      const response = await fetch(`/api/training/reference-images/${reference.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          label: reference.label,
+          note: reference.note,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "参考图保存失败",
+          detail: payload?.error?.message ?? "参考图保存请求失败",
+        });
+        return;
+      }
+
+      setEditingReferenceImageId(null);
+      router.refresh();
+      pushToast({
+        tone: "success",
+        title: "参考图已保存",
+        detail: reference.label,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "参考图保存失败",
+        detail: error instanceof Error ? error.message : "参考图保存请求失败",
+      });
+    } finally {
+      setSavingReferenceImageIds((current) => {
+        const next = new Set(current);
+        next.delete(reference.id);
+        return next;
+      });
+    }
+  }
+
+  async function handleDeleteReferenceImage(referenceId: string, label: string) {
+    const removeLocalReference = () => {
+      setLocalReferenceImages((current) => {
+        const currentImages = current.projectId === activeProject.id ? current.images : activeProject.referenceImages;
+        return {
+          images: currentImages.filter((reference) => reference.id !== referenceId),
+          projectId: activeProject.id,
+        };
+      });
+      setReferenceResultState((current) => {
+        const nextAdded = new Set(current.projectId === activeProject.id ? current.addedReferenceResultIds : new Set<string>());
+        nextAdded.delete(referenceId);
+        return {
+          addedReferenceResultIds: nextAdded,
+          projectId: activeProject.id,
+        };
+      });
+      setEditingReferenceImageId((current) => current === referenceId ? null : current);
+    };
+
+    if (!isProductionTrainingRoute) {
+      removeLocalReference();
+      pushToast({
+        tone: "warning",
+        title: "参考图已删除",
+        detail: label,
+      });
+      return;
+    }
+
+    if (savingReferenceImageIds.has(referenceId) || deletingReferenceImageIds.has(referenceId)) return;
+
+    setDeletingReferenceImageIds((current) => new Set([...current, referenceId]));
+    try {
+      const response = await fetch(`/api/training/reference-images/${referenceId}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "参考图删除失败",
+          detail: payload?.error?.message ?? "参考图删除请求失败",
+        });
+        return;
+      }
+
+      removeLocalReference();
+      router.refresh();
+      pushToast({
+        tone: "warning",
+        title: "参考图已删除",
+        detail: label,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "参考图删除失败",
+        detail: error instanceof Error ? error.message : "参考图删除请求失败",
+      });
+    } finally {
+      setDeletingReferenceImageIds((current) => {
+        const next = new Set(current);
+        next.delete(referenceId);
+        return next;
+      });
+    }
+  }
+
   async function handleReferenceImageFileChange() {
     const input = referenceUploadInputRef.current;
     const file = input?.files?.[0];
@@ -2216,18 +2358,67 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
                   <ImagePreviewFrame image={reference.image} />
                   <div>
                     <span>{referenceKindLabel(reference.kind)}</span>
-                    <strong>{reference.label}</strong>
-                    <p>{reference.note}</p>
+                    {editingReferenceImageId === reference.id ? (
+                      <div className={s.referenceImageEditFields}>
+                        <Field
+                          label="参考图名称"
+                          value={reference.label}
+                          onChange={(value) => handleUpdateReferenceImageDraft(reference.id, { label: value })}
+                        />
+                        <Field
+                          multiline
+                          features={{ resize: true, clipboard: true }}
+                          label="参考图备注"
+                          value={reference.note}
+                          onChange={(value) => handleUpdateReferenceImageDraft(reference.id, { note: value })}
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <strong>{reference.label}</strong>
+                        <p>{reference.note}</p>
+                      </>
+                    )}
                     {addedReferenceResultIds.has(reference.id) ? <StatusBadge status="pending" label="已加入结果池" /> : null}
-                    <Button
-                      size="sm"
-                      tone="subtle"
-                      pending={pendingReferenceIds.has(reference.id)}
-                      disabled={addedReferenceResultIds.has(reference.id)}
-                      onClick={() => handleAddReferenceImageToResults(reference.id, reference.label)}
-                    >
-                      {addedReferenceResultIds.has(reference.id) ? "已加入结果池" : "加入结果池"}
-                    </Button>
+                    <div className={s.referenceImageActions}>
+                      <Button
+                        size="sm"
+                        tone="subtle"
+                        icon={Edit3}
+                        onClick={() => setEditingReferenceImageId(editingReferenceImageId === reference.id ? null : reference.id)}
+                      >
+                        {editingReferenceImageId === reference.id ? "收起" : "编辑"}
+                      </Button>
+                      {editingReferenceImageId === reference.id ? (
+                        <Button
+                          size="sm"
+                          tone="primary"
+                          icon={Save}
+                          pending={savingReferenceImageIds.has(reference.id)}
+                          onClick={() => handleSaveReferenceImage(reference)}
+                        >
+                          保存
+                        </Button>
+                      ) : null}
+                      <Button
+                        size="sm"
+                        tone="subtle"
+                        pending={pendingReferenceIds.has(reference.id)}
+                        disabled={addedReferenceResultIds.has(reference.id)}
+                        onClick={() => handleAddReferenceImageToResults(reference.id, reference.label)}
+                      >
+                        {addedReferenceResultIds.has(reference.id) ? "已加入结果池" : "加入结果池"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        tone="danger"
+                        icon={Trash2}
+                        pending={deletingReferenceImageIds.has(reference.id)}
+                        onClick={() => handleDeleteReferenceImage(reference.id, reference.label)}
+                      >
+                        删除
+                      </Button>
+                    </div>
                   </div>
                 </article>
               ))}
