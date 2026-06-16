@@ -78,13 +78,6 @@ function sourceFilesFromRoots(...roots: string[]) {
   return roots.flatMap((root) => listSourceFiles(resolve(repoRoot, root)));
 }
 
-function renderLinesContaining(source: string, pattern: string) {
-  return source
-    .split("\n")
-    .filter((line) => line.includes(pattern))
-    .map((line) => line.trim());
-}
-
 test("work mode resource targets isolate generation and training-owned resources", () => {
   const generationTargets = buildWorkModeResourceTargets("generation");
   const trainingTargets = buildWorkModeResourceTargets("lora_training");
@@ -274,21 +267,11 @@ test("persistent production navigation consumes the shared work mode resource co
   );
 });
 
-test("production shell keeps generation task-panel resources out of training mode", () => {
-  assert.match(
+test("production shell does not mount the legacy Character LoRA task panel", () => {
+  assert.doesNotMatch(
     appShellSource,
-    /resolveWorkModeForPathname/,
-    "The production shell should derive the active work mode from the current route.",
-  );
-  assert.match(
-    appShellSource,
-    /workMode === "generation" \? <TaskPanelContainer \/> : null/,
-    "The legacy generation task panel should only render in generation mode.",
-  );
-  assert.deepEqual(
-    renderLinesContaining(appShellSource, "<TaskPanelContainer"),
-    ['{workMode === "generation" ? <TaskPanelContainer /> : null}'],
-    "The task panel must not be mounted unconditionally, because it still owns generation/legacy task resources.",
+    /TaskPanel(?:Provider|Container)|@\/components\/task-panel/,
+    "The production shell must not mount the old Character LoRA task panel because it owns training resources.",
   );
 });
 

@@ -122,21 +122,16 @@ test("production training route headers keep caption copy product-facing", () =>
   assert.match(trainingHeaderSpecsSource, /说明文本/, "training route headers should describe captions as user-facing text.");
 });
 
-test("production app shell hides generation task panel while LoRA training mode owns resource links", () => {
-  assert.match(
-    appShellSource,
-    /resolveWorkModeForPathname/,
-    "AppShell should resolve the current work mode instead of always exposing generation-only controls.",
-  );
-  assert.match(
-    appShellSource,
-    /workMode === "generation"/,
-    "The generation task panel should be gated to generation mode.",
-  );
+test("production app shell does not mount the legacy task panel while navigation owns resource links", () => {
   assert.doesNotMatch(
     appShellSource,
-    /<PersistentBottomNav \/>\s*<TaskPanelContainer \/>/,
-    "The generation task panel should not be rendered unconditionally on shared LoRA-mode pages.",
+    /TaskPanel(?:Provider|Container)|@\/components\/task-panel/,
+    "AppShell should not mount the legacy Character LoRA task panel in either work mode.",
+  );
+  assert.match(
+    bottomNavSource,
+    /resolveWorkModeForPathname/,
+    "Persistent navigation should own work-mode resource switching.",
   );
 });
 
