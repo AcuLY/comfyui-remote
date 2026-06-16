@@ -23,6 +23,10 @@ import {
 } from "@/server/services/validation-utils";
 import { prisma } from "@/lib/prisma";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
+import {
+  LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR,
+  hasLegacyTrainingBenchmarkPurposeNotes,
+} from "@/server/repositories/legacy-training-resource-boundary";
 
 // Project service logger
 const log = createLogger({ module: "project-service" });
@@ -225,6 +229,15 @@ function normalizeNullableNotesField(value: unknown, fieldName: string) {
   return normalizedValue ? normalizedValue : null;
 }
 
+function assertGenerationProjectNotes(notes: string | null) {
+  if (!hasLegacyTrainingBenchmarkPurposeNotes(notes)) return;
+
+  throw new ProjectServiceError(LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR, 400, {
+    resourceBoundary: "generation.projects",
+    forbiddenPurpose: "character_lora_benchmark",
+  });
+}
+
 function normalizeOptionalSearch(value: unknown) {
   if (value === undefined) {
     return undefined;
@@ -370,6 +383,7 @@ export async function createProject(body: unknown, actorType: ActorType = ActorT
     folderId: normalizeNullableIdField(parsedBody.folderId, "folderId"),
     notes: normalizeNullableNotesField(parsedBody.notes, "notes"),
   };
+  assertGenerationProjectNotes(input.notes);
 
   log.info("Creating project", { title: input.title });
   await ensureProjectFolderExists(input.folderId);

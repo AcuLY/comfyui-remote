@@ -16,8 +16,10 @@ import {
   ordinaryPresetCategoryTypeWhere,
 } from "./preset-resource-scope";
 import {
+  LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR,
   buildGenerationPresetWhere,
   buildGenerationProjectTemplateWhere,
+  hasLegacyCharacterLoraBenchmarkTemplateIdentity,
 } from "@/server/repositories/legacy-training-resource-boundary";
 
 // ---------------------------------------------------------------------------
@@ -170,6 +172,14 @@ async function assertOrdinaryTemplateSections(sections: readonly ProjectTemplate
   await assertOrdinaryPresetLibraryBindingRefs(bindingRows);
 }
 
+function assertGenerationTemplateIdentity(
+  name: string | null | undefined,
+  description: string | null | undefined,
+) {
+  if (!hasLegacyCharacterLoraBenchmarkTemplateIdentity(name, description)) return;
+  throw new Error(LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR);
+}
+
 // ---------------------------------------------------------------------------
 // Project Template CRUD
 // ---------------------------------------------------------------------------
@@ -177,6 +187,7 @@ async function assertOrdinaryTemplateSections(sections: readonly ProjectTemplate
 export async function createProjectTemplate(
   input: CreateProjectTemplateInput,
 ): Promise<string> {
+  assertGenerationTemplateIdentity(input.name, input.description);
   await assertOrdinaryTemplateSections(input.sections);
 
   const template = await prisma.$transaction(async (tx) => {
@@ -211,18 +222,22 @@ export async function updateProjectTemplate(
   input: UpdateProjectTemplateInput,
 ): Promise<void> {
   const { id, sections, ...rest } = input;
+  assertGenerationTemplateIdentity(rest.name, rest.description);
   if (sections) {
     await assertOrdinaryTemplateSections(sections);
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.projectTemplate.update({
-      where: { id },
+    const updatedTemplate = await tx.projectTemplate.updateMany({
+      where: buildGenerationProjectTemplateWhere({ id }),
       data: {
         ...(rest.name !== undefined ? { name: rest.name } : {}),
         ...(rest.description !== undefined ? { description: rest.description } : {}),
       },
     });
+    if (updatedTemplate.count === 0) {
+      throw new Error("PROJECT_TEMPLATE_NOT_FOUND");
+    }
 
     if (sections) {
       const incomingSectionIds = sections
@@ -285,6 +300,7 @@ export async function updateProjectTemplateSection(
     where: {
       id: input.sectionId,
       projectTemplateId: input.templateId,
+      projectTemplate: buildGenerationProjectTemplateWhere({ id: input.templateId }),
     },
     select: { id: true, sortOrder: true },
   });
@@ -311,6 +327,7 @@ export async function deleteProjectTemplateSection(
     where: {
       id: input.sectionId,
       projectTemplateId: input.templateId,
+      projectTemplate: buildGenerationProjectTemplateWhere({ id: input.templateId }),
     },
     select: { id: true, sortOrder: true },
   });
@@ -337,13 +354,21 @@ export async function deleteProjectTemplateSection(
 export async function deleteProjectTemplate(
   templateId: string,
 ): Promise<void> {
-  await prisma.projectTemplate.delete({ where: { id: templateId } });
+  const deleted = await prisma.projectTemplate.deleteMany({
+    where: buildGenerationProjectTemplateWhere({ id: templateId }),
+  });
+  if (deleted.count === 0) {
+    throw new Error("PROJECT_TEMPLATE_NOT_FOUND");
+  }
   safeRevalidatePath("/assets/templates");
 }
 
 export async function copyProjectTemplateSection(sectionId: string): Promise<string | null> {
-  const section = await prisma.projectTemplateSection.findUnique({
-    where: { id: sectionId },
+  const section = await prisma.projectTemplateSection.findFirst({
+    where: {
+      id: sectionId,
+      projectTemplate: buildGenerationProjectTemplateWhere(),
+    },
     include: {
       presetBindingRows: { orderBy: { sortOrder: "asc" } },
       promptBlockRows: { orderBy: { sortOrder: "asc" } },

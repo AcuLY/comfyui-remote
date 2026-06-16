@@ -14,6 +14,7 @@ import type * as TemplateCrudActions from "../src/lib/actions/template-crud";
 import type * as TemplateSaveActions from "../src/lib/actions/template-save";
 import type * as ProjectActions from "../src/lib/actions/project";
 import type * as ProjectRepository from "../src/server/repositories/project-repository";
+import type * as ProjectService from "../src/server/services/project-service";
 import type * as ProjectViewRepository from "../src/server/repositories/project-view-repository";
 import type * as QueueDataRepository from "../src/server/repositories/queue-data-repository";
 import type * as TemplateViewRepository from "../src/server/repositories/template-view-repository";
@@ -383,12 +384,15 @@ let importTemplateToProject: typeof TemplateImportActions.importTemplateToProjec
 let createProjectTemplate: typeof TemplateCrudActions.createProjectTemplate;
 let updateProjectTemplate: typeof TemplateCrudActions.updateProjectTemplate;
 let updateProjectTemplateSection: typeof TemplateCrudActions.updateProjectTemplateSection;
+let deleteProjectTemplate: typeof TemplateCrudActions.deleteProjectTemplate;
+let deleteProjectTemplateSection: typeof TemplateCrudActions.deleteProjectTemplateSection;
 let copyProjectTemplateSection: typeof TemplateCrudActions.copyProjectTemplateSection;
 let saveProjectAsTemplate: typeof TemplateSaveActions.saveProjectAsTemplate;
 let createProject: typeof ProjectActions.createProject;
 let updateProject: typeof ProjectActions.updateProject;
 let copyProject: typeof ProjectActions.copyProject;
 let applyParamToAllSections: typeof ProjectActions.applyParamToAllSections;
+let createProjectForApi: typeof ProjectService.createProject;
 let listProjects: typeof ProjectViewRepository.listProjects;
 let listProjectsForApi: typeof ProjectRepository.listProjects;
 let listProjectTemplates: typeof TemplateViewRepository.listProjectTemplates;
@@ -412,6 +416,7 @@ test.before(async () => {
   const templateCrudActions = await import("../src/lib/actions/template-crud");
   const templateSaveActions = await import("../src/lib/actions/template-save");
   const projectActions = await import("../src/lib/actions/project");
+  const projectService = await import("../src/server/services/project-service");
   const projectRepository = await import("../src/server/repositories/project-repository");
   const projectViewRepository = await import("../src/server/repositories/project-view-repository");
   const queueDataRepository = await import("../src/server/repositories/queue-data-repository");
@@ -433,12 +438,15 @@ test.before(async () => {
   createProjectTemplate = templateCrudActions.createProjectTemplate;
   updateProjectTemplate = templateCrudActions.updateProjectTemplate;
   updateProjectTemplateSection = templateCrudActions.updateProjectTemplateSection;
+  deleteProjectTemplate = templateCrudActions.deleteProjectTemplate;
+  deleteProjectTemplateSection = templateCrudActions.deleteProjectTemplateSection;
   copyProjectTemplateSection = templateCrudActions.copyProjectTemplateSection;
   saveProjectAsTemplate = templateSaveActions.saveProjectAsTemplate;
   createProject = projectActions.createProject;
   updateProject = projectActions.updateProject;
   copyProject = projectActions.copyProject;
   applyParamToAllSections = projectActions.applyParamToAllSections;
+  createProjectForApi = projectService.createProject;
   listProjects = projectViewRepository.listProjects;
   listProjectsForApi = projectRepository.listProjects;
   listProjectTemplates = templateViewRepository.listProjectTemplates;
@@ -612,6 +620,177 @@ test("generation project and template lists hide legacy training benchmark tempo
     null,
     "generation template detail must not expose a legacy training benchmark template by direct id",
   );
+});
+
+test("generation project writes reject legacy training benchmark resource notes", async () => {
+  const key = `zrw-benchmark-write-boundary-${++sequence}`;
+  const benchmarkNotes = JSON.stringify({
+    temporary: true,
+    purpose: "character_lora_benchmark",
+    benchmarkRunId: `${key}-run`,
+  });
+
+  await assert.rejects(
+    () => createProjectForApi({
+      title: `${key} API Boundary Project`,
+      checkpointName: `${key}.ckpt`,
+      notes: benchmarkNotes,
+    }),
+    /training benchmark/i,
+    "the /api/projects service must not create generation projects carrying training benchmark notes",
+  );
+
+  await assert.rejects(
+    () => createProject({
+      title: `${key} Action Boundary Project`,
+      checkpointName: `${key}.ckpt`,
+      presetBindings: [],
+      notes: benchmarkNotes,
+    }),
+    /training benchmark/i,
+    "legacy generation server actions must not create projects carrying training benchmark notes",
+  );
+
+  assert.equal(
+    await prisma.project.count({
+      where: {
+        title: {
+          in: [
+            `${key} API Boundary Project`,
+            `${key} Action Boundary Project`,
+          ],
+        },
+      },
+    }),
+    0,
+    "rejected generation writes must not leave hidden training-marked projects behind",
+  );
+});
+
+test("generation template writes reject legacy training benchmark identities", async () => {
+  const key = `zrw-benchmark-template-write-${++sequence}`;
+  const benchmarkDescription =
+    "Default ProjectTemplate for Character LoRA training benchmark and promotion evidence.";
+
+  await assert.rejects(
+    () => createProjectTemplate({
+      name: "角色 LoRA 测试",
+      description: `${benchmarkDescription} ${key}`,
+      sections: [],
+    }),
+    /training benchmark/i,
+    "generation template creation must not create hidden legacy training benchmark templates",
+  );
+
+  await assert.rejects(
+    () => createProjectTemplate({
+      name: `${key} Ordinary Name`,
+      description: `${benchmarkDescription} ${key}`,
+      sections: [],
+    }),
+    /training benchmark/i,
+    "generation template creation must reject benchmark descriptions even when the name looks ordinary",
+  );
+
+  const cleanTemplateId = await ignoreStaticRevalidateError(() => createProjectTemplate({
+    name: `${key} Clean Template`,
+    description: "Ordinary generation template",
+    sections: [],
+  })) ?? (await prisma.projectTemplate.findFirstOrThrow({
+    where: { name: `${key} Clean Template` },
+    select: { id: true },
+  })).id;
+
+  await assert.rejects(
+    () => updateProjectTemplate({
+      id: cleanTemplateId,
+      name: "character lora benchmark",
+    }),
+    /training benchmark/i,
+    "generation template updates must not rename ordinary templates into hidden benchmark templates",
+  );
+
+  assert.equal(
+    await prisma.projectTemplate.count({
+      where: {
+        description: { contains: key },
+      },
+    }),
+    0,
+    "rejected generation template writes must not leave hidden training benchmark templates behind",
+  );
+});
+
+test("generation template direct mutations reject hidden legacy training benchmark templates", async () => {
+  const seed = await seedProjectWithPreset();
+  const key = `zrw-benchmark-template-mutation-${++sequence}`;
+  const hiddenTemplate = await prisma.projectTemplate.create({
+    data: {
+      id: `${key}-hidden-template`,
+      name: "角色 LoRA 测试",
+      description: `Default ProjectTemplate for Character LoRA training benchmark and promotion evidence. ${key}`,
+    },
+  });
+  const hiddenSection = await prisma.projectTemplateSection.create({
+    data: {
+      id: `${key}-hidden-section`,
+      projectTemplateId: hiddenTemplate.id,
+      sortOrder: 0,
+      name: `${key} Hidden Section`,
+    },
+  });
+
+  await assert.rejects(
+    () => updateProjectTemplate({
+      id: hiddenTemplate.id,
+      name: `${key} Renamed Through Generation`,
+    }),
+    /PROJECT_TEMPLATE_NOT_FOUND|not found/i,
+    "generation template update must not mutate hidden legacy training benchmark templates by id",
+  );
+
+  await assert.rejects(
+    () => updateProjectTemplateSection({
+      templateId: hiddenTemplate.id,
+      sectionId: hiddenSection.id,
+      section: templateSectionInput(seed, {
+        id: hiddenSection.id,
+        name: `${key} Mutated Through Generation`,
+      }),
+    }),
+    /TEMPLATE_SECTION_NOT_FOUND|not found/i,
+    "generation template section update must not mutate hidden legacy training benchmark sections by id",
+  );
+
+  assert.equal(
+    await copyProjectTemplateSection(hiddenSection.id),
+    null,
+    "generation template section copy must treat hidden legacy training benchmark sections as out of scope",
+  );
+
+  await assert.rejects(
+    () => deleteProjectTemplateSection({
+      templateId: hiddenTemplate.id,
+      sectionId: hiddenSection.id,
+    }),
+    /TEMPLATE_SECTION_NOT_FOUND|not found/i,
+    "generation template section delete must not delete hidden legacy training benchmark sections by id",
+  );
+
+  await assert.rejects(
+    () => deleteProjectTemplate(hiddenTemplate.id),
+    /PROJECT_TEMPLATE_NOT_FOUND|not found/i,
+    "generation template delete must not delete hidden legacy training benchmark templates by id",
+  );
+
+  const reloadedTemplate = await prisma.projectTemplate.findUniqueOrThrow({
+    where: { id: hiddenTemplate.id },
+  });
+  const reloadedSection = await prisma.projectTemplateSection.findUniqueOrThrow({
+    where: { id: hiddenSection.id },
+  });
+  assert.equal(reloadedTemplate.name, "角色 LoRA 测试");
+  assert.equal(reloadedSection.name, `${key} Hidden Section`);
 });
 
 test("generation run lists hide runs attached to legacy training benchmark temporary projects", async () => {

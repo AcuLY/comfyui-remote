@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
-import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
+import {
+  LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR,
+  buildGenerationProjectWhere,
+  hasLegacyTrainingBenchmarkPurposeNotes,
+} from "@/server/repositories/legacy-training-resource-boundary";
 import { copyProject as copyProjectRepo } from "@/server/repositories/project-repository";
 import { archiveProject as archiveProjectService } from "@/server/services/project-archive-service";
 import { deleteProjectCompletely } from "@/server/services/project-deletion-service";
@@ -105,6 +109,11 @@ async function assertOrdinaryProjectPresetBindings(bindings: readonly PresetBind
   await assertOrdinaryProjectPresetBindingRefs(normalized);
 }
 
+function assertGenerationProjectNotes(notes: string | null | undefined) {
+  if (!hasLegacyTrainingBenchmarkPurposeNotes(notes)) return;
+  throw new Error(LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR);
+}
+
 async function replaceProjectPresetBindingRows(
   tx: Prisma.TransactionClient,
   projectId: string,
@@ -127,6 +136,7 @@ async function replaceProjectPresetBindingRows(
 export async function createProject(input: CreateProjectInput): Promise<string> {
   const checkpointName = input.checkpointName.trim() || DEFAULT_CHECKPOINT_NAME;
   await assertOrdinaryProjectPresetBindings(input.presetBindings);
+  assertGenerationProjectNotes(input.notes);
 
   // 生成唯一 slug
   const baseSlug = input.title
@@ -188,6 +198,9 @@ export async function updateProject(input: UpdateProjectInput) {
   const { projectId, sections, projectLevelOverrides, presetBindings, ...projectData } = input;
   if (presetBindings !== undefined) {
     await assertOrdinaryProjectPresetBindings(presetBindings);
+  }
+  if (projectData.notes !== undefined) {
+    assertGenerationProjectNotes(projectData.notes);
   }
 
   await prisma.$transaction(async (tx) => {
