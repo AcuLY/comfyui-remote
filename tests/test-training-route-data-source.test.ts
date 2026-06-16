@@ -211,6 +211,54 @@ test("production training route loader delegates snapshot assembly to a dedicate
   );
 });
 
+test("production training route loader hydrates shared model resources without creating training-owned model APIs", () => {
+  assert.match(
+    trainingRouteLoaderSource,
+    /@\/server\/services\/model-asset-service/,
+    "training route loader should hydrate shared model resources through the shared model asset service.",
+  );
+  assert.match(
+    trainingRouteLoaderSource,
+    /listModelAssets\("checkpoint"\)/,
+    "training route loader should fetch checkpoint options for the create-project first render.",
+  );
+  assert.match(
+    trainingRouteLoaderSource,
+    /listModelAssets\("lora"\)/,
+    "training route loader should count shared LoRA model assets without creating a training-owned model route.",
+  );
+  assert.doesNotMatch(
+    trainingRouteLoaderSource,
+    /\/api\/training\/models/,
+    "training route data should not introduce a duplicated training-owned model API.",
+  );
+  assert.doesNotMatch(
+    trainingRouteLoaderSource,
+    /models:\s*\[\]/,
+    "training route data should not leave shared model resources empty on the server render.",
+  );
+  assert.match(
+    trainingRouteLoaderSource,
+    /shellData:\s*buildTrainingShellData\(loraTraining,\s*models\)/,
+    "training shell counts should receive the same shared model list used by training pages.",
+  );
+  assert.match(
+    trainingFeatureDataSource,
+    /buildTrainingShellData\(loraTraining:\s*LoraTrainingData,\s*models:\s*TrainingModelOption\[\]/,
+    "training shell data should accept hydrated shared model resources.",
+  );
+  assert.match(
+    trainingFeatureDataSource,
+    /const loras = models\.filter\(\(model\) => model\.modelType === "lora"\)[\s\S]*?loras:\s*loras\.length/,
+    "training shell metrics should count shared LoRA model assets from the hydrated model list.",
+  );
+  assert.match(
+    trainingFeatureDataSource,
+    /models:\s*models\.map/,
+    "training shell data should expose hydrated shared model resources to navigation counts.",
+  );
+});
+
 test("training client app imports only the client-safe training data contract", () => {
   const appDataImportLine = trainingFeatureAppSource
     .split("\n")

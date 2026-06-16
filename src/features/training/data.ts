@@ -29,8 +29,8 @@ export type TrainingShellData = {
   runs: never[];
   categories: never[];
   templates: never[];
-  loras: never[];
-  models: never[];
+  loras: TrainingModelOption[];
+  models: TrainingModelOption[];
   auditLogs: never[];
   images: never[];
   loraTraining?: LoraTrainingData;
@@ -47,12 +47,13 @@ export function resolveTrainingShellData(data: TrainingAppData): TrainingShellDa
   return data.shellData ?? null;
 }
 
-export function buildTrainingShellData(loraTraining: LoraTrainingData): TrainingShellData {
+export function buildTrainingShellData(loraTraining: LoraTrainingData, models: TrainingModelOption[]): TrainingShellData {
   const sectionCount = loraTraining.projects.reduce((sum, project) => sum + project.sections.length, 0);
   const pendingImages = loraTraining.projects.reduce(
     (sum, project) => sum + project.resultPool.filter((result) => result.reviewStatus === "pending").length,
     0,
   );
+  const loras = models.filter((model) => model.modelType === "lora");
 
   return {
     source: {
@@ -70,15 +71,15 @@ export function buildTrainingShellData(loraTraining: LoraTrainingData): Training
       pendingImages,
       presets: loraTraining.presets.length,
       templates: loraTraining.templates.length,
-      loras: 0,
+      loras: loras.length,
     },
     projectFolders: [],
     projects: [],
     runs: [],
     categories: [],
     templates: [],
-    loras: [],
-    models: [],
+    loras,
+    models: models.map((model) => ({ ...model })),
     auditLogs: [],
     images: [],
     loraTraining,
