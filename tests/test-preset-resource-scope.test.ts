@@ -1357,3 +1357,33 @@ test("ordinary preset sync rejects LoRA training preset ids", async () => {
     "ordinary preset sync must reject training-owned preset ids instead of returning success",
   );
 });
+
+test("ordinary preset sync rejects legacy training benchmark temporary preset ids", async () => {
+  await prisma.presetCategory.create({
+    data: {
+      id: "legacy-training-sync-category",
+      name: "Legacy Training Sync",
+      slug: "legacy-training-sync",
+      type: "preset",
+    },
+  });
+  await prisma.preset.create({
+    data: {
+      id: "legacy-training-sync-hidden-preset",
+      categoryId: "legacy-training-sync-category",
+      name: "Legacy Training Sync Hidden Preset",
+      slug: "legacy-training-sync-hidden-preset",
+      notes: JSON.stringify({
+        temporary: true,
+        purpose: "character_lora_benchmark",
+        benchmarkRunId: "benchmark-sync-hidden",
+      }),
+    },
+  });
+
+  await assert.rejects(
+    () => ignoreStaticRevalidateError(() => syncPresetToSections("legacy-training-sync-hidden-preset")),
+    /Ordinary preset not found/i,
+    "ordinary preset sync must reject legacy training benchmark temporary preset ids instead of returning success",
+  );
+});

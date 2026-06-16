@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 export const ORDINARY_PRESET_CATEGORY_TYPE = "preset";
 export const ORDINARY_PRESET_GROUP_CATEGORY_TYPE = "group";
@@ -117,10 +118,10 @@ export async function assertOrdinaryPresetLibraryCategories(categoryIds: string[
 
 export async function assertOrdinaryPreset(presetId: string) {
   const preset = await prisma.preset.findFirst({
-    where: {
+    where: buildGenerationPresetWhere({
       id: presetId,
       category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
-    },
+    }),
     select: { id: true, categoryId: true },
   });
 
@@ -136,10 +137,10 @@ export async function assertOrdinaryPresets(presetIds: string[]) {
   if (ids.length === 0) return;
 
   const count = await prisma.preset.count({
-    where: {
+    where: buildGenerationPresetWhere({
       id: { in: ids },
       category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
-    },
+    }),
   });
 
   if (count !== ids.length) {
@@ -183,7 +184,9 @@ export async function assertOrdinaryPresetVariant(variantId: string) {
   const variant = await prisma.presetVariant.findFirst({
     where: {
       id: variantId,
-      preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+      preset: buildGenerationPresetWhere({
+        category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+      }),
     },
     select: { id: true, presetId: true },
   });
@@ -202,7 +205,9 @@ export async function assertOrdinaryPresetVariants(variantIds: string[]) {
   const count = await prisma.presetVariant.count({
     where: {
       id: { in: ids },
-      preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+      preset: buildGenerationPresetWhere({
+        category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+      }),
     },
   });
 
@@ -234,10 +239,10 @@ export async function assertOrdinaryProjectPresetBindingRefs(
 
   if (presetIds.length > 0) {
     const presetCount = await client.preset.count({
-      where: {
+      where: buildGenerationPresetWhere({
         id: { in: presetIds },
         category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
-      },
+      }),
     });
     if (presetCount !== presetIds.length) {
       throw new PresetResourceScopeError("Ordinary presets include non-generation resources");
@@ -248,7 +253,9 @@ export async function assertOrdinaryProjectPresetBindingRefs(
     const variantCount = await client.presetVariant.count({
       where: {
         id: { in: variantIds },
-        preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+        preset: buildGenerationPresetWhere({
+          category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+        }),
       },
     });
     if (variantCount !== variantIds.length) {
@@ -289,10 +296,10 @@ export async function assertOrdinaryPresetLibraryBindingRefs(
 
   if (presetIds.length > 0) {
     const presetCount = await client.preset.count({
-      where: {
+      where: buildGenerationPresetWhere({
         id: { in: presetIds },
         category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
-      },
+      }),
     });
     if (presetCount !== presetIds.length) {
       throw new PresetResourceScopeError("Ordinary presets include non-generation resources");
@@ -303,7 +310,9 @@ export async function assertOrdinaryPresetLibraryBindingRefs(
     const variantCount = await client.presetVariant.count({
       where: {
         id: { in: variantIds },
-        preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+        preset: buildGenerationPresetWhere({
+          category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+        }),
       },
     });
     if (variantCount !== variantIds.length) {
