@@ -602,7 +602,7 @@ function SortableSectionCard({
         className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-white/5 pt-2"
         onClick={(e) => e.stopPropagation()}
       >
-        <SectionRunButton sectionId={section.id} defaultBatchSize={section.batchSize} />
+        <SectionRunButton projectId={projectId} sectionId={section.id} defaultBatchSize={section.batchSize} />
       </div>
     </div>
   );

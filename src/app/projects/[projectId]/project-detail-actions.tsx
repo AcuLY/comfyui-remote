@@ -68,7 +68,7 @@ export function SectionRunButton({
 
   function setBatchSizeValue(value: string) {
     setBatchSize(value);
-    if (!showBatchOverride) scheduleBatchSizeSave(value);
+    if (projectId) scheduleBatchSizeSave(value);
   }
 
   function handleRun() {
