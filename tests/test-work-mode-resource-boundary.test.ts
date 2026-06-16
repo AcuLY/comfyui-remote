@@ -7,6 +7,7 @@ import {
   WORK_MODE_RESOURCE_TARGETS,
   buildWorkModeResourceTargets,
 } from "../src/lib/work-mode-resources";
+import * as WorkModeResources from "../src/lib/work-mode-resources";
 import { inferWorkModeFromPathname, resolveWorkModeForPathname } from "../src/lib/work-mode";
 
 const repoRoot = process.cwd();
@@ -116,6 +117,63 @@ test("work mode resource targets isolate generation and training-owned resources
       `${key} should use the same route from both work modes.`,
     );
   }
+});
+
+test("work mode resource boundary manifest is symmetric for generation and training modules", () => {
+  const buildBoundary = (WorkModeResources as Record<string, unknown>).buildWorkModeResourceBoundary;
+
+  assert.equal(
+    typeof buildBoundary,
+    "function",
+    "The shared work-mode resource contract should expose a boundary manifest for agent-facing APIs.",
+  );
+
+  const generationBoundary = (buildBoundary as (mode: "generation" | "lora_training") => {
+    forbiddenTrainingEntrypoints: string[];
+    moduleOwnedResources: Record<string, { apiEntrypoint: string; uiRoute: string }>;
+    sharedResources: Record<string, { apiEntrypoints: string[]; uiRoute: string }>;
+  })("generation");
+  const trainingBoundary = (buildBoundary as (mode: "generation" | "lora_training") => {
+    forbiddenGenerationEntrypoints: string[];
+    moduleOwnedResources: Record<string, { apiEntrypoint: string; uiRoute: string }>;
+    sharedResources: Record<string, { apiEntrypoints: string[]; uiRoute: string }>;
+  })("lora_training");
+
+  assert.deepEqual(Object.keys(generationBoundary.moduleOwnedResources), [
+    "runs",
+    "projects",
+    "presets",
+    "templates",
+  ]);
+  assert.deepEqual(Object.keys(trainingBoundary.moduleOwnedResources), [
+    "runs",
+    "projects",
+    "presets",
+    "templates",
+  ]);
+  assert.equal(generationBoundary.moduleOwnedResources.presets.uiRoute, "/assets/presets");
+  assert.equal(generationBoundary.moduleOwnedResources.presets.apiEntrypoint, "/api/presets");
+  assert.equal(trainingBoundary.moduleOwnedResources.presets.uiRoute, "/training/presets");
+  assert.equal(trainingBoundary.moduleOwnedResources.presets.apiEntrypoint, "/api/training/presets");
+  assert.deepEqual(Object.keys(generationBoundary.sharedResources), ["models", "settings"]);
+  assert.deepEqual(Object.keys(trainingBoundary.sharedResources), ["models", "settings"]);
+  assert.equal(generationBoundary.sharedResources.models.uiRoute, trainingBoundary.sharedResources.models.uiRoute);
+  assert.deepEqual(
+    generationBoundary.sharedResources.models.apiEntrypoints,
+    trainingBoundary.sharedResources.models.apiEntrypoints,
+  );
+  assert.ok(
+    generationBoundary.forbiddenTrainingEntrypoints.includes("/api/training/presets"),
+    "Generation module agents must not use training preset APIs as fallbacks.",
+  );
+  assert.ok(
+    generationBoundary.forbiddenTrainingEntrypoints.includes("/api/character-lora-training"),
+    "Generation module agents must not use legacy training APIs as fallbacks.",
+  );
+  assert.ok(
+    trainingBoundary.forbiddenGenerationEntrypoints.includes("/api/presets"),
+    "Training module agents must not use generation preset APIs as fallbacks.",
+  );
 });
 
 test("work mode inference treats the production training root as LoRA training-owned", () => {

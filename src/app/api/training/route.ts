@@ -3,7 +3,7 @@ import {
   TRAINING_GENERATION_KINDS,
   TRAINING_GENERATION_TASK_TYPES,
 } from "@/lib/training/schemas";
-import { WORK_MODE_RESOURCE_TARGETS } from "@/lib/work-mode-resources";
+import { buildWorkModeResourceBoundary } from "@/lib/work-mode-resources";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +32,7 @@ const WORKER_TASK_LEASE_HANDOFF_METADATA = {
   ],
 };
 
-const TRAINING_RESOURCE_TARGETS = WORK_MODE_RESOURCE_TARGETS.lora_training;
+const TRAINING_RESOURCE_BOUNDARY = buildWorkModeResourceBoundary("lora_training");
 
 const TRAINING_API_MANIFEST = {
   module: "training",
@@ -46,36 +46,7 @@ const TRAINING_API_MANIFEST = {
     templates: "/api/training/templates",
     scheduler: "/api/training/scheduler/status",
   },
-  resourceBoundary: {
-    moduleOwnedResources: {
-      runs: { uiRoute: TRAINING_RESOURCE_TARGETS.runs.href, apiEntrypoint: "/api/training/runs" },
-      projects: { uiRoute: TRAINING_RESOURCE_TARGETS.projects.href, apiEntrypoint: "/api/training/projects" },
-      presets: { uiRoute: TRAINING_RESOURCE_TARGETS.presets.href, apiEntrypoint: "/api/training/presets" },
-      templates: { uiRoute: TRAINING_RESOURCE_TARGETS.templates.href, apiEntrypoint: "/api/training/templates" },
-    },
-    sharedResources: {
-      models: {
-        uiRoute: TRAINING_RESOURCE_TARGETS.models.href,
-        apiEntrypoints: ["/api/models?kind=checkpoint", "/api/models?kind=lora"],
-      },
-      settings: { uiRoute: TRAINING_RESOURCE_TARGETS.settings.href, apiEntrypoints: [] },
-    },
-    forbiddenGenerationEntrypoints: [
-      "/api/agent/projects",
-      "/api/agent/runs",
-      "/api/project-create-options",
-      "/api/project-folders",
-      "/api/preset-library",
-      "/api/projects",
-      "/api/presets",
-      "/api/queue",
-      "/api/queue-data",
-      "/api/runs",
-      "/api/templates",
-    ],
-    guidance:
-      "Use /api/training for training-owned runs, projects, presets, and templates. Do not use generation resource APIs such as /api/preset-library or /api/templates as training fallbacks. Only models and settings are shared with the generation module.",
-  },
+  resourceBoundary: TRAINING_RESOURCE_BOUNDARY,
   workerSupervisor: {
     defaultCommand: "cmd /c npm run training:workers",
     defaultWorkers: ["image", "dataset-freeze", "training"],

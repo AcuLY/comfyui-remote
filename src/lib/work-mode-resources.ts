@@ -19,6 +19,16 @@ export type WorkModeResourceTarget = {
 };
 
 type WorkModeResourceTargetMap = Record<WorkModeResourceKey, WorkModeResourceTarget>;
+export type WorkModeModuleOwnedResourceKey = Exclude<WorkModeResourceKey, "models" | "settings">;
+export type WorkModeSharedResourceKey = Extract<WorkModeResourceKey, "models" | "settings">;
+
+export type WorkModeResourceBoundary = {
+  forbiddenGenerationEntrypoints: string[];
+  forbiddenTrainingEntrypoints: string[];
+  guidance: string;
+  moduleOwnedResources: Record<WorkModeModuleOwnedResourceKey, { apiEntrypoint: string; uiRoute: string }>;
+  sharedResources: Record<WorkModeSharedResourceKey, { apiEntrypoints: string[]; uiRoute: string }>;
+};
 
 const SHARED_RESOURCE_TARGETS = {
   models: {
@@ -108,6 +118,62 @@ export const WORK_MODE_RESOURCE_ORDER: WorkModeResourceKey[] = [
   "settings",
 ];
 
+export const WORK_MODE_MODULE_OWNED_RESOURCE_KEYS = [
+  "runs",
+  "projects",
+  "presets",
+  "templates",
+] as const satisfies readonly WorkModeModuleOwnedResourceKey[];
+
+export const WORK_MODE_SHARED_RESOURCE_KEYS = [
+  "models",
+  "settings",
+] as const satisfies readonly WorkModeSharedResourceKey[];
+
+export const WORK_MODE_MODULE_API_ENTRYPOINTS = {
+  generation: {
+    runs: "/api/queue-data",
+    projects: "/api/projects",
+    presets: "/api/presets",
+    templates: "/api/templates",
+  },
+  lora_training: {
+    runs: "/api/training/runs",
+    projects: "/api/training/projects",
+    presets: "/api/training/presets",
+    templates: "/api/training/templates",
+  },
+} satisfies Record<WorkMode, Record<WorkModeModuleOwnedResourceKey, string>>;
+
+export const WORK_MODE_SHARED_API_ENTRYPOINTS = {
+  models: ["/api/models?kind=checkpoint", "/api/models?kind=lora"],
+  settings: [],
+} satisfies Record<WorkModeSharedResourceKey, string[]>;
+
+export const WORK_MODE_FORBIDDEN_GENERATION_ENTRYPOINTS_FOR_TRAINING = [
+  "/api/agent/projects",
+  "/api/agent/runs",
+  "/api/project-create-options",
+  "/api/project-folders",
+  "/api/preset-library",
+  "/api/projects",
+  "/api/presets",
+  "/api/queue",
+  "/api/queue-data",
+  "/api/runs",
+  "/api/templates",
+] as const;
+
+export const WORK_MODE_FORBIDDEN_TRAINING_ENTRYPOINTS_FOR_GENERATION = [
+  "/api/character-lora-training",
+  "/api/training",
+  "/api/training/projects",
+  "/api/training/runs",
+  "/api/training/presets",
+  "/api/training/templates",
+  "/api/training/scene-description",
+] as const;
+
 export function buildWorkModeResourceTargets(workMode: WorkMode): WorkModeResourceTargetMap {
   return WORK_MODE_RESOURCE_TARGETS[workMode];
 }
@@ -115,4 +181,47 @@ export function buildWorkModeResourceTargets(workMode: WorkMode): WorkModeResour
 export function buildWorkModeResourceTargetList(workMode: WorkMode): WorkModeResourceTarget[] {
   const targets = buildWorkModeResourceTargets(workMode);
   return WORK_MODE_RESOURCE_ORDER.map((key) => targets[key]);
+}
+
+export function buildWorkModeResourceBoundary(workMode: WorkMode): WorkModeResourceBoundary {
+  const targets = buildWorkModeResourceTargets(workMode);
+  const apiEntrypoints = WORK_MODE_MODULE_API_ENTRYPOINTS[workMode];
+  const moduleOwnedResources = Object.fromEntries(
+    WORK_MODE_MODULE_OWNED_RESOURCE_KEYS.map((key) => [
+      key,
+      {
+        uiRoute: targets[key].href,
+        apiEntrypoint: apiEntrypoints[key],
+      },
+    ]),
+  ) as WorkModeResourceBoundary["moduleOwnedResources"];
+  const sharedResources = Object.fromEntries(
+    WORK_MODE_SHARED_RESOURCE_KEYS.map((key) => [
+      key,
+      {
+        uiRoute: targets[key].href,
+        apiEntrypoints: [...WORK_MODE_SHARED_API_ENTRYPOINTS[key]],
+      },
+    ]),
+  ) as WorkModeResourceBoundary["sharedResources"];
+
+  if (workMode === "lora_training") {
+    return {
+      moduleOwnedResources,
+      sharedResources,
+      forbiddenGenerationEntrypoints: [...WORK_MODE_FORBIDDEN_GENERATION_ENTRYPOINTS_FOR_TRAINING],
+      forbiddenTrainingEntrypoints: [],
+      guidance:
+        "Use /api/training for training-owned runs, projects, presets, and templates. Do not use generation resource APIs such as /api/preset-library or /api/templates as training fallbacks. Only models and settings are shared with the generation module.",
+    };
+  }
+
+  return {
+    moduleOwnedResources,
+    sharedResources,
+    forbiddenGenerationEntrypoints: [],
+    forbiddenTrainingEntrypoints: [...WORK_MODE_FORBIDDEN_TRAINING_ENTRYPOINTS_FOR_GENERATION],
+    guidance:
+      "Use generation APIs for generation-owned runs, projects, presets, and templates. Do not use /api/training or legacy /api/character-lora-training APIs as generation fallbacks. Only models and settings are shared with the training module.",
+  };
 }
