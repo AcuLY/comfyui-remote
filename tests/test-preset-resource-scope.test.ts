@@ -14,6 +14,7 @@ import type * as PresetVariantResolveActions from "../src/lib/actions/preset-var
 import type * as PresetSyncActions from "../src/lib/actions/preset-sync";
 import type * as ServerData from "../src/lib/server-data";
 import type * as PresetQueryService from "../src/server/services/preset-query-service";
+import type * as PresetGroupResolver from "../src/server/prompt-config/preset-group-resolver";
 import type * as TemplateCrudActions from "../src/lib/actions/template-crud";
 import type * as TrainingPresetService from "../src/server/services/training/preset-service";
 
@@ -162,6 +163,7 @@ let getPresetGroups: typeof ServerData.getPresetGroups;
 let getPresetGroup: typeof ServerData.getPresetGroup;
 let listPresets: typeof PresetQueryService.listPresets;
 let getPresetById: typeof PresetQueryService.getPresetById;
+let resolvePresetGroupContent: typeof PresetGroupResolver.resolvePresetGroupContent;
 let resolveTemplatePresetImports: typeof TemplateCrudActions.resolveTemplatePresetImports;
 let createTrainingSceneDescriptionPreset: typeof TrainingPresetService.createTrainingSceneDescriptionPreset;
 
@@ -175,6 +177,7 @@ test.before(async () => {
   const presetVariantResolveActions = await import("../src/lib/actions/preset-variant-resolve");
   const presetSyncActions = await import("../src/lib/actions/preset-sync");
   const presetQueryService = await import("../src/server/services/preset-query-service");
+  const presetGroupResolver = await import("../src/server/prompt-config/preset-group-resolver");
   const templateCrudActions = await import("../src/lib/actions/template-crud");
   const trainingPresetService = await import("../src/server/services/training/preset-service");
 
@@ -199,6 +202,7 @@ test.before(async () => {
   getPresetGroup = serverData.getPresetGroup;
   listPresets = presetQueryService.listPresets;
   getPresetById = presetQueryService.getPresetById;
+  resolvePresetGroupContent = presetGroupResolver.resolvePresetGroupContent;
   resolveTemplatePresetImports = templateCrudActions.resolveTemplatePresetImports;
   createTrainingSceneDescriptionPreset = trainingPresetService.createTrainingSceneDescriptionPreset;
 });
@@ -1385,5 +1389,79 @@ test("ordinary preset sync rejects legacy training benchmark temporary preset id
     () => ignoreStaticRevalidateError(() => syncPresetToSections("legacy-training-sync-hidden-preset")),
     /Ordinary preset not found/i,
     "ordinary preset sync must reject legacy training benchmark temporary preset ids instead of returning success",
+  );
+});
+
+test("ordinary preset group resolver treats legacy training benchmark temporary members as out of scope", async () => {
+  await prisma.presetCategory.createMany({
+    data: [
+      {
+        id: "legacy-training-group-resolver-category",
+        name: "Legacy Training Resolver Groups",
+        slug: "legacy-training-resolver-groups",
+        type: "group",
+      },
+      {
+        id: "legacy-training-group-resolver-preset-category",
+        name: "Legacy Training Resolver Presets",
+        slug: "legacy-training-resolver-presets",
+        type: "preset",
+      },
+    ],
+  });
+  await prisma.presetGroup.create({
+    data: {
+      id: "legacy-training-group-resolver-source-group",
+      categoryId: "legacy-training-group-resolver-category",
+      name: "Legacy Training Resolver Source Group",
+      slug: "legacy-training-resolver-source-group",
+    },
+  });
+  await prisma.preset.create({
+    data: {
+      id: "legacy-training-group-resolver-hidden-preset",
+      categoryId: "legacy-training-group-resolver-preset-category",
+      name: "Legacy Training Resolver Hidden Preset",
+      slug: "legacy-training-resolver-hidden-preset",
+      notes: JSON.stringify({
+        temporary: true,
+        purpose: "character_lora_benchmark",
+        benchmarkRunId: "benchmark-group-resolver-hidden",
+      }),
+    },
+  });
+  await prisma.presetVariant.create({
+    data: {
+      id: "legacy-training-group-resolver-hidden-variant",
+      presetId: "legacy-training-group-resolver-hidden-preset",
+      name: "Hidden Variant",
+      slug: "hidden-variant",
+      prompt: "legacy training group resolver prompt must not leak",
+    },
+  });
+  await prisma.presetGroupMember.create({
+    data: {
+      id: "legacy-training-group-resolver-hidden-member",
+      groupId: "legacy-training-group-resolver-source-group",
+      presetId: "legacy-training-group-resolver-hidden-preset",
+      variantId: "legacy-training-group-resolver-hidden-variant",
+      slotCategoryId: "legacy-training-group-resolver-preset-category",
+    },
+  });
+
+  const resolved = await resolvePresetGroupContent(
+    "legacy-training-group-resolver-source-group",
+    prisma as unknown as PresetGroupResolver.PresetGroupResolverDbClient,
+  );
+
+  assert.deepEqual(
+    resolved?.members.map((member) => member.presetId),
+    [],
+    "ordinary preset group resolver must not expose legacy training benchmark temporary preset members",
+  );
+  assert.equal(resolved?.prompt, "");
+  assert.deepEqual(
+    resolved?.missingReferences.map((reference) => ({ kind: reference.kind, id: reference.id })),
+    [{ kind: "preset", id: "legacy-training-group-resolver-hidden-preset" }],
   );
 });
