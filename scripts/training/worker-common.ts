@@ -180,10 +180,10 @@ export function getManagerApiNamespace(input?: { apiNamespace?: string | null })
 
 export function getWorkerTaskApiBasePath(input?: { apiNamespace?: string | null }) {
   const namespace = getManagerApiNamespace(input);
-  if (namespace === DEFAULT_API_NAMESPACE) {
-    return DEFAULT_WORKER_TASK_API_BASE_PATH;
+  if (namespace !== DEFAULT_API_NAMESPACE) {
+    throw new WorkerError("Training worker manager namespace must be \"training\"; worker scripts may only call /api/training/worker routes.");
   }
-  return `/api/${encodeURIComponent(namespace)}/worker/tasks`;
+  return DEFAULT_WORKER_TASK_API_BASE_PATH;
 }
 
 export function resolveManagerAuth(input: { token?: string | null } = {}): AuthSourceShape {

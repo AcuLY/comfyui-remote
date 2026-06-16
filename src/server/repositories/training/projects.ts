@@ -68,7 +68,11 @@ const candidateImageInclude = {
     take: 1,
   },
   generationTaskOutput: true,
-  sectionRun: true,
+  sectionRun: {
+    include: {
+      section: true,
+    },
+  },
 } satisfies Prisma.TrainingImageResultInclude;
 
 const sectionInclude = {
@@ -85,6 +89,10 @@ const sectionInclude = {
     take: 1,
   },
 } satisfies Prisma.TrainingSectionInclude;
+
+const PUBLIC_SECTION_ID_KEY = "publicSectionId";
+const PUBLIC_BLOCK_IDS_KEY = "publicBlockIds";
+const RESOLVED_SCENE_KEY = "resolvedScene";
 
 function isFileLike(value: unknown): value is FileLike {
   return Boolean(
@@ -121,6 +129,30 @@ function normalizeJson(value: unknown): Prisma.InputJsonValue {
   return { value } as Prisma.InputJsonValue;
 }
 
+function parseJsonObject(value: unknown): JsonObject {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as JsonObject : {};
+}
+
+function getPublicSectionId(section: { id: string; sectionDefaultsJson?: unknown }) {
+  return normalizeNullableString(parseJsonObject(section.sectionDefaultsJson)[PUBLIC_SECTION_ID_KEY]) ?? section.id;
+}
+
+function buildSectionDefaults(input: {
+  publicBlockIds?: Record<string, string>;
+  publicSectionId?: string | null;
+  resolvedScene?: string | null;
+}) {
+  const defaults: JsonObject = {};
+  const publicSectionId = normalizeNullableString(input.publicSectionId);
+  if (publicSectionId) defaults[PUBLIC_SECTION_ID_KEY] = publicSectionId;
+  const resolvedScene = normalizeNullableString(input.resolvedScene);
+  if (resolvedScene) defaults[RESOLVED_SCENE_KEY] = resolvedScene;
+  if (input.publicBlockIds && Object.keys(input.publicBlockIds).length > 0) {
+    defaults[PUBLIC_BLOCK_IDS_KEY] = input.publicBlockIds;
+  }
+  return Object.keys(defaults).length > 0 ? defaults as Prisma.InputJsonValue : Prisma.JsonNull;
+}
+
 function normalizeReviewStatus(value: unknown) {
   if (value === "keep" || value === "kept" || value === "included_in_training") return "keep";
   if (value === "reject" || value === "rejected" || value === "excluded") return "reject";
@@ -131,6 +163,7 @@ function normalizeRunStatus(status: string) {
   if (status === "completed" || status === "succeeded" || status === "done") return "done";
   if (status === "running") return "running";
   if (status === "queued") return "queued";
+  if (status === "cancelled" || status === "canceled") return "cancelled";
   return "failed";
 }
 
@@ -195,17 +228,21 @@ function mapProjectRow(row: Prisma.TrainingProjectGetPayload<{ include: typeof t
     currentCanonicalVersionId: null,
     currentPromptCardVersionId: row.profile?.id ?? null,
     projectName: row.name,
+    title: row.name,
     status: row.archivedAt ? "archived" : row.status,
     triggerToken,
     updatedAt: row.updatedAt.toISOString(),
+    usagePrompt: row.profile?.loraUsagePrompt ?? "",
+    detailPrompt: row.profile?.characterDetailPrompt ?? "",
+    profileSummary: row.profile?.characterDetailPrompt ?? "",
     counts: {
       sourceImages: 0,
     },
   };
 }
 
-async function getProjectRow(projectId: string) {
-  const row = await prisma.trainingProject.findFirst({
+async function getProjectRow(projectId: string, client: Pick<typeof prisma, "trainingProject"> = prisma) {
+  const row = await client.trainingProject.findFirst({
     where: {
       OR: [
         { id: projectId },
@@ -221,13 +258,29 @@ async function getProjectRow(projectId: string) {
   return row;
 }
 
-async function getSectionRow(sectionId: string) {
-  const section = await prisma.trainingSection.findUnique({
-    where: { id: sectionId },
-    include: sectionInclude,
-  });
+async function getSectionRow(sectionId: string, projectId?: string | null) {
+  const project = projectId ? await getProjectRow(projectId) : null;
+  const section = project
+    ? (await prisma.trainingSection.findMany({
+      where: { trainingProjectId: project.id },
+      include: sectionInclude,
+    })).find((candidate) => candidate.id === sectionId || getPublicSectionId(candidate) === sectionId) ?? null
+    : await prisma.trainingSection.findUnique({
+      where: { id: sectionId },
+      include: sectionInclude,
+    }) ?? (await prisma.trainingSection.findMany({
+      include: sectionInclude,
+      orderBy: {
+        createdAt: "desc",
+      },
+    }))
+      .filter((candidate) => getPublicSectionId(candidate) === sectionId)
+      .at(0) ?? null;
   if (!section) {
-    throw new TrainingRepositoryError("Training section not found", 404, { sectionId });
+    throw new TrainingRepositoryError("Training section not found", 404, {
+      projectId: project?.id ?? projectId ?? null,
+      sectionId,
+    });
   }
   return section;
 }
@@ -235,17 +288,19 @@ async function getSectionRow(sectionId: string) {
 function mapSectionRow(section: Prisma.TrainingSectionGetPayload<{ include: typeof sectionInclude }>) {
   const latestRun = section.runs[0] ?? null;
   return {
-    id: section.id,
+    id: getPublicSectionId(section),
+    internalId: section.id,
     jobId: section.trainingProjectId,
     name: section.name ?? "训练小节",
     pendingCount: latestRun?.status === "queued" || latestRun?.status === "running" ? 1 : 0,
     keepCount: 0,
     status: section.enabled ? "active" : "paused",
     template: {
-      description: section.blocks
+      description: normalizeNullableString(parseJsonObject(section.sectionDefaultsJson)[RESOLVED_SCENE_KEY])
+        ?? (section.blocks
         .filter((block) => block.enabled)
         .map((block) => block.localText || block.title)
-        .join("\n\n") || section.name || "训练场景说明",
+        .join("\n\n") || section.name || "训练场景说明"),
     },
     updatedAt: section.updatedAt.toISOString(),
   };
@@ -255,9 +310,14 @@ function mapCharacterImageRow(
   row: Prisma.TrainingCharacterImageGetPayload<{ include: { artifact: true; profile: true } }>,
 ) {
   const relativePath = row.artifact.filePath ?? row.artifact.storageKey;
+  const kind = row.imageType === "source" ? "original" : row.imageType === "generated" ? "generated" : "auxiliary";
   return {
     id: row.id,
+    artifactId: row.artifactId,
     jobId: row.profile.trainingProjectId,
+    kind,
+    label: row.label,
+    note: row.note,
     role: row.imageType,
     relativePath,
     absolutePath: relativePath ? join(process.cwd(), relativePath) : null,
@@ -267,7 +327,7 @@ function mapCharacterImageRow(
     width: row.artifact.width,
     height: row.artifact.height,
     provenance: {
-      kind: row.imageType === "source" ? "original" : "auxiliary",
+      kind,
       label: row.label,
       note: row.note,
     },
@@ -280,10 +340,12 @@ function mapCandidateImageRow(
 ) {
   const relativePath = row.filePathSnapshot ?? row.artifact.filePath ?? row.artifact.storageKey;
   const taskId = row.generationTaskOutput?.trainingGenerationTaskId ?? row.sectionRun?.generationTaskId ?? null;
+  const sectionId = row.sectionRun?.section ? getPublicSectionId(row.sectionRun.section) : row.sectionRun?.trainingSectionId ?? null;
   return {
     id: row.id,
+    artifactId: row.artifactId,
     jobId: row.trainingProjectId,
-    sectionId: row.sectionRun?.trainingSectionId ?? null,
+    sectionId,
     generationRunId: taskId,
     relativePath,
     sha256: row.sha256 ?? row.artifact.sha256,
@@ -343,15 +405,16 @@ function mapGenerationTaskRow(
     include: {
       inputs: { include: { artifact: true; snapshotArtifact: true } };
       outputs: true;
-      sectionRuns: true;
+      sectionRuns: { include: { section: true } };
     };
   }>,
 ) {
   const sectionRun = row.sectionRuns[0] ?? null;
+  const sectionId = sectionRun?.section ? getPublicSectionId(sectionRun.section) : sectionRun?.trainingSectionId ?? null;
   return {
     id: row.id,
     jobId: row.trainingProjectId,
-    sectionId: sectionRun?.trainingSectionId ?? null,
+    sectionId,
     status: normalizeRunStatus(row.status),
     provider: row.provider,
     imageModel: row.model,
@@ -516,17 +579,6 @@ export async function replaceTrainingProjectSections(projectId: string, sections
 
     for (const [index, section] of sections.entries()) {
       const sectionId = `training-section-${row.id}-${index + 1}-${randomUUID()}`;
-      const createdSection = await tx.trainingSection.create({
-        data: {
-          id: sectionId,
-          trainingProjectId: row.id,
-          name: section.title ?? `训练小节 ${index + 1}`,
-          sortOrder: section.sortOrder ?? index,
-          enabled: section.enabled ?? true,
-          sectionDefaultsJson: Prisma.JsonNull,
-        },
-      });
-
       const blocks = section.blocks?.length
         ? section.blocks
         : [{
@@ -534,10 +586,29 @@ export async function replaceTrainingProjectSections(projectId: string, sections
           title: section.title ?? "训练场景说明",
           text: section.resolvedScene ?? section.title ?? "训练场景说明",
         }];
+      const internalBlockIds = blocks.map((_, blockIndex) => `training-block-${sectionId}-${blockIndex + 1}-${randomUUID()}`);
+      const publicBlockIds = Object.fromEntries(blocks.flatMap((block, blockIndex) => {
+        const publicBlockId = normalizeNullableString(block.id);
+        return publicBlockId ? [[internalBlockIds[blockIndex], publicBlockId]] : [];
+      }));
+      const createdSection = await tx.trainingSection.create({
+        data: {
+          id: sectionId,
+          trainingProjectId: row.id,
+          name: section.title ?? `训练小节 ${index + 1}`,
+          sortOrder: section.sortOrder ?? index,
+          enabled: section.enabled ?? true,
+          sectionDefaultsJson: buildSectionDefaults({
+            publicBlockIds,
+            publicSectionId: section.id,
+            resolvedScene: section.resolvedScene,
+          }),
+        },
+      });
 
       await tx.trainingSceneDescriptionBlock.createMany({
         data: blocks.map((block, blockIndex) => ({
-          id: `training-block-${sectionId}-${blockIndex + 1}-${randomUUID()}`,
+          id: internalBlockIds[blockIndex],
           trainingSectionId: createdSection.id,
           sourceType: block.source === "预制" ? "preset" : "local",
           title: block.title ?? `场景块 ${blockIndex + 1}`,
@@ -589,7 +660,10 @@ export async function updateTrainingProductionProject(projectId: string, input: 
     },
     include: trainingProjectInclude,
   });
-  return mapProjectRow(updated);
+  return {
+    ...mapProjectRow(updated),
+    profileSummary: normalizeNullableString(data.profileSummary) ?? mapProjectRow(updated).profileSummary,
+  };
 }
 
 export async function archiveTrainingProductionProject(projectId: string) {
@@ -904,7 +978,7 @@ export async function registerTrainingReferenceImageFromArtifact(projectId: stri
     data: {
       trainingCharacterProfileId: profile.id,
       artifactId: artifact.id,
-      imageType: normalizeNullableString(data.role) ?? TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE,
+      imageType: normalizeNullableString(data.imageType) ?? normalizeNullableString(data.kind) ?? normalizeNullableString(data.role) ?? TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE,
       label: normalizeNullableString(data.label),
       note: normalizeNullableString(data.note),
       sortOrder: typeof data.sortOrder === "number" ? data.sortOrder : 0,
@@ -1088,8 +1162,8 @@ export async function registerTrainingReferenceImageAsResult(input: {
   return mapCandidateImageRow(result);
 }
 
-export async function getTrainingProductionProjectSection(sectionId: string) {
-  return mapSectionRow(await getSectionRow(sectionId));
+export async function getTrainingProductionProjectSection(sectionId: string, projectId?: string | null) {
+  return mapSectionRow(await getSectionRow(sectionId, projectId));
 }
 
 export async function listTrainingProjectSections(projectId: string) {
@@ -1108,9 +1182,9 @@ export async function listTrainingProjectSections(projectId: string) {
 }
 
 export async function enqueueTrainingProductionSectionGenerationRun(sectionId: string, input: unknown = {}) {
-  const section = await getSectionRow(sectionId);
-  const profile = await ensureTrainingProfile(section.trainingProjectId);
   const data = input && typeof input === "object" ? input as JsonObject : {};
+  const section = await getSectionRow(sectionId, normalizeNullableString(data.projectId));
+  const profile = await ensureTrainingProfile(section.trainingProjectId);
   const taskType = normalizeNullableString(data.taskType) ?? "trainingset_generation";
   const generationKind = normalizeNullableString(data.generationKind) ?? "image_generation";
   const prompt = normalizeNullableString(data.userInstruction)
@@ -1145,7 +1219,7 @@ export async function enqueueTrainingProductionSectionGenerationRun(sectionId: s
     include: {
       inputs: { include: { artifact: true, snapshotArtifact: true } },
       outputs: true,
-      sectionRuns: true,
+      sectionRuns: { include: { section: true } },
     },
   });
   return mapGenerationTaskRow(task);
@@ -1157,14 +1231,14 @@ export async function cancelTrainingProductionGenerationRun(taskId: string, _inp
     data: {
       errorMessage: "生成任务已取消",
       finishedAt: new Date(),
-      status: "failed",
+      status: "cancelled",
       sectionRuns: {
         updateMany: {
           where: {},
           data: {
             errorMessage: "生成任务已取消",
             finishedAt: new Date(),
-            status: "failed",
+            status: "cancelled",
           },
         },
       },
@@ -1172,7 +1246,7 @@ export async function cancelTrainingProductionGenerationRun(taskId: string, _inp
     include: {
       inputs: { include: { artifact: true, snapshotArtifact: true } },
       outputs: true,
-      sectionRuns: true,
+      sectionRuns: { include: { section: true } },
     },
   });
   return mapGenerationTaskRow(task);
@@ -1184,7 +1258,7 @@ export async function getTrainingGenerationRun(taskId: string) {
     include: {
       inputs: { include: { artifact: true, snapshotArtifact: true } },
       outputs: true,
-      sectionRuns: true,
+      sectionRuns: { include: { section: true } },
     },
   });
   return task && !task.hiddenAt ? mapGenerationTaskRow(task) : null;

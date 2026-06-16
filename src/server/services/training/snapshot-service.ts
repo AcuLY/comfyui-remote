@@ -329,7 +329,7 @@ async function buildGenerationRuns(input: {
 }
 
 async function mapRealTrainingProjects(): Promise<LoraTrainingData> {
-  const jobs = await listTrainingProductionProjects({ page: 1, pageSize: 20 });
+  const jobs = await listTrainingProductionProjects({ page: 1, pageSize: 100 });
   const [presetRows, templateRows] = await Promise.all([
     listTrainingSceneDescriptionPresetRows(),
     listTrainingTemplateRows(),

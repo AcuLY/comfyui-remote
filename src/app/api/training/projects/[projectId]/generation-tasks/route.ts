@@ -3,6 +3,7 @@ import type { LoraTrainingTaskStatus } from "@/features/training/types";
 import { listTrainingRuns, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
   createTrainingGenerationTask,
+  listTrainingGenerationTaskRuns,
   listTrainingGenerationTasks,
   mapTrainingGenerationTaskError,
   normalizeGenerationTaskType,
@@ -43,7 +44,12 @@ export async function GET(
       projectId,
       status: statusFilter ?? undefined,
     });
-    return ok(data.filter((run) => !taskTypeFilter || run.taskType === taskTypeFilter));
+    const taskRuns = await listTrainingGenerationTaskRuns(projectId, {
+      status: statusFilter ?? null,
+      taskType: taskTypeFilter,
+    });
+    const mergedRuns = new Map([...data, ...taskRuns].map((run) => [run.id, run]));
+    return ok([...mergedRuns.values()].filter((run) => !taskTypeFilter || run.taskType === taskTypeFilter));
   } catch (error) {
     if (status === "draft") {
       const mapped = mapTrainingGenerationTaskError(error);

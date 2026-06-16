@@ -225,8 +225,6 @@ async function syncSelectedReferenceImagesToTrainingProject(
   projectId: string,
   selectedReferenceImages: LoraTrainingReferenceImage[],
 ) {
-  const seenRelativePaths = new Set<string>();
-
   for (const [index, reference] of selectedReferenceImages.entries()) {
     const relativePath = imageUrlToRelativePath(reference.image.full) ?? imageUrlToRelativePath(reference.image.src);
 
@@ -237,12 +235,6 @@ async function syncSelectedReferenceImagesToTrainingProject(
         src: reference.image.src,
       });
     }
-
-    const dedupeKey = relativePath.toLowerCase();
-    if (seenRelativePaths.has(dedupeKey)) {
-      continue;
-    }
-    seenRelativePaths.add(dedupeKey);
 
     let buffer: Buffer;
     try {
@@ -524,7 +516,14 @@ export async function freezeTrainingDataset(projectId: string, input: unknown = 
 }
 
 export async function enqueueTrainingSectionGenerationRun(sectionId: string, input: unknown = {}) {
-  return enqueueTrainingProductionSectionGenerationRun(sectionId, input);
+  const generationRun = await enqueueTrainingProductionSectionGenerationRun(sectionId, input);
+  const project = await getTrainingProductionProject(generationRun.jobId);
+  return {
+    ...generationRun,
+    kind: "generation" as const,
+    projectId: generationRun.jobId,
+    projectTitle: project.characterName,
+  };
 }
 
 export async function enqueueTrainingRun(projectId: string, input: Record<string, unknown> = {}) {
@@ -545,7 +544,12 @@ export async function enqueueTrainingRun(projectId: string, input: Record<string
     return frozen.revision.id;
   })();
 
-  return enqueueTrainingProductionRun(resolvedRevisionId, enqueueInput);
+  const trainingRun = await enqueueTrainingProductionRun(resolvedRevisionId, enqueueInput);
+  return {
+    ...trainingRun,
+    kind: "training" as const,
+    projectId: trainingRun.jobId,
+  };
 }
 
 export async function cancelTrainingRun(trainingRunId: string, input: unknown = {}) {

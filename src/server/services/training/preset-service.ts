@@ -119,6 +119,7 @@ const DEFAULT_TRAINING_PRESETS: TrainingPresetDefault[] = [
     templateUsage: [],
   },
 ];
+const DEFAULT_TRAINING_PRESET_IDS = new Set(DEFAULT_TRAINING_PRESETS.map((preset) => preset.id));
 
 export class TrainingPresetServiceError extends Error {
   details?: unknown;
@@ -270,8 +271,6 @@ async function resolveDefaultTrainingCategoryId(tx: Prisma.TransactionClient, pr
       where: { id: existingTrainingCategory.id },
       data: {
         name: preset.categoryName,
-        sortOrder: preset.categorySortOrder,
-        sceneDescriptionOrder: preset.categorySortOrder,
       },
     });
     return existingTrainingCategory.id;
@@ -316,10 +315,6 @@ async function ensureDefaultTrainingPresets() {
         });
         if (existingFolder) {
           folderId = existingFolder.id;
-          await tx.trainingSceneDescriptionPresetFolder.update({
-            where: { id: folderId },
-            data: { sortOrder: preset.folderSortOrder },
-          });
         } else {
           const createdFolder = await tx.trainingSceneDescriptionPresetFolder.create({
             data: {
@@ -364,7 +359,6 @@ async function ensureDefaultTrainingPresets() {
             name: preset.title,
             sceneDescriptionText: preset.sceneDescriptionText,
             isActive: preset.isActive,
-            sortOrder: preset.sortOrder,
           },
         });
       }
@@ -515,7 +509,9 @@ function revalidateTrainingPresetPaths(presetId?: string) {
 
 export async function listTrainingSceneDescriptionPresets(): Promise<LoraTrainingPreset[]> {
   const rows = await listTrainingPresetRows();
-  return rows.map(mapTrainingPreset);
+  return rows
+    .filter((row) => row.isActive || DEFAULT_TRAINING_PRESET_IDS.has(row.id))
+    .map(mapTrainingPreset);
 }
 
 export async function getTrainingSceneDescriptionPreset(presetId: string) {

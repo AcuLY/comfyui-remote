@@ -21,6 +21,7 @@ const DEFAULT_GENERATION_TASK_TYPE: TrainingGenerationTaskType = "trainingset_ge
 const DRAFT_STATUS = "draft";
 const SECTION_CONTEXT_INPUT_KIND = "section_context";
 const SUPPLEMENTAL_IMAGE_INPUT_KIND = "supplemental_image";
+const PUBLIC_SECTION_ID_KEY = "publicSectionId";
 
 const TRAINING_GENERATION_TASK_TYPE_LABELS: Record<TrainingGenerationTaskType, string> = {
   caption_generation: "说明文本补全",
@@ -62,6 +63,9 @@ const trainingGenerationTaskInclude = {
   },
   outputs: true,
   sectionRuns: {
+    include: {
+      section: true,
+    },
     orderBy: {
       createdAt: "desc" as const,
     },
@@ -146,6 +150,27 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function getPublicSectionId(section: { id: string; sectionDefaultsJson?: unknown }) {
+  const defaults = isJsonObject(section.sectionDefaultsJson) ? section.sectionDefaultsJson : {};
+  const publicId = defaults[PUBLIC_SECTION_ID_KEY];
+  return typeof publicId === "string" && publicId.trim() ? publicId.trim() : section.id;
+}
+
+async function getInternalSectionId(projectId: string, sectionId: string) {
+  const sections = await prisma.trainingSection.findMany({
+    where: { trainingProjectId: projectId },
+    select: {
+      id: true,
+      sectionDefaultsJson: true,
+    },
+  });
+  const section = sections.find((candidate) => candidate.id === sectionId || getPublicSectionId(candidate) === sectionId);
+  if (!section) {
+    throw new TrainingGenerationTaskServiceError("Training section not found", 404, { projectId, sectionId });
+  }
+  return section.id;
+}
+
 function normalizeGenerationParamsJson(
   value: unknown,
   fallback: Record<string, unknown> | null = null,
@@ -225,7 +250,8 @@ function sectionContextInput(section: TrainingSection, sortOrder = -100) {
 
 function findTaskSectionId(row: TrainingGenerationTaskRow) {
   return (
-    row.sectionRuns[0]?.trainingSectionId
+    (row.sectionRuns[0]?.section ? getPublicSectionId(row.sectionRuns[0].section) : null)
+    ?? row.sectionRuns[0]?.trainingSectionId
     ?? row.inputs.find((input) => (
       input.inputKind === SECTION_CONTEXT_INPUT_KIND
       && input.sourceEntityType === "training_section"
@@ -572,10 +598,68 @@ export async function listTrainingGenerationTasks(projectId: string, filters: {
   return views.map((view) => ({ ...view, status: "draft" as const }));
 }
 
+export async function listTrainingGenerationTaskRuns(projectId: string, filters: {
+  status?: string | null;
+  taskType?: string | null;
+} = {}) {
+  const project = await getProjectOrThrow(projectId);
+  const taskType = filters.taskType?.trim() ? normalizeGenerationTaskType(filters.taskType) : null;
+  const rows = await prisma.trainingGenerationTask.findMany({
+    where: {
+      trainingProjectId: project.id,
+      hiddenAt: null,
+      status: filters.status?.trim() || undefined,
+      taskType: taskType ?? undefined,
+      NOT: {
+        status: DRAFT_STATUS,
+      },
+    },
+    orderBy: [
+      { updatedAt: "desc" },
+      { createdAt: "desc" },
+    ],
+    include: trainingGenerationTaskInclude,
+  });
+
+  return Promise.all(rows.map(async (row) => {
+    const preview = await buildTrainingGenerationTaskView(row);
+    const section = getSectionOrThrow(project, preview.sectionId, row.id);
+    const taskMetadata = normalizeGenerationTaskMetadata(row);
+    return mapQueuedGenerationTaskToTrainingRun({
+      finalInput: preview.finalInput,
+      project,
+      row,
+      section,
+      taskTypeLabel: taskMetadata.taskTypeLabel,
+    });
+  }));
+}
+
 export async function getTrainingGenerationTask(taskId: string) {
   const row = await getTrainingGenerationTaskRow(taskId);
   if (!row || row.status !== DRAFT_STATUS) return null;
   return buildTrainingGenerationTaskView(row);
+}
+
+export async function isTrainingGenerationTaskDraftOrigin(taskId: string) {
+  const row = await prisma.trainingGenerationTask.findUnique({
+    where: { id: taskId },
+    select: {
+      inputs: {
+        where: {
+          inputKind: SECTION_CONTEXT_INPUT_KIND,
+          sourceEntityType: "training_section",
+        },
+        select: {
+          id: true,
+        },
+        take: 1,
+      },
+      status: true,
+      taskType: true,
+    },
+  });
+  return Boolean(row && row.status !== DRAFT_STATUS && row.taskType !== "profile_text_generation" && row.inputs.length > 0);
 }
 
 export async function createTrainingGenerationTask(projectId: string, input: {
@@ -599,7 +683,10 @@ export async function createTrainingGenerationTask(projectId: string, input: {
       status: DRAFT_STATUS,
       paramsJson: toPrismaJson(paramsJson),
       inputs: {
-        create: sectionContextInput(section),
+        create: {
+          ...sectionContextInput(section),
+          sourceEntityId: section.id,
+        },
       },
     },
     include: trainingGenerationTaskInclude,
@@ -837,6 +924,7 @@ export async function runTrainingGenerationTask(taskId: string) {
   const preview = await buildTrainingGenerationTaskView(task);
   const project = await getProjectOrThrow(task.trainingProjectId);
   const section = getSectionOrThrow(project, preview.sectionId, task.id);
+  const internalSectionId = await getInternalSectionId(project.id, section.id);
   const taskMetadata = normalizeGenerationTaskMetadata(task);
   const userInstruction = `${taskMetadata.taskTypeLabel}\n\n${preview.finalInput}`;
   const paramsJson = fromPrismaJsonObject(task.paramsJson);
@@ -853,7 +941,7 @@ export async function runTrainingGenerationTask(taskId: string) {
     const sectionRun = await tx.trainingSectionRun.create({
       data: {
         trainingProjectId: project.id,
-        trainingSectionId: section.id,
+        trainingSectionId: internalSectionId,
         trainingCharacterProfileId: profile.id,
         generationTaskId: task.id,
         runIndex,
@@ -866,7 +954,7 @@ export async function runTrainingGenerationTask(taskId: string) {
       },
     });
     await tx.trainingSection.update({
-      where: { id: section.id },
+      where: { id: internalSectionId },
       data: { latestRunId: sectionRun.id },
     });
     await tx.trainingGenerationTask.update({

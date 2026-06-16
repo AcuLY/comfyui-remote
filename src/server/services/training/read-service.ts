@@ -2,7 +2,9 @@ import type {
   LoraTrainingRun,
   LoraTrainingTaskKind,
   LoraTrainingTaskStatus,
+  TrainingImage,
 } from "@/features/training/types";
+import { toImageUrl } from "@/lib/image-url";
 import {
   getTrainingWorkerQueueStatus,
   mapTrainingWorkerTaskError,
@@ -171,6 +173,7 @@ function normalizeGenerationStatus(status: string): LoraTrainingTaskStatus {
   if (status === "done") return "completed";
   if (status === "running") return "running";
   if (status === "queued") return "queued";
+  if (status === "cancelled" || status === "canceled") return "cancelled" as LoraTrainingTaskStatus;
   return "failed";
 }
 
@@ -182,6 +185,23 @@ async function getTrainingGenerationRunDirect(runId: string): Promise<LoraTraini
   const section = generationRun.sectionId
     ? project.sections.find((item) => item.id === generationRun.sectionId) ?? null
     : null;
+
+  const taskInputImages: TrainingImage[] = generationRun.inputImages.flatMap((inputImage, index) => {
+    const url = toImageUrl(inputImage.relativePath);
+    if (!url) return [];
+    return [{
+      id: `${generationRun.id}-input-${index + 1}`,
+      src: url,
+      full: url,
+      label: inputImage.role,
+      status: "pending",
+      featured: false,
+      featured2: false,
+      cover: false,
+      width: null,
+      height: null,
+    }];
+  });
 
   return {
     id: generationRun.id,
@@ -195,7 +215,10 @@ async function getTrainingGenerationRunDirect(runId: string): Promise<LoraTraini
     timestamp: generationRun.finishedAt ?? generationRun.startedAt ?? generationRun.createdAt,
     provider: generationRun.imageModel ?? generationRun.hostModel ?? generationRun.provider ?? undefined,
     finalInput: generationRun.visualPrompt ?? generationRun.hostInstruction ?? undefined,
-    inputImages: [],
+    inputImages: [
+      ...project.referenceImages.map((reference) => reference.image),
+      ...taskInputImages,
+    ],
     errorMessage: typeof generationRun.errorSummary === "string" ? generationRun.errorSummary : undefined,
     outputLabel: `输出 ${generationRun.counts.candidateImages} 张图片`,
     outputResultIds: [],

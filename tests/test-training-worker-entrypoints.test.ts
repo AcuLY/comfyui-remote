@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
@@ -255,6 +257,179 @@ test("training worker dry-run mock-complete uses Training task lifecycle routes"
     assert.equal(typeof (requests[3]?.body as { output?: { finalSafetensorsArtifact?: unknown } }).output?.finalSafetensorsArtifact, "object");
   } finally {
     await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  }
+});
+
+test("training worker reports local_wsl_sd_scripts readiness errors when runner config is missing", async () => {
+  const requests: Array<{ method: string; path: string; body: unknown }> = [];
+  const server = createServer(async (request: IncomingMessage, response: ServerResponse) => {
+    const url = new URL(request.url ?? "/", "http://127.0.0.1");
+    const body = await readRequestJson(request);
+    requests.push({
+      body,
+      method: request.method ?? "GET",
+      path: url.pathname,
+    });
+
+    if (request.method === "GET" && url.pathname === "/api/training/worker/tasks/next") {
+      writeJson(response, 200, {
+        ok: true,
+        data: {
+          id: "training-task-readiness",
+          jobId: "training-project-1",
+          workerType: "training",
+          targetType: "trainingRun",
+          targetId: "training-run-readiness",
+          status: "running",
+          payload: { runnerType: "local_wsl_sd_scripts", taskType: "training" },
+        },
+      });
+      return;
+    }
+
+    writeJson(response, 200, { ok: true, data: { id: "training-task-readiness" } });
+  });
+
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    assert.equal(typeof address, "object");
+    assert.notEqual(address, null);
+    const addressInfo = address as AddressInfo;
+    const tsxCli = join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs");
+    const result = await spawnAndCollect(
+      process.execPath,
+      [
+        tsxCli,
+        "scripts/training/training-worker.ts",
+        "--once",
+        "--worker-owner",
+        "readiness-test",
+      ],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          TRAINING_MANAGER_TOKEN: "mock-manager-token",
+          TRAINING_MANAGER_URL: `http://127.0.0.1:${addressInfo.port}`,
+          TRAINING_RUNNER_COMMAND: "",
+        },
+      },
+    );
+
+    assert.equal(result.status, 1, result.stderr);
+    assert.deepEqual(
+      requests.map((request) => `${request.method} ${request.path}`),
+      [
+        "GET /api/training/worker/tasks/next",
+        "POST /api/training/worker/tasks/training-task-readiness/heartbeat",
+        "POST /api/training/worker/tasks/training-task-readiness/fail",
+      ],
+    );
+    const failBody = requests[2]?.body as { providerError?: { backendError?: string; retryable?: boolean } };
+    assert.match(failBody.providerError?.backendError ?? "", /Training runner readiness error/i);
+    assert.match(failBody.providerError?.backendError ?? "", /local_wsl_sd_scripts/);
+    assert.equal(failBody.providerError?.retryable, false);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  }
+});
+
+test("training worker local_wsl_sd_scripts adapter completes a configured real runner", async () => {
+  const requests: Array<{ method: string; path: string; body: unknown }> = [];
+  const server = createServer(async (request: IncomingMessage, response: ServerResponse) => {
+    const url = new URL(request.url ?? "/", "http://127.0.0.1");
+    const body = await readRequestJson(request);
+    requests.push({
+      body,
+      method: request.method ?? "GET",
+      path: url.pathname,
+    });
+
+    if (request.method === "GET" && url.pathname === "/api/training/worker/tasks/next") {
+      writeJson(response, 200, {
+        ok: true,
+        data: {
+          id: "training-task-adapter",
+          jobId: "training-project-1",
+          workerType: "training",
+          targetType: "trainingRun",
+          targetId: "training-run-adapter",
+          status: "running",
+          payload: { runnerType: "local_wsl_sd_scripts", taskType: "training" },
+        },
+      });
+      return;
+    }
+
+    writeJson(response, 200, { ok: true, data: { id: "training-task-adapter" } });
+  });
+
+  const tempDir = await mkdtemp(join(tmpdir(), "training-worker-runner-"));
+  const runnerPath = join(tempDir, "runner.cjs");
+  await writeFile(
+    runnerPath,
+    [
+      "const sha = '2'.repeat(64);",
+      "process.stdout.write(JSON.stringify({",
+      "  finalSafetensorsArtifact: { relativePath: `runner-output/${process.env.TRAINING_RUN_ID}/final.safetensors`, sha256: sha },",
+      "  trainingLogArtifact: { relativePath: `runner-output/${process.env.TRAINING_RUN_ID}/training.log` },",
+      "  metadataSummary: { keyCount: 2, summary: { adapter: process.env.TRAINING_RUNNER_ADAPTER, taskId: process.env.TRAINING_TASK_ID } }",
+      "}));",
+    ].join("\n"),
+    "utf8",
+  );
+
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  try {
+    const address = server.address();
+    assert.equal(typeof address, "object");
+    assert.notEqual(address, null);
+    const addressInfo = address as AddressInfo;
+    const tsxCli = join(process.cwd(), "node_modules", "tsx", "dist", "cli.mjs");
+    const runnerCommand = `${JSON.stringify(process.execPath)} ${JSON.stringify(runnerPath)}`;
+    const result = await spawnAndCollect(
+      process.execPath,
+      [
+        tsxCli,
+        "scripts/training/training-worker.ts",
+        "--once",
+        "--runner-command",
+        runnerCommand,
+        "--worker-owner",
+        "adapter-test",
+      ],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          TRAINING_MANAGER_TOKEN: "mock-manager-token",
+          TRAINING_MANAGER_URL: `http://127.0.0.1:${addressInfo.port}`,
+        },
+      },
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(
+      requests.map((request) => `${request.method} ${request.path}`),
+      [
+        "GET /api/training/worker/tasks/next",
+        "POST /api/training/worker/tasks/training-task-adapter/heartbeat",
+        "POST /api/training/worker/tasks/training-task-adapter/heartbeat",
+        "POST /api/training/worker/tasks/training-task-adapter/complete",
+      ],
+    );
+    const progressBody = requests[2]?.body as { progressJson?: { adapter?: string; trainingRunId?: string } };
+    assert.equal(progressBody.progressJson?.adapter, "local_wsl_sd_scripts");
+    assert.equal(progressBody.progressJson?.trainingRunId, "training-run-adapter");
+    const completeBody = requests[3]?.body as { output?: { finalSafetensorsArtifact?: { relativePath?: string }, metadataSummary?: { summary?: { adapter?: string } } } };
+    assert.equal(completeBody.output?.finalSafetensorsArtifact?.relativePath, "runner-output/training-run-adapter/final.safetensors");
+    assert.equal(completeBody.output?.metadataSummary?.summary?.adapter, "local_wsl_sd_scripts");
+  } finally {
+    await Promise.all([
+      new Promise<void>((resolve, reject) => server.close((error) => (error ? reject(error) : resolve()))),
+      rm(tempDir, { force: true, recursive: true }),
+    ]);
   }
 });
 

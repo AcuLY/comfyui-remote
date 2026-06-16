@@ -2,6 +2,7 @@ import { fail, ok } from "@/lib/api-response";
 import {
   deleteTrainingGenerationTask,
   getTrainingGenerationTask,
+  isTrainingGenerationTaskDraftOrigin,
   mapTrainingGenerationTaskError,
   updateTrainingGenerationTask,
 } from "@/server/services/training/generation-task-draft-service";
@@ -19,6 +20,9 @@ export async function GET(
   const draft = await getTrainingGenerationTask(taskId).catch(() => null);
   if (draft) {
     return ok(draft);
+  }
+  if (await isTrainingGenerationTaskDraftOrigin(taskId)) {
+    return fail("Training generation task draft not found", 404, { taskId });
   }
 
   try {

@@ -3,6 +3,7 @@ import {
   enqueueTrainingSectionGenerationRun,
   mapTrainingGenerationRunMutationError,
 } from "@/server/services/training/project-actions-service";
+import { listTrainingGenerationTaskRuns } from "@/server/services/training/generation-task-draft-service";
 import { listTrainingRuns, mapTrainingReadError } from "@/server/services/training/read-service";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,11 @@ export async function GET(
     const { sectionId } = await params;
     const projectId = new URL(request.url).searchParams.get("projectId") ?? undefined;
     const data = await listTrainingRuns({ kind: "generation", projectId, sectionId });
-    return ok(data);
+    const taskRuns = projectId
+      ? await listTrainingGenerationTaskRuns(projectId, {}).then((runs) => runs.filter((run) => run.sectionId === sectionId))
+      : [];
+    const mergedRuns = new Map([...data, ...taskRuns].map((run) => [run.id, run]));
+    return ok([...mergedRuns.values()]);
   } catch (error) {
     const mapped = mapTrainingReadError(error);
     return fail(mapped.message, mapped.status, mapped.details);
@@ -37,7 +42,12 @@ export async function POST(
 
   try {
     const { sectionId } = await params;
-    const data = await enqueueTrainingSectionGenerationRun(sectionId, body);
+    const payload = body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {};
+    const queryProjectId = new URL(request.url).searchParams.get("projectId");
+    const data = await enqueueTrainingSectionGenerationRun(sectionId, {
+      ...payload,
+      projectId: typeof payload.projectId === "string" ? payload.projectId : queryProjectId ?? undefined,
+    });
     return ok(data, { status: 201 });
   } catch (error) {
     const mapped = mapTrainingGenerationRunMutationError(error);

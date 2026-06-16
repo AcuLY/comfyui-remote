@@ -85,6 +85,16 @@ function mapSectionCreate(section: TrainingTemplateSectionInput, index: number) 
   };
 }
 
+function pruneInactiveTemplateSections(tx: Prisma.TransactionClient) {
+  return tx.trainingTemplateSection.deleteMany({
+    where: {
+      template: {
+        isActive: false,
+      },
+    },
+  });
+}
+
 export async function listTrainingTemplateRows() {
   return prisma.trainingTemplate.findMany({
     where: {
@@ -112,24 +122,28 @@ export async function getTrainingTemplateRow(templateId: string) {
 }
 
 export async function createTrainingTemplateRow(input: TrainingTemplateInput) {
-  return prisma.trainingTemplate.create({
-    data: {
-      id: input.id,
-      name: input.name,
-      slug: input.slug ?? null,
-      description: input.description ?? null,
-      imagePromptGuidance: input.imagePromptGuidance,
-      imagePromptFormat: input.imagePromptFormat,
-      captioningGuidance: input.captioningGuidance,
-      trainingCaptionFormat: input.trainingCaptionFormat,
-      trainingDefaultsJson: input.trainingDefaultsJson ?? Prisma.JsonNull,
-      sortOrder: input.sortOrder ?? 0,
-      isActive: input.isActive ?? true,
-      sections: {
-        create: input.sections.map(mapSectionCreate),
+  return prisma.$transaction(async (tx) => {
+    await pruneInactiveTemplateSections(tx);
+
+    return tx.trainingTemplate.create({
+      data: {
+        id: input.id,
+        name: input.name,
+        slug: input.slug ?? null,
+        description: input.description ?? null,
+        imagePromptGuidance: input.imagePromptGuidance,
+        imagePromptFormat: input.imagePromptFormat,
+        captioningGuidance: input.captioningGuidance,
+        trainingCaptionFormat: input.trainingCaptionFormat,
+        trainingDefaultsJson: input.trainingDefaultsJson ?? Prisma.JsonNull,
+        sortOrder: input.sortOrder ?? 0,
+        isActive: input.isActive ?? true,
+        sections: {
+          create: input.sections.map(mapSectionCreate),
+        },
       },
-    },
-    include: trainingTemplateInclude,
+      include: trainingTemplateInclude,
+    });
   });
 }
 
@@ -138,6 +152,8 @@ export async function updateTrainingTemplateRow(templateId: string, input: Train
   if (!current) return null;
 
   return prisma.$transaction(async (tx) => {
+    await pruneInactiveTemplateSections(tx);
+
     await tx.trainingTemplateSection.deleteMany({
       where: {
         trainingTemplateId: current.id,
@@ -172,13 +188,21 @@ export async function softDeleteTrainingTemplateRow(templateId: string) {
   const current = await getTrainingTemplateRow(templateId);
   if (!current) return null;
 
-  return prisma.trainingTemplate.update({
-    where: {
-      id: current.id,
-    },
-    data: {
-      isActive: false,
-    },
-    include: trainingTemplateInclude,
+  return prisma.$transaction(async (tx) => {
+    await tx.trainingTemplateSection.deleteMany({
+      where: {
+        trainingTemplateId: current.id,
+      },
+    });
+
+    return tx.trainingTemplate.update({
+      where: {
+        id: current.id,
+      },
+      data: {
+        isActive: false,
+      },
+      include: trainingTemplateInclude,
+    });
   });
 }

@@ -9,6 +9,7 @@ import type {
 import { Prisma } from "@/generated/prisma";
 import { toImageUrl } from "@/lib/image-url";
 import { prisma } from "@/lib/prisma";
+import { TRAINING_IMAGE_GENERATION_PROVIDER_POLICY } from "@/lib/training/provider-policy";
 
 import {
   createTrainingReferenceImage,
@@ -17,9 +18,10 @@ import {
   getTrainingProductionProject,
   getTrainingReferenceImage,
   listTrainingReferenceImages,
-  TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE,
 } from "@/server/repositories/training/image-results";
 import { z } from "zod";
+
+const PUBLIC_SECTION_ID_KEY = "publicSectionId";
 
 const generationOutputApplySchema = z.object({
   targetEntityType: z.string().trim().min(1),
@@ -128,10 +130,7 @@ function mapImageStatus(reviewStatus: string): TrainingImageStatus {
 async function mapCandidateToTrainingImageResult(image: TrainingCandidateImage): Promise<LoraTrainingImageResult> {
   const sectionId = image.sectionId ?? "ungrouped";
   const section = image.sectionId
-    ? await prisma.trainingSection.findUnique({
-      where: { id: image.sectionId },
-      select: { name: true },
-    })
+    ? await findTrainingSectionForResult(image.jobId, image.sectionId)
     : null;
   const sectionTitle = section?.name ?? (image.sectionId ? "训练小节" : "未分组");
   const url = toImageUrl(image.relativePath);
@@ -167,6 +166,80 @@ function normalizeJson(value: unknown): Prisma.InputJsonValue {
   if (value === null || typeof value === "undefined") return {};
   if (typeof value === "object") return value as Prisma.InputJsonValue;
   return { value } as Prisma.InputJsonValue;
+}
+
+function parseJsonObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function getPublicSectionId(section: { id: string; sectionDefaultsJson?: unknown }) {
+  const publicId = parseJsonObject(section.sectionDefaultsJson)[PUBLIC_SECTION_ID_KEY];
+  return typeof publicId === "string" && publicId.trim() ? publicId.trim() : section.id;
+}
+
+async function findTrainingSectionForResult(projectId: string, sectionId: string | null) {
+  if (!sectionId) return null;
+  const sections = await prisma.trainingSection.findMany({
+    where: { trainingProjectId: projectId },
+  });
+  return sections.find((section) => section.id === sectionId || getPublicSectionId(section) === sectionId) ?? null;
+}
+
+async function createManualUploadSectionRun(projectId: string, sectionId: string, captionDraft: string) {
+  const section = await findTrainingSectionForResult(projectId, sectionId);
+  if (!section) {
+    throw new TrainingGenerationOutputServiceError("Training section not found", 404, { projectId, sectionId });
+  }
+
+  const latestRun = await prisma.trainingSectionRun.findFirst({
+    where: {
+      trainingProjectId: projectId,
+      trainingSectionId: section.id,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+  if (latestRun) return latestRun;
+
+  const profile = await prisma.trainingCharacterProfile.upsert({
+    where: { trainingProjectId: projectId },
+    create: { trainingProjectId: projectId },
+    update: {},
+  });
+  const now = new Date();
+  const runIndex = await prisma.trainingSectionRun.count({
+    where: { trainingSectionId: section.id },
+  }) + 1;
+  const task = await prisma.trainingGenerationTask.create({
+    data: {
+      trainingProjectId: projectId,
+      generationKind: "image_generation",
+      taskType: "trainingset_generation",
+      supplementalPrompt: captionDraft,
+      status: "done",
+      provider: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.provider,
+      model: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.model,
+      startedAt: now,
+      finishedAt: now,
+    },
+  });
+  return prisma.trainingSectionRun.create({
+    data: {
+      trainingProjectId: projectId,
+      trainingSectionId: section.id,
+      trainingCharacterProfileId: profile.id,
+      generationTaskId: task.id,
+      runIndex,
+      sceneDescriptionText: section.name ?? "手动上传结果",
+      imagePromptText: captionDraft || "手动上传结果",
+      provider: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.provider,
+      model: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.model,
+      status: "done",
+      startedAt: now,
+      finishedAt: now,
+    },
+  });
 }
 
 async function findTrainingProjectForImageResult(projectId: string) {
@@ -239,6 +312,10 @@ export async function uploadTrainingResultImage(projectId: string, formData: For
     ?? normalizeNullableString(formData.get("supplementalPrompt") as string | null)
     ?? "";
   const supplementalPrompt = normalizeNullableString(formData.get("supplementalPrompt") as string | null);
+  const requestedSectionId = normalizeNullableString(formData.get("sectionId") as string | null);
+  const sectionRun = requestedSectionId
+    ? await createManualUploadSectionRun(project.id, requestedSectionId, captionDraft)
+    : null;
 
   const artifact = await prisma.trainingArtifact.upsert({
     where: {
@@ -280,6 +357,7 @@ export async function uploadTrainingResultImage(projectId: string, formData: For
       trainingProjectId: project.id,
       artifactId: artifact.id,
       sourceType: "manual_upload",
+      trainingSectionRunId: sectionRun?.id ?? null,
       reviewStatus: normalizeReviewStatus(formData.get("reviewStatus")),
       trainingCaption: captionDraft,
       supplementalPrompt,
@@ -389,7 +467,7 @@ async function applyProductionGenerationOutput(
 
   const duplicate = await findTrainingReferenceImageDuplicate({
     jobId: job.id,
-    role: TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE,
+    role: "generated",
     sha256: output.sha256,
   });
   if (duplicate) {
@@ -415,7 +493,7 @@ async function applyProductionGenerationOutput(
   const byteSize = typeof output.fileSize === "string" && output.fileSize.trim() ? BigInt(output.fileSize) : null;
   const created = await createTrainingReferenceImage({
     jobId: job.id,
-    role: TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE,
+    role: normalizeNullableString(input.kind) ?? "generated",
     relativePath: output.relativePath,
     absolutePath: path.join(job.artifactRoot, output.relativePath),
     sha256: output.sha256,

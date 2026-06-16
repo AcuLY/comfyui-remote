@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
 const DEFAULT_IMAGE_PROMPT = "生成干净、可训练的角色样本。";
+const PUBLIC_SECTION_ID_KEY = "publicSectionId";
+const PUBLIC_BLOCK_IDS_KEY = "publicBlockIds";
+const RESOLVED_SCENE_KEY = "resolvedScene";
 
 const sectionInclude = {
   blocks: {
@@ -94,11 +97,38 @@ function parseJsonObject(value: unknown): Record<string, unknown> {
   return {};
 }
 
-function buildSectionDefaults(input: { imagePrompt?: string | null; resultStatus?: string | null }) {
-  return {
+function getPublicSectionId(section: Pick<TrainingSectionWithBlocks, "id" | "sectionDefaultsJson">) {
+  const defaults = parseJsonObject(section.sectionDefaultsJson);
+  return typeof defaults[PUBLIC_SECTION_ID_KEY] === "string" && defaults[PUBLIC_SECTION_ID_KEY].trim()
+    ? defaults[PUBLIC_SECTION_ID_KEY].trim()
+    : section.id;
+}
+
+function getPublicBlockIds(section: Pick<TrainingSectionWithBlocks, "sectionDefaultsJson">) {
+  const raw = parseJsonObject(section.sectionDefaultsJson)[PUBLIC_BLOCK_IDS_KEY];
+  return raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+}
+
+function getPublicBlockId(blockId: string, section: Pick<TrainingSectionWithBlocks, "sectionDefaultsJson">) {
+  const publicId = getPublicBlockIds(section)[blockId];
+  return typeof publicId === "string" && publicId.trim() ? publicId.trim() : blockId;
+}
+
+function buildSectionDefaults(input: {
+  imagePrompt?: string | null;
+  publicBlockIds?: Record<string, string>;
+  publicSectionId?: string | null;
+  resolvedScene?: string | null;
+  resultStatus?: string | null;
+}) {
+  const defaults: Record<string, Prisma.InputJsonValue> = {
     imagePrompt: input.imagePrompt?.trim() || DEFAULT_IMAGE_PROMPT,
     resultStatus: input.resultStatus?.trim() || "pending",
-  } satisfies Prisma.InputJsonObject;
+  };
+  if (input.publicSectionId?.trim()) defaults[PUBLIC_SECTION_ID_KEY] = input.publicSectionId.trim();
+  if (input.resolvedScene?.trim()) defaults[RESOLVED_SCENE_KEY] = input.resolvedScene.trim();
+  if (input.publicBlockIds && Object.keys(input.publicBlockIds).length > 0) defaults[PUBLIC_BLOCK_IDS_KEY] = input.publicBlockIds;
+  return defaults as Prisma.InputJsonObject;
 }
 
 function getSectionImagePrompt(section: TrainingSectionWithBlocks) {
@@ -115,6 +145,13 @@ function getSectionResultStatus(section: TrainingSectionWithBlocks): LoraTrainin
     : "pending";
 }
 
+function getSectionResolvedScene(section: TrainingSectionWithBlocks, blocks: LoraTrainingSectionBlock[]) {
+  const defaults = parseJsonObject(section.sectionDefaultsJson);
+  return typeof defaults[RESOLVED_SCENE_KEY] === "string" && defaults[RESOLVED_SCENE_KEY].trim()
+    ? defaults[RESOLVED_SCENE_KEY].trim()
+    : resolveSceneFromBlocks(blocks) || section.name || "未填写场景描述";
+}
+
 function blockSourceToSourceType(source: LoraTrainingSectionBlock["source"]) {
   return source === "预制" ? "preset" : "local";
 }
@@ -123,9 +160,12 @@ function sourceTypeToBlockSource(sourceType: string): LoraTrainingSectionBlock["
   return sourceType === "preset" || sourceType === "预制" ? "预制" : "本地";
 }
 
-function mapBlockRow(block: TrainingSectionWithBlocks["blocks"][number]): LoraTrainingSectionBlock {
+function mapBlockRow(
+  block: TrainingSectionWithBlocks["blocks"][number],
+  section?: Pick<TrainingSectionWithBlocks, "sectionDefaultsJson">,
+): LoraTrainingSectionBlock {
   return {
-    id: block.id,
+    id: section ? getPublicBlockId(block.id, section) : block.id,
     source: sourceTypeToBlockSource(block.sourceType),
     title: block.title,
     text: block.localText ?? block.title,
@@ -140,11 +180,11 @@ function resolveSceneFromBlocks(blocks: LoraTrainingSectionBlock[]) {
 }
 
 function mapSectionRow(section: TrainingSectionWithBlocks): LoraTrainingSection {
-  const blocks = section.blocks.filter((block) => block.enabled).map(mapBlockRow);
-  const resolvedScene = resolveSceneFromBlocks(blocks) || section.name || "未填写场景描述";
+  const blocks = section.blocks.filter((block) => block.enabled).map((block) => mapBlockRow(block, section));
+  const resolvedScene = getSectionResolvedScene(section, blocks);
 
   return {
-    id: section.id,
+    id: getPublicSectionId(section),
     title: section.name ?? "未命名小节",
     enabled: section.enabled,
     updatedAt: formatSectionUpdatedAt(section.updatedAt),
@@ -193,19 +233,23 @@ async function listSectionRows(projectId: string, client: TrainingSectionClient 
 async function getSectionRow(sectionId: string, projectId?: string | null, client: TrainingSectionClient = prisma) {
   const project = projectId ? await getProjectRow(projectId, client) : null;
   const section = project
-    ? await client.trainingSection.findFirst({
-      where: {
-        id: sectionId,
-        trainingProjectId: project.id,
-      },
+    ? (await client.trainingSection.findMany({
+      where: { trainingProjectId: project.id },
       include: sectionInclude,
-    })
+    })).find((candidate) => candidate.id === sectionId || getPublicSectionId(candidate) === sectionId) ?? null
     : await client.trainingSection.findUnique({
       where: {
         id: sectionId,
       },
       include: sectionInclude,
-    });
+    }) ?? (await client.trainingSection.findMany({
+      include: sectionInclude,
+      orderBy: {
+        createdAt: "desc",
+      },
+    }))
+      .filter((candidate) => getPublicSectionId(candidate) === sectionId)
+      .at(0) ?? null;
 
   if (!section) {
     throw new TrainingProjectSectionServiceError("Training project section not found", 404, {
@@ -245,17 +289,55 @@ async function replaceSectionBlocks(
   sectionId: string,
   blocks: LoraTrainingSectionBlock[],
 ) {
+  const current = await client.trainingSection.findUnique({
+    where: { id: sectionId },
+    include: sectionInclude,
+  });
+  const existingAliases = current ? getPublicBlockIds(current) : {};
+  const reverseAliases = new Map(
+    Object.entries(existingAliases).flatMap(([internalId, publicId]) => (
+      typeof publicId === "string" ? [[publicId, internalId]] : []
+    )),
+  );
+  const nextBlocks = blocks.map((block) => {
+    const existingInternalId = current?.blocks.some((candidate) => candidate.id === block.id)
+      ? block.id
+      : reverseAliases.get(block.id);
+    const internalId = existingInternalId ?? createBlockId(sectionId);
+    return {
+      ...block,
+      internalId,
+      publicId: block.id === internalId ? null : block.id,
+    };
+  });
+  const publicBlockIds = Object.fromEntries(nextBlocks.flatMap((block) => (
+    block.publicId ? [[block.internalId, block.publicId]] : []
+  )));
+
   await client.trainingSceneDescriptionBlock.deleteMany({
     where: {
       trainingSectionId: sectionId,
     },
   });
 
-  if (blocks.length === 0) return;
+  await client.trainingSection.update({
+    where: { id: sectionId },
+    data: {
+      sectionDefaultsJson: buildSectionDefaults({
+        imagePrompt: current ? getSectionImagePrompt(current) : DEFAULT_IMAGE_PROMPT,
+        publicBlockIds,
+        publicSectionId: current ? getPublicSectionId(current) : null,
+        resolvedScene: current ? getSectionResolvedScene(current, blocks) : resolveSceneFromBlocks(blocks),
+        resultStatus: current ? getSectionResultStatus(current) : "pending",
+      }),
+    },
+  });
+
+  if (nextBlocks.length === 0) return;
 
   await client.trainingSceneDescriptionBlock.createMany({
-    data: blocks.map((block, index) => ({
-      id: block.id,
+    data: nextBlocks.map((block, index) => ({
+      id: block.internalId,
       trainingSectionId: sectionId,
       sourceType: blockSourceToSourceType(block.source),
       title: block.title,
@@ -292,10 +374,38 @@ export async function getTrainingSectionSceneDescription(sectionId: string, proj
   const mapped = mapSectionRow(section);
   return {
     projectId: section.trainingProjectId,
-    sectionId: section.id,
+    sectionId: mapped.id,
     text: mapped.resolvedScene,
     blocks: mapped.blocks,
   };
+}
+
+export async function getTrainingBlockProjectContext(blockId: string, projectId?: string | null) {
+  const candidateSections = projectId
+    ? (await listSectionRows(projectId)).sections
+    : await prisma.trainingSection.findMany({
+      include: sectionInclude,
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+  for (const sectionRow of candidateSections) {
+    const mappedSection = mapSectionRow(sectionRow);
+    const blockIndex = mappedSection.blocks.findIndex((block) => block.id === blockId);
+    if (blockIndex === -1) continue;
+
+    return {
+      block: mappedSection.blocks[blockIndex],
+      projectId: sectionRow.trainingProjectId,
+      section: mappedSection,
+    };
+  }
+
+  throw new TrainingProjectSectionServiceError("Training section block not found", 404, {
+    blockId,
+    projectId: projectId ?? null,
+  });
 }
 
 export async function setTrainingProjectSectionCollection(projectId: string, sections: LoraTrainingSection[]) {
@@ -321,6 +431,7 @@ export async function setTrainingProjectSectionCollection(projectId: string, sec
           enabled: section.enabled,
           sectionDefaultsJson: buildSectionDefaults({
             imagePrompt: section.imagePrompt,
+            resolvedScene: section.resolvedScene,
             resultStatus: section.resultStatus,
           }),
           blocks: {
@@ -361,16 +472,7 @@ export async function upsertTrainingProjectSection(
 
   return prisma.$transaction(async (tx) => {
     const project = await getProjectRow(projectId, tx);
-    const current = await tx.trainingSection.findFirst({
-      where: {
-        id: sectionId,
-        trainingProjectId: project.id,
-      },
-      include: sectionInclude,
-    });
-    if (!current) {
-      throw new TrainingProjectSectionServiceError("Training project section not found", 404, { projectId: project.id, sectionId });
-    }
+    const current = await getSectionRow(sectionId, project.id, tx);
 
     await tx.trainingSection.update({
       where: {
@@ -381,6 +483,11 @@ export async function upsertTrainingProjectSection(
         enabled: parsed.enabled,
         sectionDefaultsJson: buildSectionDefaults({
           imagePrompt: parsed.imagePrompt,
+          publicBlockIds: Object.fromEntries(Object.entries(getPublicBlockIds(current)).flatMap(([internalId, publicId]) => (
+            typeof publicId === "string" ? [[internalId, publicId]] : []
+          ))),
+          publicSectionId: getPublicSectionId(current),
+          resolvedScene: parsed.resolvedScene,
           resultStatus: getSectionResultStatus(current),
         }),
       },
@@ -423,6 +530,7 @@ export async function createTrainingProjectSection(projectId: string) {
         enabled: source?.enabled ?? true,
         sectionDefaultsJson: buildSectionDefaults({
           imagePrompt: source?.imagePrompt ?? DEFAULT_IMAGE_PROMPT,
+          resolvedScene: source?.resolvedScene ?? "补充这个小节的训练场景描述。",
           resultStatus: "pending",
         }),
         blocks: {
@@ -454,7 +562,7 @@ export async function copyTrainingProjectSection(projectId: string, sectionId: s
 
     const source = sections[sourceIndex];
     const copyNumber = nextProjectSectionCopyNumber(sections, sectionId);
-    const copyId = `${sectionId}-copy-${copyNumber}`;
+    const copyId = `${canonicalProjectId}-${sectionId}-copy-${copyNumber}-${randomUUID()}`;
     const copied = await tx.trainingSection.create({
       data: {
         id: copyId,
@@ -464,6 +572,7 @@ export async function copyTrainingProjectSection(projectId: string, sectionId: s
         enabled: source.enabled,
         sectionDefaultsJson: buildSectionDefaults({
           imagePrompt: source.imagePrompt,
+          resolvedScene: source.resolvedScene,
           resultStatus: source.resultStatus,
         }),
         blocks: {
@@ -548,7 +657,11 @@ export async function reorderTrainingProjectSections(projectId: string, input: u
 
   return prisma.$transaction(async (tx) => {
     const { projectId: canonicalProjectId, sections: sectionRows } = await listSectionRows(projectId, tx);
-    const sectionMap = new Map(sectionRows.map((section) => [section.id, section]));
+    const sectionMap = new Map<string, TrainingSectionWithBlocks>();
+    for (const section of sectionRows) {
+      sectionMap.set(section.id, section);
+      sectionMap.set(getPublicSectionId(section), section);
+    }
     const orderedSections = result.data.orderedSectionIds
       .map((id) => sectionMap.get(id))
       .filter((section): section is TrainingSectionWithBlocks => Boolean(section));
@@ -609,14 +722,18 @@ export async function reorderTrainingSectionBlocks(sectionId: string, input: unk
 
   return prisma.$transaction(async (tx) => {
     const section = await getSectionRow(sectionId, options.projectId, tx);
-    const blockMap = new Map(section.blocks.map((block) => [block.id, block]));
+    const enabledBlocks = section.blocks.filter((block) => block.enabled);
+    const blockMap = new Map(enabledBlocks.flatMap((block) => [
+      [block.id, block] as const,
+      [getPublicBlockId(block.id, section), block] as const,
+    ]));
     const reorderedBlocks = parsed.data.ids
       .map((id) => blockMap.get(id))
       .filter((block): block is TrainingSectionWithBlocks["blocks"][number] => Boolean(block));
 
-    if (reorderedBlocks.length !== section.blocks.length) {
+    if (reorderedBlocks.length !== enabledBlocks.length) {
       throw new TrainingProjectSectionServiceError("Training section block reorder is incomplete", 400, {
-        expected: section.blocks.length,
+        expected: enabledBlocks.length,
         received: reorderedBlocks.length,
       });
     }
@@ -632,7 +749,7 @@ export async function reorderTrainingSectionBlocks(sectionId: string, input: unk
       })
     )));
 
-    return reorderedBlocks.map(mapBlockRow);
+    return reorderedBlocks.map((block) => mapBlockRow(block, section));
   });
 }
 

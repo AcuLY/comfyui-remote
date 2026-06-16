@@ -41,6 +41,8 @@ Options:
   --image-provider <provider>  task-request, mock-local, or openai-codex. Default: task-request.
   --dry-run-training           Pass --dry-run to training worker.
   --mock-complete-training     Pass --mock-complete to training worker; requires --dry-run-training.
+  --training-runner-type <type> Training runner adapter passed to training worker. Default: local_wsl_sd_scripts.
+  --training-runner-command <cmd> Command passed to the local_wsl_sd_scripts adapter.
 
   --skip-image                 Do not start the image generation worker.
   --skip-dataset-freeze        Do not start the dataset freeze worker.
@@ -168,6 +170,8 @@ function buildWorkerSpecs(values: Map<string, string | true>): WorkerSpec[] {
   const imageProvider = resolveImageProvider(values);
   const trainingDryRun = values.has("--dry-run-training");
   const trainingMockComplete = values.has("--mock-complete-training");
+  const trainingRunnerType = readStringOption(values, "--training-runner-type");
+  const trainingRunnerCommand = readStringOption(values, "--training-runner-command");
   if (trainingMockComplete && !trainingDryRun) {
     throw new Error("--mock-complete-training requires --dry-run-training");
   }
@@ -195,6 +199,8 @@ function buildWorkerSpecs(values: Map<string, string | true>): WorkerSpec[] {
       extraArgs: [
         ...(trainingDryRun ? ["--dry-run"] : []),
         ...(trainingMockComplete ? ["--mock-complete"] : []),
+        ...(trainingRunnerType ? ["--runner-type", trainingRunnerType] : []),
+        ...(trainingRunnerCommand ? ["--runner-command", trainingRunnerCommand] : []),
       ],
     },
   ];
