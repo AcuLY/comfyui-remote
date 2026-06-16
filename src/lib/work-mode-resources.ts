@@ -24,7 +24,9 @@ export type WorkModeSharedResourceKey = Extract<WorkModeResourceKey, "models" | 
 
 export type WorkModeResourceBoundary = {
   forbiddenGenerationEntrypoints: string[];
+  forbiddenGenerationUiRoutes: string[];
   forbiddenTrainingEntrypoints: string[];
+  forbiddenTrainingUiRoutes: string[];
   guidance: string;
   moduleOwnedResources: Record<WorkModeModuleOwnedResourceKey, { apiEntrypoint: string; uiRoute: string }>;
   sharedResources: Record<WorkModeSharedResourceKey, { apiEntrypoints: string[]; uiRoute: string }>;
@@ -174,6 +176,22 @@ export const WORK_MODE_FORBIDDEN_TRAINING_ENTRYPOINTS_FOR_GENERATION = [
   "/api/training/scene-description",
 ] as const;
 
+export const WORK_MODE_FORBIDDEN_GENERATION_UI_ROUTES_FOR_TRAINING = [
+  "/queue",
+  "/projects",
+  "/assets/presets",
+  "/assets/preset-groups",
+  "/assets/templates",
+] as const;
+
+export const WORK_MODE_FORBIDDEN_TRAINING_UI_ROUTES_FOR_GENERATION = [
+  "/training",
+  "/training/runs",
+  "/training/projects",
+  "/training/presets",
+  "/training/templates",
+] as const;
+
 export function buildWorkModeResourceTargets(workMode: WorkMode): WorkModeResourceTargetMap {
   return WORK_MODE_RESOURCE_TARGETS[workMode];
 }
@@ -210,9 +228,11 @@ export function buildWorkModeResourceBoundary(workMode: WorkMode): WorkModeResou
       moduleOwnedResources,
       sharedResources,
       forbiddenGenerationEntrypoints: [...WORK_MODE_FORBIDDEN_GENERATION_ENTRYPOINTS_FOR_TRAINING],
+      forbiddenGenerationUiRoutes: [...WORK_MODE_FORBIDDEN_GENERATION_UI_ROUTES_FOR_TRAINING],
       forbiddenTrainingEntrypoints: [],
+      forbiddenTrainingUiRoutes: [],
       guidance:
-        "Use /api/training for training-owned runs, projects, presets, and templates. Do not use generation resource APIs such as /api/preset-library or /api/templates as training fallbacks. Only models and settings are shared with the generation module.",
+        "Use /api/training and /training routes for training-owned runs, projects, presets, and templates. Do not use generation resource APIs such as /api/preset-library or /api/templates, or generation UI routes such as /assets/presets, as training fallbacks. Only models and settings are shared with the generation module.",
     };
   }
 
@@ -220,8 +240,10 @@ export function buildWorkModeResourceBoundary(workMode: WorkMode): WorkModeResou
     moduleOwnedResources,
     sharedResources,
     forbiddenGenerationEntrypoints: [],
+    forbiddenGenerationUiRoutes: [],
     forbiddenTrainingEntrypoints: [...WORK_MODE_FORBIDDEN_TRAINING_ENTRYPOINTS_FOR_GENERATION],
+    forbiddenTrainingUiRoutes: [...WORK_MODE_FORBIDDEN_TRAINING_UI_ROUTES_FOR_GENERATION],
     guidance:
-      "Use generation APIs for generation-owned runs, projects, presets, and templates. Do not use /api/training or legacy /api/character-lora-training APIs as generation fallbacks. Only models and settings are shared with the training module.",
+      "Use generation APIs and generation UI routes for generation-owned runs, projects, presets, and templates. Do not use /api/training, legacy /api/character-lora-training APIs, or /training UI routes as generation fallbacks. Only models and settings are shared with the training module.",
   };
 }

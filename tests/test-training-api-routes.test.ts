@@ -382,6 +382,14 @@ test("GET /api/training manifest declares module-owned resources and shared exce
     "/api/runs",
     "/api/templates",
   ]);
+  assert.deepEqual(payload.data.resourceBoundary.forbiddenGenerationUiRoutes, [
+    "/queue",
+    "/projects",
+    "/assets/presets",
+    "/assets/preset-groups",
+    "/assets/templates",
+  ]);
+  assert.deepEqual(payload.data.resourceBoundary.forbiddenTrainingUiRoutes, []);
   assert.match(
     payload.data.resourceBoundary.guidance,
     /Only models and settings are shared/i,

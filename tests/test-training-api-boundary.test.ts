@@ -511,9 +511,11 @@ test("preset resource lists stay scoped to their owning work mode except shared 
 });
 
 test("resource navigation and loaders do not mix generation and training owned resources", async () => {
-  const { buildWorkModeResourceTargetList } = await import("../src/lib/work-mode-resources");
+  const { buildWorkModeResourceBoundary, buildWorkModeResourceTargetList } = await import("../src/lib/work-mode-resources");
   const generationTargets = buildWorkModeResourceTargetList("generation");
   const trainingTargets = buildWorkModeResourceTargetList("lora_training");
+  const generationBoundary = buildWorkModeResourceBoundary("generation");
+  const trainingBoundary = buildWorkModeResourceBoundary("lora_training");
 
   const routePrefixesFor = (target: (typeof generationTargets)[number]) => {
     const activePrefixes = target.activePrefix
@@ -548,6 +550,35 @@ test("resource navigation and loaders do not mix generation and training owned r
       );
     }
   }
+
+  assert.deepEqual(
+    trainingBoundary.forbiddenGenerationUiRoutes,
+    ["/queue", "/projects", "/assets/presets", "/assets/preset-groups", "/assets/templates"],
+    "Training resource boundary should explicitly forbid generation-owned list pages.",
+  );
+  assert.deepEqual(
+    generationBoundary.forbiddenTrainingUiRoutes,
+    ["/training", "/training/runs", "/training/projects", "/training/presets", "/training/templates"],
+    "Generation resource boundary should explicitly forbid training-owned list pages.",
+  );
+  assert.equal(
+    trainingBoundary.forbiddenGenerationUiRoutes.includes("/assets/models"),
+    false,
+    "Training should not forbid the shared model page.",
+  );
+  assert.equal(
+    generationBoundary.forbiddenTrainingUiRoutes.includes("/settings"),
+    false,
+    "Generation should not forbid the shared settings page.",
+  );
+  assert.ok(
+    trainingBoundary.forbiddenGenerationEntrypoints.includes("/api/preset-library"),
+    "Training boundary should forbid generation-owned preset-library APIs.",
+  );
+  assert.ok(
+    generationBoundary.forbiddenTrainingEntrypoints.includes("/api/training"),
+    "Generation boundary should forbid training-owned APIs.",
+  );
 
   for (const key of ["runs", "projects", "presets", "templates"] as const) {
     assert.notEqual(
