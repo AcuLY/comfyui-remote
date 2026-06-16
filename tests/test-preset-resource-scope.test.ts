@@ -566,6 +566,49 @@ test("ordinary preset category and list reads do not expose LoRA training preset
     [],
     "ordinary preset API must not expose training presets even when called with a training category id",
   );
+  assert.equal(
+    await getPresetById("training-list-hidden-preset", true),
+    null,
+    "ordinary preset detail API must not expose a LoRA training preset by direct id",
+  );
+});
+
+test("ordinary preset operations reject LoRA training preset ids before touching usage or cascade state", async () => {
+  await prisma.presetCategory.create({
+    data: {
+      id: "training-operation-hidden-category",
+      name: "Training Operation Hidden",
+      slug: "training-operation-hidden",
+      type: "training_scene_description",
+    },
+  });
+  await prisma.preset.create({
+    data: {
+      id: "training-operation-hidden-preset",
+      categoryId: "training-operation-hidden-category",
+      name: "Training Operation Hidden Preset",
+      slug: "training-operation-hidden-preset",
+    },
+  });
+
+  await assert.rejects(
+    () => getPresetUsage("training-operation-hidden-preset"),
+    /Ordinary preset not found/i,
+    "ordinary preset usage must reject training-owned preset ids instead of reporting usage",
+  );
+  await assert.rejects(
+    () => ignoreStaticRevalidateError(() => deletePresetCascade("training-operation-hidden-preset")),
+    /Ordinary preset not found/i,
+    "ordinary preset cascade delete must reject training-owned preset ids before mutating rows",
+  );
+  assert.deepEqual(
+    await prisma.preset.findUnique({
+      where: { id: "training-operation-hidden-preset" },
+      select: { isActive: true },
+    }),
+    { isActive: true },
+    "failed ordinary cascade attempts must leave the training-owned preset active",
+  );
 });
 
 test("ordinary preset category and list reads do not expose legacy training benchmark temporary presets", async () => {
