@@ -459,6 +459,19 @@
   white-space: nowrap;
 }
 
+.runOutputPreview {
+  display: -webkit-box;
+  min-width: 0;
+  margin: 1px 0 0;
+  overflow: hidden;
+  color: color-mix(in srgb, var(--demo-text) 78%, var(--demo-muted));
+  font-size: 11px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
 .runProgress {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

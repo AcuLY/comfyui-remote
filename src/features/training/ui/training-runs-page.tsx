@@ -643,6 +643,7 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
                               const retried = retriedRunIds.has(run.id);
                               const cancelled = cancelledRunIds.has(run.id);
                               const previewImages = runPreviewImages(run, training.projects);
+                              const outputPreview = run.status === "completed" && run.summary.startsWith("文本") ? run.outputText : undefined;
                               const errorMessage = run.errorMessage ?? "模型服务返回空结果或连接超时";
 
                               return (
@@ -650,33 +651,34 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
                                   <Checkbox
                                     checked={selected}
                                     label={selected ? `取消选择任务：${run.title}` : `选择任务：${run.title}`}
-                                onCheckedChange={() => toggleRun(run.id)}
-                                stopPropagation
-                                variant="compact"
+                                    onCheckedChange={() => toggleRun(run.id)}
+                                    stopPropagation
+                                    variant="compact"
                                   />
                                   <Link className={cx(s.runMain, previewImages.length > 0 && s.runMainWithThumbs)} href={taskDetailHref(run, hrefForRoute)}>
                                     <span className={s.runText}>
                                       <strong>{run.title}</strong>
                                       <span>{run.summary}{retried ? " · 已重试" : ""}{cancelled ? " · 已取消" : ""}</span>
                                       <em>{retried ? "已加入重试队列" : cancelled ? "已取消" : run.timestamp}</em>
+                                      {outputPreview ? <p className={s.runOutputPreview}>{outputPreview}</p> : null}
                                       {typeof run.progress === "number" ? (
                                         <span className={s.runProgress} aria-label={`约 ${run.progress}%`}>
                                           <span className={s.runProgressTrack} aria-hidden="true">
-                                        <span className={s.runProgressFill} style={{ width: `${run.progress}%` }} />
-                                      </span>
-                                      <span>约 {run.progress}%</span>
+                                            <span className={s.runProgressFill} style={{ width: `${run.progress}%` }} />
+                                          </span>
+                                          <span>约 {run.progress}%</span>
+                                        </span>
+                                      ) : null}
                                     </span>
-                                  ) : null}
-                                </span>
-                                {previewImages.length > 0 ? (
-                                  <ImageListSmall
-                                    className={s.runThumbs}
-                                    images={previewImages}
-                                    limit={previewImages.length}
-                                    showCounts={run.kind === "generation"}
-                                  />
-                                ) : null}
-                              </Link>
+                                    {previewImages.length > 0 ? (
+                                      <ImageListSmall
+                                        className={s.runThumbs}
+                                        images={previewImages}
+                                        limit={previewImages.length}
+                                        showCounts={run.kind === "generation"}
+                                      />
+                                    ) : null}
+                                  </Link>
                                   {effectiveRunStatus(run) === "failed" ? (
                                     retried ? (
                                       <div className={s.rowActions}>

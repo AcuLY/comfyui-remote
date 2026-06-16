@@ -114,6 +114,20 @@ test("completed training generation rows prioritize recent output thumbnails", (
   assert.match(cssSource, /data-demo-ui-image-thumb-small/, "thumbnail sizing should target shared small image thumbs");
 });
 
+test("completed text generation rows surface their output preview in the run list", () => {
+  assert.match(
+    pageSource,
+    /const outputPreview = run\.status === "completed" && run\.summary\.startsWith\("文本"\) \? run\.outputText : undefined;/,
+    "completed text generation rows should derive a preview from the task output text.",
+  );
+  assert.match(
+    pageSource,
+    /outputPreview \? <p className=\{s\.runOutputPreview\}>\{outputPreview\}<\/p> : null/,
+    "text generation rows should render the output preview in the list body instead of hiding it on detail pages only.",
+  );
+  assert.match(cssSource, /\.runOutputPreview\b/, "text output previews should have dedicated row styling.");
+});
+
 test("training run thumbnail layout queries the individual task card width", () => {
   assert.match(
     cssSource,
