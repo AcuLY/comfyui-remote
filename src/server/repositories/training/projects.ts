@@ -327,6 +327,8 @@ function mapTrainingRunRow(row: Prisma.TrainingRunGetPayload<{ include: { finalA
     metadataSummary: row.progressJson,
     logArtifactId: row.trainingLogArtifactId,
     logArtifactName: logArtifactPath ? basename(logArtifactPath) : null,
+    createdPresetId: row.createdPresetId,
+    presetCreatedAt: row.presetCreatedAt?.toISOString() ?? null,
     currentStep: row.currentStep,
     targetSteps: row.totalSteps,
     schedulerMessage: row.schedulerMessage,
@@ -1185,7 +1187,7 @@ export async function getTrainingGenerationRun(taskId: string) {
       sectionRuns: true,
     },
   });
-  return task ? mapGenerationTaskRow(task) : null;
+  return task && !task.hiddenAt ? mapGenerationTaskRow(task) : null;
 }
 
 export async function freezeTrainingProductionDataset(projectId: string, _input: unknown = {}) {
@@ -1303,6 +1305,7 @@ export async function enqueueTrainingProductionRun(revisionId: string, input: un
   const config = normalizeJson(data);
   const active = await prisma.trainingRun.findFirst({
     where: {
+      hiddenAt: null,
       trainingProjectId: revision.trainingProjectId,
       status: {
         in: ["queued", "running"],
@@ -1355,6 +1358,7 @@ export async function listTrainingRuns(projectId: string) {
   const row = await getProjectRow(projectId);
   const runs = await prisma.trainingRun.findMany({
     where: {
+      hiddenAt: null,
       trainingProjectId: row.id,
     },
     orderBy: {
@@ -1373,14 +1377,22 @@ export async function listTrainingProductionProjects(input: { page?: number; pag
   const pageSize = Math.max(1, Math.min(100, input.pageSize ?? 20));
   const [rows, total] = await Promise.all([
     prisma.trainingProject.findMany({
+      where: {
+        hiddenAt: null,
+      },
       skip: (page - 1) * pageSize,
       take: pageSize,
       orderBy: [
+        { sortOrder: "asc" },
         { updatedAt: "desc" },
       ],
       include: trainingProjectInclude,
     }),
-    prisma.trainingProject.count(),
+    prisma.trainingProject.count({
+      where: {
+        hiddenAt: null,
+      },
+    }),
   ]);
   return {
     jobs: rows.map(mapProjectRow),

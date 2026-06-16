@@ -277,8 +277,8 @@ model TrainingSceneDescriptionPreset {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  category       TrainingSceneDescriptionPresetCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  folder         TrainingSceneDescriptionPresetFolder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  category       TrainingSceneDescriptionPresetCategory         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  folder         TrainingSceneDescriptionPresetFolder?          @relation(fields: [folderId], references: [id], onDelete: SetNull)
   templateBlocks TrainingTemplateSectionSceneDescriptionBlock[]
   projectBlocks  TrainingSceneDescriptionBlock[]
 
@@ -310,16 +310,16 @@ model TrainingTemplate {
 }
 
 model TrainingTemplateSection {
-  id                 String                                           @id @default(cuid())
-  trainingTemplateId String
-  name               String?
-  sortOrder          Int                                              @default(0)
-  enabled            Boolean                                          @default(true)
+  id                  String                                         @id @default(cuid())
+  trainingTemplateId  String
+  name                String?
+  sortOrder           Int                                            @default(0)
+  enabled             Boolean                                        @default(true)
   sectionDefaultsJson Json?
-  createdAt          DateTime                                         @default(now())
-  updatedAt          DateTime                                         @updatedAt
-  template           TrainingTemplate                                 @relation(fields: [trainingTemplateId], references: [id], onDelete: Cascade)
-  blocks             TrainingTemplateSectionSceneDescriptionBlock[]
+  createdAt           DateTime                                       @default(now())
+  updatedAt           DateTime                                       @updatedAt
+  template            TrainingTemplate                               @relation(fields: [trainingTemplateId], references: [id], onDelete: Cascade)
+  blocks              TrainingTemplateSectionSceneDescriptionBlock[]
 
   @@index([trainingTemplateId, sortOrder])
 }
@@ -353,6 +353,8 @@ model TrainingProject {
   slug                  String    @unique
   status                String    @default("active")
   archivedAt            DateTime?
+  hiddenAt              DateTime?
+  sortOrder             Int       @default(0)
   imagePromptGuidance   String    @db.Text
   imagePromptFormat     String    @db.Text
   captioningGuidance    String    @db.Text
@@ -371,19 +373,20 @@ model TrainingProject {
   artifacts        TrainingArtifact[]
   imageResults     TrainingImageResult[]
 
-  @@index([status, updatedAt])
+  @@index([status, sortOrder])
+  @@index([hiddenAt])
   @@index([createdAt])
 }
 
 model TrainingCharacterProfile {
-  id                                      String   @id @default(cuid())
-  trainingProjectId                       String   @unique
-  loraUsagePrompt                         String   @default("") @db.Text
-  characterDetailPrompt                   String   @default("") @db.Text
-  loraUsagePromptGenerationTaskId         String?
-  characterDetailPromptGenerationTaskId   String?
-  createdAt                               DateTime @default(now())
-  updatedAt                               DateTime @updatedAt
+  id                                    String   @id @default(cuid())
+  trainingProjectId                     String   @unique
+  loraUsagePrompt                       String   @default("") @db.Text
+  characterDetailPrompt                 String   @default("") @db.Text
+  loraUsagePromptGenerationTaskId       String?
+  characterDetailPromptGenerationTaskId String?
+  createdAt                             DateTime @default(now())
+  updatedAt                             DateTime @updatedAt
 
   project         TrainingProject          @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
   referenceImages TrainingCharacterImage[]
@@ -405,8 +408,8 @@ model TrainingCharacterImage {
   createdAt                    DateTime @default(now())
   updatedAt                    DateTime @updatedAt
 
-  profile                    TrainingCharacterProfile  @relation(fields: [trainingCharacterProfileId], references: [id], onDelete: Cascade)
-  artifact                   TrainingArtifact          @relation("TrainingCharacterImageArtifact", fields: [artifactId], references: [id], onDelete: Restrict)
+  profile                    TrainingCharacterProfile      @relation(fields: [trainingCharacterProfileId], references: [id], onDelete: Cascade)
+  artifact                   TrainingArtifact              @relation("TrainingCharacterImageArtifact", fields: [artifactId], references: [id], onDelete: Restrict)
   sourceGenerationTaskOutput TrainingGenerationTaskOutput? @relation("TrainingCharacterImageSourceOutput", fields: [sourceGenerationTaskOutputId], references: [id], onDelete: SetNull)
 
   @@index([trainingCharacterProfileId, sortOrder])
@@ -415,34 +418,34 @@ model TrainingCharacterImage {
 }
 
 model TrainingArtifact {
-  id              String   @id @default(cuid())
+  id                String   @id @default(cuid())
   trainingProjectId String
-  storageKey      String
-  filePath        String?
-  storageRole     String   @default("mutable_source")
-  mimeType        String?
-  fileSize        BigInt?
-  sha256          String?
-  width           Int?
-  height          Int?
-  lifecycleStatus String   @default("active")
-  metadata        Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  storageKey        String
+  filePath          String?
+  storageRole       String   @default("mutable_source")
+  mimeType          String?
+  fileSize          BigInt?
+  sha256            String?
+  width             Int?
+  height            Int?
+  lifecycleStatus   String   @default("active")
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
-  project                       TrainingProject                    @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
-  characterImages               TrainingCharacterImage[]           @relation("TrainingCharacterImageArtifact")
-  generationInputArtifacts       TrainingGenerationInputReference[] @relation("TrainingGenerationInputArtifact")
+  project                          TrainingProject                    @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  characterImages                  TrainingCharacterImage[]           @relation("TrainingCharacterImageArtifact")
+  generationInputArtifacts         TrainingGenerationInputReference[] @relation("TrainingGenerationInputArtifact")
   generationInputSnapshotArtifacts TrainingGenerationInputReference[] @relation("TrainingGenerationInputSnapshotArtifact")
-  generationOutputs             TrainingGenerationTaskOutput[]     @relation("TrainingGenerationOutputArtifact")
-  imageResults                  TrainingImageResult[]              @relation("TrainingImageResultArtifact")
-  imageResultThumbnails         TrainingImageResult[]              @relation("TrainingImageResultThumbnailArtifact")
-  datasetRevisionManifests      TrainingDatasetRevision[]          @relation("TrainingDatasetRevisionManifestArtifact")
-  datasetItemSourceArtifacts    TrainingDatasetRevisionItem[]      @relation("TrainingDatasetItemSourceArtifact")
-  datasetItemSnapshotArtifacts  TrainingDatasetRevisionItem[]      @relation("TrainingDatasetItemSnapshotArtifact")
-  runConfigArtifacts            TrainingRun[]                      @relation("TrainingRunConfigArtifact")
-  runLogArtifacts               TrainingRun[]                      @relation("TrainingRunLogArtifact")
-  runFinalArtifacts             TrainingRun[]                      @relation("TrainingRunFinalArtifact")
+  generationOutputs                TrainingGenerationTaskOutput[]     @relation("TrainingGenerationOutputArtifact")
+  imageResults                     TrainingImageResult[]              @relation("TrainingImageResultArtifact")
+  imageResultThumbnails            TrainingImageResult[]              @relation("TrainingImageResultThumbnailArtifact")
+  datasetRevisionManifests         TrainingDatasetRevision[]          @relation("TrainingDatasetRevisionManifestArtifact")
+  datasetItemSourceArtifacts       TrainingDatasetRevisionItem[]      @relation("TrainingDatasetItemSourceArtifact")
+  datasetItemSnapshotArtifacts     TrainingDatasetRevisionItem[]      @relation("TrainingDatasetItemSnapshotArtifact")
+  runConfigArtifacts               TrainingRun[]                      @relation("TrainingRunConfigArtifact")
+  runLogArtifacts                  TrainingRun[]                      @relation("TrainingRunLogArtifact")
+  runFinalArtifacts                TrainingRun[]                      @relation("TrainingRunFinalArtifact")
 
   @@unique([trainingProjectId, storageKey])
   @@index([trainingProjectId, storageRole])
@@ -461,7 +464,7 @@ model TrainingSection {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  project TrainingProject                  @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  project TrainingProject                 @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
   blocks  TrainingSceneDescriptionBlock[]
   runs    TrainingSectionRun[]
 
@@ -492,23 +495,23 @@ model TrainingSceneDescriptionBlock {
 }
 
 model TrainingSectionRun {
-  id                         String   @id @default(cuid())
+  id                         String    @id @default(cuid())
   trainingProjectId          String
   trainingSectionId          String
   trainingCharacterProfileId String
   generationTaskId           String
-  runIndex                   Int      @default(1)
-  sceneDescriptionText       String   @db.Text
-  imagePromptText            String   @db.Text
+  runIndex                   Int       @default(1)
+  sceneDescriptionText       String    @db.Text
+  imagePromptText            String    @db.Text
   provider                   String?
   model                      String?
   generationParamsJson       Json?
-  status                     String   @default("queued")
-  errorMessage               String?  @db.Text
+  status                     String    @default("queued")
+  errorMessage               String?   @db.Text
   startedAt                  DateTime?
   finishedAt                 DateTime?
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 
   project        TrainingProject          @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
   section        TrainingSection          @relation(fields: [trainingSectionId], references: [id], onDelete: Cascade)
@@ -522,19 +525,19 @@ model TrainingSectionRun {
 }
 
 model TrainingImageResult {
-  id                         String   @id @default(cuid())
+  id                         String    @id @default(cuid())
   trainingProjectId          String
   trainingCharacterProfileId String?
   artifactId                 String
   sourceType                 String
   trainingSectionRunId       String?
   generationTaskOutputId     String?
-  reviewStatus               String   @default("pending")
-  trainingCaption            String?  @db.Text
+  reviewStatus               String    @default("pending")
+  trainingCaption            String?   @db.Text
   captionGenerationTaskId    String?
-  supplementalPrompt         String?  @db.Text
+  supplementalPrompt         String?   @db.Text
   removedAt                  DateTime?
-  removeReason               String?  @db.Text
+  removeReason               String?   @db.Text
   filePathSnapshot           String?
   thumbnailArtifactId        String?
   width                      Int?
@@ -542,17 +545,17 @@ model TrainingImageResult {
   mimeType                   String?
   fileSize                   BigInt?
   sha256                     String?
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 
-  project                TrainingProject               @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
-  profile                TrainingCharacterProfile?      @relation(fields: [trainingCharacterProfileId], references: [id], onDelete: SetNull)
-  artifact               TrainingArtifact               @relation("TrainingImageResultArtifact", fields: [artifactId], references: [id], onDelete: Restrict)
-  thumbnailArtifact      TrainingArtifact?              @relation("TrainingImageResultThumbnailArtifact", fields: [thumbnailArtifactId], references: [id], onDelete: SetNull)
-  sectionRun             TrainingSectionRun?            @relation(fields: [trainingSectionRunId], references: [id], onDelete: SetNull)
-  generationTaskOutput   TrainingGenerationTaskOutput?  @relation("TrainingImageResultGenerationOutput", fields: [generationTaskOutputId], references: [id], onDelete: SetNull)
-  captionGenerationTask  TrainingGenerationTask?        @relation("TrainingImageResultCaptionTask", fields: [captionGenerationTaskId], references: [id], onDelete: SetNull)
-  datasetItems           TrainingDatasetRevisionItem[]
+  project               TrainingProject               @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  profile               TrainingCharacterProfile?     @relation(fields: [trainingCharacterProfileId], references: [id], onDelete: SetNull)
+  artifact              TrainingArtifact              @relation("TrainingImageResultArtifact", fields: [artifactId], references: [id], onDelete: Restrict)
+  thumbnailArtifact     TrainingArtifact?             @relation("TrainingImageResultThumbnailArtifact", fields: [thumbnailArtifactId], references: [id], onDelete: SetNull)
+  sectionRun            TrainingSectionRun?           @relation(fields: [trainingSectionRunId], references: [id], onDelete: SetNull)
+  generationTaskOutput  TrainingGenerationTaskOutput? @relation("TrainingImageResultGenerationOutput", fields: [generationTaskOutputId], references: [id], onDelete: SetNull)
+  captionGenerationTask TrainingGenerationTask?       @relation("TrainingImageResultCaptionTask", fields: [captionGenerationTaskId], references: [id], onDelete: SetNull)
+  datasetItems          TrainingDatasetRevisionItem[]
 
   @@index([trainingProjectId, reviewStatus])
   @@index([trainingSectionRunId])
@@ -561,30 +564,32 @@ model TrainingImageResult {
 }
 
 model TrainingGenerationTask {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   trainingProjectId  String
   generationKind     String
   taskType           String
-  supplementalPrompt String?  @db.Text
-  status             String   @default("queued")
+  supplementalPrompt String?   @db.Text
+  status             String    @default("queued")
   provider           String?
   model              String?
   paramsJson         Json?
-  errorMessage       String?  @db.Text
+  errorMessage       String?   @db.Text
+  hiddenAt           DateTime?
   startedAt          DateTime?
   finishedAt         DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  project             TrainingProject                    @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
-  inputs              TrainingGenerationInputReference[]
-  outputs             TrainingGenerationTaskOutput[]
-  sectionRuns         TrainingSectionRun[]               @relation("TrainingSectionRunGenerationTask")
-  captionedImageResults TrainingImageResult[]            @relation("TrainingImageResultCaptionTask")
+  project               TrainingProject                    @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  inputs                TrainingGenerationInputReference[]
+  outputs               TrainingGenerationTaskOutput[]
+  sectionRuns           TrainingSectionRun[]               @relation("TrainingSectionRunGenerationTask")
+  captionedImageResults TrainingImageResult[]              @relation("TrainingImageResultCaptionTask")
 
   @@index([trainingProjectId, status])
   @@index([taskType, status])
   @@index([status, createdAt])
+  @@index([hiddenAt])
 }
 
 model TrainingGenerationInputReference {
@@ -613,20 +618,20 @@ model TrainingGenerationInputReference {
 }
 
 model TrainingGenerationTaskOutput {
-  id                       String   @id @default(cuid())
+  id                       String    @id @default(cuid())
   trainingGenerationTaskId String
   outputKind               String
-  textValue                String?  @db.Text
+  textValue                String?   @db.Text
   artifactId               String?
   filePath                 String?
   targetEntityType         String?
   targetEntityId           String?
   targetField              String?
   appliedAt                DateTime?
-  createdAt                DateTime @default(now())
+  createdAt                DateTime  @default(now())
 
-  task            TrainingGenerationTask @relation(fields: [trainingGenerationTaskId], references: [id], onDelete: Cascade)
-  artifact        TrainingArtifact?      @relation("TrainingGenerationOutputArtifact", fields: [artifactId], references: [id], onDelete: SetNull)
+  task            TrainingGenerationTask   @relation(fields: [trainingGenerationTaskId], references: [id], onDelete: Cascade)
+  artifact        TrainingArtifact?        @relation("TrainingGenerationOutputArtifact", fields: [artifactId], references: [id], onDelete: SetNull)
   characterImages TrainingCharacterImage[] @relation("TrainingCharacterImageSourceOutput")
   imageResults    TrainingImageResult[]    @relation("TrainingImageResultGenerationOutput")
 
@@ -636,20 +641,20 @@ model TrainingGenerationTaskOutput {
 }
 
 model TrainingDatasetRevision {
-  id                 String   @id @default(cuid())
-  trainingProjectId  String
-  version            Int
-  status             String   @default("ready")
-  itemCount          Int      @default(0)
-  captionMissingCount Int     @default(0)
-  manifestArtifactId String?
-  manifestName       String?
-  frozenAt           DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  trainingProjectId   String
+  version             Int
+  status              String    @default("ready")
+  itemCount           Int       @default(0)
+  captionMissingCount Int       @default(0)
+  manifestArtifactId  String?
+  manifestName        String?
+  frozenAt            DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  project          TrainingProject                @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
-  manifestArtifact TrainingArtifact?              @relation("TrainingDatasetRevisionManifestArtifact", fields: [manifestArtifactId], references: [id], onDelete: SetNull)
+  project          TrainingProject               @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  manifestArtifact TrainingArtifact?             @relation("TrainingDatasetRevisionManifestArtifact", fields: [manifestArtifactId], references: [id], onDelete: SetNull)
   items            TrainingDatasetRevisionItem[]
   trainingRuns     TrainingRun[]
 
@@ -686,43 +691,45 @@ model TrainingDatasetRevisionItem {
 }
 
 model TrainingRun {
-  id                         String   @id @default(cuid())
-  trainingProjectId          String
-  trainingDatasetRevisionId  String
-  status                     String   @default("queued")
-  baseCheckpointId           String?
-  configArtifactId           String?
-  trainingLogArtifactId      String?
-  finalLoraArtifactId        String?
-  runSummaryJson             Json?
-  progressJson               Json?
-  currentStep                Int?
-  totalSteps                 Int?
-  waitReason                 String?
-  waitingSince               DateTime?
-  schedulerMessage           String?  @db.Text
-  runnerType                 String   @default("local_wsl_sd_scripts")
-  runnerWorkspacePath        String?
-  errorMessage               String?  @db.Text
-  createdPresetId            String?
-  createdPresetVariantId     String?
-  presetCreatedAt            DateTime?
-  cancelRequestedAt          DateTime?
-  startedAt                  DateTime?
-  finishedAt                 DateTime?
-  createdAt                  DateTime @default(now())
-  updatedAt                  DateTime @updatedAt
+  id                        String    @id @default(cuid())
+  trainingProjectId         String
+  trainingDatasetRevisionId String
+  status                    String    @default("queued")
+  baseCheckpointId          String?
+  configArtifactId          String?
+  trainingLogArtifactId     String?
+  finalLoraArtifactId       String?
+  runSummaryJson            Json?
+  progressJson              Json?
+  currentStep               Int?
+  totalSteps                Int?
+  waitReason                String?
+  waitingSince              DateTime?
+  schedulerMessage          String?   @db.Text
+  runnerType                String    @default("local_wsl_sd_scripts")
+  runnerWorkspacePath       String?
+  errorMessage              String?   @db.Text
+  hiddenAt                  DateTime?
+  createdPresetId           String?
+  createdPresetVariantId    String?
+  presetCreatedAt           DateTime?
+  cancelRequestedAt         DateTime?
+  startedAt                 DateTime?
+  finishedAt                DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 
-  project         TrainingProject          @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
-  datasetRevision TrainingDatasetRevision  @relation(fields: [trainingDatasetRevisionId], references: [id], onDelete: Restrict)
-  configArtifact  TrainingArtifact?        @relation("TrainingRunConfigArtifact", fields: [configArtifactId], references: [id], onDelete: SetNull)
-  logArtifact     TrainingArtifact?        @relation("TrainingRunLogArtifact", fields: [trainingLogArtifactId], references: [id], onDelete: SetNull)
-  finalArtifact   TrainingArtifact?        @relation("TrainingRunFinalArtifact", fields: [finalLoraArtifactId], references: [id], onDelete: SetNull)
+  project         TrainingProject         @relation(fields: [trainingProjectId], references: [id], onDelete: Cascade)
+  datasetRevision TrainingDatasetRevision @relation(fields: [trainingDatasetRevisionId], references: [id], onDelete: Restrict)
+  configArtifact  TrainingArtifact?       @relation("TrainingRunConfigArtifact", fields: [configArtifactId], references: [id], onDelete: SetNull)
+  logArtifact     TrainingArtifact?       @relation("TrainingRunLogArtifact", fields: [trainingLogArtifactId], references: [id], onDelete: SetNull)
+  finalArtifact   TrainingArtifact?       @relation("TrainingRunFinalArtifact", fields: [finalLoraArtifactId], references: [id], onDelete: SetNull)
 
   @@index([trainingProjectId, status])
   @@index([trainingDatasetRevisionId])
   @@index([status, createdAt])
   @@index([finalLoraArtifactId])
+  @@index([hiddenAt])
 }
 
 model TrainingTextRevision {

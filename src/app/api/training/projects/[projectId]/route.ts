@@ -6,13 +6,8 @@ import {
 import {
   deleteTrainingProject,
   mapTrainingProjectMutationError,
-  mapTrainingProjectError,
   updateTrainingProject,
 } from "@/server/services/training/project-actions-service";
-import {
-  hideTrainingProjects,
-  mapTrainingProjectVisibilityError,
-} from "@/server/services/training/project-visibility-service";
 
 export const dynamic = "force-dynamic";
 
@@ -67,18 +62,12 @@ export async function DELETE(
 
   try {
     const deleted = await deleteTrainingProject(projectId);
-    const hidden = await hideTrainingProjects([projectId]);
     return ok({
       deletedRunCount: deleted?.deletedRunCount ?? 0,
       id: projectId,
-      ...hidden,
     });
   } catch (error) {
-    const managedMapped = mapTrainingProjectError(error);
-    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
-      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
-    }
-    const mapped = mapTrainingProjectVisibilityError(error);
+    const mapped = mapTrainingProjectMutationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

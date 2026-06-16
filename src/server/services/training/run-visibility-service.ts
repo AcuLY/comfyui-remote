@@ -1,8 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-
-const TRAINING_HIDDEN_RUNS_PATH = join(process.cwd(), "data", "training-hidden-runs.json");
-let hiddenRunWriteQueue: Promise<unknown> = Promise.resolve();
+import { prisma } from "@/lib/prisma";
 
 export class TrainingRunVisibilityServiceError extends Error {
   details?: unknown;
@@ -16,51 +12,94 @@ export class TrainingRunVisibilityServiceError extends Error {
   }
 }
 
-async function readHiddenRunIds() {
-  try {
-    const raw = await readFile(TRAINING_HIDDEN_RUNS_PATH, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed)) {
-      return parsed.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
-    }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw error;
-    }
-  }
+export async function listHiddenTrainingRunIds(): Promise<string[]> {
+  const [trainingRuns, generationTasks] = await Promise.all([
+    prisma.trainingRun.findMany({
+      where: {
+        hiddenAt: {
+          not: null,
+        },
+      },
+      select: {
+        id: true,
+      },
+    }),
+    prisma.trainingGenerationTask.findMany({
+      where: {
+        hiddenAt: {
+          not: null,
+        },
+      },
+      select: {
+        id: true,
+      },
+    }),
+  ]);
 
-  return [] as string[];
+  return [...trainingRuns, ...generationTasks].map((row) => row.id);
 }
 
-async function writeHiddenRunIds(runIds: string[]) {
-  await mkdir(dirname(TRAINING_HIDDEN_RUNS_PATH), { recursive: true });
-  const tempPath = `${TRAINING_HIDDEN_RUNS_PATH}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tempPath, `${JSON.stringify(runIds, null, 2)}\n`, "utf8");
-  await rename(tempPath, TRAINING_HIDDEN_RUNS_PATH);
-}
-
-async function withHiddenRunWriteLock<T>(fn: () => Promise<T>) {
-  const next = hiddenRunWriteQueue.then(fn, fn);
-  hiddenRunWriteQueue = next.then(() => undefined, () => undefined);
-  return next;
-}
-
-export async function listHiddenTrainingRunIds() {
-  return readHiddenRunIds();
-}
-
-export async function hideTrainingRuns(runIds: string[]) {
+export async function hideTrainingRuns(runIds: string[]): Promise<{ hiddenRunIds: string[] }> {
   const normalized = [...new Set(runIds.map((runId) => runId.trim()).filter(Boolean))];
   if (normalized.length === 0) {
     throw new TrainingRunVisibilityServiceError("At least one run id is required", 400);
   }
 
-  return withHiddenRunWriteLock(async () => {
-    const current = await readHiddenRunIds();
-    const next = [...new Set([...current, ...normalized])];
-    await writeHiddenRunIds(next);
-    return { hiddenRunIds: normalized };
-  });
+  const now = new Date();
+  const [trainingRuns, generationTasks] = await Promise.all([
+    prisma.trainingRun.findMany({
+      where: {
+        id: {
+          in: normalized,
+        },
+      },
+      select: {
+        id: true,
+      },
+    }),
+    prisma.trainingGenerationTask.findMany({
+      where: {
+        id: {
+          in: normalized,
+        },
+      },
+      select: {
+        id: true,
+      },
+    }),
+  ]);
+  const matchedIds = new Set([...trainingRuns, ...generationTasks].map((row) => row.id));
+  const missingRunIds = normalized.filter((runId) => !matchedIds.has(runId));
+  if (missingRunIds.length > 0) {
+    throw new TrainingRunVisibilityServiceError("Training run not found", 404, { runIds: missingRunIds });
+  }
+
+  await prisma.$transaction([
+    prisma.trainingRun.updateMany({
+      where: {
+        id: {
+          in: normalized,
+        },
+      },
+      data: {
+        hiddenAt: now,
+      },
+    }),
+    prisma.trainingGenerationTask.updateMany({
+      where: {
+        id: {
+          in: normalized,
+        },
+      },
+      data: {
+        hiddenAt: now,
+      },
+    }),
+  ]);
+
+  return {
+    hiddenRunIds: normalized,
+  };
 }
 
 export function mapTrainingRunVisibilityError(error: unknown) {

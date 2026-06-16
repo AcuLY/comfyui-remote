@@ -266,6 +266,7 @@ function buildTrainingRuns(
     artifactName: run.finalSafetensorsArtifactName ?? run.finalSafetensorsArtifactId ?? undefined,
     finalLoraArtifactId: run.finalSafetensorsArtifactId ?? undefined,
     finalInput: run.resolvedConfig ? JSON.stringify(run.resolvedConfig, null, 2) : undefined,
+    presetCreatedAt: run.presetCreatedAt ? formatTimestamp(run.presetCreatedAt, "创建于") : undefined,
     schedulerMessage: run.metadataSummary ? JSON.stringify(run.metadataSummary) : undefined,
     trainingLogArtifactName: run.logArtifactName ?? run.logArtifactId ?? undefined,
     datasetSamples: resultPool

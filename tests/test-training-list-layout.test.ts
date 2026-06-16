@@ -39,12 +39,29 @@ function classHasDeclaration(css: string, className: string, declaration: RegExp
 
 function twoColumnContainerBreakpoint(css: string, className: string) {
   const escaped = className.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = css.match(
-    new RegExp(
-      `@container\\s*\\(min-width:\\s*(\\d+)px\\)\\s*\\{\\s*\\.${escaped}\\b[^{}]*\\{[^{}]*grid-template-columns:\\s*repeat\\(2,\\s*minmax\\(0,\\s*1fr\\)\\)`,
-    ),
-  );
-  return match?.[1] ? Number(match[1]) : null;
+  const headerPattern = /@container\s*\(min-width:\s*(\d+)px\)\s*\{/g;
+  for (const match of css.matchAll(headerPattern)) {
+    const startIndex = match.index ?? 0;
+    const bodyStart = startIndex + match[0].length;
+    let depth = 1;
+    let endIndex = bodyStart;
+
+    for (; endIndex < css.length; endIndex += 1) {
+      const character = css[endIndex];
+      if (character === "{") depth += 1;
+      if (character === "}") depth -= 1;
+      if (depth === 0) break;
+    }
+
+    const body = css.slice(bodyStart, endIndex);
+    const hasClassRule = new RegExp(
+      `\\.${escaped}\\b[^{}]*\\{[^{}]*grid-template-columns:\\s*repeat\\(2,\\s*minmax\\(0,\\s*1fr\\)\\)`,
+    ).test(body);
+
+    if (hasClassRule) return Number(match[1]);
+  }
+
+  return null;
 }
 
 function hasMobileSingleColumnOverride(css: string, className: string) {
@@ -225,8 +242,8 @@ test("sortable training resource lists use ancestor surfaces for container queri
   );
   assert.match(
     resourcesCss,
-    /@container\s*\(min-width:\s*520px\)\s*\{\s*\.trainingPresetFolderGrid,\s*\.trainingPresetItemList\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
-    "Training preset folders and items should match the project-demo library breakpoint",
+    /@container\s*\(min-width:\s*720px\)\s*\{\s*\.trainingPresetFolderGrid,\s*\.trainingPresetItemList\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "Training preset folders and items should wait for the shared wide card/list breakpoint before splitting",
   );
   assert.match(
     resourcesCss,
@@ -253,14 +270,36 @@ test("training preset sort panels use the shared container-driven list breakpoin
   );
   assert.match(
     resourcesCss,
-    /@container\s*\(min-width:\s*520px\)\s*\{[\s\S]*?\.trainingPresetSortGrid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
-    "Training preset sort panels should expand at the same container breakpoint as other managed lists",
+    /@container\s*\(min-width:\s*720px\)\s*\{[\s\S]*?\.trainingPresetSortGrid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "Training preset sort panels should wait for the shared wide card/list breakpoint before splitting",
   );
   assert.doesNotMatch(
     resourcesCss,
     /@media\s*\(min-width:\s*700px\)\s*\{[\s\S]*?\.trainingPresetSortGrid/,
     "Training preset sort panels should not depend on the viewport width",
   );
+});
+
+test("training managed list cards use the same wide two-column breakpoint family", () => {
+  const wideListBreakpoints = [
+    [projectsCss, "projectGrid"],
+    [runsCss, "currentRunList"],
+    [runsCss, "runGroupList"],
+    [resourcesCss, "trainingPresetFolderGrid"],
+    [resourcesCss, "trainingPresetItemList"],
+    [resourcesCss, "trainingTemplateList"],
+    [resourcesCss, "resourceGrid"],
+    [resourcesCss, "sortGrid"],
+    [resourcesCss, "usageList"],
+  ] as const;
+
+  for (const [css, className] of wideListBreakpoints) {
+    assert.equal(
+      twoColumnContainerBreakpoint(css, className),
+      720,
+      `${className} should wait for the shared wide card/list breakpoint before using two columns`,
+    );
+  }
 });
 
 test("training managed lists stay single column in the mobile shell", () => {

@@ -267,6 +267,33 @@ test("Training runtime services do not import the managed project-service fallba
   );
 });
 
+test("Training runtime services do not persist primary resource state in data JSON files", () => {
+  const forbiddenFileState: SourcePattern[] = [
+    {
+      label: "training JSON runtime state path",
+      pattern: /data["'`]\s*,\s*["'`]training-[^"'`]+\.json["'`]/,
+    },
+    {
+      label: "training JSON runtime read/write",
+      pattern: /\b(?:readFile|writeFile|rename|mkdir)\b/,
+    },
+  ];
+  const allowedFileRuntime = new Set([
+    "src/server/services/training/project-actions-service.ts",
+    "src/server/services/training/generation-output-service.ts",
+    "src/server/worker/training/task-api.ts",
+  ]);
+  const runtimeFiles = trainingRuntimeFiles()
+    .filter((path) => relativePath(path).startsWith("src/server/services/training/"))
+    .filter((path) => !allowedFileRuntime.has(relativePath(path)));
+
+  assert.deepEqual(
+    compactHits(findPatternHits(runtimeFiles, forbiddenFileState)),
+    { total: 0, firstHits: [] },
+    "Training runtime resource state must live in Training-owned Prisma paths; JSON files may remain only for artifacts/uploads, not project/template/run ordering or visibility.",
+  );
+});
+
 test("generation and training API route trees keep module-owned resource imports isolated", () => {
   const generationApiFiles = sourceFilesFromRoots(
     "src/app/api/agent/projects",

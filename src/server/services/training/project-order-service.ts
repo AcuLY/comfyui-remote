@@ -1,8 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-
-const TRAINING_PROJECT_ORDER_PATH = join(process.cwd(), "data", "training-project-order.json");
-let trainingProjectOrderWriteQueue: Promise<unknown> = Promise.resolve();
+import { prisma } from "@/lib/prisma";
 
 export class TrainingProjectOrderServiceError extends Error {
   details?: unknown;
@@ -16,49 +12,71 @@ export class TrainingProjectOrderServiceError extends Error {
   }
 }
 
-async function readProjectOrderIds() {
-  try {
-    const raw = await readFile(TRAINING_PROJECT_ORDER_PATH, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed)) {
-      return parsed.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
-    }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw error;
-    }
-  }
-
-  return [] as string[];
+export async function listTrainingProjectOrderIds(): Promise<string[]> {
+  const rows = await prisma.trainingProject.findMany({
+    where: {
+      hiddenAt: null,
+    },
+    orderBy: [
+      { sortOrder: "asc" },
+      { updatedAt: "desc" },
+    ],
+    select: {
+      id: true,
+    },
+  });
+  return rows.map((row) => row.id);
 }
 
-async function writeProjectOrderIds(projectIds: string[]) {
-  await mkdir(dirname(TRAINING_PROJECT_ORDER_PATH), { recursive: true });
-  const tempPath = `${TRAINING_PROJECT_ORDER_PATH}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tempPath, `${JSON.stringify(projectIds, null, 2)}\n`, "utf8");
-  await rename(tempPath, TRAINING_PROJECT_ORDER_PATH);
-}
-
-async function withProjectOrderWriteLock<T>(fn: () => Promise<T>) {
-  const next = trainingProjectOrderWriteQueue.then(fn, fn);
-  trainingProjectOrderWriteQueue = next.then(() => undefined, () => undefined);
-  return next;
-}
-
-export async function listTrainingProjectOrderIds() {
-  return readProjectOrderIds();
-}
-
-export async function saveTrainingProjectOrderIds(projectIds: string[]) {
+export async function saveTrainingProjectOrderIds(projectIds: string[]): Promise<{ orderedProjectIds: string[] }> {
   const normalized = [...new Set(projectIds.map((projectId) => projectId.trim()).filter(Boolean))];
   if (normalized.length === 0) {
     throw new TrainingProjectOrderServiceError("At least one project id is required", 400);
   }
 
-  return withProjectOrderWriteLock(async () => {
-    await writeProjectOrderIds(normalized);
-    return { orderedProjectIds: normalized };
+  const existing = await prisma.trainingProject.findMany({
+    where: {
+      id: {
+        in: normalized,
+      },
+    },
+    select: {
+      id: true,
+    },
   });
+  const existingIds = new Set(existing.map((project) => project.id));
+  const missingProjectIds = normalized.filter((projectId) => !existingIds.has(projectId));
+  if (missingProjectIds.length > 0) {
+    throw new TrainingProjectOrderServiceError("Training project not found", 404, { projectIds: missingProjectIds });
+  }
+
+  await prisma.$transaction([
+    prisma.trainingProject.updateMany({
+      where: {
+        hiddenAt: null,
+        id: {
+          notIn: normalized,
+        },
+      },
+      data: {
+        sortOrder: normalized.length,
+      },
+    }),
+    ...normalized.map((projectId, index) => (
+      prisma.trainingProject.update({
+        where: {
+          id: projectId,
+        },
+        data: {
+          sortOrder: index,
+        },
+      })
+    )),
+  ]);
+
+  return {
+    orderedProjectIds: normalized,
+  };
 }
 
 export function orderTrainingProjectsByStoredIds<T extends { id: string }>(projects: T[], orderedProjectIds: string[]) {

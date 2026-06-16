@@ -174,8 +174,8 @@ test("training preset folder and item lists share the project-demo container-dri
   );
   assert.match(
     cssSource,
-    /@container \(min-width: 520px\) \{\s*\.trainingPresetFolderGrid,\s*\.trainingPresetItemList\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
-    "training preset folders and items should expand together at the project-demo library breakpoint",
+    /@container \(min-width: 720px\) \{\s*\.trainingPresetFolderGrid,\s*\.trainingPresetItemList\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "training preset folders and items should wait for the shared wide card/list breakpoint before splitting",
   );
 });
 
