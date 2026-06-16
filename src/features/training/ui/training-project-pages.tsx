@@ -23,6 +23,7 @@ import {
   Snowflake,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 
 import { toImageUrl } from "@/lib/image-url";
@@ -658,15 +659,21 @@ async function copyProjectRunMessage(message: string) {
 }
 
 function RunRows({
+  cancelledRunIds = new Set<string>(),
+  isCancellingRuns = false,
   onDeleteRun,
   isDeletingRuns = false,
+  onCancelRun,
   onRetryRun,
   project,
   retriedRunIds = new Set<string>(),
   runs,
 }: {
+  cancelledRunIds?: Set<string>;
+  isCancellingRuns?: boolean;
   onDeleteRun?: (runId: string) => void;
   isDeletingRuns?: boolean;
+  onCancelRun?: (runId: string) => void;
   onRetryRun?: (runId: string) => void;
   project: LoraTrainingProject;
   retriedRunIds?: Set<string>;
@@ -682,15 +689,17 @@ function RunRows({
           const type = run.kind === "generation" ? "generation" : "training";
           const previewImages = runPreviewImages(run, project);
           const retried = retriedRunIds.has(run.id);
-          const failed = run.status === "failed" && !retried;
+          const cancelled = cancelledRunIds.has(run.id);
+          const canCancel = run.status === "queued" || run.status === "running";
+          const failed = (run.status === "failed" || cancelled) && !retried;
           const failureMessage = run.errorMessage ?? "任务失败，请打开详情查看日志。";
           return (
             <article className={cx(s.projectRunRow, failed && s.projectRunRowFailed)} key={run.id}>
               <Link className={s.projectRunMain} href={hrefForRoute(`/training/runs/${type}/${run.id}`)}>
                 <span className={s.projectRunText}>
                   <strong>{run.title}</strong>
-                  <span>{run.summary} · {run.timestamp}</span>
-                  {run.outputLabel ? <em>{run.outputLabel}</em> : null}
+                  <span>{run.summary} · {cancelled ? "已取消" : run.timestamp}</span>
+                  {run.outputLabel && !cancelled ? <em>{run.outputLabel}</em> : null}
                   {run.waitReason ? <em>{run.waitReason}</em> : null}
                   {retried ? <em>已排队重试</em> : null}
                 </span>
@@ -704,20 +713,43 @@ function RunRows({
                 />
               ) : null}
               <span className={s.projectRunStatus}>
-                <StatusBadge status={retried ? "pending" : run.status === "completed" ? "done" : run.status} label={retried ? "已排队重试" : projectRunStatusLabel(run.status)} />
+                <StatusBadge
+                  status={retried ? "pending" : cancelled ? "failed" : run.status === "completed" ? "done" : run.status}
+                  label={retried ? "已排队重试" : cancelled ? "已取消" : projectRunStatusLabel(run.status)}
+                />
               </span>
               {failed ? (
                 <div className={s.projectRunSecondary}>
-                  <ProjectRunFailureBlock message={failureMessage} />
-                  <div className={s.projectRunFailureToolbar}>
-                    <Button size="sm" tone="subtle" icon={Copy} ariaLabel={`复制任务报错：${run.title}`} onClick={() => copyProjectRunMessage(failureMessage)} feedback={{ title: "报错已复制", detail: failureMessage }}>复制</Button>
-                    <Button size="sm" tone="subtle" icon={Play} ariaLabel={`重试任务：${run.title}`} onClick={() => onRetryRun?.(run.id)}>重试</Button>
-                    <Button size="sm" tone="danger" icon={Trash2} pending={isDeletingRuns} ariaLabel={`移除任务：${run.title}`} onClick={() => onDeleteRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
-                  </div>
+                  {cancelled ? (
+                    <div className={s.projectRunFailureToolbar}>
+                      <StatusBadge status="failed" label="已取消" />
+                    </div>
+                  ) : (
+                    <>
+                      <ProjectRunFailureBlock message={failureMessage} />
+                      <div className={s.projectRunFailureToolbar}>
+                        <Button size="sm" tone="subtle" icon={Copy} ariaLabel={`复制任务报错：${run.title}`} onClick={() => copyProjectRunMessage(failureMessage)} feedback={{ title: "报错已复制", detail: failureMessage }}>复制</Button>
+                        <Button size="sm" tone="subtle" icon={Play} ariaLabel={`重试任务：${run.title}`} onClick={() => onRetryRun?.(run.id)}>重试</Button>
+                        <Button size="sm" tone="danger" icon={Trash2} pending={isDeletingRuns} ariaLabel={`移除任务：${run.title}`} onClick={() => onDeleteRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <span className={s.projectRunActions}>
-                  <Button tone="danger" icon={Trash2} pending={isDeletingRuns} ariaLabel={`移除任务：${run.title}`} onClick={() => onDeleteRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+                  {canCancel ? (
+                    <Button
+                      tone="danger"
+                      icon={X}
+                      pending={isCancellingRuns}
+                      ariaLabel={`${run.kind === "generation" ? "终止生成任务" : "取消训练任务"}：${run.title}`}
+                      onClick={() => onCancelRun?.(run.id)}
+                    >
+                      {run.kind === "generation" ? "终止" : "取消"}
+                    </Button>
+                  ) : (
+                    <Button tone="danger" icon={Trash2} pending={isDeletingRuns} ariaLabel={`移除任务：${run.title}`} onClick={() => onDeleteRun?.(run.id)} feedback={{ tone: "warning", title: "任务已从项目列表移除", detail: run.title }}>移除</Button>
+                  )}
                 </span>
               )}
             </article>
@@ -4577,18 +4609,21 @@ export function LoraTrainingProjectScopedRunsPage({
   const training = useTraining(data);
   const project = findProject(data, projectId);
   const [projectRunInteractionState, setProjectRunInteractionState] = useState(() => ({
+    cancelledProjectRunIds: new Set<string>(),
     hiddenProjectRunIds: new Set<string>(),
     kind,
     projectId: project?.id ?? null,
     retriedProjectRunIds: new Set<string>(),
     status: "completed" as LoraTrainingTaskStatus,
   }));
+  const [isCancellingProjectRuns, setIsCancellingProjectRuns] = useState(false);
   const [isRetryingProjectRuns, setIsRetryingProjectRuns] = useState(false);
   const [isDeletingProjectRuns, setIsDeletingProjectRuns] = useState(false);
   if (!project) return <EmptyPage title="没有项目任务数据" />;
   const activeProject = project;
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const projectRunInteraction = projectRunInteractionState.projectId === activeProject.id && projectRunInteractionState.kind === kind ? projectRunInteractionState : {
+    cancelledProjectRunIds: new Set<string>(),
     hiddenProjectRunIds: new Set<string>(),
     kind,
     projectId: activeProject.id,
@@ -4596,14 +4631,17 @@ export function LoraTrainingProjectScopedRunsPage({
     status: "completed" as LoraTrainingTaskStatus,
   };
   const status = projectRunInteraction.status;
+  const cancelledProjectRunIds = projectRunInteraction.cancelledProjectRunIds;
   const hiddenProjectRunIds = projectRunInteraction.hiddenProjectRunIds;
   const retriedProjectRunIds = projectRunInteraction.retriedProjectRunIds;
+  const effectiveProjectRunStatus = (run: LoraTrainingRun) => (cancelledProjectRunIds.has(run.id) ? "failed" : run.status);
   const projectRuns = training.runs.filter((run) => run.projectId === activeProject.id && run.kind === kind && !hiddenProjectRunIds.has(run.id));
-  const visibleRuns = projectRuns.filter((run) => run.status === status);
+  const visibleRuns = projectRuns.filter((run) => effectiveProjectRunStatus(run) === status);
 
   function updateProjectRunInteraction(updater: (current: typeof projectRunInteraction) => typeof projectRunInteraction) {
     setProjectRunInteractionState((current) => {
       const active = current.projectId === activeProject.id && current.kind === kind ? current : {
+        cancelledProjectRunIds: new Set<string>(),
         hiddenProjectRunIds: new Set<string>(),
         kind,
         projectId: activeProject.id,
@@ -4627,14 +4665,24 @@ export function LoraTrainingProjectScopedRunsPage({
 
   function applyLocalProjectRunDelete(runId: string) {
     updateProjectRunInteraction((current) => {
+      const cancelledProjectRunIds = new Set(current.cancelledProjectRunIds);
       const retriedProjectRunIds = new Set(current.retriedProjectRunIds);
+      cancelledProjectRunIds.delete(runId);
       retriedProjectRunIds.delete(runId);
       return {
         ...current,
+        cancelledProjectRunIds,
         hiddenProjectRunIds: new Set([...current.hiddenProjectRunIds, runId]),
         retriedProjectRunIds,
       };
     });
+  }
+
+  function applyLocalProjectRunCancel(runId: string) {
+    updateProjectRunInteraction((current) => ({
+      ...current,
+      cancelledProjectRunIds: new Set([...current.cancelledProjectRunIds, runId]),
+    }));
   }
 
   async function handleDeleteProjectRun(runId: string) {
@@ -4686,6 +4734,65 @@ export function LoraTrainingProjectScopedRunsPage({
       });
     } finally {
       setIsDeletingProjectRuns(false);
+    }
+  }
+
+  async function handleCancelProjectRun(runId: string) {
+    const run = projectRuns.find((candidate) => candidate.id === runId);
+    if (!run || !(run.status === "queued" || run.status === "running")) return;
+    const cancelTitle = run.kind === "generation" ? "生成任务已终止" : "训练任务已取消";
+
+    if (!isProductionTrainingRoute) {
+      applyLocalProjectRunCancel(runId);
+      pushToast({
+        tone: "warning",
+        title: cancelTitle,
+        detail: run.title,
+      });
+      return;
+    }
+
+    if (isCancellingProjectRuns) return;
+
+    setIsCancellingProjectRuns(true);
+    try {
+      const response = await fetch(
+        run.kind === "generation"
+          ? `/api/training/generation-tasks/${run.id}/cancel`
+          : `/api/training/training-runs/${run.id}/cancel`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            requestedBy: run.kind === "generation" ? "training_project_generation_runs_page" : "training_project_training_runs_page",
+          }),
+        },
+      );
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "取消失败",
+          detail: payload?.error?.message ?? "任务取消请求失败",
+        });
+        return;
+      }
+
+      applyLocalProjectRunCancel(runId);
+      pushToast({
+        tone: "warning",
+        title: cancelTitle,
+        detail: run.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "取消失败",
+        detail: error instanceof Error ? error.message : "任务取消请求失败",
+      });
+    } finally {
+      setIsCancellingProjectRuns(false);
     }
   }
 
@@ -4786,12 +4893,15 @@ export function LoraTrainingProjectScopedRunsPage({
         ariaLabel="切换任务状态"
         panel
         role="tablist"
-        items={STATUS_ITEMS.map((item) => ({ ...item, count: projectRuns.filter((run) => run.status === item.value).length }))}
+        items={STATUS_ITEMS.map((item) => ({ ...item, count: projectRuns.filter((run) => effectiveProjectRunStatus(run) === item.value).length }))}
         value={status}
         onChange={handleProjectRunStatusChange}
       />
       <Panel title={kind === "generation" ? "项目生成任务" : "项目训练任务"}>
         <RunRows
+          cancelledRunIds={cancelledProjectRunIds}
+          isCancellingRuns={isCancellingProjectRuns}
+          onCancelRun={handleCancelProjectRun}
           onDeleteRun={handleDeleteProjectRun}
           isDeletingRuns={isDeletingProjectRuns}
           onRetryRun={handleRetryProjectRun}

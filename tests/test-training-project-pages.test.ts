@@ -841,6 +841,30 @@ test("project-scoped run rows delete through the formal HTTP API on production r
   assert.match(scopedPageSource, /pushToast/, "project-scoped delete should surface API success or failure through the shared feedback system");
 });
 
+test("project-scoped queued or running run rows cancel through the formal HTTP API on production routes", () => {
+  const runRowsStart = pagesSource.indexOf("function RunRows");
+  const referenceSourceStart = pagesSource.indexOf("type ReferenceCandidate");
+  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
+  assert.notEqual(runRowsStart, -1);
+  assert.notEqual(referenceSourceStart, -1);
+  assert.notEqual(scopedPageStart, -1);
+
+  const runRowsSource = pagesSource.slice(runRowsStart, referenceSourceStart);
+  const scopedPageSource = pagesSource.slice(scopedPageStart);
+
+  assert.match(scopedPageSource, /cancelledProjectRunIds/, "project task page should track locally cancelled run ids");
+  assert.match(scopedPageSource, /handleCancelProjectRun/, "project task page should define a cancel handler");
+  assert.match(scopedPageSource, /setIsCancellingProjectRuns/, "project task page should track pending cancel requests");
+  assert.match(scopedPageSource, /`\/api\/training\/generation-tasks\/\$\{run\.id\}\/cancel`/, "project-scoped generation rows should call the formal generation cancel API");
+  assert.match(scopedPageSource, /`\/api\/training\/training-runs\/\$\{run\.id\}\/cancel`/, "project-scoped training rows should call the formal training cancel API");
+  assert.match(scopedPageSource, /requestedBy:/, "project-scoped cancel requests should identify the request source");
+  assert.match(scopedPageSource, /run\.status === "queued" \|\| run\.status === "running"/, "project-scoped cancel should stay scoped to queued or running rows");
+  assert.match(scopedPageSource, /onCancelRun=\{handleCancelProjectRun\}/, "project task rows should receive the cancel handler");
+  assert.match(runRowsSource, /onCancelRun\?\.\(run\.id\)/, "row cancel button should cancel the run");
+  assert.match(runRowsSource, /run\.status === "queued" \|\| run\.status === "running"/, "row cancel action should only render for active runs");
+  assert.match(scopedPageSource, /pushToast/, "project-scoped cancel should surface API success or failure through the shared feedback system");
+});
+
 test("project-scoped run rows retry through the formal HTTP API on production routes", () => {
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
   assert.notEqual(scopedPageStart, -1);
