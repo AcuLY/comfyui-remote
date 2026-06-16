@@ -1533,7 +1533,7 @@
   }
 
   .mobileBottomNav[data-work-mode="lora_training"] {
-    grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(52px, 0.9fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr)) minmax(52px, 0.9fr);
   }
 
   .mobileBottomItem,

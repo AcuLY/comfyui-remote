@@ -12,6 +12,7 @@ const bottomNavPath = resolve(repoRoot, "src/components/persistent-bottom-nav.ts
 const workModeResourcesPath = resolve(repoRoot, "src/lib/work-mode-resources.ts");
 const settingsPagePath = resolve(repoRoot, "src/app/settings/page.tsx");
 const shellPath = resolve(repoRoot, "src/components/design-demo-shell/app-shell.tsx");
+const shellCssPath = resolve(repoRoot, "src/components/design-demo-shell/app-shell.module.css");
 const headerSurfacePath = resolve(repoRoot, "src/components/design-demo-shell/header-surface.tsx");
 const buttonPath = resolve(repoRoot, "src/components/design-demo-ui/primitives/button/index.tsx");
 const hrefContextPath = resolve(repoRoot, "src/components/design-demo-routing/href-context.tsx");
@@ -30,6 +31,7 @@ const bottomNavSource = readFileSync(bottomNavPath, "utf8");
 const workModeResourcesSource = readFileSync(workModeResourcesPath, "utf8");
 const settingsPageSource = readFileSync(settingsPagePath, "utf8");
 const shellSource = readFileSync(shellPath, "utf8");
+const shellCssSource = readFileSync(shellCssPath, "utf8");
 const headerSurfaceSource = readFileSync(headerSurfacePath, "utf8");
 const buttonSource = readFileSync(buttonPath, "utf8");
 const hrefContextSource = existsSync(hrefContextPath) ? readFileSync(hrefContextPath, "utf8") : "";
@@ -170,6 +172,33 @@ test("production training route inventory is exported and every route renders a 
     missingPageCases,
     [],
     "every production training route key should be handled by CurrentTrainingPage",
+  );
+});
+
+test("training mobile bottom navigation reserves columns for every resource link plus the mode indicator", async () => {
+  const { buildWorkModeResourceTargetList } = await import("../src/lib/work-mode-resources");
+  const trainingLinkCount = buildWorkModeResourceTargetList("lora_training").length;
+  const trainingMobileRule = shellCssSource.match(
+    /\.mobileBottomNav\[data-work-mode="lora_training"\]\s*\{(?<body>[\s\S]*?)\n\s*\}/,
+  )?.groups?.body ?? "";
+
+  assert.equal(trainingLinkCount, 6, "training navigation should expose the six resource slots from the shared registry.");
+  assert.match(
+    shellSource,
+    /\{links\.map\(\(link\) => \{/,
+    "mobile bottom navigation should render one item for every injected resource link.",
+  );
+  assert.match(
+    shellSource,
+    /<div className=\{s\.mobileModeIndicator\}/,
+    "mobile bottom navigation should render an extra work-mode indicator after resource links.",
+  );
+  assert.match(
+    trainingMobileRule,
+    new RegExp(
+      `grid-template-columns:\\s*repeat\\(${trainingLinkCount},\\s*minmax\\(0,\\s*1fr\\)\\)\\s*minmax\\(52px,\\s*0\\.9fr\\)`,
+    ),
+    "the training mobile nav should reserve one column per training resource link, plus the mode indicator.",
   );
 });
 
