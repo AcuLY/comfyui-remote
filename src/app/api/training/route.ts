@@ -34,6 +34,21 @@ const WORKER_TASK_LEASE_HANDOFF_METADATA = {
 
 const TRAINING_RESOURCE_BOUNDARY = buildWorkModeResourceBoundary("lora_training");
 
+const TRAINING_WORKFLOW_RESOURCE_POLICY = {
+  owner: "lora_training",
+  allowedEntrypointPrefixes: ["/api/training"],
+  sharedEntrypointPrefixes: ["/api/models", "/api/loras"],
+  forbiddenFallbackPolicyRef: "resourceBoundary.forbiddenGenerationEntrypoints",
+  guidance: "Use /api/training for LoRA Training runs, projects, presets, and templates. Only models and settings are shared; never use generation-owned APIs as fallback data sources.",
+} as const;
+
+function trainingWorkflow<const T extends { steps: readonly { path: string }[] }>(workflow: T) {
+  return {
+    ...workflow,
+    resourcePolicy: TRAINING_WORKFLOW_RESOURCE_POLICY,
+  } as const;
+}
+
 const TRAINING_API_MANIFEST = {
   module: "training",
   version: 1,
@@ -53,7 +68,7 @@ const TRAINING_API_MANIFEST = {
     script: "scripts/training/worker-queue.ts",
   },
   workflows: [
-    {
+    trainingWorkflow({
       id: "project_setup",
       description: "Create a training project, upload reference images, and save profile data.",
       steps: [
@@ -63,8 +78,8 @@ const TRAINING_API_MANIFEST = {
         { method: "GET", path: "/api/training/projects/:projectId/profile" },
         { method: "PATCH", path: "/api/training/projects/:projectId/profile" },
       ],
-    },
-    {
+    }),
+    trainingWorkflow({
       id: "section_and_generation",
       description: "Manage sections, build generation inputs, preview, and run generation tasks.",
       steps: [
@@ -79,8 +94,8 @@ const TRAINING_API_MANIFEST = {
         { method: "POST", path: "/api/training/generation-tasks/:taskId/preview" },
         { method: "POST", path: "/api/training/generation-tasks/:taskId/run" },
       ],
-    },
-    {
+    }),
+    trainingWorkflow({
       id: "result_review_and_dataset",
       description: "Review image results, update captions, and freeze a dataset revision.",
       steps: [
@@ -92,8 +107,8 @@ const TRAINING_API_MANIFEST = {
         { method: "POST", path: "/api/training/projects/:projectId/dataset-revisions" },
         { method: "GET", path: "/api/training/dataset-revisions/:revisionId" },
       ],
-    },
-    {
+    }),
+    trainingWorkflow({
       id: "training_execution",
       description: "Launch training, poll status, manage cleanup, and create presets from completed runs.",
       steps: [
@@ -104,8 +119,8 @@ const TRAINING_API_MANIFEST = {
         { method: "POST", path: "/api/training/training-runs/:trainingRunId/cleanup" },
         { method: "POST", path: "/api/training/training-runs/:trainingRunId/create-preset" },
       ],
-    },
-    {
+    }),
+    trainingWorkflow({
       id: "worker_execution",
       description: "Lease worker tasks, heartbeat progress, and write worker progress or completion callbacks.",
       steps: [
@@ -240,8 +255,8 @@ const TRAINING_API_MANIFEST = {
           },
         },
       ],
-    },
-    {
+    }),
+    trainingWorkflow({
       id: "agent_full_training_flow",
       description: "End-to-end HTTP-only path for agents to create a project, generate dataset images, train LoRA, and create a reusable preset.",
       steps: [
@@ -638,7 +653,7 @@ const TRAINING_API_MANIFEST = {
           responsePaths: { presetId: "$.data.id" },
         },
       ],
-    },
+    }),
   ],
   resources: {
     manifest: {

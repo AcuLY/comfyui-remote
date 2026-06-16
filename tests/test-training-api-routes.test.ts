@@ -409,6 +409,57 @@ test("GET /api/training manifest declares module-owned resources and shared exce
   );
 });
 
+test("GET /api/training manifest attaches resource policy to every workflow for agents", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+
+  const workflows = payload.data.workflows as Array<{
+    id: string;
+    resourcePolicy?: {
+      owner: string;
+      allowedEntrypointPrefixes: string[];
+      sharedEntrypointPrefixes: string[];
+      forbiddenFallbackPolicyRef: string;
+      guidance: string;
+    };
+    steps: Array<{ path: string }>;
+  }>;
+  const workflowPolicies = Object.fromEntries(workflows.map((workflow) => [workflow.id, workflow.resourcePolicy]));
+
+  assert.deepEqual(
+    workflows.filter((workflow) => !workflow.resourcePolicy).map((workflow) => workflow.id),
+    [],
+    "Every training workflow should carry a resourcePolicy so agents do not infer cross-module fallbacks.",
+  );
+  assert.deepEqual(
+    workflowPolicies.agent_full_training_flow,
+    {
+      owner: "lora_training",
+      allowedEntrypointPrefixes: ["/api/training"],
+      sharedEntrypointPrefixes: ["/api/models", "/api/loras"],
+      forbiddenFallbackPolicyRef: "resourceBoundary.forbiddenGenerationEntrypoints",
+      guidance: "Use /api/training for LoRA Training runs, projects, presets, and templates. Only models and settings are shared; never use generation-owned APIs as fallback data sources.",
+    },
+    "The full agent workflow should make the training resource boundary machine-readable at the workflow level.",
+  );
+
+  const pathsOutsidePolicy = workflows.flatMap((workflow) =>
+    workflow.steps
+      .filter((step) => !workflow.resourcePolicy?.allowedEntrypointPrefixes.some((prefix) => step.path.startsWith(prefix)))
+      .filter((step) => !workflow.resourcePolicy?.sharedEntrypointPrefixes.some((prefix) => step.path.startsWith(prefix)))
+      .map((step) => `${workflow.id}:${step.path}`));
+
+  assert.deepEqual(
+    pathsOutsidePolicy,
+    [],
+    "Workflow steps should only use their declared training-owned or shared resource entrypoints.",
+  );
+});
+
 test("GET /api/training manifest exposes production worker supervisor metadata without mock commands", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
