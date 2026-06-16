@@ -101,7 +101,7 @@ function resultStatusFromIndex(index: number) {
   return "kept";
 }
 
-function demoStatusFromReview(status: "pending" | "kept" | "rejected") {
+function trainingImageStatusFromReview(status: "pending" | "kept" | "rejected") {
   return status === "rejected" ? "trashed" : status;
 }
 
@@ -139,7 +139,7 @@ function buildImageResults(images: TrainingImage[], start: number, prefix: strin
       id: `${prefix}-result-${index + 1}`,
       sectionId: section.id,
       sectionTitle: section.title,
-      image: { ...image, status: demoStatusFromReview(reviewStatus) },
+      image: { ...image, status: trainingImageStatusFromReview(reviewStatus) },
       reviewStatus,
       caption: `${prefix.replaceAll("-", "_")}, ${section.scene}, clean silhouette, 训练样本说明 ${String(index + 1).padStart(3, "0")}`,
       sourceLabel: `${section.title} · run ${String(index + 1).padStart(2, "0")}`,

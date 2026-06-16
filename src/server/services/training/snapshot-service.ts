@@ -76,7 +76,7 @@ function mapProjectStatus(input: {
   return "ready";
 }
 
-function buildDemoImage(relativePath: string, label: string, status: TrainingImageStatus, index: number): TrainingImage | null {
+function buildTrainingImage(relativePath: string, label: string, status: TrainingImageStatus, index: number): TrainingImage | null {
   const url = toImageUrl(relativePath);
   if (!url) return null;
   return {
@@ -96,8 +96,8 @@ function buildDemoImage(relativePath: string, label: string, status: TrainingIma
 function buildReferenceImages(sourceImages: Awaited<ReturnType<typeof listTrainingReferenceImages>>): LoraTrainingReferenceImage[] {
   return sourceImages
     .map((image, index) => {
-      const demoImage = buildDemoImage(image.relativePath, String(index + 1).padStart(2, "0"), "pending", index);
-      if (!demoImage) return null;
+      const trainingImage = buildTrainingImage(image.relativePath, String(index + 1).padStart(2, "0"), "pending", index);
+      if (!trainingImage) return null;
       const provenance = image.provenance && typeof image.provenance === "object" && !Array.isArray(image.provenance)
         ? image.provenance as Record<string, unknown>
         : null;
@@ -111,7 +111,7 @@ function buildReferenceImages(sourceImages: Awaited<ReturnType<typeof listTraini
           : index === 0 ? "original" : "auxiliary",
         label: provenanceLabel ?? `参考图 ${index + 1}`,
         note: provenanceNote ?? image.role,
-        image: demoImage,
+        image: trainingImage,
       } satisfies LoraTrainingReferenceImage;
     })
     .filter((image): image is LoraTrainingReferenceImage => Boolean(image));
@@ -123,14 +123,14 @@ function buildResultPool(input: {
 }): LoraTrainingImageResult[] {
   return input.candidateImages
     .map((image, index) => {
-      const demoImage = buildDemoImage(image.relativePath, String(index + 1).padStart(2, "0"), mapReviewStatusToImageStatus(image.reviewStatus), index);
-      if (!demoImage) return null;
+      const trainingImage = buildTrainingImage(image.relativePath, String(index + 1).padStart(2, "0"), mapReviewStatusToImageStatus(image.reviewStatus), index);
+      if (!trainingImage) return null;
       const sectionTitle = image.sectionId ? input.sectionNames.get(image.sectionId) ?? "训练小节" : "未分组";
       return {
         id: image.id,
         sectionId: image.sectionId ?? "ungrouped",
         sectionTitle,
-        image: demoImage,
+        image: trainingImage,
         reviewStatus: mapReviewStatus(image.reviewStatus),
         caption: image.captionDraft ?? "未填写说明文本",
         sourceLabel: `${sectionTitle} · ${String(index + 1).padStart(2, "0")}`,
@@ -172,9 +172,9 @@ function buildGenerationInputImages(
           : inputImage.role === "setting"
             ? "场景"
             : inputImage.role === "local_reference"
-              ? "补充"
-              : "历史";
-      return buildDemoImage(
+            ? "补充"
+            : "历史";
+      return buildTrainingImage(
         inputImage.relativePath,
         `${String(index + 1).padStart(2, "0")} · ${roleLabel}`,
         "pending",

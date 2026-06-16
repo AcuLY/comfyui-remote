@@ -46,7 +46,7 @@ import { SwitchRow } from "@/components/design-demo-ui/primitives/switch-row";
 import { SelectionBatchBar } from "@/components/design-demo-ui/patterns";
 import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData, TrainingModelOption } from "@/features/training/data";
-import type { TrainingImage as DemoImage, LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "@/features/training/types";
+import type { TrainingImage, LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "@/features/training/types";
 import s from "./training-project-pages.module.css";
 
 const PROJECT_TABS = [
@@ -732,7 +732,7 @@ type ReferenceCandidate = {
   id: string;
   title: string;
   detail: string;
-  image?: DemoImage;
+  image?: TrainingImage;
   meta?: string;
 };
 
@@ -740,7 +740,7 @@ type SupplementalImageAttachment = {
   id: string;
   title: string;
   detail: string;
-  image: DemoImage;
+  image: TrainingImage;
   source: string;
 };
 

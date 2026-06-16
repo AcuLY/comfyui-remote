@@ -394,3 +394,26 @@ test("training feature types define their image preview contract locally instead
     "training snapshot service should not depend on the design-demos data type module",
   );
 });
+
+test("production training view-model builders do not keep demo-named image helpers", () => {
+  const trainingProjectPagesSource = readFileSync(
+    resolve(testDir, "../src/features/training/ui/training-project-pages.tsx"),
+    "utf8",
+  );
+
+  assert.doesNotMatch(
+    trainingFeatureBuildSource,
+    /\bdemoStatusFromReview\b/,
+    "training feature build should use production Training image-status helper names.",
+  );
+  assert.doesNotMatch(
+    trainingSnapshotServiceSource,
+    /\bbuildDemoImage\b|\bdemoImage\b/,
+    "training snapshot service should map production images through Training-named helpers and locals.",
+  );
+  assert.doesNotMatch(
+    trainingProjectPagesSource,
+    /TrainingImage as DemoImage|\bDemoImage\b/,
+    "training project pages should not alias the Training image view-model as DemoImage.",
+  );
+});
