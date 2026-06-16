@@ -41,12 +41,15 @@ const generationProjectArchiveServiceSource = readFileSync(resolve(repoRoot, "sr
 const generationProjectFolderServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-folder-service.ts"), "utf8");
 const generationImageReviewActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/image-review.ts"), "utf8");
 const generationCensoringActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/censoring.ts"), "utf8");
+const generationCensoringExecutorSource = readFileSync(resolve(repoRoot, "src/server/services/censoring-executor.ts"), "utf8");
+const generationCensoringServiceSource = readFileSync(resolve(repoRoot, "src/server/services/censoring-service.ts"), "utf8");
 const generationSectionActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/section.ts"), "utf8");
 const generationProjectActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/project.ts"), "utf8");
 const generationTemplateSaveActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-save.ts"), "utf8");
 const generationTrashRepositorySource = readFileSync(resolve(repoRoot, "src/server/repositories/trash-repository.ts"), "utf8");
 const generationReviewRepositorySource = readFileSync(resolve(repoRoot, "src/server/repositories/review-repository.ts"), "utf8");
 const generationSectionWorkflowServiceSource = readFileSync(resolve(repoRoot, "src/server/services/section-workflow-service.ts"), "utf8");
+const generationManualCensorRouteSource = readFileSync(resolve(repoRoot, "src/app/api/images/[imageId]/manual-censor/route.ts"), "utf8");
 const generationImageCoverRouteSource = readFileSync(resolve(repoRoot, "src/app/api/images/[imageId]/cover/route.ts"), "utf8");
 const generationImageFeaturedHelperSource = readFileSync(resolve(repoRoot, "src/app/api/images/[imageId]/featured-helper.ts"), "utf8");
 const generationAgentPresetVariantFlowSource = readFileSync(resolve(repoRoot, "src/server/services/agent-preset-variant-flow-service.ts"), "utf8");
@@ -640,6 +643,8 @@ test("generation image review and censoring entrypoints reuse the generation pro
   for (const [label, source] of [
     ["generation image review actions", generationImageReviewActionSource],
     ["generation censoring actions", generationCensoringActionSource],
+    ["generation censoring executor", generationCensoringExecutorSource],
+    ["generation censoring service", generationCensoringServiceSource],
     ["generation trash repository", generationTrashRepositorySource],
   ] as const) {
     assert.match(
@@ -673,6 +678,26 @@ test("generation image review and censoring entrypoints reuse the generation pro
     generationCensoringActionSource,
     /censoringTask\.(?:groupBy|updateMany)\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(/,
     "Generation censoring task aggregates and mutations should resolve tasks through generation-owned projects.",
+  );
+  assert.match(
+    generationCensoringExecutorSource,
+    /censoringTask\.updateMany\(\{[\s\S]*status:\s*"running"[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation censoring task recovery should not recover training-owned tasks.",
+  );
+  assert.match(
+    generationCensoringExecutorSource,
+    /censoringTask\.findMany\(\{[\s\S]*status:\s*"queued"[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation censoring executor should not lease queued training-owned tasks.",
+  );
+  assert.match(
+    generationCensoringServiceSource,
+    /imageResult\.findFirst\(\{[\s\S]*id:\s*input\.imageResultId[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation auto-censor service should resolve images through generation-owned projects.",
+  );
+  assert.match(
+    generationCensoringServiceSource,
+    /imageResult\.findFirst\(\{[\s\S]*id:\s*imageResultId[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation manual-censor service should resolve images through generation-owned projects.",
   );
   assert.match(
     generationTrashRepositorySource,
@@ -764,6 +789,7 @@ test("generation project, template, and agent entrypoints reuse the generation p
 test("generation review and image API entrypoints reuse the generation project boundary", () => {
   for (const [label, source] of [
     ["generation review repository", generationReviewRepositorySource],
+    ["generation manual censor route", generationManualCensorRouteSource],
     ["generation image cover route", generationImageCoverRouteSource],
     ["generation featured image helper", generationImageFeaturedHelperSource],
   ] as const) {

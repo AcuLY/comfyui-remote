@@ -6,6 +6,7 @@ import sharp from "sharp";
 
 import { createLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 import { runAutoCensorMosaicBatch } from "@/server/services/auto-censor-runner";
 
 const log = createLogger({ module: "censoring" });
@@ -151,8 +152,11 @@ function normalizeProcessCensorTaskInput(
 async function shouldPersistForTaskContext(taskId: string | undefined): Promise<boolean> {
   if (!taskId) return true;
 
-  const task = await prisma.censoringTask.findUnique({
-    where: { id: taskId },
+  const task = await prisma.censoringTask.findFirst({
+    where: {
+      id: taskId,
+      project: buildGenerationProjectWhere(),
+    },
     select: { status: true },
   });
 
@@ -181,8 +185,11 @@ function taskResult(
 async function prepareCensorTask(
   input: ProcessCensorTaskInput,
 ): Promise<PreparedCensorTask | ProcessCensorTaskResult> {
-  const imageResult = await prisma.imageResult.findUnique({
-    where: { id: input.imageResultId },
+  const imageResult = await prisma.imageResult.findFirst({
+    where: {
+      id: input.imageResultId,
+      run: { project: buildGenerationProjectWhere() },
+    },
     select: {
       id: true,
       filePath: true,
@@ -346,8 +353,11 @@ export async function persistManualCensoredImage(
   imageResultId: string,
   manualCensoredImage: Buffer,
 ): Promise<PersistedCensoredImage> {
-  const imageResult = await prisma.imageResult.findUnique({
-    where: { id: imageResultId },
+  const imageResult = await prisma.imageResult.findFirst({
+    where: {
+      id: imageResultId,
+      run: { project: buildGenerationProjectWhere() },
+    },
     select: {
       id: true,
       filePath: true,

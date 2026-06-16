@@ -1,6 +1,7 @@
 import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 import { processCensorTasksBatch, type ProcessCensorTaskResult } from "@/server/services/censoring-service";
 
 const log = createLogger({ module: "censoring-executor" });
@@ -10,7 +11,10 @@ let wakeResolver: (() => void) | null = null;
 
 async function recoverStaleCensoringTasks(): Promise<void> {
   const result = await prisma.censoringTask.updateMany({
-    where: { status: "running" },
+    where: {
+      status: "running",
+      project: buildGenerationProjectWhere(),
+    },
     data: { status: "queued", startedAt: null, errorMessage: null },
   });
 
@@ -26,7 +30,11 @@ type QueuedCensoringTask = {
 
 async function claimQueuedTask(task: QueuedCensoringTask): Promise<QueuedCensoringTask | null> {
   const claimed = await prisma.censoringTask.updateMany({
-    where: { id: task.id, status: "queued" },
+    where: {
+      id: task.id,
+      status: "queued",
+      project: buildGenerationProjectWhere(),
+    },
     data: {
       status: "running",
       startedAt: new Date(),
@@ -42,7 +50,11 @@ async function markTaskDone(result: ProcessCensorTaskResult): Promise<void> {
   if (!result.taskId) return;
 
   const updated = await prisma.censoringTask.updateMany({
-    where: { id: result.taskId, status: "running" },
+    where: {
+      id: result.taskId,
+      status: "running",
+      project: buildGenerationProjectWhere(),
+    },
     data: { status: "done", finishedAt: new Date(), errorMessage: null },
   });
 
@@ -58,7 +70,11 @@ async function markTaskDone(result: ProcessCensorTaskResult): Promise<void> {
 
 async function markTaskFailed(taskId: string, error: string): Promise<void> {
   const updated = await prisma.censoringTask.updateMany({
-    where: { id: taskId, status: "running" },
+    where: {
+      id: taskId,
+      status: "running",
+      project: buildGenerationProjectWhere(),
+    },
     data: {
       status: "failed",
       errorMessage: error,
@@ -97,7 +113,10 @@ async function finishBatchResult(result: ProcessCensorTaskResult): Promise<void>
 
 async function processQueuedTasks(): Promise<number> {
   const tasks = await prisma.censoringTask.findMany({
-    where: { status: "queued" },
+    where: {
+      status: "queued",
+      project: buildGenerationProjectWhere(),
+    },
     orderBy: { createdAt: "asc" },
     take: env.autoCensorBatchSize,
     select: { id: true, imageResultId: true },
