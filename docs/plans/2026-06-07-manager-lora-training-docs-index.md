@@ -34,24 +34,13 @@
 
 ## 实施约束
 
-- 新模块使用 `Training*` 命名，不继续扩展 `CharacterLoraTraining*`。
+- 新模块使用 `Training*` 命名，不继续扩展已退役的训练 v1 命名。
 - 页面路由使用 `/training/**`。
 - API 路由使用 `/api/training/**`。
 - 不把训练页面挂到 `/projects/[projectId]/training`。
-- 不继续使用 `/character-lora-training/**` 作为新模块入口。
+- 不继续使用已退役的训练 v1 route namespace 作为新模块入口。
 - 代码组织以主设计的 `src/app/training/*`、`src/lib/actions/training/*`、`src/server/repositories/training/*`、`src/server/services/training/*`、`src/server/worker/training/*`、`src/lib/training/*` 为准。
 - 首版不包含 benchmark 矩阵、推荐权重、广义 promotion/evaluation 流程；只保留成功 `TrainingRun` 后创建角色 Preset 的窄入口。
-
-## 历史参考文档
-
-以下文档来自旧 `CharacterLoraTraining*` 方案，只能用于了解历史背景、artifact 安全、worker 组织等局部经验。不得作为新 LoRA Training v2 的命名、路由、数据模型或页面结构依据。
-
-- `docs/prd/character-lora-training-manager-prd.md`
-- `docs/plans/2026-05-22-character-lora-training-manager-development-plan.md`
-- `docs/plans/2026-05-23-character-lora-phase6-e2e-acceptance.md`
-- `docs/plans/2026-05-23-character-lora-project-template-section-run-requirements.md`
-- `docs/plans/2026-05-23-character-lora-worker-runbook.md`
-- `docs/plans/2026-05-24-character-lora-agent-led-v2-requirements.md`
 
 ## 开发前仍需落地
 

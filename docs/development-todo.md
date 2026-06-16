@@ -22,7 +22,7 @@ All planned features for v0.1 and v0.2 have been implemented:
 
 详见 `design-v0.3-workflow-integration.md`，全部 5 个 Phase 已完成：
 
-- [x] LoRA 分区管理（characterLora / lora1 / lora2 三栏编辑）
+- [x] LoRA 分区管理（角色 LoRA / LoRA 1 / LoRA 2 三栏编辑）
 - [x] 双 KSampler 参数支持（KSampler1 + KSampler2 可折叠面板）
 - [x] 标准 workflow.api.json 填充器（workflow-prompt-builder.ts）
 - [x] Prisma schema 变更 + Worker 集成

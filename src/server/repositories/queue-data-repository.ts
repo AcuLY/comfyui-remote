@@ -5,6 +5,7 @@ import { toImageUrl } from "@/lib/image-url";
 import {
   buildGenerationPresetWhere,
   buildGenerationProjectWhere,
+  isReservedTrainingResourceNotes,
 } from "@/server/repositories/generation-resource-boundary";
 import fs from "node:fs";
 import path from "node:path";
@@ -17,14 +18,24 @@ import { getLatestComfyLogProgress } from "@/server/services/comfy-progress-serv
 
 export type ProjectPresetBindingDisplayRow = {
   presetId: string;
-  preset?: { name: string } | null;
+  preset?: {
+    name: string;
+    notes: string | null;
+    category: { type: string };
+  } | null;
 };
 
 export const PROJECT_PRESET_BINDING_DISPLAY_SELECT = {
   orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   select: {
     presetId: true,
-    preset: { select: { name: true } },
+    preset: {
+      select: {
+        name: true,
+        notes: true,
+        category: { select: { type: true } },
+      },
+    },
   },
 } satisfies Prisma.Project$presetBindingRowsArgs;
 
@@ -45,7 +56,15 @@ export function extractPresetNames(
   presetMap?: Map<string, { name: string }>,
 ): string[] {
   return rows
-    .map((row) => row.preset?.name ?? presetMap?.get(row.presetId)?.name)
+    .map((row) => {
+      if (
+        row.preset?.category.type === "preset" &&
+        !isReservedTrainingResourceNotes(row.preset.notes)
+      ) {
+        return row.preset.name;
+      }
+      return presetMap?.get(row.presetId)?.name;
+    })
     .filter((n): n is string => !!n);
 }
 

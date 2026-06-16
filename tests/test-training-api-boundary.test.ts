@@ -335,6 +335,48 @@ test("generation and training API route trees keep module-owned resource imports
   );
 });
 
+test("generation page-data entrypoints keep Training-owned resources out of generation reads", () => {
+  const generationPageDataFiles = [
+    ...sourceFilesFromRoots(
+      "src/app/assets/presets",
+      "src/app/assets/templates",
+      "src/app/projects",
+      "src/app/queue",
+      "src/app/api/agent/projects",
+      "src/app/api/preset-library",
+      "src/app/api/presets",
+      "src/app/api/projects",
+      "src/app/api/queue",
+      "src/app/api/queue-data",
+      "src/app/api/templates",
+      "src/server/repositories/project-view-repository",
+      "src/server/services",
+    ),
+    ...[
+      "src/server/repositories/preset-view-repository.ts",
+      "src/server/repositories/template-view-repository.ts",
+      "src/server/repositories/queue-data-repository.ts",
+      "src/server/repositories/project-repository.ts",
+      "src/lib/server-data.ts",
+    ]
+      .map((path) => join(repoRoot, path))
+      .filter(existsSync),
+  ].filter((path) => !relativePath(path).startsWith("src/server/services/training/"));
+
+  assert.deepEqual(
+    compactHits(findPatternHits(generationPageDataFiles, [
+      { label: "training service import", pattern: /@\/server\/services\/training\b/ },
+      { label: "training repository import", pattern: /@\/server\/repositories\/training\b/ },
+      { label: "training feature import", pattern: /@\/features\/training\b/ },
+      { label: "training API route reference", pattern: /\/api\/training\b/ },
+      { label: "training prisma model read", pattern: /\bprisma\.training[A-Z]|\bdb\.training[A-Z]|\btx\.training[A-Z]/ },
+      { label: "training scene preset model", pattern: /\bTrainingSceneDescriptionPreset\b|trainingSceneDescriptionPreset\b/ },
+    ])),
+    { total: 0, firstHits: [] },
+    "Generation page/API data for presets, projects, runs, and templates must not import Training-owned resources or query Training-owned Prisma models.",
+  );
+});
+
 test("Training HTTP workflow keeps the agent-facing v2 operation spine", () => {
   const manifestSource = readFileSync(join(repoRoot, "src", "app", "api", "training", "route.ts"), "utf8");
   const requiredOperations = [

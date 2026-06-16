@@ -622,6 +622,100 @@ test("generation project and template lists hide reserved training temporary res
   );
 });
 
+test("generation project and run preset summaries hide training-owned presets", async () => {
+  const key = `zrw-summary-boundary-${++sequence}`;
+
+  await prisma.presetCategory.createMany({
+    data: [
+      {
+        id: `${key}-ordinary-category`,
+        name: `${key} Ordinary Category`,
+        slug: `${key}-ordinary-category`,
+        type: "preset",
+      },
+      {
+        id: `${key}-training-category`,
+        name: `${key} Training Category`,
+        slug: `${key}-training-category`,
+        type: "training_scene_description",
+      },
+    ],
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: `${key}-ordinary-preset`,
+        categoryId: `${key}-ordinary-category`,
+        name: `${key} Ordinary Preset`,
+        slug: `${key}-ordinary-preset`,
+      },
+      {
+        id: `${key}-training-preset`,
+        categoryId: `${key}-training-category`,
+        name: `${key} Training Preset Must Not Leak`,
+        slug: `${key}-training-preset`,
+      },
+    ],
+  });
+  await prisma.project.create({
+    data: {
+      id: `${key}-project`,
+      title: `${key} Project`,
+      slug: `${key}-project`,
+      status: "running",
+    },
+  });
+  await prisma.projectSection.create({
+    data: {
+      id: `${key}-section`,
+      projectId: `${key}-project`,
+      name: `${key} Section`,
+      sortOrder: 0,
+    },
+  });
+  await prisma.projectPresetBinding.createMany({
+    data: [
+      {
+        id: `${key}-ordinary-binding`,
+        projectId: `${key}-project`,
+        categoryId: `${key}-ordinary-category`,
+        presetId: `${key}-ordinary-preset`,
+        sortOrder: 0,
+      },
+      {
+        id: `${key}-training-binding`,
+        projectId: `${key}-project`,
+        categoryId: `${key}-training-category`,
+        presetId: `${key}-training-preset`,
+        sortOrder: 1,
+      },
+    ],
+  });
+  await prisma.run.create({
+    data: {
+      id: `${key}-running-run`,
+      projectId: `${key}-project`,
+      projectSectionId: `${key}-section`,
+      status: "running",
+      resolvedConfigSnapshot: {},
+    },
+  });
+
+  const projectSummary = (await listProjects()).find((project) => project.id === `${key}-project`);
+  assert.deepEqual(
+    projectSummary?.presetNames,
+    [`${key} Ordinary Preset`],
+    "generation project list preset summaries must not expose training-owned preset names",
+  );
+
+  const runningSummary = (await getRunningRuns()).find((run) => run.id === `${key}-running-run`);
+  assert.deepEqual(
+    runningSummary?.presetNames,
+    [`${key} Ordinary Preset`],
+    "generation run list preset summaries must not expose training-owned preset names",
+  );
+});
+
 test("generation project writes reject reserved training resource notes", async () => {
   const key = `zrw-benchmark-write-boundary-${++sequence}`;
   const benchmarkNotes = JSON.stringify({
