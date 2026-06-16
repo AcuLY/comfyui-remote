@@ -29,7 +29,7 @@ export type SectionLoraConfig = {
 export type PresetVariantRow = {
   id: string;
   presetId: string;
-  preset?: { category?: { type?: string | null } | null } | null;
+  preset?: { category?: { type?: string | null } | null; notes?: string | null } | null;
   name?: string | null;
   prompt: string;
   negativePrompt: string | null;

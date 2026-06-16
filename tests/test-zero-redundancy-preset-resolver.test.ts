@@ -15,10 +15,16 @@ function variant(input: {
   linkedVariants?: unknown;
   lora1?: unknown;
   lora2?: unknown;
+  categoryType?: string | null;
+  presetNotes?: string | null;
 }) {
   return {
     id: input.id,
     presetId: `preset-${input.id}`,
+    preset: {
+      category: { type: input.categoryType ?? "preset" },
+      notes: input.presetNotes ?? null,
+    },
     name: input.id,
     prompt: input.prompt ?? input.id,
     negativePrompt: input.negativePrompt ?? null,
@@ -149,4 +155,43 @@ test("DB wrapper loads only reachable variants and per-source relation rows", as
   assert.deepEqual(variantFindUniqueIds, ["root", "child"]);
   assert.deepEqual(linkFindManySources, ["root", "child"]);
   assert.equal(variantFindManyCalls.length, 0);
+});
+
+test("DB wrapper treats legacy training benchmark linked variants as out of scope", async () => {
+  const variants = new Map([
+    ["root", variant({ id: "root", prompt: "ordinary prompt" })],
+    [
+      "legacy-training",
+      variant({
+        id: "legacy-training",
+        prompt: "training prompt must not leak",
+        lora1: [{ path: "/training/hidden.safetensors", weight: 1, enabled: true }],
+        presetNotes: JSON.stringify({
+          temporary: true,
+          purpose: "character_lora_benchmark",
+        }),
+      }),
+    ],
+  ]);
+  const client = {
+    presetVariant: {
+      async findUnique(args: { where: { id: string } }) {
+        return variants.get(args.where.id) ?? null;
+      },
+    },
+    presetVariantLink: {
+      async findMany(args: { where: { sourceVariantId: string } }) {
+        if (args.where.sourceVariantId === "root") {
+          return [{ sourceVariantId: "root", linkedVariantId: "legacy-training", sortOrder: 0 }];
+        }
+        return [];
+      },
+    },
+  };
+
+  const resolved = await resolvePresetVariantContent("root", client);
+
+  assert.equal(resolved.prompt, "ordinary prompt");
+  assert.deepEqual(resolved.lora1, []);
+  assert.deepEqual(resolved.missingReferences, [{ kind: "presetVariant", id: "legacy-training" }]);
 });
