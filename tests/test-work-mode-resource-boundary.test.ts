@@ -13,6 +13,7 @@ const repoRoot = process.cwd();
 const bottomNavSource = readFileSync(resolve(repoRoot, "src/components/persistent-bottom-nav.tsx"), "utf8");
 const appShellSource = readFileSync(resolve(repoRoot, "src/components/app-shell.tsx"), "utf8");
 const demoRoutesSource = readFileSync(resolve(repoRoot, "src/app/design-demos/routing/routes.ts"), "utf8");
+const designDemoDataSource = readFileSync(resolve(repoRoot, "src/app/design-demos/data/load-demo-data.ts"), "utf8");
 const settingsPageSource = readFileSync(resolve(repoRoot, "src/app/design-demos/features/settings/settings-page.tsx"), "utf8");
 const trainingShellSource = readFileSync(resolve(repoRoot, "src/features/training/shell.tsx"), "utf8");
 const trainingRoutesSource = readFileSync(resolve(repoRoot, "src/features/training/routes.ts"), "utf8");
@@ -304,6 +305,29 @@ test("design-demo shell navigation consumes the shared work mode resource contra
     assert.equal(generationLink?.href, generationTarget.href);
     assert.equal(trainingLink?.href, trainingTarget.href);
   }
+});
+
+test("design-demo generation data loader filters training-owned resources before shaping pages", () => {
+  assert.match(
+    designDemoDataSource,
+    /from Project p[\s\S]*where[\s\S]*character_lora_benchmark[\s\S]*order by datetime\(p\.updatedAt\) desc/,
+    "Design-demo generation project lists should not load legacy training projects from the shared Project table.",
+  );
+  assert.match(
+    designDemoDataSource,
+    /from Preset p[\s\S]*join PresetCategory c on c\.id = p\.categoryId[\s\S]*where[\s\S]*c\.type = 'preset'/,
+    "Design-demo generation preset lists should only load ordinary generation presets.",
+  );
+  assert.match(
+    designDemoDataSource,
+    /from PresetCategory c[\s\S]*where[\s\S]*c\.type in \('preset', 'group'\)/,
+    "Design-demo generation preset categories should hide training scene-description categories.",
+  );
+  assert.match(
+    designDemoDataSource,
+    /from ProjectTemplate t[\s\S]*where[\s\S]*Character LoRA training benchmark[\s\S]*order by datetime\(t\.updatedAt\) desc/,
+    "Design-demo generation template lists should not load legacy training templates.",
+  );
 });
 
 test("settings work-mode resource preview consumes the shared resource contract", () => {

@@ -53,10 +53,20 @@ export async function loadDesignDemoData(): Promise<DemoData> {
 
     const allImages = db
       .prepare(
-        `select id, filePath, thumbPath, width, height, reviewStatus, featured, featured2
-         from ImageResult
-         where reviewStatus != 'trashed'
-         order by datetime(createdAt) desc
+        `select i.id, i.filePath, i.thumbPath, i.width, i.height, i.reviewStatus, i.featured, i.featured2
+         from ImageResult i
+         left join Run r on r.id = i.runId
+         left join Project p on p.id = r.projectId
+         where i.reviewStatus != 'trashed'
+           and (
+             p.id is null
+             or p.notes is null
+             or (
+               p.notes not like '%"purpose":"character_lora_benchmark"%'
+               and p.notes not like '%"purpose": "character_lora_benchmark"%'
+             )
+           )
+         order by datetime(i.createdAt) desc
          limit 80`,
       )
       .all()
@@ -75,6 +85,14 @@ export async function loadDesignDemoData(): Promise<DemoData> {
          join Run r on r.id = i.runId
          left join Project p on p.id = r.projectId
          where i.reviewStatus != 'trashed'
+           and (
+             p.id is null
+             or p.notes is null
+             or (
+               p.notes not like '%"purpose":"character_lora_benchmark"%'
+               and p.notes not like '%"purpose": "character_lora_benchmark"%'
+             )
+           )
          order by datetime(i.createdAt) desc
          limit 160`,
       )
@@ -98,7 +116,20 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     }
 
     const presetRows = db
-      .prepare(`select id, name from Preset order by sortOrder asc`)
+      .prepare(
+        `select p.id, p.name
+         from Preset p
+         join PresetCategory c on c.id = p.categoryId
+         where c.type = 'preset'
+           and (
+             p.notes is null
+             or (
+               p.notes not like '%"purpose":"character_lora_benchmark"%'
+               and p.notes not like '%"purpose": "character_lora_benchmark"%'
+             )
+           )
+         order by p.sortOrder asc`,
+      )
       .all() as SqlRow[];
     const presetNameById = new Map(presetRows.map((row) => [text(row.id), text(row.name)]));
 
@@ -108,6 +139,13 @@ export async function loadDesignDemoData(): Promise<DemoData> {
            p.id, p.title, p.slug, p.folderId, p.status, p.updatedAt, p.notes, p.checkpointName,
            (select count(*) from ProjectSection s where s.projectId = p.id) as sectionCount
          from Project p
+         where (
+           p.notes is null
+           or (
+             p.notes not like '%"purpose":"character_lora_benchmark"%'
+             and p.notes not like '%"purpose": "character_lora_benchmark"%'
+           )
+         )
          order by datetime(p.updatedAt) desc
          limit 8`,
       )
@@ -132,7 +170,15 @@ export async function loadDesignDemoData(): Promise<DemoData> {
       .prepare(
         `select
            f.id, f.name, f.parentId, f.sortOrder,
-           (select count(*) from Project p where p.folderId = f.id) as projectCount,
+           (select count(*) from Project p
+            where p.folderId = f.id
+              and (
+                p.notes is null
+                or (
+                  p.notes not like '%"purpose":"character_lora_benchmark"%'
+                  and p.notes not like '%"purpose": "character_lora_benchmark"%'
+                )
+              )) as projectCount,
            (select count(*) from ProjectFolder c where c.parentId = f.id) as childCount
          from ProjectFolder f
          order by coalesce(f.parentId, ''), f.sortOrder asc
@@ -245,6 +291,14 @@ export async function loadDesignDemoData(): Promise<DemoData> {
          left join Project p on p.id = r.projectId
          left join ProjectSection s on s.id = r.projectSectionId
          left join ImageResult i on i.runId = r.id and i.reviewStatus != 'trashed'
+         where (
+           p.id is null
+           or p.notes is null
+           or (
+             p.notes not like '%"purpose":"character_lora_benchmark"%'
+             and p.notes not like '%"purpose": "character_lora_benchmark"%'
+           )
+         )
          group by r.id
          order by datetime(r.createdAt) desc
          limit 16`,
@@ -273,10 +327,31 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     const linkedVariantsBySource = new Map<string, DemoPresetLinkedVariant[]>();
     for (const row of db
       .prepare(
-        `select l.sourceVariantId, l.linkedVariantId, v.presetId as linkedPresetId
-         from PresetVariantLink l
-         join PresetVariant v on v.id = l.linkedVariantId
-         order by l.sourceVariantId asc, l.sortOrder asc`,
+        `select l.sourceVariantId, l.linkedVariantId, linkedPreset.id as linkedPresetId
+           from PresetVariantLink l
+           join PresetVariant sourceVariant on sourceVariant.id = l.sourceVariantId
+           join Preset sourcePreset on sourcePreset.id = sourceVariant.presetId
+           join PresetCategory sourceCategory on sourceCategory.id = sourcePreset.categoryId
+           join PresetVariant linkedVariant on linkedVariant.id = l.linkedVariantId
+           join Preset linkedPreset on linkedPreset.id = linkedVariant.presetId
+           join PresetCategory linkedCategory on linkedCategory.id = linkedPreset.categoryId
+           where sourceCategory.type = 'preset'
+             and linkedCategory.type = 'preset'
+             and (
+               sourcePreset.notes is null
+               or (
+                 sourcePreset.notes not like '%"purpose":"character_lora_benchmark"%'
+                 and sourcePreset.notes not like '%"purpose": "character_lora_benchmark"%'
+               )
+             )
+             and (
+               linkedPreset.notes is null
+               or (
+                 linkedPreset.notes not like '%"purpose":"character_lora_benchmark"%'
+                 and linkedPreset.notes not like '%"purpose": "character_lora_benchmark"%'
+               )
+             )
+           order by l.sourceVariantId asc, l.sortOrder asc`,
       )
       .all() as SqlRow[]) {
       const sourceVariantId = text(row.sourceVariantId);
@@ -290,11 +365,21 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     const variantsByPreset = new Map<string, DemoPresetVariant[]>();
     for (const row of db
       .prepare(
-        `select id, presetId, name, slug, prompt, negativePrompt, lora1, lora2
-         from PresetVariant
-         where isActive = 1
-         order by presetId asc, sortOrder asc
-         limit 320`,
+        `select v.id, v.presetId, v.name, v.slug, v.prompt, v.negativePrompt, v.lora1, v.lora2
+           from PresetVariant v
+           join Preset p on p.id = v.presetId
+           join PresetCategory c on c.id = p.categoryId
+           where v.isActive = 1
+             and c.type = 'preset'
+             and (
+               p.notes is null
+               or (
+                 p.notes not like '%"purpose":"character_lora_benchmark"%'
+                 and p.notes not like '%"purpose": "character_lora_benchmark"%'
+               )
+             )
+           order by v.presetId asc, v.sortOrder asc
+           limit 320`,
       )
       .all() as SqlRow[]) {
       const presetId = text(row.presetId);
@@ -316,10 +401,12 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     const foldersByCategory = new Map<string, DemoPresetFolder[]>();
     for (const row of db
       .prepare(
-        `select id, categoryId, name, parentId, sortOrder
-         from PresetFolder
-         order by categoryId asc, parentId asc, sortOrder asc
-         limit 160`,
+        `select f.id, f.categoryId, f.name, f.parentId, f.sortOrder
+           from PresetFolder f
+           join PresetCategory c on c.id = f.categoryId
+           where c.type in ('preset', 'group')
+           order by f.categoryId asc, f.parentId asc, f.sortOrder asc
+           limit 160`,
       )
       .all() as SqlRow[]) {
       const categoryId = text(row.categoryId);
@@ -336,11 +423,20 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     const presetsByCategory = new Map<string, DemoPreset[]>();
     for (const row of db
       .prepare(
-        `select id, categoryId, folderId, name, slug, notes, civitaiLinks
-         from Preset
-         where isActive = 1
-         order by categoryId asc, sortOrder asc
-         limit 180`,
+        `select p.id, p.categoryId, p.folderId, p.name, p.slug, p.notes, p.civitaiLinks
+           from Preset p
+           join PresetCategory c on c.id = p.categoryId
+           where p.isActive = 1
+             and c.type = 'preset'
+             and (
+               p.notes is null
+               or (
+                 p.notes not like '%"purpose":"character_lora_benchmark"%'
+                 and p.notes not like '%"purpose": "character_lora_benchmark"%'
+               )
+             )
+           order by p.categoryId asc, p.sortOrder asc
+           limit 180`,
       )
       .all() as SqlRow[]) {
       const categoryId = text(row.categoryId);
@@ -363,14 +459,40 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     for (const row of db
       .prepare(
         `select
-           g.id, g.categoryId, g.folderId, g.name, g.slug,
-           count(m.id) as memberCount
-         from PresetGroup g
-         left join PresetGroupMember m on m.groupId = g.id
-         where g.isActive = 1
-         group by g.id
-         order by g.categoryId asc, g.sortOrder asc
-         limit 120`,
+             g.id, g.categoryId, g.folderId, g.name, g.slug,
+             (
+               select count(*)
+               from PresetGroupMember m
+               left join Preset memberPreset on memberPreset.id = m.presetId
+               left join PresetCategory memberPresetCategory on memberPresetCategory.id = memberPreset.categoryId
+               left join PresetGroup memberGroup on memberGroup.id = m.subGroupId
+               left join PresetCategory memberGroupCategory on memberGroupCategory.id = memberGroup.categoryId
+               where m.groupId = g.id
+                 and (
+                   (
+                     m.presetId is not null
+                     and memberPresetCategory.type = 'preset'
+                     and (
+                       memberPreset.notes is null
+                       or (
+                         memberPreset.notes not like '%"purpose":"character_lora_benchmark"%'
+                         and memberPreset.notes not like '%"purpose": "character_lora_benchmark"%'
+                       )
+                     )
+                   )
+                   or (
+                     m.subGroupId is not null
+                     and memberGroupCategory.type in ('preset', 'group')
+                   )
+                 )
+             ) as memberCount
+           from PresetGroup g
+           join PresetCategory c on c.id = g.categoryId
+           where g.isActive = 1
+             and c.type in ('preset', 'group')
+           group by g.id
+           order by g.categoryId asc, g.sortOrder asc
+           limit 120`,
       )
       .all() as SqlRow[]) {
       const categoryId = text(row.categoryId);
@@ -388,10 +510,11 @@ export async function loadDesignDemoData(): Promise<DemoData> {
 
     const categories = (db
       .prepare(
-        `select id, name, slug, type, color
-         from PresetCategory
-         order by sortOrder asc
-         limit 16`,
+        `select c.id, c.name, c.slug, c.type, c.color
+           from PresetCategory c
+           where c.type in ('preset', 'group')
+           order by c.sortOrder asc
+           limit 16`,
       )
       .all() as SqlRow[]).map((row) => {
       const categoryId = text(row.id);
@@ -415,9 +538,17 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     const templateSectionsByTemplate = new Map<string, DemoTemplate["sections"]>();
     for (const row of db
       .prepare(
-        `select id, projectTemplateId, name, sortOrder, aspectRatio, batchSize, notes
-         from ProjectTemplateSection
-         order by projectTemplateId asc, sortOrder asc`,
+        `select s.id, s.projectTemplateId, s.name, s.sortOrder, s.aspectRatio, s.batchSize, s.notes
+           from ProjectTemplateSection s
+           join ProjectTemplate t on t.id = s.projectTemplateId
+           where t.name not like '%角色 lora 测试%'
+             and t.name not like '%角色 LoRA 测试%'
+             and lower(t.name) not like '%character lora%'
+             and (
+               t.description is null
+               or t.description not like '%Character LoRA training benchmark%'
+             )
+           order by s.projectTemplateId asc, s.sortOrder asc`,
       )
       .all() as SqlRow[]) {
       const templateId = text(row.projectTemplateId);
@@ -434,10 +565,17 @@ export async function loadDesignDemoData(): Promise<DemoData> {
 
     const templates = (db
       .prepare(
-        `select id, name, description, updatedAt
-         from ProjectTemplate
-         order by datetime(updatedAt) desc
-         limit 12`,
+        `select t.id, t.name, t.description, t.updatedAt
+           from ProjectTemplate t
+           where t.name not like '%角色 lora 测试%'
+             and t.name not like '%角色 LoRA 测试%'
+             and lower(t.name) not like '%character lora%'
+             and (
+               t.description is null
+               or t.description not like '%Character LoRA training benchmark%'
+             )
+           order by datetime(t.updatedAt) desc
+           limit 12`,
       )
       .all() as SqlRow[]).map((row) => {
       const sectionsForTemplate = templateSectionsByTemplate.get(text(row.id)) ?? [];
@@ -489,12 +627,57 @@ export async function loadDesignDemoData(): Promise<DemoData> {
     const counts = db
       .prepare(
         `select
-           (select count(*) from Project) as projects,
-           (select count(*) from ProjectSection) as sections,
-           (select count(*) from Run) as runs,
-           (select count(*) from ImageResult where reviewStatus = 'pending') as pendingImages,
-           (select count(*) from Preset) as presets,
-           (select count(*) from ProjectTemplate) as templates,
+           (select count(*) from Project p
+            where p.notes is null
+              or (
+                p.notes not like '%"purpose":"character_lora_benchmark"%'
+                and p.notes not like '%"purpose": "character_lora_benchmark"%'
+              )) as projects,
+           (select count(*) from ProjectSection s
+            join Project p on p.id = s.projectId
+            where p.notes is null
+              or (
+                p.notes not like '%"purpose":"character_lora_benchmark"%'
+                and p.notes not like '%"purpose": "character_lora_benchmark"%'
+              )) as sections,
+           (select count(*) from Run r
+            left join Project p on p.id = r.projectId
+            where p.id is null
+              or p.notes is null
+              or (
+                p.notes not like '%"purpose":"character_lora_benchmark"%'
+                and p.notes not like '%"purpose": "character_lora_benchmark"%'
+              )) as runs,
+           (select count(*) from ImageResult i
+            left join Run r on r.id = i.runId
+            left join Project p on p.id = r.projectId
+            where i.reviewStatus = 'pending'
+              and (
+                p.id is null
+                or p.notes is null
+                or (
+                  p.notes not like '%"purpose":"character_lora_benchmark"%'
+                  and p.notes not like '%"purpose": "character_lora_benchmark"%'
+                )
+              )) as pendingImages,
+           (select count(*) from Preset p
+            join PresetCategory c on c.id = p.categoryId
+            where c.type = 'preset'
+              and (
+                p.notes is null
+                or (
+                  p.notes not like '%"purpose":"character_lora_benchmark"%'
+                  and p.notes not like '%"purpose": "character_lora_benchmark"%'
+                )
+              )) as presets,
+           (select count(*) from ProjectTemplate t
+            where t.name not like '%角色 lora 测试%'
+              and t.name not like '%角色 LoRA 测试%'
+              and lower(t.name) not like '%character lora%'
+              and (
+                t.description is null
+                or t.description not like '%Character LoRA training benchmark%'
+              )) as templates,
            (select count(*) from LoraAsset) as loras`,
       )
       .get() as SqlRow;
