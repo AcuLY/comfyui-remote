@@ -271,6 +271,8 @@ let renamePresetFolder: typeof PresetFolderActions.renamePresetFolder;
 let createPresetGroup: typeof PresetGroupActions.createPresetGroup;
 let copyPresetGroup: typeof PresetGroupActions.copyPresetGroup;
 let flattenGroup: typeof PresetGroupActions.flattenGroup;
+let removeGroupMember: typeof PresetGroupActions.removeGroupMember;
+let updateGroupMember: typeof PresetGroupActions.updateGroupMember;
 let createPreset: typeof PresetVariantCrudActions.createPreset;
 let copyPreset: typeof PresetVariantCrudActions.copyPreset;
 let updatePreset: typeof PresetVariantCrudActions.updatePreset;
@@ -313,6 +315,8 @@ test.before(async () => {
   createPresetGroup = presetGroupActions.createPresetGroup;
   copyPresetGroup = presetGroupActions.copyPresetGroup;
   flattenGroup = presetGroupActions.flattenGroup;
+  removeGroupMember = presetGroupActions.removeGroupMember;
+  updateGroupMember = presetGroupActions.updateGroupMember;
   createPreset = presetVariantCrudActions.createPreset;
   copyPreset = presetVariantCrudActions.copyPreset;
   updatePreset = presetVariantCrudActions.updatePreset;
@@ -1754,6 +1758,134 @@ test("ordinary preset group copies do not preserve legacy training benchmark tem
     ],
     "ordinary preset group copies must drop legacy training benchmark temporary preset members",
   );
+});
+
+test("ordinary preset group member mutations reject legacy training benchmark temporary members", async () => {
+  await prisma.presetCategory.createMany({
+    data: [
+      {
+        id: "legacy-training-group-member-mutation-preset-category",
+        name: "Legacy Training Group Member Mutation Presets",
+        slug: "legacy-training-group-member-mutation-presets",
+        type: "preset",
+      },
+      {
+        id: "legacy-training-group-member-mutation-group-category",
+        name: "Legacy Training Group Member Mutation Groups",
+        slug: "legacy-training-group-member-mutation-groups",
+        type: "group",
+      },
+    ],
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "legacy-training-group-member-mutation-ordinary-preset",
+        categoryId: "legacy-training-group-member-mutation-preset-category",
+        name: "Ordinary Mutation Preset",
+        slug: "ordinary-mutation-preset",
+      },
+      {
+        id: "legacy-training-group-member-mutation-hidden-preset",
+        categoryId: "legacy-training-group-member-mutation-preset-category",
+        name: "Hidden Training Mutation Preset",
+        slug: "hidden-training-mutation-preset",
+        notes: JSON.stringify({
+          temporary: true,
+          purpose: "character_lora_benchmark",
+          benchmarkRunId: "benchmark-member-mutation-hidden",
+        }),
+      },
+    ],
+  });
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "legacy-training-group-member-mutation-ordinary-variant",
+        presetId: "legacy-training-group-member-mutation-ordinary-preset",
+        name: "Ordinary Mutation Variant",
+        slug: "ordinary-mutation-variant",
+        prompt: "ordinary member mutation prompt",
+      },
+      {
+        id: "legacy-training-group-member-mutation-hidden-variant",
+        presetId: "legacy-training-group-member-mutation-hidden-preset",
+        name: "Hidden Training Mutation Variant",
+        slug: "hidden-training-mutation-variant",
+        prompt: "hidden training member mutation prompt must not be mutable",
+      },
+    ],
+  });
+  await prisma.presetGroup.create({
+    data: {
+      id: "legacy-training-group-member-mutation-group",
+      categoryId: "legacy-training-group-member-mutation-group-category",
+      name: "Legacy Training Member Mutation Group",
+      slug: "legacy-training-member-mutation-group",
+    },
+  });
+  await prisma.presetGroupMember.createMany({
+    data: [
+      {
+        id: "legacy-training-group-member-mutation-update-member",
+        groupId: "legacy-training-group-member-mutation-group",
+        presetId: "legacy-training-group-member-mutation-hidden-preset",
+        variantId: "legacy-training-group-member-mutation-hidden-variant",
+        slotCategoryId: "legacy-training-group-member-mutation-preset-category",
+        sortOrder: 0,
+      },
+      {
+        id: "legacy-training-group-member-mutation-remove-member",
+        groupId: "legacy-training-group-member-mutation-group",
+        presetId: "legacy-training-group-member-mutation-hidden-preset",
+        variantId: "legacy-training-group-member-mutation-hidden-variant",
+        slotCategoryId: "legacy-training-group-member-mutation-preset-category",
+        sortOrder: 1,
+      },
+    ],
+  });
+
+  let updateError: unknown;
+  try {
+    await ignoreStaticRevalidateError(() =>
+      updateGroupMember("legacy-training-group-member-mutation-update-member", {
+        presetId: "legacy-training-group-member-mutation-ordinary-preset",
+        variantId: "legacy-training-group-member-mutation-ordinary-variant",
+      }),
+    );
+  } catch (error) {
+    updateError = error;
+  }
+  assert.deepEqual(
+    await prisma.presetGroupMember.findUnique({
+      where: { id: "legacy-training-group-member-mutation-update-member" },
+      select: { presetId: true, variantId: true },
+    }),
+    {
+      presetId: "legacy-training-group-member-mutation-hidden-preset",
+      variantId: "legacy-training-group-member-mutation-hidden-variant",
+    },
+    "ordinary preset group member replacement must leave hidden training members unchanged",
+  );
+  assert.match(String(updateError), /ordinary preset group member/i);
+
+  let removeError: unknown;
+  try {
+    await ignoreStaticRevalidateError(() =>
+      removeGroupMember("legacy-training-group-member-mutation-remove-member"),
+    );
+  } catch (error) {
+    removeError = error;
+  }
+  assert.notEqual(
+    await prisma.presetGroupMember.findUnique({
+      where: { id: "legacy-training-group-member-mutation-remove-member" },
+      select: { id: true },
+    }),
+    null,
+    "ordinary preset group member deletion must not remove hidden training members",
+  );
+  assert.match(String(removeError), /ordinary preset group member/i);
 });
 
 test("training preset creation never writes through ordinary generation preset tables", async () => {

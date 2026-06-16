@@ -171,6 +171,13 @@ async function filterOrdinaryGroupCopyMembers(members: CopyableGroupMember[]) {
   });
 }
 
+async function assertOrdinaryPresetGroupMember(member: CopyableGroupMember) {
+  const [visibleMember] = await filterOrdinaryGroupCopyMembers([member]);
+  if (!visibleMember) {
+    throw new Error("Ordinary preset group member not found");
+  }
+}
+
 function schedulePresetGroupMemberChangeEffects(input: {
   groupId: string;
   title: string;
@@ -426,6 +433,7 @@ export async function removeGroupMember(memberId: string) {
   });
   if (!existing) return;
   await assertOrdinaryPresetGroup(existing.groupId);
+  await assertOrdinaryPresetGroupMember(existing);
   await prisma.presetGroupMember.delete({ where: { id: memberId } });
   const deletedMember: GroupMemberSnapshot = {
     id: existing.id,
@@ -463,6 +471,7 @@ export async function updateGroupMember(memberId: string, input: PresetGroupMemb
   });
   if (!existing) return null;
   await assertOrdinaryPresetGroup(existing.groupId);
+  await assertOrdinaryPresetGroupMember(existing);
   if (!existing.presetId || existing.subGroupId) {
     throw new Error("只能替换普通预制成员");
   }
