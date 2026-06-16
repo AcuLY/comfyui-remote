@@ -503,6 +503,24 @@ test("generation compose uploads supplemental images through the formal HTTP API
   assert.match(pagesSource, /function buildUploadedSupplementalImage/, "compose upload flow should define a helper for uploaded supplemental previews");
 });
 
+test("generation compose removes uploaded supplemental images through the formal HTTP API on production routes", () => {
+  const composePage = sourceBetween(
+    "export function LoraTrainingGenerationComposePage",
+    "export function LoraTrainingProjectResultsPage",
+  );
+  const removeHandler = composePage.slice(
+    composePage.indexOf("async function handleRemoveSupplementalImage"),
+    composePage.indexOf("\n  function handleUploadSupplementalImage"),
+  );
+
+  assert.match(composePage, /async function handleRemoveSupplementalImage/, "supplemental image removal should be able to await HTTP deletion");
+  assert.match(removeHandler, /attachment\.source === "上传"/, "only persisted uploaded supplemental inputs should use the delete-input API");
+  assert.match(removeHandler, /fetch\(`\/api\/training\/generation-inputs\/\$\{attachmentId\}`/, "uploaded supplemental removal should call the formal generation input delete API");
+  assert.match(removeHandler, /method:\s*"DELETE"/, "uploaded supplemental removal should use DELETE");
+  assert.match(removeHandler, /!response\.ok \|\| !payload\?\.ok/, "uploaded supplemental removal should keep local state when the HTTP delete fails");
+  assert.doesNotMatch(composePage, /onClick=\{\(\) => handleRemoveSupplementalImage\(attachment\.id\)\}[\s\S]*?feedback=\{\{ tone: "warning", title: "已移除补充图片"/, "the remove button should let the awaited handler own success and failure feedback");
+});
+
 test("generation compose does not post uploaded supplemental images as ordinary reference inputs", () => {
   const composePage = sourceBetween(
     "export function LoraTrainingGenerationComposePage",

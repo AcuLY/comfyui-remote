@@ -3304,6 +3304,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
   } | null>(null);
   const [isQueueingGenerationTask, setIsQueueingGenerationTask] = useState(false);
   const [isUploadingSupplementalImage, setIsUploadingSupplementalImage] = useState(false);
+  const [isRemovingSupplementalImage, setIsRemovingSupplementalImage] = useState(false);
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   if (!project || !section) return <EmptyPage title="没有生成任务上下文" />;
@@ -3479,7 +3480,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     });
   }
 
-  function handleRemoveSupplementalImage(attachmentId: string) {
+  function removeLocalSupplementalImage(attachmentId: string) {
     setSupplementalImageAttachments((current) => ({
       attachments: current.projectId === activeProject.id && current.sectionId === activeSection.id
         ? current.attachments.filter((attachment) => attachment.id !== attachmentId)
@@ -3487,6 +3488,57 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
       projectId: activeProject.id,
       sectionId: activeSection.id,
     }));
+  }
+
+  async function handleRemoveSupplementalImage(attachmentId: string) {
+    const attachment = supplementalImageAttachments.find((item) => item.id === attachmentId);
+    if (!attachment) return;
+
+    const isUploadedSupplementalImage = attachment.source === "上传";
+
+    if (!isProductionTrainingRoute || !isUploadedSupplementalImage) {
+      removeLocalSupplementalImage(attachmentId);
+      pushToast({
+        tone: "warning",
+        title: "已移除补充图片",
+        detail: attachment.title,
+      });
+      return;
+    }
+
+    if (isRemovingSupplementalImage) return;
+
+    setIsRemovingSupplementalImage(true);
+    try {
+      const response = await fetch(`/api/training/generation-inputs/${attachmentId}`, {
+        method: "DELETE",
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload?.ok) {
+        pushToast({
+          tone: "error",
+          title: "补充图片移除失败",
+          detail: payload?.error?.message ?? "补充图片删除请求失败",
+        });
+        return;
+      }
+
+      removeLocalSupplementalImage(attachmentId);
+      pushToast({
+        tone: "warning",
+        title: "已移除补充图片",
+        detail: attachment.title,
+      });
+    } catch (error) {
+      pushToast({
+        tone: "error",
+        title: "补充图片移除失败",
+        detail: error instanceof Error ? error.message : "补充图片删除请求失败",
+      });
+    } finally {
+      setIsRemovingSupplementalImage(false);
+    }
   }
 
   function handleUploadSupplementalImage() {
@@ -3796,8 +3848,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
                       size="sm"
                       tone="danger"
                       icon={Trash2}
+                      pending={isRemovingSupplementalImage}
                       onClick={() => handleRemoveSupplementalImage(attachment.id)}
-                      feedback={{ tone: "warning", title: "已移除补充图片", detail: attachment.title }}
                     >
                       移除
                     </Button>
