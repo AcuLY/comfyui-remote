@@ -254,6 +254,19 @@ test("Training API handlers and worker runtime do not import legacy adapters or 
   );
 });
 
+test("Training runtime services do not import the managed project-service fallback", () => {
+  assert.deepEqual(
+    compactHits(findPatternHits(trainingRuntimeFiles(), [
+      {
+        label: "managed project fallback service",
+        pattern: /@\/server\/services\/training\/project-service\b/,
+      },
+    ])),
+    { total: 0, firstHits: [] },
+    "Training API routes, services, workers, repositories, and scripts must use Training-owned runtime modules instead of importing the managed project-service fallback.",
+  );
+});
+
 test("generation and training API route trees keep module-owned resource imports isolated", () => {
   const generationApiFiles = sourceFilesFromRoots(
     "src/app/api/agent/projects",

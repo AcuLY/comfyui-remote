@@ -28,7 +28,7 @@ const legacyTrainingTypesPath = resolve(testDir, "../src/app/design-demos/data/l
 const legacyTrainingTypesSource = readFileSync(legacyTrainingTypesPath, "utf8");
 const trainingReadServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/read-service.ts"), "utf8");
 const projectTemplateCopyServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/project-template-copy-service.ts"), "utf8");
-const trainingProjectServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/project-service.ts"), "utf8");
+const trainingProjectActionsServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/project-actions-service.ts"), "utf8");
 const trainingTemplateServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/template-service.ts"), "utf8");
 const trainingPresetServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/preset-service.ts"), "utf8");
 const trainingProjectSectionServiceSource = readFileSync(resolve(testDir, "../src/server/services/training/project-section-service.ts"), "utf8");
@@ -374,7 +374,7 @@ test("training services share a dedicated feature-level view-model type module i
   const serviceSources = [
     trainingReadServiceSource,
     projectTemplateCopyServiceSource,
-    trainingProjectServiceSource,
+    trainingProjectActionsServiceSource,
     trainingTemplateServiceSource,
     trainingPresetServiceSource,
     trainingProjectSectionServiceSource,
@@ -418,9 +418,9 @@ test("training feature types define their image preview contract locally instead
     "training feature types should not import DemoImage from the design-demos data layer",
   );
   assert.doesNotMatch(
-    trainingProjectServiceSource,
+    trainingProjectActionsServiceSource,
     /@\/app\/design-demos\/data\/types/,
-    "training project service should not depend on the design-demos data type module",
+    "training project action service should not depend on the design-demos data type module",
   );
   assert.doesNotMatch(
     trainingSnapshotServiceSource,

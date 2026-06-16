@@ -4,9 +4,9 @@ import type {
   LoraTrainingTemplate,
 } from "@/features/training/types";
 import {
-  createManagedTrainingProject,
+  createTrainingProject,
   mapTrainingProjectError,
-} from "@/server/services/training/project-service";
+} from "@/server/services/training/project-actions-service";
 import { loadTrainingSnapshot } from "@/server/services/training/snapshot-service";
 import {
   createTrainingTemplate,
@@ -159,7 +159,7 @@ export async function createTrainingProjectFromTemplate(templateId: string, inpu
   const title = deriveProjectTitle(template, parsed.data);
 
   try {
-    return await createManagedTrainingProject({
+    return await createTrainingProject({
       title,
       characterName: parsed.data.characterName?.trim() || title,
       projectName: parsed.data.projectName?.trim() || title,

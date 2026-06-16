@@ -658,10 +658,15 @@ export async function progressTrainingRunWorkerTarget(trainingRunId: string, inp
         totalSteps: targetSteps,
       },
     });
-    return serializeWorkerTask(mapTrainingRunToTarget(updated), {
-      progressJson,
-      status: "running",
-    });
+    return {
+      ...serializeWorkerTask(mapTrainingRunToTarget(updated), {
+        progressJson,
+        status: "running",
+      }),
+      currentStep: updated.currentStep,
+      schedulerMessage: updated.schedulerMessage,
+      targetSteps: updated.totalSteps,
+    };
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
       return null;

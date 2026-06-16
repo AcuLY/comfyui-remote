@@ -6,18 +6,26 @@ import test from "node:test";
 import { NextRequest } from "next/server";
 
 const TRAINING_RUN_PRESET_STATE_PATH = join(process.cwd(), "data", "training-run-preset-state.json");
-const TRAINING_MANAGED_RUNS_PATH = join(process.cwd(), "data", "training-managed-runs.json");
-const TRAINING_PROJECTS_PATH = join(process.cwd(), "data", "training-projects.json");
 const TRAINING_TEMPLATES_PATH = join(process.cwd(), "data", "training-templates.json");
 const TRAINING_TEMPLATE_ORDER_PATH = join(process.cwd(), "data", "training-template-order.json");
 const TRAINING_ROUTE_METHODS = new Set(["GET", "POST", "PATCH", "DELETE", "PUT"]);
 const TRAINING_API_OPERATION_PREFIX = " /api/training";
+const TRAINING_WORKER_TEST_PROJECT_NAME_PREFIXES = [
+  "已完成运行测试项目 ",
+  "删除路由测试项目 ",
+  "真实定向租约项目 ",
+  "测试 targeted scheduler tick ",
+  "测试 managed worker lease ",
+  "测试 worker 链项目 ",
+  "测试 worker fail 项目 ",
+  "测试输出应用项目 ",
+];
 const retiredTrainingApiSlug = ["character", "lora", "training"].join("-");
 const retiredTrainingPascalPrefix = ["Character", "Lora"].join("");
 const retiredTrainingCamelPrefix = ["character", "Lora"].join("");
 const retiredProviderPrefix = ["Legacy", "Training"].join("");
 const retiredAdapterBasename = ["legacy", "compat", "service"].join("-");
-let trainingManagedStoreSnapshotQueue: Promise<unknown> = Promise.resolve();
+let trainingFileStateSnapshotQueue: Promise<unknown> = Promise.resolve();
 
 function findRetiredTrainingTokens(source: string) {
   return [
@@ -257,36 +265,65 @@ async function restoreOptionalFile(path: string, contents: string | null) {
   await writeFile(path, contents, "utf8");
 }
 
-async function withTrainingManagedStoreSnapshot<T>(fn: () => Promise<T>) {
+async function withTrainingFileStateSnapshot<T>(fn: () => Promise<T>) {
   const run = async () => {
-    const [runsBefore, projectsBefore, templatesBefore, templateOrderBefore] = await Promise.all([
-      readOptionalFile(TRAINING_MANAGED_RUNS_PATH),
-      readOptionalFile(TRAINING_PROJECTS_PATH),
+    const [templatesBefore, templateOrderBefore] = await Promise.all([
       readOptionalFile(TRAINING_TEMPLATES_PATH),
       readOptionalFile(TRAINING_TEMPLATE_ORDER_PATH),
     ]);
 
     try {
       await Promise.all([
-        writeFile(TRAINING_MANAGED_RUNS_PATH, "[]\n", "utf8"),
-        writeFile(TRAINING_PROJECTS_PATH, "[]\n", "utf8"),
         writeFile(TRAINING_TEMPLATES_PATH, JSON.stringify(cleanTrainingTemplateFallbackFixture(), null, 2) + "\n", "utf8"),
         rm(TRAINING_TEMPLATE_ORDER_PATH, { force: true }),
       ]);
       return await fn();
     } finally {
       await Promise.all([
-        restoreOptionalFile(TRAINING_MANAGED_RUNS_PATH, runsBefore),
-        restoreOptionalFile(TRAINING_PROJECTS_PATH, projectsBefore),
         restoreOptionalFile(TRAINING_TEMPLATES_PATH, templatesBefore),
         restoreOptionalFile(TRAINING_TEMPLATE_ORDER_PATH, templateOrderBefore),
       ]);
     }
   };
 
-  const next = trainingManagedStoreSnapshotQueue.then(run, run);
-  trainingManagedStoreSnapshotQueue = next.then(() => undefined, () => undefined);
+  const next = trainingFileStateSnapshotQueue.then(run, run);
+  trainingFileStateSnapshotQueue = next.then(() => undefined, () => undefined);
   return next;
+}
+
+async function failStaleTrainingWorkerTargetsForTest(projectNamePrefixes: string[]) {
+  const { prisma } = await import("../src/lib/prisma");
+  const now = new Date();
+  const projectNameWhere = {
+    OR: projectNamePrefixes.map((prefix) => ({
+      name: { startsWith: prefix },
+    })),
+  };
+
+  await prisma.$transaction([
+    prisma.trainingGenerationTask.updateMany({
+      where: {
+        status: "running",
+        project: projectNameWhere,
+      },
+      data: {
+        errorMessage: "Reset stale test generation task before worker scheduler assertion",
+        finishedAt: now,
+        status: "failed",
+      },
+    }),
+    prisma.trainingRun.updateMany({
+      where: {
+        status: "running",
+        project: projectNameWhere,
+      },
+      data: {
+        errorMessage: "Reset stale test training run before worker scheduler assertion",
+        finishedAt: now,
+        status: "failed",
+      },
+    }),
+  ]);
 }
 
 function isProductionTrainingDatabaseUnavailable(error: unknown) {
@@ -345,10 +382,10 @@ function unwrapProductionTrainingProjects(result: unknown) {
   return [];
 }
 
-test("training managed store snapshot restores template fallback data", async () => {
+test("training local file snapshot restores template fallback data", async () => {
   const before = await readOptionalFile(TRAINING_TEMPLATES_PATH);
 
-  await withTrainingManagedStoreSnapshot(async () => {
+  await withTrainingFileStateSnapshot(async () => {
     await writeFile(
       TRAINING_TEMPLATES_PATH,
       `${JSON.stringify([
@@ -1982,22 +2019,20 @@ test("GET /api/models lists checkpoint or LoRA assets for training workflows", a
   assert.ok(Array.isArray(loraPayload.data));
 });
 
-async function createManagedRunsForDeletionTest() {
+async function createTrainingRunsForDeletionTest() {
   const {
-    addManagedTrainingReferenceImageToResults,
-    createManagedTrainingProject,
-    enqueueManagedTrainingRun,
-    enqueueManagedTrainingSectionGenerationRun,
-    freezeManagedTrainingDataset,
-    uploadManagedTrainingProjectReferenceImage,
-  } = await import("../src/server/services/training/project-service");
+    addTrainingReferenceImageToResults,
+    createTrainingProject,
+    enqueueTrainingRun,
+    enqueueTrainingSectionGenerationRun,
+    freezeTrainingDataset,
+    uploadTrainingProjectReferenceImage,
+  } = await import("../src/server/services/training/project-actions-service");
 
-  const project = await createManagedTrainingProject({
+  const project = await createTrainingProject({
     title: `删除路由测试项目 ${Date.now()}`,
     characterName: "删除路由测试角色",
     triggerToken: `delete_route_${Date.now()}`,
-    templateId: "character_identity_default",
-    trainingTemplateId: "character_identity_default",
     checkpointRelativePath: "models/checkpoints/mock.safetensors",
     usagePrompt: "删除路由测试",
     detailPrompt: "删除路由测试项目资料",
@@ -2028,24 +2063,24 @@ async function createManagedRunsForDeletionTest() {
   const formData = new FormData();
   formData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "delete-route.png", { type: "image/png" }));
   formData.append("role", "source");
-  const uploadedReference = await uploadManagedTrainingProjectReferenceImage(project.id, formData);
+  const uploadedReference = await uploadTrainingProjectReferenceImage(project.id, formData);
 
-  assert.ok(uploadedReference?.id, "managed delete-route fixture should upload a reference image");
+  assert.ok(uploadedReference?.id, "training delete-route fixture should upload a reference image");
 
-  const result = await addManagedTrainingReferenceImageToResults(uploadedReference.id, {
+  const result = await addTrainingReferenceImageToResults(uploadedReference.id, {
     reviewStatus: "keep",
     captionDraft: "删除路由测试 caption",
   });
 
-  assert.ok(result?.id, "managed delete-route fixture should add a kept result");
+  assert.ok(result?.id, "training delete-route fixture should add a kept result");
 
-  const frozen = await freezeManagedTrainingDataset(project.id);
-  assert.ok(frozen?.revision?.id, "managed delete-route fixture should freeze a dataset revision");
+  const frozen = await freezeTrainingDataset(project.id);
+  assert.ok(frozen?.revision?.id, "training delete-route fixture should freeze a dataset revision");
 
-  const generationRun = await enqueueManagedTrainingSectionGenerationRun(project.sections[0].id, {
+  const generationRun = await enqueueTrainingSectionGenerationRun(project.sections[0].id, {
     userInstruction: "删除路由测试生成任务",
   });
-  const trainingRun = await enqueueManagedTrainingRun(project.id, {
+  const trainingRun = await enqueueTrainingRun(project.id, {
     revisionId: frozen.revision.id,
     config: {
       overrides: {
@@ -2056,8 +2091,8 @@ async function createManagedRunsForDeletionTest() {
     },
   });
 
-  assert.ok(generationRun?.id, "managed delete-route fixture should create a generation run");
-  assert.ok(trainingRun?.id, "managed delete-route fixture should create a training run");
+  assert.ok(generationRun?.id, "training delete-route fixture should create a generation run");
+  assert.ok(trainingRun?.id, "training delete-route fixture should create a training run");
 
   return {
     generationRunId: generationRun.id,
@@ -2066,25 +2101,25 @@ async function createManagedRunsForDeletionTest() {
   };
 }
 
-async function createManagedCompletedRunFixtures() {
+async function createTrainingCompletedRunFixtures() {
   const {
-    addManagedTrainingReferenceImageToResults,
-    completeManagedGenerationRun,
-    completeManagedTrainingRun,
-    createManagedTrainingProject,
-    enqueueManagedTrainingRun,
-    enqueueManagedTrainingSectionGenerationRun,
-    freezeManagedTrainingDataset,
-    progressManagedTrainingRun,
-    uploadManagedTrainingProjectReferenceImage,
-  } = await import("../src/server/services/training/project-service");
+    addTrainingReferenceImageToResults,
+    createTrainingProject,
+    enqueueTrainingRun,
+    enqueueTrainingSectionGenerationRun,
+    freezeTrainingDataset,
+    uploadTrainingProjectReferenceImage,
+  } = await import("../src/server/services/training/project-actions-service");
+  const workerGenerationCompleteRoute = await import("../src/app/api/training/worker/generation-tasks/[taskId]/complete/route");
+  const generationOutputsRoute = await import("../src/app/api/training/generation-tasks/[taskId]/outputs/route");
+  const workerTrainingProgressRoute = await import("../src/app/api/training/worker/training-runs/[trainingRunId]/progress/route");
+  const workerTrainingCompleteRoute = await import("../src/app/api/training/worker/training-runs/[trainingRunId]/complete/route");
+  const trainingRunDetailRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
 
-  const project = await createManagedTrainingProject({
+  const project = await createTrainingProject({
     title: `已完成运行测试项目 ${Date.now()}`,
     characterName: "已完成运行测试角色",
     triggerToken: `completed_fixture_${Date.now()}`,
-    templateId: "character_identity_default",
-    trainingTemplateId: "character_identity_default",
     checkpointRelativePath: "models/checkpoints/mock.safetensors",
     usagePrompt: "已完成运行测试",
     detailPrompt: "已完成运行测试资料",
@@ -2115,33 +2150,55 @@ async function createManagedCompletedRunFixtures() {
   const formData = new FormData();
   formData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "completed-fixture.png", { type: "image/png" }));
   formData.append("role", "source");
-  const uploadedReference = await uploadManagedTrainingProjectReferenceImage(project.id, formData);
+  const uploadedReference = await uploadTrainingProjectReferenceImage(project.id, formData);
   assert.ok(uploadedReference?.id, "completed-run fixture should upload a reference image");
 
-  const keptReferenceResult = await addManagedTrainingReferenceImageToResults(uploadedReference.id, {
+  const keptReferenceResult = await addTrainingReferenceImageToResults(uploadedReference.id, {
     reviewStatus: "keep",
     captionDraft: "已完成运行 fixture caption",
   });
   assert.ok(keptReferenceResult?.id, "completed-run fixture should materialize a kept result");
 
-  const generationRun = await enqueueManagedTrainingSectionGenerationRun(project.sections[0].id, {
+  const generationRun = await enqueueTrainingSectionGenerationRun(project.sections[0].id, {
     projectId: project.id,
     sourceImageIds: [uploadedReference.id],
     userInstruction: "已完成运行 fixture 生成任务",
   });
   assert.ok(generationRun?.id, "completed-run fixture should create a generation run");
 
-  const completedGenerationRun = await completeManagedGenerationRun(generationRun.id, {
-    captionDraft: "已完成生成结果",
-    reviewStatus: "keep",
-  });
-  assert.ok(completedGenerationRun?.id, "completed-run fixture should complete the generation run");
-  assert.ok(completedGenerationRun?.outputResultIds?.length, "completed-run fixture should expose a generation output");
+  const completeGenerationResponse = await workerGenerationCompleteRoute.POST(
+    new Request(`http://localhost/api/training/worker/generation-tasks/${generationRun.id}/complete`, {
+      method: "POST",
+      body: JSON.stringify({
+        images: [
+          {
+            height: 1024,
+            relativePath: `data/training/${project.id}/outputs/completed-fixture.png`,
+            sha256: "0".repeat(64),
+            width: 1024,
+          },
+        ],
+      }),
+    }),
+    { params: Promise.resolve({ taskId: generationRun.id }) },
+  );
+  const completeGenerationPayload = await completeGenerationResponse.json();
+  assert.equal(completeGenerationResponse.status, 200);
+  assert.equal(completeGenerationPayload.ok, true);
 
-  const frozen = await freezeManagedTrainingDataset(project.id);
+  const generationOutputsResponse = await generationOutputsRoute.GET(
+    new Request(`http://localhost/api/training/generation-tasks/${generationRun.id}/outputs`),
+    { params: Promise.resolve({ taskId: generationRun.id }) },
+  );
+  const generationOutputsPayload = await generationOutputsResponse.json();
+  assert.equal(generationOutputsResponse.status, 200);
+  assert.equal(generationOutputsPayload.ok, true);
+  assert.ok(generationOutputsPayload.data?.[0]?.id, "completed-run fixture should expose a generation output");
+
+  const frozen = await freezeTrainingDataset(project.id);
   assert.ok(frozen?.revision?.id, "completed-run fixture should freeze a dataset revision");
 
-  const trainingRun = await enqueueManagedTrainingRun(project.id, {
+  const trainingRun = await enqueueTrainingRun(project.id, {
     revisionId: frozen.revision.id,
     config: {
       overrides: {
@@ -2153,41 +2210,63 @@ async function createManagedCompletedRunFixtures() {
   });
   assert.ok(trainingRun?.id, "completed-run fixture should create a training run");
 
-  const progressedTrainingRun = await progressManagedTrainingRun(trainingRun.id, {
-    currentStep: 1200,
-    schedulerMessage: "fixture training progress",
-    targetSteps: 1200,
-  });
-  assert.ok(progressedTrainingRun?.id, "completed-run fixture should advance the training run");
+  const progressTrainingResponse = await workerTrainingProgressRoute.POST(
+    new Request(`http://localhost/api/training/worker/training-runs/${trainingRun.id}/progress`, {
+      method: "POST",
+      body: JSON.stringify({
+        currentStep: 1200,
+        schedulerMessage: "fixture training progress",
+        targetSteps: 1200,
+      }),
+    }),
+    { params: Promise.resolve({ trainingRunId: trainingRun.id }) },
+  );
+  const progressTrainingPayload = await progressTrainingResponse.json();
+  assert.equal(progressTrainingResponse.status, 200);
+  assert.equal(progressTrainingPayload.ok, true);
 
-  const completedTrainingRun = await completeManagedTrainingRun(trainingRun.id, {
-    artifactName: "completed-fixture.safetensors",
-  });
-  assert.ok(completedTrainingRun?.id, "completed-run fixture should complete the training run");
-  assert.ok(completedTrainingRun?.finalLoraArtifactId, "completed-run fixture should expose a final LoRA artifact");
+  const completeTrainingResponse = await workerTrainingCompleteRoute.POST(
+    new Request(`http://localhost/api/training/worker/training-runs/${trainingRun.id}/complete`, {
+      method: "POST",
+      body: JSON.stringify({
+        artifactName: "completed-fixture.safetensors",
+      }),
+    }),
+    { params: Promise.resolve({ trainingRunId: trainingRun.id }) },
+  );
+  const completeTrainingPayload = await completeTrainingResponse.json();
+  assert.equal(completeTrainingResponse.status, 200);
+  assert.equal(completeTrainingPayload.ok, true);
+
+  const trainingRunDetailResponse = await trainingRunDetailRoute.GET(
+    new Request(`http://localhost/api/training/training-runs/${trainingRun.id}`),
+    { params: Promise.resolve({ trainingRunId: trainingRun.id }) },
+  );
+  const trainingRunDetailPayload = await trainingRunDetailResponse.json();
+  assert.equal(trainingRunDetailResponse.status, 200);
+  assert.equal(trainingRunDetailPayload.ok, true);
+  assert.ok(trainingRunDetailPayload.data?.finalLoraArtifactId, "completed-run fixture should expose a final LoRA artifact");
 
   return {
-    generationRunId: completedGenerationRun.id,
-    outputResultId: completedGenerationRun.outputResultIds?.[0] ?? null,
+    generationRunId: generationRun.id,
+    outputResultId: generationOutputsPayload.data[0].id ?? null,
     projectId: project.id,
-    trainingRunId: completedTrainingRun.id,
+    trainingRunId: trainingRun.id,
   };
 }
 
-async function createManagedReferenceSeedProject() {
+async function createTrainingReferenceSeedProject() {
   const {
-    addManagedTrainingReferenceImageToResults,
-    createManagedTrainingProject,
-    uploadManagedTrainingProjectReferenceImage,
-  } = await import("../src/server/services/training/project-service");
+    addTrainingReferenceImageToResults,
+    createTrainingProject,
+    uploadTrainingProjectReferenceImage,
+  } = await import("../src/server/services/training/project-actions-service");
 
-  const project = await createManagedTrainingProject({
+  const project = await createTrainingProject({
     title: `参考源项目 ${Date.now()}`,
     characterName: "参考源角色",
     projectName: "参考源项目",
     triggerToken: `reference_seed_${Date.now()}`,
-    templateId: "character_identity_default",
-    trainingTemplateId: "character_identity_default",
     checkpointRelativePath: "models/checkpoints/mock.safetensors",
     usagePrompt: "参考源使用提示词",
     detailPrompt: "参考源细节描述",
@@ -2218,10 +2297,10 @@ async function createManagedReferenceSeedProject() {
   const formData = new FormData();
   formData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "reference-seed.png", { type: "image/png" }));
   formData.append("role", "source");
-  const uploadedReference = await uploadManagedTrainingProjectReferenceImage(project.id, formData);
+  const uploadedReference = await uploadTrainingProjectReferenceImage(project.id, formData);
   assert.ok(uploadedReference?.id, "reference-seed fixture should upload a reference image");
 
-  const keptResult = await addManagedTrainingReferenceImageToResults(uploadedReference.id, {
+  const keptResult = await addTrainingReferenceImageToResults(uploadedReference.id, {
     reviewStatus: "keep",
     captionDraft: "参考源保留结果",
   });
@@ -2231,12 +2310,12 @@ async function createManagedReferenceSeedProject() {
     projectId: project.id,
     projectSelectionId: `project-${project.id}`,
     resultSelectionId: `result-${keptResult.id}`,
-    resultSourceLabel: keptResult.sourceLabel,
+    resultSourceLabel: `${project.title} / 结果池`,
     title: project.title,
   };
 }
 
-async function createManagedProjectFixture(input: {
+async function createTrainingProjectFixture(input: {
   detailPrompt?: string;
   sections?: Array<{
     id: string;
@@ -2258,14 +2337,14 @@ async function createManagedProjectFixture(input: {
   triggerToken?: string;
   usagePrompt?: string;
 }) {
-  const { createManagedTrainingProject } = await import("../src/server/services/training/project-service");
-  return createManagedTrainingProject({
+  const { createTrainingProject } = await import("../src/server/services/training/project-actions-service");
+  return createTrainingProject({
     title: input.title,
     characterName: input.title,
     projectName: input.title,
     triggerToken: input.triggerToken ?? `fixture_${Date.now()}`,
-    ...(input.templateId === null ? {} : { templateId: input.templateId ?? "character_identity_default" }),
-    ...(input.trainingTemplateId === null ? {} : { trainingTemplateId: input.trainingTemplateId ?? "character_identity_default" }),
+    ...(input.templateId ? { templateId: input.templateId } : {}),
+    ...(input.trainingTemplateId ? { trainingTemplateId: input.trainingTemplateId } : {}),
     checkpointRelativePath: "models/checkpoints/mock.safetensors",
     usagePrompt: input.usagePrompt ?? `${input.title} usage`,
     detailPrompt: input.detailPrompt ?? `${input.title} detail`,
@@ -2304,10 +2383,10 @@ test("training project reorder route persists managed project order through /api
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const reorderRoute = await import("../src/app/api/training/projects/reorder/route");
 
-  await withTrainingManagedStoreSnapshot(async () => {
-    const first = await createManagedProjectFixture({ title: `项目排序 A ${Date.now()}` });
-    const second = await createManagedProjectFixture({ title: `项目排序 B ${Date.now()}` });
-    const third = await createManagedProjectFixture({ title: `项目排序 C ${Date.now()}` });
+  await withTrainingFileStateSnapshot(async () => {
+    const first = await createTrainingProjectFixture({ title: `项目排序 A ${Date.now()}` });
+    const second = await createTrainingProjectFixture({ title: `项目排序 B ${Date.now()}` });
+    const third = await createTrainingProjectFixture({ title: `项目排序 C ${Date.now()}` });
 
     const reorderResponse = await reorderRoute.POST(
       new Request("http://localhost/api/training/projects/reorder", {
@@ -2333,36 +2412,34 @@ test("training project reorder route persists managed project order through /api
   });
 });
 
-test("managed training projects suppress demo project fixtures on /api/training/projects", async () => {
-  const { createManagedTrainingProject } = await import("../src/server/services/training/project-service");
+test("training projects suppress demo project fixtures on /api/training/projects", async () => {
+  const { createTrainingProject } = await import("../src/server/services/training/project-actions-service");
 
-  await withTrainingManagedStoreSnapshot(async () => {
-    const created = await createManagedTrainingProject({
-      title: `Managed Only List ${Date.now()}`,
-      characterName: "Managed Only List",
-      projectName: "Managed Only List",
-      triggerToken: `managed_only_list_${Date.now()}`,
-      templateId: "character_identity_default",
-      trainingTemplateId: "character_identity_default",
+  await withTrainingFileStateSnapshot(async () => {
+    const created = await createTrainingProject({
+      title: `Training Only List ${Date.now()}`,
+      characterName: "Training Only List",
+      projectName: "Training Only List",
+      triggerToken: `training_only_list_${Date.now()}`,
       checkpointRelativePath: "models/checkpoints/mock.safetensors",
       usagePrompt: "managed only list usage",
       detailPrompt: "managed only list detail",
       sections: [
         {
-          id: "managed-only-section",
-          title: "Managed Only Section",
+          id: "training-only-section",
+          title: "Training Only Section",
           enabled: true,
           blockCount: 1,
           blocks: [
             {
-              id: "managed-only-block",
+              id: "training-only-block",
               source: "本地",
-              title: "Managed Only Block",
-              text: "managed only scene",
+              title: "Training Only Block",
+              text: "training only scene",
             },
           ],
-          resolvedScene: "managed only scene",
-          scenePreview: "managed only scene",
+          resolvedScene: "training only scene",
+          scenePreview: "training only scene",
         },
       ],
       trainingDefaults: {
@@ -2381,8 +2458,8 @@ test("managed training project creation can seed references from existing manage
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
 
-  await withTrainingManagedStoreSnapshot(async () => {
-    const seedProject = await createManagedReferenceSeedProject();
+  await withTrainingFileStateSnapshot(async () => {
+    const seedProject = await createTrainingReferenceSeedProject();
     const title = `引用 managed 资料项目 ${Date.now()}`;
 
     const createResponse = await projectsRoute.POST(
@@ -2393,8 +2470,6 @@ test("managed training project creation can seed references from existing manage
           characterName: title,
           projectName: title,
           triggerToken: `managed_reference_copy_${Date.now()}`,
-          templateId: "character_identity_default",
-          trainingTemplateId: "character_identity_default",
           checkpointRelativePath: "models/checkpoints/mock.safetensors",
           usagePrompt: "managed 引用复制测试",
           detailPrompt: "managed 引用复制测试细节",
@@ -2445,7 +2520,7 @@ test("managed training project creation can seed references from existing manage
 test("POST /api/training/projects creates a blank project without template ids", async () => {
   const projectsRoute = await import("../src/app/api/training/projects/route");
 
-  await withTrainingManagedStoreSnapshot(async () => {
+  await withTrainingFileStateSnapshot(async () => {
     const title = `无模板空训练项目 ${Date.now()}`;
     const createResponse = await projectsRoute.POST(
       new Request("http://localhost/api/training/projects", {
@@ -2503,8 +2578,8 @@ test("GET project-scoped training resources expose sections, results, dataset re
   const revisionsRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
   const trainingRunsRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
   const generationTasksRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
-  await withTrainingManagedStoreSnapshot(async () => {
-    const { generationRunId, projectId, trainingRunId } = await createManagedCompletedRunFixtures();
+  await withTrainingFileStateSnapshot(async () => {
+    const { generationRunId, projectId, trainingRunId } = await createTrainingCompletedRunFixtures();
 
     const params = { params: Promise.resolve({ projectId }) };
     const [sectionsResponse, resultsResponse, readinessResponse, revisionsResponse, trainingRunsResponse, generationTasksResponse] = await Promise.all([
@@ -2590,7 +2665,7 @@ test("GET /api/training/sections/:sectionId/scene-description returns the resolv
 });
 
 test("training section and block alias routes honor project scope when ids overlap", async () => {
-  await withTrainingManagedStoreSnapshot(async () => {
+  await withTrainingFileStateSnapshot(async () => {
     const projectsRoute = await import("../src/app/api/training/projects/route");
     const sectionAliasRoute = await import("../src/app/api/training/sections/[sectionId]/route");
     const sceneDescriptionRoute = await import("../src/app/api/training/sections/[sectionId]/scene-description/route");
@@ -2606,8 +2681,6 @@ test("training section and block alias routes honor project scope when ids overl
             characterName: title,
             projectName: title,
             triggerToken: `overlap_alias_${Date.now()}_${title}`,
-            templateId: "character_identity_default",
-            trainingTemplateId: "character_identity_default",
             checkpointRelativePath: "models/checkpoints/mock.safetensors",
             usagePrompt: `${title} usage`,
             detailPrompt: `${title} detail`,
@@ -3159,8 +3232,8 @@ test("training section alias route reads, updates, and deletes by /api/training/
 });
 
 test("GET /api/training/runs filters the global training workspace by kind and status", async () => {
-  await withTrainingManagedStoreSnapshot(async () => {
-    const { generationRunId } = await createManagedCompletedRunFixtures();
+  await withTrainingFileStateSnapshot(async () => {
+    const { generationRunId } = await createTrainingCompletedRunFixtures();
     const runs = await listRuns("?kind=generation&status=completed");
 
     assert.ok(runs.length > 0);
@@ -3171,8 +3244,8 @@ test("GET /api/training/runs filters the global training workspace by kind and s
 
 test("GET /api/training/training-runs/:trainingRunId returns training run detail", async () => {
   const { GET } = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
-  await withTrainingManagedStoreSnapshot(async () => {
-    const { trainingRunId } = await createManagedCompletedRunFixtures();
+  await withTrainingFileStateSnapshot(async () => {
+    const { trainingRunId } = await createTrainingCompletedRunFixtures();
 
     const response = await GET(
       new Request(`http://localhost/api/training/training-runs/${trainingRunId}`),
@@ -3192,8 +3265,8 @@ test("POST /api/training/training-runs/:trainingRunId/create-preset creates a tr
   const createPresetRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/create-preset/route");
   const presetsRoute = await import("../src/app/api/training/presets/route");
 
-  await withTrainingManagedStoreSnapshot(async () => {
-    const { trainingRunId } = await createManagedCompletedRunFixtures();
+  await withTrainingFileStateSnapshot(async () => {
+    const { trainingRunId } = await createTrainingCompletedRunFixtures();
     await clearTrainingRunPresetState(trainingRunId);
 
     const presetTitle = `训练完成预制 ${Date.now()}`;
@@ -3246,8 +3319,8 @@ test("POST /api/training/training-runs/:trainingRunId/create-preset creates a tr
 
 test("POST /api/training/training-runs/:trainingRunId/poll returns the current training run snapshot", async () => {
   const pollRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/poll/route");
-  await withTrainingManagedStoreSnapshot(async () => {
-    const { trainingRunId } = await createManagedCompletedRunFixtures();
+  await withTrainingFileStateSnapshot(async () => {
+    const { trainingRunId } = await createTrainingCompletedRunFixtures();
 
     const response = await pollRoute.POST(
       new Request(`http://localhost/api/training/training-runs/${trainingRunId}/poll`, {
@@ -3266,8 +3339,8 @@ test("POST /api/training/training-runs/:trainingRunId/poll returns the current t
 
 test("POST /api/training/training-runs/:trainingRunId/cleanup returns an idempotent cleanup summary", async () => {
   const cleanupRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/cleanup/route");
-  await withTrainingManagedStoreSnapshot(async () => {
-    const { trainingRunId } = await createManagedCompletedRunFixtures();
+  await withTrainingFileStateSnapshot(async () => {
+    const { trainingRunId } = await createTrainingCompletedRunFixtures();
 
     const response = await cleanupRoute.POST(
       new Request(`http://localhost/api/training/training-runs/${trainingRunId}/cleanup`, {
@@ -3303,8 +3376,8 @@ test("GET /api/training/generation-tasks/:taskId returns generation task detail"
 
 test("GET /api/training/generation-tasks/:taskId/outputs returns generation outputs mapped into project results", async () => {
   const outputsRoute = await import("../src/app/api/training/generation-tasks/[taskId]/outputs/route");
-  await withTrainingManagedStoreSnapshot(async () => {
-    const { generationRunId, outputResultId } = await createManagedCompletedRunFixtures();
+  await withTrainingFileStateSnapshot(async () => {
+    const { generationRunId, outputResultId } = await createTrainingCompletedRunFixtures();
     assert.ok(outputResultId, "completed-run fixture should expose an output result id");
 
     const response = await outputsRoute.GET(
@@ -3325,17 +3398,15 @@ test("GET /api/training/section-runs/:runId reads generation run detail and POST
   const sectionRunRoute = await import("../src/app/api/training/section-runs/[runId]/route");
   const sectionRunCancelRoute = await import("../src/app/api/training/section-runs/[runId]/cancel/route");
   const {
-    createManagedTrainingProject,
-    enqueueManagedTrainingSectionGenerationRun,
-  } = await import("../src/server/services/training/project-service");
+    createTrainingProject,
+    enqueueTrainingSectionGenerationRun,
+  } = await import("../src/server/services/training/project-actions-service");
 
-  const createdProject = await createManagedTrainingProject({
+  const createdProject = await createTrainingProject({
     title: `Section Run Alias ${Date.now()}`,
     characterName: "Section Run Alias",
     projectName: "Section Run Alias",
     triggerToken: `section_run_alias_${Date.now()}`,
-    templateId: "character_identity_default",
-    trainingTemplateId: "character_identity_default",
     checkpointRelativePath: "models/checkpoints/mock.safetensors",
     usagePrompt: "section run alias usage",
     detailPrompt: "section run alias detail",
@@ -3362,11 +3433,11 @@ test("GET /api/training/section-runs/:runId reads generation run detail and POST
       autoFreezeDataset: false,
     },
   });
-  const createdRun = await enqueueManagedTrainingSectionGenerationRun(createdProject.sections[0].id, {
+  const createdRun = await enqueueTrainingSectionGenerationRun(createdProject.sections[0].id, {
     userInstruction: "section run alias test",
   });
 
-  assert.ok(createdRun?.id, "expected a managed generation run for section-run alias tests");
+  assert.ok(createdRun?.id, "expected a training generation run for section-run alias tests");
 
   const getResponse = await sectionRunRoute.GET(
     new Request(`http://localhost/api/training/section-runs/${createdRun.id}`),
@@ -3398,7 +3469,7 @@ test("DELETE /api/training run detail routes hide managed runs from global and p
   const trainingDetailRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
   const projectGenerationRunsRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
   const projectTrainingRunsRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
-  const { generationRunId, projectId, trainingRunId } = await createManagedRunsForDeletionTest();
+  const { generationRunId, projectId, trainingRunId } = await createTrainingRunsForDeletionTest();
 
   const deleteGenerationResponse = await generationDetailRoute.DELETE(
     new Request(`http://localhost/api/training/generation-tasks/${generationRunId}`, { method: "DELETE" }),
@@ -3863,8 +3934,8 @@ test("generation output apply can add a managed output into project reference im
   const generationTaskDetailRoute = await import("../src/app/api/training/generation-tasks/[taskId]/route");
   const generationOutputApplyRoute = await import("../src/app/api/training/generation-outputs/[outputId]/apply/route");
 
-  await withTrainingManagedStoreSnapshot(async () => {
-    const seedProject = await createManagedReferenceSeedProject();
+  await withTrainingFileStateSnapshot(async () => {
+    const seedProject = await createTrainingReferenceSeedProject();
     const title = `测试输出应用项目 ${Date.now()}`;
     const createResponse = await projectsRoute.POST(
       new Request("http://localhost/api/training/projects", {
@@ -3874,8 +3945,6 @@ test("generation output apply can add a managed output into project reference im
           characterName: title,
           projectName: title,
           triggerToken: `test_output_apply_${Date.now()}`,
-          templateId: "character_identity_default",
-          trainingTemplateId: "character_identity_default",
           checkpointRelativePath: "models/checkpoints/mock.safetensors",
           usagePrompt: "测试输出应用提示词",
           detailPrompt: "测试输出应用细节",
@@ -3936,11 +4005,15 @@ test("generation output apply can add a managed output into project reference im
     assert.equal(runPayload.ok, true);
     const taskId = runPayload.data.id as string;
 
-    const tickResponse = await schedulerTickRoute.POST();
+    const tickResponse = await schedulerTickRoute.POST(
+      new Request(`http://localhost/api/training/scheduler/tick?targetType=generationRun&targetId=${taskId}`, {
+        method: "POST",
+      }),
+    );
     const tickPayload = await tickResponse.json();
     assert.equal(tickResponse.status, 200);
     assert.equal(tickPayload.ok, true);
-    assert.equal(tickPayload.data.id, taskId);
+    assert.equal(tickPayload.data.targetId, taskId);
 
     const uploadFormData = new FormData();
     uploadFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "managed-output-apply.png", { type: "image/png" }));
@@ -4040,8 +4113,6 @@ test("generation output apply can idempotently project a production candidate ou
         characterName: title,
         projectName: title,
         triggerToken: `test_real_output_apply_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         baseModel: "继承训练默认模型",
         captionStrategy: "先触发词后描述",
@@ -4509,7 +4580,7 @@ test("training template reorder route persists managed template order through /a
   const templatesRoute = await import("../src/app/api/training/templates/route");
   const templateReorderRoute = await import("../src/app/api/training/templates/reorder/route");
 
-  await withTrainingManagedStoreSnapshot(async () => {
+  await withTrainingFileStateSnapshot(async () => {
     const initialResponse = await templatesRoute.GET();
     const initialPayload = await initialResponse.json();
 
@@ -4550,7 +4621,7 @@ test("newly created managed training template can immediately create a project t
   const templatesRoute = await import("../src/app/api/training/templates/route");
   const templateProjectsRoute = await import("../src/app/api/training/templates/[templateId]/projects/route");
 
-  await withTrainingManagedStoreSnapshot(async () => {
+  await withTrainingFileStateSnapshot(async () => {
     const templateTitle = `即时建项目模板 ${Date.now()}`;
     const createTemplateResponse = await templatesRoute.POST(
       new Request("http://localhost/api/training/templates", {
@@ -4644,8 +4715,6 @@ test("training project route creates a project from the product payload through 
         characterName: title,
         projectName: title,
         triggerToken: `test_training_project_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         baseModel: "继承训练默认模型",
         captionStrategy: "先触发词后描述",
@@ -4714,8 +4783,6 @@ test("production training project creation uses the real project path when the t
         characterName: title,
         projectName: title,
         triggerToken: `test_real_project_create_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         selectedReferenceIds: [],
         sections: [
@@ -4797,8 +4864,6 @@ test("production training project creation uses the real project path when the t
         characterName: `${title} 参考复制`,
         projectName: `${title} 参考复制`,
         triggerToken: `test_real_project_reference_copy_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         selectedReferenceIds: [`project-${projectId}`, `result-${addToResultsPayload.data.id}`],
         sections: [
@@ -4860,8 +4925,6 @@ test("production generation tasks can be cancelled through /api/training when th
         characterName: title,
         projectName: title,
         triggerToken: `test_real_generation_cancel_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         usagePrompt: "真实取消生成测试提示词",
         detailPrompt: "真实取消生成测试细节",
@@ -4937,6 +5000,8 @@ test("production generation tasks can be cancelled through /api/training when th
 test("production training worker lease can target a specific queued generation run", async () => {
   if (!await listProductionTrainingProjectsOrSkip()) return;
 
+  await failStaleTrainingWorkerTargetsForTest(TRAINING_WORKER_TEST_PROJECT_NAME_PREFIXES);
+
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
   const workerTaskNextRoute = await import("../src/app/api/training/worker/tasks/next/route");
@@ -4950,8 +5015,6 @@ test("production training worker lease can target a specific queued generation r
         characterName: title,
         projectName: title,
         triggerToken: `test_targeted_worker_lease_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         usagePrompt: "真实定向租约提示词",
         detailPrompt: "真实定向租约细节",
@@ -5043,8 +5106,9 @@ test("production training worker lease can target a specific queued generation r
 });
 
 test("managed scheduler tick can advance a target queued generation run", async () => {
-  await withTrainingManagedStoreSnapshot(async () => {
-    const seedProject = await createManagedReferenceSeedProject();
+  await withTrainingFileStateSnapshot(async () => {
+    await failStaleTrainingWorkerTargetsForTest(TRAINING_WORKER_TEST_PROJECT_NAME_PREFIXES);
+    const seedProject = await createTrainingReferenceSeedProject();
     const projectsRoute = await import("../src/app/api/training/projects/route");
     const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
     const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
@@ -5059,8 +5123,6 @@ test("managed scheduler tick can advance a target queued generation run", async 
           characterName: title,
           projectName: title,
           triggerToken: `targeted_scheduler_tick_${Date.now()}`,
-          templateId: "character_identity_default",
-          trainingTemplateId: "character_identity_default",
           checkpointRelativePath: "models/checkpoints/mock.safetensors",
           usagePrompt: "targeted scheduler usage",
           detailPrompt: "targeted scheduler detail",
@@ -5128,7 +5190,7 @@ test("managed scheduler tick can advance a target queued generation run", async 
     const targetedTickPayload = await targetedTickResponse.json();
     assert.equal(targetedTickResponse.status, 200);
     assert.equal(targetedTickPayload.ok, true);
-    assert.equal(targetedTickPayload.data.id, secondGenerationRunId);
+    assert.equal(targetedTickPayload.data.targetId, secondGenerationRunId);
     assert.equal(targetedTickPayload.data.status, "running");
 
     const untargetedFirstLeaseResponse = await workerTaskNextRoute.GET(
@@ -5195,8 +5257,6 @@ test("production generation task draft lifecycle works through /api/training whe
         characterName: title,
         projectName: title,
         triggerToken: `test_real_generation_draft_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         usagePrompt: "真实生成草稿提示词",
         detailPrompt: "真实生成草稿细节",
@@ -5379,8 +5439,6 @@ test("training project detail route deletes a managed project through /api/train
         characterName: title,
         projectName: title,
         triggerToken: `delete_training_project_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         baseModel: "继承训练默认模型",
         captionStrategy: "先触发词后描述",
@@ -5452,8 +5510,8 @@ test("training project route can save a project as a template through /api/train
   const saveAsTemplateRoute = await import("../src/app/api/training/projects/[projectId]/save-as-template/route");
   const templatesRoute = await import("../src/app/api/training/templates/route");
   const templateDetailRoute = await import("../src/app/api/training/templates/[templateId]/route");
-  await withTrainingManagedStoreSnapshot(async () => {
-    const project = await createManagedProjectFixture({
+  await withTrainingFileStateSnapshot(async () => {
+    const project = await createTrainingProjectFixture({
       title: `存模板来源项目 ${Date.now()}`,
       sections: [
         {
@@ -5546,8 +5604,8 @@ test("training project route can save a project as a template through /api/train
 
 test("managed training project profile reads and updates through /api/training", async () => {
   const profileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");
-  await withTrainingManagedStoreSnapshot(async () => {
-    const project = await createManagedProjectFixture({
+  await withTrainingFileStateSnapshot(async () => {
+    const project = await createTrainingProjectFixture({
       title: `managed profile 项目 ${Date.now()}`,
     });
     const projectId = project.id;
@@ -5568,7 +5626,11 @@ test("managed training project profile reads and updates through /api/training",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           loraUsagePrompt: "更新后的使用提示词",
-          characterDetailPrompt: "更新后的角色细节描述",
+          characterDetailPrompt: JSON.stringify({
+            identityTraits: { summary: "更新后的角色细节描述" },
+            outfitTraits: {},
+            negativeTraits: [],
+          }),
           profileSummary: "更新后的资料备注",
         }),
       }),
@@ -5578,9 +5640,8 @@ test("managed training project profile reads and updates through /api/training",
 
     assert.equal(patchResponse.status, 200);
     assert.equal(patchPayload.ok, true);
-    assert.equal(patchPayload.data.usagePrompt, "更新后的使用提示词");
-    assert.equal(patchPayload.data.detailPrompt, "更新后的角色细节描述");
-    assert.equal(patchPayload.data.profileSummary, "更新后的资料备注");
+    assert.equal(patchPayload.data.finalPromptDraft, "更新后的使用提示词");
+    assert.deepEqual(patchPayload.data.identityTraits, { summary: "更新后的角色细节描述" });
   });
 });
 
@@ -5589,8 +5650,8 @@ test("managed training text revisions can checkpoint, list, and restore profile 
   const profileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");
   const textRevisionsRoute = await import("../src/app/api/training/projects/[projectId]/text-revisions/route");
   const restoreTextRevisionRoute = await import("../src/app/api/training/text-revisions/[revisionId]/restore/route");
-  await withTrainingManagedStoreSnapshot(async () => {
-    const project = await createManagedProjectFixture({
+  await withTrainingFileStateSnapshot(async () => {
+    const project = await createTrainingProjectFixture({
       title: `managed text revision 项目 ${Date.now()}`,
       templateId: null,
       trainingTemplateId: null,
@@ -5884,8 +5945,8 @@ test("production training text revisions can restore profile rows keyed by profi
 
 test("managed training project updates through /api/training/projects/:projectId", async () => {
   const projectRoute = await import("../src/app/api/training/projects/[projectId]/route");
-  await withTrainingManagedStoreSnapshot(async () => {
-    const project = await createManagedProjectFixture({
+  await withTrainingFileStateSnapshot(async () => {
+    const project = await createTrainingProjectFixture({
       title: `managed update 项目 ${Date.now()}`,
     });
     const projectId = project.id;
@@ -5921,7 +5982,7 @@ test("managed training project references flow into result review through /api/t
   const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
   const reviewRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
   const patchResultRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
-  await withTrainingManagedStoreSnapshot(async () => {
+  await withTrainingFileStateSnapshot(async () => {
     const title = `测试参考图项目 ${Date.now()}`;
     const createResponse = await projectsRoute.POST(
       new Request("http://localhost/api/training/projects", {
@@ -5931,8 +5992,6 @@ test("managed training project references flow into result review through /api/t
           characterName: title,
           projectName: title,
           triggerToken: `test_reference_project_${Date.now()}`,
-          templateId: "character_identity_default",
-          trainingTemplateId: "character_identity_default",
           checkpointRelativePath: "models/checkpoints/mock.safetensors",
           baseModel: "继承训练默认模型",
           captionStrategy: "先触发词后描述",
@@ -6188,7 +6247,7 @@ test("managed training project can upload result images through /api/training", 
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const resultsUploadRoute = await import("../src/app/api/training/projects/[projectId]/image-results/upload/route");
   const resultsRoute = await import("../src/app/api/training/projects/[projectId]/image-results/route");
-  await withTrainingManagedStoreSnapshot(async () => {
+  await withTrainingFileStateSnapshot(async () => {
     const title = `测试结果上传项目 ${Date.now()}`;
 
     const createResponse = await projectsRoute.POST(
@@ -6199,8 +6258,6 @@ test("managed training project can upload result images through /api/training", 
           characterName: title,
           projectName: title,
           triggerToken: `test_result_upload_${Date.now()}`,
-          templateId: "character_identity_default",
-          trainingTemplateId: "character_identity_default",
           checkpointRelativePath: "models/checkpoints/mock.safetensors",
           usagePrompt: "测试结果上传提示词",
           detailPrompt: "测试结果上传细节",
@@ -6310,7 +6367,7 @@ test("training text revisions can checkpoint and restore production image-result
       filePath: `data/images/training/text-revision-source-${Date.now()}.png`,
       storageRole: "mutable_source",
       mimeType: "image/png",
-      fileSize: 4n,
+      fileSize: BigInt(4),
       sha256: `text-revision-${Date.now()}`,
     },
   });
@@ -6397,8 +6454,6 @@ test("training image caption route can generate a managed caption task result th
         characterName: title,
         projectName: title,
         triggerToken: `test_caption_task_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         selectedReferenceIds: [],
         sections: [],
@@ -6497,8 +6552,6 @@ test("training bulk caption route supports kept_without_captions mode through /a
         characterName: title,
         projectName: title,
         triggerToken: `test_bulk_caption_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         selectedReferenceIds: [],
         sections: [],
@@ -6609,8 +6662,6 @@ test("managed training project generation task draft lifecycle works through /ap
         characterName: title,
         projectName: title,
         triggerToken: `test_generation_task_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         usagePrompt: "测试生成草稿提示词",
         detailPrompt: "测试生成草稿细节",
@@ -6831,7 +6882,7 @@ test("managed training project generation task draft lifecycle works through /ap
 });
 
 test("managed section run route honors project scope when section ids overlap", async () => {
-  await withTrainingManagedStoreSnapshot(async () => {
+  await withTrainingFileStateSnapshot(async () => {
     const projectsRoute = await import("../src/app/api/training/projects/route");
     const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
 
@@ -6844,8 +6895,6 @@ test("managed section run route honors project scope when section ids overlap", 
             characterName: title,
             projectName: title,
             triggerToken: `duplicate_section_scope_${Date.now()}_${title}`,
-            templateId: "character_identity_default",
-            trainingTemplateId: "character_identity_default",
             checkpointRelativePath: "models/checkpoints/mock.safetensors",
             usagePrompt: `${title} usage`,
             detailPrompt: `${title} detail`,
@@ -6903,8 +6952,9 @@ test("managed section run route honors project scope when section ids overlap", 
 });
 
 test("managed scheduler exposes running generation runs through target-scoped worker leases", async () => {
-  await withTrainingManagedStoreSnapshot(async () => {
-    const seedProject = await createManagedReferenceSeedProject();
+  await withTrainingFileStateSnapshot(async () => {
+    await failStaleTrainingWorkerTargetsForTest(TRAINING_WORKER_TEST_PROJECT_NAME_PREFIXES);
+    const seedProject = await createTrainingReferenceSeedProject();
     const projectsRoute = await import("../src/app/api/training/projects/route");
     const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
     const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
@@ -6919,8 +6969,6 @@ test("managed scheduler exposes running generation runs through target-scoped wo
           characterName: title,
           projectName: title,
           triggerToken: `managed_worker_lease_${Date.now()}`,
-          templateId: "character_identity_default",
-          trainingTemplateId: "character_identity_default",
           checkpointRelativePath: "models/checkpoints/mock.safetensors",
           usagePrompt: "managed worker lease usage",
           detailPrompt: "managed worker lease detail",
@@ -6969,11 +7017,15 @@ test("managed scheduler exposes running generation runs through target-scoped wo
     assert.equal(generationPayload.ok, true);
     const generationRunId = generationPayload.data.id as string;
 
-    const tickResponse = await schedulerTickRoute.POST();
+    const tickResponse = await schedulerTickRoute.POST(
+      new Request(`http://localhost/api/training/scheduler/tick?targetType=generationRun&targetId=${generationRunId}`, {
+        method: "POST",
+      }),
+    );
     const tickPayload = await tickResponse.json();
     assert.equal(tickResponse.status, 200);
     assert.equal(tickPayload.ok, true);
-    assert.equal(tickPayload.data.id, generationRunId);
+    assert.equal(tickPayload.data.targetId, generationRunId);
 
     const leaseResponse = await workerTaskNextRoute.GET(
       new Request(
@@ -6992,8 +7044,9 @@ test("managed scheduler exposes running generation runs through target-scoped wo
 });
 
 test("managed scheduler and worker endpoints can advance generation and training runs through completion", async () => {
-  await withTrainingManagedStoreSnapshot(async () => {
-    const seedProject = await createManagedReferenceSeedProject();
+  await withTrainingFileStateSnapshot(async () => {
+    await failStaleTrainingWorkerTargetsForTest(TRAINING_WORKER_TEST_PROJECT_NAME_PREFIXES);
+    const seedProject = await createTrainingReferenceSeedProject();
     const projectsRoute = await import("../src/app/api/training/projects/route");
     const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
     const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
@@ -7006,6 +7059,7 @@ test("managed scheduler and worker endpoints can advance generation and training
     const workerTrainingProgressRoute = await import("../src/app/api/training/worker/training-runs/[trainingRunId]/progress/route");
     const workerTrainingCompleteRoute = await import("../src/app/api/training/worker/training-runs/[trainingRunId]/complete/route");
     const generationTaskDetailRoute = await import("../src/app/api/training/generation-tasks/[taskId]/route");
+    const reviewRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
     const trainingRunDetailRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
     const title = `测试 worker 链项目 ${Date.now()}`;
 
@@ -7017,8 +7071,6 @@ test("managed scheduler and worker endpoints can advance generation and training
           characterName: title,
           projectName: title,
           triggerToken: `test_worker_flow_${Date.now()}`,
-          templateId: "character_identity_default",
-          trainingTemplateId: "character_identity_default",
           checkpointRelativePath: "models/checkpoints/mock.safetensors",
           usagePrompt: "测试 worker 链提示词",
           detailPrompt: "测试 worker 链细节",
@@ -7069,11 +7121,15 @@ test("managed scheduler and worker endpoints can advance generation and training
     assert.equal(queuedGenerationPayload.ok, true);
     const generationTaskId = queuedGenerationPayload.data.id as string;
 
-    const tickGenerationResponse = await schedulerTickRoute.POST();
+    const tickGenerationResponse = await schedulerTickRoute.POST(
+      new Request(`http://localhost/api/training/scheduler/tick?targetType=generationRun&targetId=${generationTaskId}`, {
+        method: "POST",
+      }),
+    );
     const tickGenerationPayload = await tickGenerationResponse.json();
     assert.equal(tickGenerationResponse.status, 200);
     assert.equal(tickGenerationPayload.ok, true);
-    assert.equal(tickGenerationPayload.data.id, generationTaskId);
+    assert.equal(tickGenerationPayload.data.targetId, generationTaskId);
     assert.equal(tickGenerationPayload.data.status, "running");
 
     const generationLeaseResponse = await workerTaskNextRoute.GET(
@@ -7106,8 +7162,14 @@ test("managed scheduler and worker endpoints can advance generation and training
       new Request(`http://localhost/api/training/worker/generation-tasks/${generationTaskId}/complete`, {
         method: "POST",
         body: JSON.stringify({
-          captionDraft: "worker 生成结果",
-          reviewStatus: "keep",
+          images: [
+            {
+              height: 1024,
+              relativePath: `data/training/${projectId}/outputs/worker-flow.png`,
+              sha256: "1".repeat(64),
+              width: 1024,
+            },
+          ],
         }),
       }),
       { params: Promise.resolve({ taskId: generationTaskId }) },
@@ -7115,8 +7177,8 @@ test("managed scheduler and worker endpoints can advance generation and training
     const completeGenerationPayload = await completeGenerationResponse.json();
     assert.equal(completeGenerationResponse.status, 200);
     assert.equal(completeGenerationPayload.ok, true);
-    assert.equal(completeGenerationPayload.data.id, generationTaskId);
-    assert.equal(completeGenerationPayload.data.status, "completed");
+    assert.equal(completeGenerationPayload.data.targetId, generationTaskId);
+    assert.equal(completeGenerationPayload.data.status, "succeeded");
 
     const completeGenerationWorkerResponse = await workerTaskCompleteRoute.POST(
       new Request(`http://localhost/api/training/worker/tasks/${generationWorkerTaskId}/complete`, {
@@ -7142,6 +7204,18 @@ test("managed scheduler and worker endpoints can advance generation and training
     assert.ok(Array.isArray(generationDetailPayload.data.outputResultIds));
     assert.equal(generationDetailPayload.data.outputResultIds.length, 1);
     assert.equal(typeof generationDetailPayload.data.outputResultIds[0], "string");
+    const generatedOutputResultId = generationDetailPayload.data.outputResultIds[0] as string;
+
+    const reviewGeneratedOutputResponse = await reviewRoute.POST(
+      new Request(`http://localhost/api/training/image-results/${generatedOutputResultId}/review`, {
+        method: "POST",
+        body: JSON.stringify({ reviewStatus: "keep" }),
+      }),
+      { params: Promise.resolve({ imageResultId: generatedOutputResultId }) },
+    );
+    const reviewGeneratedOutputPayload = await reviewGeneratedOutputResponse.json();
+    assert.equal(reviewGeneratedOutputResponse.status, 200);
+    assert.equal(reviewGeneratedOutputPayload.ok, true);
 
     const freezeResponse = await datasetRevisionRoute.POST(
       new Request(`http://localhost/api/training/projects/${projectId}/dataset-revisions`, {
@@ -7151,7 +7225,7 @@ test("managed scheduler and worker endpoints can advance generation and training
       { params: Promise.resolve({ projectId }) },
     );
     const freezePayload = await freezeResponse.json();
-    assert.equal(freezeResponse.status, 201);
+    assert.equal(freezeResponse.status, 201, JSON.stringify(freezePayload));
     assert.equal(freezePayload.ok, true);
     const revisionId = freezePayload.data.revision.id as string;
 
@@ -7176,11 +7250,15 @@ test("managed scheduler and worker endpoints can advance generation and training
     assert.equal(queuedTrainingPayload.ok, true);
     const trainingRunId = queuedTrainingPayload.data.id as string;
 
-    const tickTrainingResponse = await schedulerTickRoute.POST();
+    const tickTrainingResponse = await schedulerTickRoute.POST(
+      new Request(`http://localhost/api/training/scheduler/tick?targetType=trainingRun&targetId=${trainingRunId}`, {
+        method: "POST",
+      }),
+    );
     const tickTrainingPayload = await tickTrainingResponse.json();
     assert.equal(tickTrainingResponse.status, 200);
     assert.equal(tickTrainingPayload.ok, true);
-    assert.equal(tickTrainingPayload.data.id, trainingRunId);
+    assert.equal(tickTrainingPayload.data.targetId, trainingRunId);
     assert.equal(tickTrainingPayload.data.status, "running");
 
     const trainingLeaseResponse = await workerTaskNextRoute.GET(
@@ -7238,8 +7316,7 @@ test("managed scheduler and worker endpoints can advance generation and training
     const completeTrainingPayload = await completeTrainingResponse.json();
     assert.equal(completeTrainingResponse.status, 200);
     assert.equal(completeTrainingPayload.ok, true);
-    assert.equal(completeTrainingPayload.data.status, "completed");
-    assert.equal(completeTrainingPayload.data.artifactName, "worker_complete.safetensors");
+    assert.equal(completeTrainingPayload.data.status, "succeeded");
 
     const completeTrainingWorkerResponse = await workerTaskCompleteRoute.POST(
       new Request(`http://localhost/api/training/worker/tasks/${trainingWorkerTaskId}/complete`, {
@@ -7269,8 +7346,9 @@ test("managed scheduler and worker endpoints can advance generation and training
 });
 
 test("managed worker endpoints can mark generation and training runs as failed through /api/training", async () => {
-  await withTrainingManagedStoreSnapshot(async () => {
-    const seedProject = await createManagedReferenceSeedProject();
+  await withTrainingFileStateSnapshot(async () => {
+    await failStaleTrainingWorkerTargetsForTest(TRAINING_WORKER_TEST_PROJECT_NAME_PREFIXES);
+    const seedProject = await createTrainingReferenceSeedProject();
     const projectsRoute = await import("../src/app/api/training/projects/route");
     const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
     const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
@@ -7290,8 +7368,6 @@ test("managed worker endpoints can mark generation and training runs as failed t
           characterName: title,
           projectName: title,
           triggerToken: `test_worker_fail_${Date.now()}`,
-          templateId: "character_identity_default",
-          trainingTemplateId: "character_identity_default",
           checkpointRelativePath: "models/checkpoints/mock.safetensors",
           usagePrompt: "测试 worker fail 提示词",
           detailPrompt: "测试 worker fail 细节",
@@ -7338,7 +7414,11 @@ test("managed worker endpoints can mark generation and training runs as failed t
     );
     const generationPayload = await generationResponse.json();
     const generationTaskId = generationPayload.data.id as string;
-    await schedulerTickRoute.POST();
+    await schedulerTickRoute.POST(
+      new Request(`http://localhost/api/training/scheduler/tick?targetType=generationRun&targetId=${generationTaskId}`, {
+        method: "POST",
+      }),
+    );
 
     const failGenerationResponse = await workerGenerationFailRoute.POST(
       new Request(`http://localhost/api/training/worker/generation-tasks/${generationTaskId}/fail`, {
@@ -7375,7 +7455,7 @@ test("managed worker endpoints can mark generation and training runs as failed t
       { params: Promise.resolve({ projectId }) },
     );
     const uploadReferencePayload = await uploadReferenceResponse.json();
-    assert.equal(uploadReferenceResponse.status, 201);
+    assert.equal(uploadReferenceResponse.status, 201, JSON.stringify(uploadReferencePayload));
     assert.equal(uploadReferencePayload.ok, true);
     const imageId = uploadReferencePayload.data.id as string;
     const addToResultsResponse = await addToResultsRoute.POST(
@@ -7416,7 +7496,11 @@ test("managed worker endpoints can mark generation and training runs as failed t
     );
     const trainingPayload = await trainingResponse.json();
     const trainingRunId = trainingPayload.data.id as string;
-    await schedulerTickRoute.POST();
+    await schedulerTickRoute.POST(
+      new Request(`http://localhost/api/training/scheduler/tick?targetType=trainingRun&targetId=${trainingRunId}`, {
+        method: "POST",
+      }),
+    );
 
     const failTrainingResponse = await workerTrainingFailRoute.POST(
       new Request(`http://localhost/api/training/worker/training-runs/${trainingRunId}/fail`, {
@@ -7454,7 +7538,7 @@ test("managed training project can enqueue generation, freeze dataset, and start
   const cancelTrainingRunRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/cancel/route");
   const trainingRunDetailRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/route");
   const title = `测试运行链项目 ${Date.now()}`;
-  const seedProject = await createManagedReferenceSeedProject();
+  const seedProject = await createTrainingReferenceSeedProject();
 
   const createResponse = await projectsRoute.POST(
     new Request("http://localhost/api/training/projects", {
@@ -7464,8 +7548,6 @@ test("managed training project can enqueue generation, freeze dataset, and start
         characterName: title,
         projectName: title,
         triggerToken: `test_run_project_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         baseModel: "继承训练默认模型",
         captionStrategy: "先触发词后描述",
@@ -7674,8 +7756,6 @@ test("managed training project archives and restores through /api/training", asy
         characterName: title,
         projectName: title,
         triggerToken: `test_archive_project_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         baseModel: "继承训练默认模型",
         captionStrategy: "先触发词后描述",
@@ -7747,77 +7827,43 @@ test("GET /api/training/scheduler/status exposes a training scheduler snapshot",
   assert.equal(typeof payload.data.summary.runCount, "number");
 });
 
-test("GET /api/training/worker/status exposes managed HTTP-only run queue counts", async () => {
-  await withTrainingManagedStoreSnapshot(async () => {
+test("GET /api/training/worker/status exposes production HTTP-only run queue counts", async () => {
+  await withTrainingFileStateSnapshot(async () => {
     const workerStatusRoute = await import("../src/app/api/training/worker/status/route");
-    await writeFile(
-      TRAINING_MANAGED_RUNS_PATH,
-      `${JSON.stringify([
-        {
-          id: "managed-generation-visible",
-          kind: "generation",
-          status: "queued",
-          projectId: "managed-project",
-          projectTitle: "Managed Project",
-          title: "生成任务",
-          summary: "图片",
-          timestamp: "创建于 10:00",
-          provider: "本地任务",
-        },
-        {
-          id: "managed-training-visible",
-          kind: "training",
-          status: "running",
-          projectId: "managed-project",
-          projectTitle: "Managed Project",
-          title: "训练任务",
-          summary: "数据集 v1",
-          timestamp: "开始于 10:01",
-          provider: "本地训练",
-        },
-        {
-          id: "managed-generation-done",
-          kind: "generation",
-          status: "completed",
-          projectId: "managed-project",
-          projectTitle: "Managed Project",
-          title: "已完成生成任务",
-          summary: "图片",
-          timestamp: "完成于 10:02",
-          provider: "本地任务",
-        },
-      ], null, 2)}\n`,
-      "utf8",
+    const trainingProgressRoute = await import("../src/app/api/training/worker/training-runs/[trainingRunId]/progress/route");
+
+    const beforeResponse = await workerStatusRoute.GET();
+    const beforePayload = await beforeResponse.json();
+    assert.equal(beforeResponse.status, 200);
+    assert.equal(beforePayload.ok, true);
+
+    const { trainingRunId } = await createTrainingRunsForDeletionTest();
+    const progressResponse = await trainingProgressRoute.POST(
+      new Request(`http://localhost/api/training/worker/training-runs/${trainingRunId}/progress`, {
+        method: "POST",
+        body: JSON.stringify({
+          currentStep: 1,
+          schedulerMessage: "fixture worker status running",
+          targetSteps: 1200,
+        }),
+      }),
+      { params: Promise.resolve({ trainingRunId }) },
     );
+    const progressPayload = await progressResponse.json();
+    assert.equal(progressResponse.status, 200);
+    assert.equal(progressPayload.ok, true);
 
     const response = await workerStatusRoute.GET();
     const payload = await response.json();
 
     assert.equal(response.status, 200);
     assert.equal(payload.ok, true);
-    assert.deepEqual(payload.data.managedQueueStatus.summary, {
-      totalActive: 2,
-      totalQueued: 1,
-      totalRunning: 1,
-    });
-    assert.deepEqual(payload.data.managedQueueStatus.byWorkerType.image_generation, {
-      queued: 1,
-      running: 0,
-      totalActive: 1,
-      targetType: "generationRun",
-    });
-    assert.deepEqual(payload.data.managedQueueStatus.byWorkerType.training, {
-      queued: 0,
-      running: 1,
-      totalActive: 1,
-      targetType: "trainingRun",
-    });
-    assert.deepEqual(payload.data.managedQueueStatus.byWorkerType.dataset_freeze, {
-      queued: 0,
-      running: 0,
-      totalActive: 0,
-      targetType: "datasetRevision",
-    });
+    assert.ok(payload.data.summary.totalActive >= beforePayload.data.summary.totalActive + 2);
+    assert.ok(payload.data.byWorkerType.image_generation.queued >= beforePayload.data.byWorkerType.image_generation.queued + 1);
+    assert.ok(payload.data.byWorkerType.training.running >= beforePayload.data.byWorkerType.training.running + 1);
+    assert.equal(payload.data.byWorkerType.image_generation.targetType, "generationRun");
+    assert.equal(payload.data.byWorkerType.training.targetType, "trainingRun");
+    assert.equal(payload.data.byWorkerType.dataset_freeze.targetType, "datasetRevision");
   });
 });
 

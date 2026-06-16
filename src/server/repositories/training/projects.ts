@@ -3,7 +3,6 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
 
 import { Prisma } from "@/generated/prisma";
-import { toImageUrl } from "@/lib/image-url";
 import { prisma } from "@/lib/prisma";
 import { TRAINING_IMAGE_GENERATION_PROVIDER_POLICY } from "@/lib/training/provider-policy";
 import { slugifyForTrainingRepository } from "@/server/repositories/training/helpers";
@@ -139,6 +138,11 @@ function formatArtifactRoot() {
   return join(process.cwd(), "data", "images", "training");
 }
 
+function serializeFileSize(value: bigint | number | null | undefined) {
+  if (value === null || typeof value === "undefined") return null;
+  return Number(value);
+}
+
 function buildTriggerToken(name: string, defaults: unknown) {
   if (defaults && typeof defaults === "object" && !Array.isArray(defaults)) {
     const token = normalizeNullableString((defaults as JsonObject).triggerToken);
@@ -258,7 +262,7 @@ function mapCharacterImageRow(
     relativePath,
     absolutePath: relativePath ? join(process.cwd(), relativePath) : null,
     sha256: row.artifact.sha256,
-    byteSize: row.artifact.fileSize,
+    byteSize: serializeFileSize(row.artifact.fileSize),
     mimeType: row.artifact.mimeType,
     width: row.artifact.width,
     height: row.artifact.height,
@@ -309,15 +313,20 @@ function mapDatasetRevisionRow(
 }
 
 function mapTrainingRunRow(row: Prisma.TrainingRunGetPayload<{ include: { finalArtifact: true; logArtifact: true } }>) {
+  const finalArtifactPath = row.finalArtifact?.filePath ?? row.finalArtifact?.storageKey ?? null;
+  const logArtifactPath = row.logArtifact?.filePath ?? row.logArtifact?.storageKey ?? null;
+
   return {
     id: row.id,
     jobId: row.trainingProjectId,
     datasetRevisionId: row.trainingDatasetRevisionId,
     status: normalizeRunStatus(row.status),
     finalSafetensorsArtifactId: row.finalLoraArtifactId,
+    finalSafetensorsArtifactName: finalArtifactPath ? basename(finalArtifactPath) : null,
     resolvedConfig: row.runSummaryJson,
     metadataSummary: row.progressJson,
     logArtifactId: row.trainingLogArtifactId,
+    logArtifactName: logArtifactPath ? basename(logArtifactPath) : null,
     currentStep: row.currentStep,
     targetSteps: row.totalSteps,
     schedulerMessage: row.schedulerMessage,

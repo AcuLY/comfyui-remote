@@ -11,6 +11,14 @@ import {
   getTrainingSceneDescriptionPreset,
   listTrainingSceneDescriptionPresets,
 } from "@/server/services/training/preset-service";
+import {
+  getTrainingGenerationRun as getTrainingGenerationRunRecord,
+} from "@/server/repositories/training/snapshot";
+import {
+  listTrainingProjectOrderIds,
+  orderTrainingProjectsByStoredIds,
+} from "@/server/services/training/project-order-service";
+import { listHiddenTrainingRunIds } from "@/server/services/training/run-visibility-service";
 import { loadTrainingSnapshot } from "@/server/services/training/snapshot-service";
 
 export class TrainingReadServiceError extends Error {
@@ -49,7 +57,7 @@ export async function listTrainingProjects(filters: { status?: string } = {}) {
     if (!filters.status) return true;
     return project.status === filters.status;
   });
-  return projects;
+  return orderTrainingProjectsByStoredIds(projects, await listTrainingProjectOrderIds());
 }
 
 export async function getTrainingProject(projectId: string) {
@@ -155,12 +163,56 @@ export async function listTrainingRuns(filters: {
   status?: LoraTrainingTaskStatus;
 } = {}) {
   const snapshot = await loadTrainingSnapshot();
-  return filterRuns(snapshot.runs, filters);
+  const hiddenRunIds = new Set(await listHiddenTrainingRunIds());
+  return filterRuns(snapshot.runs, filters).filter((run) => !hiddenRunIds.has(run.id));
+}
+
+function normalizeGenerationStatus(status: string): LoraTrainingTaskStatus {
+  if (status === "done") return "completed";
+  if (status === "running") return "running";
+  if (status === "queued") return "queued";
+  return "failed";
+}
+
+async function getTrainingGenerationRunDirect(runId: string): Promise<LoraTrainingRun | null> {
+  const generationRun = await getTrainingGenerationRunRecord(runId);
+  if (!generationRun) return null;
+
+  const project = await getTrainingProject(generationRun.jobId);
+  const section = generationRun.sectionId
+    ? project.sections.find((item) => item.id === generationRun.sectionId) ?? null
+    : null;
+
+  return {
+    id: generationRun.id,
+    kind: "generation",
+    status: normalizeGenerationStatus(generationRun.status),
+    projectId: project.id,
+    sectionId: generationRun.sectionId ?? undefined,
+    projectTitle: project.title,
+    title: section ? `${section.title} 图片生成` : "训练图片生成",
+    summary: section ? `图片 · 小节 ${section.title}` : "图片生成",
+    timestamp: generationRun.finishedAt ?? generationRun.startedAt ?? generationRun.createdAt,
+    provider: generationRun.imageModel ?? generationRun.hostModel ?? generationRun.provider ?? undefined,
+    finalInput: generationRun.visualPrompt ?? generationRun.hostInstruction ?? undefined,
+    inputImages: [],
+    errorMessage: typeof generationRun.errorSummary === "string" ? generationRun.errorSummary : undefined,
+    outputLabel: `输出 ${generationRun.counts.candidateImages} 张图片`,
+    outputResultIds: [],
+  };
 }
 
 export async function getTrainingRun(runId: string, kind?: LoraTrainingTaskKind) {
+  if ((await listHiddenTrainingRunIds()).includes(runId)) {
+    throw new TrainingReadServiceError("Training run not found", 404, { runId, kind: kind ?? null });
+  }
+
   const snapshot = await loadTrainingSnapshot();
   const run = snapshot.runs.find((item) => item.id === runId && (!kind || item.kind === kind));
+  if (!run && kind === "generation") {
+    const directGenerationRun = await getTrainingGenerationRunDirect(runId);
+    if (directGenerationRun) return directGenerationRun;
+  }
   if (!run) {
     throw new TrainingReadServiceError("Training run not found", 404, { runId, kind: kind ?? null });
   }

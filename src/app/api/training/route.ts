@@ -269,7 +269,7 @@ const TRAINING_API_MANIFEST = {
       steps: [
         {
           id: "create_project",
-          description: "Create the managed training project and persist the returned project id.",
+          description: "Create the training project and persist the returned project id.",
           method: "POST",
           path: "/api/training/projects",
           requestBody: {

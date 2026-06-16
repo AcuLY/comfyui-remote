@@ -263,11 +263,11 @@ function buildTrainingRuns(
         : formatTimestamp(run.createdAt, "创建于"),
     provider: "本地训练",
     datasetRevisionId: run.datasetRevisionId,
-    artifactName: run.finalSafetensorsArtifactId ?? undefined,
+    artifactName: run.finalSafetensorsArtifactName ?? run.finalSafetensorsArtifactId ?? undefined,
     finalLoraArtifactId: run.finalSafetensorsArtifactId ?? undefined,
     finalInput: run.resolvedConfig ? JSON.stringify(run.resolvedConfig, null, 2) : undefined,
     schedulerMessage: run.metadataSummary ? JSON.stringify(run.metadataSummary) : undefined,
-    trainingLogArtifactName: run.logArtifactId ?? undefined,
+    trainingLogArtifactName: run.logArtifactName ?? run.logArtifactId ?? undefined,
     datasetSamples: resultPool
       .filter((image) => revisionMap.get(run.datasetRevisionId)?.has(image.id))
       .slice(0, 4)
