@@ -60,7 +60,15 @@ async function getRunReviewBase(runId: string) {
             orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
             select: {
               presetId: true,
-              preset: { select: { id: true, name: true, slug: true } },
+              preset: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  notes: true,
+                  category: { select: { type: true } },
+                },
+              },
             },
           },
         },
@@ -126,7 +134,12 @@ export async function getRunAgentContext(runId: string) {
 
   const presetInfos = run.project.presetBindingRows
     .map((binding) => binding.preset)
-    .filter((preset): preset is { id: string; name: string; slug: string } => Boolean(preset));
+    .filter((preset): preset is NonNullable<typeof preset> => Boolean(preset))
+    .map((preset) => ({
+      id: preset.id,
+      name: preset.name,
+      slug: preset.slug,
+    }));
 
   const imageSummary = run.images.reduce(
     (summary, image) => {
