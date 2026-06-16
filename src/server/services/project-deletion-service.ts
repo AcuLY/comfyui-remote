@@ -16,6 +16,7 @@ import {
 } from "@/server/services/comfyui-service";
 import { cleanupProjectSectionFiles } from "@/server/services/section-cleanup-service";
 import { cleanupProjectExportDirectory } from "@/server/services/project-file-cleanup-service";
+import { buildGenerationProjectWhere } from "@/server/repositories/legacy-training-resource-boundary";
 
 const log = createLogger({ module: "project-deletion" });
 
@@ -53,7 +54,7 @@ type CountResult = { count: number };
 
 export type ProjectDeletionDb = {
   project: {
-    findUnique(args: unknown): Promise<ProjectDeletionProject | null>;
+    findFirst(args: unknown): Promise<ProjectDeletionProject | null>;
     delete(args: unknown): Promise<unknown>;
   };
   run: {
@@ -134,8 +135,8 @@ export async function deleteProjectCompletelyWithDependencies(
   projectId: string,
   deps: ProjectDeletionDependencies,
 ): Promise<ProjectDeletionResult> {
-  const project = await deps.db.project.findUnique({
-    where: { id: projectId },
+  const project = await deps.db.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       id: true,
       slug: true,
@@ -175,9 +176,11 @@ export async function cancelProjectTasksForCleanupWithDependencies(
   projectId: string,
   deps: ProjectDeletionDependencies,
 ) {
+  const projectBoundary = buildGenerationProjectWhere({ id: projectId });
   const activeRuns = await deps.db.run.findMany({
     where: {
       projectId,
+      project: projectBoundary,
       status: { in: RUN_ACTIVE_STATUSES },
     },
     select: { id: true, status: true, comfyPromptId: true },
@@ -195,6 +198,7 @@ export async function cancelProjectTasksForCleanupWithDependencies(
   const runResult = await deps.db.run.updateMany({
     where: {
       projectId,
+      project: projectBoundary,
       status: { in: RUN_ACTIVE_STATUSES },
     },
     data: {
@@ -207,6 +211,7 @@ export async function cancelProjectTasksForCleanupWithDependencies(
   const activeCensoringTasks = await deps.db.censoringTask.findMany({
     where: {
       projectId,
+      project: projectBoundary,
       status: { in: CENSORING_ACTIVE_STATUSES },
     },
     select: { id: true, status: true, errorMessage: true },
@@ -225,6 +230,7 @@ export async function cancelProjectTasksForCleanupWithDependencies(
   const censoringResult = await deps.db.censoringTask.updateMany({
     where: {
       projectId,
+      project: projectBoundary,
       status: { in: CENSORING_ACTIVE_STATUSES },
     },
     data: {
@@ -319,8 +325,9 @@ async function cleanupProjectTrashFiles(
   projectId: string,
   deps: ProjectDeletionDependencies,
 ) {
+  const projectBoundary = buildGenerationProjectWhere({ id: projectId });
   const trashedImages = await deps.db.imageResult.findMany({
-    where: { run: { projectId }, reviewStatus: "trashed" },
+    where: { run: { projectId, project: projectBoundary }, reviewStatus: "trashed" },
     select: { trashRecord: { select: { id: true, trashPath: true } } },
   });
 
