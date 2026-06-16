@@ -1023,6 +1023,21 @@ test("training snapshot service uses the Training snapshot repository boundary",
   );
 });
 
+test("training snapshot mapped section blocks keep product-facing copy", () => {
+  const snapshotServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/snapshot-service.ts"), "utf8");
+
+  assert.doesNotMatch(
+    snapshotServiceSource,
+    /legacy-block|旧训练小节/,
+    "Training snapshot section blocks should not expose legacy migration labels or ids to training route payloads.",
+  );
+  assert.match(
+    snapshotServiceSource,
+    /title:\s*"训练场景说明"/,
+    "Training snapshot section blocks should use product-facing scene-description copy.",
+  );
+});
+
 test("training project service uses the Training project repository boundary", () => {
   const projectServiceSource = readFileSync(join(process.cwd(), "src/server/services/training/project-service.ts"), "utf8");
   const repositorySource = readFileSync(join(process.cwd(), "src/server/repositories/training/projects.ts"), "utf8");

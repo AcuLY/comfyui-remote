@@ -502,10 +502,10 @@ async function mapRealTrainingProjects(): Promise<LoraTrainingData> {
         updatedAt: override?.updatedAt ?? formatUpdatedAt(section.updatedAt),
         blocks: override?.blocks ?? [
           {
-            id: `${section.id}-legacy-block`,
-            source: "本地",
-            title: "旧训练小节映射",
-            text: section.template?.description ?? `旧训练小节 ${section.key} 的数据已映射到新训练模块。`,
+            id: `${section.id}-scene-block`,
+            source: "项目小节",
+            title: "训练场景说明",
+            text: baseResolvedScene,
           },
         ],
         resolvedScene: override?.resolvedScene ?? baseResolvedScene,
