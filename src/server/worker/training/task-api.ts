@@ -7,10 +7,12 @@ import {
   mapLegacyTrainingGenerationError,
 } from "@/server/services/training/legacy-compat-service";
 import {
+  TRAINING_WORKER_TYPES,
   trainingWorkerTaskCompleteRequestSchema,
   trainingWorkerTaskFailRequestSchema,
   trainingWorkerTaskHeartbeatRequestSchema,
   trainingWorkerTaskLeaseRequestSchema,
+  type TrainingWorkerType,
 } from "@/lib/training/schemas";
 import { listManagedTrainingRuns } from "@/server/services/training/project-service";
 import type { LoraTrainingRun } from "@/features/training/types";
@@ -36,6 +38,62 @@ function getRunWorkerMetadata(run: LoraTrainingRun) {
     workerType: "training",
     targetType: "trainingRun",
   };
+}
+
+function createEmptyManagedWorkerTypeStatus() {
+  return {
+    image_generation: {
+      queued: 0,
+      running: 0,
+      totalActive: 0,
+      targetType: "generationRun",
+    },
+    dataset_freeze: {
+      queued: 0,
+      running: 0,
+      totalActive: 0,
+      targetType: "datasetRevision",
+    },
+    training: {
+      queued: 0,
+      running: 0,
+      totalActive: 0,
+      targetType: "trainingRun",
+    },
+  } satisfies Record<TrainingWorkerType, {
+    queued: number;
+    running: number;
+    targetType: string;
+    totalActive: number;
+  }>;
+}
+
+async function getManagedTrainingWorkerQueueStatus() {
+  const byWorkerType = createEmptyManagedWorkerTypeStatus();
+  const runs = await listManagedTrainingRuns();
+
+  for (const run of runs) {
+    if (run.status !== "queued" && run.status !== "running") continue;
+
+    const workerType = getRunWorkerMetadata(run).workerType;
+    const status = byWorkerType[workerType];
+    if (run.status === "queued") status.queued += 1;
+    if (run.status === "running") status.running += 1;
+    status.totalActive += 1;
+  }
+
+  return {
+    summary: {
+      totalActive: TRAINING_WORKER_TYPES.reduce((total, workerType) => total + byWorkerType[workerType].totalActive, 0),
+      totalQueued: TRAINING_WORKER_TYPES.reduce((total, workerType) => total + byWorkerType[workerType].queued, 0),
+      totalRunning: TRAINING_WORKER_TYPES.reduce((total, workerType) => total + byWorkerType[workerType].running, 0),
+    },
+    byWorkerType,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function getManagedWorkerTaskId(runId: string) {
@@ -159,7 +217,27 @@ async function failManagedTrainingWorkerTask(taskId: string, input: unknown) {
 }
 
 export async function getTrainingWorkerQueueStatus() {
-  return getLegacyTrainingWorkerQueueStatus();
+  const managedQueueStatus = await getManagedTrainingWorkerQueueStatus();
+
+  try {
+    const legacyQueueStatus = await getLegacyTrainingWorkerQueueStatus();
+    return {
+      ...(isRecord(legacyQueueStatus) ? legacyQueueStatus : {}),
+      legacyQueueStatus,
+      managedQueueStatus,
+    };
+  } catch (error) {
+    const mapped = mapLegacyTrainingGenerationError(error);
+    return {
+      legacyQueueStatus: {
+        details: mapped.details,
+        error: mapped.message,
+        status: mapped.status,
+        unavailable: true,
+      },
+      managedQueueStatus,
+    };
+  }
 }
 
 export async function leaseNextTrainingWorkerTask(input: unknown) {

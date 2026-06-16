@@ -7588,6 +7588,80 @@ test("GET /api/training/scheduler/status exposes a training scheduler snapshot",
   assert.equal(typeof payload.data.summary.runCount, "number");
 });
 
+test("GET /api/training/worker/status exposes managed HTTP-only run queue counts", async () => {
+  await withTrainingManagedStoreSnapshot(async () => {
+    const workerStatusRoute = await import("../src/app/api/training/worker/status/route");
+    await writeFile(
+      TRAINING_MANAGED_RUNS_PATH,
+      `${JSON.stringify([
+        {
+          id: "managed-generation-visible",
+          kind: "generation",
+          status: "queued",
+          projectId: "managed-project",
+          projectTitle: "Managed Project",
+          title: "生成任务",
+          summary: "图片",
+          timestamp: "创建于 10:00",
+          provider: "本地任务",
+        },
+        {
+          id: "managed-training-visible",
+          kind: "training",
+          status: "running",
+          projectId: "managed-project",
+          projectTitle: "Managed Project",
+          title: "训练任务",
+          summary: "数据集 v1",
+          timestamp: "开始于 10:01",
+          provider: "本地训练",
+        },
+        {
+          id: "managed-generation-done",
+          kind: "generation",
+          status: "completed",
+          projectId: "managed-project",
+          projectTitle: "Managed Project",
+          title: "已完成生成任务",
+          summary: "图片",
+          timestamp: "完成于 10:02",
+          provider: "本地任务",
+        },
+      ], null, 2)}\n`,
+      "utf8",
+    );
+
+    const response = await workerStatusRoute.GET();
+    const payload = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(payload.ok, true);
+    assert.deepEqual(payload.data.managedQueueStatus.summary, {
+      totalActive: 2,
+      totalQueued: 1,
+      totalRunning: 1,
+    });
+    assert.deepEqual(payload.data.managedQueueStatus.byWorkerType.image_generation, {
+      queued: 1,
+      running: 0,
+      totalActive: 1,
+      targetType: "generationRun",
+    });
+    assert.deepEqual(payload.data.managedQueueStatus.byWorkerType.training, {
+      queued: 0,
+      running: 1,
+      totalActive: 1,
+      targetType: "trainingRun",
+    });
+    assert.deepEqual(payload.data.managedQueueStatus.byWorkerType.dataset_freeze, {
+      queued: 0,
+      running: 0,
+      totalActive: 0,
+      targetType: "datasetRevision",
+    });
+  });
+});
+
 test("training write routes exist under /api/training and fail through HTTP contracts instead of missing handlers", async () => {
   const createProjectRoute = await import("../src/app/api/training/projects/route");
   const updateProjectRoute = await import("../src/app/api/training/projects/[projectId]/route");
