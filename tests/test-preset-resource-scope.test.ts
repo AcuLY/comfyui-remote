@@ -140,6 +140,127 @@ setupDb.exec(`
     "after" JSONB,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE "Project" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "title" TEXT NOT NULL,
+    "slug" TEXT NOT NULL UNIQUE,
+    "status" TEXT NOT NULL DEFAULT 'draft',
+    "notes" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE "ProjectSection" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectId" TEXT NOT NULL,
+    "name" TEXT,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE "SectionPresetBinding" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectSectionId" TEXT NOT NULL,
+    "bindingKey" TEXT NOT NULL,
+    "categoryId" TEXT NOT NULL,
+    "presetId" TEXT,
+    "variantId" TEXT,
+    "presetGroupId" TEXT,
+    "groupBindingKey" TEXT,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE "SectionPromptBlock" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectSectionId" TEXT NOT NULL,
+    "sectionBindingId" TEXT UNIQUE,
+    "type" TEXT NOT NULL DEFAULT 'preset',
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE "SectionManualLoraEntry" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectSectionId" TEXT NOT NULL,
+    "sectionBindingId" TEXT,
+    "stage" TEXT NOT NULL,
+    "path" TEXT NOT NULL,
+    "weight" REAL NOT NULL DEFAULT 1,
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE "ProjectPresetBinding" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectId" TEXT NOT NULL,
+    "categoryId" TEXT NOT NULL,
+    "presetId" TEXT NOT NULL,
+    "variantId" TEXT,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE "ProjectTemplate" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE "ProjectTemplateSection" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectTemplateId" TEXT NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "name" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE "TemplateSectionPresetBinding" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectTemplateSectionId" TEXT NOT NULL,
+    "bindingKey" TEXT NOT NULL,
+    "categoryId" TEXT NOT NULL,
+    "presetId" TEXT,
+    "variantId" TEXT,
+    "presetGroupId" TEXT,
+    "groupBindingKey" TEXT,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE "TemplateSectionPromptBlock" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectTemplateSectionId" TEXT NOT NULL,
+    "templateSectionBindingId" TEXT UNIQUE,
+    "type" TEXT NOT NULL DEFAULT 'preset',
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE "TemplateSectionManualLoraEntry" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectTemplateSectionId" TEXT NOT NULL,
+    "templateSectionBindingId" TEXT,
+    "stage" TEXT NOT NULL,
+    "path" TEXT NOT NULL,
+    "weight" REAL NOT NULL DEFAULT 1,
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE TABLE "ProjectTemplatePresetBinding" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectTemplateId" TEXT NOT NULL,
+    "categoryId" TEXT NOT NULL,
+    "presetId" TEXT NOT NULL,
+    "variantId" TEXT,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 let prisma: typeof PrismaClientSingleton;
@@ -155,6 +276,8 @@ let updatePreset: typeof PresetVariantCrudActions.updatePreset;
 let deletePreset: typeof PresetVariantCrudActions.deletePreset;
 let resolveVariantContent: typeof PresetVariantResolveActions.resolveVariantContent;
 let syncPresetToSections: typeof PresetSyncActions.syncPresetToSections;
+let getPresetUsage: typeof PresetSyncActions.getPresetUsage;
+let deletePresetCascade: typeof PresetSyncActions.deletePresetCascade;
 let getPresetFolders: typeof ServerData.getPresetFolders;
 let getPresetFolder: typeof ServerData.getPresetFolder;
 let getPresetCategoriesWithPresets: typeof ServerData.getPresetCategoriesWithPresets;
@@ -194,6 +317,8 @@ test.before(async () => {
   deletePreset = presetVariantCrudActions.deletePreset;
   resolveVariantContent = presetVariantResolveActions.resolveVariantContent;
   syncPresetToSections = presetSyncActions.syncPresetToSections;
+  getPresetUsage = presetSyncActions.getPresetUsage;
+  deletePresetCascade = presetSyncActions.deletePresetCascade;
   getPresetFolders = serverData.getPresetFolders;
   getPresetFolder = serverData.getPresetFolder;
   getPresetCategoriesWithPresets = serverData.getPresetCategoriesWithPresets;
@@ -1539,6 +1664,385 @@ test("training preset creation never writes through ordinary generation preset t
   assert.equal(
     (await prisma.presetCategory.findUniqueOrThrow({ where: { id: "shared-name-ordinary-category" } })).type,
     "preset",
+  );
+});
+
+test("ordinary preset usage hides LoRA training-owned project and template bindings", async () => {
+  await prisma.presetCategory.create({
+    data: {
+      id: "ordinary-usage-boundary-category",
+      name: "Ordinary Usage Boundary",
+      slug: "ordinary-usage-boundary",
+      type: "preset",
+    },
+  });
+  await prisma.preset.create({
+    data: {
+      id: "ordinary-usage-boundary-preset",
+      categoryId: "ordinary-usage-boundary-category",
+      name: "Ordinary Usage Boundary Preset",
+      slug: "ordinary-usage-boundary-preset",
+    },
+  });
+  await prisma.project.createMany({
+    data: [
+      {
+        id: "ordinary-usage-boundary-project",
+        title: "Ordinary Usage Project",
+        slug: "ordinary-usage-boundary-project",
+      },
+      {
+        id: "training-usage-boundary-project",
+        title: "Training Usage Project",
+        slug: "training-usage-boundary-project",
+        notes: JSON.stringify({ temporary: true, purpose: "character_lora_benchmark" }),
+      },
+    ],
+  });
+  await prisma.projectSection.createMany({
+    data: [
+      {
+        id: "ordinary-usage-boundary-section",
+        projectId: "ordinary-usage-boundary-project",
+        name: "Ordinary Section",
+      },
+      {
+        id: "training-usage-boundary-section",
+        projectId: "training-usage-boundary-project",
+        name: "Training Section",
+      },
+    ],
+  });
+  await prisma.projectTemplate.createMany({
+    data: [
+      {
+        id: "ordinary-usage-boundary-template",
+        name: "Ordinary Usage Template",
+      },
+      {
+        id: "training-usage-boundary-template",
+        name: "角色 LoRA 测试 Usage Template",
+        description: "Character LoRA training benchmark usage template",
+      },
+    ],
+  });
+  await prisma.projectTemplateSection.createMany({
+    data: [
+      {
+        id: "ordinary-usage-boundary-template-section",
+        projectTemplateId: "ordinary-usage-boundary-template",
+        name: "Ordinary Template Section",
+      },
+      {
+        id: "training-usage-boundary-template-section",
+        projectTemplateId: "training-usage-boundary-template",
+        name: "Training Template Section",
+      },
+    ],
+  });
+  await prisma.sectionPresetBinding.createMany({
+    data: [
+      {
+        id: "ordinary-usage-boundary-section-binding",
+        projectSectionId: "ordinary-usage-boundary-section",
+        bindingKey: "ordinary-section",
+        categoryId: "ordinary-usage-boundary-category",
+        presetId: "ordinary-usage-boundary-preset",
+      },
+      {
+        id: "training-usage-boundary-section-binding",
+        projectSectionId: "training-usage-boundary-section",
+        bindingKey: "training-section",
+        categoryId: "ordinary-usage-boundary-category",
+        presetId: "ordinary-usage-boundary-preset",
+      },
+    ],
+  });
+  await prisma.templateSectionPresetBinding.createMany({
+    data: [
+      {
+        id: "ordinary-usage-boundary-template-section-binding",
+        projectTemplateSectionId: "ordinary-usage-boundary-template-section",
+        bindingKey: "ordinary-template-section",
+        categoryId: "ordinary-usage-boundary-category",
+        presetId: "ordinary-usage-boundary-preset",
+      },
+      {
+        id: "training-usage-boundary-template-section-binding",
+        projectTemplateSectionId: "training-usage-boundary-template-section",
+        bindingKey: "training-template-section",
+        categoryId: "ordinary-usage-boundary-category",
+        presetId: "ordinary-usage-boundary-preset",
+      },
+    ],
+  });
+  await prisma.projectPresetBinding.createMany({
+    data: [
+      {
+        id: "ordinary-usage-boundary-project-binding",
+        projectId: "ordinary-usage-boundary-project",
+        categoryId: "ordinary-usage-boundary-category",
+        presetId: "ordinary-usage-boundary-preset",
+      },
+      {
+        id: "training-usage-boundary-project-binding",
+        projectId: "training-usage-boundary-project",
+        categoryId: "ordinary-usage-boundary-category",
+        presetId: "ordinary-usage-boundary-preset",
+      },
+    ],
+  });
+  await prisma.projectTemplatePresetBinding.createMany({
+    data: [
+      {
+        id: "ordinary-usage-boundary-project-template-binding",
+        projectTemplateId: "ordinary-usage-boundary-template",
+        categoryId: "ordinary-usage-boundary-category",
+        presetId: "ordinary-usage-boundary-preset",
+      },
+      {
+        id: "training-usage-boundary-project-template-binding",
+        projectTemplateId: "training-usage-boundary-template",
+        categoryId: "ordinary-usage-boundary-category",
+        presetId: "ordinary-usage-boundary-preset",
+      },
+    ],
+  });
+
+  const usage = await getPresetUsage("ordinary-usage-boundary-preset");
+
+  assert.deepEqual(
+    usage.sections
+      .map((section) => ({ id: section.sectionId, title: section.projectTitle }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
+    [
+      { id: "ordinary-usage-boundary-section", title: "Ordinary Usage Project" },
+      { id: "project-template:ordinary-usage-boundary-template", title: "模板：Ordinary Usage Template" },
+      { id: "project:ordinary-usage-boundary-project", title: "Ordinary Usage Project" },
+      {
+        id: "template-section:ordinary-usage-boundary-template-section",
+        title: "模板：Ordinary Usage Template",
+      },
+    ].sort((a, b) => a.id.localeCompare(b.id)),
+    "ordinary preset usage must not expose training-owned projects or templates that share the same preset id",
+  );
+  assert.equal(usage.totalBlocks, 4);
+});
+
+test("ordinary preset cascade delete leaves LoRA training-owned bindings intact", async () => {
+  await prisma.presetCategory.create({
+    data: {
+      id: "ordinary-cascade-boundary-category",
+      name: "Ordinary Cascade Boundary",
+      slug: "ordinary-cascade-boundary",
+      type: "preset",
+    },
+  });
+  await prisma.preset.create({
+    data: {
+      id: "ordinary-cascade-boundary-preset",
+      categoryId: "ordinary-cascade-boundary-category",
+      name: "Ordinary Cascade Boundary Preset",
+      slug: "ordinary-cascade-boundary-preset",
+    },
+  });
+  await prisma.project.createMany({
+    data: [
+      {
+        id: "ordinary-cascade-boundary-project",
+        title: "Ordinary Cascade Project",
+        slug: "ordinary-cascade-boundary-project",
+      },
+      {
+        id: "training-cascade-boundary-project",
+        title: "Training Cascade Project",
+        slug: "training-cascade-boundary-project",
+        notes: JSON.stringify({ temporary: true, purpose: "character_lora_benchmark" }),
+      },
+    ],
+  });
+  await prisma.projectSection.createMany({
+    data: [
+      { id: "ordinary-cascade-boundary-section", projectId: "ordinary-cascade-boundary-project" },
+      { id: "training-cascade-boundary-section", projectId: "training-cascade-boundary-project" },
+    ],
+  });
+  await prisma.projectTemplate.createMany({
+    data: [
+      { id: "ordinary-cascade-boundary-template", name: "Ordinary Cascade Template" },
+      {
+        id: "training-cascade-boundary-template",
+        name: "角色 LoRA 测试 Cascade Template",
+        description: "Character LoRA training benchmark cascade template",
+      },
+    ],
+  });
+  await prisma.projectTemplateSection.createMany({
+    data: [
+      {
+        id: "ordinary-cascade-boundary-template-section",
+        projectTemplateId: "ordinary-cascade-boundary-template",
+      },
+      {
+        id: "training-cascade-boundary-template-section",
+        projectTemplateId: "training-cascade-boundary-template",
+      },
+    ],
+  });
+  await prisma.sectionPresetBinding.createMany({
+    data: [
+      {
+        id: "ordinary-cascade-boundary-section-binding",
+        projectSectionId: "ordinary-cascade-boundary-section",
+        bindingKey: "ordinary-section",
+        categoryId: "ordinary-cascade-boundary-category",
+        presetId: "ordinary-cascade-boundary-preset",
+      },
+      {
+        id: "training-cascade-boundary-section-binding",
+        projectSectionId: "training-cascade-boundary-section",
+        bindingKey: "training-section",
+        categoryId: "ordinary-cascade-boundary-category",
+        presetId: "ordinary-cascade-boundary-preset",
+      },
+    ],
+  });
+  await prisma.templateSectionPresetBinding.createMany({
+    data: [
+      {
+        id: "ordinary-cascade-boundary-template-section-binding",
+        projectTemplateSectionId: "ordinary-cascade-boundary-template-section",
+        bindingKey: "ordinary-template-section",
+        categoryId: "ordinary-cascade-boundary-category",
+        presetId: "ordinary-cascade-boundary-preset",
+      },
+      {
+        id: "training-cascade-boundary-template-section-binding",
+        projectTemplateSectionId: "training-cascade-boundary-template-section",
+        bindingKey: "training-template-section",
+        categoryId: "ordinary-cascade-boundary-category",
+        presetId: "ordinary-cascade-boundary-preset",
+      },
+    ],
+  });
+  await prisma.sectionPromptBlock.createMany({
+    data: [
+      {
+        id: "ordinary-cascade-boundary-section-block",
+        projectSectionId: "ordinary-cascade-boundary-section",
+        sectionBindingId: "ordinary-cascade-boundary-section-binding",
+      },
+      {
+        id: "training-cascade-boundary-section-block",
+        projectSectionId: "training-cascade-boundary-section",
+        sectionBindingId: "training-cascade-boundary-section-binding",
+      },
+    ],
+  });
+  await prisma.templateSectionPromptBlock.createMany({
+    data: [
+      {
+        id: "ordinary-cascade-boundary-template-section-block",
+        projectTemplateSectionId: "ordinary-cascade-boundary-template-section",
+        templateSectionBindingId: "ordinary-cascade-boundary-template-section-binding",
+      },
+      {
+        id: "training-cascade-boundary-template-section-block",
+        projectTemplateSectionId: "training-cascade-boundary-template-section",
+        templateSectionBindingId: "training-cascade-boundary-template-section-binding",
+      },
+    ],
+  });
+  await prisma.projectPresetBinding.createMany({
+    data: [
+      {
+        id: "ordinary-cascade-boundary-project-binding",
+        projectId: "ordinary-cascade-boundary-project",
+        categoryId: "ordinary-cascade-boundary-category",
+        presetId: "ordinary-cascade-boundary-preset",
+      },
+      {
+        id: "training-cascade-boundary-project-binding",
+        projectId: "training-cascade-boundary-project",
+        categoryId: "ordinary-cascade-boundary-category",
+        presetId: "ordinary-cascade-boundary-preset",
+      },
+    ],
+  });
+  await prisma.projectTemplatePresetBinding.createMany({
+    data: [
+      {
+        id: "ordinary-cascade-boundary-project-template-binding",
+        projectTemplateId: "ordinary-cascade-boundary-template",
+        categoryId: "ordinary-cascade-boundary-category",
+        presetId: "ordinary-cascade-boundary-preset",
+      },
+      {
+        id: "training-cascade-boundary-project-template-binding",
+        projectTemplateId: "training-cascade-boundary-template",
+        categoryId: "ordinary-cascade-boundary-category",
+        presetId: "ordinary-cascade-boundary-preset",
+      },
+    ],
+  });
+
+  await ignoreStaticRevalidateError(() => deletePresetCascade("ordinary-cascade-boundary-preset"));
+
+  assert.equal(
+    await prisma.sectionPresetBinding.count({ where: { id: "ordinary-cascade-boundary-section-binding" } }),
+    0,
+  );
+  assert.equal(
+    await prisma.templateSectionPresetBinding.count({
+      where: { id: "ordinary-cascade-boundary-template-section-binding" },
+    }),
+    0,
+  );
+  assert.equal(
+    await prisma.projectPresetBinding.count({ where: { id: "ordinary-cascade-boundary-project-binding" } }),
+    0,
+  );
+  assert.equal(
+    await prisma.projectTemplatePresetBinding.count({
+      where: { id: "ordinary-cascade-boundary-project-template-binding" },
+    }),
+    0,
+  );
+  assert.equal(
+    await prisma.sectionPresetBinding.count({ where: { id: "training-cascade-boundary-section-binding" } }),
+    1,
+    "ordinary preset cascade must not delete section bindings from training-owned projects",
+  );
+  assert.equal(
+    await prisma.templateSectionPresetBinding.count({
+      where: { id: "training-cascade-boundary-template-section-binding" },
+    }),
+    1,
+    "ordinary preset cascade must not delete section bindings from training-owned templates",
+  );
+  assert.equal(
+    await prisma.projectPresetBinding.count({ where: { id: "training-cascade-boundary-project-binding" } }),
+    1,
+    "ordinary preset cascade must not delete project-level bindings from training-owned projects",
+  );
+  assert.equal(
+    await prisma.projectTemplatePresetBinding.count({
+      where: { id: "training-cascade-boundary-project-template-binding" },
+    }),
+    1,
+    "ordinary preset cascade must not delete template-level bindings from training-owned templates",
+  );
+  assert.equal(
+    await prisma.sectionPromptBlock.count({ where: { id: "training-cascade-boundary-section-block" } }),
+    1,
+    "ordinary preset cascade must leave training-owned section prompt blocks intact",
+  );
+  assert.equal(
+    await prisma.templateSectionPromptBlock.count({
+      where: { id: "training-cascade-boundary-template-section-block" },
+    }),
+    1,
+    "ordinary preset cascade must leave training-owned template prompt blocks intact",
   );
 });
 

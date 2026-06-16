@@ -2,6 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import {
+  buildGenerationProjectTemplateWhere,
+  buildGenerationProjectWhere,
+} from "@/server/repositories/legacy-training-resource-boundary";
 import { assertOrdinaryPreset } from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------
@@ -68,7 +72,12 @@ export async function getPresetUsage(presetId: string): Promise<PresetUsageInfo>
     projectTemplateBindings,
   ] = await Promise.all([
     prisma.sectionPresetBinding.findMany({
-      where: { presetId },
+      where: {
+        presetId,
+        projectSection: {
+          project: buildGenerationProjectWhere(),
+        },
+      },
       select: {
         id: true,
         projectSection: {
@@ -82,7 +91,12 @@ export async function getPresetUsage(presetId: string): Promise<PresetUsageInfo>
       },
     }),
     prisma.templateSectionPresetBinding.findMany({
-      where: { presetId },
+      where: {
+        presetId,
+        projectTemplateSection: {
+          projectTemplate: buildGenerationProjectTemplateWhere(),
+        },
+      },
       select: {
         id: true,
         projectTemplateSection: {
@@ -96,14 +110,20 @@ export async function getPresetUsage(presetId: string): Promise<PresetUsageInfo>
       },
     }),
     prisma.projectPresetBinding.findMany({
-      where: { presetId },
+      where: {
+        presetId,
+        project: buildGenerationProjectWhere(),
+      },
       select: {
         id: true,
         project: { select: { id: true, title: true } },
       },
     }),
     prisma.projectTemplatePresetBinding.findMany({
-      where: { presetId },
+      where: {
+        presetId,
+        projectTemplate: buildGenerationProjectTemplateWhere(),
+      },
       select: {
         id: true,
         projectTemplate: { select: { id: true, name: true } },
@@ -173,11 +193,21 @@ export async function deletePresetCascade(presetId: string) {
 
     const [sectionBindings, templateSectionBindings] = await Promise.all([
       tx.sectionPresetBinding.findMany({
-        where: { presetId },
+        where: {
+          presetId,
+          projectSection: {
+            project: buildGenerationProjectWhere(),
+          },
+        },
         select: { id: true, projectSectionId: true },
       }),
       tx.templateSectionPresetBinding.findMany({
-        where: { presetId },
+        where: {
+          presetId,
+          projectTemplateSection: {
+            projectTemplate: buildGenerationProjectTemplateWhere(),
+          },
+        },
         select: { id: true, projectTemplateSectionId: true },
       }),
     ]);
@@ -209,8 +239,18 @@ export async function deletePresetCascade(presetId: string) {
       });
     }
 
-    await tx.projectPresetBinding.deleteMany({ where: { presetId } });
-    await tx.projectTemplatePresetBinding.deleteMany({ where: { presetId } });
+    await tx.projectPresetBinding.deleteMany({
+      where: {
+        presetId,
+        project: buildGenerationProjectWhere(),
+      },
+    });
+    await tx.projectTemplatePresetBinding.deleteMany({
+      where: {
+        presetId,
+        projectTemplate: buildGenerationProjectTemplateWhere(),
+      },
+    });
 
     await tx.preset.update({ where: { id: presetId }, data: { isActive: false } });
   });
