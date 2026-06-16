@@ -1,9 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  deleteManagedGenerationTaskDraft,
-  getManagedGenerationTaskDraft,
-  mapTrainingGenerationTaskDraftError,
-  updateManagedGenerationTaskDraft,
+  deleteTrainingGenerationTask,
+  getTrainingGenerationTask,
+  mapTrainingGenerationTaskError,
+  updateTrainingGenerationTask,
 } from "@/server/services/training/generation-task-draft-service";
 import { getTrainingRun, mapTrainingReadError } from "@/server/services/training/read-service";
 import { hideTrainingRuns, mapTrainingRunVisibilityError } from "@/server/services/training/run-visibility-service";
@@ -16,7 +16,7 @@ export async function GET(
 ) {
   const { taskId } = await params;
 
-  const draft = await getManagedGenerationTaskDraft(taskId).catch(() => null);
+  const draft = await getTrainingGenerationTask(taskId).catch(() => null);
   if (draft) {
     return ok(draft);
   }
@@ -45,7 +45,7 @@ export async function PATCH(
   try {
     const { taskId } = await params;
     const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
-    const data = await updateManagedGenerationTaskDraft(taskId, {
+    const data = await updateTrainingGenerationTask(taskId, {
       generationKind: typeof payload.generationKind === "string" ? payload.generationKind : null,
       paramsJson: Object.prototype.hasOwnProperty.call(payload, "paramsJson") ? payload.paramsJson : undefined,
       supplementalPrompt: typeof payload.supplementalPrompt === "string" ? payload.supplementalPrompt : null,
@@ -53,7 +53,7 @@ export async function PATCH(
     });
     return ok(data);
   } catch (error) {
-    const mapped = mapTrainingGenerationTaskDraftError(error);
+    const mapped = mapTrainingGenerationTaskError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
@@ -64,8 +64,8 @@ export async function DELETE(
 ) {
   const { taskId } = await params;
 
-  const deletedDraft = await deleteManagedGenerationTaskDraft(taskId).catch((error) => {
-    const mapped = mapTrainingGenerationTaskDraftError(error);
+  const deletedDraft = await deleteTrainingGenerationTask(taskId).catch((error) => {
+    const mapped = mapTrainingGenerationTaskError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   });
   if (deletedDraft instanceof Response) {

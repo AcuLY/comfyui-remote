@@ -9,7 +9,7 @@ import {
 } from "@/server/services/training/project-service";
 import { loadTrainingSnapshot } from "@/server/services/training/snapshot-service";
 import {
-  createManagedTrainingTemplate,
+  createTrainingTemplate,
   mapTrainingTemplateError,
 } from "@/server/services/training/template-service";
 
@@ -213,7 +213,7 @@ export async function saveTrainingProjectAsTemplate(projectId: string, input: un
   })) ?? mapProjectSectionsToTemplateSections(project);
 
   try {
-    return await createManagedTrainingTemplate({
+    return await createTrainingTemplate({
       title,
       description: parsed.data.description ?? `从训练项目 ${project.title} 保存为模板。`,
       imageGuidance: parsed.data.imageGuidance ?? project.usagePrompt ?? "",

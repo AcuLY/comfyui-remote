@@ -64,7 +64,7 @@ export async function createTrainingSectionBlock(sectionId: string, input: unkno
     blocks: [...section.blocks, nextBlock],
     resolvedScene: section.resolvedScene,
     imagePrompt: section.imagePrompt,
-  }, project.sections).catch((error) => {
+  }).catch((error) => {
     const mapped = mapTrainingProjectSectionError(error);
     throw new TrainingSceneBlockServiceError(mapped.message, mapped.status, mapped.details);
   });
@@ -97,7 +97,7 @@ export async function updateTrainingSectionBlock(blockId: string, input: unknown
     blocks: section.blocks.map((candidate) => candidate.id === blockId ? updatedBlock : candidate),
     resolvedScene: section.resolvedScene,
     imagePrompt: section.imagePrompt,
-  }, project.sections).catch((error) => {
+  }).catch((error) => {
     const mapped = mapTrainingProjectSectionError(error);
     throw new TrainingSceneBlockServiceError(mapped.message, mapped.status, mapped.details);
   });
@@ -152,7 +152,7 @@ export async function reorderTrainingSectionBlocks(sectionId: string, input: unk
     blocks: reorderedBlocks,
     resolvedScene: section.resolvedScene,
     imagePrompt: section.imagePrompt,
-  }, project.sections).catch((error) => {
+  }).catch((error) => {
     const mapped = mapTrainingProjectSectionError(error);
     throw new TrainingSceneBlockServiceError(mapped.message, mapped.status, mapped.details);
   });
@@ -172,7 +172,7 @@ export async function deleteTrainingSectionBlock(blockId: string, options: { pro
     blocks: section.blocks.filter((candidate) => candidate.id !== blockId),
     resolvedScene: section.resolvedScene,
     imagePrompt: section.imagePrompt,
-  }, project.sections).catch((error) => {
+  }).catch((error) => {
     const mapped = mapTrainingProjectSectionError(error);
     throw new TrainingSceneBlockServiceError(mapped.message, mapped.status, mapped.details);
   });

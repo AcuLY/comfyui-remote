@@ -1,6 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-
+import { prisma } from "@/lib/prisma";
 import {
   getTrainingCandidateImage,
   updateTrainingCandidateImageCaption,
@@ -10,17 +8,7 @@ import {
   getTrainingProductionProject,
   listTrainingPromptCardVersions,
 } from "@/server/repositories/training/profile-text";
-import {
-  getManagedTrainingImageResult,
-  getManagedTrainingProject,
-  getManagedTrainingProjectProfile,
-  updateManagedTrainingImageResult,
-  updateManagedTrainingProjectProfile,
-} from "@/server/services/training/project-service";
 import { z } from "zod";
-
-const TRAINING_TEXT_REVISIONS_PATH = join(process.cwd(), "data", "training-text-revisions.json");
-let textRevisionWriteQueue: Promise<unknown> = Promise.resolve();
 
 const TRAINING_TEXT_REVISION_REASONS = [
   "ai_generation",
@@ -54,7 +42,7 @@ export type TrainingTextRevision = {
   entityId: string;
   fieldName: string;
   textValue: string;
-  reason: (typeof TRAINING_TEXT_REVISION_REASONS)[number];
+  reason: string;
   sourceTaskId: string | null;
   sourceRunId: string | null;
   createdAt: string;
@@ -94,47 +82,8 @@ function parseTextRevisionListQuery(input: unknown) {
   });
 }
 
-async function readTrainingTextRevisions() {
-  try {
-    const raw = await readFile(TRAINING_TEXT_REVISIONS_PATH, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed)) {
-      return parsed as TrainingTextRevision[];
-    }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw error;
-    }
-  }
-
-  return [] as TrainingTextRevision[];
-}
-
-async function writeTrainingTextRevisions(revisions: TrainingTextRevision[]) {
-  await mkdir(dirname(TRAINING_TEXT_REVISIONS_PATH), { recursive: true });
-  const tempPath = `${TRAINING_TEXT_REVISIONS_PATH}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tempPath, `${JSON.stringify(revisions, null, 2)}\n`, "utf8");
-  await rename(tempPath, TRAINING_TEXT_REVISIONS_PATH);
-}
-
-async function withTextRevisionWriteLock<T>(fn: () => Promise<T>) {
-  const next = textRevisionWriteQueue.then(fn, fn);
-  textRevisionWriteQueue = next.then(() => undefined, () => undefined);
-  return next;
-}
-
-function sortTrainingTextRevisions(revisions: TrainingTextRevision[]) {
-  return [...revisions].sort((left, right) =>
-    right.createdAt.localeCompare(left.createdAt) || right.id.localeCompare(left.id),
-  );
-}
-
 async function assertTrainingProjectExists(projectId: string) {
-  const managed = await getManagedTrainingProject(projectId);
-  if (managed) return { managed: true as const };
-
   await getTrainingProductionProject(projectId);
-  return { managed: false as const };
 }
 
 async function assertSupportedTextTarget(projectId: string, input: {
@@ -142,7 +91,7 @@ async function assertSupportedTextTarget(projectId: string, input: {
   entityId: string;
   fieldName: string;
 }) {
-  const ownership = await assertTrainingProjectExists(projectId);
+  await assertTrainingProjectExists(projectId);
 
   if (input.entityType === "profile") {
     if (input.entityId !== projectId) {
@@ -152,23 +101,13 @@ async function assertSupportedTextTarget(projectId: string, input: {
       });
     }
 
-    if (ownership.managed) {
-      if (!["loraUsagePrompt", "characterDetailPrompt", "profileSummary"].includes(input.fieldName)) {
-        throw new TrainingTextRevisionServiceError("Unsupported managed profile revision field", 400, {
-          fieldName: input.fieldName,
-          supportedFields: ["loraUsagePrompt", "characterDetailPrompt", "profileSummary"],
-        });
-      }
-      return ownership;
-    }
-
     if (!["loraUsagePrompt", "characterDetailPrompt"].includes(input.fieldName)) {
       throw new TrainingTextRevisionServiceError("Unsupported production profile revision field", 400, {
         fieldName: input.fieldName,
         supportedFields: ["loraUsagePrompt", "characterDetailPrompt"],
       });
     }
-    return ownership;
+    return;
   }
 
   if (input.entityType === "image_result") {
@@ -179,17 +118,6 @@ async function assertSupportedTextTarget(projectId: string, input: {
       });
     }
 
-    if (ownership.managed) {
-      const managedResult = await getManagedTrainingImageResult(input.entityId);
-      if (!managedResult) {
-        throw new TrainingTextRevisionServiceError("Training image result not found", 404, {
-          imageResultId: input.entityId,
-          projectId,
-        });
-      }
-      return ownership;
-    }
-
     const productionResult = await getTrainingCandidateImage(input.entityId);
     if (!productionResult || productionResult.jobId !== projectId) {
       throw new TrainingTextRevisionServiceError("Training image result not found", 404, {
@@ -197,7 +125,7 @@ async function assertSupportedTextTarget(projectId: string, input: {
         projectId,
       });
     }
-    return ownership;
+    return;
   }
 
   throw new TrainingTextRevisionServiceError("Unsupported training text revision entity type", 400, {
@@ -206,14 +134,6 @@ async function assertSupportedTextTarget(projectId: string, input: {
 }
 
 async function readCurrentProfileTextValue(projectId: string, fieldName: string) {
-  const managedProfile = await getManagedTrainingProjectProfile(projectId);
-  if (managedProfile) {
-    if (fieldName === "loraUsagePrompt") return managedProfile.loraUsagePrompt ?? "";
-    if (fieldName === "characterDetailPrompt") return managedProfile.characterDetailPrompt ?? "";
-    if (fieldName === "profileSummary") return managedProfile.profileSummary ?? "";
-    throw new TrainingTextRevisionServiceError("Unsupported managed profile revision field", 400, { fieldName });
-  }
-
   const [job, promptCardVersions] = await Promise.all([
     getTrainingProductionProject(projectId),
     listTrainingPromptCardVersions(projectId),
@@ -242,9 +162,6 @@ async function readCurrentProfileTextValue(projectId: string, fieldName: string)
 }
 
 async function readCurrentImageResultTextValue(projectId: string, imageResultId: string) {
-  const managedResult = await getManagedTrainingImageResult(imageResultId);
-  if (managedResult) return managedResult.caption ?? "";
-
   const productionResult = await getTrainingCandidateImage(imageResultId);
   if (!productionResult || productionResult.jobId !== projectId) {
     throw new TrainingTextRevisionServiceError("Training image result not found", 404, {
@@ -256,19 +173,6 @@ async function readCurrentImageResultTextValue(projectId: string, imageResultId:
 }
 
 async function applyProfileRevision(projectId: string, fieldName: string, textValue: string) {
-  const managedProfile = await getManagedTrainingProjectProfile(projectId);
-  if (managedProfile) {
-    const data = await updateManagedTrainingProjectProfile(projectId, {
-      loraUsagePrompt: fieldName === "loraUsagePrompt" ? textValue : undefined,
-      characterDetailPrompt: fieldName === "characterDetailPrompt" ? textValue : undefined,
-      profileSummary: fieldName === "profileSummary" ? textValue : undefined,
-    });
-    if (!data) {
-      throw new TrainingTextRevisionServiceError("Training project profile not found", 404, { projectId });
-    }
-    return data;
-  }
-
   const [job, promptCardVersions] = await Promise.all([
     getTrainingProductionProject(projectId),
     listTrainingPromptCardVersions(projectId),
@@ -318,67 +222,85 @@ async function applyProfileRevision(projectId: string, fieldName: string, textVa
 }
 
 async function applyImageResultRevision(projectId: string, imageResultId: string, textValue: string) {
-  const managedResult = await getManagedTrainingImageResult(imageResultId);
-  if (managedResult) {
-    const data = await updateManagedTrainingImageResult(imageResultId, {
-      captionDraft: textValue,
-    });
-    if (!data) {
-      throw new TrainingTextRevisionServiceError("Training image result not found", 404, {
-        imageResultId,
-        projectId,
-      });
-    }
-    return data;
-  }
-
   return updateTrainingCandidateImageCaption(imageResultId, {
     captionDraft: textValue,
   });
 }
 
+function mapTrainingTextRevisionRow(row: {
+  id: string;
+  trainingProjectId: string;
+  entityType: string;
+  entityId: string;
+  fieldName: string;
+  textValue: string;
+  reason: string;
+  sourceTaskId: string | null;
+  sourceRunId: string | null;
+  createdAt: Date;
+}): TrainingTextRevision {
+  return {
+    id: row.id,
+    trainingProjectId: row.trainingProjectId,
+    entityType: row.entityType as TrainingTextRevision["entityType"],
+    entityId: row.entityId,
+    fieldName: row.fieldName,
+    textValue: row.textValue,
+    reason: row.reason,
+    sourceTaskId: row.sourceTaskId,
+    sourceRunId: row.sourceRunId,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+function isTrainingTextRevisionDatabaseUnavailable(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003|P2021|Table .* does not exist/i.test(message);
+}
+
 export async function listTrainingTextRevisions(projectId: string, query: unknown) {
   await assertTrainingProjectExists(projectId);
   const parsed = parseTextRevisionListQuery(query);
-  const revisions = await readTrainingTextRevisions();
-  return sortTrainingTextRevisions(
-    revisions.filter((revision) => (
-      revision.trainingProjectId === projectId
-      && (!parsed.entityType || revision.entityType === parsed.entityType)
-      && (!parsed.entityId || revision.entityId === parsed.entityId)
-      && (!parsed.fieldName || revision.fieldName === parsed.fieldName)
-    )),
-  );
+  const revisions = await prisma.trainingTextRevision.findMany({
+    where: {
+      trainingProjectId: projectId,
+      entityType: parsed.entityType,
+      entityId: parsed.entityId,
+      fieldName: parsed.fieldName,
+    },
+    orderBy: [
+      { createdAt: "desc" },
+      { id: "desc" },
+    ],
+  });
+  return revisions.map(mapTrainingTextRevisionRow);
 }
 
 export async function createTrainingTextRevision(projectId: string, input: unknown) {
   const parsed = parseTextRevisionInput(input);
   await assertSupportedTextTarget(projectId, parsed);
 
-  const revision: TrainingTextRevision = {
-    id: `training-text-revision-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    trainingProjectId: projectId,
-    entityType: parsed.entityType,
-    entityId: parsed.entityId,
-    fieldName: parsed.fieldName,
-    textValue: parsed.textValue,
-    reason: parsed.reason,
-    sourceTaskId: parsed.sourceTaskId?.trim() || null,
-    sourceRunId: parsed.sourceRunId?.trim() || null,
-    createdAt: new Date().toISOString(),
-  };
-
-  await withTextRevisionWriteLock(async () => {
-    const revisions = await readTrainingTextRevisions();
-    await writeTrainingTextRevisions([...revisions, revision]);
+  const revision = await prisma.trainingTextRevision.create({
+    data: {
+      trainingProjectId: projectId,
+      entityType: parsed.entityType,
+      entityId: parsed.entityId,
+      fieldName: parsed.fieldName,
+      textValue: parsed.textValue,
+      reason: parsed.reason,
+      sourceTaskId: parsed.sourceTaskId?.trim() || null,
+      sourceRunId: parsed.sourceRunId?.trim() || null,
+    },
   });
 
-  return revision;
+  return mapTrainingTextRevisionRow(revision);
 }
 
 export async function restoreTrainingTextRevision(revisionId: string) {
-  const revisions = await readTrainingTextRevisions();
-  const revision = revisions.find((item) => item.id === revisionId);
+  const revisionRow = await prisma.trainingTextRevision.findUnique({
+    where: { id: revisionId },
+  });
+  const revision = revisionRow ? mapTrainingTextRevisionRow(revisionRow) : null;
   if (!revision) {
     throw new TrainingTextRevisionServiceError("Training text revision not found", 404, { revisionId });
   }
@@ -386,10 +308,13 @@ export async function restoreTrainingTextRevision(revisionId: string) {
   const currentValue = revision.entityType === "profile"
     ? await readCurrentProfileTextValue(revision.trainingProjectId, revision.fieldName)
     : await readCurrentImageResultTextValue(revision.trainingProjectId, revision.entityId);
+  const beforeOverwriteEntityId = revision.entityType === "profile"
+    ? revision.trainingProjectId
+    : revision.entityId;
 
   const beforeOverwriteRevision = await createTrainingTextRevision(revision.trainingProjectId, {
     entityType: revision.entityType,
-    entityId: revision.entityId,
+    entityId: beforeOverwriteEntityId,
     fieldName: revision.fieldName,
     textValue: currentValue,
     reason: "before_overwrite",
@@ -420,6 +345,13 @@ export function mapTrainingTextRevisionError(error: unknown) {
       message: error.message,
       status: error.status,
       details: error.details,
+    };
+  }
+  if (isTrainingTextRevisionDatabaseUnavailable(error)) {
+    return {
+      message: "Training text revision database is unavailable",
+      status: 500,
+      details: error instanceof Error ? error.message : String(error),
     };
   }
 

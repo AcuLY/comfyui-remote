@@ -1,12 +1,12 @@
 import { fail, ok } from "@/lib/api-response";
-import { mapTrainingProjectError, tickManagedTrainingScheduler } from "@/server/services/training/project-service";
+import { mapTrainingWorkerTaskError, tickTrainingWorkerScheduler } from "@/server/worker/training/task-api";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request?: Request) {
   try {
     const searchParams = request ? new URL(request.url).searchParams : null;
-    const data = await tickManagedTrainingScheduler({
+    const data = await tickTrainingWorkerScheduler({
       targetId: searchParams?.get("targetId") ?? undefined,
       targetType: searchParams?.get("targetType") ?? undefined,
     });
@@ -17,7 +17,7 @@ export async function POST(request?: Request) {
     }
     return ok(data);
   } catch (error) {
-    const mapped = mapTrainingProjectError(error);
+    const mapped = mapTrainingWorkerTaskError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

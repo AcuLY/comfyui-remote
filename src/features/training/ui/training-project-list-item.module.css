@@ -1,3 +1,8 @@
+.trainingProjectSortableItem {
+  min-width: 0;
+  width: 100%;
+}
+
 .trainingProjectCard.trainingProjectCard {
   --training-project-control-size: 28px;
   --training-project-title-row-height: 36px;

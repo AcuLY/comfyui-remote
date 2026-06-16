@@ -1,10 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  deleteManagedTrainingImageResult,
-  mapTrainingProjectError,
-  mapTrainingGenerationRunMutationError,
-  updateTrainingImageResult,
-} from "@/server/services/training/project-service";
+  deleteTrainingImageResultRecord,
+  mapTrainingGenerationOutputError,
+  patchTrainingImageResultRecord,
+} from "@/server/services/training/generation-output-service";
 
 export const dynamic = "force-dynamic";
 
@@ -24,13 +23,13 @@ export async function PATCH(
 
   try {
     const { imageResultId } = await params;
-    const data = await updateTrainingImageResult(imageResultId, {
+    const data = await patchTrainingImageResultRecord(imageResultId, {
       reviewStatus: typeof payload.reviewStatus === "string" ? String(payload.reviewStatus) : undefined,
       captionDraft: typeof payload.captionDraft === "string" ? payload.captionDraft : null,
     });
     return ok(data);
   } catch (error) {
-    const mapped = mapTrainingGenerationRunMutationError(error);
+    const mapped = mapTrainingGenerationOutputError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
@@ -41,13 +40,10 @@ export async function DELETE(
 ) {
   try {
     const { imageResultId } = await params;
-    const data = await deleteManagedTrainingImageResult(imageResultId);
-    if (!data) {
-      return fail("Training image result not found", 404, { imageResultId });
-    }
+    const data = await deleteTrainingImageResultRecord(imageResultId);
     return ok(data);
   } catch (error) {
-    const mapped = mapTrainingProjectError(error);
+    const mapped = mapTrainingGenerationOutputError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

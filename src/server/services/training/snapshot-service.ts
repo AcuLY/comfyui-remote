@@ -3,14 +3,17 @@ import type {
   LoraTrainingDatasetRevisionItem,
   LoraTrainingData,
   LoraTrainingImageResult,
+  LoraTrainingPreset,
   LoraTrainingProject,
   LoraTrainingReferenceImage,
   LoraTrainingRun,
   LoraTrainingSection,
+  LoraTrainingTemplate,
   TrainingImage,
   TrainingImageStatus,
 } from "@/features/training/types";
 import { toImageUrl } from "@/lib/image-url";
+import { listTrainingSceneDescriptionPresetRows } from "@/server/repositories/training/scene-description-presets";
 import {
   getTrainingGenerationRun,
   getTrainingProjectOverview,
@@ -22,32 +25,21 @@ import {
   listTrainingReferenceImages,
   listTrainingRuns,
 } from "@/server/repositories/training/snapshot";
-import { listTrainingSceneDescriptionPresets } from "@/server/services/training/preset-service";
-import { listManagedTrainingTemplates } from "@/server/services/training/template-service";
-import { listManagedTrainingProjects } from "@/server/services/training/project-service";
-import { listManagedTrainingRuns } from "@/server/services/training/project-service";
-import { listTrainingProjectOrderIds, orderTrainingProjectsByStoredIds } from "@/server/services/training/project-order-service";
-import { listHiddenTrainingProjectIds } from "@/server/services/training/project-visibility-service";
-import { listTrainingRunPresetStates } from "@/server/services/training/run-preset-state-service";
-import { listHiddenTrainingRunIds } from "@/server/services/training/run-visibility-service";
-import {
-  listTrainingProjectSectionCollections,
-  listTrainingProjectSectionOverrides,
-} from "@/server/services/training/project-section-service";
+import { listTrainingTemplateRows } from "@/server/repositories/training/templates";
 
-function formatTimestamp(value: string | null | undefined, prefix: "完成于" | "开始于" | "创建于" | "失败于" = "创建于") {
+function formatTimestamp(value: string | Date | null | undefined, prefix: "完成于" | "开始于" | "创建于" | "失败于" = "创建于") {
   if (!value) return "未记录";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  if (Number.isNaN(date.getTime())) return String(value);
   const hh = String(date.getHours()).padStart(2, "0");
   const mm = String(date.getMinutes()).padStart(2, "0");
   return `${prefix} ${hh}:${mm}`;
 }
 
-function formatUpdatedAt(value: string | null | undefined) {
+function formatUpdatedAt(value: string | Date | null | undefined) {
   if (!value) return "未记录";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
+  if (Number.isNaN(date.getTime())) return String(value);
   const hh = String(date.getHours()).padStart(2, "0");
   const mm = String(date.getMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
@@ -63,6 +55,54 @@ function mapReviewStatus(reviewStatus: string): LoraTrainingImageResult["reviewS
   if (reviewStatus === "keep" || reviewStatus === "included_in_training") return "kept";
   if (reviewStatus === "reject" || reviewStatus === "excluded") return "rejected";
   return "pending";
+}
+
+function mapTrainingScenePreset(row: Awaited<ReturnType<typeof listTrainingSceneDescriptionPresetRows>>[number]): LoraTrainingPreset {
+  return {
+    id: row.id,
+    title: row.name,
+    category: row.category.name,
+    folder: row.folder?.name ?? "未归档",
+    status: row.isActive ? "active" : "inactive",
+    updatedAt: formatUpdatedAt(row.updatedAt),
+    sceneDescriptionText: row.sceneDescriptionText,
+    projectUsage: [],
+    templateUsage: [],
+  };
+}
+
+function mapTrainingTemplate(row: Awaited<ReturnType<typeof listTrainingTemplateRows>>[number]): LoraTrainingTemplate {
+  return {
+    id: row.id,
+    title: row.name,
+    status: row.isActive ? "active" : "archived",
+    updatedAt: formatUpdatedAt(row.updatedAt),
+    description: row.description ?? "",
+    imageGuidance: row.imagePromptGuidance,
+    captionGuidance: row.captioningGuidance,
+    sectionCount: row.sections.length,
+    sections: row.sections.map((section) => {
+      const blocks = section.blocks
+        .filter((block) => block.enabled)
+        .map((block) => ({
+          id: block.id,
+          source: block.sourceType === "preset" ? "预制" as const : "本地" as const,
+          title: block.title,
+          text: block.localText ?? block.title,
+        }));
+      const resolvedScene = blocks.map((block) => block.text).filter(Boolean).join("\n\n") || section.name || "未填写场景描述";
+
+      return {
+        id: section.id,
+        title: section.name ?? "未命名小节",
+        enabled: section.enabled,
+        blockCount: blocks.length,
+        blocks,
+        resolvedScene,
+        scenePreview: blocks[0]?.text ?? section.name ?? "未填写场景摘要",
+      };
+    }),
+  };
 }
 
 function mapProjectStatus(input: {
@@ -287,186 +327,12 @@ async function buildGenerationRuns(input: {
   return runs.filter((run): run is LoraTrainingRun => Boolean(run));
 }
 
-function applyTrainingProjectSectionOverrides(
-  training: LoraTrainingData,
-  sectionCollections: Awaited<ReturnType<typeof listTrainingProjectSectionCollections>>,
-  sectionOverrides: Awaited<ReturnType<typeof listTrainingProjectSectionOverrides>>,
-): LoraTrainingData {
-  return {
-    ...training,
-    projects: training.projects.map((project) => ({
-      ...project,
-      sections: sectionCollections[project.id]
-        ? sectionCollections[project.id]
-        : project.sections.map((section) => {
-          const override = sectionOverrides[`${project.id}:${section.id}`];
-          if (!override) return section;
-          return {
-            ...section,
-            title: override.title,
-            enabled: override.enabled,
-            updatedAt: override.updatedAt,
-            blocks: override.blocks,
-            resolvedScene: override.resolvedScene,
-            imagePrompt: override.imagePrompt,
-          };
-        }),
-    })),
-  };
-}
-
-function filterHiddenTrainingRuns(
-  training: LoraTrainingData,
-  hiddenRunIds: string[],
-): LoraTrainingData {
-  if (hiddenRunIds.length === 0) return training;
-  const hidden = new Set(hiddenRunIds);
-  return {
-    ...training,
-    runs: training.runs.filter((run) => !hidden.has(run.id)),
-  };
-}
-
-function filterHiddenTrainingProjects(
-  training: LoraTrainingData,
-  hiddenProjectIds: string[],
-): LoraTrainingData {
-  if (hiddenProjectIds.length === 0) return training;
-  const hidden = new Set(hiddenProjectIds);
-  return {
-    ...training,
-    projects: training.projects.filter((project) => !hidden.has(project.id)),
-    runs: training.runs.filter((run) => !hidden.has(run.projectId)),
-  };
-}
-
-function applyTrainingProjectOrder(
-  training: LoraTrainingData,
-  orderedProjectIds: string[],
-): LoraTrainingData {
-  return {
-    ...training,
-    projects: orderTrainingProjectsByStoredIds(training.projects, orderedProjectIds),
-  };
-}
-
-function applyTrainingRunPresetStates(
-  training: LoraTrainingData,
-  runPresetStates: Record<string, { createdAt: string; presetId: string }>,
-): LoraTrainingData {
-  const stateEntries = Object.entries(runPresetStates);
-  if (stateEntries.length === 0) return training;
-
-  return {
-    ...training,
-    runs: training.runs.map((run) => {
-      const presetState = runPresetStates[run.id];
-      if (!presetState) return run;
-      return {
-        ...run,
-        presetCreatedAt: run.presetCreatedAt ?? formatUpdatedAt(presetState.createdAt),
-      };
-    }),
-  };
-}
-
-function buildTrainingSnapshotFallback(input: {
-  hiddenProjectIds?: string[];
-  hiddenRunIds?: string[];
-  managedProjects: LoraTrainingProject[];
-  managedRuns: LoraTrainingRun[];
-  orderedProjectIds?: string[];
-  presets: LoraTrainingData["presets"];
-  runPresetStates?: Record<string, { createdAt: string; presetId: string }>;
-  sectionCollections?: Awaited<ReturnType<typeof listTrainingProjectSectionCollections>>;
-  sectionOverrides?: Awaited<ReturnType<typeof listTrainingProjectSectionOverrides>>;
-  templates: LoraTrainingData["templates"];
-}) {
-  return applyTrainingProjectOrder(applyTrainingRunPresetStates(
-    filterHiddenTrainingRuns(
-      filterHiddenTrainingProjects(
-        applyTrainingProjectSectionOverrides({
-          projects: input.managedProjects,
-          runs: input.managedRuns,
-          presets: input.presets,
-          templates: input.templates,
-        }, input.sectionCollections ?? {}, input.sectionOverrides ?? {}),
-        input.hiddenProjectIds ?? [],
-      ),
-      input.hiddenRunIds ?? [],
-    ),
-    input.runPresetStates ?? {},
-  ), input.orderedProjectIds ?? []);
-}
-
-async function loadTrainingSnapshotFallback() {
-  const [managedProjects, managedRuns, presets, templates, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds, runPresetStates, orderedProjectIds] = await Promise.all([
-    listManagedTrainingProjects().catch(() => []),
-    listManagedTrainingRuns().catch(() => []),
-    listTrainingSceneDescriptionPresets().catch(() => []),
-    listManagedTrainingTemplates().catch(() => []),
-    listTrainingProjectSectionCollections().catch(() => ({})),
-    listTrainingProjectSectionOverrides().catch(() => ({})),
-    listHiddenTrainingProjectIds().catch(() => []),
-    listHiddenTrainingRunIds().catch(() => []),
-    listTrainingRunPresetStates().catch(() => ({})),
-    listTrainingProjectOrderIds().catch(() => []),
-  ]);
-
-  return buildTrainingSnapshotFallback({
-    hiddenProjectIds,
-    hiddenRunIds,
-    managedProjects,
-    managedRuns,
-    orderedProjectIds,
-    presets,
-    runPresetStates,
-    sectionCollections,
-    sectionOverrides,
-    templates,
-  });
-}
-
 async function mapRealTrainingProjects(): Promise<LoraTrainingData> {
   const jobs = await listTrainingProductionProjects({ page: 1, pageSize: 20 });
-  const managedProjects = await listManagedTrainingProjects().catch(() => []);
-  if (!jobs.jobs.length) {
-    const [managedRuns, fallbackPresets, fallbackTemplates, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds, runPresetStates, orderedProjectIds] = await Promise.all([
-      listManagedTrainingRuns().catch(() => []),
-      listTrainingSceneDescriptionPresets().catch(() => []),
-      listManagedTrainingTemplates().catch(() => []),
-      listTrainingProjectSectionCollections().catch(() => ({})),
-      listTrainingProjectSectionOverrides().catch(() => ({})),
-      listHiddenTrainingProjectIds().catch(() => []),
-      listHiddenTrainingRunIds().catch(() => []),
-      listTrainingRunPresetStates().catch(() => ({})),
-      listTrainingProjectOrderIds().catch(() => []),
-    ]);
-
-    return buildTrainingSnapshotFallback({
-      hiddenProjectIds,
-      hiddenRunIds,
-      managedProjects,
-      managedRuns,
-      orderedProjectIds,
-      presets: fallbackPresets,
-      runPresetStates,
-      sectionCollections,
-      sectionOverrides,
-      templates: fallbackTemplates,
-    });
-  }
-
-  const [managedTemplates, realPresets, sectionCollections, sectionOverrides, hiddenProjectIds, hiddenRunIds, runPresetStates] = await Promise.all([
-    listManagedTrainingTemplates(),
-    listTrainingSceneDescriptionPresets(),
-    listTrainingProjectSectionCollections(),
-    listTrainingProjectSectionOverrides(),
-    listHiddenTrainingProjectIds().catch(() => []),
-    listHiddenTrainingRunIds().catch(() => []),
-    listTrainingRunPresetStates().catch(() => ({})),
+  const [presetRows, templateRows] = await Promise.all([
+    listTrainingSceneDescriptionPresetRows(),
+    listTrainingTemplateRows(),
   ]);
-  const orderedProjectIds = await listTrainingProjectOrderIds().catch(() => []);
 
   const projects = await Promise.all(jobs.jobs.map(async (job) => {
     const [overview, sourceImages, promptCardVersions, sections, candidateImages, revisions, trainingRuns] = await Promise.all([
@@ -492,24 +358,23 @@ async function mapRealTrainingProjects(): Promise<LoraTrainingData> {
     }
 
     const mappedSections: LoraTrainingSection[] = sections.map((section) => {
-      const override = sectionOverrides[`${job.id}:${section.id}`];
       const baseResolvedScene = section.template?.description ?? section.name;
       const baseImagePrompt = latestPromptCard?.finalPromptDraft ?? job.triggerToken;
       return {
         id: section.id,
-        title: override?.title ?? section.name,
-        enabled: override?.enabled ?? section.status !== "paused",
-        updatedAt: override?.updatedAt ?? formatUpdatedAt(section.updatedAt),
-        blocks: override?.blocks ?? [
+        title: section.name,
+        enabled: section.status !== "paused",
+        updatedAt: formatUpdatedAt(section.updatedAt),
+        blocks: [
           {
             id: `${section.id}-scene-block`,
-            source: "项目小节",
+            source: "本地",
             title: "训练场景说明",
             text: baseResolvedScene,
           },
         ],
-        resolvedScene: override?.resolvedScene ?? baseResolvedScene,
-        imagePrompt: override?.imagePrompt ?? baseImagePrompt,
+        resolvedScene: baseResolvedScene,
+        imagePrompt: baseImagePrompt,
         images: resultPool.filter((image) => image.sectionId === section.id).map((image) => image.image).slice(0, 5),
         resultStatus: section.pendingCount > 0 ? "pending" : section.keepCount > 0 ? "kept" : "rejected",
       };
@@ -607,23 +472,14 @@ async function mapRealTrainingProjects(): Promise<LoraTrainingData> {
     return [...generationRuns, ...mappedTrainingRuns];
   }));
 
-  const managedProjectIds = new Set(managedProjects.map((project) => project.id));
-
-  return applyTrainingProjectOrder(applyTrainingRunPresetStates(filterHiddenTrainingRuns(filterHiddenTrainingProjects(applyTrainingProjectSectionOverrides({
-    projects: [
-      ...managedProjects,
-      ...projects.filter((project) => !managedProjectIds.has(project.id)),
-    ],
-    runs: [...(await listManagedTrainingRuns().catch(() => [])), ...runsByProject.flat()].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))),
-    presets: realPresets,
-    templates: managedTemplates,
-  }, sectionCollections, sectionOverrides), hiddenProjectIds), hiddenRunIds), runPresetStates), orderedProjectIds);
+  return {
+    projects,
+    runs: runsByProject.flat().sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))),
+    presets: presetRows.map(mapTrainingScenePreset),
+    templates: templateRows.map(mapTrainingTemplate),
+  };
 }
 
 export async function loadTrainingSnapshot(): Promise<LoraTrainingData> {
-  try {
-    return await mapRealTrainingProjects();
-  } catch {
-    return await loadTrainingSnapshotFallback();
-  }
+  return mapRealTrainingProjects();
 }

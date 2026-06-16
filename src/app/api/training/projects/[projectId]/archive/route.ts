@@ -2,7 +2,7 @@ import { fail, ok } from "@/lib/api-response";
 import {
   archiveTrainingProject,
   mapTrainingProjectMutationError,
-} from "@/server/services/training/project-service";
+} from "@/server/services/training/project-actions-service";
 
 export const dynamic = "force-dynamic";
 

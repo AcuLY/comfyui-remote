@@ -121,6 +121,29 @@ test("dedicated training snapshot service projects production training data into
   );
 });
 
+test("training snapshot service does not merge managed JSON fallback data into production reads", () => {
+  assert.doesNotMatch(
+    trainingSnapshotServiceSource,
+    /listManagedTrainingProjects|listManagedTrainingRuns|listManagedTrainingTemplates/,
+    "training snapshot service should not merge managed file-store projects, runs, or templates into production data.",
+  );
+  assert.doesNotMatch(
+    trainingSnapshotServiceSource,
+    /loadTrainingSnapshotFallback|buildTrainingSnapshotFallback|readFallback|writeFallback/,
+    "training snapshot service should not keep a file fallback snapshot path.",
+  );
+  assert.doesNotMatch(
+    trainingSnapshotServiceSource,
+    /listHiddenTrainingProjectIds|listHiddenTrainingRunIds|listTrainingProjectOrderIds|listTrainingRunPresetStates/,
+    "training snapshot service should not apply JSON-only hidden, ordering, or preset-created states.",
+  );
+  assert.doesNotMatch(
+    trainingSnapshotServiceSource,
+    /catch\s*\([^)]*\)\s*\{[\s\S]*loadTrainingSnapshotFallback/,
+    "training snapshot service should surface database failures instead of silently returning fallback data.",
+  );
+});
+
 test("buildLoraTrainingData prefers an injected production training payload when present", () => {
   assert.match(
     trainingFeatureBuildSource,

@@ -301,3 +301,16 @@ test("training mobile row actions keep compact demo toolbar density", () => {
     "Template scene block buttons should not be stretched full-width in the mobile shell",
   );
 });
+
+test("training run row cancel and delete actions stay visually icon sized", () => {
+  assert.match(
+    runsCss,
+    /\.rowActions:not\(\.runFailureToolbar\)\s+:where\(\[data-demo-ui-button-label="true"\]\)\s*\{[\s\S]*?display:\s*none/,
+    "Default run row cancel/delete buttons should hide their visual labels instead of squeezing text into icon-sized controls",
+  );
+  assert.doesNotMatch(
+    runsCss,
+    /\.runFailureToolbar\s+:where\(\[data-demo-ui-button-label="true"\]\)\s*\{[\s\S]*?display:\s*none/,
+    "Failed-run copy/retry toolbar should keep labels visible because those actions are not icon-only row controls",
+  );
+});

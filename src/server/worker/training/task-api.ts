@@ -85,6 +85,21 @@ function parseWorkerTaskId(taskId: string): { targetId: string; targetType: Work
   return null;
 }
 
+function getGenerationWorkerTaskId(taskId: string) {
+  return `${GENERATION_WORKER_TASK_PREFIX}${taskId}`;
+}
+
+function getTrainingRunWorkerTaskId(trainingRunId: string) {
+  return `${TRAINING_WORKER_TASK_PREFIX}${trainingRunId}`;
+}
+
+function workerTypeForTargetType(targetType: string): TrainingWorkerType | null {
+  if (targetType === "generationRun") return "image_generation";
+  if (targetType === "datasetRevision") return "dataset_freeze";
+  if (targetType === "trainingRun") return "training";
+  return null;
+}
+
 function serializeWorkerTask(target: WorkerTarget, input: SerializedWorkerTaskInput = {}) {
   const now = new Date().toISOString();
   return {
@@ -580,6 +595,156 @@ export async function leaseNextTrainingWorkerTask(input: unknown) {
   const target = await markWorkerTargetRunning(queued, parsed.data.leaseOwner ?? null);
   return serializeWorkerTask(target, {
     leaseOwner: parsed.data.leaseOwner ?? null,
+  });
+}
+
+export async function tickTrainingWorkerScheduler(input: unknown = {}) {
+  const target = input && typeof input === "object" && !Array.isArray(input)
+    ? input as Record<string, unknown>
+    : {};
+  const targetId = typeof target.targetId === "string" && target.targetId.trim() ? target.targetId.trim() : undefined;
+  const targetType = typeof target.targetType === "string" && target.targetType.trim() ? target.targetType.trim() : undefined;
+
+  if (targetId || targetType) {
+    if (!targetId || !targetType) {
+      throw new TrainingWorkerTaskError("targetType and targetId must be provided together", 400);
+    }
+    const workerType = workerTypeForTargetType(targetType);
+    if (!workerType) {
+      throw new TrainingWorkerTaskError("Unsupported training scheduler target type", 400, { targetType });
+    }
+    return leaseNextTrainingWorkerTask({
+      leaseOwner: "training-scheduler",
+      targetId,
+      targetType,
+      workerType,
+    });
+  }
+
+  for (const workerType of TRAINING_WORKER_TYPES) {
+    const task = await leaseNextTrainingWorkerTask({
+      leaseOwner: "training-scheduler",
+      workerType,
+    });
+    if (task) return task;
+  }
+  return null;
+}
+
+export async function progressTrainingRunWorkerTarget(trainingRunId: string, input: unknown = {}) {
+  const payload = input && typeof input === "object" && !Array.isArray(input)
+    ? input as Record<string, unknown>
+    : {};
+  const currentStep = typeof payload.currentStep === "number" ? payload.currentStep : undefined;
+  const targetSteps = typeof payload.targetSteps === "number" ? payload.targetSteps : undefined;
+  const schedulerMessage = typeof payload.schedulerMessage === "string" && payload.schedulerMessage.trim()
+    ? payload.schedulerMessage.trim()
+    : undefined;
+  const progressJson = {
+    ...(currentStep === undefined ? {} : { currentStep }),
+    ...(targetSteps === undefined ? {} : { targetSteps }),
+    ...(schedulerMessage === undefined ? {} : { phase: schedulerMessage }),
+  };
+
+  try {
+    const updated = await prisma.trainingRun.update({
+      where: { id: trainingRunId },
+      data: {
+        currentStep,
+        progressJson: normalizeJson(progressJson),
+        schedulerMessage,
+        startedAt: new Date(),
+        status: "running",
+        totalSteps: targetSteps,
+      },
+    });
+    return serializeWorkerTask(mapTrainingRunToTarget(updated), {
+      progressJson,
+      status: "running",
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function completeTrainingRunWorkerTarget(trainingRunId: string, input: unknown = {}) {
+  const run = await prisma.trainingRun.findUnique({
+    where: { id: trainingRunId },
+  });
+  if (!run) return null;
+
+  const payload = input && typeof input === "object" && !Array.isArray(input)
+    ? input as Record<string, unknown>
+    : {};
+  const finalArtifactInput = payload.finalSafetensorsArtifact && typeof payload.finalSafetensorsArtifact === "object" && !Array.isArray(payload.finalSafetensorsArtifact)
+    ? payload.finalSafetensorsArtifact as Record<string, unknown>
+    : null;
+  const artifactName = typeof payload.artifactName === "string" && payload.artifactName.trim()
+    ? payload.artifactName.trim()
+    : `${trainingRunId}.safetensors`;
+  const relativePath = typeof finalArtifactInput?.relativePath === "string" && finalArtifactInput.relativePath.trim()
+    ? finalArtifactInput.relativePath.trim()
+    : typeof payload.artifactRelativePath === "string" && payload.artifactRelativePath.trim()
+      ? payload.artifactRelativePath.trim()
+      : `data/training/${run.trainingProjectId}/artifacts/${artifactName}`;
+
+  await completeTrainingTarget(mapTrainingRunToTarget(run), {
+    elapsedMs: typeof payload.elapsedMs === "number" ? payload.elapsedMs : undefined,
+    finalSafetensorsArtifact: {
+      relativePath,
+      sha256: typeof finalArtifactInput?.sha256 === "string" ? finalArtifactInput.sha256 : undefined,
+    },
+    metadataSummary: {
+      keyCount: 0,
+      summary: {
+        artifactName,
+      },
+    },
+  });
+
+  const updated = await prisma.trainingRun.findUnique({
+    where: { id: trainingRunId },
+  });
+  return updated ? serializeWorkerTask(mapTrainingRunToTarget(updated), { status: "succeeded" }) : null;
+}
+
+export async function failTrainingRunWorkerTarget(trainingRunId: string, input: unknown = {}) {
+  const payload = input && typeof input === "object" && !Array.isArray(input)
+    ? input as Record<string, unknown>
+    : {};
+  return failTrainingWorkerTask(getTrainingRunWorkerTaskId(trainingRunId), {
+    errorSummary: typeof payload.errorSummary === "string" && payload.errorSummary.trim()
+      ? payload.errorSummary.trim()
+      : "训练任务失败",
+  });
+}
+
+export async function completeGenerationTaskWorkerTarget(taskId: string, input: unknown = {}) {
+  const payload = input && typeof input === "object" && !Array.isArray(input)
+    ? input as Record<string, unknown>
+    : {};
+  const output = Array.isArray(payload.images)
+    ? {
+      elapsedMs: typeof payload.elapsedMs === "number" ? payload.elapsedMs : 0,
+      images: payload.images,
+      requestRedactedPath: typeof payload.requestRedactedPath === "string" ? payload.requestRedactedPath : `data/training/${taskId}/request.json`,
+      responseSummaryPath: typeof payload.responseSummaryPath === "string" ? payload.responseSummaryPath : `data/training/${taskId}/response.json`,
+    }
+    : undefined;
+  return completeTrainingWorkerTask(getGenerationWorkerTaskId(taskId), { output });
+}
+
+export async function failGenerationTaskWorkerTarget(taskId: string, input: unknown = {}) {
+  const payload = input && typeof input === "object" && !Array.isArray(input)
+    ? input as Record<string, unknown>
+    : {};
+  return failTrainingWorkerTask(getGenerationWorkerTaskId(taskId), {
+    errorSummary: typeof payload.errorSummary === "string" && payload.errorSummary.trim()
+      ? payload.errorSummary.trim()
+      : "生成任务失败",
   });
 }
 

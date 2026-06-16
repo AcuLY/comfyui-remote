@@ -1,5 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
-import { mapTrainingProjectError, uploadManagedTrainingImageResult } from "@/server/services/training/project-service";
+import {
+  mapTrainingGenerationOutputError,
+  uploadTrainingResultImage,
+} from "@/server/services/training/generation-output-service";
 
 export const dynamic = "force-dynamic";
 
@@ -10,13 +13,10 @@ export async function POST(
   try {
     const { projectId } = await params;
     const formData = await request.formData();
-    const data = await uploadManagedTrainingImageResult(projectId, formData);
-    if (!data) {
-      return fail("Training project not found", 404, { projectId });
-    }
+    const data = await uploadTrainingResultImage(projectId, formData);
     return ok(data, { status: 201 });
   } catch (error) {
-    const mapped = mapTrainingProjectError(error);
+    const mapped = mapTrainingGenerationOutputError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

@@ -1,7 +1,7 @@
 import { fail, ok } from "@/lib/api-response";
 import {
   mapTrainingTemplateError,
-  reorderManagedTrainingTemplateSections,
+  reorderTrainingTemplateSections,
 } from "@/server/services/training/template-service";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ export async function POST(
 
   try {
     const { templateId } = await params;
-    const data = await reorderManagedTrainingTemplateSections(templateId, body);
+    const data = await reorderTrainingTemplateSections(templateId, body);
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingTemplateError(error);

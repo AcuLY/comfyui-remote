@@ -1,5 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
-import { mapTrainingProjectError, progressManagedTrainingRun } from "@/server/services/training/project-service";
+import { mapTrainingWorkerTaskError, progressTrainingRunWorkerTarget } from "@/server/worker/training/task-api";
 
 export const dynamic = "force-dynamic";
 
@@ -19,17 +19,13 @@ export async function POST(
   try {
     const { trainingRunId } = await params;
     const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
-    const data = await progressManagedTrainingRun(trainingRunId, {
-      currentStep: typeof payload.currentStep === "number" ? payload.currentStep : null,
-      targetSteps: typeof payload.targetSteps === "number" ? payload.targetSteps : null,
-      schedulerMessage: typeof payload.schedulerMessage === "string" ? payload.schedulerMessage : null,
-    });
+    const data = await progressTrainingRunWorkerTarget(trainingRunId, payload);
     if (!data) {
       return fail("Training run not found", 404, { trainingRunId });
     }
     return ok(data);
   } catch (error) {
-    const mapped = mapTrainingProjectError(error);
+    const mapped = mapTrainingWorkerTaskError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

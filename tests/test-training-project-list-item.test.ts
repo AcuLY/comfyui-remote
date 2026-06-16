@@ -58,6 +58,29 @@ test("training project card keeps the design-demo management controls first", ()
   );
 });
 
+test("training project cards render as bounded sortable grid items", () => {
+  assert.match(
+    itemSource,
+    /<div\s+className=\{s\.trainingProjectSortableItem\}\s+ref=\{ref\}\s+style=\{style\}>/,
+    "Sortable project wrappers should be styled grid items instead of anonymous full-width rows",
+  );
+  assert.match(
+    itemCss,
+    /\.trainingProjectSortableItem\s*\{[\s\S]*?min-width:\s*0;[\s\S]*?width:\s*100%;[\s\S]*?\}/,
+    "Sortable project wrappers should stay bounded inside the responsive project grid",
+  );
+  assert.match(
+    projectsPageSource,
+    /<div className=\{s\.projectGrid\}>\s*<SortableList items=\{visibleProjectIds\} onReorder=\{handleReorderProjects\}>/,
+    "The production project page should put sortable project cards directly inside the responsive grid",
+  );
+  assert.match(
+    projectsCss,
+    /@container\s*\(min-width:\s*720px\)\s*\{[\s\S]*?\.projectGrid\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/,
+    "Project cards should split into two columns when the project surface has enough width",
+  );
+});
+
 test("training project card title stays clean and leaves business summaries out of the header", () => {
   const titleStart = itemSource.indexOf("title={(");
   const bodyStart = itemSource.indexOf("body={(");

@@ -1,9 +1,9 @@
 import { z } from "zod";
 import type { LoraTrainingSectionBlock, LoraTrainingTemplate } from "@/features/training/types";
 import {
-  getManagedTrainingTemplate,
+  getTrainingTemplate,
   mapTrainingTemplateError,
-  updateManagedTrainingTemplate,
+  updateTrainingTemplate,
 } from "@/server/services/training/template-service";
 
 const createBlockSchema = z.object({
@@ -49,7 +49,7 @@ function mapTemplateError(error: unknown): never {
 }
 
 async function getTemplateSectionContext(templateId: string, sectionId: string) {
-  const template = await getManagedTrainingTemplate(templateId);
+  const template = await getTrainingTemplate(templateId);
   const section = template.sections.find((candidate) => candidate.id === sectionId);
   if (!section) {
     throw new TrainingTemplateSceneBlockServiceError("Training template section not found", 404, { templateId, sectionId });
@@ -58,7 +58,7 @@ async function getTemplateSectionContext(templateId: string, sectionId: string) 
 }
 
 async function getTemplateBlockContext(templateId: string, blockId: string) {
-  const template = await getManagedTrainingTemplate(templateId);
+  const template = await getTrainingTemplate(templateId);
   for (const section of template.sections) {
     const block = section.blocks.find((candidate) => candidate.id === blockId);
     if (block) {
@@ -72,7 +72,7 @@ function replaceTemplateSections(
   template: LoraTrainingTemplate,
   nextSections: LoraTrainingTemplate["sections"],
 ) {
-  return updateManagedTrainingTemplate(template.id, {
+  return updateTrainingTemplate(template.id, {
     title: template.title,
     description: template.description,
     imageGuidance: template.imageGuidance,

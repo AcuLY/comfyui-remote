@@ -27,6 +27,20 @@ export type TrainingProviderInputImage = {
   sha256?: string | null;
 };
 
+export type TrainingProjectSectionInput = {
+  blocks?: Array<{
+    id?: string;
+    source?: string;
+    text?: string;
+    title?: string;
+  }>;
+  enabled?: boolean;
+  id?: string;
+  resolvedScene?: string;
+  sortOrder?: number;
+  title?: string;
+};
+
 export class TrainingRepositoryError extends Error {
   details?: unknown;
   status: number;
@@ -410,6 +424,9 @@ export async function createTrainingProductionProject(input: unknown) {
   const template = templateId
     ? await prisma.trainingTemplate.findUnique({ where: { id: templateId } })
     : null;
+  if (templateId && !template) {
+    throw new TrainingRepositoryError("Training template not found", 404, { templateId });
+  }
 
   const project = await prisma.trainingProject.create({
     data: {
@@ -449,18 +466,88 @@ export async function createTrainingProductionProject(input: unknown) {
         },
       },
     });
-    await prisma.trainingSection.createMany({
-      data: sections.map((section) => ({
-        trainingProjectId: project.id,
-        name: section.name,
-        sortOrder: section.sortOrder,
-        enabled: section.enabled,
-        sectionDefaultsJson: section.sectionDefaultsJson ?? Prisma.JsonNull,
-      })),
-    });
+    for (const section of sections) {
+      await prisma.trainingSection.create({
+        data: {
+          trainingProjectId: project.id,
+          name: section.name,
+          sortOrder: section.sortOrder,
+          enabled: section.enabled,
+          sectionDefaultsJson: section.sectionDefaultsJson ?? Prisma.JsonNull,
+          blocks: {
+            create: section.blocks.map((block) => ({
+              sceneDescriptionPresetCategoryId: block.sceneDescriptionPresetCategoryId ?? null,
+              sceneDescriptionPresetId: block.sceneDescriptionPresetId ?? null,
+              sourceType: block.sourceType,
+              title: block.title,
+              localText: block.localText ?? null,
+              sortOrder: block.sortOrder,
+              enabled: block.enabled,
+            })),
+          },
+        },
+      });
+    }
   }
 
   return mapProjectRow(project);
+}
+
+export async function replaceTrainingProjectSections(projectId: string, sections: TrainingProjectSectionInput[]) {
+  const row = await getProjectRow(projectId);
+
+  return prisma.$transaction(async (tx) => {
+    await tx.trainingSection.deleteMany({
+      where: {
+        trainingProjectId: row.id,
+      },
+    });
+
+    for (const [index, section] of sections.entries()) {
+      const sectionId = `training-section-${row.id}-${index + 1}-${randomUUID()}`;
+      const createdSection = await tx.trainingSection.create({
+        data: {
+          id: sectionId,
+          trainingProjectId: row.id,
+          name: section.title ?? `训练小节 ${index + 1}`,
+          sortOrder: section.sortOrder ?? index,
+          enabled: section.enabled ?? true,
+          sectionDefaultsJson: Prisma.JsonNull,
+        },
+      });
+
+      const blocks = section.blocks?.length
+        ? section.blocks
+        : [{
+          source: "本地",
+          title: section.title ?? "训练场景说明",
+          text: section.resolvedScene ?? section.title ?? "训练场景说明",
+        }];
+
+      await tx.trainingSceneDescriptionBlock.createMany({
+        data: blocks.map((block, blockIndex) => ({
+          id: `training-block-${sectionId}-${blockIndex + 1}-${randomUUID()}`,
+          trainingSectionId: createdSection.id,
+          sourceType: block.source === "预制" ? "preset" : "local",
+          title: block.title ?? `场景块 ${blockIndex + 1}`,
+          localText: block.text ?? block.title ?? "",
+          sortOrder: blockIndex,
+          enabled: true,
+        })),
+      });
+    }
+
+    return tx.trainingSection.findMany({
+      where: {
+        trainingProjectId: row.id,
+      },
+      orderBy: [
+        { sortOrder: "asc" },
+        { createdAt: "asc" },
+      ],
+      include: sectionInclude,
+    });
+  });
 }
 
 export async function updateTrainingProductionProject(projectId: string, input: unknown) {
@@ -518,6 +605,26 @@ export async function restoreTrainingProductionProject(projectId: string) {
     include: trainingProjectInclude,
   });
   return mapProjectRow(updated);
+}
+
+export async function deleteTrainingProductionProject(projectId: string) {
+  const current = await getProjectRow(projectId);
+  const [generationRunCount, trainingRunCount] = await Promise.all([
+    prisma.trainingGenerationTask.count({ where: { trainingProjectId: current.id } }),
+    prisma.trainingRun.count({ where: { trainingProjectId: current.id } }),
+  ]);
+
+  await prisma.trainingProject.delete({
+    where: {
+      id: current.id,
+    },
+  });
+
+  return {
+    deletedRunCount: generationRunCount + trainingRunCount,
+    id: current.id,
+    success: true,
+  };
 }
 
 export async function getTrainingProductionProject(projectId: string) {

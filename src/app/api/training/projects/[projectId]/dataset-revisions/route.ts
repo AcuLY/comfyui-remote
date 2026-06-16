@@ -2,7 +2,7 @@ import { fail, ok } from "@/lib/api-response";
 import {
   freezeTrainingDataset,
   mapTrainingGenerationRunMutationError,
-} from "@/server/services/training/project-service";
+} from "@/server/services/training/project-actions-service";
 import { getTrainingProject, mapTrainingReadError } from "@/server/services/training/read-service";
 
 export const dynamic = "force-dynamic";

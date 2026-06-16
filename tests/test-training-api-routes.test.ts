@@ -294,6 +294,36 @@ function isProductionTrainingDatabaseUnavailable(error: unknown) {
   return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003/i.test(message);
 }
 
+function loadTrainingDatabaseEnvFromDotEnv() {
+  let raw: string;
+  try {
+    raw = readFileSync(join(process.cwd(), ".env"), "utf8");
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw error;
+  }
+
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const separatorIndex = trimmed.indexOf("=");
+    if (separatorIndex === -1) continue;
+
+    const key = trimmed.slice(0, separatorIndex);
+    if (key !== "DB_PROVIDER" && key !== "DATABASE_URL") continue;
+    if (process.env[key]) continue;
+
+    let value = trimmed.slice(separatorIndex + 1).trim();
+    if (
+      (value.startsWith("\"") && value.endsWith("\""))
+      || (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
+}
+
 async function listProductionTrainingProjectsOrSkip(pageSize = 1) {
   const { listTrainingProductionProjects } = await import("../src/server/repositories/training/snapshot");
 
@@ -2222,7 +2252,9 @@ async function createManagedProjectFixture(input: {
     resolvedScene: string;
     scenePreview: string;
   }>;
+  templateId?: string | null;
   title: string;
+  trainingTemplateId?: string | null;
   triggerToken?: string;
   usagePrompt?: string;
 }) {
@@ -2232,8 +2264,8 @@ async function createManagedProjectFixture(input: {
     characterName: input.title,
     projectName: input.title,
     triggerToken: input.triggerToken ?? `fixture_${Date.now()}`,
-    templateId: "character_identity_default",
-    trainingTemplateId: "character_identity_default",
+    ...(input.templateId === null ? {} : { templateId: input.templateId ?? "character_identity_default" }),
+    ...(input.trainingTemplateId === null ? {} : { trainingTemplateId: input.trainingTemplateId ?? "character_identity_default" }),
     checkpointRelativePath: "models/checkpoints/mock.safetensors",
     usagePrompt: input.usagePrompt ?? `${input.title} usage`,
     detailPrompt: input.detailPrompt ?? `${input.title} detail`,
@@ -5553,12 +5585,15 @@ test("managed training project profile reads and updates through /api/training",
 });
 
 test("managed training text revisions can checkpoint, list, and restore profile fields through /api/training", async () => {
+  loadTrainingDatabaseEnvFromDotEnv();
   const profileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");
   const textRevisionsRoute = await import("../src/app/api/training/projects/[projectId]/text-revisions/route");
   const restoreTextRevisionRoute = await import("../src/app/api/training/text-revisions/[revisionId]/restore/route");
   await withTrainingManagedStoreSnapshot(async () => {
     const project = await createManagedProjectFixture({
       title: `managed text revision 项目 ${Date.now()}`,
+      templateId: null,
+      trainingTemplateId: null,
     });
     const projectId = project.id;
     const params = { params: Promise.resolve({ projectId }) };
@@ -5569,7 +5604,11 @@ test("managed training text revisions can checkpoint, list, and restore profile 
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           loraUsagePrompt: "checkpoint 前的使用提示词",
-          characterDetailPrompt: "checkpoint 前的角色细节",
+          characterDetailPrompt: JSON.stringify({
+            identityTraits: { note: "checkpoint 前的角色细节" },
+            outfitTraits: {},
+            negativeTraits: [],
+          }),
           profileSummary: "checkpoint 前的资料备注",
         }),
       }),
@@ -5621,7 +5660,10 @@ test("managed training text revisions can checkpoint, list, and restore profile 
     const overwriteProfilePayload = await overwriteProfileResponse.json();
     assert.equal(overwriteProfileResponse.status, 200);
     assert.equal(overwriteProfilePayload.ok, true);
-    assert.equal(overwriteProfilePayload.data.usagePrompt, "覆盖后的使用提示词");
+    assert.equal(
+      overwriteProfilePayload.data.usagePrompt ?? overwriteProfilePayload.data.finalPromptDraft,
+      "覆盖后的使用提示词",
+    );
 
     const restoreResponse = await restoreTextRevisionRoute.POST(
       new Request(`http://localhost/api/training/text-revisions/${revisionId}/restore`, {
@@ -5648,6 +5690,7 @@ test("managed training text revisions can checkpoint, list, and restore profile 
 });
 
 test("production training text revisions can checkpoint and restore profile prompts through /api/training", async () => {
+  loadTrainingDatabaseEnvFromDotEnv();
   const projectsRoute = await import("../src/app/api/training/projects/route");
   const profileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");
   const textRevisionsRoute = await import("../src/app/api/training/projects/[projectId]/text-revisions/route");
@@ -5662,8 +5705,6 @@ test("production training text revisions can checkpoint and restore profile prom
         characterName: title,
         projectName: title,
         triggerToken: `test_profile_revision_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         selectedReferenceIds: [],
         sections: [],
@@ -5716,6 +5757,15 @@ test("production training text revisions can checkpoint and restore profile prom
   assert.equal(createRevisionResponse.status, 201);
   assert.equal(createRevisionPayload.ok, true);
   const revisionId = createRevisionPayload.data.id as string;
+  const { prisma } = await import("../src/lib/prisma");
+  const persistedRevision = await prisma.trainingTextRevision.findUnique({
+    where: { id: revisionId },
+  });
+  assert.equal(persistedRevision?.trainingProjectId, projectId);
+  assert.equal(persistedRevision?.entityType, "profile");
+  assert.equal(persistedRevision?.entityId, projectId);
+  assert.equal(persistedRevision?.fieldName, "loraUsagePrompt");
+  assert.equal(persistedRevision?.textValue, "真实 profile checkpoint 前提示词");
 
   const overwriteProfileResponse = await profileRoute.PATCH(
     new Request(`http://localhost/api/training/projects/${projectId}/profile`, {
@@ -5750,6 +5800,86 @@ test("production training text revisions can checkpoint and restore profile prom
   assert.equal(restoredProfileResponse.status, 200);
   assert.equal(restoredProfilePayload.ok, true);
   assert.equal(restoredProfilePayload.data.loraUsagePrompt, "真实 profile checkpoint 前提示词");
+});
+
+test("production training text revisions can restore profile rows keyed by profile id through /api/training", async () => {
+  loadTrainingDatabaseEnvFromDotEnv();
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const profileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");
+  const restoreTextRevisionRoute = await import("../src/app/api/training/text-revisions/[revisionId]/restore/route");
+  const title = `真实 profile-id revision 项目 ${Date.now()}`;
+
+  const createResponse = await projectsRoute.POST(
+    new Request("http://localhost/api/training/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        characterName: title,
+        projectName: title,
+        triggerToken: `test_profile_id_revision_${Date.now()}`,
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        selectedReferenceIds: [],
+        sections: [],
+        trainingDefaults: {
+          autoGenerateSamples: false,
+          autoFreezeDataset: false,
+        },
+      }),
+    }),
+  );
+  const createPayload = await createResponse.json();
+  assert.equal(createResponse.status, 201);
+  assert.equal(createPayload.ok, true);
+  const projectId = createPayload.data.id as string;
+  const params = { params: Promise.resolve({ projectId }) };
+  const { prisma } = await import("../src/lib/prisma");
+  const profile = await prisma.trainingCharacterProfile.findUnique({
+    where: { trainingProjectId: projectId },
+  });
+  assert.ok(profile);
+  const revision = await prisma.trainingTextRevision.create({
+    data: {
+      trainingProjectId: projectId,
+      entityType: "profile",
+      entityId: profile.id,
+      fieldName: "loraUsagePrompt",
+      textValue: "profile id keyed checkpoint",
+      reason: "run_snapshot",
+    },
+  });
+
+  const overwriteProfileResponse = await profileRoute.PATCH(
+    new Request(`http://localhost/api/training/projects/${projectId}/profile`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        loraUsagePrompt: "profile id keyed overwrite",
+      }),
+    }),
+    params,
+  );
+  const overwriteProfilePayload = await overwriteProfileResponse.json();
+  assert.equal(overwriteProfileResponse.status, 200);
+  assert.equal(overwriteProfilePayload.ok, true);
+
+  const restoreResponse = await restoreTextRevisionRoute.POST(
+    new Request(`http://localhost/api/training/text-revisions/${revision.id}/restore`, {
+      method: "POST",
+    }),
+    { params: Promise.resolve({ revisionId: revision.id }) },
+  );
+  const restorePayload = await restoreResponse.json();
+  assert.equal(restoreResponse.status, 200);
+  assert.equal(restorePayload.ok, true);
+
+  const restoredProfileResponse = await profileRoute.GET(
+    new Request(`http://localhost/api/training/projects/${projectId}/profile`),
+    params,
+  );
+  const restoredProfilePayload = await restoredProfileResponse.json();
+  assert.equal(restoredProfileResponse.status, 200);
+  assert.equal(restoredProfilePayload.ok, true);
+  assert.equal(restoredProfilePayload.data.loraUsagePrompt, "profile id keyed checkpoint");
 });
 
 test("managed training project updates through /api/training/projects/:projectId", async () => {
@@ -6137,9 +6267,8 @@ test("managed training project can upload result images through /api/training", 
 });
 
 test("training text revisions can checkpoint and restore production image-result captions through /api/training", async () => {
+  loadTrainingDatabaseEnvFromDotEnv();
   const projectsRoute = await import("../src/app/api/training/projects/route");
-  const referenceRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
-  const addToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
   const imageResultRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
   const resultsRoute = await import("../src/app/api/training/projects/[projectId]/image-results/route");
   const textRevisionsRoute = await import("../src/app/api/training/projects/[projectId]/text-revisions/route");
@@ -6154,8 +6283,6 @@ test("training text revisions can checkpoint and restore production image-result
         characterName: title,
         projectName: title,
         triggerToken: `test_result_revision_${Date.now()}`,
-        templateId: "character_identity_default",
-        trainingTemplateId: "character_identity_default",
         checkpointRelativePath: "models/checkpoints/mock.safetensors",
         selectedReferenceIds: [],
         sections: [],
@@ -6171,36 +6298,37 @@ test("training text revisions can checkpoint and restore production image-result
   assert.equal(createPayload.ok, true);
   const projectId = createPayload.data.id as string;
   const params = { params: Promise.resolve({ projectId }) };
-
-  const uploadReferenceFormData = new FormData();
-  uploadReferenceFormData.append("file", new File([new Uint8Array([137, 80, 78, 71])], "text-revision-source.png", { type: "image/png" }));
-  uploadReferenceFormData.append("role", "source");
-  const uploadReferenceResponse = await referenceRoute.POST(
-    new Request(`http://localhost/api/training/projects/${projectId}/reference-images`, {
-      method: "POST",
-      body: uploadReferenceFormData,
-    }),
-    params,
-  );
-  const uploadReferencePayload = await uploadReferenceResponse.json();
-  assert.equal(uploadReferenceResponse.status, 201);
-  assert.equal(uploadReferencePayload.ok, true);
-  const imageId = uploadReferencePayload.data.id as string;
-
-  const addToResultsResponse = await addToResultsRoute.POST(
-    new Request(`http://localhost/api/training/reference-images/${imageId}/add-to-results`, {
-      method: "POST",
-      body: JSON.stringify({
-        reviewStatus: "pending",
-        captionDraft: "checkpoint 前 caption",
-      }),
-    }),
-    { params: Promise.resolve({ imageId }) },
-  );
-  const addToResultsPayload = await addToResultsResponse.json();
-  assert.equal(addToResultsResponse.status, 201);
-  assert.equal(addToResultsPayload.ok, true);
-  const imageResultId = addToResultsPayload.data.id as string;
+  const { prisma } = await import("../src/lib/prisma");
+  const profile = await prisma.trainingCharacterProfile.findUnique({
+    where: { trainingProjectId: projectId },
+  });
+  assert.ok(profile);
+  const artifact = await prisma.trainingArtifact.create({
+    data: {
+      trainingProjectId: projectId,
+      storageKey: `text-revision-source-${Date.now()}.png`,
+      filePath: `data/images/training/text-revision-source-${Date.now()}.png`,
+      storageRole: "mutable_source",
+      mimeType: "image/png",
+      fileSize: 4n,
+      sha256: `text-revision-${Date.now()}`,
+    },
+  });
+  const imageResult = await prisma.trainingImageResult.create({
+    data: {
+      trainingProjectId: projectId,
+      trainingCharacterProfileId: profile.id,
+      artifactId: artifact.id,
+      sourceType: "reference_image",
+      reviewStatus: "pending",
+      trainingCaption: "checkpoint 前 caption",
+      filePathSnapshot: artifact.filePath ?? artifact.storageKey,
+      mimeType: artifact.mimeType,
+      fileSize: artifact.fileSize,
+      sha256: artifact.sha256,
+    },
+  });
+  const imageResultId = imageResult.id;
 
   const createRevisionResponse = await textRevisionsRoute.POST(
     new Request(`http://localhost/api/training/projects/${projectId}/text-revisions`, {

@@ -1,9 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
 import { listTrainingProjects, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
-  createManagedTrainingProject,
+  createTrainingProject,
   mapTrainingProjectError,
-} from "@/server/services/training/project-service";
+} from "@/server/services/training/project-actions-service";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const data = await createManagedTrainingProject(body);
+    const data = await createTrainingProject(body);
     return ok(data, { status: 201 });
   } catch (error) {
     const mapped = mapTrainingProjectError(error);

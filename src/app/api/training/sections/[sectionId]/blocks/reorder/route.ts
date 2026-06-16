@@ -1,8 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  mapTrainingSceneBlockError,
+  mapTrainingProjectSectionError,
   reorderTrainingSectionBlocks,
-} from "@/server/services/training/project-scene-block-service";
+} from "@/server/services/training/project-section-service";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export async function POST(
     const data = await reorderTrainingSectionBlocks(sectionId, body, { projectId });
     return ok(data);
   } catch (error) {
-    const mapped = mapTrainingSceneBlockError(error);
+    const mapped = mapTrainingProjectSectionError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

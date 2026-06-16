@@ -3,7 +3,7 @@ import {
   getTrainingProjectProfile,
   mapTrainingProjectProfileError,
   updateTrainingProjectProfile,
-} from "@/server/services/training/project-service";
+} from "@/server/services/training/project-actions-service";
 
 export const dynamic = "force-dynamic";
 

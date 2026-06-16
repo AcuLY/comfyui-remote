@@ -4,11 +4,6 @@ import {
   listTrainingCandidateImages,
   updateTrainingCandidateImageCaption,
 } from "@/server/repositories/training/image-results";
-import {
-  getManagedTrainingImageResultContext,
-  getManagedTrainingProject,
-  updateManagedTrainingImageResult,
-} from "@/server/services/training/project-service";
 import { getTrainingProject } from "@/server/services/training/read-service";
 import { z } from "zod";
 
@@ -112,15 +107,6 @@ function makeCaptionTask(projectId: string, imageResultId: string, outputText: s
   };
 }
 
-function deriveManagedCaption(context: {
-  sourceLabel: string;
-  caption: string;
-}, requestedCaption: string | null) {
-  if (requestedCaption) return requestedCaption;
-  if (!captionMissing(context.caption)) return context.caption;
-  return `${context.sourceLabel}，训练说明`;
-}
-
 async function deriveProductionCaption(imageResultId: string, requestedCaption: string | null) {
   if (requestedCaption) return requestedCaption;
   const image = await getTrainingCandidateImage(imageResultId);
@@ -137,25 +123,6 @@ async function deriveProductionCaption(imageResultId: string, requestedCaption: 
 export async function generateTrainingImageCaption(imageResultId: string, input: unknown) {
   const parsed = parseSingleCaptionRequest(input);
   const requestedCaption = resolveTaskCaptionDraft(parsed);
-
-  const managedContext = await getManagedTrainingImageResultContext(imageResultId);
-  if (managedContext) {
-    const caption = deriveManagedCaption({
-      sourceLabel: managedContext.result.sourceLabel,
-      caption: managedContext.result.caption,
-    }, requestedCaption);
-    const imageResult = await updateManagedTrainingImageResult(imageResultId, {
-      captionDraft: caption,
-    });
-    if (!imageResult) {
-      throw new TrainingCaptionServiceError("Training image result not found", 404, { imageResultId });
-    }
-    return {
-      imageResult,
-      task: makeCaptionTask(managedContext.project.id, imageResultId, caption),
-    };
-  }
-
   const caption = await deriveProductionCaption(imageResultId, requestedCaption);
   const updated = await updateTrainingCandidateImageCaption(imageResultId, {
     captionDraft: caption,
@@ -178,12 +145,27 @@ export async function generateTrainingCaptions(projectId: string, input: unknown
   const parsed = parseBulkCaptionRequest(input);
 
   if (Array.isArray(parsed.captions)) {
+    const project = await getTrainingProject(projectId);
     const images = await Promise.all(
-      parsed.captions.map((caption) =>
-        updateTrainingCandidateImageCaption(caption.imageId, {
+      parsed.captions.map(async (caption) => {
+        const image = await getTrainingCandidateImage(caption.imageId);
+        if (!image) {
+          throw new TrainingCaptionServiceError("Training image result not found", 404, {
+            imageResultId: caption.imageId,
+            projectId,
+          });
+        }
+        if (image.jobId !== project.id) {
+          throw new TrainingCaptionServiceError("Training image result does not belong to project", 409, {
+            imageResultId: caption.imageId,
+            projectId,
+            imageProjectId: image.jobId,
+          });
+        }
+        return updateTrainingCandidateImageCaption(caption.imageId, {
           captionDraft: caption.captionDraft,
-        }),
-      ),
+        });
+      }),
     );
     return {
       projectId,
@@ -200,33 +182,6 @@ export async function generateTrainingCaptions(projectId: string, input: unknown
 
   const requestedCaption = resolveTaskCaptionDraft(parsed);
   const tasks: CaptionTaskSummary[] = [];
-
-  const managedProject = await getManagedTrainingProject(projectId);
-  if (managedProject) {
-    const targetResults = mode === "selected"
-      ? managedProject.resultPool.filter((result) => (parsed.imageResultIds ?? []).includes(result.id))
-      : managedProject.resultPool.filter((result) => result.reviewStatus === "kept" && captionMissing(result.caption));
-
-    if (mode === "selected" && (!parsed.imageResultIds || parsed.imageResultIds.length === 0)) {
-      throw new TrainingCaptionServiceError("imageResultIds is required when mode=selected", 400);
-    }
-
-    for (const result of targetResults) {
-      const caption = deriveManagedCaption({
-        sourceLabel: result.sourceLabel,
-        caption: result.caption,
-      }, requestedCaption);
-      await updateManagedTrainingImageResult(result.id, { captionDraft: caption });
-      tasks.push(makeCaptionTask(projectId, result.id, caption));
-    }
-
-    return {
-      projectId,
-      mode,
-      taskCount: tasks.length,
-      tasks,
-    };
-  }
 
   if (mode === "selected" && (!parsed.imageResultIds || parsed.imageResultIds.length === 0)) {
     throw new TrainingCaptionServiceError("imageResultIds is required when mode=selected", 400);

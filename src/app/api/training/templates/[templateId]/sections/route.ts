@@ -1,7 +1,7 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  createManagedTrainingTemplateSection,
-  getManagedTrainingTemplate,
+  createTrainingTemplateSection,
+  getTrainingTemplate,
   mapTrainingTemplateError,
 } from "@/server/services/training/template-service";
 
@@ -13,7 +13,7 @@ export async function GET(
 ) {
   try {
     const { templateId } = await params;
-    const template = await getManagedTrainingTemplate(templateId);
+    const template = await getTrainingTemplate(templateId);
     return ok(template.sections);
   } catch (error) {
     const mapped = mapTrainingTemplateError(error);
@@ -34,7 +34,7 @@ export async function POST(
 
   try {
     const { templateId } = await params;
-    const data = await createManagedTrainingTemplateSection(templateId, body);
+    const data = await createTrainingTemplateSection(templateId, body);
     return ok(data, { status: 201 });
   } catch (error) {
     const mapped = mapTrainingTemplateError(error);

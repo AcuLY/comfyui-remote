@@ -4,11 +4,11 @@ import {
   mapTrainingReadError,
 } from "@/server/services/training/read-service";
 import {
-  deleteManagedTrainingProject,
+  deleteTrainingProject,
   mapTrainingProjectMutationError,
   mapTrainingProjectError,
   updateTrainingProject,
-} from "@/server/services/training/project-service";
+} from "@/server/services/training/project-actions-service";
 import {
   hideTrainingProjects,
   mapTrainingProjectVisibilityError,
@@ -66,10 +66,10 @@ export async function DELETE(
   }
 
   try {
-    const managed = await deleteManagedTrainingProject(projectId);
+    const deleted = await deleteTrainingProject(projectId);
     const hidden = await hideTrainingProjects([projectId]);
     return ok({
-      deletedRunCount: managed?.deletedRunCount ?? 0,
+      deletedRunCount: deleted?.deletedRunCount ?? 0,
       id: projectId,
       ...hidden,
     });

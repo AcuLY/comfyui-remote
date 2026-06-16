@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  addManagedGenerationTaskSupplementalImage,
+  addTrainingGenerationTaskSupplementalImage,
   mapTrainingGenerationTaskDraftError,
 } from "@/server/services/training/generation-task-draft-service";
 
@@ -13,7 +13,7 @@ export async function POST(
   try {
     const { taskId } = await params;
     const formData = await request.formData();
-    const data = await addManagedGenerationTaskSupplementalImage(taskId, formData);
+    const data = await addTrainingGenerationTaskSupplementalImage(taskId, formData);
     return ok(data, { status: 201 });
   } catch (error) {
     const mapped = mapTrainingGenerationTaskDraftError(error);

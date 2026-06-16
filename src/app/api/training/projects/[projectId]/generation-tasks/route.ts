@@ -2,9 +2,9 @@ import { fail, ok } from "@/lib/api-response";
 import type { LoraTrainingTaskStatus } from "@/features/training/types";
 import { listTrainingRuns, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
-  createManagedGenerationTaskDraft,
-  listManagedGenerationTaskDrafts,
-  mapTrainingGenerationTaskDraftError,
+  createTrainingGenerationTask,
+  listTrainingGenerationTasks,
+  mapTrainingGenerationTaskError,
   normalizeGenerationTaskType,
 } from "@/server/services/training/generation-task-draft-service";
 
@@ -28,7 +28,7 @@ export async function GET(
   try {
     const { projectId } = await params;
     if (status === "draft") {
-      const data = await listManagedGenerationTaskDrafts(projectId, { status, taskType });
+      const data = await listTrainingGenerationTasks(projectId, { status, taskType });
       return ok(data);
     }
 
@@ -46,7 +46,7 @@ export async function GET(
     return ok(data.filter((run) => !taskTypeFilter || run.taskType === taskTypeFilter));
   } catch (error) {
     if (status === "draft") {
-      const mapped = mapTrainingGenerationTaskDraftError(error);
+      const mapped = mapTrainingGenerationTaskError(error);
       return fail(mapped.message, mapped.status, mapped.details);
     }
 
@@ -70,7 +70,7 @@ export async function POST(
   try {
     const { projectId } = await params;
     const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
-    const data = await createManagedGenerationTaskDraft(projectId, {
+    const data = await createTrainingGenerationTask(projectId, {
       generationKind: typeof payload.generationKind === "string" ? payload.generationKind : null,
       paramsJson: Object.prototype.hasOwnProperty.call(payload, "paramsJson") ? payload.paramsJson : undefined,
       sectionId: typeof payload.sectionId === "string" ? payload.sectionId : null,
@@ -79,7 +79,7 @@ export async function POST(
     });
     return ok(data, { status: 201 });
   } catch (error) {
-    const mapped = mapTrainingGenerationTaskDraftError(error);
+    const mapped = mapTrainingGenerationTaskError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

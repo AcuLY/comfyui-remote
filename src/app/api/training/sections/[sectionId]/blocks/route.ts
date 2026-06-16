@@ -1,8 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
 import {
   createTrainingSectionBlock,
-  mapTrainingSceneBlockError,
-} from "@/server/services/training/project-scene-block-service";
+  mapTrainingProjectSectionError,
+} from "@/server/services/training/project-section-service";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export async function POST(
     const data = await createTrainingSectionBlock(sectionId, body, { projectId });
     return ok(data, { status: 201 });
   } catch (error) {
-    const mapped = mapTrainingSceneBlockError(error);
+    const mapped = mapTrainingProjectSectionError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

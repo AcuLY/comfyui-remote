@@ -1,8 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
-import { getTrainingProject, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
   copyTrainingProjectSection,
   createTrainingProjectSection,
+  listTrainingProjectSections,
   mapTrainingProjectSectionError,
 } from "@/server/services/training/project-section-service";
 
@@ -14,10 +14,10 @@ export async function GET(
 ) {
   try {
     const { projectId } = await params;
-    const project = await getTrainingProject(projectId);
-    return ok(project.sections);
+    const data = await listTrainingProjectSections(projectId);
+    return ok(data);
   } catch (error) {
-    const mapped = mapTrainingReadError(error);
+    const mapped = mapTrainingProjectSectionError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
@@ -35,13 +35,12 @@ export async function POST(
 
   try {
     const { projectId } = await params;
-    const project = await getTrainingProject(projectId);
     const sourceSectionId = body && typeof body === "object" && !Array.isArray(body) && typeof (body as { sourceSectionId?: unknown }).sourceSectionId === "string"
       ? (body as { sourceSectionId: string }).sourceSectionId
       : null;
     const data = sourceSectionId
-      ? await copyTrainingProjectSection(projectId, sourceSectionId, project.sections)
-      : await createTrainingProjectSection(projectId, project.sections);
+      ? await copyTrainingProjectSection(projectId, sourceSectionId)
+      : await createTrainingProjectSection(projectId);
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingProjectSectionError(error);

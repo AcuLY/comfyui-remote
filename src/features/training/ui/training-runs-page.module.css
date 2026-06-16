@@ -610,6 +610,10 @@
   padding: 0;
 }
 
+.rowActions:not(.runFailureToolbar) :where([data-demo-ui-button-label="true"]) {
+  display: none;
+}
+
 .runFailureToolbar {
   justify-content: flex-start;
 }

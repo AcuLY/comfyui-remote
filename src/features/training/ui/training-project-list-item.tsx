@@ -76,7 +76,7 @@ export function TrainingProjectListItem({
   const { ref, style, handleProps } = useDemoSortable(project.id);
 
   return (
-    <div ref={ref} style={style}>
+    <div className={s.trainingProjectSortableItem} ref={ref} style={style}>
       <TrainingProjectCardShell
         compact={compact}
         selected={selected}

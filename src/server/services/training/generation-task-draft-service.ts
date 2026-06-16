@@ -1,56 +1,26 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, extname, join } from "node:path";
+import { randomUUID } from "node:crypto";
+import { extname } from "node:path";
+
 import type { LoraTrainingRun } from "@/features/training/types";
+import { Prisma } from "@/generated/prisma";
+import { prisma } from "@/lib/prisma";
+import { TRAINING_IMAGE_GENERATION_PROVIDER_POLICY } from "@/lib/training/provider-policy";
 import {
   trainingGenerationKindSchema,
   trainingGenerationTaskTypeSchema,
   type TrainingGenerationKind,
   type TrainingGenerationTaskType,
 } from "@/lib/training/schemas";
-import { TRAINING_IMAGE_GENERATION_PROVIDER_POLICY } from "@/lib/training/provider-policy";
-import type { TrainingProviderInputImage } from "@/server/repositories/training/generation-tasks";
 import {
-  createTrainingProjectArtifact,
-  enqueueTrainingSectionGenerationRun,
-  getTrainingProductionProjectRecord,
-  getTrainingProductionSectionRecord,
-  mapTrainingGenerationError,
-  writeTrainingBufferArtifact,
-} from "@/server/repositories/training/generation-tasks";
-import { getTrainingProject, mapTrainingReadError } from "@/server/services/training/read-service";
-import { enqueueManagedTrainingSectionGenerationRun, getManagedTrainingProject, mapTrainingProjectError } from "@/server/services/training/project-service";
-
-const TRAINING_GENERATION_TASK_DRAFTS_PATH = join(process.cwd(), "data", "training-generation-task-drafts.json");
-const TRAINING_GENERATION_TASK_DRAFT_IMAGE_ROOT = join(process.cwd(), "data", "images", "training-managed");
-let generationTaskDraftWriteQueue: Promise<unknown> = Promise.resolve();
-
-type GenerationTaskDraftInput = {
-  id: string;
-  referenceId: string;
-};
-
-type GenerationTaskDraftSupplementalImage = {
-  detail: string;
-  id: string;
-  relativePath: string;
-  title: string;
-};
-
-type GenerationTaskDraftRecord = {
-  id: string;
-  projectId: string;
-  sectionId: string;
-  generationKind?: string;
-  paramsJson?: Record<string, unknown> | null;
-  taskType: string;
-  supplementalPrompt: string;
-  inputs: GenerationTaskDraftInput[];
-  supplementalImages: GenerationTaskDraftSupplementalImage[];
-  createdAt: string;
-  updatedAt: string;
-};
+  getTrainingProject,
+  mapTrainingReadError,
+} from "@/server/services/training/read-service";
+import { writeTrainingBufferArtifact } from "@/server/repositories/training/generation-tasks";
 
 const DEFAULT_GENERATION_TASK_TYPE: TrainingGenerationTaskType = "trainingset_generation";
+const DRAFT_STATUS = "draft";
+const SECTION_CONTEXT_INPUT_KIND = "section_context";
+const SUPPLEMENTAL_IMAGE_INPUT_KIND = "supplemental_image";
 
 const TRAINING_GENERATION_TASK_TYPE_LABELS: Record<TrainingGenerationTaskType, string> = {
   caption_generation: "说明文本补全",
@@ -79,65 +49,60 @@ const TRAINING_GENERATION_KIND_BY_TASK_TYPE: Record<TrainingGenerationTaskType, 
   trainingset_generation: "image_generation",
 };
 
-export class TrainingGenerationTaskDraftServiceError extends Error {
+const trainingGenerationTaskInclude = {
+  inputs: {
+    include: {
+      artifact: true,
+      snapshotArtifact: true,
+    },
+    orderBy: [
+      { sortOrder: "asc" as const },
+      { createdAt: "asc" as const },
+    ],
+  },
+  outputs: true,
+  sectionRuns: {
+    orderBy: {
+      createdAt: "desc" as const,
+    },
+    take: 1,
+  },
+} satisfies Prisma.TrainingGenerationTaskInclude;
+
+type TrainingGenerationTaskRow = Prisma.TrainingGenerationTaskGetPayload<{
+  include: typeof trainingGenerationTaskInclude;
+}>;
+type TrainingGenerationInputReferenceRow = TrainingGenerationTaskRow["inputs"][number];
+type TrainingProject = Awaited<ReturnType<typeof getTrainingProject>>;
+type TrainingSection = TrainingProject["sections"][number];
+
+type ResolvedTrainingGenerationInputReference = {
+  artifactId?: string | null;
+  detail: string;
+  inputKind: string;
+  previousCandidateImageId?: string;
+  purpose?: string | null;
+  referenceId: string;
+  role?: string | null;
+  snapshotFilePath?: string | null;
+  sourceEntityId?: string | null;
+  sourceEntityType?: string | null;
+  sourceField?: string | null;
+  sourceImageId?: string;
+  title: string;
+  type: "result-image" | "source-image" | "text";
+};
+
+export class TrainingGenerationTaskServiceError extends Error {
   details?: unknown;
   status: number;
 
   constructor(message: string, status: number, details?: unknown) {
     super(message);
-    this.name = "TrainingGenerationTaskDraftServiceError";
+    this.name = "TrainingGenerationTaskServiceError";
     this.status = status;
     this.details = details;
   }
-}
-
-async function readGenerationTaskDrafts() {
-  try {
-    const raw = await readFile(TRAINING_GENERATION_TASK_DRAFTS_PATH, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed)) {
-      return parsed as GenerationTaskDraftRecord[];
-    }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw error;
-    }
-  }
-
-  return [] as GenerationTaskDraftRecord[];
-}
-
-async function writeGenerationTaskDrafts(drafts: GenerationTaskDraftRecord[]) {
-  await mkdir(dirname(TRAINING_GENERATION_TASK_DRAFTS_PATH), { recursive: true });
-  const tempPath = `${TRAINING_GENERATION_TASK_DRAFTS_PATH}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tempPath, `${JSON.stringify(drafts, null, 2)}\n`, "utf8");
-  await rename(tempPath, TRAINING_GENERATION_TASK_DRAFTS_PATH);
-}
-
-async function withGenerationTaskDraftWriteLock<T>(fn: () => Promise<T>) {
-  const next = generationTaskDraftWriteQueue.then(fn, fn);
-  generationTaskDraftWriteQueue = next.then(() => undefined, () => undefined);
-  return next;
-}
-
-function formatTimestamp(value = new Date()) {
-  return value.toISOString();
-}
-
-function formatRunTimestamp(value: string | null | undefined, prefix: "完成于" | "开始于" | "创建于" | "失败于" = "创建于") {
-  if (!value) return "未记录";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  return `${prefix} ${hh}:${mm}`;
-}
-
-function mapLegacyGenerationStatus(status: string): LoraTrainingRun["status"] {
-  if (status === "done") return "completed";
-  if (status === "running") return "running";
-  if (status === "queued") return "queued";
-  return "failed";
 }
 
 export function normalizeGenerationTaskType(value: string | null | undefined): TrainingGenerationTaskType {
@@ -189,83 +154,135 @@ function normalizeGenerationParamsJson(
   if (value === null) return null;
   if (isJsonObject(value)) return value;
 
-  throw new TrainingGenerationTaskDraftServiceError("paramsJson must be a JSON object", 400, {
+  throw new TrainingGenerationTaskServiceError("paramsJson must be a JSON object", 400, {
     paramsJsonType: Array.isArray(value) ? "array" : typeof value,
   });
 }
 
-function mapLegacyGenerationRunToTrainingRun(input: {
-  finalInput: string;
-  generationKind?: TrainingGenerationKind;
-  project: Awaited<ReturnType<typeof getTrainingProject>>;
-  run: Awaited<ReturnType<typeof enqueueTrainingSectionGenerationRun>>;
-  section: Awaited<ReturnType<typeof getTrainingProject>>["sections"][number];
-  taskType?: TrainingGenerationTaskType;
-  taskTypeLabel?: string;
-}): LoraTrainingRun {
+function toPrismaJson(value: Record<string, unknown> | null) {
+  return value === null ? Prisma.JsonNull : value as Prisma.InputJsonValue;
+}
+
+function fromPrismaJsonObject(value: unknown): Record<string, unknown> | null {
+  return isJsonObject(value) ? value : null;
+}
+
+function formatRunTimestamp(
+  value: string | null | undefined,
+  prefix: "完成于" | "开始于" | "创建于" | "失败于" = "创建于",
+) {
+  if (!value) return "未记录";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${prefix} ${hh}:${mm}`;
+}
+
+function mapGenerationTaskStatus(status: string): LoraTrainingRun["status"] {
+  if (status === "done" || status === "completed" || status === "succeeded") return "completed";
+  if (status === "running") return "running";
+  if (status === "queued" || status === DRAFT_STATUS) return "queued";
+  return "failed";
+}
+
+async function getProjectOrThrow(projectId: string) {
+  try {
+    return await getTrainingProject(projectId);
+  } catch (error) {
+    const mapped = mapTrainingReadError(error);
+    throw new TrainingGenerationTaskServiceError(mapped.message, mapped.status, mapped.details);
+  }
+}
+
+function getSectionOrThrow(project: TrainingProject, sectionId: string | null | undefined, taskId?: string) {
+  const normalizedSectionId = sectionId?.trim();
+  const section = normalizedSectionId
+    ? project.sections.find((item) => item.id === normalizedSectionId)
+    : null;
+  if (!section) {
+    throw new TrainingGenerationTaskServiceError("Training section not found", 404, {
+      projectId: project.id,
+      sectionId: normalizedSectionId ?? null,
+      taskId,
+    });
+  }
+  return section;
+}
+
+function sectionContextInput(section: TrainingSection, sortOrder = -100) {
   return {
-    id: input.run.id,
-    kind: "generation",
-    status: mapLegacyGenerationStatus(input.run.status),
-    generationKind: input.generationKind,
-    taskType: input.taskType,
-    taskTypeLabel: input.taskTypeLabel,
-    projectId: input.project.id,
-    sectionId: input.section.id,
-    projectTitle: input.project.title,
-    title: `${input.section.title} 图片生成`,
-    summary: `图片 · 小节 ${input.section.title}`,
-    timestamp: input.run.finishedAt
-      ? formatRunTimestamp(input.run.finishedAt, input.run.status === "failed" ? "失败于" : "完成于")
-      : input.run.startedAt
-        ? formatRunTimestamp(input.run.startedAt, "开始于")
-        : formatRunTimestamp(input.run.createdAt, "创建于"),
-    provider: input.run.imageModel ?? input.run.hostModel ?? input.run.provider ?? undefined,
-    providerModel: input.generationKind === "image_generation"
-      ? input.run.imageModel ?? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.model
-      : undefined,
-    providerTool: input.generationKind === "image_generation"
-      ? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.tool
-      : undefined,
-    usesComfyUiWorkflow: input.generationKind === "image_generation"
-      ? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.usesComfyUiWorkflow
-      : undefined,
-    usesComfyUiQueue: input.generationKind === "image_generation"
-      ? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.usesComfyUiQueue
-      : undefined,
-    finalInput: input.run.visualPrompt ?? input.run.hostInstruction ?? input.finalInput,
-    outputLabel: input.run.counts.candidateImages > 0 ? `输出 ${input.run.counts.candidateImages} 张图片` : undefined,
-    schedulerMessage: "已进入生成队列",
+    inputKind: SECTION_CONTEXT_INPUT_KIND,
+    sourceEntityType: "training_section",
+    sourceEntityId: section.id,
+    sourceField: "section_context",
+    snapshotText: section.resolvedScene,
+    role: "context",
+    purpose: "section_context",
+    sortOrder,
   };
 }
 
-function createDraftId() {
-  return `draft-generation-task-${Date.now()}`;
+function findTaskSectionId(row: TrainingGenerationTaskRow) {
+  return (
+    row.sectionRuns[0]?.trainingSectionId
+    ?? row.inputs.find((input) => (
+      input.inputKind === SECTION_CONTEXT_INPUT_KIND
+      && input.sourceEntityType === "training_section"
+      && input.sourceEntityId
+    ))?.sourceEntityId
+    ?? null
+  );
 }
 
-function createDraftInputId(taskId: string) {
-  return `${taskId}-input-${Date.now()}`;
+async function getTrainingGenerationTaskRow(taskId: string) {
+  return prisma.trainingGenerationTask.findUnique({
+    where: { id: taskId },
+    include: trainingGenerationTaskInclude,
+  });
 }
 
-function createDraftSupplementalImageId(taskId: string) {
-  return `${taskId}-supplemental-image-${Date.now()}`;
+async function getDraftTaskRowOrThrow(taskId: string) {
+  const row = await getTrainingGenerationTaskRow(taskId);
+  if (!row) {
+    throw new TrainingGenerationTaskServiceError("Training generation task draft not found", 404, { taskId });
+  }
+  if (row.status !== DRAFT_STATUS) {
+    throw new TrainingGenerationTaskServiceError("Training generation task is not a draft", 409, {
+      status: row.status,
+      taskId,
+    });
+  }
+  return row;
 }
 
-function resolveReference(project: Awaited<ReturnType<typeof getTrainingProject>>, sectionId: string, referenceId: string) {
+async function resolveReference(
+  project: TrainingProject,
+  sectionId: string,
+  referenceId: string,
+): Promise<ResolvedTrainingGenerationInputReference> {
   if (referenceId === "profile-usage") {
     return {
       detail: project.usagePrompt,
+      inputKind: "text",
       referenceId,
+      sourceEntityId: project.id,
+      sourceEntityType: "training_project",
+      sourceField: referenceId,
       title: "使用提示词",
-      type: "text" as const,
+      type: "text",
     };
   }
   if (referenceId === "profile-detail") {
     return {
       detail: project.detailPrompt,
+      inputKind: "text",
       referenceId,
+      sourceEntityId: project.id,
+      sourceEntityType: "training_project",
+      sourceField: referenceId,
       title: "角色细节",
-      type: "text" as const,
+      type: "text",
     };
   }
 
@@ -273,74 +290,178 @@ function resolveReference(project: Awaited<ReturnType<typeof getTrainingProject>
   if (referenceId === "section-scene" && section) {
     return {
       detail: section.resolvedScene,
+      inputKind: "text",
       referenceId,
+      sourceEntityId: section.id,
+      sourceEntityType: "training_section",
+      sourceField: referenceId,
       title: section.title,
-      type: "text" as const,
+      type: "text",
     };
   }
   if (referenceId === "section-prompt" && section) {
     return {
       detail: section.imagePrompt,
+      inputKind: "text",
       referenceId,
+      sourceEntityId: section.id,
+      sourceEntityType: "training_section",
+      sourceField: referenceId,
       title: "图片提示词",
-      type: "text" as const,
+      type: "text",
     };
   }
 
   const referenceImage = project.referenceImages.find((reference) => reference.id === referenceId);
   if (referenceImage) {
+    const row = await prisma.trainingCharacterImage.findFirst({
+      where: {
+        id: referenceImage.id,
+        profile: {
+          trainingProjectId: project.id,
+        },
+      },
+      include: {
+        artifact: true,
+      },
+    });
+
     return {
+      artifactId: row?.artifactId ?? null,
       detail: referenceImage.note,
+      inputKind: "source_image",
       referenceId,
+      role: "source_image",
+      snapshotFilePath: row?.artifact.filePath ?? row?.artifact.storageKey ?? null,
+      sourceEntityId: referenceImage.id,
+      sourceEntityType: "training_character_image",
+      sourceField: referenceImage.label,
       sourceImageId: referenceImage.id,
       title: referenceImage.label,
-      type: "source-image" as const,
+      type: "source-image",
     };
   }
 
   const resultImage = project.resultPool.find((result) => result.id === referenceId);
   if (resultImage) {
+    const row = await prisma.trainingImageResult.findFirst({
+      where: {
+        id: resultImage.id,
+        trainingProjectId: project.id,
+      },
+      include: {
+        artifact: true,
+      },
+    });
+
     return {
+      artifactId: row?.artifactId ?? null,
       detail: resultImage.caption,
+      inputKind: "result_image",
       previousCandidateImageId: resultImage.id,
       referenceId,
+      role: "result_image",
+      snapshotFilePath: row?.filePathSnapshot ?? row?.artifact.filePath ?? row?.artifact.storageKey ?? null,
+      sourceEntityId: resultImage.id,
+      sourceEntityType: "training_image_result",
+      sourceField: resultImage.sourceLabel,
       title: resultImage.sourceLabel,
-      type: "result-image" as const,
+      type: "result-image",
     };
   }
 
-  throw new TrainingGenerationTaskDraftServiceError("Training generation task input reference not found", 404, {
+  throw new TrainingGenerationTaskServiceError("Training generation task input reference not found", 404, {
     projectId: project.id,
     referenceId,
     sectionId,
   });
 }
 
-async function getDraftOrThrow(taskId: string) {
-  const drafts = await readGenerationTaskDrafts();
-  const draft = drafts.find((item) => item.id === taskId);
-  if (!draft) {
-    throw new TrainingGenerationTaskDraftServiceError("Training generation task draft not found", 404, { taskId });
-  }
-  return { draft, drafts };
+function visibleReferenceInputs(row: TrainingGenerationTaskRow) {
+  return row.inputs.filter((input) => (
+    input.inputKind !== SECTION_CONTEXT_INPUT_KIND
+    && input.inputKind !== SUPPLEMENTAL_IMAGE_INPUT_KIND
+  ));
 }
 
-async function buildGenerationTaskDraftView(draft: GenerationTaskDraftRecord) {
-  const project = await getTrainingProject(draft.projectId);
-  const section = project.sections.find((item) => item.id === draft.sectionId);
-  if (!section) {
-    throw new TrainingGenerationTaskDraftServiceError("Training section not found", 404, {
-      projectId: draft.projectId,
-      sectionId: draft.sectionId,
-      taskId: draft.id,
-    });
+function supplementalImageInputs(row: TrainingGenerationTaskRow) {
+  return row.inputs.filter((input) => input.inputKind === SUPPLEMENTAL_IMAGE_INPUT_KIND);
+}
+
+function referenceIdForInput(input: TrainingGenerationInputReferenceRow) {
+  if (
+    input.sourceField === "profile-usage"
+    || input.sourceField === "profile-detail"
+    || input.sourceField === "section-scene"
+    || input.sourceField === "section-prompt"
+  ) {
+    return input.sourceField;
+  }
+  return input.sourceEntityId ?? input.id;
+}
+
+function mapInputReferenceView(
+  input: TrainingGenerationInputReferenceRow,
+  project: TrainingProject,
+) {
+  const referenceId = referenceIdForInput(input);
+  if (input.inputKind === "source_image") {
+    const referenceImage = project.referenceImages.find((item) => item.id === input.sourceEntityId);
+    return {
+      detail: input.snapshotText ?? referenceImage?.note ?? "",
+      id: input.id,
+      referenceId,
+      sourceImageId: input.sourceEntityId ?? undefined,
+      title: referenceImage?.label ?? input.sourceField ?? "参考图",
+      type: "source-image" as const,
+    };
   }
 
-  const resolvedInputs = draft.inputs.map((input) => ({
+  if (input.inputKind === "result_image") {
+    const resultImage = project.resultPool.find((item) => item.id === input.sourceEntityId);
+    return {
+      detail: input.snapshotText ?? resultImage?.caption ?? "",
+      id: input.id,
+      previousCandidateImageId: input.sourceEntityId ?? undefined,
+      referenceId,
+      title: resultImage?.sourceLabel ?? input.sourceField ?? "生成结果",
+      type: "result-image" as const,
+    };
+  }
+
+  const textTitles: Record<string, string> = {
+    "profile-detail": "角色细节",
+    "profile-usage": "使用提示词",
+    "section-prompt": "图片提示词",
+    "section-scene": "训练小节",
+  };
+
+  return {
+    detail: input.snapshotText ?? "",
     id: input.id,
-    ...resolveReference(project, section.id, input.referenceId),
-  }));
-  const taskMetadata = normalizeGenerationTaskMetadata(draft);
+    referenceId,
+    title: textTitles[referenceId] ?? input.sourceField ?? "文本引用",
+    type: "text" as const,
+  };
+}
+
+function mapSupplementalImageView(input: TrainingGenerationInputReferenceRow) {
+  const artifact = input.artifact ?? input.snapshotArtifact;
+  return {
+    detail: input.snapshotText ?? "",
+    id: input.id,
+    relativePath: input.snapshotFilePath ?? artifact?.filePath ?? artifact?.storageKey ?? "",
+    title: input.sourceField ?? "补充图片",
+  };
+}
+
+async function buildTrainingGenerationTaskView(row: TrainingGenerationTaskRow) {
+  const project = await getProjectOrThrow(row.trainingProjectId);
+  const sectionId = findTaskSectionId(row);
+  const section = getSectionOrThrow(project, sectionId, row.id);
+  const resolvedInputs = visibleReferenceInputs(row).map((input) => mapInputReferenceView(input, project));
+  const supplementalImages = supplementalImageInputs(row).map(mapSupplementalImageView);
+  const taskMetadata = normalizeGenerationTaskMetadata(row);
 
   const finalInput = [
     project.usagePrompt,
@@ -348,139 +469,185 @@ async function buildGenerationTaskDraftView(draft: GenerationTaskDraftRecord) {
     resolvedInputs.length
       ? `显式引用\n${resolvedInputs.map((input) => `- ${input.title}: ${input.detail}`).join("\n")}`
       : "",
-    draft.supplementalImages.length
-      ? `补充图片附件\n${draft.supplementalImages.map((image) => `- ${image.title}: ${image.detail}`).join("\n")}`
+    supplementalImages.length
+      ? `补充图片附件\n${supplementalImages.map((image) => `- ${image.title}: ${image.detail}`).join("\n")}`
       : "",
-    draft.supplementalPrompt,
+    row.supplementalPrompt ?? "",
   ]
     .map((part) => part.trim())
     .filter(Boolean)
     .join("\n");
 
   return {
-    createdAt: draft.createdAt,
+    createdAt: row.createdAt.toISOString(),
     finalInput,
     generationKind: taskMetadata.generationKind,
-    id: draft.id,
+    id: row.id,
     inputs: resolvedInputs,
-    paramsJson: draft.paramsJson ?? null,
-    projectId: draft.projectId,
-    sectionId: draft.sectionId,
-    supplementalImages: draft.supplementalImages,
-    supplementalPrompt: draft.supplementalPrompt,
+    paramsJson: fromPrismaJsonObject(row.paramsJson),
+    projectId: row.trainingProjectId,
+    sectionId: section.id,
+    status: row.status,
+    supplementalImages,
+    supplementalPrompt: row.supplementalPrompt ?? "",
     taskType: taskMetadata.taskType,
     taskTypeLabel: taskMetadata.taskTypeLabel,
-    updatedAt: draft.updatedAt,
+    updatedAt: row.updatedAt.toISOString(),
   };
 }
 
-export async function getManagedGenerationTaskDraft(taskId: string) {
-  const drafts = await readGenerationTaskDrafts();
-  const draft = drafts.find((item) => item.id === taskId);
-  if (!draft) return null;
-  return buildGenerationTaskDraftView(draft);
+function mapQueuedGenerationTaskToTrainingRun(input: {
+  finalInput: string;
+  project: TrainingProject;
+  row: TrainingGenerationTaskRow;
+  section: TrainingSection;
+  taskTypeLabel: string;
+}) {
+  const sectionRun = input.row.sectionRuns[0] ?? null;
+  const finishedAt = input.row.finishedAt?.toISOString() ?? sectionRun?.finishedAt?.toISOString() ?? null;
+  const startedAt = input.row.startedAt?.toISOString() ?? sectionRun?.startedAt?.toISOString() ?? null;
+  const createdAt = input.row.createdAt.toISOString();
+  const status = mapGenerationTaskStatus(input.row.status);
+  const generationKind = normalizeGenerationKind(input.row.generationKind, normalizeGenerationTaskType(input.row.taskType));
+
+  return {
+    id: input.row.id,
+    kind: "generation",
+    status,
+    generationKind,
+    taskType: normalizeGenerationTaskType(input.row.taskType),
+    taskTypeLabel: input.taskTypeLabel,
+    projectId: input.project.id,
+    sectionId: input.section.id,
+    projectTitle: input.project.title,
+    title: `${input.section.title} 图片生成`,
+    summary: `图片 · 小节 ${input.section.title}`,
+    timestamp: finishedAt
+      ? formatRunTimestamp(finishedAt, status === "failed" ? "失败于" : "完成于")
+      : startedAt
+        ? formatRunTimestamp(startedAt, "开始于")
+        : formatRunTimestamp(createdAt, "创建于"),
+    provider: input.row.provider ?? undefined,
+    providerModel: generationKind === "image_generation"
+      ? input.row.model ?? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.model
+      : undefined,
+    providerTool: generationKind === "image_generation"
+      ? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.tool
+      : undefined,
+    usesComfyUiWorkflow: generationKind === "image_generation"
+      ? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.usesComfyUiWorkflow
+      : undefined,
+    usesComfyUiQueue: generationKind === "image_generation"
+      ? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.usesComfyUiQueue
+      : undefined,
+    finalInput: input.finalInput,
+    outputLabel: input.row.outputs.length > 0 ? `输出 ${input.row.outputs.length} 张图片` : undefined,
+    schedulerMessage: "已进入生成队列",
+  } satisfies LoraTrainingRun;
 }
 
-export async function listManagedGenerationTaskDrafts(projectId: string, filters: {
+export async function listTrainingGenerationTasks(projectId: string, filters: {
   status?: string | null;
   taskType?: string | null;
 } = {}) {
-  if (filters.status?.trim() && filters.status.trim() !== "draft") {
+  if (filters.status?.trim() && filters.status.trim() !== DRAFT_STATUS) {
     return [];
   }
 
-  await getTrainingProject(projectId).catch((error) => {
-    const mapped = mapTrainingReadError(error);
-    throw new TrainingGenerationTaskDraftServiceError(mapped.message, mapped.status, mapped.details);
-  });
-
+  const project = await getProjectOrThrow(projectId);
   const taskType = filters.taskType?.trim() ? normalizeGenerationTaskType(filters.taskType) : null;
-  const drafts = await readGenerationTaskDrafts();
-  const projectDrafts = drafts.filter((draft) => draft.projectId === projectId);
-  const views = await Promise.all(projectDrafts.map(buildGenerationTaskDraftView));
-
-  return views
-    .map((view) => ({ ...view, status: "draft" as const }))
-    .filter((view) => !taskType || view.taskType === taskType);
+  const rows = await prisma.trainingGenerationTask.findMany({
+    where: {
+      trainingProjectId: project.id,
+      status: DRAFT_STATUS,
+      taskType: taskType ?? undefined,
+    },
+    orderBy: [
+      { updatedAt: "desc" },
+      { createdAt: "desc" },
+    ],
+    include: trainingGenerationTaskInclude,
+  });
+  const views = await Promise.all(rows.map(buildTrainingGenerationTaskView));
+  return views.map((view) => ({ ...view, status: "draft" as const }));
 }
 
-export async function createManagedGenerationTaskDraft(projectId: string, input: {
+export async function getTrainingGenerationTask(taskId: string) {
+  const row = await getTrainingGenerationTaskRow(taskId);
+  if (!row || row.status !== DRAFT_STATUS) return null;
+  return buildTrainingGenerationTaskView(row);
+}
+
+export async function createTrainingGenerationTask(projectId: string, input: {
   generationKind?: string | null;
   paramsJson?: unknown;
   sectionId?: string | null;
   taskType?: string | null;
   supplementalPrompt?: string | null;
 }) {
-  const project = await getTrainingProject(projectId);
-  const sectionId = input.sectionId?.trim();
-  const section = sectionId ? project.sections.find((item) => item.id === sectionId) : null;
-  if (!section) {
-    throw new TrainingGenerationTaskDraftServiceError("Training section not found", 404, {
-      projectId,
-      sectionId: sectionId ?? null,
-    });
-  }
+  const project = await getProjectOrThrow(projectId);
+  const section = getSectionOrThrow(project, input.sectionId);
   const taskMetadata = normalizeGenerationTaskMetadata(input);
   const paramsJson = normalizeGenerationParamsJson(input.paramsJson);
 
-  const nextDraft: GenerationTaskDraftRecord = {
-    createdAt: formatTimestamp(),
-    generationKind: taskMetadata.generationKind,
-    id: createDraftId(),
-    inputs: [],
-    paramsJson,
-    projectId,
-    sectionId: section.id,
-    supplementalImages: [],
-    supplementalPrompt: input.supplementalPrompt?.trim() || "",
-    taskType: taskMetadata.taskType,
-    updatedAt: formatTimestamp(),
-  };
-
-  await withGenerationTaskDraftWriteLock(async () => {
-    const drafts = await readGenerationTaskDrafts();
-    await writeGenerationTaskDrafts([nextDraft, ...drafts]);
+  const row = await prisma.trainingGenerationTask.create({
+    data: {
+      trainingProjectId: project.id,
+      generationKind: taskMetadata.generationKind,
+      taskType: taskMetadata.taskType,
+      supplementalPrompt: input.supplementalPrompt?.trim() || "",
+      status: DRAFT_STATUS,
+      paramsJson: toPrismaJson(paramsJson),
+      inputs: {
+        create: sectionContextInput(section),
+      },
+    },
+    include: trainingGenerationTaskInclude,
   });
 
-  return buildGenerationTaskDraftView(nextDraft);
+  return buildTrainingGenerationTaskView(row);
 }
 
-export async function updateManagedGenerationTaskDraft(taskId: string, input: {
+export async function updateTrainingGenerationTask(taskId: string, input: {
   generationKind?: string | null;
   paramsJson?: unknown;
   taskType?: string | null;
   supplementalPrompt?: string | null;
 }) {
-  const { draft, drafts } = await getDraftOrThrow(taskId);
+  const current = await getDraftTaskRowOrThrow(taskId);
   const taskMetadata = normalizeGenerationTaskMetadata({
-    generationKind: typeof input.generationKind === "string" ? input.generationKind : draft.generationKind,
-    taskType: typeof input.taskType === "string" && input.taskType.trim() ? input.taskType : draft.taskType,
+    generationKind: typeof input.generationKind === "string" ? input.generationKind : current.generationKind,
+    taskType: typeof input.taskType === "string" && input.taskType.trim() ? input.taskType : current.taskType,
   });
-  const paramsJson = normalizeGenerationParamsJson(input.paramsJson, draft.paramsJson ?? null);
-  const nextDraft: GenerationTaskDraftRecord = {
-    ...draft,
-    generationKind: taskMetadata.generationKind,
-    paramsJson,
-    supplementalPrompt: typeof input.supplementalPrompt === "string" ? input.supplementalPrompt.trim() : draft.supplementalPrompt,
-    taskType: taskMetadata.taskType,
-    updatedAt: formatTimestamp(),
-  };
+  const paramsJson = normalizeGenerationParamsJson(
+    input.paramsJson,
+    fromPrismaJsonObject(current.paramsJson),
+  );
 
-  await withGenerationTaskDraftWriteLock(async () => {
-    await writeGenerationTaskDrafts(drafts.map((item) => item.id === taskId ? nextDraft : item));
+  const row = await prisma.trainingGenerationTask.update({
+    where: { id: taskId },
+    data: {
+      generationKind: taskMetadata.generationKind,
+      paramsJson: toPrismaJson(paramsJson),
+      supplementalPrompt: typeof input.supplementalPrompt === "string"
+        ? input.supplementalPrompt.trim()
+        : current.supplementalPrompt,
+      taskType: taskMetadata.taskType,
+    },
+    include: trainingGenerationTaskInclude,
   });
 
-  return buildGenerationTaskDraftView(nextDraft);
+  return buildTrainingGenerationTaskView(row);
 }
 
-export async function deleteManagedGenerationTaskDraft(taskId: string) {
-  const drafts = await readGenerationTaskDrafts();
-  const exists = drafts.some((item) => item.id === taskId);
-  if (!exists) return null;
-
-  await withGenerationTaskDraftWriteLock(async () => {
-    await writeGenerationTaskDrafts(drafts.filter((item) => item.id !== taskId));
+export async function deleteTrainingGenerationTask(taskId: string) {
+  const deleted = await prisma.trainingGenerationTask.deleteMany({
+    where: {
+      id: taskId,
+      status: DRAFT_STATUS,
+    },
   });
+  if (deleted.count === 0) return null;
 
   return {
     id: taskId,
@@ -488,52 +655,68 @@ export async function deleteManagedGenerationTaskDraft(taskId: string) {
   };
 }
 
-export async function addManagedGenerationTaskInput(taskId: string, input: {
+export async function addTrainingGenerationTaskInput(taskId: string, input: {
   referenceId?: string | null;
 }) {
   const referenceId = input.referenceId?.trim();
   if (!referenceId) {
-    throw new TrainingGenerationTaskDraftServiceError("referenceId is required", 400);
+    throw new TrainingGenerationTaskServiceError("referenceId is required", 400);
   }
 
-  const { draft, drafts } = await getDraftOrThrow(taskId);
-  await getTrainingProject(draft.projectId).then((project) => resolveReference(project, draft.sectionId, referenceId));
+  const task = await getDraftTaskRowOrThrow(taskId);
+  const project = await getProjectOrThrow(task.trainingProjectId);
+  const sectionId = findTaskSectionId(task);
+  const section = getSectionOrThrow(project, sectionId, task.id);
+  const resolved = await resolveReference(project, section.id, referenceId);
+  const sortOrder = visibleReferenceInputs(task).length + supplementalImageInputs(task).length + 1;
 
-  const nextInput: GenerationTaskDraftInput = {
-    id: createDraftInputId(taskId),
-    referenceId,
-  };
-  const nextDraft: GenerationTaskDraftRecord = {
-    ...draft,
-    inputs: [...draft.inputs, nextInput],
-    updatedAt: formatTimestamp(),
-  };
-
-  await withGenerationTaskDraftWriteLock(async () => {
-    await writeGenerationTaskDrafts(drafts.map((item) => item.id === taskId ? nextDraft : item));
+  const row = await prisma.trainingGenerationInputReference.create({
+    data: {
+      trainingGenerationTaskId: task.id,
+      inputKind: resolved.inputKind,
+      sourceEntityType: resolved.sourceEntityType ?? null,
+      sourceEntityId: resolved.sourceEntityId ?? null,
+      sourceField: resolved.sourceField ?? null,
+      artifactId: resolved.artifactId ?? null,
+      snapshotText: resolved.detail,
+      snapshotFilePath: resolved.snapshotFilePath ?? null,
+      role: resolved.role ?? null,
+      purpose: resolved.purpose ?? resolved.inputKind,
+      sortOrder,
+    },
+    include: {
+      artifact: true,
+      snapshotArtifact: true,
+    },
+  });
+  await prisma.trainingGenerationTask.update({
+    where: { id: task.id },
+    data: { updatedAt: new Date() },
   });
 
-  const project = await getTrainingProject(draft.projectId);
-  const resolved = resolveReference(project, draft.sectionId, referenceId);
   return {
-    id: nextInput.id,
-    ...resolved,
+    ...mapInputReferenceView(row, project),
+    referenceId,
   };
 }
 
-export async function deleteManagedGenerationTaskInput(inputId: string) {
-  const drafts = await readGenerationTaskDrafts();
-  const owner = drafts.find((draft) => draft.inputs.some((input) => input.id === inputId));
-  if (!owner) return null;
+export async function deleteTrainingGenerationTaskInput(inputId: string) {
+  const input = await prisma.trainingGenerationInputReference.findUnique({
+    where: { id: inputId },
+    include: {
+      task: true,
+    },
+  });
+  if (!input || input.inputKind === SECTION_CONTEXT_INPUT_KIND || input.task.status !== DRAFT_STATUS) {
+    return null;
+  }
 
-  const nextDraft: GenerationTaskDraftRecord = {
-    ...owner,
-    inputs: owner.inputs.filter((input) => input.id !== inputId),
-    updatedAt: formatTimestamp(),
-  };
-
-  await withGenerationTaskDraftWriteLock(async () => {
-    await writeGenerationTaskDrafts(drafts.map((draft) => draft.id === owner.id ? nextDraft : draft));
+  await prisma.trainingGenerationInputReference.delete({
+    where: { id: inputId },
+  });
+  await prisma.trainingGenerationTask.update({
+    where: { id: input.trainingGenerationTaskId },
+    data: { updatedAt: new Date() },
   });
 
   return {
@@ -542,13 +725,15 @@ export async function deleteManagedGenerationTaskInput(inputId: string) {
   };
 }
 
-function sanitizeManagedUploadName(name: string) {
-  const base = name
+function sanitizeTrainingUploadName(name: string) {
+  const extension = extname(name).toLowerCase() || ".png";
+  const stem = name
+    .slice(0, extension ? -extension.length : undefined)
     .normalize("NFKD")
     .replace(/[^\p{Letter}\p{Number}._-]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
-  return base || "reference";
+  return `${stem || "reference"}${extension}`;
 }
 
 function imageMimeTypeFromExtension(extension: string) {
@@ -561,7 +746,7 @@ function imageMimeTypeFromExtension(extension: string) {
 
 function isFileLike(
   value: unknown,
-): value is { name: string; arrayBuffer(): Promise<ArrayBuffer> } {
+): value is { name: string; arrayBuffer(): Promise<ArrayBuffer>; type?: string } {
   return Boolean(
     value
     && typeof value === "object"
@@ -572,179 +757,164 @@ function isFileLike(
   );
 }
 
-export async function addManagedGenerationTaskSupplementalImage(taskId: string, formData: FormData) {
-  const { draft, drafts } = await getDraftOrThrow(taskId);
+export async function addTrainingGenerationTaskSupplementalImage(taskId: string, formData: FormData) {
+  const task = await getDraftTaskRowOrThrow(taskId);
+  const project = await getProjectOrThrow(task.trainingProjectId);
+  const sectionId = findTaskSectionId(task);
+  const section = getSectionOrThrow(project, sectionId, task.id);
   const file = formData.get("file");
   if (!isFileLike(file)) {
-    throw new TrainingGenerationTaskDraftServiceError("file is required", 400);
+    throw new TrainingGenerationTaskServiceError("file is required", 400);
   }
 
-  const safeName = sanitizeManagedUploadName(file.name);
-  const extension = extname(file.name).toLowerCase() || ".png";
-  const relativePath = `data/images/training-managed/${draft.projectId}/generation-drafts/${taskId}/${Date.now()}-${safeName}${extension}`;
-  const absolutePath = join(TRAINING_GENERATION_TASK_DRAFT_IMAGE_ROOT, draft.projectId, "generation-drafts", taskId, `${Date.now()}-${safeName}${extension}`);
-  const buffer = Buffer.from(await file.arrayBuffer());
-  await mkdir(dirname(absolutePath), { recursive: true });
-  await writeFile(absolutePath, buffer);
-
-  const nextImage: GenerationTaskDraftSupplementalImage = {
-    detail: typeof formData.get("detail") === "string" ? String(formData.get("detail")).trim() : "",
-    id: createDraftSupplementalImageId(taskId),
+  const title = typeof formData.get("title") === "string" && String(formData.get("title")).trim()
+    ? String(formData.get("title")).trim()
+    : file.name.replace(/\.[^.]+$/, "") || "补充图片";
+  const detail = typeof formData.get("detail") === "string" ? String(formData.get("detail")).trim() : "";
+  const safeName = sanitizeTrainingUploadName(file.name);
+  const extension = extname(safeName).toLowerCase() || ".png";
+  const relativePath = `data/images/training/${project.id}/generation-tasks/${task.id}/supplemental/${Date.now()}-${randomUUID()}-${safeName}`;
+  const artifact = await writeTrainingBufferArtifact({
+    buffer: Buffer.from(await file.arrayBuffer()),
+    jobId: project.id,
+    kind: "source_image",
+    metadata: {
+      origin: "training_generation_task_supplemental_upload",
+      sectionId: section.id,
+      taskId: task.id,
+      title,
+    },
+    mimeType: file.type || imageMimeTypeFromExtension(extension),
     relativePath,
-    title: typeof formData.get("title") === "string" && String(formData.get("title")).trim()
-      ? String(formData.get("title")).trim()
-      : file.name.replace(/\.[^.]+$/, "") || "补充图片",
-  };
-  const nextDraft: GenerationTaskDraftRecord = {
-    ...draft,
-    supplementalImages: [...draft.supplementalImages, nextImage],
-    updatedAt: formatTimestamp(),
-  };
-
-  await withGenerationTaskDraftWriteLock(async () => {
-    await writeGenerationTaskDrafts(drafts.map((item) => item.id === taskId ? nextDraft : item));
   });
-
-  return nextImage;
-}
-
-export async function previewManagedGenerationTask(taskId: string) {
-  const { draft } = await getDraftOrThrow(taskId);
-  return buildGenerationTaskDraftView(draft);
-}
-
-function resolveDraftSupplementalImageAbsolutePath(relativePath: string) {
-  return relativePath.startsWith("data/images/")
-    ? join(process.cwd(), relativePath)
-    : join(process.cwd(), "data", "images", relativePath);
-}
-
-async function buildTrainingSupplementalInputImages(taskId: string, sectionId: string, supplementalImages: GenerationTaskDraftSupplementalImage[]) {
-  if (supplementalImages.length === 0) {
-    return [] as TrainingProviderInputImage[];
-  }
-
-  const section = await getTrainingProductionSectionRecord(sectionId);
-  const job = await getTrainingProductionProjectRecord(section.jobId);
-
-  return Promise.all(supplementalImages.map(async (image, index) => {
-    const extension = extname(image.relativePath).toLowerCase() || ".png";
-    const safeName = sanitizeManagedUploadName(image.title || `supplemental-${index + 1}`);
-    const relativePath = `generation-drafts/${taskId}/supplemental/${Date.now()}-${index + 1}-${safeName}${extension}`;
-    let buffer: Buffer;
-
-    try {
-      buffer = await readFile(resolveDraftSupplementalImageAbsolutePath(image.relativePath));
-    } catch (error) {
-      throw new TrainingGenerationTaskDraftServiceError("Training supplemental image file not found", 404, {
-        taskId,
-        sectionId,
-        relativePath: image.relativePath,
-        cause: error instanceof Error ? error.message : String(error),
-      });
-    }
-
-    const artifactStat = await writeTrainingBufferArtifact(job.artifactRoot, relativePath, buffer);
-    const artifact = await createTrainingProjectArtifact({
-      absolutePath: artifactStat.absolutePath,
-      byteSize: BigInt(artifactStat.byteSize),
-      jobId: job.id,
-      kind: "source_image",
-      metadata: {
-        origin: "training_generation_task_supplemental_upload",
-        sectionId,
-        taskId,
-        title: image.title,
-      },
-      mimeType: imageMimeTypeFromExtension(extension),
-      relativePath: artifactStat.relativePath,
-      sha256: artifactStat.sha256,
-    });
-
-    return {
+  const sortOrder = visibleReferenceInputs(task).length + supplementalImageInputs(task).length + 1;
+  const input = await prisma.trainingGenerationInputReference.create({
+    data: {
+      trainingGenerationTaskId: task.id,
+      inputKind: SUPPLEMENTAL_IMAGE_INPUT_KIND,
       artifactId: artifact.id,
-      relativePath: artifactStat.relativePath,
+      snapshotFilePath: artifact.relativePath,
+      snapshotText: detail,
+      sourceField: title,
       role: "local_reference",
-      sha256: artifactStat.sha256,
-    } satisfies TrainingProviderInputImage;
-  }));
+      purpose: "supplemental_image",
+      sortOrder,
+    },
+    include: {
+      artifact: true,
+      snapshotArtifact: true,
+    },
+  });
+  await prisma.trainingGenerationTask.update({
+    where: { id: task.id },
+    data: { updatedAt: new Date() },
+  });
+
+  return mapSupplementalImageView(input);
 }
 
-export async function runManagedGenerationTask(taskId: string) {
-  const { draft, drafts } = await getDraftOrThrow(taskId);
-  const project = await getTrainingProject(draft.projectId);
-  const section = project.sections.find((item) => item.id === draft.sectionId);
-  if (!section) {
-    throw new TrainingGenerationTaskDraftServiceError("Training section not found", 404, {
-      projectId: draft.projectId,
-      sectionId: draft.sectionId,
-      taskId,
+export async function previewTrainingGenerationTask(taskId: string) {
+  const task = await getDraftTaskRowOrThrow(taskId);
+  return buildTrainingGenerationTaskView(task);
+}
+
+function supplementalInputImages(row: TrainingGenerationTaskRow) {
+  return supplementalImageInputs(row).flatMap((input) => {
+    const artifact = input.artifact ?? input.snapshotArtifact;
+    const relativePath = input.snapshotFilePath ?? artifact?.filePath ?? artifact?.storageKey;
+    if (!relativePath) return [];
+    return [{
+      artifactId: input.artifactId ?? input.snapshotArtifactId ?? undefined,
+      relativePath,
+      role: input.role ?? "local_reference",
+      sha256: artifact?.sha256 ?? null,
+    }];
+  });
+}
+
+export async function runTrainingGenerationTask(taskId: string) {
+  const task = await getDraftTaskRowOrThrow(taskId);
+  const preview = await buildTrainingGenerationTaskView(task);
+  const project = await getProjectOrThrow(task.trainingProjectId);
+  const section = getSectionOrThrow(project, preview.sectionId, task.id);
+  const taskMetadata = normalizeGenerationTaskMetadata(task);
+  const userInstruction = `${taskMetadata.taskTypeLabel}\n\n${preview.finalInput}`;
+  const paramsJson = fromPrismaJsonObject(task.paramsJson);
+
+  await prisma.$transaction(async (tx) => {
+    const profile = await tx.trainingCharacterProfile.upsert({
+      where: { trainingProjectId: project.id },
+      create: { trainingProjectId: project.id },
+      update: {},
+    });
+    const runIndex = await tx.trainingSectionRun.count({
+      where: { trainingSectionId: section.id },
+    }) + 1;
+    const sectionRun = await tx.trainingSectionRun.create({
+      data: {
+        trainingProjectId: project.id,
+        trainingSectionId: section.id,
+        trainingCharacterProfileId: profile.id,
+        generationTaskId: task.id,
+        runIndex,
+        sceneDescriptionText: section.resolvedScene,
+        imagePromptText: userInstruction,
+        provider: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.provider,
+        model: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.model,
+        generationParamsJson: toPrismaJson(paramsJson),
+        status: "queued",
+      },
+    });
+    await tx.trainingSection.update({
+      where: { id: section.id },
+      data: { latestRunId: sectionRun.id },
+    });
+    await tx.trainingGenerationTask.update({
+      where: { id: task.id },
+      data: {
+        generationKind: taskMetadata.generationKind,
+        taskType: taskMetadata.taskType,
+        supplementalPrompt: userInstruction,
+        status: "queued",
+        provider: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.provider,
+        model: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.model,
+        paramsJson: toPrismaJson(paramsJson),
+      },
+    });
+  });
+
+  const row = await getTrainingGenerationTaskRow(task.id);
+  if (!row) {
+    throw new TrainingGenerationTaskServiceError("Training generation task not found after enqueue", 404, {
+      taskId: task.id,
     });
   }
 
-  const preview = await buildGenerationTaskDraftView(draft);
-  const resolvedInputs = draft.inputs.map((input) => resolveReference(project, section.id, input.referenceId));
-  const sourceImageIds = [...new Set(resolvedInputs.flatMap((input) => input.type === "source-image" ? [input.sourceImageId] : []))];
-  const previousCandidateImageIds = [...new Set(resolvedInputs.flatMap((input) => input.type === "result-image" ? [input.previousCandidateImageId] : []))];
-  const supplementalImages = draft.supplementalImages.map((image) => ({
-    relativePath: image.relativePath,
-    title: image.title,
-  }));
-  const taskMetadata = normalizeGenerationTaskMetadata(draft);
-
-  const managedRun = await enqueueManagedTrainingSectionGenerationRun(section.id, {
-    previousCandidateImageIds,
-    projectId: draft.projectId,
-    sourceImageIds,
-    supplementalImages,
-    userInstruction: `${taskMetadata.taskTypeLabel}\n\n${preview.finalInput}`,
-  }).catch((error) => {
-    const mapped = mapTrainingProjectError(error);
-    throw new TrainingGenerationTaskDraftServiceError(mapped.message, mapped.status, mapped.details);
-  });
-
-  let run: LoraTrainingRun;
-
-  if (managedRun) {
-    run = {
-      ...managedRun,
-      generationKind: taskMetadata.generationKind,
-      taskType: taskMetadata.taskType,
-      taskTypeLabel: taskMetadata.taskTypeLabel,
-    };
-  } else {
-    const projectIsManaged = Boolean(await getManagedTrainingProject(draft.projectId));
-    const productionRun = await enqueueTrainingSectionGenerationRun(section.id, {
-      previousCandidateImageIds,
-      supplementalInputImages: projectIsManaged
-        ? []
-        : await buildTrainingSupplementalInputImages(taskId, section.id, draft.supplementalImages),
-      sourceImageIds,
-      userInstruction: `${taskMetadata.taskTypeLabel}\n\n${preview.finalInput}`,
-    }).catch((error) => {
-      const mapped = mapTrainingGenerationError(error);
-      throw new TrainingGenerationTaskDraftServiceError(mapped.message, mapped.status, mapped.details);
-    });
-    run = mapLegacyGenerationRunToTrainingRun({
-      finalInput: preview.finalInput,
-      generationKind: taskMetadata.generationKind,
+  return {
+    ...mapQueuedGenerationTaskToTrainingRun({
+      finalInput: userInstruction,
       project,
-      run: productionRun,
+      row,
       section,
-      taskType: taskMetadata.taskType,
       taskTypeLabel: taskMetadata.taskTypeLabel,
-    });
-  }
-
-  await withGenerationTaskDraftWriteLock(async () => {
-    await writeGenerationTaskDrafts(drafts.filter((item) => item.id !== taskId));
-  });
-
-  return run;
+    }),
+    inputImages: supplementalInputImages(row).map((image) => ({
+      id: image.artifactId ?? image.relativePath,
+      src: image.relativePath,
+      full: image.relativePath,
+      label: image.role ?? "local_reference",
+      status: "pending" as const,
+      featured: false,
+      featured2: false,
+      cover: false,
+      width: null,
+      height: null,
+    })),
+  } satisfies LoraTrainingRun;
 }
 
-export function mapTrainingGenerationTaskDraftError(error: unknown) {
-  if (error instanceof TrainingGenerationTaskDraftServiceError) {
+export function mapTrainingGenerationTaskError(error: unknown) {
+  if (error instanceof TrainingGenerationTaskServiceError) {
     return {
       message: error.message,
       status: error.status,
@@ -752,9 +922,19 @@ export function mapTrainingGenerationTaskDraftError(error: unknown) {
     };
   }
 
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+    return {
+      message: "Training generation task not found",
+      status: 404,
+      details: error.message,
+    };
+  }
+
   return {
-    message: "Unexpected training generation task draft error",
+    message: "Unexpected training generation task error",
     status: 500,
     details: error instanceof Error ? error.message : String(error),
   };
 }
+
+export const mapTrainingGenerationTaskDraftError = mapTrainingGenerationTaskError;

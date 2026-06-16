@@ -1,8 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  mapTrainingGenerationRunMutationError,
-  reviewTrainingImageResult,
-} from "@/server/services/training/project-service";
+  mapTrainingGenerationOutputError,
+  setTrainingImageResultReviewStatus,
+} from "@/server/services/training/generation-output-service";
 
 export const dynamic = "force-dynamic";
 
@@ -22,12 +22,12 @@ export async function POST(
 
   try {
     const { imageResultId } = await params;
-    const data = await reviewTrainingImageResult(imageResultId, {
+    const data = await setTrainingImageResultReviewStatus(imageResultId, {
       reviewStatus: payload.reviewStatus,
     });
     return ok(data);
   } catch (error) {
-    const mapped = mapTrainingGenerationRunMutationError(error);
+    const mapped = mapTrainingGenerationOutputError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

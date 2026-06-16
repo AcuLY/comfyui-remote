@@ -261,6 +261,46 @@ setupDb.exec(`
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+  CREATE TABLE "TrainingSceneDescriptionPresetCategory" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL UNIQUE,
+    "icon" TEXT,
+    "color" TEXT,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "sceneDescriptionOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX "TrainingSceneDescriptionPresetCategory_sortOrder_idx" ON "TrainingSceneDescriptionPresetCategory"("sortOrder");
+  CREATE INDEX "TrainingSceneDescriptionPresetCategory_sceneDescriptionOrder_idx" ON "TrainingSceneDescriptionPresetCategory"("sceneDescriptionOrder");
+  CREATE TABLE "TrainingSceneDescriptionPresetFolder" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "categoryId" TEXT NOT NULL,
+    "parentId" TEXT,
+    "name" TEXT NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX "TrainingSceneDescriptionPresetFolder_categoryId_parentId_sortOrder_idx" ON "TrainingSceneDescriptionPresetFolder"("categoryId", "parentId", "sortOrder");
+  CREATE TABLE "TrainingSceneDescriptionPreset" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "categoryId" TEXT NOT NULL,
+    "folderId" TEXT,
+    "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "sceneDescriptionText" TEXT NOT NULL,
+    "notes" TEXT,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE UNIQUE INDEX "TrainingSceneDescriptionPreset_categoryId_slug_key" ON "TrainingSceneDescriptionPreset"("categoryId", "slug");
+  CREATE UNIQUE INDEX "TrainingSceneDescriptionPreset_categoryId_id_key" ON "TrainingSceneDescriptionPreset"("categoryId", "id");
+  CREATE INDEX "TrainingSceneDescriptionPreset_categoryId_folderId_sortOrder_idx" ON "TrainingSceneDescriptionPreset"("categoryId", "folderId", "sortOrder");
+  CREATE INDEX "TrainingSceneDescriptionPreset_isActive_sortOrder_idx" ON "TrainingSceneDescriptionPreset"("isActive", "sortOrder");
 `);
 
 let prisma: typeof PrismaClientSingleton;

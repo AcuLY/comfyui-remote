@@ -1,5 +1,3 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
 import type { LoraTrainingTemplate } from "@/features/training/types";
 import {
   createTrainingTemplateRow,
@@ -10,13 +8,8 @@ import {
   type TrainingTemplateInput as TrainingTemplateRowInput,
   type TrainingTemplateRow,
 } from "@/server/repositories/training/templates";
-import { listTrainingTemplateOrderIds, orderTrainingTemplatesByStoredIds } from "@/server/services/training/template-order-service";
 import { z } from "zod";
 
-const TRAINING_FALLBACK_TEMPLATE_BASE_ID = "training-base";
-const TRAINING_COMPAT_TEMPLATE_BASE_ID = "character-lora-base";
-const TRAINING_DEFAULT_TEMPLATE_KEY = "character_identity_default";
-const TRAINING_TEMPLATE_FALLBACK_PATH = join(process.cwd(), "data", "training-templates.json");
 const DEFAULT_IMAGE_PROMPT_FORMAT = `Generate a finished anime character illustration.
 
 Character:
@@ -46,142 +39,6 @@ Task supplemental prompt:
 
 Guidance:
 {captioningGuidance}`;
-const DEFAULT_FALLBACK_TRAINING_TEMPLATES: LoraTrainingTemplate[] = [
-  {
-    id: TRAINING_FALLBACK_TEMPLATE_BASE_ID,
-    title: "角色 LoRA 基础模板",
-    status: "active",
-    updatedAt: "16:04",
-    description: "用于新角色 LoRA 训练项目的默认模板，包含舞台、街景和白底净图。",
-    imageGuidance: "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。",
-    captionGuidance: "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。",
-    sectionCount: 3,
-    sections: [
-      {
-        id: "stage",
-        title: "舞台肖像",
-        enabled: true,
-        blockCount: 2,
-        scenePreview: "青色轮廓光 + 角色服装细节",
-        resolvedScene: "冷色舞台灯光，青色轮廓光，角色服装细节清楚，背景保留少量霓虹反射。",
-        blocks: [
-          {
-            id: "template-stage-rim",
-            source: "预制",
-            title: "青色轮廓光",
-            text: "冷色舞台灯光，侧后方有清晰青色轮廓光，背景暗部保留少量霓虹反射。",
-          },
-          {
-            id: "template-stage-outfit",
-            source: "本地",
-            title: "角色服装细节",
-            text: "保留角色默认服装、袖口和肩颈细节，不引入复杂遮挡。",
-          },
-        ],
-      },
-      {
-        id: "street",
-        title: "街角夜景",
-        enabled: true,
-        blockCount: 3,
-        scenePreview: "雨后街角 + 霓虹反射",
-        resolvedScene: "雨后街角夜景，湿润地面带霓虹反射，角色站在街灯旁，构图保持可训练。",
-        blocks: [
-          {
-            id: "template-street-rain",
-            source: "预制",
-            title: "雨后街角",
-            text: "雨后街角，地面有霓虹反射，背景轻微虚化但仍可辨认街道层次。",
-          },
-          {
-            id: "template-street-pose",
-            source: "本地",
-            title: "正面可训练角度",
-            text: "角色保持正面或轻微侧身，脸部和服装主体不被遮挡。",
-          },
-          {
-            id: "template-street-clean",
-            source: "本地",
-            title: "背景控制",
-            text: "避免多人、文字招牌和大面积前景遮挡。",
-          },
-        ],
-      },
-      {
-        id: "studio",
-        title: "白底棚拍",
-        enabled: true,
-        blockCount: 1,
-        scenePreview: "白底柔光训练净图",
-        resolvedScene: "白底棚拍，柔光，全身或半身干净构图，用于数据集稳定样本。",
-        blocks: [
-          {
-            id: "template-studio-clean",
-            source: "预制",
-            title: "训练净图",
-            text: "白底棚拍，少量柔光，移除复杂背景，优先保证角色全身服装和发型稳定。",
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "portrait-soft",
-    title: "柔和肖像模板",
-    status: "active",
-    updatedAt: "15:44",
-    description: "偏轻量的人像模板，适合资料较完整的角色快速生成训练集。",
-    imageGuidance: "以半身和特写为主，优先保证脸部、发型和上身服装细节稳定。",
-    captionGuidance: "先写角色触发词，再补充脸部特征、镜头距离和背景控制。",
-    sectionCount: 2,
-    sections: [
-      {
-        id: "closeup",
-        title: "半身特写",
-        enabled: true,
-        blockCount: 2,
-        scenePreview: "柔光半身、脸部细节",
-        resolvedScene: "柔光半身肖像，脸部细节清楚，背景简洁且不干扰角色身份。",
-        blocks: [
-          {
-            id: "template-closeup-light",
-            source: "预制",
-            title: "柔光半身",
-            text: "柔和主光，浅景深，半身构图，脸部和发型轮廓清楚。",
-          },
-          {
-            id: "template-closeup-identity",
-            source: "本地",
-            title: "身份稳定",
-            text: "优先保持角色五官、发型和默认配色稳定。",
-          },
-        ],
-      },
-      {
-        id: "outfit",
-        title: "服装补充",
-        enabled: true,
-        blockCount: 2,
-        scenePreview: "全身服装和材质",
-        resolvedScene: "全身服装补充，展示材质、袖口和轮廓，背景保持简单。",
-        blocks: [
-          {
-            id: "template-outfit-full",
-            source: "预制",
-            title: "全身服装",
-            text: "全身或七分身构图，服装轮廓完整，材质纹理清晰。",
-          },
-          {
-            id: "template-outfit-material",
-            source: "本地",
-            title: "材质补充",
-            text: "补充袖口、衣摆和配饰，避免复杂道具抢占主体。",
-          },
-        ],
-      },
-    ],
-  },
-];
 
 const templateBlockInputSchema = z.object({
   id: z.string().trim().min(1).optional(),
@@ -209,6 +66,7 @@ const trainingTemplateInputSchema = z.object({
 }).strict();
 
 type TrainingTemplateInput = z.infer<typeof trainingTemplateInputSchema>;
+
 export class TrainingTemplateServiceError extends Error {
   details?: unknown;
   status: number;
@@ -221,38 +79,12 @@ export class TrainingTemplateServiceError extends Error {
   }
 }
 
-function shouldUseTrainingTemplateFileFallback(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003|P2021|P2022|no such table|does not exist/i.test(message);
-}
-
 function formatUpdatedAt(value: Date | string = new Date()) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.getTime())) return String(value);
   const hh = String(date.getHours()).padStart(2, "0");
   const mm = String(date.getMinutes()).padStart(2, "0");
   return `${hh}:${mm}`;
-}
-
-function normalizeTrainingTemplateLookupId(templateId: string) {
-  return templateId === TRAINING_COMPAT_TEMPLATE_BASE_ID || templateId === TRAINING_DEFAULT_TEMPLATE_KEY
-    ? TRAINING_FALLBACK_TEMPLATE_BASE_ID
-    : templateId;
-}
-
-function normalizeFallbackTrainingTemplate(template: LoraTrainingTemplate): LoraTrainingTemplate {
-  const id = normalizeTrainingTemplateLookupId(template.id);
-  return id === template.id ? template : { ...template, id };
-}
-
-function findFallbackTrainingTemplate(templates: LoraTrainingTemplate[], templateId: string) {
-  const lookupId = normalizeTrainingTemplateLookupId(templateId);
-  return templates.find((item) => item.id === lookupId || item.title === templateId);
-}
-
-function findFallbackTrainingTemplateIndex(templates: LoraTrainingTemplate[], templateId: string) {
-  const lookupId = normalizeTrainingTemplateLookupId(templateId);
-  return templates.findIndex((item) => item.id === lookupId || item.title === templateId);
 }
 
 function mapTrainingTemplateRow(row: TrainingTemplateRow): LoraTrainingTemplate {
@@ -293,29 +125,6 @@ function parseTrainingTemplateInput(input: unknown) {
   });
 }
 
-async function readFallbackTrainingTemplates() {
-  try {
-    const raw = await readFile(TRAINING_TEMPLATE_FALLBACK_PATH, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed)) {
-      return (parsed as LoraTrainingTemplate[]).map(normalizeFallbackTrainingTemplate);
-    }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw error;
-    }
-  }
-
-  const defaults = buildDefaultFallbackTrainingTemplates();
-  await writeFallbackTrainingTemplates(defaults);
-  return defaults;
-}
-
-async function writeFallbackTrainingTemplates(templates: LoraTrainingTemplate[]) {
-  await mkdir(dirname(TRAINING_TEMPLATE_FALLBACK_PATH), { recursive: true });
-  await writeFile(TRAINING_TEMPLATE_FALLBACK_PATH, `${JSON.stringify(templates, null, 2)}\n`, "utf8");
-}
-
 function normalizeTemplatePayload(
   input: TrainingTemplateInput,
   options: { preserveIds: boolean } = { preserveIds: true },
@@ -328,22 +137,53 @@ function normalizeTemplatePayload(
     imagePromptFormat: DEFAULT_IMAGE_PROMPT_FORMAT,
     captioningGuidance: input.captionGuidance ?? "",
     trainingCaptionFormat: DEFAULT_TRAINING_CAPTION_FORMAT,
-    sections: input.sections.map((section) => ({
+    sections: input.sections.map((section, sectionIndex) => ({
       id: options.preserveIds ? section.id : undefined,
       name: section.title,
+      sortOrder: sectionIndex,
       enabled: section.enabled,
-      blocks: section.blocks.map((block) => ({
+      blocks: section.blocks.map((block, blockIndex) => ({
         id: options.preserveIds ? block.id : undefined,
         sourceType: block.source === "预制" ? "preset" : "local",
         title: block.title,
         localText: block.text,
+        sortOrder: blockIndex,
       })),
     })),
   };
 }
 
-function nextTemplateUpdatedAt() {
-  return formatUpdatedAt(new Date());
+function normalizeTrainingTemplateRowPayload(row: TrainingTemplateRow, sortOrder = row.sortOrder): TrainingTemplateRowInput {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    imagePromptGuidance: row.imagePromptGuidance,
+    imagePromptFormat: row.imagePromptFormat,
+    captioningGuidance: row.captioningGuidance,
+    trainingCaptionFormat: row.trainingCaptionFormat,
+    trainingDefaultsJson: row.trainingDefaultsJson as TrainingTemplateRowInput["trainingDefaultsJson"],
+    sortOrder,
+    isActive: row.isActive,
+    sections: row.sections.map((section, sectionIndex) => ({
+      id: section.id,
+      name: section.name ?? "未命名小节",
+      sortOrder: sectionIndex,
+      enabled: section.enabled,
+      sectionDefaultsJson: section.sectionDefaultsJson as TrainingTemplateRowInput["sections"][number]["sectionDefaultsJson"],
+      blocks: section.blocks.map((block, blockIndex) => ({
+        id: block.id,
+        sourceType: block.sourceType === "preset" ? "preset" : "local",
+        title: block.title,
+        localText: block.localText,
+        sceneDescriptionPresetCategoryId: block.sceneDescriptionPresetCategoryId,
+        sceneDescriptionPresetId: block.sceneDescriptionPresetId,
+        sortOrder: blockIndex,
+        enabled: block.enabled,
+      })),
+    })),
+  };
 }
 
 function nextTemplateSectionOrdinal(sections: LoraTrainingTemplate["sections"], prefix: string) {
@@ -362,13 +202,21 @@ function createDraftTemplateSection(
   const sectionOrdinal = nextTemplateSectionOrdinal(current, `${templateId}-section-`);
   const sectionId = `${templateId}-section-${sectionOrdinal}`;
   const draftIndex = current.length + 1;
-  return source ? {
-    ...source,
-    id: sectionId,
-    title: `新模板小节 ${draftIndex}${titleSuffix}`,
-    enabled: true,
-    scenePreview: "补充这个模板小节的训练场景摘要。",
-  } : {
+  if (source) {
+    return {
+      ...source,
+      id: sectionId,
+      title: `新模板小节 ${draftIndex}${titleSuffix}`,
+      enabled: true,
+      blocks: source.blocks.map((block, index) => ({
+        ...block,
+        id: `${sectionId}-block-${index + 1}`,
+      })),
+      scenePreview: "补充这个模板小节的训练场景摘要。",
+    };
+  }
+
+  return {
     id: sectionId,
     title: `新模板小节 ${draftIndex}${titleSuffix}`,
     enabled: true,
@@ -386,211 +234,105 @@ function createDraftTemplateSection(
   };
 }
 
-function buildDefaultFallbackTrainingTemplates() {
-  return DEFAULT_FALLBACK_TRAINING_TEMPLATES.map((template) => ({
-    ...template,
-    sections: template.sections.map((section) => ({
-      ...section,
-      blocks: section.blocks.map((block) => ({ ...block })),
-    })),
-  }));
+export async function listTrainingTemplates() {
+  const rows = await listTrainingTemplateRows();
+  return rows.map(mapTrainingTemplateRow);
 }
 
-export async function listManagedTrainingTemplates() {
-  const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
-  const orderedTemplateIds = await listTrainingTemplateOrderIds().catch(() => []);
-
-  try {
-    const rows = await listTrainingTemplateRows();
-    const databaseTemplates = rows.map(mapTrainingTemplateRow);
-    const databaseIds = new Set(databaseTemplates.map((template) => template.id));
-    return orderTrainingTemplatesByStoredIds([
-      ...fallbackTemplates.filter((template) => !databaseIds.has(template.id)),
-      ...databaseTemplates,
-    ], orderedTemplateIds);
-  } catch (error) {
-    if (!shouldUseTrainingTemplateFileFallback(error)) throw error;
-    return orderTrainingTemplatesByStoredIds(fallbackTemplates, orderedTemplateIds);
-  }
-}
-
-export async function getManagedTrainingTemplate(templateId: string) {
-  const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
-  const lookupId = normalizeTrainingTemplateLookupId(templateId);
-
-  try {
-    const row = await getTrainingTemplateRow(lookupId);
-    if (row) return mapTrainingTemplateRow(row);
-    const fallbackTemplate = findFallbackTrainingTemplate(fallbackTemplates, lookupId);
-    if (fallbackTemplate) return fallbackTemplate;
+export async function getTrainingTemplate(templateId: string) {
+  const row = await getTrainingTemplateRow(templateId);
+  if (!row || !row.isActive) {
     throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
-  } catch (error) {
-    if (!shouldUseTrainingTemplateFileFallback(error)) {
-      throw error;
-    }
-    const template = findFallbackTrainingTemplate(fallbackTemplates, lookupId);
-    if (!template) {
+  }
+  return mapTrainingTemplateRow(row);
+}
+
+export async function createTrainingTemplate(input: unknown) {
+  const parsed = parseTrainingTemplateInput(input);
+  const row = await createTrainingTemplateRow(normalizeTemplatePayload(parsed, { preserveIds: false }));
+  return mapTrainingTemplateRow(row);
+}
+
+export async function updateTrainingTemplate(templateId: string, input: unknown) {
+  const parsed = parseTrainingTemplateInput(input);
+  const current = await getTrainingTemplateRow(templateId);
+  if (!current || !current.isActive) {
+    throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
+  }
+
+  const row = await updateTrainingTemplateRow(current.id, normalizeTemplatePayload(parsed, { preserveIds: true }));
+  if (!row) {
+    throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
+  }
+  return mapTrainingTemplateRow(row);
+}
+
+export async function deleteTrainingTemplate(templateId: string) {
+  const current = await getTrainingTemplateRow(templateId);
+  if (!current || !current.isActive) {
+    throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
+  }
+
+  const row = await softDeleteTrainingTemplateRow(current.id);
+  if (!row) {
+    throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
+  }
+  return { success: true };
+}
+
+export async function reorderTrainingTemplates(input: unknown) {
+  const schema = z.object({
+    orderedTemplateIds: z.array(z.string().trim().min(1)).min(1),
+  }).strict();
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    throw new TrainingTemplateServiceError("Invalid training template reorder request", 400, {
+      issues: result.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      })),
+    });
+  }
+
+  const orderedTemplateIds = result.data.orderedTemplateIds;
+  const uniqueTemplateIds = new Set(orderedTemplateIds);
+  if (uniqueTemplateIds.size !== orderedTemplateIds.length) {
+    throw new TrainingTemplateServiceError("orderedTemplateIds must include every training template exactly once", 400, {
+      duplicateTemplateIds: orderedTemplateIds.filter((templateId, index) => orderedTemplateIds.indexOf(templateId) !== index),
+    });
+  }
+
+  const rows = await listTrainingTemplateRows();
+  if (orderedTemplateIds.length !== rows.length) {
+    throw new TrainingTemplateServiceError("orderedTemplateIds must include every training template exactly once", 400, {
+      expected: rows.length,
+      actual: orderedTemplateIds.length,
+    });
+  }
+
+  const rowMap = new Map(rows.map((row) => [row.id, row]));
+  const missingTemplateIds = orderedTemplateIds.filter((templateId) => !rowMap.has(templateId));
+  if (missingTemplateIds.length > 0) {
+    throw new TrainingTemplateServiceError("Training template not found", 404, { missingTemplateIds });
+  }
+
+  const updatedRows: TrainingTemplateRow[] = [];
+  for (const [index, templateId] of orderedTemplateIds.entries()) {
+    const row = rowMap.get(templateId)!;
+    const updated = await updateTrainingTemplateRow(row.id, normalizeTrainingTemplateRowPayload(row, index));
+    if (!updated) {
       throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
     }
-    return template;
+    updatedRows.push(updated);
   }
-}
 
-export async function createManagedTrainingTemplate(input: unknown) {
-  const parsed = parseTrainingTemplateInput(input);
-
-  try {
-    const row = await createTrainingTemplateRow(normalizeTemplatePayload(parsed, { preserveIds: false }));
-    return mapTrainingTemplateRow(row);
-  } catch (error) {
-    if (!shouldUseTrainingTemplateFileFallback(error)) {
-      throw error;
-    }
-    const templates = await readFallbackTrainingTemplates();
-    const nextId = `training-template-${Date.now()}`;
-    const created: LoraTrainingTemplate = {
-      id: nextId,
-      title: parsed.title,
-      status: "active",
-      updatedAt: nextTemplateUpdatedAt(),
-      description: parsed.description ?? "",
-      imageGuidance: parsed.imageGuidance ?? "",
-      captionGuidance: parsed.captionGuidance ?? "",
-      sectionCount: parsed.sections.length,
-      sections: parsed.sections.map((section, index) => ({
-        id: section.id ?? `${nextId}-section-${index + 1}`,
-        title: section.title,
-        enabled: section.enabled,
-        blockCount: section.blockCount ?? section.blocks.length,
-        blocks: section.blocks.map((block) => ({
-          id: block.id ?? `${nextId}-section-${index + 1}-block-${Date.now()}`,
-          source: block.source ?? "本地",
-          title: block.title,
-          text: block.text,
-        })),
-        resolvedScene: section.resolvedScene ?? section.scenePreview ?? section.title,
-        scenePreview: section.scenePreview ?? section.resolvedScene ?? section.title,
-      })),
-    };
-    await writeFallbackTrainingTemplates([...templates, created]);
-    return created;
-  }
-}
-
-export async function updateManagedTrainingTemplate(templateId: string, input: unknown) {
-  const parsed = parseTrainingTemplateInput(input);
-  const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
-  const lookupId = normalizeTrainingTemplateLookupId(templateId);
-  const fallbackIndex = findFallbackTrainingTemplateIndex(fallbackTemplates, lookupId);
-
-  const updateFallbackTemplate = async (currentIndex: number) => {
-    const fallbackTemplateId = fallbackTemplates[currentIndex].id;
-    const updated: LoraTrainingTemplate = {
-      ...fallbackTemplates[currentIndex],
-      title: parsed.title,
-      updatedAt: nextTemplateUpdatedAt(),
-      description: parsed.description ?? "",
-      imageGuidance: parsed.imageGuidance ?? "",
-      captionGuidance: parsed.captionGuidance ?? "",
-      sectionCount: parsed.sections.length,
-      sections: parsed.sections.map((section, index) => ({
-        id: section.id ?? `${fallbackTemplateId}-section-${index + 1}`,
-        title: section.title,
-        enabled: section.enabled,
-        blockCount: section.blockCount ?? section.blocks.length,
-        blocks: section.blocks.map((block, blockIndex) => ({
-          id: block.id ?? `${fallbackTemplateId}-section-${index + 1}-block-${blockIndex + 1}`,
-          source: block.source ?? "本地",
-          title: block.title,
-          text: block.text,
-        })),
-        resolvedScene: section.resolvedScene ?? section.scenePreview ?? section.title,
-        scenePreview: section.scenePreview ?? section.resolvedScene ?? section.title,
-      })),
-    };
-    const next = [...fallbackTemplates];
-    next[currentIndex] = updated;
-    await writeFallbackTrainingTemplates(next);
-    return updated;
+  return {
+    orderedTemplateIds: updatedRows.map((row) => row.id),
+    templates: updatedRows.map(mapTrainingTemplateRow),
   };
-
-  try {
-    const row = await updateTrainingTemplateRow(lookupId, normalizeTemplatePayload(parsed, { preserveIds: true }));
-    if (row) return mapTrainingTemplateRow(row);
-    if (fallbackIndex !== -1) return updateFallbackTemplate(fallbackIndex);
-    throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
-  } catch (error) {
-    if (!shouldUseTrainingTemplateFileFallback(error)) {
-      throw error;
-    }
-    const templates = await readFallbackTrainingTemplates();
-    const currentIndex = findFallbackTrainingTemplateIndex(templates, lookupId);
-    if (currentIndex === -1) {
-      throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
-    }
-    const fallbackTemplateId = templates[currentIndex].id;
-    const updated: LoraTrainingTemplate = {
-      ...templates[currentIndex],
-      title: parsed.title,
-      updatedAt: nextTemplateUpdatedAt(),
-      description: parsed.description ?? "",
-      imageGuidance: parsed.imageGuidance ?? "",
-      captionGuidance: parsed.captionGuidance ?? "",
-      sectionCount: parsed.sections.length,
-      sections: parsed.sections.map((section, index) => ({
-        id: section.id ?? `${fallbackTemplateId}-section-${index + 1}`,
-        title: section.title,
-        enabled: section.enabled,
-        blockCount: section.blockCount ?? section.blocks.length,
-        blocks: section.blocks.map((block, blockIndex) => ({
-          id: block.id ?? `${fallbackTemplateId}-section-${index + 1}-block-${blockIndex + 1}`,
-          source: block.source ?? "本地",
-          title: block.title,
-          text: block.text,
-        })),
-        resolvedScene: section.resolvedScene ?? section.scenePreview ?? section.title,
-        scenePreview: section.scenePreview ?? section.resolvedScene ?? section.title,
-      })),
-    };
-    const next = [...templates];
-    next[currentIndex] = updated;
-    await writeFallbackTrainingTemplates(next);
-    return updated;
-  }
 }
 
-export async function deleteManagedTrainingTemplate(templateId: string) {
-  const fallbackTemplates = await readFallbackTrainingTemplates().catch(() => [] as LoraTrainingTemplate[]);
-  const lookupId = normalizeTrainingTemplateLookupId(templateId);
-  const fallbackIndex = findFallbackTrainingTemplateIndex(fallbackTemplates, lookupId);
-
-  try {
-    const row = await softDeleteTrainingTemplateRow(lookupId);
-    if (!row && fallbackIndex === -1) {
-      throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
-    }
-    if (!row && fallbackIndex !== -1) {
-      const next = [...fallbackTemplates];
-      next.splice(fallbackIndex, 1);
-      await writeFallbackTrainingTemplates(next);
-    }
-    return { success: true };
-  } catch (error) {
-    if (!shouldUseTrainingTemplateFileFallback(error)) {
-      throw error;
-    }
-    const currentIndex = findFallbackTrainingTemplateIndex(fallbackTemplates, lookupId);
-    if (currentIndex === -1) {
-      throw new TrainingTemplateServiceError("Training template not found", 404, { templateId });
-    }
-    const next = [...fallbackTemplates];
-    next.splice(currentIndex, 1);
-    await writeFallbackTrainingTemplates(next);
-    return { success: true };
-  }
-}
-
-export async function updateManagedTrainingTemplateSection(templateId: string, sectionId: string, input: unknown) {
+export async function updateTrainingTemplateSection(templateId: string, sectionId: string, input: unknown) {
   const patchSchema = z.object({
     title: z.string().trim().min(1).max(160).optional(),
     enabled: z.boolean().optional(),
@@ -608,8 +350,8 @@ export async function updateManagedTrainingTemplateSection(templateId: string, s
     });
   }
 
-  const current = await getManagedTrainingTemplate(templateId);
-  const sections = current.sections.map((section: LoraTrainingTemplate["sections"][number]) => {
+  const current = await getTrainingTemplate(templateId);
+  const sections = current.sections.map((section) => {
     if (section.id !== sectionId) return section;
     return {
       ...section,
@@ -633,7 +375,7 @@ export async function updateManagedTrainingTemplateSection(templateId: string, s
     throw new TrainingTemplateServiceError("Training template section not found", 404, { templateId, sectionId });
   }
 
-  return updateManagedTrainingTemplate(templateId, {
+  return updateTrainingTemplate(templateId, {
     title: current.title,
     description: current.description,
     imageGuidance: current.imageGuidance,
@@ -642,7 +384,7 @@ export async function updateManagedTrainingTemplateSection(templateId: string, s
   });
 }
 
-export async function createManagedTrainingTemplateSection(templateId: string, input: unknown = {}) {
+export async function createTrainingTemplateSection(templateId: string, input: unknown = {}) {
   const schema = z.object({
     sourceSectionId: z.string().trim().min(1).optional(),
   }).strict();
@@ -656,7 +398,7 @@ export async function createManagedTrainingTemplateSection(templateId: string, i
     });
   }
 
-  const current = await getManagedTrainingTemplate(templateId);
+  const current = await getTrainingTemplate(templateId);
   const sourceSectionId = result.data.sourceSectionId?.trim();
   const nextSection = sourceSectionId
     ? (() => {
@@ -665,10 +407,15 @@ export async function createManagedTrainingTemplateSection(templateId: string, i
           throw new TrainingTemplateServiceError("Training template section not found", 404, { sourceSectionId, templateId });
         }
         const copyOrdinal = nextTemplateSectionOrdinal(current.sections, `${source.id}-copy-`);
+        const sectionId = `${source.id}-copy-${copyOrdinal}`;
         return {
           ...source,
-          id: `${source.id}-copy-${copyOrdinal}`,
+          id: sectionId,
           title: `${source.title} (副本)`,
+          blocks: source.blocks.map((block, index) => ({
+            ...block,
+            id: `${sectionId}-block-${index + 1}`,
+          })),
         };
       })()
     : createDraftTemplateSection(current.sections, templateId, "");
@@ -685,7 +432,7 @@ export async function createManagedTrainingTemplateSection(templateId: string, i
       })()
     : [...current.sections, nextSection];
 
-  return updateManagedTrainingTemplate(templateId, {
+  return updateTrainingTemplate(templateId, {
     title: current.title,
     description: current.description,
     imageGuidance: current.imageGuidance,
@@ -694,13 +441,13 @@ export async function createManagedTrainingTemplateSection(templateId: string, i
   });
 }
 
-export async function deleteManagedTrainingTemplateSection(templateId: string, sectionId: string) {
-  const current = await getManagedTrainingTemplate(templateId);
+export async function deleteTrainingTemplateSection(templateId: string, sectionId: string) {
+  const current = await getTrainingTemplate(templateId);
   if (!current.sections.some((section) => section.id === sectionId)) {
     throw new TrainingTemplateServiceError("Training template section not found", 404, { templateId, sectionId });
   }
 
-  return updateManagedTrainingTemplate(templateId, {
+  return updateTrainingTemplate(templateId, {
     title: current.title,
     description: current.description,
     imageGuidance: current.imageGuidance,
@@ -709,7 +456,7 @@ export async function deleteManagedTrainingTemplateSection(templateId: string, s
   });
 }
 
-export async function reorderManagedTrainingTemplateSections(templateId: string, input: unknown) {
+export async function reorderTrainingTemplateSections(templateId: string, input: unknown) {
   const schema = z.object({
     orderedSectionIds: z.array(z.string().trim().min(1)).min(1),
   }).strict();
@@ -723,7 +470,7 @@ export async function reorderManagedTrainingTemplateSections(templateId: string,
     });
   }
 
-  const current = await getManagedTrainingTemplate(templateId);
+  const current = await getTrainingTemplate(templateId);
   const orderedSectionIds = [...new Set(result.data.orderedSectionIds)];
   if (orderedSectionIds.length !== current.sections.length) {
     throw new TrainingTemplateServiceError("orderedSectionIds must include every template section exactly once", 400, {
@@ -739,7 +486,7 @@ export async function reorderManagedTrainingTemplateSections(templateId: string,
   }
 
   const nextSections = orderedSectionIds.map((sectionId) => sectionMap.get(sectionId)!);
-  return updateManagedTrainingTemplate(templateId, {
+  return updateTrainingTemplate(templateId, {
     title: current.title,
     description: current.description,
     imageGuidance: current.imageGuidance,

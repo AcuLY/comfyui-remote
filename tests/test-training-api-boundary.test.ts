@@ -24,6 +24,7 @@ const oldCamelPrefix = ["character", "Lora"].join("");
 const oldProviderPrefix = ["Legacy", "Training"].join("");
 const oldAdapterBasename = ["legacy", "compat", "service"].join("-");
 const oldAdapterFilename = `${oldAdapterBasename}.ts`;
+const oldScriptPrefix = ["character", "lora"].join("-") + ":";
 const oldTokens = [
   oldApiSlug,
   oldPascalPrefix,
@@ -35,6 +36,11 @@ type ScanHit = {
   line: number;
   path: string;
   token: string;
+};
+
+type SourcePattern = {
+  label: string;
+  pattern: RegExp;
 };
 
 function escapeRegExp(value: string) {
@@ -86,11 +92,38 @@ function findTokenHits(paths: string[], tokens: string[]): ScanHit[] {
   );
 }
 
+function findPatternHits(paths: string[], patterns: SourcePattern[]): ScanHit[] {
+  const hits: ScanHit[] = [];
+
+  for (const path of paths) {
+    const source = readFileSync(path, "utf8");
+    const lines = source.split(/\r?\n/);
+
+    for (const { label, pattern } of patterns) {
+      for (const [index, line] of lines.entries()) {
+        if (pattern.test(line)) {
+          hits.push({ path: relativePath(path), line: index + 1, token: label });
+        }
+      }
+    }
+  }
+
+  return hits.sort((left, right) =>
+    left.path.localeCompare(right.path)
+    || left.line - right.line
+    || left.token.localeCompare(right.token),
+  );
+}
+
 function compactHits(hits: ScanHit[]) {
   return {
     total: hits.length,
     firstHits: hits.slice(0, 80),
   };
+}
+
+function sourceFilesFromRoots(...roots: string[]) {
+  return roots.flatMap((root) => listTextFiles(join(repoRoot, root)));
 }
 
 function trainingRuntimeFiles() {
@@ -104,7 +137,10 @@ function trainingRuntimeFiles() {
 }
 
 function contractScopeFiles() {
+  // Historical migration SQL and product docs are the explicit allowlist for removal notes.
+  // Runtime code, schema, scripts, package scripts, API routes, and tests remain clean.
   return [...new Set([
+    join(repoRoot, "package.json"),
     ...listTextFiles(join(repoRoot, "src")),
     ...listTextFiles(join(repoRoot, "scripts")),
     ...listTextFiles(join(repoRoot, "tests")),
@@ -115,13 +151,50 @@ function contractScopeFiles() {
   ])];
 }
 
-test("Training v2 runtime, tests, schemas, and generated clients do not contain retired training identifiers", () => {
+function trainingApiHandlerAndWorkerFiles() {
+  return [
+    ...listTextFiles(join(repoRoot, "src", "app", "api", "training"))
+      .filter((path) => relativePath(path).endsWith("/route.ts")),
+    ...listTextFiles(join(repoRoot, "src", "server", "worker", "training")),
+  ];
+}
+
+test("Training v2 runtime, package manifest, tests, schemas, and generated clients do not contain retired training identifiers", () => {
   const hits = findTokenHits(contractScopeFiles(), oldTokens);
 
   assert.deepEqual(
     compactHits(hits),
     { total: 0, firstHits: [] },
-    "Retired Training v1 identifiers may only remain in Training v2 documentation, not runtime, tests, schemas, or generated clients.",
+    "Retired Training v1 identifiers may only remain in historical migration SQL or Training v2 documentation/plans, not runtime, package scripts, tests, schemas, or generated clients.",
+  );
+});
+
+test("Training v2 does not keep the retired API route tree or npm scripts", () => {
+  const oldApiRouteRoot = join(repoRoot, "src", "app", "api", oldApiSlug);
+  const oldApiRouteFiles = listTextFiles(join(repoRoot, "src", "app", "api"))
+    .filter((path) => relativePath(path).split(/[\\/]/).includes(oldApiSlug))
+    .map(relativePath);
+  const packageJson = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")) as {
+    scripts?: Record<string, string>;
+  };
+  const oldScriptNames = Object.keys(packageJson.scripts ?? {})
+    .filter((scriptName) => scriptName.startsWith(oldScriptPrefix))
+    .sort();
+
+  assert.equal(
+    existsSync(oldApiRouteRoot),
+    false,
+    "The retired /api/... route tree must be fully removed from the Next app router.",
+  );
+  assert.deepEqual(
+    oldApiRouteFiles,
+    [],
+    "No handler file may remain under the retired /api/... route tree.",
+  );
+  assert.deepEqual(
+    oldScriptNames,
+    [],
+    "package.json must not expose retired npm script entrypoints.",
   );
 });
 
@@ -155,6 +228,70 @@ test("Training routes, services, repositories, workers, and scripts do not impor
     importHits,
     [],
     "Training runtime code and worker scripts must not import former modules or bridge adapters.",
+  );
+});
+
+test("Training API handlers and worker runtime do not import legacy adapters or managed fallback entrypoints", () => {
+  const forbiddenImports: SourcePattern[] = [
+    {
+      label: "former bridge adapter",
+      pattern: new RegExp(`@/server/services/training/${escapeRegExp(oldAdapterBasename)}\\b`),
+    },
+    {
+      label: "managed project fallback service",
+      pattern: /@\/server\/services\/training\/project-service\b/,
+    },
+    {
+      label: "design-demo training data fallback",
+      pattern: /@\/app\/design-demos\/data\/lora-training\b/,
+    },
+  ];
+
+  assert.deepEqual(
+    compactHits(findPatternHits(trainingApiHandlerAndWorkerFiles(), forbiddenImports)),
+    { total: 0, firstHits: [] },
+    "Training API handlers and worker runtime must use Training-owned Prisma services directly instead of legacy adapters or managed JSON fallback entrypoints.",
+  );
+});
+
+test("generation and training API route trees keep module-owned resource imports isolated", () => {
+  const generationApiFiles = sourceFilesFromRoots(
+    "src/app/api/agent/projects",
+    "src/app/api/agent/runs",
+    "src/app/api/preset-library",
+    "src/app/api/presets",
+    "src/app/api/projects",
+    "src/app/api/queue",
+    "src/app/api/queue-data",
+    "src/app/api/runs",
+    "src/app/api/templates",
+  );
+  const trainingApiFiles = listTextFiles(join(repoRoot, "src", "app", "api", "training"));
+
+  assert.deepEqual(
+    compactHits(findPatternHits(generationApiFiles, [
+      { label: "training service import", pattern: /@\/server\/services\/training\b/ },
+      { label: "training repository import", pattern: /@\/server\/repositories\/training\b/ },
+      { label: "training feature import", pattern: /@\/features\/training\b/ },
+      { label: "training route source", pattern: /\/api\/training\b/ },
+      { label: "training scene preset model", pattern: /\bTrainingSceneDescriptionPreset\b|trainingSceneDescriptionPreset\b/ },
+    ])),
+    { total: 0, firstHits: [] },
+    "Generation-owned presets/projects/runs/templates/queue APIs must not import or route through training-owned resources.",
+  );
+
+  assert.deepEqual(
+    compactHits(findPatternHits(trainingApiFiles, [
+      { label: "generation project service import", pattern: /@\/server\/services\/project-service\b/ },
+      { label: "generation template service import", pattern: /@\/server\/services\/template-service\b/ },
+      { label: "generation preset query import", pattern: /@\/server\/services\/preset-query-service\b/ },
+      { label: "generation project view repository import", pattern: /@\/server\/repositories\/project-view-repository\b/ },
+      { label: "generation prompt-config import", pattern: /@\/server\/prompt-config\b/ },
+      { label: "generation server-data import", pattern: /@\/lib\/server-data\b/ },
+      { label: "generation action import", pattern: /@\/lib\/actions\/(?:project|template|preset)(?:-|\/|\b)/ },
+    ])),
+    { total: 0, firstHits: [] },
+    "Training scene presets/templates/projects/runs APIs must not import generation-owned resources; shared models/settings remain outside this forbidden set.",
   );
 });
 

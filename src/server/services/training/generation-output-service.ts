@@ -1,4 +1,14 @@
-import path from "node:path";
+import { createHash, randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import path, { basename, dirname, extname, join } from "node:path";
+
+import type {
+  LoraTrainingImageResult,
+  TrainingImageStatus,
+} from "@/features/training/types";
+import { Prisma } from "@/generated/prisma";
+import { toImageUrl } from "@/lib/image-url";
+import { prisma } from "@/lib/prisma";
 
 import {
   createTrainingReferenceImage,
@@ -9,10 +19,6 @@ import {
   listTrainingReferenceImages,
   TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE,
 } from "@/server/repositories/training/image-results";
-import {
-  applyManagedTrainingImageResultToReferenceImage,
-  getManagedTrainingProject,
-} from "@/server/services/training/project-service";
 import { z } from "zod";
 
 const generationOutputApplySchema = z.object({
@@ -27,6 +33,7 @@ const generationOutputApplySchema = z.object({
 type GenerationOutputApplyInput = z.infer<typeof generationOutputApplySchema>;
 
 type GenerationOutputApplyTarget = "reference_image" | "result_pool";
+type TrainingCandidateImage = NonNullable<Awaited<ReturnType<typeof getTrainingCandidateImage>>>;
 
 export class TrainingGenerationOutputServiceError extends Error {
   details?: unknown;
@@ -68,60 +75,276 @@ function normalizeNullableString(value: string | null | undefined) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
-async function applyManagedGenerationOutput(
-  outputId: string,
-  input: GenerationOutputApplyInput,
-  target: GenerationOutputApplyTarget,
-) {
-  const project = await getManagedTrainingProject(normalizeNullableString(input.targetEntityId) ?? "");
-  const ownerProject = project
-    ?? (await findManagedGenerationOutputOwner(outputId));
-  if (!ownerProject) return null;
+type FileLike = {
+  arrayBuffer(): Promise<ArrayBuffer>;
+  name: string;
+  size?: number;
+  type?: string;
+};
 
-  if (input.targetEntityId && input.targetEntityId !== ownerProject.id) {
-    throw new TrainingGenerationOutputServiceError("Managed generation output does not belong to the target project", 409, {
-      outputId,
-      targetEntityId: input.targetEntityId,
-      projectId: ownerProject.id,
+function isFileLike(value: unknown): value is FileLike {
+  return Boolean(
+    value
+    && typeof value === "object"
+    && "name" in value
+    && typeof (value as { name?: unknown }).name === "string"
+    && "arrayBuffer" in value
+    && typeof (value as { arrayBuffer?: unknown }).arrayBuffer === "function",
+  );
+}
+
+function nowStorageStamp() {
+  return `${Date.now()}-${randomUUID()}`;
+}
+
+function normalizeUploadName(name: string) {
+  const ext = extname(name) || ".png";
+  const stem = basename(name, ext)
+    .normalize("NFKD")
+    .replace(/[^\p{Letter}\p{Number}._-]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80) || "image";
+  return `${stem}${ext.toLowerCase()}`;
+}
+
+function normalizeReviewStatus(value: unknown) {
+  if (value === "keep" || value === "kept" || value === "included_in_training") return "keep";
+  if (value === "reject" || value === "rejected" || value === "excluded") return "reject";
+  return "pending";
+}
+
+function mapReviewStatus(reviewStatus: string): LoraTrainingImageResult["reviewStatus"] {
+  if (reviewStatus === "keep" || reviewStatus === "included_in_training") return "kept";
+  if (reviewStatus === "reject" || reviewStatus === "excluded") return "rejected";
+  return "pending";
+}
+
+function mapImageStatus(reviewStatus: string): TrainingImageStatus {
+  if (reviewStatus === "keep" || reviewStatus === "included_in_training") return "kept";
+  if (reviewStatus === "reject" || reviewStatus === "excluded") return "trashed";
+  return "pending";
+}
+
+async function mapCandidateToTrainingImageResult(image: TrainingCandidateImage): Promise<LoraTrainingImageResult> {
+  const sectionId = image.sectionId ?? "ungrouped";
+  const section = image.sectionId
+    ? await prisma.trainingSection.findUnique({
+      where: { id: image.sectionId },
+      select: { name: true },
+    })
+    : null;
+  const sectionTitle = section?.name ?? (image.sectionId ? "训练小节" : "未分组");
+  const url = toImageUrl(image.relativePath);
+  if (!url) {
+    throw new TrainingGenerationOutputServiceError("Training image result path is missing", 500, {
+      imageResultId: image.id,
     });
   }
 
-  const output = ownerProject.resultPool.find((result) => result.id === outputId);
-  if (!output) return null;
-
-  if (target === "result_pool") {
-    return {
-      outputId,
-      targetEntityType: input.targetEntityType,
-      targetEntityId: ownerProject.id,
-      targetField: normalizeNullableString(input.targetField),
-      appliedAt: new Date().toISOString(),
-      created: false,
-      result: output,
-    };
-  }
-  const applied = await applyManagedTrainingImageResultToReferenceImage(outputId, {
-    kind: input.kind,
-    label: input.label,
-    note: input.note,
-    targetProjectId: ownerProject.id,
-  });
-  if (!applied) return null;
   return {
-    outputId,
-    targetEntityType: input.targetEntityType,
-    targetEntityId: ownerProject.id,
-    targetField: normalizeNullableString(input.targetField),
-    appliedAt: new Date().toISOString(),
-    created: applied.created,
-    result: applied.reference,
+    id: image.id,
+    sectionId,
+    sectionTitle,
+    image: {
+      id: `${image.relativePath}-0`,
+      src: url,
+      full: url,
+      label: "01",
+      status: mapImageStatus(image.reviewStatus),
+      featured: true,
+      featured2: false,
+      cover: true,
+      width: image.width ?? null,
+      height: image.height ?? null,
+    },
+    reviewStatus: mapReviewStatus(image.reviewStatus),
+    caption: image.captionDraft ?? "未填写说明文本",
+    sourceLabel: `${sectionTitle} · 01`,
   };
 }
 
-async function findManagedGenerationOutputOwner(outputId: string) {
-  const managedProjects = await import("@/server/services/training/project-service");
-  const projects = await managedProjects.listManagedTrainingProjects();
-  return projects.find((project) => project.resultPool.some((result) => result.id === outputId)) ?? null;
+function normalizeJson(value: unknown): Prisma.InputJsonValue {
+  if (value === null || typeof value === "undefined") return {};
+  if (typeof value === "object") return value as Prisma.InputJsonValue;
+  return { value } as Prisma.InputJsonValue;
+}
+
+async function findTrainingProjectForImageResult(projectId: string) {
+  const row = await prisma.trainingProject.findFirst({
+    where: {
+      OR: [
+        { id: projectId },
+        { slug: projectId },
+        { name: projectId },
+      ],
+    },
+    select: {
+      id: true,
+      status: true,
+      archivedAt: true,
+    },
+  });
+  if (!row) {
+    throw new TrainingGenerationOutputServiceError("Training project not found", 404, { projectId });
+  }
+  return row;
+}
+
+async function getActiveImageResultRow(imageResultId: string) {
+  const row = await prisma.trainingImageResult.findUnique({
+    where: { id: imageResultId },
+    select: {
+      id: true,
+      removedAt: true,
+      trainingProjectId: true,
+    },
+  });
+  if (!row || row.removedAt) {
+    throw new TrainingGenerationOutputServiceError("Training image result not found", 404, { imageResultId });
+  }
+  return row;
+}
+
+async function getMappedTrainingImageResult(imageResultId: string) {
+  const image = await getTrainingCandidateImage(imageResultId);
+  if (!image) {
+    throw new TrainingGenerationOutputServiceError("Training image result not found", 404, { imageResultId });
+  }
+  return mapCandidateToTrainingImageResult(image);
+}
+
+export async function uploadTrainingResultImage(projectId: string, formData: FormData) {
+  const project = await findTrainingProjectForImageResult(projectId);
+  if (project.archivedAt || project.status === "archived") {
+    throw new TrainingGenerationOutputServiceError("Archived training projects cannot accept image results", 409, {
+      projectId: project.id,
+      status: project.status,
+    });
+  }
+
+  const file = formData.get("file");
+  if (!isFileLike(file)) {
+    throw new TrainingGenerationOutputServiceError("file is required", 400);
+  }
+
+  const safeName = normalizeUploadName(file.name);
+  const relativePath = `data/images/training/${project.id}/results/${nowStorageStamp()}-${safeName}`;
+  const absolutePath = join(process.cwd(), relativePath);
+  const buffer = Buffer.from(await file.arrayBuffer());
+  await mkdir(dirname(absolutePath), { recursive: true });
+  await writeFile(absolutePath, buffer);
+
+  const sha256 = createHash("sha256").update(buffer).digest("hex");
+  const captionDraft = normalizeNullableString(formData.get("captionDraft") as string | null)
+    ?? normalizeNullableString(formData.get("supplementalPrompt") as string | null)
+    ?? "";
+  const supplementalPrompt = normalizeNullableString(formData.get("supplementalPrompt") as string | null);
+
+  const artifact = await prisma.trainingArtifact.upsert({
+    where: {
+      trainingProjectId_storageKey: {
+        trainingProjectId: project.id,
+        storageKey: relativePath,
+      },
+    },
+    update: {
+      filePath: relativePath,
+      fileSize: BigInt(buffer.byteLength),
+      lifecycleStatus: "active",
+      metadata: normalizeJson({
+        originalName: file.name,
+        purpose: "manual_image_result_upload",
+      }),
+      mimeType: file.type || null,
+      sha256,
+      storageRole: "generation_output",
+    },
+    create: {
+      trainingProjectId: project.id,
+      storageKey: relativePath,
+      filePath: relativePath,
+      fileSize: BigInt(buffer.byteLength),
+      lifecycleStatus: "active",
+      metadata: normalizeJson({
+        originalName: file.name,
+        purpose: "manual_image_result_upload",
+      }),
+      mimeType: file.type || null,
+      sha256,
+      storageRole: "generation_output",
+    },
+  });
+
+  const created = await prisma.trainingImageResult.create({
+    data: {
+      trainingProjectId: project.id,
+      artifactId: artifact.id,
+      sourceType: "manual_upload",
+      reviewStatus: normalizeReviewStatus(formData.get("reviewStatus")),
+      trainingCaption: captionDraft,
+      supplementalPrompt,
+      filePathSnapshot: relativePath,
+      mimeType: file.type || null,
+      fileSize: BigInt(buffer.byteLength),
+      sha256,
+    },
+    select: { id: true },
+  });
+
+  return getMappedTrainingImageResult(created.id);
+}
+
+export async function patchTrainingImageResultRecord(
+  imageResultId: string,
+  input: { reviewStatus?: string; captionDraft?: string | null },
+) {
+  await getActiveImageResultRow(imageResultId);
+
+  const data: Prisma.TrainingImageResultUpdateInput = {};
+  if (typeof input.reviewStatus === "string") {
+    data.reviewStatus = normalizeReviewStatus(input.reviewStatus);
+  }
+  if (typeof input.captionDraft === "string") {
+    data.trainingCaption = input.captionDraft;
+  }
+
+  if (Object.keys(data).length === 0) {
+    throw new TrainingGenerationOutputServiceError("At least one supported field is required", 400, {
+      supportedFields: ["captionDraft", "reviewStatus"],
+    });
+  }
+
+  await prisma.trainingImageResult.update({
+    where: { id: imageResultId },
+    data,
+  });
+  return getMappedTrainingImageResult(imageResultId);
+}
+
+export async function setTrainingImageResultReviewStatus(imageResultId: string, input: { reviewStatus?: unknown }) {
+  await getActiveImageResultRow(imageResultId);
+  await prisma.trainingImageResult.update({
+    where: { id: imageResultId },
+    data: {
+      reviewStatus: normalizeReviewStatus(input.reviewStatus),
+    },
+  });
+  return getMappedTrainingImageResult(imageResultId);
+}
+
+export async function deleteTrainingImageResultRecord(imageResultId: string) {
+  await getActiveImageResultRow(imageResultId);
+  await prisma.trainingImageResult.update({
+    where: { id: imageResultId },
+    data: {
+      removedAt: new Date(),
+      removeReason: "deleted_from_training_image_result_api",
+    },
+  });
+  return {
+    id: imageResultId,
+    success: true,
+  };
 }
 
 async function applyProductionGenerationOutput(
@@ -230,9 +453,6 @@ async function applyProductionGenerationOutput(
 export async function applyTrainingGenerationOutput(outputId: string, input: unknown) {
   const parsed = parseGenerationOutputApplyInput(input);
   const target = normalizeApplyTarget(parsed.targetEntityType);
-
-  const managed = await applyManagedGenerationOutput(outputId, parsed, target);
-  if (managed) return managed;
 
   const production = await applyProductionGenerationOutput(outputId, parsed, target);
   if (production) return production;
