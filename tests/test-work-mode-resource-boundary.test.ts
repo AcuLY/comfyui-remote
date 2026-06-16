@@ -465,6 +465,8 @@ test("training manifest advertises only training-owned APIs plus shared resource
   const forbiddenGenerationEntrypoints = [
     "/api/agent/projects",
     "/api/agent/runs",
+    "/api/image-review",
+    "/api/images",
     "/api/project-create-options",
     "/api/project-folders",
     "/api/preset-library",
@@ -474,6 +476,7 @@ test("training manifest advertises only training-owned APIs plus shared resource
     "/api/queue-data",
     "/api/runs",
     "/api/templates",
+    "/api/worker",
   ];
 
   assert.deepEqual(payload.data.resourceBoundary.forbiddenGenerationEntrypoints, forbiddenGenerationEntrypoints);

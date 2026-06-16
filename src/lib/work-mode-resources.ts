@@ -148,13 +148,27 @@ export const WORK_MODE_MODULE_API_ENTRYPOINTS = {
 } satisfies Record<WorkMode, Record<WorkModeModuleOwnedResourceKey, string>>;
 
 export const WORK_MODE_SHARED_API_ENTRYPOINTS = {
-  models: ["/api/models?kind=checkpoint", "/api/models?kind=lora"],
+  models: [
+    "/api/models?kind=checkpoint",
+    "/api/models?kind=lora",
+    "/api/models",
+    "/api/models/browse",
+    "/api/models/hash",
+    "/api/models/move",
+    "/api/models/notes",
+    "/api/loras",
+    "/api/loras/browse",
+    "/api/loras/move",
+    "/api/loras/notes",
+  ],
   settings: [],
 } satisfies Record<WorkModeSharedResourceKey, string[]>;
 
 export const WORK_MODE_FORBIDDEN_GENERATION_ENTRYPOINTS_FOR_TRAINING = [
   "/api/agent/projects",
   "/api/agent/runs",
+  "/api/image-review",
+  "/api/images",
   "/api/project-create-options",
   "/api/project-folders",
   "/api/preset-library",
@@ -164,6 +178,7 @@ export const WORK_MODE_FORBIDDEN_GENERATION_ENTRYPOINTS_FOR_TRAINING = [
   "/api/queue-data",
   "/api/runs",
   "/api/templates",
+  "/api/worker",
 ] as const;
 
 export const WORK_MODE_FORBIDDEN_TRAINING_ENTRYPOINTS_FOR_GENERATION = [

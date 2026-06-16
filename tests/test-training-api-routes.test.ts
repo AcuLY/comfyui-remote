@@ -365,13 +365,27 @@ test("GET /api/training manifest declares module-owned resources and shared exce
   assert.deepEqual(payload.data.resourceBoundary.sharedResources, {
     models: {
       uiRoute: "/assets/models",
-      apiEntrypoints: ["/api/models?kind=checkpoint", "/api/models?kind=lora"],
+      apiEntrypoints: [
+        "/api/models?kind=checkpoint",
+        "/api/models?kind=lora",
+        "/api/models",
+        "/api/models/browse",
+        "/api/models/hash",
+        "/api/models/move",
+        "/api/models/notes",
+        "/api/loras",
+        "/api/loras/browse",
+        "/api/loras/move",
+        "/api/loras/notes",
+      ],
     },
     settings: { uiRoute: "/settings", apiEntrypoints: [] },
   });
   assert.deepEqual(payload.data.resourceBoundary.forbiddenGenerationEntrypoints, [
     "/api/agent/projects",
     "/api/agent/runs",
+    "/api/image-review",
+    "/api/images",
     "/api/project-create-options",
     "/api/project-folders",
     "/api/preset-library",
@@ -381,6 +395,7 @@ test("GET /api/training manifest declares module-owned resources and shared exce
     "/api/queue-data",
     "/api/runs",
     "/api/templates",
+    "/api/worker",
   ]);
   assert.deepEqual(payload.data.resourceBoundary.forbiddenGenerationUiRoutes, [
     "/queue",
