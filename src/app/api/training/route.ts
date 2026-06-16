@@ -641,6 +641,9 @@ const TRAINING_API_MANIFEST = {
     },
   ],
   resources: {
+    manifest: {
+      self: { method: "GET", path: "/api/training" },
+    },
     projects: {
       list: { method: "GET", path: "/api/training/projects" },
       create: { method: "POST", path: "/api/training/projects" },

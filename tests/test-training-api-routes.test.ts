@@ -121,8 +121,6 @@ async function listRouteOperations() {
   const routeFiles = await listRouteFiles(join(process.cwd(), "src", "app", "api", "training"));
   return routeFiles.flatMap((filePath) => {
     const routePath = routeFileToTrainingApiPath(filePath);
-    if (routePath === "/api/training") return [];
-
     const source = readFileSync(filePath, "utf8");
     return collectRouteExportedMethods(source).map((method) => `${method} ${routePath}`);
   }).sort();
@@ -1743,7 +1741,6 @@ test("GET /api/training manifest covers every implemented training API route", a
   const routeFiles = await listRouteFiles(join(process.cwd(), "src", "app", "api", "training"));
   const routePaths = routeFiles
     .map(routeFileToTrainingApiPath)
-    .filter((path) => path !== "/api/training")
     .sort();
   const manifestPaths = collectManifestPaths(payload.data);
   const missingFromManifest = routePaths.filter((path) => !manifestPaths.has(path));

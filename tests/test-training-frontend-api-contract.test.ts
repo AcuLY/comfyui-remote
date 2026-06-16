@@ -194,6 +194,24 @@ test("training manifest advertises every production training UI HTTP operation t
   );
 });
 
+test("training manifest advertises every implemented production training route operation to agents", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const manifestOperations = [...collectManifestOperations(payload.data)];
+  const routeOperations = await listRouteOperations();
+  const missingOperations = routeOperations.filter((routeOperation) => !manifestOperations.some((manifestOperation) => (
+    manifestOperation.method === routeOperation.method
+    && routeMatches(routeOperation.path, manifestOperation.path)
+  )));
+
+  assert.deepEqual(
+    missingOperations,
+    [],
+    "Every implemented /api/training route operation should be advertised by GET /api/training so agents can discover the full HTTP surface.",
+  );
+});
+
 test("training manifest advertises every production training UI API path reference", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
