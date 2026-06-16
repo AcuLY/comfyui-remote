@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
@@ -109,37 +108,40 @@ test("training worker common maps Training env aliases before loading legacy ada
   );
 });
 
-test("training worker common exposes helper exports with Training env aliases for direct imports", () => {
-  const tsxLoader = join(process.cwd(), "node_modules", "tsx", "dist", "loader.mjs");
-  const workerCommonUrl = pathToFileURL(join(process.cwd(), "scripts/training/worker-common.ts")).href;
-  const tempCwd = mkdtempSync(join(tmpdir(), "training-worker-common-"));
-  const result = spawnSync(process.execPath, [
-    "--import",
-    tsxLoader,
-    "-e",
-    `
-      const mod = await import(${JSON.stringify(workerCommonUrl)});
-      if (typeof mod.parseWorkerCli !== "function") throw new Error("parseWorkerCli export missing");
-      if (typeof mod.resolveManagerAuth !== "function") throw new Error("resolveManagerAuth export missing");
-      const auth = await mod.resolveManagerAuth();
-      if (!auth.hasToken || auth.token !== "training-token-test") {
-        throw new Error("Training manager token alias was not used");
-      }
-    `,
-  ], {
-    cwd: tempCwd,
-    encoding: "utf8",
-    env: {
-      ...process.env,
-      AUTH_TOKEN: "",
-      CHARACTER_LORA_MANAGER_TOKEN: "",
-      CHARACTER_LORA_MANAGER_URL: "",
-      TRAINING_MANAGER_TOKEN: "training-token-test",
-      TRAINING_MANAGER_URL: "http://training-manager.test",
-    },
-  });
+test("training worker common exposes helper exports with Training env aliases for direct imports", async () => {
+  const workerCommonUrl = new URL(pathToFileURL(join(process.cwd(), "scripts/training/worker-common.ts")));
+  workerCommonUrl.searchParams.set("testImport", String(Date.now()));
+  const previousEnv = {
+    AUTH_TOKEN: process.env.AUTH_TOKEN,
+    CHARACTER_LORA_MANAGER_TOKEN: process.env.CHARACTER_LORA_MANAGER_TOKEN,
+    CHARACTER_LORA_MANAGER_URL: process.env.CHARACTER_LORA_MANAGER_URL,
+    TRAINING_MANAGER_TOKEN: process.env.TRAINING_MANAGER_TOKEN,
+    TRAINING_MANAGER_URL: process.env.TRAINING_MANAGER_URL,
+  };
 
-  assert.equal(result.status, 0, result.stderr);
+  try {
+    process.env.AUTH_TOKEN = "";
+    process.env.CHARACTER_LORA_MANAGER_TOKEN = "";
+    process.env.CHARACTER_LORA_MANAGER_URL = "";
+    process.env.TRAINING_MANAGER_TOKEN = "training-token-test";
+    process.env.TRAINING_MANAGER_URL = "http://training-manager.test";
+
+    const mod = await import(workerCommonUrl.href);
+    assert.equal(typeof mod.parseWorkerCli, "function", "parseWorkerCli export missing");
+    assert.equal(typeof mod.resolveManagerAuth, "function", "resolveManagerAuth export missing");
+
+    const auth = await mod.resolveManagerAuth();
+    assert.equal(auth.hasToken, true);
+    assert.equal(auth.token, "training-token-test");
+  } finally {
+    for (const [key, value] of Object.entries(previousEnv)) {
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  }
 });
 
 test("training worker supervisor targets Training-named worker task HTTP routes", async () => {

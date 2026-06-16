@@ -1,16 +1,56 @@
 import process from "node:process";
 
-export * from "../character-lora-training/worker-common";
-export {
-  createManagerClient,
-  getManagerBaseUrl,
-  getWorkerTaskApiBasePath,
-  ManagerApiError,
-  parseWorkerCli,
-  readNumberOption,
-  readStringOption,
-  resolveManagerAuth,
-  WorkerError,
+import {
+  createManagerClient as legacyCreateManagerClient,
+  getManagerBaseUrl as legacyGetManagerBaseUrl,
+  getWorkerTaskApiBasePath as legacyGetWorkerTaskApiBasePath,
+  ManagerApiError as LegacyManagerApiError,
+  parseWorkerCli as legacyParseWorkerCli,
+  readNumberOption as legacyReadNumberOption,
+  readStringOption as legacyReadStringOption,
+  resolveManagerAuth as legacyResolveManagerAuth,
+  WorkerError as LegacyWorkerError,
+} from "../character-lora-training/worker-common";
+
+export const ManagerApiError = LegacyManagerApiError;
+export const WorkerError = LegacyWorkerError;
+
+export function parseWorkerCli(...args: Parameters<typeof legacyParseWorkerCli>): ReturnType<typeof legacyParseWorkerCli> {
+  return legacyParseWorkerCli(...args);
+}
+
+export function readStringOption(...args: Parameters<typeof legacyReadStringOption>): ReturnType<typeof legacyReadStringOption> {
+  return legacyReadStringOption(...args);
+}
+
+export function readNumberOption(...args: Parameters<typeof legacyReadNumberOption>): ReturnType<typeof legacyReadNumberOption> {
+  return legacyReadNumberOption(...args);
+}
+
+export function getManagerBaseUrl(...args: Parameters<typeof legacyGetManagerBaseUrl>): ReturnType<typeof legacyGetManagerBaseUrl> {
+  return legacyGetManagerBaseUrl(...args);
+}
+
+export function getWorkerTaskApiBasePath(...args: Parameters<typeof legacyGetWorkerTaskApiBasePath>): ReturnType<typeof legacyGetWorkerTaskApiBasePath> {
+  return legacyGetWorkerTaskApiBasePath(...args);
+}
+
+export function resolveManagerAuth(...args: Parameters<typeof legacyResolveManagerAuth>): ReturnType<typeof legacyResolveManagerAuth> {
+  return legacyResolveManagerAuth(...args);
+}
+
+export function createManagerClient(...args: Parameters<typeof legacyCreateManagerClient>): ReturnType<typeof legacyCreateManagerClient> {
+  return legacyCreateManagerClient(...args);
+}
+export type {
+  AuthSourceShape,
+  ManagerJob,
+  ManagerJobReport,
+  ManagerProjectDetail,
+  ManagerProjectLatestRun,
+  ManagerProjectRunResponse,
+  ManagerTask,
+  WorkerCliOptions,
 } from "../character-lora-training/worker-common";
 
 function copyEnvAlias(sourceName: string, targetName: string) {
