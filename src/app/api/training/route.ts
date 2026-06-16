@@ -3,6 +3,7 @@ import {
   TRAINING_GENERATION_KINDS,
   TRAINING_GENERATION_TASK_TYPES,
 } from "@/lib/training/schemas";
+import { TRAINING_IMAGE_GENERATION_PROVIDER_POLICY } from "@/lib/training/provider-policy";
 import {
   WORK_MODE_MODULE_OWNED_RESOURCE_KEYS,
   WORK_MODE_SHARED_RESOURCE_KEYS,
@@ -390,6 +391,7 @@ const TRAINING_API_MANIFEST = {
           requestBody: { contentType: "none" },
           produces: ["queuedGenerationTaskId"],
           responsePaths: { queuedGenerationTaskId: "$.data.id" },
+          providerPolicyRef: "resources.generationTasks.providerPolicy.imageGeneration",
         },
         {
           id: "tick_generation_scheduler",
@@ -417,6 +419,7 @@ const TRAINING_API_MANIFEST = {
           queryParamBindings: { targetId: "taskId" },
           ...WORKER_TASK_LEASE_TARGET_METADATA,
           expectedTarget: { type: "generationRun", idHandoff: "taskId" },
+          providerPolicyRef: "resources.generationTasks.providerPolicy.imageGeneration",
         },
         {
           id: "heartbeat_generation_worker_task",
@@ -755,6 +758,9 @@ const TRAINING_API_MANIFEST = {
       },
     },
     generationTasks: {
+      providerPolicy: {
+        imageGeneration: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY,
+      },
       projectList: {
         method: "GET",
         path: "/api/training/projects/:projectId/generation-tasks",

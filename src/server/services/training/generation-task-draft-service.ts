@@ -7,6 +7,7 @@ import {
   type TrainingGenerationKind,
   type TrainingGenerationTaskType,
 } from "@/lib/training/schemas";
+import { TRAINING_IMAGE_GENERATION_PROVIDER_POLICY } from "@/lib/training/provider-policy";
 import type { TrainingProviderInputImage } from "@/server/repositories/training/generation-tasks";
 import {
   createTrainingProjectArtifact,
@@ -220,6 +221,18 @@ function mapLegacyGenerationRunToTrainingRun(input: {
         ? formatRunTimestamp(input.run.startedAt, "开始于")
         : formatRunTimestamp(input.run.createdAt, "创建于"),
     provider: input.run.imageModel ?? input.run.hostModel ?? input.run.provider,
+    providerModel: input.generationKind === "image_generation"
+      ? input.run.imageModel ?? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.model
+      : undefined,
+    providerTool: input.generationKind === "image_generation"
+      ? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.tool
+      : undefined,
+    usesComfyUiWorkflow: input.generationKind === "image_generation"
+      ? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.usesComfyUiWorkflow
+      : undefined,
+    usesComfyUiQueue: input.generationKind === "image_generation"
+      ? TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.usesComfyUiQueue
+      : undefined,
     finalInput: input.run.visualPrompt ?? input.run.hostInstruction ?? input.finalInput,
     outputLabel: input.run.counts.candidateImages > 0 ? `输出 ${input.run.counts.candidateImages} 张图片` : undefined,
     schedulerMessage: "已进入生成队列",

@@ -112,6 +112,10 @@ export type LoraTrainingRun = {
   artifactName?: string;
   finalLoraArtifactId?: string;
   presetCreatedAt?: string;
+  providerModel?: string;
+  providerTool?: string;
+  usesComfyUiQueue?: boolean;
+  usesComfyUiWorkflow?: boolean;
   datasetRevisionId?: string;
   waitReason?: string;
   schedulerMessage?: string;

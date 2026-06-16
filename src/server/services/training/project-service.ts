@@ -12,6 +12,7 @@ import type {
   TrainingImage,
 } from "@/features/training/types";
 import { toImageUrl } from "@/lib/image-url";
+import { TRAINING_IMAGE_GENERATION_PROVIDER_POLICY } from "@/lib/training/provider-policy";
 import {
   archiveTrainingProductionProject,
   cancelTrainingProductionGenerationRun,
@@ -1440,7 +1441,11 @@ export async function enqueueManagedTrainingSectionGenerationRun(
     title: `${match.section.title} 图片生成`,
     summary: "图片 · 手动创建",
     timestamp: formatTimestamp(new Date(), "创建于"),
-    provider: "本地任务",
+    provider: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.provider,
+    providerModel: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.model,
+    providerTool: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.tool,
+    usesComfyUiWorkflow: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.usesComfyUiWorkflow,
+    usesComfyUiQueue: TRAINING_IMAGE_GENERATION_PROVIDER_POLICY.usesComfyUiQueue,
     finalInput: typeof input.userInstruction === "string" ? input.userInstruction : "",
     schedulerMessage: "等待生成队列处理",
     inputImages,

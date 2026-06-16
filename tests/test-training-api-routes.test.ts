@@ -482,6 +482,48 @@ test("GET /api/training manifest exposes production worker supervisor metadata w
   );
 });
 
+test("GET /api/training manifest declares the Training image-generation provider policy", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  );
+  const runGenerationStep = fullWorkflow?.steps.find((step: { id?: string }) =>
+    step.id === "run_generation_task"
+  );
+  const leaseGenerationStep = fullWorkflow?.steps.find((step: { id?: string }) =>
+    step.id === "lease_generation_worker_task"
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.deepEqual(payload.data.resources.generationTasks.providerPolicy.imageGeneration, {
+    provider: "codex_gpt_image2",
+    model: "gpt-image-2",
+    tool: "image_generation",
+    appliesToTaskTypes: ["trainingset_generation", "reference_image_generation"],
+    outputKind: "image",
+    usesComfyUiWorkflow: false,
+    usesComfyUiQueue: false,
+    paramsJsonDefaults: {
+      background: "opaque",
+      quality: "high",
+      size: "1024x1536",
+    },
+  });
+  assert.equal(
+    runGenerationStep?.providerPolicyRef,
+    "resources.generationTasks.providerPolicy.imageGeneration",
+    "Running a generation task should point agents to the provider policy before queueing work.",
+  );
+  assert.equal(
+    leaseGenerationStep?.providerPolicyRef,
+    "resources.generationTasks.providerPolicy.imageGeneration",
+    "Leased image-generation workers should keep the same remote provider policy attached.",
+  );
+});
+
 test("GET /api/training manifest exposes scheduler and worker operations for agent-driven execution", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
@@ -1677,6 +1719,7 @@ test("GET /api/training full workflow worker leases declare target verification 
         workerTaskTargetId: "$.data.targetId",
       },
       expectedTarget: { type: "generationRun", idHandoff: "taskId" },
+      providerPolicyRef: "resources.generationTasks.providerPolicy.imageGeneration",
     },
     "Generation worker leases should expose and verify the target returned by the worker task API.",
   );
@@ -6683,6 +6726,11 @@ test("managed training project generation task draft lifecycle works through /ap
   assert.equal(runPayload.data.generationKind, "image_generation");
   assert.equal(runPayload.data.taskType, "trainingset_generation");
   assert.equal(runPayload.data.taskTypeLabel, "训练集图片生成");
+  assert.equal(runPayload.data.provider, "codex_gpt_image2");
+  assert.equal(runPayload.data.providerModel, "gpt-image-2");
+  assert.equal(runPayload.data.providerTool, "image_generation");
+  assert.equal(runPayload.data.usesComfyUiWorkflow, false);
+  assert.equal(runPayload.data.usesComfyUiQueue, false);
   assert.ok(Array.isArray(runPayload.data.inputImages));
   assert.ok(runPayload.data.inputImages.length >= 1);
 
