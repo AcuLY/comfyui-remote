@@ -440,6 +440,8 @@ test("GET /api/training manifest attaches resource policy to every workflow for 
     {
       owner: "lora_training",
       allowedEntrypointPrefixes: ["/api/training"],
+      moduleOwnedResourceKeys: ["runs", "projects", "presets", "templates"],
+      sharedResourceKeys: ["models", "settings"],
       sharedEntrypointPrefixes: ["/api/models", "/api/loras"],
       forbiddenFallbackPolicyRef: "resourceBoundary.forbiddenGenerationEntrypoints",
       guidance: "Use /api/training for LoRA Training runs, projects, presets, and templates. Only models and settings are shared; never use generation-owned APIs as fallback data sources.",

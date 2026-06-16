@@ -188,6 +188,52 @@ test("work mode resource boundary manifest is symmetric for generation and train
   );
 });
 
+test("work mode resource boundary exposes an explicit shared-resource whitelist", () => {
+  const buildBoundary = (WorkModeResources as Record<string, unknown>).buildWorkModeResourceBoundary as
+    | ((mode: "generation" | "lora_training") => {
+        moduleOwnedResourceKeys?: string[];
+        sharedResourceKeys?: string[];
+        moduleOwnedResources: Record<string, unknown>;
+        sharedResources: Record<string, unknown>;
+      })
+    | undefined;
+
+  assert.equal(
+    typeof buildBoundary,
+    "function",
+    "The shared work-mode resource contract should expose boundaries for both modules.",
+  );
+
+  const generationBoundary = buildBoundary("generation");
+  const trainingBoundary = buildBoundary("lora_training");
+
+  for (const [label, boundary] of [
+    ["generation", generationBoundary],
+    ["training", trainingBoundary],
+  ] as const) {
+    assert.deepEqual(
+      boundary.moduleOwnedResourceKeys,
+      ["runs", "projects", "presets", "templates"],
+      `${label} boundary should explicitly mark runs/projects/presets/templates as module-owned resources.`,
+    );
+    assert.deepEqual(
+      boundary.sharedResourceKeys,
+      ["models", "settings"],
+      `${label} boundary should explicitly keep only models/settings shared across modules.`,
+    );
+    assert.deepEqual(
+      Object.keys(boundary.moduleOwnedResources),
+      boundary.moduleOwnedResourceKeys,
+      `${label} module-owned resource keys should match the advertised resource map.`,
+    );
+    assert.deepEqual(
+      Object.keys(boundary.sharedResources),
+      boundary.sharedResourceKeys,
+      `${label} shared resource keys should match the advertised shared-resource map.`,
+    );
+  }
+});
+
 test("work mode inference treats the production training root as LoRA training-owned", () => {
   assert.equal(inferWorkModeFromPathname("/training"), "lora_training");
   assert.equal(

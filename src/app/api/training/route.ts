@@ -3,7 +3,11 @@ import {
   TRAINING_GENERATION_KINDS,
   TRAINING_GENERATION_TASK_TYPES,
 } from "@/lib/training/schemas";
-import { buildWorkModeResourceBoundary } from "@/lib/work-mode-resources";
+import {
+  WORK_MODE_MODULE_OWNED_RESOURCE_KEYS,
+  WORK_MODE_SHARED_RESOURCE_KEYS,
+  buildWorkModeResourceBoundary,
+} from "@/lib/work-mode-resources";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +41,8 @@ const TRAINING_RESOURCE_BOUNDARY = buildWorkModeResourceBoundary("lora_training"
 const TRAINING_WORKFLOW_RESOURCE_POLICY = {
   owner: "lora_training",
   allowedEntrypointPrefixes: ["/api/training"],
+  moduleOwnedResourceKeys: [...WORK_MODE_MODULE_OWNED_RESOURCE_KEYS],
+  sharedResourceKeys: [...WORK_MODE_SHARED_RESOURCE_KEYS],
   sharedEntrypointPrefixes: ["/api/models", "/api/loras"],
   forbiddenFallbackPolicyRef: "resourceBoundary.forbiddenGenerationEntrypoints",
   guidance: "Use /api/training for LoRA Training runs, projects, presets, and templates. Only models and settings are shared; never use generation-owned APIs as fallback data sources.",

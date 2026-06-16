@@ -28,7 +28,9 @@ export type WorkModeResourceBoundary = {
   forbiddenTrainingEntrypoints: string[];
   forbiddenTrainingUiRoutes: string[];
   guidance: string;
+  moduleOwnedResourceKeys: WorkModeModuleOwnedResourceKey[];
   moduleOwnedResources: Record<WorkModeModuleOwnedResourceKey, { apiEntrypoint: string; uiRoute: string }>;
+  sharedResourceKeys: WorkModeSharedResourceKey[];
   sharedResources: Record<WorkModeSharedResourceKey, { apiEntrypoints: string[]; uiRoute: string }>;
 };
 
@@ -241,7 +243,9 @@ export function buildWorkModeResourceBoundary(workMode: WorkMode): WorkModeResou
   if (workMode === "lora_training") {
     return {
       moduleOwnedResources,
+      moduleOwnedResourceKeys: [...WORK_MODE_MODULE_OWNED_RESOURCE_KEYS],
       sharedResources,
+      sharedResourceKeys: [...WORK_MODE_SHARED_RESOURCE_KEYS],
       forbiddenGenerationEntrypoints: [...WORK_MODE_FORBIDDEN_GENERATION_ENTRYPOINTS_FOR_TRAINING],
       forbiddenGenerationUiRoutes: [...WORK_MODE_FORBIDDEN_GENERATION_UI_ROUTES_FOR_TRAINING],
       forbiddenTrainingEntrypoints: [],
@@ -253,7 +257,9 @@ export function buildWorkModeResourceBoundary(workMode: WorkMode): WorkModeResou
 
   return {
     moduleOwnedResources,
+    moduleOwnedResourceKeys: [...WORK_MODE_MODULE_OWNED_RESOURCE_KEYS],
     sharedResources,
+    sharedResourceKeys: [...WORK_MODE_SHARED_RESOURCE_KEYS],
     forbiddenGenerationEntrypoints: [],
     forbiddenGenerationUiRoutes: [],
     forbiddenTrainingEntrypoints: [...WORK_MODE_FORBIDDEN_TRAINING_ENTRYPOINTS_FOR_GENERATION],
