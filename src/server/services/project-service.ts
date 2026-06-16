@@ -24,6 +24,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import {
+  buildGenerationProjectWhere,
   LEGACY_TRAINING_BENCHMARK_RESOURCE_WRITE_ERROR,
   hasLegacyTrainingBenchmarkPurposeNotes,
 } from "@/server/repositories/legacy-training-resource-boundary";
@@ -523,6 +524,14 @@ export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: 
 
   log.info("Enqueueing project runs", { projectId: normalizedId, overrideBatchSize });
 
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: normalizedId }),
+    select: { id: true },
+  });
+  if (!project) {
+    throw new Error("JOB_NOT_FOUND");
+  }
+
   const result = await enqueueProjectRunsInRepository(normalizedId, overrideBatchSize);
 
   log.info("Project runs enqueued", { projectId: normalizedId, queuedRunCount: result.queuedRunCount });
@@ -553,6 +562,18 @@ export async function enqueueProjectSectionRun(
 ) {
   const normalizedSectionId = normalizeRequiredId(sectionId, "sectionId");
   const normalizedProjectId = normalizeRequiredId(projectId, "projectId");
+  const section = await prisma.projectSection.findFirst({
+    where: {
+      id: normalizedSectionId,
+      projectId: normalizedProjectId,
+      project: buildGenerationProjectWhere({ id: normalizedProjectId }),
+    },
+    select: { id: true },
+  });
+  if (!section) {
+    throw new Error("JOB_POSITION_NOT_FOUND");
+  }
+
   const result = await enqueueProjectSectionRunInRepository(
     normalizedProjectId,
     normalizedSectionId,

@@ -39,6 +39,7 @@ const generationRunExecutorSource = readFileSync(resolve(repoRoot, "src/server/s
 const generationProjectExportServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-export-service.ts"), "utf8");
 const generationProjectArchiveServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-archive-service.ts"), "utf8");
 const generationProjectFolderServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-folder-service.ts"), "utf8");
+const generationProjectServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-service.ts"), "utf8");
 const generationImageReviewActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/image-review.ts"), "utf8");
 const generationCensoringActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/censoring.ts"), "utf8");
 const generationCensoringExecutorSource = readFileSync(resolve(repoRoot, "src/server/services/censoring-executor.ts"), "utf8");
@@ -599,6 +600,7 @@ test("generation project service entrypoints reuse the generation project bounda
     ["generation project export service", generationProjectExportServiceSource],
     ["generation project archive service", generationProjectArchiveServiceSource],
     ["generation project folder service", generationProjectFolderServiceSource],
+    ["generation project service", generationProjectServiceSource],
   ] as const) {
     assert.match(
       source,
@@ -636,6 +638,16 @@ test("generation project service entrypoints reuse the generation project bounda
     generationProjectFolderServiceSource,
     /project\.count\(\{[\s\S]*buildGenerationProjectWhere\(\{\s*folderId:\s*id\s*\}\)/,
     "Generation project folder deletion should not count hidden training benchmark projects as visible folder contents.",
+  );
+  assert.match(
+    generationProjectServiceSource,
+    /enqueueProjectRuns[\s\S]*project\.findFirst\(\{[\s\S]*where:\s*buildGenerationProjectWhere\(\{\s*id:\s*normalizedId/,
+    "Generation project enqueue should reject hidden training benchmark projects before repository enqueue.",
+  );
+  assert.match(
+    generationProjectServiceSource,
+    /enqueueProjectSectionRun[\s\S]*projectSection\.findFirst\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\{\s*id:\s*normalizedProjectId/,
+    "Generation section enqueue should reject sections from hidden training benchmark projects before repository enqueue.",
   );
 });
 
