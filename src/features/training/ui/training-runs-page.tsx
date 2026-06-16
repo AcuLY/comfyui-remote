@@ -237,6 +237,7 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
   const selectedVisibleCount = visibleRuns.filter((run) => selectedIds.has(run.id)).length;
   const allVisibleSelected = visibleRuns.length > 0 && selectedVisibleCount === visibleRuns.length;
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
+  const canCancelSelectedRuns = status === "queued" || status === "running";
 
   function countFor(nextKind: LoraTrainingTaskKind, nextStatus: LoraTrainingTaskStatus) {
     return training.runs.filter((run) => run.kind === nextKind && effectiveRunStatus(run) === nextStatus && !hiddenRunIds.has(run.id)).length;
@@ -435,6 +436,7 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
   async function cancelRuns(runIds: Iterable<string>) {
     const ids = new Set(runIds);
     const runs = runsForKind.filter((run) => ids.has(run.id) && (run.status === "queued" || run.status === "running"));
+    const cancelTitle = kind === "generation" ? "生成任务已终止" : "训练任务已取消";
 
     const applyLocalCancelledRuns = (appliedIds: Set<string>) => {
       setCancelledRunIds((current) => new Set([...current, ...appliedIds]));
@@ -446,7 +448,7 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
       applyLocalCancelledRuns(localCancelledIds);
       pushToast({
         tone: "warning",
-        title: runs.length === 1 ? "训练任务已取消" : "训练任务已取消",
+        title: cancelTitle,
         detail: runs.length === 1 ? (runs[0]?.title ?? "任务") : `${runs.length} 条任务`,
       });
       return;
@@ -463,11 +465,11 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
               ? `/api/training/generation-tasks/${run.id}/cancel`
               : `/api/training/training-runs/${run.id}/cancel`,
             {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              requestedBy: run.kind === "generation" ? "training_generation_runs_page" : "training_runs_page",
-            }),
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                requestedBy: run.kind === "generation" ? "training_generation_runs_page" : "training_runs_page",
+              }),
             },
           );
           const payload = await response.json().catch(() => null);
@@ -489,21 +491,21 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
         pushToast({
           tone: "error",
           title: "取消失败",
-          detail: failedResponse.payload?.error?.message ?? "训练任务取消请求失败",
+          detail: failedResponse.payload?.error?.message ?? "任务取消请求失败",
         });
         return;
       }
 
       pushToast({
         tone: "warning",
-        title: completedIds.size === 1 ? "训练任务已取消" : "训练任务已取消",
+        title: cancelTitle,
         detail: completedIds.size === 1 ? (runs[0]?.title ?? "任务") : `${completedIds.size} 条任务`,
       });
     } catch (error) {
       pushToast({
         tone: "error",
         title: "取消失败",
-        detail: error instanceof Error ? error.message : "训练任务取消请求失败",
+        detail: error instanceof Error ? error.message : "任务取消请求失败",
       });
     } finally {
       setIsCancellingRuns(false);
@@ -554,27 +556,27 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
               <Button icon={CheckSquare} onClick={toggleVisibleRuns} disabled={visibleRuns.length === 0}>
                 {allVisibleSelected ? "取消全选" : "全选"}
               </Button>
-                  {status === "failed" ? (
-                        <Button
-                          icon={RotateCcw}
-                          tone="primary"
-                          pending={isRetryingRuns}
-                          disabled={selectedVisibleCount === 0}
-                          onClick={() => retryRuns(selectedIds)}
-                        >
-                          重试所选
-                        </Button>
-                  ) : kind === "training" && (status === "queued" || status === "running") ? (
-                    <Button
-                      icon={X}
-                      tone="danger"
-                      pending={isCancellingRuns}
-                      disabled={selectedVisibleCount === 0}
-                      onClick={() => cancelRuns(selectedIds)}
-                    >
-                      取消所选
-                    </Button>
-                  ) : (
+              {status === "failed" ? (
+                <Button
+                  icon={RotateCcw}
+                  tone="primary"
+                  pending={isRetryingRuns}
+                  disabled={selectedVisibleCount === 0}
+                  onClick={() => retryRuns(selectedIds)}
+                >
+                  重试所选
+                </Button>
+              ) : canCancelSelectedRuns ? (
+                <Button
+                  icon={X}
+                  tone="danger"
+                  pending={isCancellingRuns}
+                  disabled={selectedVisibleCount === 0}
+                  onClick={() => cancelRuns(selectedIds)}
+                >
+                  {kind === "generation" ? "终止所选" : "取消所选"}
+                </Button>
+              ) : (
                 <Button
                   icon={X}
                   tone="danger"

@@ -159,6 +159,24 @@ test("queued or running training rows cancel through the formal HTTP API on prod
   assert.match(pageSource, /pushToast/, "runs page should surface cancel API success or failure through the shared feedback system");
 });
 
+test("queued or running generation selections use batch cancel instead of delete", () => {
+  assert.match(
+    pageSource,
+    /canCancelSelectedRuns\s*=\s*status === "queued" \|\| status === "running"/,
+    "batch cancel availability should depend on task status, not only on the training task kind",
+  );
+  assert.match(
+    pageSource,
+    /canCancelSelectedRuns \? \([\s\S]*?onClick=\{\(\) => cancelRuns\(selectedIds\)\}/,
+    "queued or running selected generation tasks should use the same batch cancel handler as training tasks",
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /kind === "training" && \(status === "queued" \|\| status === "running"\)/,
+    "generation task batches must not fall through to delete actions while they are queued or running",
+  );
+});
+
 test("failed training run rows use a structured failure block instead of single-line text", () => {
   assert.match(pageSource, /TrainingRunFailureBlock/, "failed run rows should render a dedicated failure block");
   assert.match(pageSource, /run\.errorMessage \?\?/, "failed run rows should derive a fallback error message");
