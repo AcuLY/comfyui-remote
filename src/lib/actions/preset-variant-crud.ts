@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { recordPresetChange } from "@/server/services/preset-change-history-service";
+import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
 import { toJsonValue } from "./_helpers";
 import {
   ORDINARY_PRESET_CATEGORY_TYPE,
@@ -398,9 +399,9 @@ export async function copyPreset(presetId: string) {
       where: {
         sourceVariantId: { in: source.variants.map((variant) => variant.id) },
         linkedVariant: {
-          preset: {
+          preset: buildGenerationPresetWhere({
             category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
-          },
+          }),
         },
       },
       select: { sourceVariantId: true, linkedVariantId: true, sortOrder: true },

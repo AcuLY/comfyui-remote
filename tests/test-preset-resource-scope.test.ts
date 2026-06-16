@@ -1169,6 +1169,104 @@ test("ordinary preset copies do not preserve LoRA training linked variants", asy
   );
 });
 
+test("ordinary preset copies do not preserve legacy training benchmark linked variants", async () => {
+  await prisma.presetCategory.create({
+    data: {
+      id: "legacy-training-copy-linked-category",
+      name: "Legacy Training Copy Linked",
+      slug: "legacy-training-copy-linked",
+      type: "preset",
+    },
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "legacy-training-copy-source-preset",
+        categoryId: "legacy-training-copy-linked-category",
+        name: "Legacy Training Copy Source Preset",
+        slug: "legacy-training-copy-source-preset",
+        sortOrder: 0,
+      },
+      {
+        id: "legacy-training-copy-visible-preset",
+        categoryId: "legacy-training-copy-linked-category",
+        name: "Legacy Training Copy Visible Preset",
+        slug: "legacy-training-copy-visible-preset",
+        sortOrder: 1,
+      },
+      {
+        id: "legacy-training-copy-hidden-preset",
+        categoryId: "legacy-training-copy-linked-category",
+        name: "Legacy Training Copy Hidden Preset",
+        slug: "legacy-training-copy-hidden-preset",
+        notes: JSON.stringify({
+          temporary: true,
+          purpose: "character_lora_benchmark",
+          benchmarkRunId: "benchmark-copy-hidden",
+        }),
+        sortOrder: 2,
+      },
+    ],
+  });
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "legacy-training-copy-source-variant",
+        presetId: "legacy-training-copy-source-preset",
+        name: "Legacy Training Copy Source Variant",
+        slug: "legacy-training-copy-source-variant",
+        prompt: "ordinary source prompt",
+      },
+      {
+        id: "legacy-training-copy-visible-variant",
+        presetId: "legacy-training-copy-visible-preset",
+        name: "Legacy Training Copy Visible Variant",
+        slug: "legacy-training-copy-visible-variant",
+        prompt: "ordinary visible linked prompt",
+      },
+      {
+        id: "legacy-training-copy-hidden-variant",
+        presetId: "legacy-training-copy-hidden-preset",
+        name: "Legacy Training Copy Hidden Variant",
+        slug: "legacy-training-copy-hidden-variant",
+        prompt: "legacy training linked prompt must not be copied",
+      },
+    ],
+  });
+  await prisma.presetVariantLink.createMany({
+    data: [
+      {
+        id: "legacy-training-copy-link-to-visible",
+        sourceVariantId: "legacy-training-copy-source-variant",
+        linkedVariantId: "legacy-training-copy-visible-variant",
+        sortOrder: 0,
+      },
+      {
+        id: "legacy-training-copy-link-to-hidden",
+        sourceVariantId: "legacy-training-copy-source-variant",
+        linkedVariantId: "legacy-training-copy-hidden-variant",
+        sortOrder: 1,
+      },
+    ],
+  });
+
+  const copiedPreset = await ignoreStaticRevalidateError(() => copyPreset("legacy-training-copy-source-preset")) ??
+    await prisma.preset.findFirstOrThrow({ where: { slug: "legacy-training-copy-source-preset-copy" } });
+  const copiedVariant = await prisma.presetVariant.findFirstOrThrow({
+    where: { presetId: copiedPreset.id, slug: "legacy-training-copy-source-variant" },
+  });
+  const copiedLinks = await prisma.presetVariantLink.findMany({
+    where: { sourceVariantId: copiedVariant.id },
+    orderBy: { sortOrder: "asc" },
+  });
+
+  assert.deepEqual(
+    copiedLinks.map((link) => link.linkedVariantId),
+    ["legacy-training-copy-visible-variant"],
+    "ordinary preset copies must drop linked variants owned by legacy training benchmark resources",
+  );
+});
+
 test("ordinary preset group copies do not preserve LoRA training members", async () => {
   await prisma.presetCategory.createMany({
     data: [
@@ -1292,6 +1390,113 @@ test("ordinary preset group copies do not preserve LoRA training members", async
       },
     ],
     "ordinary preset group copies must drop training-owned preset and subgroup members",
+  );
+});
+
+test("ordinary preset group copies do not preserve legacy training benchmark temporary members", async () => {
+  await prisma.presetCategory.createMany({
+    data: [
+      {
+        id: "legacy-training-group-copy-preset-category",
+        name: "Legacy Training Group Copy Presets",
+        slug: "legacy-training-group-copy-presets",
+        type: "preset",
+      },
+      {
+        id: "legacy-training-group-copy-group-category",
+        name: "Legacy Training Group Copy Groups",
+        slug: "legacy-training-group-copy-groups",
+        type: "group",
+      },
+    ],
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "legacy-training-group-copy-ordinary-preset",
+        categoryId: "legacy-training-group-copy-preset-category",
+        name: "Legacy Training Group Copy Ordinary Preset",
+        slug: "legacy-training-group-copy-ordinary-preset",
+      },
+      {
+        id: "legacy-training-group-copy-hidden-preset",
+        categoryId: "legacy-training-group-copy-preset-category",
+        name: "Legacy Training Group Copy Hidden Preset",
+        slug: "legacy-training-group-copy-hidden-preset",
+        notes: JSON.stringify({
+          temporary: true,
+          purpose: "character_lora_benchmark",
+          benchmarkRunId: "benchmark-group-copy-hidden",
+        }),
+      },
+    ],
+  });
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "legacy-training-group-copy-ordinary-variant",
+        presetId: "legacy-training-group-copy-ordinary-preset",
+        name: "Ordinary Variant",
+        slug: "ordinary-variant",
+        prompt: "ordinary group copy prompt",
+      },
+      {
+        id: "legacy-training-group-copy-hidden-variant",
+        presetId: "legacy-training-group-copy-hidden-preset",
+        name: "Hidden Variant",
+        slug: "hidden-variant",
+        prompt: "legacy training group copy prompt must not be copied",
+      },
+    ],
+  });
+  await prisma.presetGroup.create({
+    data: {
+      id: "legacy-training-group-copy-source-group",
+      categoryId: "legacy-training-group-copy-group-category",
+      name: "Legacy Training Group Copy Source",
+      slug: "legacy-training-group-copy-source",
+    },
+  });
+  await prisma.presetGroupMember.createMany({
+    data: [
+      {
+        id: "legacy-training-group-copy-ordinary-member",
+        groupId: "legacy-training-group-copy-source-group",
+        presetId: "legacy-training-group-copy-ordinary-preset",
+        variantId: "legacy-training-group-copy-ordinary-variant",
+        slotCategoryId: "legacy-training-group-copy-preset-category",
+        sortOrder: 0,
+      },
+      {
+        id: "legacy-training-group-copy-hidden-member",
+        groupId: "legacy-training-group-copy-source-group",
+        presetId: "legacy-training-group-copy-hidden-preset",
+        variantId: "legacy-training-group-copy-hidden-variant",
+        slotCategoryId: "legacy-training-group-copy-preset-category",
+        sortOrder: 1,
+      },
+    ],
+  });
+
+  const copiedGroup = await ignoreStaticRevalidateError(() => copyPresetGroup("legacy-training-group-copy-source-group")) ??
+    await prisma.presetGroup.findFirstOrThrow({ where: { slug: "legacy-training-group-copy-source-copy" } });
+  const copiedMembers = await prisma.presetGroupMember.findMany({
+    where: { groupId: copiedGroup.id },
+    orderBy: { sortOrder: "asc" },
+  });
+
+  assert.deepEqual(
+    copiedMembers.map((member) => ({
+      presetId: member.presetId,
+      variantId: member.variantId,
+    })),
+    [
+      {
+        presetId: "legacy-training-group-copy-ordinary-preset",
+        variantId: "legacy-training-group-copy-ordinary-variant",
+      },
+    ],
+    "ordinary preset group copies must drop legacy training benchmark temporary preset members",
   );
 });
 

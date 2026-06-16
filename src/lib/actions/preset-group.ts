@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { after as afterResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { buildGenerationPresetWhere } from "@/server/repositories/legacy-training-resource-boundary";
 import { recordPresetGroupChange } from "@/server/services/preset-change-history-service";
 import {
   ORDINARY_PRESET_CATEGORY_TYPE,
@@ -102,10 +103,10 @@ async function filterOrdinaryGroupCopyMembers(members: CopyableGroupMember[]) {
   const [presets, variants, groups, slotCategories] = await Promise.all([
     presetIds.length > 0
       ? prisma.preset.findMany({
-          where: {
+          where: buildGenerationPresetWhere({
             id: { in: presetIds },
             category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
-          },
+          }),
           select: { id: true },
         })
       : [],
@@ -113,7 +114,9 @@ async function filterOrdinaryGroupCopyMembers(members: CopyableGroupMember[]) {
       ? prisma.presetVariant.findMany({
           where: {
             id: { in: variantIds },
-            preset: { category: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
+            preset: buildGenerationPresetWhere({
+              category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+            }),
           },
           select: { id: true, presetId: true },
         })
