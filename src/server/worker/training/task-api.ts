@@ -166,6 +166,15 @@ export async function leaseNextTrainingWorkerTask(input: unknown) {
   const managedTask = await leaseNextManagedTrainingWorkerTask(input);
   if (managedTask) return managedTask;
 
+  const parsed = trainingWorkerTaskLeaseRequestSchema.safeParse(input);
+  if (
+    parsed.success
+    && parsed.data.targetId?.startsWith("managed-")
+    && (parsed.data.targetType === "generationRun" || parsed.data.targetType === "trainingRun")
+  ) {
+    return null;
+  }
+
   return leaseNextLegacyTrainingWorkerTask(input);
 }
 

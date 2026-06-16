@@ -376,6 +376,8 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/scheduler/tick",
           requires: ["taskId"],
+          queryParams: { targetType: "generationRun" },
+          queryParamBindings: { targetId: "taskId" },
           requestBody: { contentType: "none" },
           produces: ["workerTaskQueued"],
           responsePaths: { workerTaskQueued: "$.data.id" },
@@ -532,6 +534,8 @@ const TRAINING_API_MANIFEST = {
           method: "POST",
           path: "/api/training/scheduler/tick",
           requires: ["trainingRunId"],
+          queryParams: { targetType: "trainingRun" },
+          queryParamBindings: { targetId: "trainingRunId" },
           requestBody: { contentType: "none" },
           produces: ["workerTaskQueued"],
           responsePaths: { workerTaskQueued: "$.data.id" },
@@ -772,7 +776,16 @@ const TRAINING_API_MANIFEST = {
     },
     scheduler: {
       status: { method: "GET", path: "/api/training/scheduler/status" },
-      tick: { method: "POST", path: "/api/training/scheduler/tick" },
+      tick: {
+        method: "POST",
+        path: "/api/training/scheduler/tick",
+        queryParamSchema: {
+          optionalFields: ["targetType", "targetId"],
+          enumValues: {
+            targetType: ["generationRun", "trainingRun"],
+          },
+        },
+      },
     },
     worker: {
       generation: {

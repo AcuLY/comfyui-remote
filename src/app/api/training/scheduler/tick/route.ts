@@ -3,9 +3,13 @@ import { mapTrainingProjectError, tickManagedTrainingScheduler } from "@/server/
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(request?: Request) {
   try {
-    const data = await tickManagedTrainingScheduler();
+    const searchParams = request ? new URL(request.url).searchParams : null;
+    const data = await tickManagedTrainingScheduler({
+      targetId: searchParams?.get("targetId") ?? undefined,
+      targetType: searchParams?.get("targetType") ?? undefined,
+    });
     if (!data) {
       return ok({
         idle: true,

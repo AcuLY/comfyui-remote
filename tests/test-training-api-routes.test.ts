@@ -1509,6 +1509,57 @@ test("GET /api/training full workflow scopes worker leases by worker type", asyn
   );
 });
 
+test("GET /api/training full workflow binds scheduler ticks to the target run handoff", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const fullWorkflow = payload.data.workflows.find((workflow: { id: string }) =>
+    workflow.id === "agent_full_training_flow"
+  ) as {
+    steps: Array<{
+      id?: string;
+      queryParamBindings?: Record<string, string>;
+      queryParams?: Record<string, string>;
+      requires?: string[];
+    }>;
+  } | undefined;
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.ok(fullWorkflow, "agent manifest should include the full training workflow");
+
+  const steps = new Map(fullWorkflow.steps.map((step) => [step.id, step]));
+
+  assert.deepEqual(
+    steps.get("tick_generation_scheduler")?.queryParams,
+    { targetType: "generationRun" },
+    "Generation scheduler ticks should only advance the queued generation task owned by this flow.",
+  );
+  assert.deepEqual(
+    steps.get("tick_generation_scheduler")?.queryParamBindings,
+    { targetId: "taskId" },
+    "Generation scheduler ticks should bind the generation task id into targetId.",
+  );
+  assert.ok(
+    steps.get("tick_generation_scheduler")?.requires?.includes("taskId"),
+    "Generation scheduler ticks should require taskId before binding it into the query string.",
+  );
+  assert.deepEqual(
+    steps.get("tick_training_scheduler")?.queryParams,
+    { targetType: "trainingRun" },
+    "Training scheduler ticks should only advance the queued training run owned by this flow.",
+  );
+  assert.deepEqual(
+    steps.get("tick_training_scheduler")?.queryParamBindings,
+    { targetId: "trainingRunId" },
+    "Training scheduler ticks should bind the training run id into targetId.",
+  );
+  assert.ok(
+    steps.get("tick_training_scheduler")?.requires?.includes("trainingRunId"),
+    "Training scheduler ticks should require trainingRunId before binding it into the query string.",
+  );
+});
+
 test("GET /api/training full workflow worker leases declare target verification metadata", async () => {
   const { GET } = await import("../src/app/api/training/route");
   const response = await GET();
@@ -4848,6 +4899,117 @@ test("production training worker lease can target a specific queued generation r
   assert.equal(leasePayload.data.targetType, "generationRun");
   assert.equal(leasePayload.data.targetId, secondGenerationRunId);
   assert.notEqual(leasePayload.data.targetId, firstGenerationRunId);
+});
+
+test("managed scheduler tick can advance a target queued generation run", async () => {
+  await withTrainingManagedStoreSnapshot(async () => {
+    const seedProject = await createManagedReferenceSeedProject();
+    const projectsRoute = await import("../src/app/api/training/projects/route");
+    const sectionRunRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
+    const schedulerTickRoute = await import("../src/app/api/training/scheduler/tick/route");
+    const workerTaskNextRoute = await import("../src/app/api/training/worker/tasks/next/route");
+    const title = `测试 targeted scheduler tick ${Date.now()}`;
+
+    const createResponse = await projectsRoute.POST(
+      new Request("http://localhost/api/training/projects", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          characterName: title,
+          projectName: title,
+          triggerToken: `targeted_scheduler_tick_${Date.now()}`,
+          templateId: "character_identity_default",
+          trainingTemplateId: "character_identity_default",
+          checkpointRelativePath: "models/checkpoints/mock.safetensors",
+          usagePrompt: "targeted scheduler usage",
+          detailPrompt: "targeted scheduler detail",
+          selectedReferenceIds: [seedProject.projectSelectionId],
+          sections: [
+            {
+              id: "targeted-scheduler-section",
+              title: "Targeted Scheduler Section",
+              enabled: true,
+              blockCount: 1,
+              blocks: [
+                {
+                  id: "targeted-scheduler-block",
+                  source: "本地",
+                  title: "Targeted Scheduler Block",
+                  text: "targeted scheduler scene",
+                },
+              ],
+              resolvedScene: "targeted scheduler scene",
+              scenePreview: "targeted scheduler scene",
+            },
+          ],
+          trainingDefaults: {
+            autoGenerateSamples: false,
+            autoFreezeDataset: false,
+          },
+        }),
+      }),
+    );
+    const createPayload = await createResponse.json();
+    assert.equal(createResponse.status, 201);
+    assert.equal(createPayload.ok, true);
+    const sectionId = createPayload.data.sections[0].id as string;
+
+    const firstGenerationResponse = await sectionRunRoute.POST(
+      new Request(`http://localhost/api/training/sections/${sectionId}/runs`, {
+        method: "POST",
+        body: JSON.stringify({ userInstruction: "first queued generation" }),
+      }),
+      { params: Promise.resolve({ sectionId }) },
+    );
+    const firstGenerationPayload = await firstGenerationResponse.json();
+    assert.equal(firstGenerationResponse.status, 201);
+    assert.equal(firstGenerationPayload.ok, true);
+    const firstGenerationRunId = firstGenerationPayload.data.id as string;
+
+    const secondGenerationResponse = await sectionRunRoute.POST(
+      new Request(`http://localhost/api/training/sections/${sectionId}/runs`, {
+        method: "POST",
+        body: JSON.stringify({ userInstruction: "second queued generation" }),
+      }),
+      { params: Promise.resolve({ sectionId }) },
+    );
+    const secondGenerationPayload = await secondGenerationResponse.json();
+    assert.equal(secondGenerationResponse.status, 201);
+    assert.equal(secondGenerationPayload.ok, true);
+    const secondGenerationRunId = secondGenerationPayload.data.id as string;
+
+    const targetedTickResponse = await schedulerTickRoute.POST(
+      new Request(
+        `http://localhost/api/training/scheduler/tick?targetType=generationRun&targetId=${secondGenerationRunId}`,
+        { method: "POST" },
+      ),
+    );
+    const targetedTickPayload = await targetedTickResponse.json();
+    assert.equal(targetedTickResponse.status, 200);
+    assert.equal(targetedTickPayload.ok, true);
+    assert.equal(targetedTickPayload.data.id, secondGenerationRunId);
+    assert.equal(targetedTickPayload.data.status, "running");
+
+    const untargetedFirstLeaseResponse = await workerTaskNextRoute.GET(
+      new Request(
+        `http://localhost/api/training/worker/tasks/next?workerType=image_generation&leaseOwner=targeted-scheduler-test&targetType=generationRun&targetId=${firstGenerationRunId}`,
+      ),
+    );
+    const untargetedFirstLeasePayload = await untargetedFirstLeaseResponse.json();
+    assert.equal(untargetedFirstLeaseResponse.status, 200);
+    assert.equal(untargetedFirstLeasePayload.ok, true);
+    assert.equal(untargetedFirstLeasePayload.data, null);
+
+    const targetedSecondLeaseResponse = await workerTaskNextRoute.GET(
+      new Request(
+        `http://localhost/api/training/worker/tasks/next?workerType=image_generation&leaseOwner=targeted-scheduler-test&targetType=generationRun&targetId=${secondGenerationRunId}`,
+      ),
+    );
+    const targetedSecondLeasePayload = await targetedSecondLeaseResponse.json();
+    assert.equal(targetedSecondLeaseResponse.status, 200);
+    assert.equal(targetedSecondLeasePayload.ok, true);
+    assert.equal(targetedSecondLeasePayload.data.targetId, secondGenerationRunId);
+  });
 });
 
 test("production worker task lease route filters queued tasks by target query params", async () => {

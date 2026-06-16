@@ -116,6 +116,14 @@ const managedProjectUpdateSchema = z.object({
   profileSummary: z.string().trim().max(20_000).optional(),
 }).strict();
 
+const managedSchedulerTickSchema = z.object({
+  targetId: z.string().trim().min(1).optional(),
+  targetType: z.enum(["generationRun", "trainingRun"]).optional(),
+}).strict().refine((value) => Boolean(value.targetId) === Boolean(value.targetType), {
+  message: "targetType and targetId must be provided together",
+  path: ["targetId"],
+});
+
 function shouldUseTrainingProjectFileFallback(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return /MODEL_BASE_DIR is not configured|Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003/i.test(message);
@@ -1631,10 +1639,38 @@ export async function cancelTrainingGenerationRun(taskId: string, input: unknown
   return cancelTrainingProductionGenerationRun(taskId, input);
 }
 
-export async function tickManagedTrainingScheduler() {
+function managedRunMatchesSchedulerTarget(
+  run: LoraTrainingRun,
+  target: z.infer<typeof managedSchedulerTickSchema>,
+) {
+  if (!target.targetId || !target.targetType) return true;
+  if (run.id !== target.targetId) return false;
+  if (target.targetType === "generationRun") return run.kind === "generation";
+  return run.kind === "training";
+}
+
+export async function tickManagedTrainingScheduler(input: unknown = {}) {
+  const parsed = managedSchedulerTickSchema.safeParse(input);
+  if (!parsed.success) {
+    throw new TrainingProjectServiceError("Invalid training scheduler tick request", 400, {
+      issues: parsed.error.issues.map((issue) => ({
+        path: issue.path.join("."),
+        message: issue.message,
+      })),
+    });
+  }
+
   return withRunStoreWriteLock(async () => {
     const runs = await readFallbackTrainingRuns();
-    const queuedIndex = [...runs].map((run, index) => ({ run, index })).reverse().find(({ run }) => run.status === "queued");
+    const runningTarget = parsed.data.targetId
+      ? runs.find((run) => run.status === "running" && managedRunMatchesSchedulerTarget(run, parsed.data))
+      : null;
+    if (runningTarget) return runningTarget;
+
+    const queuedIndex = [...runs]
+      .map((run, index) => ({ run, index }))
+      .reverse()
+      .find(({ run }) => run.status === "queued" && managedRunMatchesSchedulerTarget(run, parsed.data));
     if (!queuedIndex) return null;
 
     const nextRuns = [...runs];
