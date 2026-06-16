@@ -188,13 +188,13 @@ lora_training:
 | `/training/templates/new` | `docs/prototypes/manager-lora-training-template-new-prototype.html` | 已有首版 | 新建训练模板 |
 | `/training/templates/[templateId]/edit` | `docs/prototypes/manager-lora-training-template-edit-prototype.html` | 已有首版 | 模板编辑，project-level guidance、section settings、preset/local blocks |
 | `/training/templates/[templateId]/sections/[sectionIndex]` | `docs/prototypes/manager-lora-training-template-section-prototype.html` | 已有首版 | 模板小节编辑；后续仍可确认是否并入 edit 页面 |
-| `/settings` work mode 切换 | `docs/prototypes/manager-lora-training-settings-mode-prototype.html` | 已有首版 | 设置页工作模式切换；切换不跳转，导航文案不变 |
+| `/settings` work mode 切换 | 共享生产设置页 | 不做训练私有原型 | 设置与模型为共享资源；训练原型不拥有此页面 |
 
 可并入现有页面或待确认：
 
 | 页面 / 能力 | 当前规划 |
 | --- | --- |
-| `/settings` work mode 切换 | 需要确认是否单独做原型；目前只确认切换入口在设置页 |
+| `/settings` work mode 切换 | 已确认使用共享生产设置页，不做训练私有原型 |
 | `/training/projects/[trainingProjectId]/edit` | 已确认并入项目总览 / profile 表单，不单独做页面 |
 | `/training/projects/[trainingProjectId]/training-runs` | 项目内 scoped list，可复用 `/training/runs` 列表并过滤项目；详情仍跳全局 `/training/runs/training/[trainingRunId]` |
 | `/training/projects/[trainingProjectId]/generation-tasks` | 项目内 scoped list，可复用 `/training/runs` 的生成任务列表；详情仍跳全局 `/training/runs/generation/[taskId]` |

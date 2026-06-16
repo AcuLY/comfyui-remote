@@ -26,8 +26,6 @@ function createDesktopNav(active) {
     ["项目", "folder-kanban", withPrototypeVersion("./manager-lora-training-projects-prototype.html"), "projects"],
     ["预制", "layers", withPrototypeVersion("./manager-lora-training-presets-prototype.html"), "presets"],
     ["模板", "layout-template", withPrototypeVersion("./manager-lora-training-templates-prototype.html"), "templates"],
-    ["模型", "box", withPrototypeVersion("./manager-lora-training-models-prototype.html"), "models"],
-    ["设置", "settings", withPrototypeVersion("./manager-lora-training-settings-mode-prototype.html"), "settings"],
   ];
   const links = items
     .map(([label, icon, href, key]) => {
@@ -52,8 +50,6 @@ function createBottomNav(active) {
     ["项目", "folder-kanban", withPrototypeVersion("./manager-lora-training-projects-prototype.html"), "projects"],
     ["预制", "layers", withPrototypeVersion("./manager-lora-training-presets-prototype.html"), "presets"],
     ["模板", "layout-template", withPrototypeVersion("./manager-lora-training-templates-prototype.html"), "templates"],
-    ["模型", "box", withPrototypeVersion("./manager-lora-training-models-prototype.html"), "models"],
-    ["设置", "settings", withPrototypeVersion("./manager-lora-training-settings-mode-prototype.html"), "settings"],
   ];
   const links = items
     .map(([label, icon, href, key]) => {
