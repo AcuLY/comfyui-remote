@@ -508,6 +508,7 @@ test("GET /api/training manifest declares the Training image-generation provider
     usesComfyUiQueue: false,
     paramsJsonDefaults: {
       background: "opaque",
+      hostModel: "gpt-5.5",
       quality: "high",
       size: "1024x1536",
     },
