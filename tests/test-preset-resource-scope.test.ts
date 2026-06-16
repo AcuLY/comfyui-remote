@@ -270,6 +270,7 @@ let createPresetFolder: typeof PresetFolderActions.createPresetFolder;
 let renamePresetFolder: typeof PresetFolderActions.renamePresetFolder;
 let createPresetGroup: typeof PresetGroupActions.createPresetGroup;
 let copyPresetGroup: typeof PresetGroupActions.copyPresetGroup;
+let flattenGroup: typeof PresetGroupActions.flattenGroup;
 let createPreset: typeof PresetVariantCrudActions.createPreset;
 let copyPreset: typeof PresetVariantCrudActions.copyPreset;
 let updatePreset: typeof PresetVariantCrudActions.updatePreset;
@@ -311,6 +312,7 @@ test.before(async () => {
   renamePresetFolder = presetFolderActions.renamePresetFolder;
   createPresetGroup = presetGroupActions.createPresetGroup;
   copyPresetGroup = presetGroupActions.copyPresetGroup;
+  flattenGroup = presetGroupActions.flattenGroup;
   createPreset = presetVariantCrudActions.createPreset;
   copyPreset = presetVariantCrudActions.copyPreset;
   updatePreset = presetVariantCrudActions.updatePreset;
@@ -1515,6 +1517,135 @@ test("ordinary preset group copies do not preserve LoRA training members", async
       },
     ],
     "ordinary preset group copies must drop training-owned preset and subgroup members",
+  );
+});
+
+test("ordinary preset group flattening filters LoRA training members", async () => {
+  await prisma.presetCategory.createMany({
+    data: [
+      {
+        id: "ordinary-group-flatten-preset-category",
+        name: "Ordinary Group Flatten Presets",
+        slug: "ordinary-group-flatten-presets",
+        type: "preset",
+      },
+      {
+        id: "ordinary-group-flatten-group-category",
+        name: "Ordinary Group Flatten Groups",
+        slug: "ordinary-group-flatten-groups",
+        type: "group",
+      },
+      {
+        id: "training-group-flatten-hidden-category",
+        name: "Training Group Flatten Hidden",
+        slug: "training-group-flatten-hidden",
+        type: "training_scene_description",
+      },
+    ],
+  });
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "ordinary-group-flatten-preset",
+        categoryId: "ordinary-group-flatten-preset-category",
+        name: "Ordinary Group Flatten Preset",
+        slug: "ordinary-group-flatten-preset",
+      },
+      {
+        id: "training-group-flatten-hidden-preset",
+        categoryId: "training-group-flatten-hidden-category",
+        name: "Training Group Flatten Hidden Preset",
+        slug: "training-group-flatten-hidden-preset",
+      },
+      {
+        id: "training-group-flatten-subgroup-preset",
+        categoryId: "training-group-flatten-hidden-category",
+        name: "Training Group Flatten Subgroup Preset",
+        slug: "training-group-flatten-subgroup-preset",
+      },
+    ],
+  });
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "ordinary-group-flatten-variant",
+        presetId: "ordinary-group-flatten-preset",
+        name: "Ordinary Flatten Variant",
+        slug: "ordinary-flatten-variant",
+        prompt: "ordinary group flatten prompt",
+      },
+      {
+        id: "training-group-flatten-hidden-variant",
+        presetId: "training-group-flatten-hidden-preset",
+        name: "Training Flatten Hidden Variant",
+        slug: "training-flatten-hidden-variant",
+        prompt: "training group flatten prompt must not leak",
+      },
+      {
+        id: "training-group-flatten-subgroup-variant",
+        presetId: "training-group-flatten-subgroup-preset",
+        name: "Training Flatten Subgroup Variant",
+        slug: "training-flatten-subgroup-variant",
+        prompt: "training subgroup prompt must not leak",
+      },
+    ],
+  });
+  await prisma.presetGroup.createMany({
+    data: [
+      {
+        id: "ordinary-group-flatten-source-group",
+        categoryId: "ordinary-group-flatten-group-category",
+        name: "Ordinary Group Flatten Source",
+        slug: "ordinary-group-flatten-source",
+      },
+      {
+        id: "training-group-flatten-hidden-subgroup",
+        categoryId: "training-group-flatten-hidden-category",
+        name: "Training Group Flatten Hidden Subgroup",
+        slug: "training-group-flatten-hidden-subgroup",
+      },
+    ],
+  });
+  await prisma.presetGroupMember.createMany({
+    data: [
+      {
+        id: "ordinary-group-flatten-member",
+        groupId: "ordinary-group-flatten-source-group",
+        presetId: "ordinary-group-flatten-preset",
+        variantId: "ordinary-group-flatten-variant",
+        slotCategoryId: "ordinary-group-flatten-preset-category",
+        sortOrder: 0,
+      },
+      {
+        id: "training-group-flatten-hidden-preset-member",
+        groupId: "ordinary-group-flatten-source-group",
+        presetId: "training-group-flatten-hidden-preset",
+        variantId: "training-group-flatten-hidden-variant",
+        slotCategoryId: "training-group-flatten-hidden-category",
+        sortOrder: 1,
+      },
+      {
+        id: "training-group-flatten-hidden-subgroup-member",
+        groupId: "ordinary-group-flatten-source-group",
+        subGroupId: "training-group-flatten-hidden-subgroup",
+        sortOrder: 2,
+      },
+      {
+        id: "training-group-flatten-subgroup-preset-member",
+        groupId: "training-group-flatten-hidden-subgroup",
+        presetId: "training-group-flatten-subgroup-preset",
+        variantId: "training-group-flatten-subgroup-variant",
+        slotCategoryId: "training-group-flatten-hidden-category",
+      },
+    ],
+  });
+
+  const flattened = await flattenGroup("ordinary-group-flatten-source-group");
+
+  assert.deepEqual(
+    flattened,
+    [{ presetId: "ordinary-group-flatten-preset", variantId: "ordinary-group-flatten-variant" }],
+    "ordinary preset group flatten API must not expose training-owned preset or subgroup members",
   );
 });
 

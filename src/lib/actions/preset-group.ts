@@ -572,9 +572,10 @@ export async function flattenGroup(
     where: { groupId },
     orderBy: { sortOrder: "asc" },
   });
+  const ordinaryMembers = await filterOrdinaryGroupCopyMembers(members);
 
   const result: Array<{ presetId: string; variantId?: string }> = [];
-  for (const m of members) {
+  for (const m of ordinaryMembers) {
     if (m.subGroupId) {
       const sub = await flattenGroup(m.subGroupId, visited);
       result.push(...sub);
