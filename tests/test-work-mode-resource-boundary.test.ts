@@ -22,6 +22,14 @@ const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/train
 const generationProjectDetailSource = readFileSync(resolve(repoRoot, "src/server/repositories/project-view-repository/detail-view.ts"), "utf8");
 const generationQueuePageSource = readFileSync(resolve(repoRoot, "src/app/queue/page.tsx"), "utf8");
 const generationQueueDataRouteSource = readFileSync(resolve(repoRoot, "src/app/api/queue-data/route.ts"), "utf8");
+const generationProjectListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/projects/route.ts"), "utf8");
+const generationPresetListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/presets/route.ts"), "utf8");
+const generationPresetLibraryCategoryRouteSource = readFileSync(resolve(repoRoot, "src/app/api/preset-library/categories/route.ts"), "utf8");
+const generationTemplateListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/templates/route.ts"), "utf8");
+const trainingProjectListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/training/projects/route.ts"), "utf8");
+const trainingRunListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/training/runs/route.ts"), "utf8");
+const trainingPresetListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/training/presets/route.ts"), "utf8");
+const trainingTemplateListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/training/templates/route.ts"), "utf8");
 const generationRunLifecycleSource = readFileSync(resolve(repoRoot, "src/lib/actions/run-lifecycle.ts"), "utf8");
 const generationRunWorkflowRouteSource = readFileSync(resolve(repoRoot, "src/app/api/runs/[runId]/workflow/route.ts"), "utf8");
 const generationWorkerStatusRouteSource = readFileSync(resolve(repoRoot, "src/app/api/worker/status/route.ts"), "utf8");
@@ -207,6 +215,45 @@ test("module-owned API routes do not import the other module's resource services
     [],
     "Training-owned API routes must not import generation-owned projects, templates, or preset services.",
   );
+});
+
+test("module-owned list API routes stay on their owning resource services", () => {
+  for (const [label, source] of [
+    ["generation project list", generationProjectListRouteSource],
+    ["generation preset list", generationPresetListRouteSource],
+    ["generation preset library categories", generationPresetLibraryCategoryRouteSource],
+    ["generation template list", generationTemplateListRouteSource],
+    ["generation queue list", generationQueueDataRouteSource],
+  ] as const) {
+    assert.doesNotMatch(
+      source,
+      /@\/server\/services\/training|@\/server\/repositories\/training|@\/features\/training|\/api\/training/,
+      `${label} must not read training-owned list resources.`,
+    );
+  }
+
+  assert.match(generationProjectListRouteSource, /@\/server\/services\/project-service/);
+  assert.match(generationPresetListRouteSource, /@\/server\/services\/preset-query-service/);
+  assert.match(generationPresetLibraryCategoryRouteSource, /getPresetCategoriesWithPresets/);
+  assert.match(generationTemplateListRouteSource, /listProjectTemplates/);
+
+  for (const [label, source] of [
+    ["training project list", trainingProjectListRouteSource],
+    ["training run list", trainingRunListRouteSource],
+    ["training preset list", trainingPresetListRouteSource],
+    ["training template list", trainingTemplateListRouteSource],
+  ] as const) {
+    assert.match(
+      source,
+      /@\/server\/services\/training\/read-service/,
+      `${label} should read through the Training read service boundary.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /@\/lib\/server-data|@\/server\/services\/(?:project-service|preset-query-service)|listProjectTemplates|\/api\/(?:projects|presets|templates|queue)\b/,
+      `${label} must not read generation-owned list resources.`,
+    );
+  }
 });
 
 test("persistent production navigation consumes the shared work mode resource contract", () => {
