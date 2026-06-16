@@ -61,14 +61,20 @@ const TRAINING_API_MANIFEST = {
       settings: { uiRoute: TRAINING_RESOURCE_TARGETS.settings.href, apiEntrypoints: [] },
     },
     forbiddenGenerationEntrypoints: [
+      "/api/agent/projects",
+      "/api/agent/runs",
+      "/api/project-create-options",
+      "/api/project-folders",
+      "/api/preset-library",
       "/api/projects",
       "/api/presets",
-      "/api/templates",
       "/api/queue",
+      "/api/queue-data",
       "/api/runs",
+      "/api/templates",
     ],
     guidance:
-      "Use /api/training for training-owned runs, projects, presets, and templates. Only models and settings are shared with the generation module.",
+      "Use /api/training for training-owned runs, projects, presets, and templates. Do not use generation resource APIs such as /api/preset-library or /api/templates as training fallbacks. Only models and settings are shared with the generation module.",
   },
   workerSupervisor: {
     defaultCommand: "cmd /c npm run training:workers",

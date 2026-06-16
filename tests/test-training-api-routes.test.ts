@@ -370,11 +370,17 @@ test("GET /api/training manifest declares module-owned resources and shared exce
     settings: { uiRoute: "/settings", apiEntrypoints: [] },
   });
   assert.deepEqual(payload.data.resourceBoundary.forbiddenGenerationEntrypoints, [
+    "/api/agent/projects",
+    "/api/agent/runs",
+    "/api/project-create-options",
+    "/api/project-folders",
+    "/api/preset-library",
     "/api/projects",
     "/api/presets",
-    "/api/templates",
     "/api/queue",
+    "/api/queue-data",
     "/api/runs",
+    "/api/templates",
   ]);
   assert.match(
     payload.data.resourceBoundary.guidance,

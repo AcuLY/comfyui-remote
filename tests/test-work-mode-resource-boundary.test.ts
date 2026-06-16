@@ -391,14 +391,34 @@ test("training fallback navigation consumes the shared work mode resource contra
   );
 });
 
-test("training manifest advertises only training-owned APIs plus shared resources", () => {
-  const advertisedManifestSource = trainingManifestSource.replace(
-    /forbiddenGenerationEntrypoints:\s*\[[\s\S]*?\],\n\s*guidance:/,
-    "forbiddenGenerationEntrypoints: [],\n    guidance:",
-  );
-  for (const forbiddenPath of ["/api/projects", "/api/presets", "/api/templates", "/api/queue", "/api/runs"]) {
+test("training manifest advertises only training-owned APIs plus shared resources", async () => {
+  const { GET } = await import("../src/app/api/training/route");
+  const response = await GET();
+  const payload = await response.json();
+  const advertisedManifest = JSON.stringify({
+    entrypoints: payload.data.entrypoints,
+    resources: payload.data.resources,
+    workflows: payload.data.workflows,
+  });
+  const forbiddenGenerationEntrypoints = [
+    "/api/agent/projects",
+    "/api/agent/runs",
+    "/api/project-create-options",
+    "/api/project-folders",
+    "/api/preset-library",
+    "/api/projects",
+    "/api/presets",
+    "/api/queue",
+    "/api/queue-data",
+    "/api/runs",
+    "/api/templates",
+  ];
+
+  assert.deepEqual(payload.data.resourceBoundary.forbiddenGenerationEntrypoints, forbiddenGenerationEntrypoints);
+
+  for (const forbiddenPath of forbiddenGenerationEntrypoints) {
     assert.doesNotMatch(
-      advertisedManifestSource,
+      advertisedManifest,
       new RegExp(forbiddenPath.replaceAll("/", "\\/")),
       `Training manifest should not advertise generation-owned ${forbiddenPath}.`,
     );
