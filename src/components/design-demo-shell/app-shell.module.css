@@ -1560,7 +1560,13 @@
     border-color: rgba(147, 197, 253, 0.28);
     background: color-mix(in srgb, var(--demo-sky-soft) 58%, transparent);
     color: var(--demo-sky);
-    pointer-events: none;
+    cursor: pointer;
+  }
+
+  .mobileModeIndicator:hover,
+  .mobileModeIndicator:focus-visible {
+    border-color: rgba(147, 197, 253, 0.42);
+    background: color-mix(in srgb, var(--demo-sky-soft) 74%, transparent);
   }
 
   .mobileModeIndicator span {

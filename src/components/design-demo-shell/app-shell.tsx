@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Eye, EyeOff, FlaskConical, ImageIcon, Menu, Moon, MoreHorizontal, Sun } from "lucide-react";
@@ -67,6 +68,22 @@ function readStoredWorkMode(): DesignDemoWorkMode {
   } catch {
     return "generation";
   }
+}
+
+function getNextWorkMode(workMode: DesignDemoWorkMode): DesignDemoWorkMode {
+  return workMode === "lora_training" ? "generation" : "lora_training";
+}
+
+function applyWorkMode(nextMode: DesignDemoWorkMode) {
+  window.localStorage.setItem(WORK_MODE_STORAGE_KEY, nextMode);
+  window.dispatchEvent(new CustomEvent(WORK_MODE_CHANGE_EVENT, { detail: { mode: nextMode } }));
+}
+
+function findModeSwitchHref(currentRoute: string, currentLinks: NavLinkDef[], nextMode: DesignDemoWorkMode) {
+  const activeLink = currentLinks.find((link) => isNavActive(currentRoute, link.href, link.activePrefix));
+  const nextLinks = buildWorkModeNavLinks(nextMode);
+  if (!activeLink) return nextLinks[0]?.href;
+  return nextLinks.find((link) => link.label === activeLink.label)?.href ?? nextLinks[0]?.href;
 }
 
 function Sidebar({
@@ -186,18 +203,22 @@ function MobileBottomNav({
   data,
   currentRoute,
   links,
+  onToggleWorkMode,
   workMode,
 }: {
   data: DemoData;
   currentRoute: string;
   links: NavLinkDef[];
+  onToggleWorkMode: () => void;
   workMode: DesignDemoWorkMode;
 }) {
   const hrefForRoute = useRouteHref();
   const isTrainingMode = workMode === "lora_training";
+  const nextMode = getNextWorkMode(workMode);
   const ModeIcon = isTrainingMode ? FlaskConical : ImageIcon;
   const modeText = isTrainingMode ? "LoRA 训练" : "生图模式";
-  const modeLabel = `当前模式：${modeText}`;
+  const nextModeText = nextMode === "lora_training" ? "LoRA 训练" : "生图模式";
+  const modeLabel = `当前模式：${modeText}，点击切换到${nextModeText}`;
 
   return (
     <nav className={s.mobileBottomNav} data-work-mode={workMode} aria-label="移动端主导航">
@@ -216,10 +237,10 @@ function MobileBottomNav({
           </Link>
         );
       })}
-      <div className={s.mobileModeIndicator} aria-label={modeLabel} title={modeLabel}>
+      <button className={s.mobileModeIndicator} type="button" aria-label={modeLabel} title={modeLabel} onClick={onToggleWorkMode}>
         <ModeIcon className={s.iconMd} aria-hidden="true" />
         <span>{modeText}</span>
-      </div>
+      </button>
     </nav>
   );
 }
@@ -325,6 +346,7 @@ export function DesignDemoShell({
   navigationLinks,
   routeHeaderConfig,
   themePersistence,
+  workModeSwitchHref,
 }: {
   children: ReactNode;
   currentRoute: string;
@@ -334,7 +356,9 @@ export function DesignDemoShell({
   navigationLinks?: DesignDemoShellNavLink[];
   routeHeaderConfig?: HeaderSpec | null;
   themePersistence?: DesignDemoShellThemePersistence;
+  workModeSwitchHref?: string;
 }) {
+  const router = useRouter();
   const contentFrameRef = useRef<HTMLDivElement>(null);
   const mainRef = useRef<HTMLElement>(null);
   const routeHeaderRef = useRef<HTMLElement>(null);
@@ -353,12 +377,19 @@ export function DesignDemoShell({
   const defaultRouteHeaderConfig = useMemo(() => findHeaderSpecForRoute(data, currentRoute), [currentRoute, data]);
   const resolvedRouteHeaderConfig = routeHeaderConfig === undefined ? defaultRouteHeaderConfig : routeHeaderConfig;
   const resolvedThemePersistence = themePersistence ?? DEFAULT_DESIGN_DEMO_THEME_PERSISTENCE;
+  const resolvedHrefForRoute = hrefForRoute ?? demoHref;
   const hasRouteHeader = Boolean(resolvedRouteHeaderConfig);
   const setRouteHeaderNode = useCallback((node: HTMLElement | null) => {
     routeHeaderRef.current = node;
   }, []);
   const workMode = resolveWorkModeForRoute(currentRoute, storedWorkMode);
+  const nextWorkMode = getNextWorkMode(workMode);
   const navLinks = useMemo(() => navigationLinks ?? buildWorkModeNavLinks(workMode), [navigationLinks, workMode]);
+  const inferredModeSwitchHref = useMemo(
+    () => findModeSwitchHref(currentRoute, navLinks, nextWorkMode),
+    [currentRoute, navLinks, nextWorkMode],
+  );
+  const modeSwitchHref = workModeSwitchHref ?? inferredModeSwitchHref;
   const activeNav = useMemo(
     () => navLinks.find((link) => isNavActive(currentRoute, link.href, link.activePrefix)) ?? navLinks[0],
     [currentRoute, navLinks],
@@ -542,8 +573,16 @@ export function DesignDemoShell({
     });
   }
 
+  function toggleWorkMode() {
+    applyWorkMode(nextWorkMode);
+    setStoredWorkMode(nextWorkMode);
+    if (modeSwitchHref) {
+      router.push(resolvedHrefForRoute(modeSwitchHref));
+    }
+  }
+
   return (
-    <RouteHrefProvider hrefForRoute={hrefForRoute ?? demoHref}>
+    <RouteHrefProvider hrefForRoute={resolvedHrefForRoute}>
       <div className={cx(s.shell, isLightTheme && s.shellLight)} data-app-shell data-demo-font="harmonyos" data-theme={theme}>
         <DemoFeedbackProvider>
           {!hasRouteHeader ? (
@@ -602,12 +641,13 @@ export function DesignDemoShell({
               </main>
             </div>
           </div>
-          <MobileBottomNav
-            data={data}
-            currentRoute={currentRoute}
-            links={navLinks}
-            workMode={workMode}
-          />
+            <MobileBottomNav
+              data={data}
+              currentRoute={currentRoute}
+              links={navLinks}
+              onToggleWorkMode={toggleWorkMode}
+              workMode={workMode}
+            />
           <button
             className={cx(s.mobileNavDrawerButton, menuOpen && s.mobileNavDrawerButtonActive)}
             type="button"
