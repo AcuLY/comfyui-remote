@@ -1,4 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
+import type { LoraTrainingRun } from "@/features/training/types";
 import {
   enqueueTrainingSectionGenerationRun,
   mapTrainingGenerationRunMutationError,
@@ -17,7 +18,8 @@ export async function GET(
     const projectId = new URL(request.url).searchParams.get("projectId") ?? undefined;
     const data = await listTrainingRuns({ kind: "generation", projectId, sectionId });
     const taskRuns = projectId
-      ? await listTrainingGenerationTaskRuns(projectId, {}).then((runs) => runs.filter((run) => run.sectionId === sectionId))
+      ? await listTrainingGenerationTaskRuns(projectId, {}).then((runs: LoraTrainingRun[]) =>
+        runs.filter((run: LoraTrainingRun) => run.sectionId === sectionId))
       : [];
     const mergedRuns = new Map([...data, ...taskRuns].map((run) => [run.id, run]));
     return ok([...mergedRuns.values()]);
