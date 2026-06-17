@@ -50,6 +50,22 @@ log in. Do not hard-code the token, print it in logs, or commit token values.
 - 混合任务中的开发服务部分不需要单独获取部署锁，但不得清理 `.next`、不得触发 `next build`，也不得停止或重启生产服务。
 - 优先完成生产 build/启动/验证后，再启动或重启开发服务；这样可以避免开发服务操作干扰生产产物诊断。
 
+`mypc` PowerShell 命令规则：
+
+- 从 macOS/zsh 通过 SSH 执行 `mypc` 上的 PowerShell 时，如果命令包含管道、`$`/`$_`、通配符 `*`、括号、SQL、JSON、嵌套引号或多行逻辑，优先使用 `powershell -NoProfile -EncodedCommand`，避免命令被 zsh、ssh、cmd 或 PowerShell 中途错误解析。
+- 复杂状态检查要拆成小命令分别执行，避免一个慢查询、进程枚举或网络请求挂住整个部署流程。
+- 本地 zsh 下访问包含 `[]` 的路径时必须加引号，例如 `'src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx'`。
+- 生成 `EncodedCommand` 时使用 UTF-16LE 编码：
+  ```bash
+  script=$(cat <<'PS'
+  Set-Location "D:\Luca\Code\MyProject\comfyui-manager"
+  # PowerShell commands here
+  PS
+  )
+  encoded=$(printf '%s' "$script" | iconv -f UTF-8 -t UTF-16LE | base64 | tr -d '\n')
+  ssh mypc powershell -NoProfile -EncodedCommand "$encoded"
+  ```
+
 除轻量改动例外外，每次代码修改完成后，必须依次执行以下部署步骤：
 
 1. 在执行任何完整部署动作前，必须先获取部署互斥锁，避免多个会话同时执行部署、构建、重启或队列恢复操作。
