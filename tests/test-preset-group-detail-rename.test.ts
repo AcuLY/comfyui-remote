@@ -40,13 +40,18 @@ test("preset group detail rename does not resubmit the group category id", () =>
   assert.doesNotMatch(saveBody, /\bcategoryId\b/, "rename should not send the preset-group category id through the ordinary preset update payload");
 });
 
-test("preset group detail name input saves changed names on blur", () => {
+test("preset group detail name input autosaves changed names", () => {
   const source = readSource("src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx");
 
   assert.match(
     source,
-    /<input[\s\S]*value=\{name\}[\s\S]*onChange=\{\(event\) => setName\(event\.target\.value\)\}[\s\S]*onBlur=\{\(event\) => void saveGroup\(event\.currentTarget\.value\)\}/,
-    "group detail name input should submit the rename when the field loses focus",
+    /function handleNameChange\(nextName: string\)[\s\S]*setName\(nextName\);[\s\S]*nameSaveTimerRef\.current = setTimeout\(\(\) => \{[\s\S]*void saveGroup\(nextName\);/,
+    "name edits should schedule the same save path without depending only on blur",
+  );
+  assert.match(
+    source,
+    /<input[\s\S]*value=\{name\}[\s\S]*onChange=\{\(event\) => handleNameChange\(event\.target\.value\)\}[\s\S]*onBlur=\{\(event\) => void saveGroup\(event\.currentTarget\.value\)\}/,
+    "group detail name input should save both after edits and when the field loses focus",
   );
   assert.match(
     source,

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useMemo, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import {
   closestCenter,
   DndContext,
@@ -178,6 +178,8 @@ export function PresetGroupEditClient({
   const [currentGroup, setCurrentGroup] = useState(group);
   const [name, setName] = useState(group.name);
   const [isSavingGroup, setIsSavingGroup] = useState(false);
+  const nameSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSavingGroupRef = useRef(false);
   const [openReplaceMemberId, setOpenReplaceMemberId] = useState<string | null>(null);
   const [slotTemplate, setSlotTemplate] = useState(initialCategory?.slotTemplate ?? []);
   const slotDndId = useId();
@@ -196,6 +198,10 @@ export function PresetGroupEditClient({
   useEffect(() => {
     const nextCategory = categories.find((category) => category.id === group.categoryId) ??
       categories.find((category) => category.id === categoryId);
+    if (nameSaveTimerRef.current) {
+      clearTimeout(nameSaveTimerRef.current);
+      nameSaveTimerRef.current = null;
+    }
     queueMicrotask(() => {
       setCurrentGroup(group);
       setName(group.name);
@@ -203,6 +209,14 @@ export function PresetGroupEditClient({
       setSlotTemplate(nextCategory?.slotTemplate ?? []);
     });
   }, [categories, categoryId, group]);
+
+  useEffect(() => {
+    return () => {
+      if (nameSaveTimerRef.current) {
+        clearTimeout(nameSaveTimerRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -303,12 +317,36 @@ export function PresetGroupEditClient({
     return [...catMap.values()].sort((a, b) => (a.category?.sortOrder ?? 0) - (b.category?.sortOrder ?? 0));
   }, [currentGroup.members, variantLookup, categories]);
 
-  async function saveGroup(nextName = name) {
+  function clearScheduledNameSave() {
+    if (nameSaveTimerRef.current) {
+      clearTimeout(nameSaveTimerRef.current);
+      nameSaveTimerRef.current = null;
+    }
+  }
+
+  function handleNameChange(nextName: string) {
+    setName(nextName);
+    clearScheduledNameSave();
+
     const trimmedName = nextName.trim();
-    if (!trimmedName || trimmedName === currentGroup.name || isSavingGroup) {
+    if (!trimmedName || trimmedName === currentGroup.name) {
       return;
     }
 
+    nameSaveTimerRef.current = setTimeout(() => {
+      nameSaveTimerRef.current = null;
+      void saveGroup(nextName);
+    }, 900);
+  }
+
+  async function saveGroup(nextName = name) {
+    clearScheduledNameSave();
+    const trimmedName = nextName.trim();
+    if (!trimmedName || trimmedName === currentGroup.name || isSavingGroupRef.current) {
+      return;
+    }
+
+    isSavingGroupRef.current = true;
     setIsSavingGroup(true);
     try {
       await updatePresetGroup(currentGroup.id, {
@@ -321,6 +359,7 @@ export function PresetGroupEditClient({
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "保存失败");
     } finally {
+      isSavingGroupRef.current = false;
       setIsSavingGroup(false);
     }
   }
@@ -414,7 +453,7 @@ export function PresetGroupEditClient({
             <span className="text-[10px] text-zinc-500">名称</span>
             <input
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => handleNameChange(event.target.value)}
               onBlur={(event) => void saveGroup(event.currentTarget.value)}
               className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
             />
