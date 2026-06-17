@@ -110,6 +110,15 @@ function getStoredWorkModeServerSnapshot(): WorkMode {
   return "generation";
 }
 
+function getNextWorkMode(workMode: WorkMode): WorkMode {
+  return workMode === "lora_training" ? "generation" : "lora_training";
+}
+
+function applyWorkMode(workMode: WorkMode) {
+  window.localStorage.setItem(WORK_MODE_STORAGE_KEY, workMode);
+  window.dispatchEvent(new Event(WORK_MODE_CHANGE_EVENT));
+}
+
 function readRestoredRoute(href: string) {
   if (typeof window === "undefined") {
     return href;
@@ -132,14 +141,34 @@ export function PersistentBottomNav() {
   );
   const workMode = resolveWorkModeForPathname(pathname, storedWorkMode);
   const navItems = useMemo(() => buildNavItems(workMode), [workMode]);
+  const nextWorkMode = getNextWorkMode(workMode);
   const modeText = workMode === "lora_training" ? "LoRA 训练" : "生图模式";
-  const modeLabel = `当前模式：${modeText}`;
+  const nextModeText = nextWorkMode === "lora_training" ? "LoRA 训练" : "生图模式";
+  const modeLabel = `当前模式：${modeText}，点击切换到${nextModeText}`;
   const ModeIcon = workMode === "lora_training" ? FlaskConical : ImageIcon;
 
   const currentUrl = useMemo(
     () => readCurrentUrl(pathname, searchParams),
     [pathname, searchParams],
   );
+
+  function toggleWorkMode() {
+    const activeItem = matchNavItem(pathname, navItems);
+    saveCurrentRoute(pathname, searchParams, navItems);
+    applyWorkMode(nextWorkMode);
+
+    if (!activeItem || activeItem.owner === "shared") {
+      return;
+    }
+
+    const nextItem = buildNavItems(nextWorkMode).find((item) => item.key === activeItem.key);
+    if (!nextItem) {
+      return;
+    }
+
+    const restoredHref = readRestoredRoute(nextItem.href);
+    router.push(restoredHref);
+  }
 
   useEffect(() => {
     const activeItem = matchNavItem(pathname, navItems);
@@ -206,14 +235,17 @@ export function PersistentBottomNav() {
             </Link>
           );
         })}
-        <div
+        <button
+          type="button"
           aria-label={modeLabel}
+          aria-pressed={workMode === "lora_training"}
           title={modeLabel}
-          className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-sky-400/20 bg-sky-500/10 px-0.5 py-2 text-[10px] text-sky-200 sm:rounded-2xl sm:px-1 sm:text-[11px]"
+          onClick={toggleWorkMode}
+          className="flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl border border-sky-400/20 bg-sky-500/10 px-0.5 py-2 text-[10px] text-sky-200 transition hover:border-sky-300/35 hover:bg-sky-500/15 hover:text-sky-100 sm:rounded-2xl sm:px-1 sm:text-[11px]"
         >
           <ModeIcon className="size-4" aria-hidden="true" />
           <span className="max-w-full truncate whitespace-nowrap leading-tight">{modeText}</span>
-        </div>
+        </button>
       </div>
     </nav>
   );

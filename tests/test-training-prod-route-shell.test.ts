@@ -108,7 +108,7 @@ test("production bottom nav resolves module-owned resources from the current wor
     assert.match(workModeResourcesSource, new RegExp(`href:\\s*"${href.replace(/\//g, "\\/")}"`), `production resource contract should be able to route to ${href}`);
   }
   assert.match(bottomNavSource, /WORK_MODE_STORAGE_KEY/, "production bottom nav should read the persisted work mode.");
-  assert.match(bottomNavSource, /WORK_MODE_CHANGE_EVENT/, "production bottom nav should update when settings changes the work mode.");
+  assert.match(bottomNavSource, /WORK_MODE_CHANGE_EVENT/, "production bottom nav should update when the mode button changes the work mode.");
   assert.match(bottomNavSource, /aria-label=\{modeLabel\}/, "the mode indicator should expose the current mode without becoming a seventh nav link.");
 });
 
@@ -137,11 +137,44 @@ test("production app shell does not mount the legacy task panel while navigation
   );
 });
 
-test("production settings page exposes the work mode switch", () => {
+test("production bottom nav owns direct work mode switching", () => {
   assert.match(
+    bottomNavSource,
+    /function applyWorkMode\(workMode: WorkMode\)/,
+    "bottom nav should own writing the selected work mode.",
+  );
+  assert.match(
+    bottomNavSource,
+    /window\.localStorage\.setItem\(WORK_MODE_STORAGE_KEY,\s*workMode\)/,
+    "bottom nav should persist direct mode button changes.",
+  );
+  assert.match(
+    bottomNavSource,
+    /window\.dispatchEvent\(new Event\(WORK_MODE_CHANGE_EVENT\)\)/,
+    "bottom nav should notify the shell when its mode button changes the work mode.",
+  );
+  assert.match(
+    bottomNavSource,
+    /function toggleWorkMode\(\)/,
+    "bottom nav should expose a direct mode toggle handler.",
+  );
+  assert.match(
+    bottomNavSource,
+    /router\.push\(restoredHref\)/,
+    "bottom nav should switch module-owned pages to the matching resource slot in the next mode.",
+  );
+  assert.match(
+    bottomNavSource,
+    /onClick=\{toggleWorkMode\}/,
+    "the visible mode control should call the direct toggle handler.",
+  );
+});
+
+test("production settings page no longer exposes the work mode switch", () => {
+  assert.doesNotMatch(
     settingsPageSource,
     /WorkModeToggle/,
-    "settings should be the production place for switching generation vs LoRA training work mode.",
+    "settings should not keep a second work-mode card after the bottom nav owns direct switching.",
   );
   assert.doesNotMatch(
     settingsPageSource,
