@@ -1,3 +1,5 @@
+import "dotenv/config";
+
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 
