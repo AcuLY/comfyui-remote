@@ -3,12 +3,12 @@ import { mapTrainingWorkerTaskError, tickTrainingWorkerScheduler } from "@/serve
 
 export const dynamic = "force-dynamic";
 
-export async function POST(request?: Request) {
+export async function POST(request: Request) {
   try {
-    const searchParams = request ? new URL(request.url).searchParams : null;
+    const searchParams = new URL(request.url).searchParams;
     const data = await tickTrainingWorkerScheduler({
-      targetId: searchParams?.get("targetId") ?? undefined,
-      targetType: searchParams?.get("targetType") ?? undefined,
+      targetId: searchParams.get("targetId") ?? undefined,
+      targetType: searchParams.get("targetType") ?? undefined,
     });
     if (!data) {
       return ok({

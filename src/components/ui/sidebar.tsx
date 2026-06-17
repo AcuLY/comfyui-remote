@@ -154,6 +154,7 @@ function Sidebar({
   variant = "sidebar",
   collapsible = "offcanvas",
   mobileBehavior = "sheet",
+  mobileWidth = SIDEBAR_WIDTH_MOBILE,
   className,
   children,
   dir,
@@ -163,6 +164,7 @@ function Sidebar({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
   mobileBehavior?: "sheet" | "sidebar"
+  mobileWidth?: string
 }) {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
 
@@ -192,7 +194,7 @@ function Sidebar({
           className="w-(--sidebar-width) bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden"
           style={
             {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+              "--sidebar-width": mobileWidth,
             } as React.CSSProperties
           }
           side={side}
@@ -220,7 +222,7 @@ function Sidebar({
         data-slot="sidebar"
         style={
           {
-            "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+            "--sidebar-width": mobileWidth,
           } as React.CSSProperties
         }
       >

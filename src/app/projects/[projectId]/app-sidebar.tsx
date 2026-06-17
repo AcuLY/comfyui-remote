@@ -140,6 +140,7 @@ export function AppSidebar({
     <Sidebar
       collapsible="icon"
       mobileBehavior="sidebar"
+      mobileWidth="7rem"
       className="border-r border-white/5"
     >
       <SidebarHeader className="gap-1.5 px-3.5 py-3 group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:px-2">
