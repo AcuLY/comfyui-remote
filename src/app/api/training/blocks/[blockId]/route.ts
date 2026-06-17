@@ -21,7 +21,8 @@ export async function PATCH(
 
   try {
     const { blockId } = await params;
-    const data = await updateTrainingSectionBlock(blockId, body);
+    const projectId = new URL(request.url).searchParams.get("projectId");
+    const data = await updateTrainingSectionBlock(blockId, body, { projectId });
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingSceneBlockError(error);
@@ -30,12 +31,13 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ blockId: string }> },
 ) {
   try {
     const { blockId } = await params;
-    const data = await deleteTrainingSectionBlock(blockId);
+    const projectId = new URL(request.url).searchParams.get("projectId");
+    const data = await deleteTrainingSectionBlock(blockId, { projectId });
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingSceneBlockError(error);

@@ -1,4 +1,4 @@
-import { Button } from "../../shared/primitives/button";
+import { Button } from "@/components/design-demo-ui/primitives/button";
 import s from "./custom-icon-demo.showcase.module.css";
 import local from "./showcase-icons.module.css";
 

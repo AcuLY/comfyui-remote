@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { fail, ok } from "@/lib/api-response";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 type RouteContext = {
   params: Promise<{ imageId: string }>;
@@ -17,8 +18,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return fail("封面只能通过选择另一张图片覆盖", 400);
     }
 
-    const image = await db.imageResult.findUnique({
-      where: { id: imageId },
+    const image = await db.imageResult.findFirst({
+      where: {
+        id: imageId,
+        run: { project: buildGenerationProjectWhere() },
+      },
       select: {
         id: true,
         reviewStatus: true,
@@ -39,11 +43,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const now = new Date();
-    const [project, keptImage] = await db.$transaction([
-      db.project.update({
-        where: { id: image.run.projectId },
+    const [projectUpdate, keptImage] = await db.$transaction([
+      db.project.updateMany({
+        where: buildGenerationProjectWhere({ id: image.run.projectId }),
         data: { coverImageId: image.id },
-        select: { id: true, coverImageId: true },
       }),
       db.imageResult.update({
         where: { id: image.id },
@@ -56,8 +59,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     return ok({
       id: image.id,
-      projectId: project.id,
-      cover: project.coverImageId === image.id,
+      projectId: image.run.projectId,
+      cover: projectUpdate.count > 0,
       reviewStatus: keptImage.reviewStatus,
     });
   } catch (error) {

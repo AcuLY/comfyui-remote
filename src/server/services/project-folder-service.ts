@@ -1,6 +1,7 @@
 import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { listProjectFolders as listProjectFoldersInRepository } from "@/server/repositories/project-view-repository";
 import {
   ServiceValidationError,
@@ -120,8 +121,8 @@ async function ensureTargetFolderExists(folderId: string | null) {
 }
 
 async function ensureProjectExists(projectId: string) {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: { id: true },
   });
 
@@ -191,7 +192,7 @@ export async function getProjectFolder(folderId: string) {
       sortOrder: true,
       _count: {
         select: {
-          projects: true,
+          projects: { where: buildGenerationProjectWhere() },
           children: true,
         },
       },
@@ -260,7 +261,7 @@ export async function deleteProjectFolder(folderId: string) {
 
   const [childCount, projectCount] = await Promise.all([
     prisma.projectFolder.count({ where: { parentId: id } }),
-    prisma.project.count({ where: { folderId: id } }),
+    prisma.project.count({ where: buildGenerationProjectWhere({ folderId: id }) }),
   ]);
 
   if (childCount + projectCount > 0) {
@@ -281,8 +282,8 @@ export async function moveProjectToFolder(projectId: string, folderId: string | 
   await ensureProjectExists(normalizedProjectId);
   await ensureTargetFolderExists(normalizedFolderId);
 
-  await prisma.project.update({
-    where: { id: normalizedProjectId },
+  await prisma.project.updateMany({
+    where: buildGenerationProjectWhere({ id: normalizedProjectId }),
     data: { folderId: normalizedFolderId },
   });
 

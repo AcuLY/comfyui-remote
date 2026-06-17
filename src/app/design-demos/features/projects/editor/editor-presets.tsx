@@ -5,9 +5,9 @@ import type * as React from "react";
 import Link from "next/link";
 import { Search, Trash2, Unlink } from "lucide-react";
 
-import { Button } from "../../../shared/primitives/button";
-import { FloatingSelect } from "../../../shared/primitives/floating-select";
-import { SegmentedControl } from "../../../shared/primitives/segmented-control";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { FloatingSelect } from "@/components/design-demo-ui/primitives/floating-select";
+import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
 import s from "./editor-presets.module.css";
 import { cx } from "../../../routing";
 import { parseHue } from "./editor-shared";

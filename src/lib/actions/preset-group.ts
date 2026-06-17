@@ -3,7 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { after as afterResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 import { recordPresetGroupChange } from "@/server/services/preset-change-history-service";
+import {
+  ORDINARY_PRESET_CATEGORY_TYPE,
+  assertOrdinaryPreset,
+  assertOrdinaryPresetCategory,
+  assertOrdinaryPresetFolder,
+  assertOrdinaryPresetGroup,
+  assertOrdinaryPresetLibraryCategory,
+  assertOrdinaryPresetVariant,
+  ordinaryPresetLibraryCategoryTypeWhere,
+} from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,6 +42,13 @@ export type PresetGroupMemberReplacementInput = {
 };
 
 type GroupMemberSnapshot = Awaited<ReturnType<typeof groupMembersSnapshot>>[number];
+type CopyableGroupMember = {
+  presetId: string | null;
+  variantId: string | null;
+  subGroupId: string | null;
+  slotCategoryId: string | null;
+  sortOrder: number;
+};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -72,6 +90,94 @@ function sortGroupMemberSnapshots(members: GroupMemberSnapshot[]): GroupMemberSn
   return [...members].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
 }
 
+function uniqueStrings(values: Array<string | null | undefined>) {
+  return [...new Set(values.filter((value): value is string => Boolean(value)))];
+}
+
+async function filterOrdinaryGroupCopyMembers(members: CopyableGroupMember[]) {
+  const presetIds = uniqueStrings(members.map((member) => member.presetId));
+  const variantIds = uniqueStrings(members.map((member) => member.variantId));
+  const subGroupIds = uniqueStrings(members.map((member) => member.subGroupId));
+  const slotCategoryIds = uniqueStrings(members.map((member) => member.slotCategoryId));
+
+  const [presets, variants, groups, slotCategories] = await Promise.all([
+    presetIds.length > 0
+      ? prisma.preset.findMany({
+          where: buildGenerationPresetWhere({
+            id: { in: presetIds },
+            category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+          }),
+          select: { id: true },
+        })
+      : [],
+    variantIds.length > 0
+      ? prisma.presetVariant.findMany({
+          where: {
+            id: { in: variantIds },
+            preset: buildGenerationPresetWhere({
+              category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+            }),
+          },
+          select: { id: true, presetId: true },
+        })
+      : [],
+    subGroupIds.length > 0
+      ? prisma.presetGroup.findMany({
+          where: {
+            id: { in: subGroupIds },
+            category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
+          },
+          select: { id: true },
+        })
+      : [],
+    slotCategoryIds.length > 0
+      ? prisma.presetCategory.findMany({
+          where: {
+            id: { in: slotCategoryIds },
+            type: ORDINARY_PRESET_CATEGORY_TYPE,
+          },
+          select: { id: true },
+        })
+      : [],
+  ]);
+
+  const ordinaryPresetIds = new Set(presets.map((preset) => preset.id));
+  const ordinaryVariantPresetIds = new Map(variants.map((variant) => [variant.id, variant.presetId]));
+  const ordinaryGroupIds = new Set(groups.map((group) => group.id));
+  const ordinarySlotCategoryIds = new Set(slotCategories.map((category) => category.id));
+
+  return members.filter((member) => {
+    if (member.presetId && member.subGroupId) return false;
+    if (!member.presetId && !member.subGroupId) return false;
+
+    if (member.presetId) {
+      if (!ordinaryPresetIds.has(member.presetId)) return false;
+      if (member.variantId && ordinaryVariantPresetIds.get(member.variantId) !== member.presetId) {
+        return false;
+      }
+    } else if (member.variantId) {
+      return false;
+    }
+
+    if (member.subGroupId && !ordinaryGroupIds.has(member.subGroupId)) {
+      return false;
+    }
+
+    if (member.slotCategoryId && !ordinarySlotCategoryIds.has(member.slotCategoryId)) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+async function assertOrdinaryPresetGroupMember(member: CopyableGroupMember) {
+  const [visibleMember] = await filterOrdinaryGroupCopyMembers([member]);
+  if (!visibleMember) {
+    throw new Error("Ordinary preset group member not found");
+  }
+}
+
 function schedulePresetGroupMemberChangeEffects(input: {
   groupId: string;
   title: string;
@@ -99,6 +205,14 @@ function schedulePresetGroupMemberChangeEffects(input: {
 // ---------------------------------------------------------------------------
 
 export async function createPresetGroup(input: PresetGroupInput) {
+  await assertOrdinaryPresetLibraryCategory(input.categoryId);
+  if (input.folderId) {
+    const folder = await assertOrdinaryPresetFolder(input.folderId);
+    if (folder.categoryId !== input.categoryId) {
+      throw new Error("Ordinary preset group folder does not belong to the selected category");
+    }
+  }
+
   if (input.sortOrder === undefined) {
     const maxOrder = await prisma.presetGroup.aggregate({
       where: { categoryId: input.categoryId },
@@ -139,6 +253,7 @@ export async function createPresetGroup(input: PresetGroupInput) {
 }
 
 export async function copyPresetGroup(groupId: string) {
+  await assertOrdinaryPresetGroup(groupId);
   const source = await prisma.presetGroup.findUnique({
     where: { id: groupId },
     include: {
@@ -159,6 +274,7 @@ export async function copyPresetGroup(groupId: string) {
     throw new Error("Preset group not found");
   }
 
+  const sourceMembers = await filterOrdinaryGroupCopyMembers(source.members);
   let copyIdentity: { name: string; slug: string } | null = null;
   for (let attempt = 1; attempt <= 100; attempt += 1) {
     const copySuffix = attempt === 1 ? "Copy" : `Copy ${attempt}`;
@@ -212,9 +328,9 @@ export async function copyPresetGroup(groupId: string) {
       },
     });
 
-    if (source.members.length > 0) {
+    if (sourceMembers.length > 0) {
       await tx.presetGroupMember.createMany({
-        data: source.members.map((member) => ({
+        data: sourceMembers.map((member) => ({
           groupId: newGroup.id,
           presetId: member.presetId,
           variantId: member.variantId,
@@ -234,6 +350,17 @@ export async function copyPresetGroup(groupId: string) {
 }
 
 export async function updatePresetGroup(id: string, input: Partial<PresetGroupInput>) {
+  const current = await assertOrdinaryPresetGroup(id);
+  if (input.categoryId) {
+    await assertOrdinaryPresetCategory(input.categoryId);
+  }
+  if (input.folderId) {
+    const folder = await assertOrdinaryPresetFolder(input.folderId);
+    if (folder.categoryId !== (input.categoryId ?? current.categoryId)) {
+      throw new Error("Ordinary preset group folder does not belong to the selected category");
+    }
+  }
+
   const before = await prisma.presetGroup.findUnique({ where: { id } });
   const group = await prisma.presetGroup.update({ where: { id }, data: input });
   if (before) {
@@ -251,6 +378,7 @@ export async function updatePresetGroup(id: string, input: Partial<PresetGroupIn
 }
 
 export async function deletePresetGroup(id: string) {
+  await assertOrdinaryPresetGroup(id);
   const before = await prisma.presetGroup.findUnique({ where: { id } });
   const group = await prisma.presetGroup.update({ where: { id }, data: { isActive: false } });
   if (before) {
@@ -266,6 +394,12 @@ export async function deletePresetGroup(id: string) {
 }
 
 export async function addGroupMember(input: PresetGroupMemberInput) {
+  await assertOrdinaryPresetGroup(input.groupId);
+  if (input.presetId) await assertOrdinaryPreset(input.presetId);
+  if (input.variantId) await assertOrdinaryPresetVariant(input.variantId);
+  if (input.subGroupId) await assertOrdinaryPresetGroup(input.subGroupId);
+  if (input.slotCategoryId) await assertOrdinaryPresetCategory(input.slotCategoryId);
+
   const maxOrder = await prisma.presetGroupMember.aggregate({
     where: { groupId: input.groupId },
     _max: { sortOrder: true },
@@ -298,6 +432,8 @@ export async function removeGroupMember(memberId: string) {
     },
   });
   if (!existing) return;
+  await assertOrdinaryPresetGroup(existing.groupId);
+  await assertOrdinaryPresetGroupMember(existing);
   await prisma.presetGroupMember.delete({ where: { id: memberId } });
   const deletedMember: GroupMemberSnapshot = {
     id: existing.id,
@@ -318,6 +454,9 @@ export async function removeGroupMember(memberId: string) {
 }
 
 export async function updateGroupMember(memberId: string, input: PresetGroupMemberReplacementInput) {
+  await assertOrdinaryPreset(input.presetId);
+  await assertOrdinaryPresetVariant(input.variantId);
+
   const existing = await prisma.presetGroupMember.findUnique({
     where: { id: memberId },
     select: {
@@ -331,6 +470,8 @@ export async function updateGroupMember(memberId: string, input: PresetGroupMemb
     },
   });
   if (!existing) return null;
+  await assertOrdinaryPresetGroup(existing.groupId);
+  await assertOrdinaryPresetGroupMember(existing);
   if (!existing.presetId || existing.subGroupId) {
     throw new Error("只能替换普通预制成员");
   }
@@ -392,6 +533,8 @@ export async function updateGroupMember(memberId: string, input: PresetGroupMemb
 }
 
 export async function reorderPresetGroups(categoryId: string, ids: string[]) {
+  await assertOrdinaryPresetLibraryCategory(categoryId);
+  await Promise.all(ids.map((id) => assertOrdinaryPresetGroup(id)));
   await prisma.$transaction(
     ids.map((id, index) =>
       prisma.presetGroup.update({
@@ -404,6 +547,7 @@ export async function reorderPresetGroups(categoryId: string, ids: string[]) {
 }
 
 export async function reorderGroupMembers(groupId: string, ids: string[]) {
+  await assertOrdinaryPresetGroup(groupId);
   const before = await groupMembersSnapshot(groupId);
   await prisma.$transaction(
     ids.map((id, index) =>
@@ -429,6 +573,7 @@ export async function flattenGroup(
   groupId: string,
   visited = new Set<string>(),
 ): Promise<Array<{ presetId: string; variantId?: string }>> {
+  await assertOrdinaryPresetGroup(groupId);
   if (visited.has(groupId)) return [];
   visited.add(groupId);
 
@@ -436,9 +581,10 @@ export async function flattenGroup(
     where: { groupId },
     orderBy: { sortOrder: "asc" },
   });
+  const ordinaryMembers = await filterOrdinaryGroupCopyMembers(members);
 
   const result: Array<{ presetId: string; variantId?: string }> = [];
-  for (const m of members) {
+  for (const m of ordinaryMembers) {
     if (m.subGroupId) {
       const sub = await flattenGroup(m.subGroupId, visited);
       result.push(...sub);

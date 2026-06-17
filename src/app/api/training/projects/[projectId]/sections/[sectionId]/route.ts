@@ -1,7 +1,7 @@
 import { fail, ok } from "@/lib/api-response";
-import { getTrainingProject, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
   deleteTrainingProjectSection,
+  getTrainingProjectSection,
   mapTrainingProjectSectionError,
   upsertTrainingProjectSection,
 } from "@/server/services/training/project-section-service";
@@ -15,14 +15,10 @@ export const dynamic = "force-dynamic";
 export async function GET(_request: Request, context: RouteContext) {
   try {
     const { projectId, sectionId } = await context.params;
-    const project = await getTrainingProject(projectId);
-    const section = project.sections.find((item) => item.id === sectionId);
-    if (!section) {
-      return fail("Training project section not found", 404, { projectId, sectionId });
-    }
-    return ok(section);
+    const data = await getTrainingProjectSection(projectId, sectionId);
+    return ok(data);
   } catch (error) {
-    const mapped = mapTrainingReadError(error);
+    const mapped = mapTrainingProjectSectionError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
@@ -37,20 +33,8 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   try {
     const { projectId, sectionId } = await context.params;
-    const project = await getTrainingProject(projectId);
-    const section = project.sections.find((item) => item.id === sectionId);
-    if (!section) {
-      return fail("Training project section not found", 404, { projectId, sectionId });
-    }
-
-    await upsertTrainingProjectSection(projectId, sectionId, body, project.sections);
-
-    const updatedProject = await getTrainingProject(projectId);
-    const updatedSection = updatedProject.sections.find((item) => item.id === sectionId);
-    if (!updatedSection) {
-      return fail("Training project section not found after save", 404, { projectId, sectionId });
-    }
-    return ok(updatedSection);
+    const data = await upsertTrainingProjectSection(projectId, sectionId, body);
+    return ok(data);
   } catch (error) {
     const mapped = mapTrainingProjectSectionError(error);
     return fail(mapped.message, mapped.status, mapped.details);
@@ -60,13 +44,7 @@ export async function PATCH(request: Request, context: RouteContext) {
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
     const { projectId, sectionId } = await context.params;
-    const project = await getTrainingProject(projectId);
-    const section = project.sections.find((item) => item.id === sectionId);
-    if (!section) {
-      return fail("Training project section not found", 404, { projectId, sectionId });
-    }
-
-    const data = await deleteTrainingProjectSection(projectId, sectionId, project.sections);
+    const data = await deleteTrainingProjectSection(projectId, sectionId);
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingProjectSectionError(error);

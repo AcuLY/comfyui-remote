@@ -97,7 +97,7 @@ or:
 | Manage preset library | `/api/preset-library/**` endpoints listed below |
 | Search preset library for agent use | `GET /api/presets`, `GET /api/preset-library/presets`, `GET /api/preset-library/presets/:presetId` |
 | Upload/list/move/hash/annotate models | `GET/POST /api/models?kind=lora|checkpoint`, `GET /api/models/browse`, `GET /api/models/hash`, `POST /api/models/move`, `GET/PUT /api/models/notes` |
-| Manage Character LoRA training jobs and sections | `/api/character-lora-training/**` endpoints listed below |
+| Manage LoRA Training v2 projects, runs, presets, and templates | `/api/training/**` endpoints listed below |
 | Read logs, audit logs, health, worker status | `GET /api/logs`, `GET /api/audit-logs`, `GET /api/health`, `GET /api/worker/status` |
 | MCP automation | `GET/POST/DELETE /api/mcp` |
 
@@ -496,35 +496,34 @@ Preset list/detail responses include the normalized `civitaiLinks` array:
 `kind=checkpoint` is rooted at `MODEL_BASE_DIR/checkpoints`, only exposes `.safetensors` files, and stores notes only. `kind=lora` is rooted at `MODEL_BASE_DIR/loras` and supports notes plus trigger words.
 `GET /api/models/hash` returns `{ "name": "...", "path": "...", "absolutePath": "...", "size": 123, "sha256": "..." }`, validates that `path` stays under the selected kind's base directory, validates the model extension, and hashes the file as a stream so browse calls do not scan large model contents. `path` is normalized relative to the selected kind's base directory; `absolutePath` is available for training jobs that need a directly stat-able checkpoint path.
 
-## Character LoRA Training
+## LoRA Training v2
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/api/character-lora-training/training-templates` | list active LoRA Training Templates / Recipes with defaults and owned section templates |
-| `GET` | `/api/character-lora-training/section-templates` | list active section templates |
-| `POST` | `/api/character-lora-training/section-templates` | copy an existing section template; copies inherit the source template's recipe ownership |
-| `GET` | `/api/character-lora-training/jobs` | list Character LoRA training jobs |
-| `POST` | `/api/character-lora-training/jobs` | create a training job |
-| `GET/PATCH` | `/api/character-lora-training/jobs/:jobId` | read or update a job |
-| `POST` | `/api/character-lora-training/jobs/:jobId/canonical/generate` | enqueue a canonical generation task |
-| `POST` | `/api/character-lora-training/jobs/:jobId/canonical/manual` | register an uploaded `manual_canonical` source image as a new canonical candidate |
-| `POST` | `/api/character-lora-training/jobs/:jobId/canonical/:versionId/select` | select a canonical version as current; rejected versions return `409` |
-| `POST` | `/api/character-lora-training/jobs/:jobId/canonical/:versionId/reject` | reject a canonical candidate; current, selected, superseded, and already rejected versions return `409` |
-| `GET` | `/api/character-lora-training/jobs/:jobId/sections` | list job sections with counts and run/image totals |
-| `POST` | `/api/character-lora-training/jobs/:jobId/sections/instantiate` | create missing sections from active templates |
-| `PATCH` | `/api/character-lora-training/sections/:sectionId` | pause or resume one job section with `{ "status": "paused" }`, `{ "status": "active" }`, `{ "action": "pause" }`, or `{ "action": "resume" }` |
-| `POST` | `/api/character-lora-training/sections/:sectionId/runs` | enqueue section generation or rerun; paused sections return `409` |
-| `POST` | `/api/character-lora-training/images/review` | update candidate image reviews and refresh section counts |
+| `GET` | `/api/training` | return the machine-readable Training workflow manifest |
+| `GET/POST` | `/api/training/projects` | list or create Training projects |
+| `GET/PATCH/DELETE` | `/api/training/projects/:projectId` | read, update, or hide one Training project |
+| `GET/PATCH` | `/api/training/projects/:projectId/profile` | read or update the character profile |
+| `GET/POST` | `/api/training/projects/:projectId/sections` | list or create project sections |
+| `GET/PATCH/DELETE` | `/api/training/projects/:projectId/sections/:sectionId` | read, update, or delete one section |
+| `GET/POST` | `/api/training/projects/:projectId/generation-tasks` | list or create generation task drafts and active tasks |
+| `GET/PATCH/DELETE` | `/api/training/generation-tasks/:taskId` | read, update, or hide a generation task draft |
+| `POST` | `/api/training/generation-tasks/:taskId/run` | enqueue a draft generation task |
+| `GET` | `/api/training/runs` | list Training generation and training runs |
+| `GET` | `/api/training/section-runs/:runId` | read generation run detail |
+| `POST` | `/api/training/section-runs/:runId/cancel` | cancel a generation run |
+| `GET/POST` | `/api/training/projects/:projectId/dataset-revisions` | list or freeze dataset revisions |
+| `GET/POST` | `/api/training/projects/:projectId/training-runs` | list or enqueue training runs |
+| `GET` | `/api/training/training-runs/:trainingRunId` | read training run detail |
+| `POST` | `/api/training/training-runs/:trainingRunId/create-preset` | create a generation preset from a completed training run |
+| `GET/POST` | `/api/training/presets` | list or create Training scene-description presets |
+| `GET/POST` | `/api/training/templates` | list or create Training templates |
+| `GET` | `/api/training/worker/tasks/next` | lease the next Training worker task |
+| `POST` | `/api/training/worker/tasks/:taskId/heartbeat` | heartbeat a leased worker task |
+| `POST` | `/api/training/worker/tasks/:taskId/complete` | complete a leased worker task |
+| `POST` | `/api/training/worker/tasks/:taskId/fail` | fail a leased worker task |
 
-`POST /api/character-lora-training/jobs` accepts optional `trainingTemplateId`. When omitted, the service uses the default `character_identity_default` recipe. Created jobs store both the source `trainingTemplateId` and an immutable `trainingTemplateSnapshot`; the selected recipe's section templates are instantiated immediately. `captionStrategy` defaults from the recipe unless explicitly overridden. Recipe defaults do not remove the requirement to provide the job's concrete character identity, trigger token, training scope, and base checkpoint path/hash/family.
-
-`POST /api/character-lora-training/jobs/:jobId/sections/instantiate` is scoped to the job's recipe when the job has `trainingTemplateId`. Re-instantiating existing section keys does not duplicate sections; it refreshes empty or stale `canonicalVersionId` / `promptCardVersionId` lineage to the job's current pointers when available.
-
-Pausing a Character LoRA job section does not delete runs, images, or review counts. Count refreshes keep `paused` until an explicit resume. Resume derives the active status from current counts: `pending > 0` becomes `reviewing`, any kept/rejected images become `reviewed`, and empty sections become `draft`.
-
-Canonical versions use `candidate`, `selected`, `rejected`, and `superseded`. Rejecting is only the `candidate -> rejected` transition. Rejected canonical versions stay visible in job reports for lineage/audit purposes, but cannot be selected as the current canonical and cannot be used as `canonicalVersionId` when creating or promoting Prompt Card versions; those requests return `409`.
-
-`POST /api/character-lora-training/sections/:sectionId/runs` accepts `sourceImageIds`, explicit provider `inputImages`, `parentRunId`, and `previousCandidateImageIds`. `inputImages` remains a complete explicit provider input list and cannot be combined with `sourceImageIds` or `previousCandidateImageIds`. `previousCandidateImageIds` can be combined with `sourceImageIds` and `parentRunId`; each id must point to a candidate image from the same job section and is sent to the provider as role `previous_candidate` with artifact id, relative path, and sha256. When `parentRunId` is provided without explicit `inputImages` or `previousCandidateImageIds`, the service automatically adds that parent run's candidate images from the same section as `previous_candidate` references.
+Training-owned resources are projects, runs, scene-description presets, and templates. Models and settings remain shared resources under `/api/models`, `/assets/models`, and `/settings`; the Training module must not create private model or settings routes.
 
 ## ComfyUI And System
 

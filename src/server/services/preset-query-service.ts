@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
+import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/actions/preset-resource-scope";
 import { normalizeCivitaiLinks } from "@/lib/utils";
+import {
+  buildGenerationPresetWhere,
+  isReservedTrainingResourceNotes,
+} from "@/server/repositories/generation-resource-boundary";
 
 export type PresetQueryFilters = {
   name?: string;
@@ -22,16 +27,32 @@ function normalizeBoolean(value?: string | null) {
 function linkedVariantsFromRows(variant: {
   outgoingLinks: Array<{
     linkedVariantId: string;
-    linkedVariant: { presetId: string };
+    linkedVariant: {
+      presetId: string;
+      preset: { category: { type: string }; notes: string | null };
+    };
   }>;
 }) {
-  return variant.outgoingLinks.map((link) => ({
-    presetId: link.linkedVariant.presetId,
-    variantId: link.linkedVariantId,
-  }));
+  return variant.outgoingLinks
+    .filter((link) => (
+      link.linkedVariant.preset.category.type === ORDINARY_PRESET_CATEGORY_TYPE
+      && !isReservedTrainingResourceNotes(link.linkedVariant.preset.notes)
+    ))
+    .map((link) => ({
+      presetId: link.linkedVariant.presetId,
+      variantId: link.linkedVariantId,
+    }));
 }
 
-function variantResponse<Variant extends { outgoingLinks: Array<{ linkedVariantId: string; linkedVariant: { presetId: string } }> }>(
+function variantResponse<Variant extends {
+  outgoingLinks: Array<{
+    linkedVariantId: string;
+    linkedVariant: {
+      presetId: string;
+      preset: { category: { type: string }; notes: string | null };
+    };
+  }>;
+}>(
   variant: Variant,
 ) {
   const { outgoingLinks, ...rest } = variant;
@@ -60,15 +81,15 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
   const categoryId = filters.categoryId?.trim();
 
   const presets = await prisma.preset.findMany({
-    where: {
-      category: { type: "preset" },
+    where: buildGenerationPresetWhere({
+      category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
       ...(filters.includeInactive ? {} : { isActive: true }),
       ...(name ? { name } : {}),
       ...(slug ? { slug } : {}),
       ...(categoryId ? { categoryId } : {}),
       ...(category ? {
         category: {
-          type: "preset",
+          type: ORDINARY_PRESET_CATEGORY_TYPE,
           OR: [
             { id: category },
             { name: { contains: category } },
@@ -76,7 +97,7 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
           ],
         },
       } : {}),
-    },
+    }),
     orderBy: [{ category: { sortOrder: "asc" } }, { sortOrder: "asc" }],
     include: {
       category: {
@@ -105,7 +126,12 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
             orderBy: { sortOrder: "asc" },
             select: {
               linkedVariantId: true,
-              linkedVariant: { select: { presetId: true } },
+              linkedVariant: {
+                select: {
+                  presetId: true,
+                  preset: { select: { category: { select: { type: true } }, notes: true } },
+                },
+              },
             },
           },
           sortOrder: true,
@@ -132,11 +158,11 @@ export async function listPresets(filters: PresetQueryFilters = {}) {
 
 export async function getPresetById(presetId: string, includeInactive = false) {
   const preset = await prisma.preset.findFirst({
-    where: {
+    where: buildGenerationPresetWhere({
       id: presetId,
-      category: { type: "preset" },
+      category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
       ...(includeInactive ? {} : { isActive: true }),
-    },
+    }),
     include: {
       category: {
         select: {
@@ -164,7 +190,12 @@ export async function getPresetById(presetId: string, includeInactive = false) {
             orderBy: { sortOrder: "asc" },
             select: {
               linkedVariantId: true,
-              linkedVariant: { select: { presetId: true } },
+              linkedVariant: {
+                select: {
+                  presetId: true,
+                  preset: { select: { category: { select: { type: true } }, notes: true } },
+                },
+              },
             },
           },
           sortOrder: true,

@@ -7,11 +7,11 @@ import { GripVertical, Trash2 } from "lucide-react";
 import type { DemoProject } from "../../data";
 import { cx, demoHref } from "../../routing";
 import s from "./project-list-item.projects.module.css";
-import { Button } from "../../shared/primitives/button";
-import { Checkbox } from "../../shared/primitives/checkbox";
-import { ImageListSmall } from "../../shared/media/image-list-small";
-import { UnitRowShell } from "../../shared/patterns";
-import { StatusBadge } from "../../shared/primitives/status-badge";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { Checkbox } from "@/components/design-demo-ui/primitives/checkbox";
+import { ImageListSmall } from "@/components/design-demo-ui/media/image-list-small";
+import { UnitRowShell } from "@/components/design-demo-ui/patterns";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 
 export function ProjectListCardShell({
   body,

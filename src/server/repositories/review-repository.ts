@@ -9,6 +9,7 @@ import {
 import {
   extractPresetNames,
 } from "@/server/repositories/queue-data-repository";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 type ReviewableImage = {
   id: string;
@@ -33,8 +34,11 @@ type TrashPlan = ImagePathChangePlan & {
 };
 
 async function getRunReviewBase(runId: string) {
-  const run = await db.run.findUnique({
-    where: { id: runId },
+  const run = await db.run.findFirst({
+    where: {
+      id: runId,
+      project: buildGenerationProjectWhere(),
+    },
     select: {
       id: true,
       runIndex: true,
@@ -56,7 +60,15 @@ async function getRunReviewBase(runId: string) {
             orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
             select: {
               presetId: true,
-              preset: { select: { id: true, name: true, slug: true } },
+              preset: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  notes: true,
+                  category: { select: { type: true } },
+                },
+              },
             },
           },
         },
@@ -122,7 +134,12 @@ export async function getRunAgentContext(runId: string) {
 
   const presetInfos = run.project.presetBindingRows
     .map((binding) => binding.preset)
-    .filter((preset): preset is { id: string; name: string; slug: string } => Boolean(preset));
+    .filter((preset): preset is NonNullable<typeof preset> => Boolean(preset))
+    .map((preset) => ({
+      id: preset.id,
+      name: preset.name,
+      slug: preset.slug,
+    }));
 
   const imageSummary = run.images.reduce(
     (summary, image) => {
@@ -180,8 +197,11 @@ export async function getRunAgentContext(runId: string) {
 }
 
 async function ensureRunExists(runId: string) {
-  const run = await db.run.findUnique({
-    where: { id: runId },
+  const run = await db.run.findFirst({
+    where: {
+      id: runId,
+      project: buildGenerationProjectWhere(),
+    },
     select: { id: true },
   });
 
@@ -195,6 +215,10 @@ async function getRunImages(runId: string, imageIds: string[]): Promise<Reviewab
     where: {
       id: { in: imageIds },
       runId: runId,
+      run: {
+        id: runId,
+        project: buildGenerationProjectWhere(),
+      },
     },
     select: {
       id: true,
@@ -313,7 +337,7 @@ export async function keepRunImages(runId: string, imageIds: string[]) {
       ),
       db.trashRecord.updateMany({
         where: {
-          imageResultId: { in: imageIds },
+          imageResultId: { in: plans.map((plan) => plan.imageId) },
           restoredAt: null,
         },
         data: {
@@ -391,8 +415,11 @@ export async function trashRunImages(runId: string, imageIds: string[], reason?:
 }
 
 export async function restoreImage(imageId: string) {
-  const image = await db.imageResult.findUnique({
-    where: { id: imageId },
+  const image = await db.imageResult.findFirst({
+    where: {
+      id: imageId,
+      run: { project: buildGenerationProjectWhere() },
+    },
     select: {
       id: true,
       filePath: true,

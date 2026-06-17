@@ -12,16 +12,16 @@
 - server repository / service 分层；
 - HTTP API route 与核心 request/response；
 - 关键事务、校验、生命周期规则；
-- 与现有旧 `CharacterLoraTraining*` 模型的关系。
+- 与已退役训练 v1 模型的关系。
 
 本文不定义：
 
 - 具体页面视觉；
 - 训练脚本命令行细节；
 - benchmark / promotion / 推荐权重；
-- 旧 `CharacterLoraTraining*` 数据迁移。
+- 已退役训练 v1 数据迁移。
 
-旧 `CharacterLoraTraining*` 首版实现里包含 canonical version、prompt card、benchmark、promotion 等流程。新模块按 `Training*` 命名重新落表，旧实现只作为文件路径安全、artifact helper、worker 组织方式的参考，不作为新 API 兼容目标。
+已退役训练 v1 首版实现里包含 canonical version、prompt card、benchmark、promotion 等流程。新模块按 `Training*` 命名重新落表，旧实现只作为文件路径安全、artifact helper、worker 组织方式的参考，不作为新 API 兼容目标。
 
 ## 2. Backend Boundaries
 
@@ -36,7 +36,7 @@
 不继续扩展：
 
 ```text
-/api/character-lora-training/**
+retired training v1 API namespace
 ```
 
 原因：
@@ -849,17 +849,17 @@ model TrainingTextRevision {
 
 `TrainingProjectDetail` should include profile, sections with block summaries, image result counts, latest training run summary, and dataset readiness summary.
 
-### 6.2 Profile and Character Images
+### 6.2 Profile and Reference Images
 
 | Method | Path | Purpose | Body | Response |
 | --- | --- | --- | --- | --- |
 | `GET` | `/api/training/projects/:projectId/profile` | read profile | none | `TrainingCharacterProfileDetail` |
 | `PATCH` | `/api/training/projects/:projectId/profile` | update `loraUsagePrompt` / `characterDetailPrompt` | partial profile fields | `TrainingCharacterProfileDetail` |
-| `GET` | `/api/training/projects/:projectId/character-images` | list reference images | none | `TrainingCharacterImage[]` |
-| `POST` | `/api/training/projects/:projectId/character-images` | upload/register reference image | multipart file or `{ artifactId, imageType, label?, note? }` | `TrainingCharacterImage` |
-| `PATCH` | `/api/training/character-images/:imageId` | update label/note/type/order | partial fields | `TrainingCharacterImage` |
-| `DELETE` | `/api/training/character-images/:imageId` | remove reference row only | none | 204 |
-| `POST` | `/api/training/character-images/:imageId/add-to-results` | add reference artifact to result pool | `{ supplementalPrompt? }` | `TrainingImageResult` |
+| `GET` | `/api/training/projects/:projectId/reference-images` | list reference images | none | `TrainingCharacterImage[]` |
+| `POST` | `/api/training/projects/:projectId/reference-images` | upload/register reference image | multipart file or `{ artifactId, imageType, label?, note? }` | `TrainingCharacterImage` |
+| `PATCH` | `/api/training/reference-images/:imageId` | update label/note/type/order | partial fields | `TrainingCharacterImage` |
+| `DELETE` | `/api/training/reference-images/:imageId` | remove reference row only | none | 204 |
+| `POST` | `/api/training/reference-images/:imageId/add-to-results` | add reference artifact to result pool | `{ supplementalPrompt? }` | `TrainingImageResult` |
 
 ### 6.3 Scene Description Presets and Blocks
 
@@ -1136,7 +1136,7 @@ Recommended repository modules:
 src/server/repositories/training/projects.ts
 src/server/repositories/training/templates.ts
 src/server/repositories/training/profiles.ts
-src/server/repositories/training/character-images.ts
+src/server/repositories/training/reference-images.ts
 src/server/repositories/training/scene-description-presets.ts
 src/server/repositories/training/sections.ts
 src/server/repositories/training/section-runs.ts
@@ -1154,7 +1154,7 @@ Recommended service modules:
 src/server/services/training/project-service.ts
 src/server/services/training/template-service.ts
 src/server/services/training/profile-service.ts
-src/server/services/training/character-image-service.ts
+src/server/services/training/reference-image-service.ts
 src/server/services/training/scene-description-service.ts
 src/server/services/training/section-service.ts
 src/server/services/training/section-run-service.ts

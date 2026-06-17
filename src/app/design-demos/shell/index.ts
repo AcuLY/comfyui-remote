@@ -1,1 +1,1 @@
-export { DesignDemoShell } from "./app-shell";
+export { DesignDemoShell } from "@/components/design-demo-shell/app-shell";

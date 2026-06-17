@@ -3,13 +3,13 @@
 import type * as React from "react";
 import { GripVertical, X, Unlink, Zap } from "lucide-react";
 
-import { Button } from "../../../shared/primitives/button";
-import { Switch } from "../../../shared/primitives/switch";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { Switch } from "@/components/design-demo-ui/primitives/switch";
 import s from "./editor-lora-history.module.css";
 import { cx } from "../../../routing";
 import { parseHue } from "./editor-shared";
 import { SelectChip, StepperInput } from "./editor-controls";
-import { useDemoSortable } from "../../../shared/primitives/sortable";
+import { useDemoSortable } from "@/components/design-demo-ui/primitives/sortable";
 export type LoraRowData = {
   id: string;
   /** Bound preset display name; undefined for manual */

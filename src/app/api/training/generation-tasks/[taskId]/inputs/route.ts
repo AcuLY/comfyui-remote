@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  addManagedGenerationTaskInput,
+  addTrainingGenerationTaskInput,
   mapTrainingGenerationTaskDraftError,
 } from "@/server/services/training/generation-task-draft-service";
 
@@ -21,7 +21,7 @@ export async function POST(
   try {
     const { taskId } = await params;
     const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
-    const data = await addManagedGenerationTaskInput(taskId, {
+    const data = await addTrainingGenerationTaskInput(taskId, {
       referenceId: typeof payload.referenceId === "string" ? payload.referenceId : null,
     });
     return ok(data, { status: 201 });

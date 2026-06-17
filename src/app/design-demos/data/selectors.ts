@@ -1,5 +1,5 @@
 import type { DemoData, DemoProject } from "../data/types";
-import { rawSectionId } from "../shared/media/image-status";
+import { rawSectionId } from "@/components/design-demo-ui/media/image-status";
 
 export function firstProject(data: DemoData) {
   return data.projects[0];

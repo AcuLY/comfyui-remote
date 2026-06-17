@@ -1,7 +1,7 @@
 import { fail, ok } from "@/lib/api-response";
 import {
   mapTrainingGenerationTaskDraftError,
-  runManagedGenerationTask,
+  runTrainingGenerationTask,
 } from "@/server/services/training/generation-task-draft-service";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export async function POST(
 ) {
   try {
     const { taskId } = await params;
-    const data = await runManagedGenerationTask(taskId);
+    const data = await runTrainingGenerationTask(taskId);
     return ok(data, { status: 201 });
   } catch (error) {
     const mapped = mapTrainingGenerationTaskDraftError(error);

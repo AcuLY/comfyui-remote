@@ -7,7 +7,7 @@ import {
   CompiledPromptPreview,
   PromptBlockRow,
 } from "./editor-parts";
-import { SortableList } from "../../../shared/primitives/sortable";
+import { SortableList } from "@/components/design-demo-ui/primitives/sortable";
 import s from "./prompts-panel.editor.module.css";
 import type { SectionEditorModel } from "./use-section-editor-state";
 

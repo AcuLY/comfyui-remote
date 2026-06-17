@@ -10,7 +10,9 @@ import {
 } from "@/server/prompt-config/preset-group-resolver";
 import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-binding-service";
 import { recordSectionChange } from "@/server/services/section-change-history-service";
+import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 import { resolveVariantContent } from "./preset-variant";
+import { ordinaryPresetCategoryTypeWhere, ordinaryPresetLibraryCategoryTypeWhere } from "./preset-resource-scope";
 import {
   createBindingId,
 } from "./_helpers";
@@ -558,8 +560,11 @@ export async function importPresetToSection(
   groupBindingId?: string,
   presetGroupId?: string,
 ): Promise<ImportPresetResult | null> {
-  const preset = await prisma.preset.findUnique({
-    where: { id: presetId },
+  const preset = await prisma.preset.findFirst({
+    where: buildGenerationPresetWhere({
+      id: presetId,
+      category: { type: ordinaryPresetCategoryTypeWhere() },
+    }),
     include: {
       category: { select: { id: true, name: true, color: true, positivePromptOrder: true, lora1Order: true, lora2Order: true } },
       variants: { where: { isActive: true }, orderBy: { sortOrder: "asc" } },
@@ -669,8 +674,11 @@ export async function importPresetGroupToSection(
   presetGroupId: string,
   groupBindingId?: string,
 ): Promise<ImportPresetGroupResult | null> {
-  const group = await prisma.presetGroup.findUnique({
-    where: { id: presetGroupId },
+  const group = await prisma.presetGroup.findFirst({
+    where: {
+      id: presetGroupId,
+      category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
+    },
     select: { id: true, categoryId: true, name: true, isActive: true },
   });
   if (!group || group.isActive === false) return null;

@@ -86,7 +86,7 @@ Expected: FAIL because `auto-censor-runner.ts` does not exist and `env.ts` has n
 
 - [ ] **Step 3: Add env keys**
 
-Patch `src/lib/env.ts` inside the exported `env` object after `characterLoraArtifactRoot`:
+Patch `src/lib/env.ts` inside the exported `env` object near the model directory settings:
 
 ```ts
   autoCensorModelPath: process.env.AUTO_CENSOR_MODEL_PATH ?? "",

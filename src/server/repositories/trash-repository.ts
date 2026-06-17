@@ -1,6 +1,8 @@
+import type { Prisma } from "@/generated/prisma";
 import { db } from "@/lib/db";
 import { toImageUrl } from "@/lib/image-url";
 import type { TrashItem } from "@/lib/types";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { formatDate } from "@/server/repositories/queue-data-repository";
 
 type TrashRecordWithImage = Awaited<ReturnType<typeof getActiveTrashRecords>>[number];
@@ -26,17 +28,14 @@ function serializeTrashRecord(record: TrashRecordWithImage): TrashItem {
   };
 }
 
-async function getActiveTrashRecords(where: {
-  imageResult?: {
-    run?: {
-      projectSectionId?: string;
-    };
-  };
-} = {}) {
+async function getActiveTrashRecords(where: Prisma.TrashRecordWhereInput = {}) {
   return db.trashRecord.findMany({
     where: {
-      restoredAt: null,
-      ...where,
+      AND: [
+        { restoredAt: null },
+        { imageResult: { run: { project: buildGenerationProjectWhere() } } },
+        where,
+      ],
     },
     orderBy: { deletedAt: "desc" },
     include: {
@@ -71,8 +70,11 @@ export async function listTrashItems(): Promise<TrashItem[]> {
 }
 
 export async function listSectionTrashItems(sectionId: string): Promise<TrashItem[]> {
-  const section = await db.projectSection.findUnique({
-    where: { id: sectionId },
+  const section = await db.projectSection.findFirst({
+    where: {
+      id: sectionId,
+      project: buildGenerationProjectWhere(),
+    },
     select: { id: true },
   });
 

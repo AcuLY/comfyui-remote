@@ -6,7 +6,7 @@ import type { DemoProject, DemoSection } from "../../data";
 import { cx, filterImages } from "../../routing";
 import type { ProjectCardView, ResultDemoFilter } from "../../routing";
 import s from "./project-detail-page.projects.module.css";
-import { EmptyPage } from "../../shared/primitives/empty-page";
+import { EmptyPage } from "@/components/design-demo-ui/primitives/empty-page";
 import { ProjectResultsToolbar, ProjectSectionResultCard } from "./project-result-card";
 import { ProjectSectionCard } from "./project-section-card";
 import { ProjectSectionShell } from "./project-section-shell";

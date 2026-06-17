@@ -6,6 +6,7 @@ import {
   buildWorkflowDownloadPayload,
   getWorkflowDownloadVariant,
 } from "@/server/services/workflow-debug-download";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 export async function GET(
   request: Request,
@@ -13,8 +14,11 @@ export async function GET(
 ) {
   const { runId } = await params;
   const variant = getWorkflowDownloadVariant(request.url);
-  const run = await prisma.run.findUnique({
-    where: { id: runId },
+  const run = await prisma.run.findFirst({
+    where: {
+      id: runId,
+      project: buildGenerationProjectWhere(),
+    },
     select: { submittedPrompt: true, projectSection: { select: { name: true } } },
   });
   if (!run?.submittedPrompt) {

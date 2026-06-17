@@ -9,6 +9,11 @@ import {
 
 export const dynamic = "force-dynamic";
 
+function shouldReturnEmptyModelList(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /Database .* does not exist|Can't reach database server|ECONNREFUSED|P1001|P1003/i.test(message);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const kind = parseModelKind(request.nextUrl.searchParams.get("kind"));
@@ -17,6 +22,9 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     if (error instanceof ModelAssetError) {
       return fail(error.message, error.status, error.details);
+    }
+    if (shouldReturnEmptyModelList(error)) {
+      return ok([]);
     }
     return fail("Failed to load model assets", 500, String(error));
   }

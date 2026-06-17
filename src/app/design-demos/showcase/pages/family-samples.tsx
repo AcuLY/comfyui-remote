@@ -8,10 +8,10 @@ import { buildHeaderSpecs } from "../../routing/header-specs";
 import { RouteHeaderSurface } from "../../shell/header-surface";
 import { DimensionsReadout, HistoryDiffRow, KSamplerCard, LoraColumn, LoraRow, type LoraRowData, PresetBindingRow, PromptBlockRow, SpecRow, SpecSection, StepperInput } from "../../features/projects";
 import { makeImages } from "../helpers";
-import { Button, Checkbox, Field, MetricCard, PageHeader, SegmentedControl, StatusBadge, Switch } from "../../shared/primitives";
-import { ImageListMedium, ImageListSmall, ImageThumbMedium, ReviewImageBoard } from "../../shared/media";
-import { OperationStateStrip } from "../../shared/feedback";
-import { AnchorRail, EditorBlock, FolderBreadcrumb, FolderRow, InspectorAside, MoveTargetPicker, SelectionBatchBar, SortableRowShell, ToolbarCluster, UnitRowShell, WorkbenchSurface } from "../../shared/patterns";
+import { Button, Checkbox, Field, MetricCard, PageHeader, SegmentedControl, StatusBadge, Switch } from "@/components/design-demo-ui/primitives";
+import { ImageListMedium, ImageListSmall, ImageThumbMedium, ReviewImageBoard } from "@/components/design-demo-ui/media";
+import { OperationStateStrip } from "@/components/design-demo-ui/feedback";
+import { AnchorRail, EditorBlock, FolderBreadcrumb, FolderRow, InspectorAside, MoveTargetPicker, SelectionBatchBar, SortableRowShell, ToolbarCluster, UnitRowShell, WorkbenchSurface } from "@/components/design-demo-ui/patterns";
 import type { ShowcaseFamilyId } from "../registry";
 import s from "./showcase-pages.module.css";
 

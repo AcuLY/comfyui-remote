@@ -1,3 +1,8 @@
+import {
+  isOrdinaryPresetCategoryType,
+  isOrdinaryPresetLibraryCategoryType,
+} from "@/lib/actions/preset-resource-scope";
+import { isReservedTrainingResourceNotes } from "@/server/repositories/generation-resource-boundary";
 import { dedupeLoraBindingsByPath, joinPromptParts, sortBySortOrder } from "./order";
 import {
   loadReachablePresetVariantGraph,
@@ -33,6 +38,7 @@ type PresetForGroupRow = {
   id: string;
   categoryId: string;
   name: string;
+  notes: string | null;
   category: PresetCategoryRow;
   variants: Array<{
     id: string;
@@ -68,6 +74,16 @@ type ConcreteGroupMember = {
   variantCount: number;
 };
 
+function isOrdinaryPresetLibraryCategoryRow(category: PresetCategoryRow | null | undefined) {
+  const categoryType = category?.type;
+  return categoryType === undefined || categoryType === null || isOrdinaryPresetLibraryCategoryType(categoryType);
+}
+
+function isOrdinaryPresetCategoryRow(category: PresetCategoryRow | null | undefined) {
+  const categoryType = category?.type;
+  return categoryType === undefined || categoryType === null || isOrdinaryPresetCategoryType(categoryType);
+}
+
 async function loadPresetGroup(
   groupId: string,
   client: PresetGroupResolverDbClient,
@@ -88,6 +104,7 @@ async function loadPresetGroup(
           negativePromptOrder: true,
           lora1Order: true,
           lora2Order: true,
+          type: true,
         },
       },
       members: {
@@ -114,7 +131,7 @@ async function loadConcreteGroupMembers(
   visited.add(groupId);
 
   const group = await loadPresetGroup(groupId, client);
-  if (!group || group.isActive === false) {
+  if (!group || group.isActive === false || !isOrdinaryPresetLibraryCategoryRow(group.category)) {
     missingReferences.push({ kind: "presetGroup", id: groupId });
     return [];
   }
@@ -133,6 +150,7 @@ async function loadConcreteGroupMembers(
         id: true,
         categoryId: true,
         name: true,
+        notes: true,
         category: {
           select: {
             id: true,
@@ -142,6 +160,7 @@ async function loadConcreteGroupMembers(
             negativePromptOrder: true,
             lora1Order: true,
             lora2Order: true,
+            type: true,
           },
         },
         variants: {
@@ -157,7 +176,11 @@ async function loadConcreteGroupMembers(
         },
       },
     });
-    if (!preset) {
+    if (
+      !preset
+      || !isOrdinaryPresetCategoryRow(preset.category)
+      || isReservedTrainingResourceNotes(preset.notes)
+    ) {
       missingReferences.push({ kind: "preset", id: member.presetId, ownerId: groupId });
       continue;
     }
@@ -250,7 +273,7 @@ export async function resolvePresetGroupContent(
   client: PresetGroupResolverDbClient,
 ): Promise<ResolvedPresetGroupContent | null> {
   const group = await loadPresetGroup(groupId, client);
-  if (!group || group.isActive === false) return null;
+  if (!group || group.isActive === false || !isOrdinaryPresetLibraryCategoryRow(group.category)) return null;
 
   const missingReferences: MissingReference[] = [];
   const concreteMembers = sortConcreteMembersByPresetCategory(

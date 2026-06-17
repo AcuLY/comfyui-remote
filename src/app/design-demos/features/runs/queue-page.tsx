@@ -4,8 +4,8 @@ import { useRef, useState } from "react";
 
 import type { DemoData } from "../../data";
 import type { QueueDemoTab } from "../../routing";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { SegmentedControl } from "../../shared/primitives/segmented-control";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
 import { CurrentRunningProgressCard } from "./current-running-progress-card";
 import { PendingReviewGroups, pendingReviewPageSize } from "./pending-review-groups";
 import {

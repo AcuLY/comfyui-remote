@@ -7,9 +7,9 @@ import { Copy, GripVertical, Play, Trash2 } from "lucide-react";
 import type { DemoProject, DemoSection } from "../../data";
 import { cx, demoHref, rawSectionId, sectionAnchorId } from "../../routing";
 import s from "./project-section-card.projects.module.css";
-import { Button } from "../../shared/primitives/button";
-import { ImageListSmall } from "../../shared/media/image-list-small";
-import { SegmentedControl } from "../../shared/primitives/segmented-control";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { ImageListSmall } from "@/components/design-demo-ui/media/image-list-small";
+import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
 
 const BATCH_SIZE_OPTIONS = [1, 2, 4, 8, 16];
 

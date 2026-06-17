@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
+import {
+  assertOrdinaryPresetLibraryBindingRefs,
+  assertOrdinaryProjectPresetBindingRefs,
+} from "./preset-resource-scope";
 import {
   buildTemplateSectionRowsForProjectSectionSave,
   type TemplateSectionManualLoraEntryWrite,
@@ -47,6 +52,19 @@ function projectTemplatePresetBindingData(
   };
 }
 
+async function assertOrdinaryProjectTemplateSaveBindings(input: {
+  projectLevelBindings: readonly ProjectLevelTemplateBinding[];
+  sectionBindings: readonly {
+    categoryId: string;
+    presetId?: string | null;
+    variantId?: string | null;
+    presetGroupId?: string | null;
+  }[];
+}) {
+  await assertOrdinaryProjectPresetBindingRefs(input.projectLevelBindings);
+  await assertOrdinaryPresetLibraryBindingRefs(input.sectionBindings);
+}
+
 async function createTemplateSectionRows(
   tx: typeof prisma,
   rows: {
@@ -82,8 +100,8 @@ export async function saveProjectAsTemplate(
   templateName: string,
   templateDescription?: string | null,
 ): Promise<string> {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       presetBindingRows: {
         select: {
@@ -190,6 +208,10 @@ export async function saveProjectAsTemplate(
   const projectBindings = uniqueProjectLevelBindings(
     project.presetBindingRows,
   );
+  await assertOrdinaryProjectTemplateSaveBindings({
+    projectLevelBindings: projectBindings,
+    sectionBindings: project.sections.flatMap((section) => section.presetBindingRows),
+  });
 
   const folderClonePlan = buildTemplateSectionFolderClonePlan({
     projectFolders: project.sectionFolders,

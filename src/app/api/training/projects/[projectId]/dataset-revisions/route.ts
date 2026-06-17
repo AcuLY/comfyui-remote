@@ -1,10 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
-import { freezeManagedTrainingDataset, mapTrainingProjectError } from "@/server/services/training/project-service";
-import { getTrainingProject, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
-  freezeCharacterLoraDataset,
-  mapCharacterLoraPhase3Error,
-} from "@/server/services/character-lora-training/phase3-service";
+  freezeTrainingDataset,
+  mapTrainingGenerationRunMutationError,
+} from "@/server/services/training/project-actions-service";
+import { getTrainingProject, mapTrainingReadError } from "@/server/services/training/read-service";
 
 export const dynamic = "force-dynamic";
 
@@ -37,18 +36,10 @@ export async function POST(
 
   try {
     const { projectId } = await params;
-    const managed = await freezeManagedTrainingDataset(projectId);
-    if (managed) {
-      return ok(managed, { status: 201 });
-    }
-    const data = await freezeCharacterLoraDataset(projectId, body);
+    const data = await freezeTrainingDataset(projectId, body);
     return ok(data, { status: 201 });
   } catch (error) {
-    const managedMapped = mapTrainingProjectError(error);
-    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
-      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
-    }
-    const mapped = mapCharacterLoraPhase3Error(error);
+    const mapped = mapTrainingGenerationRunMutationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

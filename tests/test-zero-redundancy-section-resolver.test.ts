@@ -2,6 +2,7 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 
 import { diffResolvedSectionConfig } from "../src/server/prompt-config/diff";
+import { resolvePresetGroupContent } from "../src/server/prompt-config/preset-group-resolver";
 import {
   resolveSectionConfig,
   resolveSectionConfigFromRows,
@@ -19,11 +20,13 @@ function category(input: {
   lora1Order?: number;
   lora2Order?: number;
   color?: string | null;
+  type?: string | null;
 }) {
   return {
     id: input.id,
     name: input.name,
     color: input.color ?? null,
+    type: input.type ?? "preset",
     positivePromptOrder: input.positivePromptOrder ?? 0,
     negativePromptOrder: 0,
     lora1Order: input.lora1Order ?? 0,
@@ -90,6 +93,46 @@ function input(overrides: Partial<ResolveSectionConfigInput>): ResolveSectionCon
     ...overrides,
   };
 }
+
+test("preset group resolver rejects LoRA training groups at the root boundary", async () => {
+  const trainingCategory = category({
+    id: "training-scene-group-category",
+    name: "Training Scene Groups",
+    type: "training_scene_description",
+  });
+  const client = {
+    presetGroup: {
+      findUnique: async () => ({
+        id: "training-scene-group",
+        categoryId: trainingCategory.id,
+        name: "Training Scene Group",
+        isActive: true,
+        category: trainingCategory,
+        members: [],
+      }),
+    },
+    preset: {
+      findUnique: async () => {
+        throw new Error("training root groups should not resolve member presets");
+      },
+    },
+    presetVariant: {
+      findUnique: async () => null,
+      findFirst: async () => null,
+    },
+    presetVariantLink: {
+      findMany: async () => [],
+    },
+  };
+
+  const resolved = await resolvePresetGroupContent("training-scene-group", client);
+
+  assert.equal(
+    resolved,
+    null,
+    "generation preset group resolution must not return training-owned group metadata",
+  );
+});
 
 test("section bindings resolve preset prompt from source rows instead of stale downstream values", () => {
   const character = category({ id: "cat-character", name: "Character", positivePromptOrder: 10, lora1Order: 10 });

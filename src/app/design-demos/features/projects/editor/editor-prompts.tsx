@@ -4,11 +4,11 @@ import { useState } from "react";
 import type * as React from "react";
 import { ChevronUp, GripVertical, Pencil, Trash2, Unlink } from "lucide-react";
 
-import { Button } from "../../../shared/primitives/button";
+import { Button } from "@/components/design-demo-ui/primitives/button";
 import s from "./editor-prompts.module.css";
 import { cx } from "../../../routing";
 import { parseHue } from "./editor-shared";
-import { useDemoSortable } from "../../../shared/primitives/sortable";
+import { useDemoSortable } from "@/components/design-demo-ui/primitives/sortable";
 export type PromptBlockRowData = {
   id: string;
   label: string;

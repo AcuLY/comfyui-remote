@@ -1,18 +1,30 @@
-import { buildLoraTrainingDemoData } from "@/app/design-demos/data/lora-training";
 import type {
   LoraTrainingRun,
   LoraTrainingTaskKind,
   LoraTrainingTaskStatus,
-} from "@/app/design-demos/data/lora-training-types";
-import { loadTrainingRouteData } from "@/app/training/load-training-route-data";
+  TrainingImage,
+} from "@/features/training/types";
+import { toImageUrl } from "@/lib/image-url";
 import {
-  getCharacterLoraWorkerQueueStatus,
-  mapCharacterLoraPhase3Error,
-} from "@/server/services/character-lora-training/phase3-service";
+  getTrainingWorkerQueueStatus,
+  mapTrainingWorkerTaskError,
+} from "@/server/worker/training/task-api";
 import {
   getTrainingSceneDescriptionPreset,
   listTrainingSceneDescriptionPresets,
 } from "@/server/services/training/preset-service";
+import {
+  listTrainingTemplates as listTrainingTemplatesFromPrisma,
+} from "@/server/services/training/template-service";
+import {
+  getTrainingGenerationRun as getTrainingGenerationRunRecord,
+} from "@/server/repositories/training/snapshot";
+import {
+  listTrainingProjectOrderIds,
+  orderTrainingProjectsByStoredIds,
+} from "@/server/services/training/project-order-service";
+import { listHiddenTrainingRunIds } from "@/server/services/training/run-visibility-service";
+import { loadTrainingSnapshot } from "@/server/services/training/snapshot-service";
 
 export class TrainingReadServiceError extends Error {
   details?: unknown;
@@ -24,11 +36,6 @@ export class TrainingReadServiceError extends Error {
     this.status = status;
     this.details = details;
   }
-}
-
-async function loadTrainingSnapshot() {
-  const demoData = await loadTrainingRouteData();
-  return buildLoraTrainingDemoData(demoData);
 }
 
 function filterRuns(
@@ -55,7 +62,7 @@ export async function listTrainingProjects(filters: { status?: string } = {}) {
     if (!filters.status) return true;
     return project.status === filters.status;
   });
-  return projects;
+  return orderTrainingProjectsByStoredIds(projects, await listTrainingProjectOrderIds());
 }
 
 export async function getTrainingProject(projectId: string) {
@@ -96,8 +103,8 @@ export async function getTrainingDatasetReadiness(projectId: string) {
   };
 }
 
-export async function getTrainingSectionSceneDescription(sectionId: string) {
-  const { project, section } = await getTrainingSectionContext(sectionId);
+export async function getTrainingSectionSceneDescription(sectionId: string, projectId?: string | null) {
+  const { project, section } = await getTrainingSectionContext(sectionId, projectId);
   return {
     projectId: project.id,
     sectionId,
@@ -106,7 +113,17 @@ export async function getTrainingSectionSceneDescription(sectionId: string) {
   };
 }
 
-export async function getTrainingSectionContext(sectionId: string) {
+export async function getTrainingSectionContext(sectionId: string, projectId?: string | null) {
+  if (projectId) {
+    const project = await getTrainingProject(projectId);
+    const section = project.sections.find((item) => item.id === sectionId);
+    if (section) {
+      return { project, section };
+    }
+
+    throw new TrainingReadServiceError("Training section not found", 404, { projectId, sectionId });
+  }
+
   const snapshot = await loadTrainingSnapshot();
   for (const project of snapshot.projects) {
     const section = project.sections.find((item) => item.id === sectionId);
@@ -118,7 +135,19 @@ export async function getTrainingSectionContext(sectionId: string) {
   throw new TrainingReadServiceError("Training section not found", 404, { sectionId });
 }
 
-export async function getTrainingBlockContext(blockId: string) {
+export async function getTrainingBlockContext(blockId: string, projectId?: string | null) {
+  if (projectId) {
+    const project = await getTrainingProject(projectId);
+    for (const section of project.sections) {
+      const block = section.blocks.find((item) => item.id === blockId);
+      if (block) {
+        return { project, section, block };
+      }
+    }
+
+    throw new TrainingReadServiceError("Training section block not found", 404, { blockId, projectId });
+  }
+
   const snapshot = await loadTrainingSnapshot();
   for (const project of snapshot.projects) {
     for (const section of project.sections) {
@@ -139,12 +168,77 @@ export async function listTrainingRuns(filters: {
   status?: LoraTrainingTaskStatus;
 } = {}) {
   const snapshot = await loadTrainingSnapshot();
-  return filterRuns(snapshot.runs, filters);
+  const hiddenRunIds = new Set(await listHiddenTrainingRunIds());
+  return filterRuns(snapshot.runs, filters).filter((run) => !hiddenRunIds.has(run.id));
+}
+
+function normalizeGenerationStatus(status: string): LoraTrainingTaskStatus {
+  if (status === "done") return "completed";
+  if (status === "running") return "running";
+  if (status === "queued") return "queued";
+  if (status === "cancelled" || status === "canceled") return "cancelled" as LoraTrainingTaskStatus;
+  return "failed";
+}
+
+async function getTrainingGenerationRunDirect(runId: string): Promise<LoraTrainingRun | null> {
+  const generationRun = await getTrainingGenerationRunRecord(runId);
+  if (!generationRun) return null;
+
+  const project = await getTrainingProject(generationRun.jobId);
+  const section = generationRun.sectionId
+    ? project.sections.find((item) => item.id === generationRun.sectionId) ?? null
+    : null;
+
+  const taskInputImages: TrainingImage[] = generationRun.inputImages.flatMap((inputImage, index) => {
+    const url = toImageUrl(inputImage.relativePath);
+    if (!url) return [];
+    return [{
+      id: `${generationRun.id}-input-${index + 1}`,
+      src: url,
+      full: url,
+      label: inputImage.role,
+      status: "pending",
+      featured: false,
+      featured2: false,
+      cover: false,
+      width: null,
+      height: null,
+    }];
+  });
+
+  return {
+    id: generationRun.id,
+    kind: "generation",
+    status: normalizeGenerationStatus(generationRun.status),
+    projectId: project.id,
+    sectionId: generationRun.sectionId ?? undefined,
+    projectTitle: project.title,
+    title: section ? `${section.title} 图片生成` : "训练图片生成",
+    summary: section ? `图片 · 小节 ${section.title}` : "图片生成",
+    timestamp: generationRun.finishedAt ?? generationRun.startedAt ?? generationRun.createdAt,
+    provider: generationRun.imageModel ?? generationRun.hostModel ?? generationRun.provider ?? undefined,
+    finalInput: generationRun.visualPrompt ?? generationRun.hostInstruction ?? undefined,
+    inputImages: [
+      ...project.referenceImages.map((reference) => reference.image),
+      ...taskInputImages,
+    ],
+    errorMessage: typeof generationRun.errorSummary === "string" ? generationRun.errorSummary : undefined,
+    outputLabel: `输出 ${generationRun.counts.candidateImages} 张图片`,
+    outputResultIds: [],
+  };
 }
 
 export async function getTrainingRun(runId: string, kind?: LoraTrainingTaskKind) {
+  if ((await listHiddenTrainingRunIds()).includes(runId)) {
+    throw new TrainingReadServiceError("Training run not found", 404, { runId, kind: kind ?? null });
+  }
+
   const snapshot = await loadTrainingSnapshot();
   const run = snapshot.runs.find((item) => item.id === runId && (!kind || item.kind === kind));
+  if (!run && kind === "generation") {
+    const directGenerationRun = await getTrainingGenerationRunDirect(runId);
+    if (directGenerationRun) return directGenerationRun;
+  }
   if (!run) {
     throw new TrainingReadServiceError("Training run not found", 404, { runId, kind: kind ?? null });
   }
@@ -170,15 +264,14 @@ export async function getTrainingPreset(presetId: string) {
 }
 
 export async function listTrainingTemplates() {
-  const snapshot = await loadTrainingSnapshot();
-  return snapshot.templates;
+  return listTrainingTemplatesFromPrisma();
 }
 
 export async function getTrainingSchedulerStatus() {
   const snapshot = await loadTrainingSnapshot();
 
   try {
-    const workerQueueStatus = await getCharacterLoraWorkerQueueStatus();
+    const workerQueueStatus = await getTrainingWorkerQueueStatus();
     return {
       workerQueueStatus,
       summary: {
@@ -189,7 +282,7 @@ export async function getTrainingSchedulerStatus() {
       },
     };
   } catch (error) {
-    const mapped = mapCharacterLoraPhase3Error(error);
+    const mapped = mapTrainingWorkerTaskError(error);
     return {
       workerQueueStatus: {
         error: mapped.message,

@@ -1,5 +1,4 @@
 import { fail, ok } from "@/lib/api-response";
-import { getTrainingProject } from "@/server/services/training/read-service";
 import {
   mapTrainingProjectSectionError,
   reorderTrainingProjectSections,
@@ -20,8 +19,7 @@ export async function POST(
 
   try {
     const { projectId } = await params;
-    const project = await getTrainingProject(projectId);
-    const data = await reorderTrainingProjectSections(projectId, body, project.sections);
+    const data = await reorderTrainingProjectSections(projectId, body);
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingProjectSectionError(error);

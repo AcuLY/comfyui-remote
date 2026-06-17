@@ -4,18 +4,10 @@ import {
   mapTrainingReadError,
 } from "@/server/services/training/read-service";
 import {
-  deleteManagedTrainingProject,
-  mapTrainingProjectError,
-  updateManagedTrainingProject,
-} from "@/server/services/training/project-service";
-import {
-  hideTrainingProjects,
-  mapTrainingProjectVisibilityError,
-} from "@/server/services/training/project-visibility-service";
-import {
-  mapCharacterLoraTrainingJobError,
-  updateCharacterLoraTrainingJob,
-} from "@/server/services/character-lora-training/job-service";
+  deleteTrainingProject,
+  mapTrainingProjectMutationError,
+  updateTrainingProject,
+} from "@/server/services/training/project-actions-service";
 
 export const dynamic = "force-dynamic";
 
@@ -47,18 +39,10 @@ export async function PATCH(
 
   try {
     const { projectId } = await params;
-    const managed = await updateManagedTrainingProject(projectId, body);
-    if (managed) {
-      return ok(managed);
-    }
-    const data = await updateCharacterLoraTrainingJob(projectId, body);
+    const data = await updateTrainingProject(projectId, body);
     return ok(data);
   } catch (error) {
-    const managedMapped = mapTrainingProjectError(error);
-    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
-      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
-    }
-    const mapped = mapCharacterLoraTrainingJobError(error);
+    const mapped = mapTrainingProjectMutationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
@@ -77,19 +61,13 @@ export async function DELETE(
   }
 
   try {
-    const managed = await deleteManagedTrainingProject(projectId);
-    const hidden = await hideTrainingProjects([projectId]);
+    const deleted = await deleteTrainingProject(projectId);
     return ok({
-      deletedRunCount: managed?.deletedRunCount ?? 0,
+      deletedRunCount: deleted?.deletedRunCount ?? 0,
       id: projectId,
-      ...hidden,
     });
   } catch (error) {
-    const managedMapped = mapTrainingProjectError(error);
-    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
-      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
-    }
-    const mapped = mapTrainingProjectVisibilityError(error);
+    const mapped = mapTrainingProjectMutationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

@@ -2,6 +2,7 @@ import { Prisma } from "@/generated/prisma";
 import { JobStatus, RunStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { WorkerRunSnapshot } from "@/server/worker/types";
 
 const workerRunInclude = {
@@ -42,6 +43,15 @@ type CompleteWorkerRunInput = {
   }>;
 };
 
+function buildGenerationRunWhere(where: Prisma.RunWhereInput = {}): Prisma.RunWhereInput {
+  return {
+    AND: [
+      where,
+      { project: buildGenerationProjectWhere() },
+    ],
+  };
+}
+
 function serializeWorkerRunSnapshot(run: WorkerRunRecord): WorkerRunSnapshot {
   return {
     runId: run.id,
@@ -70,10 +80,10 @@ async function updateProjectStatus(
 ) {
   const activeRuns = await tx.run.groupBy({
     by: ["status"],
-    where: {
+    where: buildGenerationRunWhere({
       projectId: projectId,
       status: { in: [RunStatus.queued, RunStatus.running, RunStatus.paused] },
-    },
+    }),
     _count: {
       _all: true,
     },
@@ -96,6 +106,7 @@ async function updateProjectStatus(
       await tx.projectSection.findMany({
         where: {
           projectId: projectId,
+          project: buildGenerationProjectWhere({ id: projectId }),
           enabled: true,
           latestRunId: { not: null },
         },
@@ -109,9 +120,9 @@ async function updateProjectStatus(
 
     if (latestRunIds.length > 0) {
       const latestRuns = await tx.run.findMany({
-        where: {
+        where: buildGenerationRunWhere({
           id: { in: latestRunIds },
-        },
+        }),
         select: {
           status: true,
         },
@@ -134,19 +145,19 @@ async function updateProjectStatus(
     }
   }
 
-  const updatedProject = await tx.project.update({
-    where: { id: projectId },
+  const updatedProject = await tx.project.updateMany({
+    where: buildGenerationProjectWhere({ id: projectId }),
     data: { status: nextStatus },
-    select: { status: true },
   });
 
-  return updatedProject.status;
+  return updatedProject.count > 0 ? nextStatus : null;
 }
 
 export async function listQueuedWorkerRuns(limit = 10): Promise<WorkerRunSnapshot[]> {
   const runs = await db.run.findMany({
     where: {
       status: RunStatus.queued,
+      project: buildGenerationProjectWhere(),
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     take: limit,
@@ -157,8 +168,8 @@ export async function listQueuedWorkerRuns(limit = 10): Promise<WorkerRunSnapsho
 }
 
 export async function getWorkerRun(runId: string): Promise<WorkerRunSnapshot | null> {
-  const run = await db.run.findUnique({
-    where: { id: runId },
+  const run = await db.run.findFirst({
+    where: buildGenerationRunWhere({ id: runId }),
     include: workerRunInclude,
   });
 
@@ -201,10 +212,10 @@ export async function completeWorkerRun(
     }
 
     const completedRun = await tx.run.updateMany({
-      where: {
+      where: buildGenerationRunWhere({
         id: runId,
         status: { in: [RunStatus.running, RunStatus.queued] },
-      },
+      }),
       data,
     });
 
@@ -216,6 +227,7 @@ export async function completeWorkerRun(
       await tx.imageResult.deleteMany({
         where: {
           runId: runId,
+          run: { project: buildGenerationProjectWhere() },
         },
       });
 
@@ -233,8 +245,8 @@ export async function completeWorkerRun(
       }
     }
 
-    const finalizedRun = await tx.run.findUnique({
-      where: { id: runId },
+    const finalizedRun = await tx.run.findFirst({
+      where: buildGenerationRunWhere({ id: runId }),
       select: {
         id: true,
         status: true,
@@ -255,8 +267,11 @@ export async function completeWorkerRun(
     await updateProjectStatus(tx, finalizedRun.projectId);
 
     // Update latestRunId to reflect the most recently completed run
-    await tx.projectSection.update({
-      where: { id: finalizedRun.projectSectionId },
+    await tx.projectSection.updateMany({
+      where: {
+        id: finalizedRun.projectSectionId,
+        project: buildGenerationProjectWhere({ id: finalizedRun.projectId }),
+      },
       data: { latestRunId: runId },
     });
 

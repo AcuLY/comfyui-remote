@@ -5,11 +5,11 @@ import { useState } from "react";
 
 import { categoryColorValue, categoryItemCount, categoryTypeLabel, type DemoCategory, type DemoData } from "../../data";
 import s from "./sort-rules-page.library.module.css";
-import { SortableRowShell } from "../../shared/patterns";
-import { Button } from "../../shared/primitives/button";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { StatusBadge } from "../../shared/primitives/status-badge";
-import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
+import { SortableRowShell } from "@/components/design-demo-ui/patterns";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
+import { SortableList, useDemoSortable } from "@/components/design-demo-ui/primitives/sortable";
 import type { SortRuleDimensionKey } from "../../routing";
 
 export function SortRulesPage({ data }: { data: DemoData }) {

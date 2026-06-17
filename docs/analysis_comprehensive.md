@@ -311,7 +311,7 @@ export async function persistComfyOutputImages(
 **Search Results:**
 - Grep for "post.process", "reprocess", "refine", "secondary" → No hits
 - No code for img2img workflows or secondary generation
-- Character LoRA system has image *review* but not *generation from existing image*
+- Training v2 has image *review* for dataset curation but not end-user generation from an existing image
 
 **System Patterns:**
 1. All generation starts from `EmptyLatentImage` (txt2img)
@@ -319,16 +319,18 @@ export async function persistComfyOutputImages(
 3. No img2img KSampler (denoise < 1.0 for input image)
 4. Image review (keep/trash) is for QA only, not for re-generation
 
-**Related Models (Character LoRA):**
+**Related Models (Training v2):**
 ```typescript
-// From schema.prisma (character training, NOT main generation)
-model CharacterLoraGenerationRun {
-  // Can have parentRunId (parent-child relationships)
-  parentRunId       String?
-  parentRun         CharacterLoraGenerationRun?  @relation(...)
-  childRuns         CharacterLoraGenerationRun[] @relation(...)
-  
-  // But this is for ITERATIVE REFINEMENT during training dataset curation
+// From schema.prisma (training, NOT main generation)
+model TrainingGenerationTask {
+  sectionRuns TrainingSectionRun[]
+}
+
+model TrainingSectionRun {
+  generationTaskId String?
+  generationTask   TrainingGenerationTask? @relation(...)
+
+  // This is for training dataset curation
   // NOT for end-user post-processing workflows
 }
 ```
@@ -659,4 +661,3 @@ export type PersistedRunOutput = {
    - Track run dependencies (Run.parentRunId reference)
    - Validate input image exists before submission
    - Aggregate results from chain
-

@@ -1,8 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-
-const TRAINING_HIDDEN_PROJECTS_PATH = join(process.cwd(), "data", "training-hidden-projects.json");
-let hiddenProjectWriteQueue: Promise<unknown> = Promise.resolve();
+import { prisma } from "@/lib/prisma";
 
 export class TrainingProjectVisibilityServiceError extends Error {
   details?: unknown;
@@ -16,51 +12,56 @@ export class TrainingProjectVisibilityServiceError extends Error {
   }
 }
 
-async function readHiddenProjectIds() {
-  try {
-    const raw = await readFile(TRAINING_HIDDEN_PROJECTS_PATH, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed)) {
-      return parsed.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
-    }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw error;
-    }
-  }
-
-  return [] as string[];
+export async function listHiddenTrainingProjectIds(): Promise<string[]> {
+  const rows = await prisma.trainingProject.findMany({
+    where: {
+      hiddenAt: {
+        not: null,
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+  return rows.map((row) => row.id);
 }
 
-async function writeHiddenProjectIds(projectIds: string[]) {
-  await mkdir(dirname(TRAINING_HIDDEN_PROJECTS_PATH), { recursive: true });
-  const tempPath = `${TRAINING_HIDDEN_PROJECTS_PATH}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tempPath, `${JSON.stringify(projectIds, null, 2)}\n`, "utf8");
-  await rename(tempPath, TRAINING_HIDDEN_PROJECTS_PATH);
-}
-
-async function withHiddenProjectWriteLock<T>(fn: () => Promise<T>) {
-  const next = hiddenProjectWriteQueue.then(fn, fn);
-  hiddenProjectWriteQueue = next.then(() => undefined, () => undefined);
-  return next;
-}
-
-export async function listHiddenTrainingProjectIds() {
-  return readHiddenProjectIds();
-}
-
-export async function hideTrainingProjects(projectIds: string[]) {
+export async function hideTrainingProjects(projectIds: string[]): Promise<{ hiddenProjectIds: string[] }> {
   const normalized = [...new Set(projectIds.map((projectId) => projectId.trim()).filter(Boolean))];
   if (normalized.length === 0) {
     throw new TrainingProjectVisibilityServiceError("At least one project id is required", 400);
   }
 
-  return withHiddenProjectWriteLock(async () => {
-    const current = await readHiddenProjectIds();
-    const next = [...new Set([...current, ...normalized])];
-    await writeHiddenProjectIds(next);
-    return { hiddenProjectIds: normalized };
+  const rows = await prisma.trainingProject.findMany({
+    where: {
+      id: {
+        in: normalized,
+      },
+    },
+    select: {
+      id: true,
+    },
   });
+  const existingIds = new Set(rows.map((row) => row.id));
+  const missingProjectIds = normalized.filter((projectId) => !existingIds.has(projectId));
+  if (missingProjectIds.length > 0) {
+    throw new TrainingProjectVisibilityServiceError("Training project not found", 404, { projectIds: missingProjectIds });
+  }
+
+  await prisma.trainingProject.updateMany({
+    where: {
+      id: {
+        in: normalized,
+      },
+    },
+    data: {
+      hiddenAt: new Date(),
+    },
+  });
+
+  return {
+    hiddenProjectIds: normalized,
+  };
 }
 
 export function mapTrainingProjectVisibilityError(error: unknown) {

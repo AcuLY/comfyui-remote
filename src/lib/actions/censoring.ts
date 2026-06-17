@@ -5,6 +5,7 @@ import type { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { wakeUpCensoringProcessor } from "@/server/services/censoring-executor";
 import { CENSORING_CANCELLABLE_STATUSES } from "@/lib/actions/cancellation-helpers";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 const CENSORING_ACTIVE_STATUSES = [...CENSORING_CANCELLABLE_STATUSES];
 export type ProjectCensorMode = "all" | "kept" | "marked";
@@ -35,18 +36,24 @@ export type CensoringPreview = {
 export async function getCensoringPreview(
   projectId: string,
 ): Promise<CensoringPreview> {
-  const totalKept = await prisma.imageResult.count({
-    where: {
-      run: { projectId },
-      reviewStatus: { in: ["kept", "pending"] },
-    },
-  });
+    const totalKept = await prisma.imageResult.count({
+      where: {
+        run: {
+          projectId,
+          project: buildGenerationProjectWhere({ id: projectId }),
+        },
+        reviewStatus: { in: ["kept", "pending"] },
+      },
+    });
 
-  const alreadyCensored = await prisma.imageResult.count({
-    where: {
-      run: { projectId },
-      reviewStatus: { in: ["kept", "pending"] },
-      censoredAt: { not: null },
+    const alreadyCensored = await prisma.imageResult.count({
+      where: {
+        run: {
+          projectId,
+          project: buildGenerationProjectWhere({ id: projectId }),
+        },
+        reviewStatus: { in: ["kept", "pending"] },
+        censoredAt: { not: null },
     },
   });
 
@@ -72,7 +79,10 @@ export async function getCensoringProgress(
 ): Promise<CensoringProgress> {
   const tasks = await prisma.censoringTask.groupBy({
     by: ["status"],
-    where: { projectId },
+    where: {
+      projectId,
+      project: buildGenerationProjectWhere({ id: projectId }),
+    },
     _count: { _all: true },
   });
 
@@ -104,8 +114,11 @@ export async function censorImage(
   imageResultId: string,
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const image = await prisma.imageResult.findUnique({
-      where: { id: imageResultId },
+    const image = await prisma.imageResult.findFirst({
+      where: {
+        id: imageResultId,
+        run: { project: buildGenerationProjectWhere() },
+      },
       include: { run: { select: { id: true, projectId: true } } },
     });
 
@@ -122,6 +135,7 @@ export async function censorImage(
       where: {
         imageResultId,
         status: { in: ["queued", "running"] },
+        project: buildGenerationProjectWhere({ id: image.run.projectId }),
       },
     });
 
@@ -161,7 +175,10 @@ export async function censorProjectImages(projectId: string, mode: ProjectCensor
       : null;
     const markerWhere = buildProjectCensorMarkerWhere(mode, project?.coverImageId ?? null);
     const baseImageWhere: Prisma.ImageResultWhereInput = {
-      run: { projectId },
+      run: {
+        projectId,
+        project: buildGenerationProjectWhere({ id: projectId }),
+      },
       reviewStatus: { in: reviewStatuses },
       censoredAt: null,
       ...markerWhere,
@@ -201,6 +218,7 @@ export async function censorProjectImages(projectId: string, mode: ProjectCensor
       where: {
         imageResultId: { in: allImageIds },
         status: { in: ["failed", "cancelled"] },
+        project: buildGenerationProjectWhere({ id: projectId }),
       },
     });
 
@@ -236,6 +254,7 @@ export async function cancelCensoringTasks(projectId: string): Promise<{
     const result = await prisma.censoringTask.updateMany({
       where: {
         projectId,
+        project: buildGenerationProjectWhere({ id: projectId }),
         status: { in: CENSORING_ACTIVE_STATUSES },
       },
       data: {
@@ -267,6 +286,7 @@ export async function pauseCensoringTasks(projectId: string): Promise<{
     const result = await prisma.censoringTask.updateMany({
       where: {
         projectId,
+        project: buildGenerationProjectWhere({ id: projectId }),
         status: "queued",
       },
       data: {
@@ -295,6 +315,7 @@ export async function resumeCensoringTasks(projectId: string): Promise<{
     const result = await prisma.censoringTask.updateMany({
       where: {
         projectId,
+        project: buildGenerationProjectWhere({ id: projectId }),
         status: "paused",
       },
       data: {

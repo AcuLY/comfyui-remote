@@ -1,7 +1,11 @@
 import { z } from "zod";
-import type { LoraTrainingSectionBlock } from "@/app/design-demos/data/lora-training-types";
-import { getTrainingBlockContext, getTrainingSectionContext } from "@/server/services/training/read-service";
-import { mapTrainingProjectSectionError, upsertTrainingProjectSection } from "@/server/services/training/project-section-service";
+import type { LoraTrainingSectionBlock } from "@/features/training/types";
+import {
+  getTrainingBlockProjectContext,
+  getTrainingSectionProjectContext,
+  mapTrainingProjectSectionError,
+  upsertTrainingProjectSection,
+} from "@/server/services/training/project-section-service";
 
 const createBlockSchema = z.object({
   source: z.enum(["预制", "本地"]).optional().default("本地"),
@@ -39,7 +43,7 @@ function createBlockId(sectionId: string) {
   return `${sectionId}-block-${Date.now()}`;
 }
 
-export async function createTrainingSectionBlock(sectionId: string, input: unknown) {
+export async function createTrainingSectionBlock(sectionId: string, input: unknown, options: { projectId?: string | null } = {}) {
   const parsed = createBlockSchema.safeParse(input);
   if (!parsed.success) {
     throw new TrainingSceneBlockServiceError("Invalid training section block request", 400, {
@@ -50,7 +54,7 @@ export async function createTrainingSectionBlock(sectionId: string, input: unkno
     });
   }
 
-  const { project, section } = await getTrainingSectionContext(sectionId);
+  const { projectId, section } = await getTrainingSectionProjectContext(sectionId, options.projectId);
   const nextBlock: LoraTrainingSectionBlock = {
     id: createBlockId(sectionId),
     source: parsed.data.source,
@@ -58,13 +62,13 @@ export async function createTrainingSectionBlock(sectionId: string, input: unkno
     text: parsed.data.text,
   };
 
-  await upsertTrainingProjectSection(project.id, section.id, {
+  await upsertTrainingProjectSection(projectId, section.id, {
     title: section.title,
     enabled: section.enabled,
     blocks: [...section.blocks, nextBlock],
     resolvedScene: section.resolvedScene,
     imagePrompt: section.imagePrompt,
-  }, project.sections).catch((error) => {
+  }).catch((error) => {
     const mapped = mapTrainingProjectSectionError(error);
     throw new TrainingSceneBlockServiceError(mapped.message, mapped.status, mapped.details);
   });
@@ -72,7 +76,7 @@ export async function createTrainingSectionBlock(sectionId: string, input: unkno
   return nextBlock;
 }
 
-export async function updateTrainingSectionBlock(blockId: string, input: unknown) {
+export async function updateTrainingSectionBlock(blockId: string, input: unknown, options: { projectId?: string | null } = {}) {
   const parsed = updateBlockSchema.safeParse(input);
   if (!parsed.success) {
     throw new TrainingSceneBlockServiceError("Invalid training section block update request", 400, {
@@ -83,7 +87,7 @@ export async function updateTrainingSectionBlock(blockId: string, input: unknown
     });
   }
 
-  const { block, project, section } = await getTrainingBlockContext(blockId);
+  const { block, projectId, section } = await getTrainingBlockProjectContext(blockId, options.projectId);
   const updatedBlock: LoraTrainingSectionBlock = {
     ...block,
     source: parsed.data.source ?? block.source,
@@ -91,13 +95,13 @@ export async function updateTrainingSectionBlock(blockId: string, input: unknown
     text: parsed.data.text ?? block.text,
   };
 
-  await upsertTrainingProjectSection(project.id, section.id, {
+  await upsertTrainingProjectSection(projectId, section.id, {
     title: section.title,
     enabled: section.enabled,
     blocks: section.blocks.map((candidate) => candidate.id === blockId ? updatedBlock : candidate),
     resolvedScene: section.resolvedScene,
     imagePrompt: section.imagePrompt,
-  }, project.sections).catch((error) => {
+  }).catch((error) => {
     const mapped = mapTrainingProjectSectionError(error);
     throw new TrainingSceneBlockServiceError(mapped.message, mapped.status, mapped.details);
   });
@@ -105,7 +109,7 @@ export async function updateTrainingSectionBlock(blockId: string, input: unknown
   return updatedBlock;
 }
 
-export async function detachTrainingSectionBlock(blockId: string, input: unknown) {
+export async function detachTrainingSectionBlock(blockId: string, input: unknown, options: { projectId?: string | null } = {}) {
   const parsed = detachBlockSchema.safeParse(input);
   if (!parsed.success) {
     throw new TrainingSceneBlockServiceError("Invalid training section block detach request", 400, {
@@ -119,10 +123,10 @@ export async function detachTrainingSectionBlock(blockId: string, input: unknown
   return updateTrainingSectionBlock(blockId, {
     source: "本地",
     text: parsed.data.editedText,
-  });
+  }, options);
 }
 
-export async function reorderTrainingSectionBlocks(sectionId: string, input: unknown) {
+export async function reorderTrainingSectionBlocks(sectionId: string, input: unknown, options: { projectId?: string | null } = {}) {
   const parsed = reorderBlocksSchema.safeParse(input);
   if (!parsed.success) {
     throw new TrainingSceneBlockServiceError("Invalid training section block reorder request", 400, {
@@ -133,7 +137,7 @@ export async function reorderTrainingSectionBlocks(sectionId: string, input: unk
     });
   }
 
-  const { project, section } = await getTrainingSectionContext(sectionId);
+  const { projectId, section } = await getTrainingSectionProjectContext(sectionId, options.projectId);
   const blockMap = new Map(section.blocks.map((block) => [block.id, block]));
   const reorderedBlocks = parsed.data.ids
     .map((id) => blockMap.get(id))
@@ -146,13 +150,13 @@ export async function reorderTrainingSectionBlocks(sectionId: string, input: unk
     });
   }
 
-  await upsertTrainingProjectSection(project.id, section.id, {
+  await upsertTrainingProjectSection(projectId, section.id, {
     title: section.title,
     enabled: section.enabled,
     blocks: reorderedBlocks,
     resolvedScene: section.resolvedScene,
     imagePrompt: section.imagePrompt,
-  }, project.sections).catch((error) => {
+  }).catch((error) => {
     const mapped = mapTrainingProjectSectionError(error);
     throw new TrainingSceneBlockServiceError(mapped.message, mapped.status, mapped.details);
   });
@@ -160,19 +164,19 @@ export async function reorderTrainingSectionBlocks(sectionId: string, input: unk
   return reorderedBlocks;
 }
 
-export async function deleteTrainingSectionBlock(blockId: string) {
-  const { project, section } = await getTrainingBlockContext(blockId);
+export async function deleteTrainingSectionBlock(blockId: string, options: { projectId?: string | null } = {}) {
+  const { projectId, section } = await getTrainingBlockProjectContext(blockId, options.projectId);
   if (section.blocks.length <= 1) {
     throw new TrainingSceneBlockServiceError("Training section must keep at least one block", 409, { blockId, sectionId: section.id });
   }
 
-  await upsertTrainingProjectSection(project.id, section.id, {
+  await upsertTrainingProjectSection(projectId, section.id, {
     title: section.title,
     enabled: section.enabled,
     blocks: section.blocks.filter((candidate) => candidate.id !== blockId),
     resolvedScene: section.resolvedScene,
     imagePrompt: section.imagePrompt,
-  }, project.sections).catch((error) => {
+  }).catch((error) => {
     const mapped = mapTrainingProjectSectionError(error);
     throw new TrainingSceneBlockServiceError(mapped.message, mapped.status, mapped.details);
   });

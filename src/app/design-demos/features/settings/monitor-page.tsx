@@ -6,10 +6,10 @@ import type * as React from "react";
 
 import type { DemoData } from "../../data";
 import s from "./monitor-page.shell.module.css";
-import { Button } from "../../shared/primitives/button";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { SegmentedControl } from "../../shared/primitives/segmented-control";
-import { StatusBadge } from "../../shared/primitives/status-badge";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 
 export function MonitorPage({ data }: { data: DemoData }) {
   const [mode, setMode] = useState<"managed" | "external">("managed");

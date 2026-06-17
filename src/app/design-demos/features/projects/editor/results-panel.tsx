@@ -4,8 +4,8 @@ import { Check, Image as ImageIcon, Star, Trash2 } from "lucide-react";
 
 import { cx } from "../../../routing";
 import s from "./results-panel.editor.module.css";
-import { ImageListMedium } from "../../../shared/media/image-list-medium";
-import { ImageThumbMedium } from "../../../shared/media/image-thumb-medium";
+import { ImageListMedium } from "@/components/design-demo-ui/media/image-list-medium";
+import { ImageThumbMedium } from "@/components/design-demo-ui/media/image-thumb-medium";
 import type { SectionEditorModel } from "./use-section-editor-state";
 
 export function ResultsPanel({ editor }: { editor: SectionEditorModel }) {

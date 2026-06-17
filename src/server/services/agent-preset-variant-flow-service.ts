@@ -1,4 +1,9 @@
+import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
+import {
+  buildGenerationPresetWhere,
+  buildGenerationProjectWhere,
+} from "@/server/repositories/generation-resource-boundary";
 import { syncPresetVariants } from "@/server/services/agent-preset-variant-service";
 import {
   buildSyncPresetVariantFlowVerification,
@@ -42,8 +47,8 @@ function isRoleCategory(category: { name: string; slug: string }) {
 
 async function findProjectByTitle(title: string, expectedProjectId: string | null, errorPrefix: "SOURCE" | "TARGET"): Promise<ProjectLookup> {
   if (expectedProjectId) {
-    const project = await prisma.project.findUnique({
-      where: { id: expectedProjectId },
+    const project = await prisma.project.findFirst({
+      where: buildGenerationProjectWhere({ id: expectedProjectId }),
       select: { id: true, title: true, updatedAt: true, createdAt: true },
     });
     if (!project) {
@@ -56,7 +61,7 @@ async function findProjectByTitle(title: string, expectedProjectId: string | nul
   }
 
   const projects = await prisma.project.findMany({
-    where: { title },
+    where: buildGenerationProjectWhere({ title }),
     select: { id: true, title: true, updatedAt: true, createdAt: true },
   });
   return pickLatestProjectByExactTitle(projects, title);
@@ -64,7 +69,11 @@ async function findProjectByTitle(title: string, expectedProjectId: string | nul
 
 async function findProjectRolePreset(projectId: string, errorPrefix: "SOURCE" | "TARGET") {
   const sections = await prisma.projectSection.findMany({
-    where: { projectId, enabled: true },
+    where: {
+      projectId,
+      enabled: true,
+      project: buildGenerationProjectWhere({ id: projectId }),
+    },
     select: {
       presetBindingRows: {
         where: { presetId: { not: null } },
@@ -145,10 +154,11 @@ async function findProjectRolePreset(projectId: string, errorPrefix: "SOURCE" | 
 
 async function findPresetForVerification(presetId: string): Promise<FlowTargetPreset> {
   const preset = await prisma.preset.findFirst({
-    where: {
+    where: buildGenerationPresetWhere({
       id: presetId,
       isActive: true,
-    },
+      category: { type: ordinaryPresetCategoryTypeWhere() },
+    }),
     select: {
       id: true,
       name: true,
@@ -166,7 +176,11 @@ async function findPresetForVerification(presetId: string): Promise<FlowTargetPr
 
 async function getSectionsForVerification(projectId: string): Promise<FlowSectionForVerification[]> {
   const sections = await prisma.projectSection.findMany({
-    where: { projectId, enabled: true },
+    where: {
+      projectId,
+      enabled: true,
+      project: buildGenerationProjectWhere({ id: projectId }),
+    },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     select: {
       id: true,

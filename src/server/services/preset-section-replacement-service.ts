@@ -1,5 +1,11 @@
 import { revalidatePath } from "next/cache";
+import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
+import {
+  buildGenerationPresetWhere,
+  buildGenerationProjectTemplateWhere,
+  buildGenerationProjectWhere,
+} from "@/server/repositories/generation-resource-boundary";
 import {
   planPresetSectionReplacements,
   type PresetReplacementBinding,
@@ -61,7 +67,10 @@ async function loadReplacementPresets(rules: readonly PresetSectionReplacementRu
   if (presetIds.length === 0) return [];
 
   const presets = await prisma.preset.findMany({
-    where: { id: { in: presetIds } },
+    where: buildGenerationPresetWhere({
+      id: { in: presetIds },
+      category: { type: ordinaryPresetCategoryTypeWhere() },
+    }),
     select: {
       id: true,
       name: true,
@@ -87,8 +96,8 @@ function sectionName(name: string | null, sortOrder: number, prefix: string) {
 }
 
 async function loadProjectTarget(projectId: string): Promise<ReplacementTarget> {
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       id: true,
       title: true,
@@ -132,8 +141,8 @@ async function loadProjectTarget(projectId: string): Promise<ReplacementTarget> 
 }
 
 async function loadTemplateTarget(templateId: string): Promise<ReplacementTarget> {
-  const template = await prisma.projectTemplate.findUnique({
-    where: { id: templateId },
+  const template = await prisma.projectTemplate.findFirst({
+    where: buildGenerationProjectTemplateWhere({ id: templateId }),
     select: {
       id: true,
       name: true,

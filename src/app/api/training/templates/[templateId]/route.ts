@@ -1,9 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  deleteManagedTrainingTemplate,
-  getManagedTrainingTemplate,
+  deleteTrainingTemplate,
+  getTrainingTemplate,
   mapTrainingTemplateError,
-  updateManagedTrainingTemplate,
+  updateTrainingTemplate,
 } from "@/server/services/training/template-service";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const { templateId } = await params;
-    const data = await getManagedTrainingTemplate(templateId);
+    const data = await getTrainingTemplate(templateId);
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingTemplateError(error);
@@ -36,7 +36,7 @@ export async function PATCH(
 
   try {
     const { templateId } = await params;
-    const data = await updateManagedTrainingTemplate(templateId, body);
+    const data = await updateTrainingTemplate(templateId, body);
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingTemplateError(error);
@@ -50,7 +50,7 @@ export async function DELETE(
 ) {
   try {
     const { templateId } = await params;
-    const data = await deleteManagedTrainingTemplate(templateId);
+    const data = await deleteTrainingTemplate(templateId);
     return ok(data);
   } catch (error) {
     const mapped = mapTrainingTemplateError(error);

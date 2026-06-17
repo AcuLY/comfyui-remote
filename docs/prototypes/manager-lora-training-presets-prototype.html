@@ -3,16 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-store, max-age=0" />
+    <meta http-equiv="Pragma" content="no-cache" />
     <meta name="theme-color" content="#09090b" />
     <title>LoRA 训练模式 - 预制</title>
-    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-1" />
+    <link rel="stylesheet" href="./assets/lora-training-shared.css?v=20260614-prototype-alignment-2" />
     <style>
       .preset-entry-grid {
         display: grid;
         gap: 8px;
       }
 
-      @media (min-width: 1120px) {
+      @media (min-width: 520px) {
         .preset-entry-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
         }
@@ -38,16 +40,16 @@
             <section class="panel">
               <div class="panel-header"><h2>分类</h2></div>
               <div class="panel-body entity-list">
-                <div class="entity-row"><div class="row-title"><strong>光线</strong><span>合成顺序 10</span></div><span class="count">18</span></div>
-                <div class="entity-row"><div class="row-title"><strong>环境</strong><span>合成顺序 20</span></div><span class="count">24</span></div>
-                <div class="entity-row"><div class="row-title"><strong>姿态</strong><span>合成顺序 30</span></div><span class="count">12</span></div>
+                <div class="entity-row"><div class="row-title"><strong>光线</strong><span>18 项预制</span></div><span class="count">18</span></div>
+                <div class="entity-row"><div class="row-title"><strong>环境</strong><span>24 项预制</span></div><span class="count">24</span></div>
+                <div class="entity-row"><div class="row-title"><strong>姿态</strong><span>12 项预制</span></div><span class="count">12</span></div>
               </div>
             </section>
             <section class="panel">
               <div class="panel-header"><h2>文件夹</h2></div>
               <div class="panel-body entity-list">
-                <div class="entity-row"><div class="row-title"><strong>舞台</strong><span>显示顺序 1</span></div></div>
-                <div class="entity-row"><div class="row-title"><strong>棚拍</strong><span>显示顺序 2</span></div></div>
+                <div class="entity-row"><div class="row-title"><strong>舞台</strong><span>当前文件夹</span></div></div>
+                <div class="entity-row"><div class="row-title"><strong>棚拍</strong><span>可切换</span></div></div>
               </div>
             </section>
           </aside>
@@ -89,28 +91,28 @@
                 <a class="entity-row preset-card" data-filter-value="active" href="./manager-lora-training-preset-detail-prototype.html">
                   <div class="row-title">
                     <strong>青色轮廓光</strong>
-                    <span>光线 / 舞台 · 顺序 10 · 强青色轮廓光，带一点舞台薄雾</span>
+                    <span>光线 / 舞台 · 强青色轮廓光，带一点舞台薄雾</span>
                   </div>
                   <span class="status-note green">启用</span>
                 </a>
                 <a class="entity-row preset-card" data-filter-value="active" href="./manager-lora-training-preset-detail-prototype.html?preset=wet-street">
                   <div class="row-title">
                     <strong>潮湿霓虹街道</strong>
-                    <span>环境 / 夜景 · 顺序 20 · 湿地反光，霓虹店招映亮街面</span>
+                    <span>环境 / 夜景 · 湿地反光，霓虹店招映亮街面</span>
                   </div>
                   <span class="status-note green">启用</span>
                 </a>
                 <a class="entity-row preset-card" data-filter-value="active" href="./manager-lora-training-preset-detail-prototype.html?preset=front-pose">
                   <div class="row-title">
                     <strong>正面半身站姿</strong>
-                    <span>姿态 / 人像 · 顺序 30 · 自信、正面、半身的人像站姿</span>
+                    <span>姿态 / 人像 · 自信、正面、半身的人像站姿</span>
                   </div>
                   <span class="status-note green">启用</span>
                 </a>
                 <a class="entity-row preset-card" data-filter-value="inactive" href="./manager-lora-training-preset-detail-prototype.html?preset=old-haze">
                   <div class="row-title">
                     <strong>旧版重雾</strong>
-                    <span>光线 / 旧版目录 · 顺序 80 · 保留给历史可变场景块清理用</span>
+                    <span>光线 / 旧版目录 · 保留给历史可变场景块清理用</span>
                   </div>
                   <span class="status-note">停用</span>
                 </a>
@@ -121,7 +123,7 @@
       </div>
     </main>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-1"></script>
+    <script src="./assets/lora-training-shared.js?v=20260614-prototype-alignment-2"></script>
     <script>initLoraPrototype("presets");</script>
   </body>
 </html>

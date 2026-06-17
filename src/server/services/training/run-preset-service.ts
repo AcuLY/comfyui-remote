@@ -38,13 +38,15 @@ async function resolvePresetCategory(input: CreateTrainingRunPresetInput) {
   if (input.category?.trim()) return input.category.trim();
   if (input.categoryId?.trim()) {
     try {
-      const category = await prisma.presetCategory.findUnique({
-        where: { id: input.categoryId.trim() },
+      const category = await prisma.trainingSceneDescriptionPresetCategory.findFirst({
+        where: {
+          id: input.categoryId.trim(),
+        },
         select: { name: true },
       });
       if (category?.name?.trim()) return category.name.trim();
     } catch {
-      // Fall through to the default training category when the shared DB is unavailable.
+      // Fall through to the default training category when the DB is unavailable.
     }
   }
   return "训练产物";

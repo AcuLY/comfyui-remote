@@ -1346,7 +1346,7 @@ src/lib/training/*
 ```text
 projects
 profiles
-character-images
+reference-images
 scene-description-presets
 sections
 section-runs

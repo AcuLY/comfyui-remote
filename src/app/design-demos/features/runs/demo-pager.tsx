@@ -5,7 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 import { cx } from "../../routing";
-import { Button } from "../../shared/primitives/button";
+import { Button } from "@/components/design-demo-ui/primitives/button";
 import s from "./demo-pager.runs.module.css";
 
 const SIBLING_COUNT = 2;

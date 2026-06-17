@@ -5,9 +5,11 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const shellSource = readFileSync(resolve(testDir, "app-shell.tsx"), "utf8");
-const cssSource = readFileSync(resolve(testDir, "app-shell.module.css"), "utf8");
-const pageHeaderSource = readFileSync(resolve(testDir, "../shared/primitives/page-header/index.tsx"), "utf8");
+const shellDir = resolve(testDir, "../../../components/design-demo-shell");
+const sharedUiDir = resolve(testDir, "../../../components/design-demo-ui");
+const shellSource = readFileSync(resolve(shellDir, "app-shell.tsx"), "utf8");
+const cssSource = readFileSync(resolve(shellDir, "app-shell.module.css"), "utf8");
+const pageHeaderSource = readFileSync(resolve(sharedUiDir, "primitives/page-header/index.tsx"), "utf8");
 
 function sourceRegion(source: string, startMarker: string, endMarker: string) {
   const start = source.indexOf(startMarker);
@@ -52,6 +54,31 @@ test("mobile bottom navigation shows work mode as passive status instead of a Mo
 test("mobile drawer access remains separate from the bottom navigation resources", () => {
   assert.match(shellSource, /mobileNavDrawerButton/, "mobile drawer should remain available outside resource navigation");
   assert.match(cssSource, /\.mobileNavDrawerButton\b/, "separate mobile drawer button should be styled explicitly");
+});
+
+test("desktop shell keeps the bottom navigation hidden while mobile uses an off-canvas sidebar", () => {
+  const mobileShellCss = sourceRegion(cssSource, "@media (max-width: 639px) {", "@media (max-width: 520px) {");
+
+  assert.match(
+    cssSource,
+    /\.mobileBottomNav\s*\{\s*display:\s*none;/,
+    "desktop layouts should hide the mobile bottom navigation by default",
+  );
+  assert.match(
+    cssSource,
+    /@media\s*\(max-width:\s*639px\)\s*\{[\s\S]*?\.mobileBottomNav\s*\{[\s\S]*?display:\s*grid;/,
+    "mobile layouts should explicitly enable the bottom navigation grid",
+  );
+  assert.match(
+    mobileShellCss,
+    /\.sidebar\s*\{[\s\S]*?transform:\s*translateX\(-104%\);[\s\S]*?visibility:\s*hidden;/,
+    "mobile sidebar should stay off-canvas until the drawer is opened",
+  );
+  assert.match(
+    mobileShellCss,
+    /\.sidebarOpen\s*\{[\s\S]*?transform:\s*translateX\(0\);[\s\S]*?visibility:\s*visible;/,
+    "opening the mobile drawer should bring the sidebar onscreen instead of relying on the desktop layout",
+  );
 });
 
 test("route header keeps page-local actions visible without duplicating the local title block", () => {

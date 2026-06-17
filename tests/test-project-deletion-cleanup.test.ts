@@ -22,8 +22,8 @@ test("complete project deletion cancels queued, running, and paused tasks before
 
   const db: ProjectDeletionDb = {
     project: {
-      findUnique: async () => {
-        events.push("project.findUnique");
+      findFirst: async () => {
+        events.push("project.findFirst");
         return {
           id: "project-1",
           slug: "safe-project",
@@ -138,6 +138,151 @@ test("complete project deletion cancels queued, running, and paused tasks before
   assert.ok(events.includes("comfy.delete:prompt-pending"));
   assert.ok(events.includes("comfy.delete:censor-pending,censor-paused"));
   assert.ok(events.includes("comfy.interrupt"));
+});
+
+test("complete project deletion resolves projects through the generation resource boundary", async () => {
+  const { deleteProjectCompletelyWithDependencies } = await import(
+    "../src/server/services/project-deletion-service"
+  );
+
+  const events: string[] = [];
+  let projectLookupArgs: unknown;
+
+  const db = {
+    project: {
+      findFirst: async (args: unknown) => {
+        projectLookupArgs = args;
+        events.push("project.findFirst");
+        return null;
+      },
+      delete: async () => {
+        events.push("project.delete");
+        return { id: "training-benchmark-project" };
+      },
+    },
+    run: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+    },
+    censoringTask: {
+      findMany: async () => [],
+      updateMany: async () => ({ count: 0 }),
+    },
+    imageResult: {
+      findMany: async () => [],
+    },
+    trashRecord: {
+      deleteMany: async () => ({ count: 0 }),
+    },
+  };
+
+  const result = await deleteProjectCompletelyWithDependencies("training-benchmark-project", {
+    db: db as unknown as ProjectDeletionDb,
+    now: () => new Date("2026-06-01T00:00:00.000Z"),
+    cleanupProjectSectionFiles: async () => {
+      events.push("cleanup.sections");
+      return { deletedManagedDir: false, deletedComfyDirs: 0 };
+    },
+    cleanupProjectExportDirectory: async () => {
+      events.push("cleanup.export");
+      return { deletedExportDir: false };
+    },
+    removeTrashFile: async () => {},
+    comfy: {
+      apiUrl: "http://comfy.local",
+      clearQueueSnapshotCache: () => {},
+      getQueuePosition: async () => "not_found",
+      deleteQueueItems: async () => {},
+      interruptPrompt: async () => {},
+    },
+    logWarning: () => {},
+  });
+
+  assert.equal(result.deletedProject, false);
+  assert.deepEqual(events, ["project.findFirst"]);
+  assert.match(
+    JSON.stringify(projectLookupArgs),
+    /training_benchmark/,
+    "project deletion should reuse the generation project boundary instead of a raw id lookup",
+  );
+});
+
+test("project deletion task and trash cleanup queries stay inside generation-owned projects", async () => {
+  const { cancelProjectTasksForCleanupWithDependencies, deleteProjectCompletelyWithDependencies } = await import(
+    "../src/server/services/project-deletion-service"
+  );
+
+  const runQueries: unknown[] = [];
+  const censoringQueries: unknown[] = [];
+  const imageQueries: unknown[] = [];
+
+  const db: ProjectDeletionDb = {
+    project: {
+      findFirst: async () => ({
+        id: "project-1",
+        slug: "safe-project",
+        title: "Generation Project",
+        sections: [],
+      }),
+      delete: async () => ({ id: "project-1" }),
+    },
+    run: {
+      findMany: async (args) => {
+        runQueries.push(args);
+        return [];
+      },
+      updateMany: async (args) => {
+        runQueries.push(args);
+        return { count: 0 };
+      },
+    },
+    censoringTask: {
+      findMany: async (args) => {
+        censoringQueries.push(args);
+        return [];
+      },
+      updateMany: async (args) => {
+        censoringQueries.push(args);
+        return { count: 0 };
+      },
+    },
+    imageResult: {
+      findMany: async (args) => {
+        imageQueries.push(args);
+        return [];
+      },
+    },
+    trashRecord: {
+      deleteMany: async () => ({ count: 0 }),
+    },
+  };
+
+  const deps = {
+    db,
+    now: () => new Date("2026-06-01T00:00:00.000Z"),
+    cleanupProjectSectionFiles: async () => ({ deletedManagedDir: false, deletedComfyDirs: 0 }),
+    cleanupProjectExportDirectory: async () => ({ deletedExportDir: false }),
+    removeTrashFile: async () => {},
+    comfy: {
+      apiUrl: "http://comfy.local",
+      clearQueueSnapshotCache: () => {},
+      getQueuePosition: async () => "not_found" as const,
+      deleteQueueItems: async () => {},
+      interruptPrompt: async () => {},
+    },
+    logWarning: () => {},
+  };
+
+  await cancelProjectTasksForCleanupWithDependencies("project-1", deps);
+  await deleteProjectCompletelyWithDependencies("project-1", deps);
+
+  for (const query of [...runQueries, ...censoringQueries, ...imageQueries]) {
+    assert.match(
+      JSON.stringify(query),
+      /training_benchmark/,
+      "cleanup subresource queries must retain the generation project boundary",
+    );
+  }
 });
 
 test("project export cleanup removes only contained data/export project directories", async () => {

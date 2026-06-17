@@ -1,7 +1,7 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  deleteManagedGenerationTaskInput,
-  mapTrainingGenerationTaskDraftError,
+  deleteTrainingGenerationTaskInput,
+  mapTrainingGenerationTaskError,
 } from "@/server/services/training/generation-task-draft-service";
 
 export const dynamic = "force-dynamic";
@@ -12,13 +12,13 @@ export async function DELETE(
 ) {
   try {
     const { inputId } = await params;
-    const data = await deleteManagedGenerationTaskInput(inputId);
+    const data = await deleteTrainingGenerationTaskInput(inputId);
     if (!data) {
       return fail("Training generation task input not found", 404, { inputId });
     }
     return ok(data);
   } catch (error) {
-    const mapped = mapTrainingGenerationTaskDraftError(error);
+    const mapped = mapTrainingGenerationTaskError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

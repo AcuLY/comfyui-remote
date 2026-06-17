@@ -6,10 +6,10 @@ import {
   MoreVertical, Edit2, Trash2, Move, X, Check,
   Folder, ArrowLeft
 } from 'lucide-react';
-import { Button } from "../../shared/primitives/button";
-import { FolderBreadcrumb, InspectorAside } from "../../shared/patterns";
-import { SegmentedControl } from "../../shared/primitives/segmented-control";
-import { StatusBadge } from "../../shared/primitives/status-badge";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { FolderBreadcrumb, InspectorAside } from "@/components/design-demo-ui/patterns";
+import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 import styles from './model-list.module.css';
 import { modelFiles } from "./model-fixtures";
 import type { BreadcrumbItem, FileItem } from "./model-types";

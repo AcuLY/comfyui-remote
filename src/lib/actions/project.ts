@@ -4,9 +4,18 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
+import {
+  TRAINING_RESERVED_RESOURCE_WRITE_ERROR,
+  buildGenerationProjectWhere,
+  hasReservedTrainingPurposeNotes,
+} from "@/server/repositories/generation-resource-boundary";
 import { copyProject as copyProjectRepo } from "@/server/repositories/project-repository";
 import { archiveProject as archiveProjectService } from "@/server/services/project-archive-service";
 import { deleteProjectCompletely } from "@/server/services/project-deletion-service";
+import {
+  assertOrdinaryProjectPresetBindingRefs,
+  PresetResourceScopeError,
+} from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,6 +104,16 @@ function normalizeProjectPresetBindings(bindings: readonly PresetBinding[]) {
   return normalized;
 }
 
+async function assertOrdinaryProjectPresetBindings(bindings: readonly PresetBinding[]) {
+  const normalized = normalizeProjectPresetBindings(bindings);
+  await assertOrdinaryProjectPresetBindingRefs(normalized);
+}
+
+function assertGenerationProjectNotes(notes: string | null | undefined) {
+  if (!hasReservedTrainingPurposeNotes(notes)) return;
+  throw new Error(TRAINING_RESERVED_RESOURCE_WRITE_ERROR);
+}
+
 async function replaceProjectPresetBindingRows(
   tx: Prisma.TransactionClient,
   projectId: string,
@@ -116,6 +135,8 @@ async function replaceProjectPresetBindingRows(
 
 export async function createProject(input: CreateProjectInput): Promise<string> {
   const checkpointName = input.checkpointName.trim() || DEFAULT_CHECKPOINT_NAME;
+  await assertOrdinaryProjectPresetBindings(input.presetBindings);
+  assertGenerationProjectNotes(input.notes);
 
   // 生成唯一 slug
   const baseSlug = input.title
@@ -175,16 +196,33 @@ export async function createProject(input: CreateProjectInput): Promise<string> 
 
 export async function updateProject(input: UpdateProjectInput) {
   const { projectId, sections, projectLevelOverrides, presetBindings, ...projectData } = input;
+  if (presetBindings !== undefined) {
+    await assertOrdinaryProjectPresetBindings(presetBindings);
+  }
+  if (projectData.notes !== undefined) {
+    assertGenerationProjectNotes(projectData.notes);
+  }
 
   await prisma.$transaction(async (tx) => {
-    // 更新 project 基础字段（包括 projectLevelOverrides）
-    await tx.project.update({
-      where: { id: projectId },
-      data: {
-        ...projectData,
-        ...(projectLevelOverrides !== undefined ? { projectLevelOverrides: projectLevelOverrides as object } : {}),
-      },
+    const project = await tx.project.findFirst({
+      where: buildGenerationProjectWhere({ id: projectId }),
+      select: { id: true },
     });
+    if (!project) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+
+    // 更新 project 基础字段（包括 projectLevelOverrides）
+    const projectUpdateData = {
+      ...projectData,
+      ...(projectLevelOverrides !== undefined ? { projectLevelOverrides: projectLevelOverrides as object } : {}),
+    };
+    if (Object.keys(projectUpdateData).length > 0) {
+      await tx.project.updateMany({
+        where: buildGenerationProjectWhere({ id: projectId }),
+        data: projectUpdateData,
+      });
+    }
 
     if (presetBindings !== undefined) {
       await replaceProjectPresetBindingRows(tx, projectId, presetBindings);
@@ -196,7 +234,10 @@ export async function updateProject(input: UpdateProjectInput) {
       // We fetch existing sections and update them individually rather than
       // delete-recreate, which would cascade-delete all runs, images, and blocks.
       const existingSections = await tx.projectSection.findMany({
-        where: { projectId },
+        where: {
+          projectId,
+          project: buildGenerationProjectWhere({ id: projectId }),
+        },
         select: { id: true, sortOrder: true },
         orderBy: { sortOrder: "asc" },
       });
@@ -205,8 +246,11 @@ export async function updateProject(input: UpdateProjectInput) {
       for (let idx = 0; idx < Math.min(sections.length, existingSections.length); idx++) {
         const section = existingSections[idx];
         const update = sections[idx];
-        await tx.projectSection.update({
-          where: { id: section.id },
+        await tx.projectSection.updateMany({
+          where: {
+            id: section.id,
+            project: buildGenerationProjectWhere({ id: projectId }),
+          },
           data: {
             sortOrder: update.sortOrder,
             enabled: update.enabled,
@@ -242,6 +286,12 @@ export async function copyProject(projectId: string): Promise<string | null> {
 // ---------------------------------------------------------------------------
 
 export async function deleteProject(projectId: string): Promise<void> {
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
+    select: { id: true },
+  });
+  if (!project) return;
+
   await deleteProjectCompletely(projectId);
   revalidatePath("/projects");
 }
@@ -280,8 +330,8 @@ export async function applyParamToAllSections(
   value: unknown,
 ): Promise<{ ok: boolean; count: number; error?: string }> {
   try {
-    const project = await prisma.project.findUnique({
-      where: { id: projectId },
+    const project = await prisma.project.findFirst({
+      where: buildGenerationProjectWhere({ id: projectId }),
       select: {
         id: true,
         presetBindingRows: {
@@ -299,8 +349,12 @@ export async function applyParamToAllSections(
 
     if (param === "presets") {
       const currentBindings = project.presetBindingRows;
+      await assertOrdinaryProjectPresetBindingRefs(currentBindings);
       const sections = await prisma.projectSection.findMany({
-        where: { projectId },
+        where: {
+          projectId,
+          project: buildGenerationProjectWhere({ id: projectId }),
+        },
         orderBy: { sortOrder: "asc" },
         select: { id: true },
       });
@@ -406,14 +460,23 @@ export async function applyParamToAllSections(
     }
 
     const result = await prisma.projectSection.updateMany({
-      where: { projectId },
+      where: {
+        projectId,
+        project: buildGenerationProjectWhere({ id: projectId }),
+      },
       data,
     });
 
     safeRevalidatePath(`/projects/${projectId}`);
     return { ok: true, count: result.count };
   } catch (e) {
-    console.error("Failed to apply param to all sections:", e);
-    return { ok: false, count: 0, error: "应用失败" };
+    if (!(e instanceof PresetResourceScopeError)) {
+      console.error("Failed to apply param to all sections:", e);
+    }
+    return {
+      ok: false,
+      count: 0,
+      error: e instanceof Error ? e.message : "应用失败",
+    };
   }
 }

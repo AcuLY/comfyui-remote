@@ -1,14 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
 import {
-  deleteManagedTrainingImageResult,
-  mapTrainingProjectError,
-  updateManagedTrainingImageResult,
-} from "@/server/services/training/project-service";
-import {
-  mapCharacterLoraPhase3Error,
-  reviewCharacterLoraImages,
-  updateCharacterLoraImageCaption,
-} from "@/server/services/character-lora-training/phase3-service";
+  deleteTrainingImageResultRecord,
+  mapTrainingGenerationOutputError,
+  patchTrainingImageResultRecord,
+} from "@/server/services/training/generation-output-service";
 
 export const dynamic = "force-dynamic";
 
@@ -28,40 +23,13 @@ export async function PATCH(
 
   try {
     const { imageResultId } = await params;
-    const managed = await updateManagedTrainingImageResult(imageResultId, {
+    const data = await patchTrainingImageResultRecord(imageResultId, {
       reviewStatus: typeof payload.reviewStatus === "string" ? String(payload.reviewStatus) : undefined,
       captionDraft: typeof payload.captionDraft === "string" ? payload.captionDraft : null,
     });
-    if (managed) {
-      return ok(managed);
-    }
-    const operations: unknown[] = [];
-
-    if (typeof payload.captionDraft === "string") {
-      operations.push(updateCharacterLoraImageCaption(imageResultId, { captionDraft: payload.captionDraft }));
-    }
-
-    if (typeof payload.reviewStatus === "string") {
-      operations.push(reviewCharacterLoraImages({
-        images: [
-          {
-            imageId: imageResultId,
-            reviewStatus: payload.reviewStatus,
-          },
-        ],
-      }));
-    }
-
-    if (operations.length === 0) {
-      return fail("At least one supported field is required", 400, {
-        supportedFields: ["captionDraft", "reviewStatus"],
-      });
-    }
-
-    const data = await Promise.all(operations);
-    return ok(data.length === 1 ? data[0] : data);
+    return ok(data);
   } catch (error) {
-    const mapped = mapCharacterLoraPhase3Error(error);
+    const mapped = mapTrainingGenerationOutputError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
@@ -72,13 +40,10 @@ export async function DELETE(
 ) {
   try {
     const { imageResultId } = await params;
-    const data = await deleteManagedTrainingImageResult(imageResultId);
-    if (!data) {
-      return fail("Training image result not found", 404, { imageResultId });
-    }
+    const data = await deleteTrainingImageResultRecord(imageResultId);
     return ok(data);
   } catch (error) {
-    const mapped = mapTrainingProjectError(error);
+    const mapped = mapTrainingGenerationOutputError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

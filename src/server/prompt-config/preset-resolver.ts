@@ -3,6 +3,8 @@ import {
   joinPromptParts,
   sortBySortOrder,
 } from "./order";
+import { isOrdinaryPresetCategoryType } from "@/lib/actions/preset-resource-scope";
+import { isReservedTrainingResourceNotes } from "@/server/repositories/generation-resource-boundary";
 import type {
   LoraBinding,
   MissingReference,
@@ -28,6 +30,15 @@ const emptyResolvedVariant = (missingReferences: MissingReference[] = []): Resol
   lora2: [],
   missingReferences,
 });
+
+function isOrdinaryPresetVariantRow(variant: PresetVariantRow) {
+  const categoryType = variant.preset?.category?.type;
+  const presetNotes = variant.preset?.notes;
+  return (
+    (categoryType === undefined || categoryType === null || isOrdinaryPresetCategoryType(categoryType))
+    && !isReservedTrainingResourceNotes(presetNotes)
+  );
+}
 
 function isLoraBinding(value: unknown): value is LoraBinding {
   return (
@@ -80,10 +91,18 @@ export async function loadReachablePresetVariantGraph(
           lora2: true,
           sortOrder: true,
           isActive: true,
+          preset: {
+            select: {
+              notes: true,
+              category: {
+                select: { type: true },
+              },
+            },
+          },
         },
       });
 
-      if (!variant) {
+      if (!variant || !isOrdinaryPresetVariantRow(variant)) {
         missingVariantIds.add(currentVariantId);
         continue;
       }
@@ -164,7 +183,7 @@ export function resolvePresetVariantContentFromRows(
     visited.add(currentVariantId);
 
     const variant = variantsById.get(currentVariantId);
-    if (!variant || variant.isActive === false) {
+    if (!variant || variant.isActive === false || !isOrdinaryPresetVariantRow(variant)) {
       return emptyResolvedVariant([{ kind: "presetVariant", id: currentVariantId }]);
     }
 

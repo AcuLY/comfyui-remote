@@ -1,7 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
-import { getTrainingSectionContext, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
   deleteTrainingProjectSection,
+  getTrainingSection,
+  getTrainingSectionProjectContext,
   mapTrainingProjectSectionError,
   upsertTrainingProjectSection,
 } from "@/server/services/training/project-section-service";
@@ -15,10 +16,11 @@ export const dynamic = "force-dynamic";
 export async function GET(_request: Request, context: RouteContext) {
   try {
     const { sectionId } = await context.params;
-    const { section } = await getTrainingSectionContext(sectionId);
-    return ok(section);
+    const projectId = new URL(_request.url).searchParams.get("projectId");
+    const data = await getTrainingSection(sectionId, projectId);
+    return ok(data);
   } catch (error) {
-    const mapped = mapTrainingReadError(error);
+    const mapped = mapTrainingProjectSectionError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }
@@ -33,15 +35,11 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   try {
     const { sectionId } = await context.params;
-    const { project } = await getTrainingSectionContext(sectionId);
-    await upsertTrainingProjectSection(project.id, sectionId, body, project.sections);
-    const { section: updatedSection } = await getTrainingSectionContext(sectionId);
-    return ok(updatedSection);
+    const projectId = new URL(request.url).searchParams.get("projectId");
+    const sectionContext = await getTrainingSectionProjectContext(sectionId, projectId);
+    const data = await upsertTrainingProjectSection(sectionContext.projectId, sectionId, body);
+    return ok(data);
   } catch (error) {
-    if (error instanceof Error && error.name === "TrainingReadServiceError") {
-      const mapped = mapTrainingReadError(error);
-      return fail(mapped.message, mapped.status, mapped.details);
-    }
     const mapped = mapTrainingProjectSectionError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
@@ -50,14 +48,11 @@ export async function PATCH(request: Request, context: RouteContext) {
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
     const { sectionId } = await context.params;
-    const { project } = await getTrainingSectionContext(sectionId);
-    const data = await deleteTrainingProjectSection(project.id, sectionId, project.sections);
+    const projectId = new URL(_request.url).searchParams.get("projectId");
+    const sectionContext = await getTrainingSectionProjectContext(sectionId, projectId);
+    const data = await deleteTrainingProjectSection(sectionContext.projectId, sectionId);
     return ok(data);
   } catch (error) {
-    if (error instanceof Error && error.name === "TrainingReadServiceError") {
-      const mapped = mapTrainingReadError(error);
-      return fail(mapped.message, mapped.status, mapped.details);
-    }
     const mapped = mapTrainingProjectSectionError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }

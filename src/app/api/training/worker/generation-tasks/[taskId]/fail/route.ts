@@ -1,5 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
-import { failManagedGenerationRun, mapTrainingProjectError } from "@/server/services/training/project-service";
+import { failGenerationTaskWorkerTarget, mapTrainingWorkerTaskError } from "@/server/worker/training/task-api";
 
 export const dynamic = "force-dynamic";
 
@@ -19,15 +19,13 @@ export async function POST(
   try {
     const { taskId } = await params;
     const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
-    const data = await failManagedGenerationRun(taskId, {
-      errorSummary: typeof payload.errorSummary === "string" ? payload.errorSummary : null,
-    });
+    const data = await failGenerationTaskWorkerTarget(taskId, payload);
     if (!data) {
       return fail("Training generation task not found", 404, { taskId });
     }
     return ok(data);
   } catch (error) {
-    const mapped = mapTrainingProjectError(error);
+    const mapped = mapTrainingWorkerTaskError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

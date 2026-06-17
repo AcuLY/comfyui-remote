@@ -1,9 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
-import { cancelManagedTrainingRun, mapTrainingProjectError } from "@/server/services/training/project-service";
 import {
   cancelTrainingRun,
-  mapCharacterLoraTrainingError,
-} from "@/server/services/character-lora-training/training-service";
+  mapTrainingRunMutationError,
+} from "@/server/services/training/project-actions-service";
 
 export const dynamic = "force-dynamic";
 
@@ -22,18 +21,10 @@ export async function POST(
 
   try {
     const { trainingRunId } = await params;
-    const managed = await cancelManagedTrainingRun(trainingRunId);
-    if (managed) {
-      return ok(managed);
-    }
     const data = await cancelTrainingRun(trainingRunId, body);
     return ok(data);
   } catch (error) {
-    const managedMapped = mapTrainingProjectError(error);
-    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
-      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
-    }
-    const mapped = mapCharacterLoraTrainingError(error);
+    const mapped = mapTrainingRunMutationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

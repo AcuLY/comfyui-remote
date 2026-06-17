@@ -23,6 +23,12 @@ import {
 } from "lucide-react";
 
 import type { DemoData, DemoSection } from "../data";
+import type {
+  HeaderAction,
+  HeaderActionTone,
+  HeaderSpec,
+  HeaderSpecSection,
+} from "@/components/design-demo-shell/header-types";
 import { buildLoraTrainingDemoData } from "../data/lora-training";
 import type {
   LoraTrainingDatasetRevision,
@@ -48,35 +54,12 @@ import {
 } from "./";
 import type { RouteIcon, RouteKey } from "./";
 
-export type HeaderActionTone = "default" | "primary" | "pink" | "danger" | "subtle";
-
-export type HeaderAction = {
-  href?: string;
-  icon: RouteIcon;
-  label: string;
-  tone?: HeaderActionTone;
-};
-
-export type HeaderSpec = {
-  key: string;
-  route: string;
-  group: string;
-  eyebrow: string;
-  title: string;
-  subtitle?: string;
-  back?: {
-    href: string;
-    label: string;
-  };
-  actions?: HeaderAction[];
-  meta?: string[];
-  status?: string;
-};
-
-export type HeaderSpecSection = {
-  label: string;
-  specs: HeaderSpec[];
-};
+export type {
+  HeaderAction,
+  HeaderActionTone,
+  HeaderSpec,
+  HeaderSpecSection,
+} from "@/components/design-demo-shell/header-types";
 
 const section = (label: string, specs: HeaderSpec[]): HeaderSpecSection => ({ label, specs });
 

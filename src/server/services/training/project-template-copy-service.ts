@@ -1,18 +1,34 @@
 import { z } from "zod";
-import { buildLoraTrainingDemoData } from "@/app/design-demos/data/lora-training";
 import type {
   LoraTrainingProject,
   LoraTrainingTemplate,
-} from "@/app/design-demos/data/lora-training-types";
-import { loadTrainingRouteData } from "@/app/training/load-training-route-data";
+} from "@/features/training/types";
 import {
-  createManagedTrainingProject,
+  createTrainingProject,
   mapTrainingProjectError,
-} from "@/server/services/training/project-service";
+} from "@/server/services/training/project-actions-service";
+import { loadTrainingSnapshot } from "@/server/services/training/snapshot-service";
 import {
-  createManagedTrainingTemplate,
+  createTrainingTemplate,
   mapTrainingTemplateError,
 } from "@/server/services/training/template-service";
+
+const templateProjectSectionBlockSchema = z.object({
+  id: z.string().trim().min(1).optional(),
+  source: z.enum(["预制", "本地"]).optional(),
+  title: z.string().trim().min(1).max(160),
+  text: z.string().trim().min(1).max(20_000),
+}).strict();
+
+const templateProjectSectionOverrideSchema = z.object({
+  id: z.string().trim().min(1),
+  title: z.string().trim().min(1).max(160),
+  enabled: z.boolean(),
+  blockCount: z.coerce.number().int().min(0).optional(),
+  blocks: z.array(templateProjectSectionBlockSchema).default([]),
+  resolvedScene: z.string().trim().min(1).max(20_000),
+  scenePreview: z.string().trim().min(1).max(20_000),
+}).strict();
 
 const createProjectFromTemplateSchema = z.object({
   title: z.string().trim().min(1).max(160).optional(),
@@ -28,6 +44,7 @@ const createProjectFromTemplateSchema = z.object({
   perSectionImageCount: z.string().trim().max(32).optional(),
   trainingSteps: z.string().trim().max(32).optional(),
   selectedReferenceIds: z.array(z.string().trim().min(1)).optional().default([]),
+  sections: z.array(templateProjectSectionOverrideSchema).optional(),
   trainingDefaults: z.object({
     autoGenerateSamples: z.boolean().optional().default(true),
     autoFreezeDataset: z.boolean().optional().default(true),
@@ -68,12 +85,7 @@ export class TrainingProjectTemplateCopyServiceError extends Error {
   }
 }
 
-async function loadTrainingSnapshot() {
-  const demoData = await loadTrainingRouteData();
-  return buildLoraTrainingDemoData(demoData);
-}
-
-function findTemplate(snapshot: ReturnType<typeof buildLoraTrainingDemoData>, templateId: string) {
+function findTemplate(snapshot: Awaited<ReturnType<typeof loadTrainingSnapshot>>, templateId: string) {
   const template = snapshot.templates.find((item) => item.id === templateId);
   if (!template) {
     throw new TrainingProjectTemplateCopyServiceError("Training template not found", 404, { templateId });
@@ -81,7 +93,7 @@ function findTemplate(snapshot: ReturnType<typeof buildLoraTrainingDemoData>, te
   return template;
 }
 
-function findProject(snapshot: ReturnType<typeof buildLoraTrainingDemoData>, projectId: string) {
+function findProject(snapshot: Awaited<ReturnType<typeof loadTrainingSnapshot>>, projectId: string) {
   const project = snapshot.projects.find((item) => item.id === projectId);
   if (!project) {
     throw new TrainingProjectTemplateCopyServiceError("Training project not found", 404, { projectId });
@@ -147,7 +159,7 @@ export async function createTrainingProjectFromTemplate(templateId: string, inpu
   const title = deriveProjectTitle(template, parsed.data);
 
   try {
-    return await createManagedTrainingProject({
+    return await createTrainingProject({
       title,
       characterName: parsed.data.characterName?.trim() || title,
       projectName: parsed.data.projectName?.trim() || title,
@@ -162,7 +174,7 @@ export async function createTrainingProjectFromTemplate(templateId: string, inpu
       perSectionImageCount: parsed.data.perSectionImageCount,
       trainingSteps: parsed.data.trainingSteps,
       selectedReferenceIds: parsed.data.selectedReferenceIds,
-      sections: mapTemplateSectionsToProjectSections(template),
+      sections: parsed.data.sections?.length ? parsed.data.sections : mapTemplateSectionsToProjectSections(template),
       trainingDefaults: parsed.data.trainingDefaults,
     });
   } catch (error) {
@@ -201,7 +213,7 @@ export async function saveTrainingProjectAsTemplate(projectId: string, input: un
   })) ?? mapProjectSectionsToTemplateSections(project);
 
   try {
-    return await createManagedTrainingTemplate({
+    return await createTrainingTemplate({
       title,
       description: parsed.data.description ?? `从训练项目 ${project.title} 保存为模板。`,
       imageGuidance: parsed.data.imageGuidance ?? project.usagePrompt ?? "",

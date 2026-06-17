@@ -3,9 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { rm } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { cleanupProjectSectionFiles } from "@/server/services/section-cleanup-service";
 import { isPathInsideDirectory, resolveDataPath, resolveProjectPath } from "@/server/services/runtime-data-path";
 import { createBindingId } from "./_helpers";
+import {
+  assertOrdinaryPresetLibraryBindingRefs,
+  assertOrdinaryProjectPresetBindingRefs,
+} from "./preset-resource-scope";
 import { importPresetGroupToSection, importPresetToSection } from "./prompt-block";
 import { switchBindingVariant } from "./prompt-block";
 
@@ -59,8 +64,8 @@ function safeRevalidatePath(path: string) {
 
 export async function addSection(projectId: string, name?: string, folderId?: string | null): Promise<string> {
   // 获取项目信息以创建初始 PromptBlocks
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       id: true,
       presetBindingRows: {
@@ -80,9 +85,14 @@ export async function addSection(projectId: string, name?: string, folderId?: st
   });
 
   if (!project) throw new Error("PROJECT_NOT_FOUND");
+  await assertOrdinaryProjectPresetBindingRefs(project.presetBindingRows);
   if (folderId) {
     const folder = await prisma.projectSectionFolder.findFirst({
-      where: { id: folderId, projectId },
+      where: {
+        id: folderId,
+        projectId,
+        project: buildGenerationProjectWhere({ id: projectId }),
+      },
       select: { id: true },
     });
     if (!folder) throw new Error("SECTION_FOLDER_NOT_FOUND");
@@ -239,14 +249,20 @@ export async function createSectionFromTemplate(
 // ---------------------------------------------------------------------------
 
 export async function renameSection(sectionId: string, name: string): Promise<void> {
-  const section = await prisma.projectSection.findUnique({
-    where: { id: sectionId },
+  const section = await prisma.projectSection.findFirst({
+    where: {
+      id: sectionId,
+      project: buildGenerationProjectWhere(),
+    },
     select: { projectId: true },
   });
   if (!section) return;
 
-  await prisma.projectSection.update({
-    where: { id: sectionId },
+  await prisma.projectSection.updateMany({
+    where: {
+      id: sectionId,
+      project: buildGenerationProjectWhere(),
+    },
     data: { name: name.trim() || null },
   });
 
@@ -262,6 +278,7 @@ export async function reorderSections(projectId: string, sectionIds: string[]): 
   const runningCount = await prisma.run.count({
     where: {
       projectId: projectId,
+      project: buildGenerationProjectWhere({ id: projectId }),
       status: { in: ["queued", "running"] },
     },
   });
@@ -272,8 +289,12 @@ export async function reorderSections(projectId: string, sectionIds: string[]): 
   // 1. 批量更新 sortOrder
   await prisma.$transaction(
     sectionIds.map((id, index) =>
-      prisma.projectSection.update({
-        where: { id },
+      prisma.projectSection.updateMany({
+        where: {
+          id,
+          projectId,
+          project: buildGenerationProjectWhere({ id: projectId }),
+        },
         data: { sortOrder: index + 1 },
       }),
     ),
@@ -288,8 +309,11 @@ export async function reorderSections(projectId: string, sectionIds: string[]): 
 // ---------------------------------------------------------------------------
 
 export async function copySection(sectionId: string): Promise<string | null> {
-  const section = await prisma.projectSection.findUnique({
-    where: { id: sectionId },
+  const section = await prisma.projectSection.findFirst({
+    where: {
+      id: sectionId,
+      project: buildGenerationProjectWhere(),
+    },
     include: {
       presetBindingRows: {
         orderBy: { sortOrder: "asc" },
@@ -304,12 +328,14 @@ export async function copySection(sectionId: string): Promise<string | null> {
   });
 
   if (!section) return null;
+  await assertOrdinaryPresetLibraryBindingRefs(section.presetBindingRows);
 
   const newSection = await prisma.$transaction(async (tx) => {
     const insertSortOrder = section.sortOrder + 1;
     await tx.projectSection.updateMany({
       where: {
         projectId: section.projectId,
+        project: buildGenerationProjectWhere({ id: section.projectId }),
         sortOrder: { gt: section.sortOrder },
       },
       data: { sortOrder: { increment: 1 } },
@@ -400,8 +426,11 @@ export async function copySection(sectionId: string): Promise<string | null> {
 // ---------------------------------------------------------------------------
 
 export async function deleteSection(sectionId: string): Promise<void> {
-  const section = await prisma.projectSection.findUnique({
-    where: { id: sectionId },
+  const section = await prisma.projectSection.findFirst({
+    where: {
+      id: sectionId,
+      project: buildGenerationProjectWhere(),
+    },
     select: {
       id: true,
       projectId: true,
@@ -421,8 +450,11 @@ export async function deleteSection(sectionId: string): Promise<void> {
   }
 
   // Then delete from database (cascade handles runs, images, blocks)
-  await prisma.projectSection.delete({
-    where: { id: sectionId },
+  await prisma.projectSection.deleteMany({
+    where: {
+      id: sectionId,
+      project: buildGenerationProjectWhere(),
+    },
   });
 
   revalidatePath(`/projects/${section.projectId}`);
@@ -437,7 +469,10 @@ export async function deleteSections(sectionIds: string[]): Promise<void> {
 
   // Get projectIds and fetch all section data for cleanup
   const sections = await prisma.projectSection.findMany({
-    where: { id: { in: sectionIds } },
+    where: {
+      id: { in: sectionIds },
+      project: buildGenerationProjectWhere(),
+    },
     select: {
       id: true,
       projectId: true,
@@ -471,7 +506,10 @@ export async function deleteSections(sectionIds: string[]): Promise<void> {
 
   // Cascade delete handles PromptBlocks automatically
   await prisma.projectSection.deleteMany({
-    where: { id: { in: sectionIds } },
+    where: {
+      id: { in: sections.map((section) => section.id) },
+      project: buildGenerationProjectWhere(),
+    },
   });
 
   // Revalidate unique project paths
@@ -494,10 +532,33 @@ export type ClearSectionsPreview = {
 
 export async function getClearSectionsPreview(projectId: string): Promise<ClearSectionsPreview> {
   const [sectionCount, runCount, imageCount, activeRunCount] = await Promise.all([
-    prisma.projectSection.count({ where: { projectId } }),
-    prisma.run.count({ where: { projectId } }),
-    prisma.imageResult.count({ where: { run: { projectId } } }),
-    prisma.run.count({ where: { projectId, status: { in: ["queued", "running"] } } }),
+    prisma.projectSection.count({
+      where: {
+        projectId,
+        project: buildGenerationProjectWhere({ id: projectId }),
+      },
+    }),
+    prisma.run.count({
+      where: {
+        projectId,
+        project: buildGenerationProjectWhere({ id: projectId }),
+      },
+    }),
+    prisma.imageResult.count({
+      where: {
+        run: {
+          projectId,
+          project: buildGenerationProjectWhere({ id: projectId }),
+        },
+      },
+    }),
+    prisma.run.count({
+      where: {
+        projectId,
+        project: buildGenerationProjectWhere({ id: projectId }),
+        status: { in: ["queued", "running"] },
+      },
+    }),
   ]);
 
   return {
@@ -518,8 +579,8 @@ export type ClearAllSectionsResult =
 
 export async function clearAllSections(projectId: string): Promise<ClearAllSectionsResult> {
   // 1. Query project with sections and runs
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       id: true,
       slug: true,
@@ -548,7 +609,13 @@ export async function clearAllSections(projectId: string): Promise<ClearAllSecti
 
   // 4. Delete trash records for this project's images
   const trashedImages = await prisma.imageResult.findMany({
-    where: { run: { projectId }, reviewStatus: "trashed" },
+    where: {
+      run: {
+        projectId,
+        project: buildGenerationProjectWhere({ id: projectId }),
+      },
+      reviewStatus: "trashed",
+    },
     select: { trashRecord: { select: { id: true, trashPath: true } } },
   });
   const trashRecordIds: string[] = [];
@@ -573,14 +640,24 @@ export async function clearAllSections(projectId: string): Promise<ClearAllSecti
   }
 
   // 5. Delete all sections (cascade handles runs/images/promptBlocks)
-  const deleteResult = await prisma.projectSection.deleteMany({ where: { projectId } });
+  const deleteResult = await prisma.projectSection.deleteMany({
+    where: {
+      projectId,
+      project: buildGenerationProjectWhere({ id: projectId }),
+    },
+  });
 
   // 6. Also delete section folders for this project
-  await prisma.projectSectionFolder.deleteMany({ where: { projectId } });
+  await prisma.projectSectionFolder.deleteMany({
+    where: {
+      projectId,
+      project: buildGenerationProjectWhere({ id: projectId }),
+    },
+  });
 
   // 7. Reset project status to draft
-  await prisma.project.update({
-    where: { id: projectId },
+  await prisma.project.updateMany({
+    where: buildGenerationProjectWhere({ id: projectId }),
     data: { status: "draft" },
   });
 

@@ -4,7 +4,17 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { recordPresetChange } from "@/server/services/preset-change-history-service";
+import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 import { toJsonValue } from "./_helpers";
+import {
+  ORDINARY_PRESET_CATEGORY_TYPE,
+  assertOrdinaryPreset,
+  assertOrdinaryPresetCategory,
+  assertOrdinaryPresetFolder,
+  assertOrdinaryPresetVariant,
+  assertOrdinaryPresetVariants,
+  assertOrdinaryPresets,
+} from "./preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -155,6 +165,7 @@ async function replaceVariantLinks(
   linkedVariants: unknown,
 ) {
   const refs = normalizeLinkedVariantRefs(linkedVariants);
+  await assertOrdinaryPresetVariants(refs.map((ref) => ref.variantId));
 
   await tx.presetVariantLink.deleteMany({ where: { sourceVariantId } });
   if (refs.length === 0) return refs;
@@ -245,6 +256,14 @@ function shouldRevalidateProjectPresetUsage(input: Partial<PresetVariantInput>) 
 // ---------------------------------------------------------------------------
 
 export async function createPreset(input: PresetInput) {
+  await assertOrdinaryPresetCategory(input.categoryId);
+  if (input.folderId) {
+    const folder = await assertOrdinaryPresetFolder(input.folderId);
+    if (folder.categoryId !== input.categoryId) {
+      throw new Error("Ordinary preset folder does not belong to the selected category");
+    }
+  }
+
   if (input.sortOrder === undefined) {
     const maxOrder = await prisma.preset.aggregate({
       where: { categoryId: input.categoryId },
@@ -278,6 +297,7 @@ export async function createPreset(input: PresetInput) {
 }
 
 export async function copyPreset(presetId: string) {
+  await assertOrdinaryPreset(presetId);
   const source = await prisma.preset.findUnique({
     where: { id: presetId },
     include: {
@@ -376,7 +396,14 @@ export async function copyPreset(presetId: string) {
     }
 
     const sourceLinks = await tx.presetVariantLink.findMany({
-      where: { sourceVariantId: { in: source.variants.map((variant) => variant.id) } },
+      where: {
+        sourceVariantId: { in: source.variants.map((variant) => variant.id) },
+        linkedVariant: {
+          preset: buildGenerationPresetWhere({
+            category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+          }),
+        },
+      },
       select: { sourceVariantId: true, linkedVariantId: true, sortOrder: true },
       orderBy: { sortOrder: "asc" },
     });
@@ -418,6 +445,7 @@ export async function copyPreset(presetId: string) {
 }
 
 export async function createPresetVariant(input: PresetVariantInput) {
+  await assertOrdinaryPreset(input.presetId);
   const { lora1, lora2, linkedVariants, ...rest } = input;
   if (rest.sortOrder === undefined) {
     const maxOrder = await prisma.presetVariant.aggregate({
@@ -450,6 +478,7 @@ export async function createPresetVariant(input: PresetVariantInput) {
 }
 
 export async function upsertPresetVariantBySlug(input: PresetVariantInput) {
+  await assertOrdinaryPreset(input.presetId);
   const existing = await prisma.presetVariant.findUnique({
     where: {
       presetId_slug: {
@@ -502,6 +531,17 @@ export async function upsertPresetVariantBySlug(input: PresetVariantInput) {
 }
 
 export async function updatePreset(id: string, input: Partial<PresetInput>) {
+  const current = await assertOrdinaryPreset(id);
+  if (input.categoryId) {
+    await assertOrdinaryPresetCategory(input.categoryId);
+  }
+  if (input.folderId) {
+    const folder = await assertOrdinaryPresetFolder(input.folderId);
+    if (folder.categoryId !== (input.categoryId ?? current.categoryId)) {
+      throw new Error("Ordinary preset folder does not belong to the selected category");
+    }
+  }
+
   const preset = await prisma.preset.update({ where: { id }, data: presetData(input) });
   if (
     input.name !== undefined ||
@@ -516,6 +556,11 @@ export async function updatePreset(id: string, input: Partial<PresetInput>) {
 }
 
 export async function updatePresetVariant(id: string, input: Partial<PresetVariantInput>) {
+  await assertOrdinaryPresetVariant(id);
+  if (input.presetId) {
+    await assertOrdinaryPreset(input.presetId);
+  }
+
   const before = await prisma.presetVariant.findUnique({ where: { id } });
   const { lora1, lora2, linkedVariants, ...rest } = input;
   const beforeLinked = before
@@ -557,6 +602,7 @@ export async function updatePresetVariant(id: string, input: Partial<PresetVaria
 }
 
 export async function deletePreset(id: string) {
+  await assertOrdinaryPreset(id);
   // Soft delete: set isActive = false
   await prisma.preset.update({ where: { id }, data: { isActive: false } });
   revalidatePath("/assets/presets");
@@ -564,6 +610,7 @@ export async function deletePreset(id: string) {
 }
 
 export async function deletePresetVariant(id: string) {
+  await assertOrdinaryPresetVariant(id);
   // Soft delete: set isActive = false
   const before = await prisma.presetVariant.findUnique({ where: { id } });
   const variant = await prisma.presetVariant.update({ where: { id }, data: { isActive: false } });
@@ -586,6 +633,8 @@ export async function deletePresetVariant(id: string) {
 // ---------------------------------------------------------------------------
 
 export async function reorderPresets(categoryId: string, ids: string[]) {
+  await assertOrdinaryPresetCategory(categoryId);
+  await assertOrdinaryPresets(ids);
   await prisma.$transaction(
     ids.map((id, index) =>
       prisma.preset.update({ where: { id, categoryId }, data: { sortOrder: index } }),
@@ -595,6 +644,8 @@ export async function reorderPresets(categoryId: string, ids: string[]) {
 }
 
 export async function reorderPresetVariants(presetId: string, ids: string[]) {
+  await assertOrdinaryPreset(presetId);
+  await assertOrdinaryPresetVariants(ids);
   const before = await prisma.presetVariant.findMany({
     where: { presetId, id: { in: ids } },
     orderBy: { sortOrder: "asc" },

@@ -30,7 +30,12 @@ import {
 import type { DemoData } from "../data/types";
 import { firstGroup, firstPreset, firstProject, firstRun, firstSection, firstTemplate } from "../data/selectors";
 import { buildLoraTrainingDemoData } from "../data/lora-training";
-import { rawSectionId } from "../shared/media/image-status";
+import { rawSectionId } from "@/components/design-demo-ui/media/image-status";
+import {
+  buildWorkModeResourceTargetList,
+  type WorkModeResourceKey,
+  type WorkModeResourceTarget,
+} from "@/lib/work-mode-resources";
 import type { Match, NavLinkDef, RouteDef } from "./types";
 import { SHOWCASE_ROUTE_METADATA } from "./showcase-routes";
 import type { ShowcaseFamilyId } from "./showcase-routes";
@@ -118,42 +123,57 @@ export type DesignDemoWorkMode = "generation" | "lora_training";
 export const WORK_MODE_STORAGE_KEY = "comfyui-manager:work-mode";
 export const WORK_MODE_CHANGE_EVENT = "comfyui-manager:work-mode-change";
 
-type ModeAwareLinkConfig = {
-  generation: Pick<NavLinkDef, "href" | "count">;
-  icon: RouteDef["icon"];
-  label: string;
-  lora_training: Pick<NavLinkDef, "href" | "activePrefix" | "count">;
+const RESOURCE_LINK_ICONS: Record<WorkModeResourceKey, RouteDef["icon"]> = {
+  runs: ClipboardList,
+  projects: FolderTree,
+  presets: Tags,
+  templates: FileText,
+  models: Database,
+  settings: Settings,
 };
 
-const MODE_AWARE_RESOURCE_LINKS: ModeAwareLinkConfig[] = [
-  {
-    label: "运行",
-    icon: ClipboardList,
-    generation: { href: "/runs", count: (data) => data.runs.length },
-    lora_training: { href: "/training/runs", activePrefix: "/training/runs", count: (data) => buildLoraTrainingDemoData(data).runs.length },
-  },
-  {
-    label: "项目",
-    icon: FolderTree,
-    generation: { href: "/projects", count: (data) => data.projects.length },
-    lora_training: { href: "/training/projects", activePrefix: "/training/projects", count: (data) => buildLoraTrainingDemoData(data).projects.length },
-  },
-  {
-    label: "预制",
-    icon: Tags,
-    generation: { href: "/presets", count: (data) => data.metrics.presets },
-    lora_training: { href: "/training/presets", activePrefix: "/training/presets", count: (data) => buildLoraTrainingDemoData(data).presets.length },
-  },
-  {
-    label: "模板",
-    icon: FileText,
-    generation: { href: "/templates", count: (data) => data.templates.length },
-    lora_training: { href: "/training/templates", activePrefix: "/training/templates", count: (data) => buildLoraTrainingDemoData(data).templates.length },
-  },
-];
+function resourceLinkCount(key: WorkModeResourceKey, workMode: DesignDemoWorkMode): NavLinkDef["count"] | undefined {
+  switch (key) {
+    case "runs":
+      return workMode === "generation" ? (data) => data.runs.length : (data) => buildLoraTrainingDemoData(data).runs.length;
+    case "projects":
+      return workMode === "generation" ? (data) => data.projects.length : (data) => buildLoraTrainingDemoData(data).projects.length;
+    case "presets":
+      return workMode === "generation" ? (data) => data.metrics.presets : (data) => buildLoraTrainingDemoData(data).presets.length;
+    case "templates":
+      return workMode === "generation" ? (data) => data.templates.length : (data) => buildLoraTrainingDemoData(data).templates.length;
+    case "models":
+      return (data) => data.models.length;
+    case "settings":
+      return undefined;
+  }
+}
 
-const GENERATION_ROUTE_PREFIXES = ["/runs", "/projects", "/presets", "/templates"] as const;
-const LORA_TRAINING_ROUTE_PREFIXES = ["/training/runs", "/training/projects", "/training/presets", "/training/templates"] as const;
+function resourceLinkGroup(target: WorkModeResourceTarget) {
+  if (target.key === "settings") return "系统";
+  if (target.owner === "shared") return "资源";
+  return "工作区";
+}
+
+function resourceHrefForDemoShell(target: WorkModeResourceTarget) {
+  return target.owner === "generation" ? normalizeProductRoute(target.href) : target.href;
+}
+
+function resourceActivePrefixForDemoShell(target: WorkModeResourceTarget, href: string): NavLinkDef["activePrefix"] | undefined {
+  const prefixes = Array.isArray(target.activePrefix) ? target.activePrefix : [target.activePrefix ?? target.href];
+  const normalizedPrefixes = prefixes.map((prefix) => normalizeProductRoute(prefix));
+  const combined = [...new Set([...prefixes, ...normalizedPrefixes])];
+  if (target.activePrefix) return combined.length === 1 ? combined[0] : combined;
+  if (combined.length === 1 && combined[0] === href) return undefined;
+  return combined;
+}
+
+const GENERATION_ROUTE_PREFIXES = buildWorkModeResourceTargetList("generation")
+  .filter((target) => target.owner === "generation")
+  .map((target) => normalizeProductRoute(target.href));
+const LORA_TRAINING_ROUTE_PREFIXES = buildWorkModeResourceTargetList("lora_training")
+  .filter((target) => target.owner === "lora_training")
+  .map((target) => target.href);
 
 export function isDesignDemoWorkModeValue(value: string | null): value is DesignDemoWorkMode {
   return value === "generation" || value === "lora_training";
@@ -174,28 +194,20 @@ export function resolveWorkModeForRoute(route: string, storedMode: DesignDemoWor
 }
 
 export function buildWorkModeNavLinks(workMode: DesignDemoWorkMode): NavLinkDef[] {
-  const resourceLinks = MODE_AWARE_RESOURCE_LINKS.map((link) => ({
-    ...link[workMode],
-    label: link.label,
-    group: "工作区",
-    icon: link.icon,
-  }));
-  const sharedResourceLinks: NavLinkDef[] = workMode === "generation"
-    ? [{
-        href: "/models",
-        label: "模型",
-        group: "资源",
-        icon: Database,
-        count: (data) => data.models.length,
-        activePrefix: ["/models", "/loras"],
-      }]
-    : [];
+  return buildWorkModeResourceTargetList(workMode).map((target) => {
+    const href = resourceHrefForDemoShell(target);
+    const activePrefix = resourceActivePrefixForDemoShell(target, href);
+    const count = resourceLinkCount(target.key, workMode);
 
-  return [
-    ...resourceLinks,
-    ...sharedResourceLinks,
-    { href: "/settings", label: "设置", group: "系统", icon: Settings, activePrefix: "/settings" },
-  ];
+    return {
+      href,
+      label: target.label,
+      group: resourceLinkGroup(target),
+      icon: RESOURCE_LINK_ICONS[target.key],
+      ...(count ? { count } : {}),
+      ...(activePrefix ? { activePrefix } : {}),
+    };
+  });
 }
 
 export const NAV_LINKS: NavLinkDef[] = buildWorkModeNavLinks("generation");

@@ -4,8 +4,8 @@ import { useState, useRef, useMemo } from "react";
 import type * as React from "react";
 import { AlertCircle } from "lucide-react";
 
-import { FloatingSelect } from "../../../shared/primitives/floating-select";
-import { SegmentedControl } from "../../../shared/primitives/segmented-control";
+import { FloatingSelect } from "@/components/design-demo-ui/primitives/floating-select";
+import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
 import s from "./editor-controls.module.css";
 import { cx } from "../../../routing";
 export type SectionTabValue = "params" | "presets" | "prompts" | "lora" | "history" | "results";

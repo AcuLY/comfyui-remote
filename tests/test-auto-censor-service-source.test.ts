@@ -55,7 +55,8 @@ test("censoring service rechecks running task state after auto-censor before per
 
   assert.match(source, /taskId\?:\s*string/);
   assert.match(source, /persisted:\s*boolean/);
-  assert.match(source, /prisma\.censoringTask\.findUnique/);
+  assert.match(source, /prisma\.censoringTask\.findFirst/);
+  assert.match(source, /project:\s*buildGenerationProjectWhere\(\)/);
   assert.match(source, /status\s*!==\s*"running"/);
   assert.match(source, /persisted:\s*false/);
   assert.match(source, /persisted:\s*true/);

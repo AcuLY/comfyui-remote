@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
+import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,9 +22,16 @@ export type ResolvedVariantContent = {
 
 export async function findPresetIdsAffectedByVariantChange(variantId: string, presetId: string) {
   const variants = await prisma.presetVariant.findMany({
+    where: {
+      preset: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }),
+    },
     select: { id: true, presetId: true },
   });
   const relationLinks = await prisma.presetVariantLink.findMany({
+    where: {
+      sourceVariant: { preset: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }) },
+      linkedVariant: { preset: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }) },
+    },
     select: { sourceVariantId: true, linkedVariantId: true },
   });
   const variantById = new Map(variants.map((variant) => [variant.id, variant]));
@@ -81,7 +90,12 @@ export async function resolveVariantContent(
   if (visited.has(variantId)) return empty;
   visited.add(variantId);
 
-  const variant = await prisma.presetVariant.findUnique({ where: { id: variantId } });
+  const variant = await prisma.presetVariant.findFirst({
+    where: {
+      id: variantId,
+      preset: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }),
+    },
+  });
   if (!variant || !variant.isActive) return empty;
 
   let prompt = variant.prompt;

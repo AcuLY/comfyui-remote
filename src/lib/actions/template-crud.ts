@@ -11,6 +11,16 @@ import {
   type TemplateSectionPromptBlockWrite,
 } from "@/server/prompt-config/template-resolver";
 import { resolveVariantContent } from "./preset-variant";
+import {
+  assertOrdinaryPresetLibraryBindingRefs,
+  ordinaryPresetCategoryTypeWhere,
+} from "./preset-resource-scope";
+import {
+  TRAINING_RESERVED_RESOURCE_WRITE_ERROR,
+  buildGenerationPresetWhere,
+  buildGenerationProjectTemplateWhere,
+  hasReservedTrainingTemplateIdentity,
+} from "@/server/repositories/generation-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -151,6 +161,25 @@ async function replaceTemplateSectionRelationRows(
   await createTemplateSectionRelationRows(tx, rows);
 }
 
+async function assertOrdinaryTemplateSections(sections: readonly ProjectTemplateSectionData[]) {
+  const bindingRows = sections.flatMap((section, index) =>
+    buildTemplateSectionRowsFromSectionData({
+      projectTemplateSectionId: `template-section-validation:${index}`,
+      section,
+    }).presetBindings
+  );
+
+  await assertOrdinaryPresetLibraryBindingRefs(bindingRows);
+}
+
+function assertGenerationTemplateIdentity(
+  name: string | null | undefined,
+  description: string | null | undefined,
+) {
+  if (!hasReservedTrainingTemplateIdentity(name, description)) return;
+  throw new Error(TRAINING_RESERVED_RESOURCE_WRITE_ERROR);
+}
+
 // ---------------------------------------------------------------------------
 // Project Template CRUD
 // ---------------------------------------------------------------------------
@@ -158,6 +187,9 @@ async function replaceTemplateSectionRelationRows(
 export async function createProjectTemplate(
   input: CreateProjectTemplateInput,
 ): Promise<string> {
+  assertGenerationTemplateIdentity(input.name, input.description);
+  await assertOrdinaryTemplateSections(input.sections);
+
   const template = await prisma.$transaction(async (tx) => {
     const createdTemplate = await tx.projectTemplate.create({
       data: {
@@ -190,15 +222,22 @@ export async function updateProjectTemplate(
   input: UpdateProjectTemplateInput,
 ): Promise<void> {
   const { id, sections, ...rest } = input;
+  assertGenerationTemplateIdentity(rest.name, rest.description);
+  if (sections) {
+    await assertOrdinaryTemplateSections(sections);
+  }
 
   await prisma.$transaction(async (tx) => {
-    await tx.projectTemplate.update({
-      where: { id },
+    const updatedTemplate = await tx.projectTemplate.updateMany({
+      where: buildGenerationProjectTemplateWhere({ id }),
       data: {
         ...(rest.name !== undefined ? { name: rest.name } : {}),
         ...(rest.description !== undefined ? { description: rest.description } : {}),
       },
     });
+    if (updatedTemplate.count === 0) {
+      throw new Error("PROJECT_TEMPLATE_NOT_FOUND");
+    }
 
     if (sections) {
       const incomingSectionIds = sections
@@ -255,10 +294,13 @@ export async function updateProjectTemplate(
 export async function updateProjectTemplateSection(
   input: UpdateProjectTemplateSectionInput,
 ): Promise<void> {
+  await assertOrdinaryTemplateSections([input.section]);
+
   const existing = await prisma.projectTemplateSection.findFirst({
     where: {
       id: input.sectionId,
       projectTemplateId: input.templateId,
+      projectTemplate: buildGenerationProjectTemplateWhere({ id: input.templateId }),
     },
     select: { id: true, sortOrder: true },
   });
@@ -285,6 +327,7 @@ export async function deleteProjectTemplateSection(
     where: {
       id: input.sectionId,
       projectTemplateId: input.templateId,
+      projectTemplate: buildGenerationProjectTemplateWhere({ id: input.templateId }),
     },
     select: { id: true, sortOrder: true },
   });
@@ -311,13 +354,21 @@ export async function deleteProjectTemplateSection(
 export async function deleteProjectTemplate(
   templateId: string,
 ): Promise<void> {
-  await prisma.projectTemplate.delete({ where: { id: templateId } });
+  const deleted = await prisma.projectTemplate.deleteMany({
+    where: buildGenerationProjectTemplateWhere({ id: templateId }),
+  });
+  if (deleted.count === 0) {
+    throw new Error("PROJECT_TEMPLATE_NOT_FOUND");
+  }
   safeRevalidatePath("/assets/templates");
 }
 
 export async function copyProjectTemplateSection(sectionId: string): Promise<string | null> {
-  const section = await prisma.projectTemplateSection.findUnique({
-    where: { id: sectionId },
+  const section = await prisma.projectTemplateSection.findFirst({
+    where: {
+      id: sectionId,
+      projectTemplate: buildGenerationProjectTemplateWhere(),
+    },
     include: {
       presetBindingRows: { orderBy: { sortOrder: "asc" } },
       promptBlockRows: { orderBy: { sortOrder: "asc" } },
@@ -326,6 +377,7 @@ export async function copyProjectTemplateSection(sectionId: string): Promise<str
   });
 
   if (!section) return null;
+  await assertOrdinaryPresetLibraryBindingRefs(section.presetBindingRows);
 
   const copied = await prisma.$transaction(async (tx) => {
     const insertSortOrder = section.sortOrder + 1;
@@ -428,6 +480,7 @@ export async function getTemplateOptionsForClient(): Promise<
   Array<{ id: string; name: string; sectionCount: number }>
 > {
   const templates = await prisma.projectTemplate.findMany({
+    where: buildGenerationProjectTemplateWhere(),
     orderBy: { updatedAt: "desc" },
     select: { id: true, name: true, _count: { select: { sections: true } } },
   });
@@ -445,7 +498,10 @@ export async function resolveTemplatePresetImports(
   if (presetIds.length === 0) return [];
 
   const presets = await prisma.preset.findMany({
-    where: { id: { in: presetIds } },
+    where: buildGenerationPresetWhere({
+      id: { in: presetIds },
+      category: { type: ordinaryPresetCategoryTypeWhere() },
+    }),
     include: {
       category: {
         select: {

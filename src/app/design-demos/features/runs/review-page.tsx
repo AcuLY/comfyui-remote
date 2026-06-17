@@ -6,11 +6,11 @@ import { Download, ExternalLink } from "lucide-react";
 import type { DemoData, DemoRun } from "../../data";
 import { filterImages, findProject, findSection, rawSectionId } from "../../routing";
 import type { ResultDemoFilter } from "../../routing";
-import { ButtonLink } from "../../shared/primitives/button";
-import { EmptyPage } from "../../shared/primitives/empty-page";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { SegmentedControl } from "../../shared/primitives/segmented-control";
-import { ReviewImageBoard } from "../../shared/media/review-image-board";
+import { ButtonLink } from "@/components/design-demo-ui/primitives/button";
+import { EmptyPage } from "@/components/design-demo-ui/primitives/empty-page";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
+import { ReviewImageBoard } from "@/components/design-demo-ui/media/review-image-board";
 import { mergeExecutionMeta, ReviewMetaCard } from "./review-meta-card";
 import s from "./review-page.runs.module.css";
 

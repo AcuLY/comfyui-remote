@@ -1,9 +1,9 @@
 import { Home } from "lucide-react";
 
 import s from "./not-found-page.shell.module.css";
-import { ButtonLink } from "../../shared/primitives/button";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { RouteTable } from "../../shared/primitives/route-table";
+import { ButtonLink } from "@/components/design-demo-ui/primitives/button";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { RouteTable } from "@/components/design-demo-ui/primitives/route-table";
 import { fallbackRouteData } from "../../data/fallback-route-data";
 
 export function NotFoundPage({ route }: { route: string }) {

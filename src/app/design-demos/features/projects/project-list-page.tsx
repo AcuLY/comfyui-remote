@@ -7,8 +7,8 @@ import { Folder, Save, X } from "lucide-react";
 import type { DemoData } from "../../data";
 import { cx, demoHref } from "../../routing";
 import s from "./project-list-page.projects.module.css";
-import { Button } from "../../shared/primitives/button";
-import { PageHeader } from "../../shared/primitives/page-header";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
 import {
   ProjectBatchBar,
   ProjectFolderBreadcrumb,

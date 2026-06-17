@@ -1,8 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-
-const TRAINING_RUN_PRESET_STATE_PATH = join(process.cwd(), "data", "training-run-preset-state.json");
-let runPresetStateWriteQueue: Promise<unknown> = Promise.resolve();
+import { prisma } from "@/lib/prisma";
 
 type TrainingRunPresetState = {
   createdAt: string;
@@ -21,51 +17,30 @@ export class TrainingRunPresetStateServiceError extends Error {
   }
 }
 
-async function readRunPresetStateMap() {
-  try {
-    const raw = await readFile(TRAINING_RUN_PRESET_STATE_PATH, "utf8");
-    const parsed = JSON.parse(raw) as unknown;
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return Object.fromEntries(
-        Object.entries(parsed as Record<string, unknown>)
-          .filter(([, value]) => value && typeof value === "object" && !Array.isArray(value))
-          .map(([runId, value]) => {
-            const record = value as Record<string, unknown>;
-            return [
-              runId,
-              {
-                createdAt: typeof record.createdAt === "string" ? record.createdAt : new Date().toISOString(),
-                presetId: typeof record.presetId === "string" ? record.presetId : "",
-              } satisfies TrainingRunPresetState,
-            ];
-          })
-          .filter(([, value]) => value.presetId.length > 0),
-      ) as Record<string, TrainingRunPresetState>;
-    }
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw error;
-    }
-  }
-
-  return {} as Record<string, TrainingRunPresetState>;
-}
-
-async function writeRunPresetStateMap(state: Record<string, TrainingRunPresetState>) {
-  await mkdir(dirname(TRAINING_RUN_PRESET_STATE_PATH), { recursive: true });
-  const tempPath = `${TRAINING_RUN_PRESET_STATE_PATH}.${process.pid}.${Date.now()}.tmp`;
-  await writeFile(tempPath, `${JSON.stringify(state, null, 2)}\n`, "utf8");
-  await rename(tempPath, TRAINING_RUN_PRESET_STATE_PATH);
-}
-
-async function withRunPresetStateWriteLock<T>(fn: () => Promise<T>) {
-  const next = runPresetStateWriteQueue.then(fn, fn);
-  runPresetStateWriteQueue = next.then(() => undefined, () => undefined);
-  return next;
-}
-
 export async function listTrainingRunPresetStates() {
-  return readRunPresetStateMap();
+  const rows = await prisma.trainingRun.findMany({
+    where: {
+      createdPresetId: {
+        not: null,
+      },
+      presetCreatedAt: {
+        not: null,
+      },
+    },
+    select: {
+      createdPresetId: true,
+      id: true,
+      presetCreatedAt: true,
+    },
+  });
+
+  return Object.fromEntries(rows.flatMap((row) => {
+    if (!row.createdPresetId || !row.presetCreatedAt) return [];
+    return [[row.id, {
+      createdAt: row.presetCreatedAt.toISOString(),
+      presetId: row.createdPresetId,
+    } satisfies TrainingRunPresetState]];
+  }));
 }
 
 export async function recordTrainingRunPresetCreation(runId: string, presetId: string) {
@@ -75,27 +50,42 @@ export async function recordTrainingRunPresetCreation(runId: string, presetId: s
     throw new TrainingRunPresetStateServiceError("runId and presetId are required", 400);
   }
 
-  return withRunPresetStateWriteLock(async () => {
-    const current = await readRunPresetStateMap();
-    const existing = current[normalizedRunId];
-    if (existing) {
+  return prisma.$transaction(async (tx) => {
+    const current = await tx.trainingRun.findUnique({
+      where: {
+        id: normalizedRunId,
+      },
+      select: {
+        createdPresetId: true,
+        presetCreatedAt: true,
+      },
+    });
+    if (!current) {
+      throw new TrainingRunPresetStateServiceError("Training run not found", 404, { runId: normalizedRunId });
+    }
+    if (current.createdPresetId || current.presetCreatedAt) {
       throw new TrainingRunPresetStateServiceError("Training run preset already exists", 409, {
-        presetCreatedAt: existing.createdAt,
-        presetId: existing.presetId,
+        presetCreatedAt: current.presetCreatedAt?.toISOString() ?? null,
+        presetId: current.createdPresetId,
         runId: normalizedRunId,
       });
     }
 
-    const createdAt = new Date().toISOString();
-    const next = {
-      ...current,
-      [normalizedRunId]: {
-        createdAt,
-        presetId: normalizedPresetId,
+    const createdAt = new Date();
+    await tx.trainingRun.update({
+      where: {
+        id: normalizedRunId,
       },
+      data: {
+        createdPresetId: normalizedPresetId,
+        presetCreatedAt: createdAt,
+      },
+    });
+
+    return {
+      createdAt: createdAt.toISOString(),
+      presetId: normalizedPresetId,
     };
-    await writeRunPresetStateMap(next);
-    return next[normalizedRunId];
   });
 }
 

@@ -1,21 +1,26 @@
 import { fail, ok } from "@/lib/api-response";
-import { enqueueManagedTrainingSectionGenerationRun, mapTrainingProjectError } from "@/server/services/training/project-service";
-import { listTrainingRuns, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
-  enqueueCharacterLoraSectionGenerationRun,
-  mapCharacterLoraPhase3Error,
-} from "@/server/services/character-lora-training/phase3-service";
+  enqueueTrainingSectionGenerationRun,
+  mapTrainingGenerationRunMutationError,
+} from "@/server/services/training/project-actions-service";
+import { listTrainingGenerationTaskRuns } from "@/server/services/training/generation-task-draft-service";
+import { listTrainingRuns, mapTrainingReadError } from "@/server/services/training/read-service";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ sectionId: string }> },
 ) {
   try {
     const { sectionId } = await params;
-    const data = await listTrainingRuns({ kind: "generation", sectionId });
-    return ok(data);
+    const projectId = new URL(request.url).searchParams.get("projectId") ?? undefined;
+    const data = await listTrainingRuns({ kind: "generation", projectId, sectionId });
+    const taskRuns = projectId
+      ? await listTrainingGenerationTaskRuns(projectId, {}).then((runs) => runs.filter((run) => run.sectionId === sectionId))
+      : [];
+    const mergedRuns = new Map([...data, ...taskRuns].map((run) => [run.id, run]));
+    return ok([...mergedRuns.values()]);
   } catch (error) {
     const mapped = mapTrainingReadError(error);
     return fail(mapped.message, mapped.status, mapped.details);
@@ -37,18 +42,15 @@ export async function POST(
 
   try {
     const { sectionId } = await params;
-    const managed = await enqueueManagedTrainingSectionGenerationRun(sectionId, typeof body === "object" && body ? body as Record<string, unknown> : {});
-    if (managed) {
-      return ok(managed, { status: 201 });
-    }
-    const data = await enqueueCharacterLoraSectionGenerationRun(sectionId, body);
+    const payload = body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {};
+    const queryProjectId = new URL(request.url).searchParams.get("projectId");
+    const data = await enqueueTrainingSectionGenerationRun(sectionId, {
+      ...payload,
+      projectId: typeof payload.projectId === "string" ? payload.projectId : queryProjectId ?? undefined,
+    });
     return ok(data, { status: 201 });
   } catch (error) {
-    const managedMapped = mapTrainingProjectError(error);
-    if (managedMapped.status !== 500 || managedMapped.message !== "Unexpected training project error") {
-      return fail(managedMapped.message, managedMapped.status, managedMapped.details);
-    }
-    const mapped = mapCharacterLoraPhase3Error(error);
+    const mapped = mapTrainingGenerationRunMutationError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

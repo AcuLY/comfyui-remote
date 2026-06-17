@@ -21,6 +21,7 @@ import {
   RUN_CANCELLABLE_STATUSES,
   isRunCancellableStatus,
 } from "@/lib/actions/cancellation-helpers";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 const QUEUE_PAUSE_META_KEY = "__queuePause";
 const RUN_ACTIVE_STATUSES = [...RUN_CANCELLABLE_STATUSES];
@@ -68,12 +69,27 @@ type ResumeAllRunsResult = {
 // Private helpers
 // ---------------------------------------------------------------------------
 
+function buildGenerationRunWhere(where: Prisma.RunWhereInput = {}): Prisma.RunWhereInput {
+  return {
+    AND: [
+      where,
+      { project: buildGenerationProjectWhere() },
+    ],
+  };
+}
+
 async function updateProjectStatusFromActiveRuns(projectId: string) {
-  const activeRuns = await prisma.run.count({
-    where: { projectId, status: { in: RUN_ACTIVE_STATUSES } },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
+    select: { id: true },
   });
-  await prisma.project.update({
-    where: { id: projectId },
+  if (!project) return;
+
+  const activeRuns = await prisma.run.count({
+    where: buildGenerationRunWhere({ projectId, status: { in: RUN_ACTIVE_STATUSES } }),
+  });
+  await prisma.project.updateMany({
+    where: buildGenerationProjectWhere({ id: projectId }),
     data: { status: activeRuns > 0 ? "queued" : "draft" },
   });
 }
@@ -224,8 +240,8 @@ async function cancelComfyPromptForPause(promptId: string) {
 export async function cancelRun(
   runId: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  const run = await prisma.run.findUnique({
-    where: { id: runId },
+  const run = await prisma.run.findFirst({
+    where: buildGenerationRunWhere({ id: runId }),
     select: { id: true, status: true, projectId: true, comfyPromptId: true },
   });
   if (!run) return { ok: false, error: "任务不存在" };
@@ -242,8 +258,8 @@ export async function cancelRun(
     }
   }
 
-  await prisma.run.update({
-    where: { id: runId },
+  await prisma.run.updateMany({
+    where: buildGenerationRunWhere({ id: runId }),
     data: {
       status: "cancelled",
       finishedAt: new Date(),
@@ -262,10 +278,10 @@ export async function cancelRun(
 export async function cancelProjectRuns(projectId: string): Promise<number> {
   // Find all active runs with comfyPromptIds to cancel in ComfyUI
   const activeRuns = await prisma.run.findMany({
-    where: {
+    where: buildGenerationRunWhere({
       projectId,
       status: { in: RUN_ACTIVE_STATUSES },
-    },
+    }),
     select: { id: true, status: true, comfyPromptId: true },
   });
 
@@ -276,10 +292,10 @@ export async function cancelProjectRuns(projectId: string): Promise<number> {
   }
 
   const result = await prisma.run.updateMany({
-    where: {
+    where: buildGenerationRunWhere({
       projectId,
       status: { in: RUN_ACTIVE_STATUSES },
-    },
+    }),
     data: {
       status: "cancelled",
       finishedAt: new Date(),
@@ -300,7 +316,7 @@ export async function clearActiveRuns(): Promise<{
 }> {
   try {
     const activeRuns = await prisma.run.findMany({
-      where: { status: { in: RUN_ACTIVE_STATUSES } },
+      where: buildGenerationRunWhere({ status: { in: RUN_ACTIVE_STATUSES } }),
       select: { id: true, projectId: true, status: true, comfyPromptId: true },
     });
 
@@ -311,7 +327,7 @@ export async function clearActiveRuns(): Promise<{
     }
 
     const result = await prisma.run.updateMany({
-      where: { status: { in: RUN_ACTIVE_STATUSES } },
+      where: buildGenerationRunWhere({ status: { in: RUN_ACTIVE_STATUSES } }),
       data: {
         status: "cancelled",
         finishedAt: new Date(),
@@ -345,7 +361,7 @@ export async function clearRuns(): Promise<{
   try {
     // 1. Find all runs that will be deleted
     const runsToDelete = await prisma.run.findMany({
-      where: { status: { in: ["done", "failed", "cancelled"] } },
+      where: buildGenerationRunWhere({ status: { in: ["done", "failed", "cancelled"] } }),
       include: {
         project: { select: { id: true, slug: true } },
         projectSection: { select: { id: true, sortOrder: true } },
@@ -384,7 +400,7 @@ export async function clearRuns(): Promise<{
 
     // 3. Delete database records (cascade handles images, etc.)
     const result = await prisma.run.deleteMany({
-      where: { status: { in: ["done", "failed", "cancelled"] } },
+      where: buildGenerationRunWhere({ status: { in: ["done", "failed", "cancelled"] } }),
     });
 
     revalidatePath("/queue");
@@ -403,8 +419,8 @@ export async function pauseRun(
   runId: string,
   marker?: QueuePauseMarkerInput,
 ): Promise<{ ok: boolean; error?: string }> {
-  const run = await prisma.run.findUnique({
-    where: { id: runId },
+  const run = await prisma.run.findFirst({
+    where: buildGenerationRunWhere({ id: runId }),
     select: {
       id: true,
       status: true,
@@ -433,8 +449,8 @@ export async function pauseRun(
     }
   }
 
-  await prisma.run.update({
-    where: { id: runId },
+  await prisma.run.updateMany({
+    where: buildGenerationRunWhere({ id: runId }),
     data: {
       status: "paused",
       comfyPromptId: null,
@@ -444,14 +460,14 @@ export async function pauseRun(
 
   // Recalculate project status
   const activeRuns = await prisma.run.count({
-    where: { projectId: run.projectId, status: { in: ["queued", "running"] } },
+    where: buildGenerationRunWhere({ projectId: run.projectId, status: { in: ["queued", "running"] } }),
   });
   if (activeRuns === 0) {
     const pausedRuns = await prisma.run.count({
-      where: { projectId: run.projectId, status: "paused" },
+      where: buildGenerationRunWhere({ projectId: run.projectId, status: "paused" }),
     });
-    await prisma.project.update({
-      where: { id: run.projectId },
+    await prisma.project.updateMany({
+      where: buildGenerationProjectWhere({ id: run.projectId }),
       data: { status: pausedRuns > 0 ? "queued" : "draft" },
     });
   }
@@ -467,8 +483,8 @@ export async function pauseRun(
 export async function resumeRun(
   runId: string,
 ): Promise<{ ok: boolean; error?: string }> {
-  const run = await prisma.run.findUnique({
-    where: { id: runId },
+  const run = await prisma.run.findFirst({
+    where: buildGenerationRunWhere({ id: runId }),
     select: {
       id: true,
       status: true,
@@ -509,8 +525,8 @@ export async function resumeRun(
     return { ok: false, error: `无法连接到 ComfyUI: ${msg}` };
   }
 
-  await prisma.run.update({
-    where: { id: runId },
+  await prisma.run.updateMany({
+    where: buildGenerationRunWhere({ id: runId }),
     data: {
       status: "queued",
       comfyPromptId: newComfyPromptId,
@@ -522,8 +538,8 @@ export async function resumeRun(
   });
 
   // Update project status
-  await prisma.project.update({
-    where: { id: run.projectId },
+  await prisma.project.updateMany({
+    where: buildGenerationProjectWhere({ id: run.projectId }),
     data: { status: "queued" },
   });
 
@@ -550,7 +566,7 @@ export async function pauseAllRuns(
   const batchId = options?.batchId ?? randomUUID();
   try {
     const activeRuns = await prisma.run.findMany({
-      where: { status: { in: ["queued", "running"] } },
+      where: buildGenerationRunWhere({ status: { in: ["queued", "running"] } }),
       select: { id: true },
       orderBy: { createdAt: "asc" },
     });
@@ -605,10 +621,10 @@ export async function resumeAllRuns(
     }
 
     const candidateRuns = await prisma.run.findMany({
-      where: {
+      where: buildGenerationRunWhere({
         status: "paused",
         ...(uniqueRunIds ? { id: { in: uniqueRunIds } } : {}),
-      },
+      }),
       select: { id: true, executionMeta: true },
       orderBy: { createdAt: "asc" },
     });

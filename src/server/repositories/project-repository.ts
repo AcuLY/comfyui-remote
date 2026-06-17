@@ -1,7 +1,9 @@
 import { Prisma } from "@/generated/prisma";
 import { JobStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
+import { assertOrdinaryPresetLibraryBindingRefs } from "@/lib/actions/preset-resource-scope";
 import { detectProvider } from "@/lib/prisma";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import {
   type ProjectUpdateInput,
   type ProjectCreateInput,
@@ -41,7 +43,7 @@ export async function listProjects(filters: ListProjectsFilters = {}) {
       : { contains: value };
 
   const projects = await db.project.findMany({
-    where: {
+    where: buildGenerationProjectWhere({
       ...(filters.status ? { status: filters.status } : {}),
       ...(search
         ? {
@@ -61,7 +63,7 @@ export async function listProjects(filters: ListProjectsFilters = {}) {
             },
           }
         : {}),
-    },
+    }),
     orderBy: { updatedAt: "desc" },
     include: {
       sections: {
@@ -114,8 +116,8 @@ export async function listProjects(filters: ListProjectsFilters = {}) {
 }
 
 export async function getProjectDetail(projectId: string) {
-  const project = await db.project.findUnique({
-    where: { id: projectId },
+  const project = await db.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     include: {
       _count: {
         select: { sections: true },
@@ -186,8 +188,8 @@ export async function getProjectDetail(projectId: string) {
 }
 
 export async function getProjectAgentContext(projectId: string) {
-  const project = await db.project.findUnique({
-    where: { id: projectId },
+  const project = await db.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       id: true,
       title: true,
@@ -311,8 +313,11 @@ export async function getProjectAgentContext(projectId: string) {
 }
 
 export async function getProjectSectionOwner(sectionId: string) {
-  const section = await db.projectSection.findUnique({
-    where: { id: sectionId },
+  const section = await db.projectSection.findFirst({
+    where: {
+      id: sectionId,
+      project: buildGenerationProjectWhere(),
+    },
     select: {
       id: true,
       projectId: true,
@@ -336,6 +341,7 @@ export async function getProjectSectionDetail(projectId: string, sectionId: stri
     where: {
       id: sectionId,
       projectId: projectId,
+      project: buildGenerationProjectWhere(),
     },
     include: {
       runs: {
@@ -401,8 +407,8 @@ export async function createProject(input: ProjectCreateInput) {
 }
 
 export async function updateProject(projectId: string, input: ProjectUpdateInput) {
-  const project = await db.project.findUnique({
-    where: { id: projectId },
+  const project = await db.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       id: true,
       checkpointName: true,
@@ -442,8 +448,8 @@ export async function updateProjectSection(
   sectionId: string,
   input: ProjectSectionUpdateInput,
 ) {
-  const project = await db.project.findUnique({
-    where: { id: projectId },
+  const project = await db.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: { id: true },
   });
 
@@ -455,6 +461,7 @@ export async function updateProjectSection(
     where: {
       id: sectionId,
       projectId: projectId,
+      project: buildGenerationProjectWhere(),
     },
     select: { id: true },
   });
@@ -519,8 +526,8 @@ export async function updateProjectSection(
 
 export async function copyProject(projectId: string) {
   return db.$transaction(async (tx: Prisma.TransactionClient) => {
-    const project = await tx.project.findUnique({
-      where: { id: projectId },
+    const project = await tx.project.findFirst({
+      where: buildGenerationProjectWhere({ id: projectId }),
       include: {
         sections: {
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -589,6 +596,10 @@ export async function copyProject(projectId: string) {
     if (!project) {
       throw new Error("JOB_NOT_FOUND");
     }
+    await assertOrdinaryPresetLibraryBindingRefs(
+      project.sections.flatMap((section) => section.presetBindingRows),
+      tx,
+    );
 
     const identity = await resolveUniqueProjectCopyIdentity(tx, project);
     const copiedProject = await tx.project.create({

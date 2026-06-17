@@ -16,11 +16,11 @@ import {
   type DemoProject,
 } from "../../../data";
 import s from "./batch.module.css";
-import { Button } from "../../../shared/primitives/button";
-import { EmptyPage } from "../../../shared/primitives/empty-page";
-import { PageHeader } from "../../../shared/primitives/page-header";
-import { FolderBreadcrumb, FolderRow } from "../../../shared/patterns";
-import { StatusBadge } from "../../../shared/primitives/status-badge";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { EmptyPage } from "@/components/design-demo-ui/primitives/empty-page";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { FolderBreadcrumb, FolderRow } from "@/components/design-demo-ui/patterns";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 import { cx, demoHref, rawSectionId } from "../../../routing";
 import { getBatchCandidateRows } from "./batch-candidates";
 

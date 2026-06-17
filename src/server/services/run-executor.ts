@@ -36,6 +36,7 @@ import { resolveProjectPath } from "@/server/services/runtime-data-path";
 import { rm } from "node:fs/promises";
 import { audit, auditMany } from "@/server/services/audit-service";
 import { buildComfyPromptDraft } from "@/server/worker/payload-builder";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import {
   completeWorkerRun,
   getWorkerRun,
@@ -47,6 +48,15 @@ import { waitForPromptToStart } from "@/server/services/comfyui-service";
 const log = createLogger({ module: "run-executor" });
 const FINALIZING_OUTPUT_DIR_PREFIX = "__finalizing__:";
 const FINALIZING_CLAIM_TTL_MS = 30 * 60 * 1000;
+
+function buildGenerationRunWhere(where: Prisma.RunWhereInput = {}): Prisma.RunWhereInput {
+  return {
+    AND: [
+      where,
+      { project: buildGenerationProjectWhere() },
+    ],
+  };
+}
 
 function isRunRecoveryDisabled() {
   if (process.env.COMFY_MANAGER_DISABLE_RUN_RECOVERY === "true") {
@@ -88,12 +98,12 @@ async function claimRunFinalization(
   }
 
   const claim = await db.run.updateMany({
-    where: {
+    where: buildGenerationRunWhere({
       id: runId,
       status: { in: [RunStatus.queued, RunStatus.running] },
       outputDir: currentOutputDir,
       comfyPromptId,
-    },
+    }),
     data: {
       outputDir: createFinalizingMarker(),
     },
@@ -319,11 +329,12 @@ export async function trySubmitQueuedRunToComfyUI(
   try {
     const submitResult = await submitRunToComfyUI(run, options);
     const updateResult = await db.run.updateMany({
-      where: {
+      where: buildGenerationRunWhere({
         id: run.runId,
+        projectId: run.project.id,
         status: RunStatus.queued,
         comfyPromptId: null,
-      },
+      }),
       data: {
         ...buildSubmittedRunData(submitResult),
         errorMessage: null,
@@ -375,8 +386,8 @@ export async function trySubmitQueuedRunToComfyUI(
 const activePolls = new Map<string, string>();
 
 async function isRunStillPollingPrompt(runId: string, comfyPromptId: string) {
-  const currentRun = await db.run.findUnique({
-    where: { id: runId },
+  const currentRun = await db.run.findFirst({
+    where: buildGenerationRunWhere({ id: runId }),
     select: { status: true, comfyPromptId: true },
   });
 
@@ -396,8 +407,8 @@ export async function pollRunCompletion(runId: string): Promise<void> {
   let comfyPromptId: string | null = null;
 
   try {
-    const runRecord = await db.run.findUnique({
-      where: { id: runId },
+    const runRecord = await db.run.findFirst({
+      where: buildGenerationRunWhere({ id: runId }),
       select: {
         id: true,
         status: true,
@@ -487,7 +498,7 @@ export async function pollRunCompletion(runId: string): Promise<void> {
         const position = await getComfyQueuePosition(apiUrl, comfyPromptId);
         if (position === "pending") {
           await db.run.updateMany({
-            where: { id: runId, status: RunStatus.running },
+            where: buildGenerationRunWhere({ id: runId, status: RunStatus.running }),
             data: { status: RunStatus.queued, startedAt: null },
           });
           runRecord.status = RunStatus.queued;
@@ -509,13 +520,13 @@ export async function pollRunCompletion(runId: string): Promise<void> {
           }
 
           const transitionResult = await db.run.updateMany({
-            where: { id: runId, status: RunStatus.queued },
+            where: buildGenerationRunWhere({ id: runId, status: RunStatus.queued }),
             data: { status: RunStatus.running, startedAt: new Date() },
           });
 
           if (transitionResult.count === 0) {
-            const currentRun = await db.run.findUnique({
-              where: { id: runId },
+            const currentRun = await db.run.findFirst({
+              where: buildGenerationRunWhere({ id: runId }),
               select: { status: true },
             });
             if (currentRun?.status !== RunStatus.running) {
@@ -552,8 +563,8 @@ export async function pollRunCompletion(runId: string): Promise<void> {
 
       if (!claimedFinalization) {
         // Re-check: is the run potentially stuck without a valid finalizer?
-        const currentState = await db.run.findUnique({
-          where: { id: runId },
+        const currentState = await db.run.findFirst({
+          where: buildGenerationRunWhere({ id: runId }),
           select: { status: true, outputDir: true },
         });
         if (
@@ -614,8 +625,8 @@ export async function pollRunCompletion(runId: string): Promise<void> {
 
       // Check if the run was already completed (e.g. completeWorkerRun succeeded
       // but a later step like audit threw). If so, do NOT delete images.
-      const currentRun = await db.run.findUnique({
-        where: { id: runId },
+      const currentRun = await db.run.findFirst({
+        where: buildGenerationRunWhere({ id: runId }),
         select: { status: true, comfyPromptId: true },
       });
 
@@ -719,6 +730,7 @@ export async function recoverStaleRuns(): Promise<void> {
       where: {
         status: { in: [RunStatus.queued, RunStatus.running] },
         comfyPromptId: { not: null },
+        project: buildGenerationProjectWhere(),
       },
       select: { id: true, comfyPromptId: true },
     });
@@ -727,6 +739,7 @@ export async function recoverStaleRuns(): Promise<void> {
       where: {
         status: RunStatus.queued,
         comfyPromptId: null,
+        project: buildGenerationProjectWhere(),
       },
       select: { id: true },
       orderBy: [{ createdAt: "asc" }, { id: "asc" }],

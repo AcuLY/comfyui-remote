@@ -1,9 +1,8 @@
 import { fail, ok } from "@/lib/api-response";
-import { updateManagedTrainingImageResult } from "@/server/services/training/project-service";
 import {
-  mapCharacterLoraPhase3Error,
-  reviewCharacterLoraImages,
-} from "@/server/services/character-lora-training/phase3-service";
+  mapTrainingGenerationOutputError,
+  setTrainingImageResultReviewStatus,
+} from "@/server/services/training/generation-output-service";
 
 export const dynamic = "force-dynamic";
 
@@ -23,23 +22,12 @@ export async function POST(
 
   try {
     const { imageResultId } = await params;
-    const managed = await updateManagedTrainingImageResult(imageResultId, {
-      reviewStatus: typeof payload.reviewStatus === "string" ? String(payload.reviewStatus) : undefined,
-    });
-    if (managed) {
-      return ok(managed);
-    }
-    const data = await reviewCharacterLoraImages({
-      images: [
-        {
-          imageId: imageResultId,
-          reviewStatus: payload.reviewStatus,
-        },
-      ],
+    const data = await setTrainingImageResultReviewStatus(imageResultId, {
+      reviewStatus: payload.reviewStatus,
     });
     return ok(data);
   } catch (error) {
-    const mapped = mapCharacterLoraPhase3Error(error);
+    const mapped = mapTrainingGenerationOutputError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }
 }

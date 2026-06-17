@@ -1,5 +1,10 @@
 import { switchBindingVariant } from "@/lib/actions";
+import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
+import {
+  buildGenerationPresetWhere,
+  buildGenerationProjectWhere,
+} from "@/server/repositories/generation-resource-boundary";
 
 export type SwitchVariantUpdate = {
   sectionId: string;
@@ -91,7 +96,11 @@ export async function switchProjectVariants(
   const sectionIds = [...new Set(updates.map((update) => update.sectionId))];
   const sections = sectionIds.length > 0
     ? await prisma.projectSection.findMany({
-        where: { projectId: normalizedProjectId, id: { in: sectionIds } },
+        where: {
+          projectId: normalizedProjectId,
+          id: { in: sectionIds },
+          project: buildGenerationProjectWhere({ id: normalizedProjectId }),
+        },
         select: { id: true },
       })
     : [];
@@ -176,10 +185,11 @@ async function findPresetByReference(
 ) {
   if (reference.presetId) {
     return prisma.preset.findFirst({
-      where: {
+      where: buildGenerationPresetWhere({
         id: reference.presetId,
         isActive: true,
-      },
+        category: { type: ordinaryPresetCategoryTypeWhere() },
+      }),
       include: {
         category: { select: { name: true, slug: true } },
         variants: {
@@ -192,11 +202,14 @@ async function findPresetByReference(
   }
 
   const normalizedInput = reference.nameOrSlug?.trim() ?? "";
+  if (!normalizedInput) return null;
+
   const exactPreset = await prisma.preset.findFirst({
-    where: {
+    where: buildGenerationPresetWhere({
       isActive: true,
+      category: { type: ordinaryPresetCategoryTypeWhere() },
       OR: [{ name: normalizedInput }, { slug: normalizedInput }],
-    },
+    }),
     include: {
       category: { select: { name: true, slug: true } },
       variants: {
@@ -210,10 +223,11 @@ async function findPresetByReference(
   if (exactPreset) return exactPreset;
 
   const partialMatches = await prisma.preset.findMany({
-    where: {
+    where: buildGenerationPresetWhere({
       isActive: true,
+      category: { type: ordinaryPresetCategoryTypeWhere() },
       OR: [{ name: { contains: normalizedInput } }, { slug: { contains: normalizedInput } }],
-    },
+    }),
     include: {
       category: { select: { name: true, slug: true } },
       variants: {
@@ -234,8 +248,8 @@ async function findPresetByReference(
 }
 
 async function getProjectSectionsForSync(projectId: string) {
-  return prisma.project.findUnique({
-    where: { id: projectId },
+  return prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       id: true,
       title: true,

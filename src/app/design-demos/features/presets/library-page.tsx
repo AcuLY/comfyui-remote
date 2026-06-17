@@ -18,16 +18,16 @@ import {
   type PresetLibraryItem,
 } from "../../data";
 import s from "./library-page.library.module.css";
-import { Button } from "../../shared/primitives/button";
-import { ButtonLink } from "../../shared/primitives/button";
-import { Checkbox } from "../../shared/primitives/checkbox";
-import { EmptyPage } from "../../shared/primitives/empty-page";
-import { PageHeader } from "../../shared/primitives/page-header";
-import { FolderBreadcrumb, FolderRow, SelectionBatchBar, UnitRowShell } from "../../shared/patterns";
-import { StatusBadge } from "../../shared/primitives/status-badge";
+import { Button } from "@/components/design-demo-ui/primitives/button";
+import { ButtonLink } from "@/components/design-demo-ui/primitives/button";
+import { Checkbox } from "@/components/design-demo-ui/primitives/checkbox";
+import { EmptyPage } from "@/components/design-demo-ui/primitives/empty-page";
+import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
+import { FolderBreadcrumb, FolderRow, SelectionBatchBar, UnitRowShell } from "@/components/design-demo-ui/patterns";
+import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 import { cx, demoHref } from "../../routing";
 import type { DemoButtonFeedback } from "../../routing";
-import { SortableList, useDemoSortable } from "../../shared/primitives/sortable";
+import { SortableList, useDemoSortable } from "@/components/design-demo-ui/primitives/sortable";
 
 type DisplayPresetLibraryItem = PresetLibraryItem & {
   categoryId?: string;

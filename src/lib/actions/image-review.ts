@@ -8,6 +8,7 @@ import {
   moveManagedImageFile,
 } from "@/server/services/image-file-service";
 import { listSectionTrashItems } from "@/server/repositories/trash-repository";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 type ReviewImageMutationOptions = {
   revalidate?: boolean;
@@ -38,7 +39,10 @@ export async function keepImages(
   if (uniqueImageIds.length === 0) return;
 
   const images = await prisma.imageResult.findMany({
-    where: { id: { in: uniqueImageIds } },
+    where: {
+      id: { in: uniqueImageIds },
+      run: { project: buildGenerationProjectWhere() },
+    },
     select: {
       id: true,
       filePath: true,
@@ -82,6 +86,7 @@ export async function keepImages(
       return { imageId: img.id, nextFilePath, hadTrash: !!activeTrash };
     }),
   );
+  const planImageIds = plans.map((plan) => plan.imageId);
 
   await prisma.$transaction([
     ...plans.map((plan) =>
@@ -97,7 +102,7 @@ export async function keepImages(
     // 标记所有活跃 trash record 为已恢复
     prisma.trashRecord.updateMany({
       where: {
-        imageResultId: { in: uniqueImageIds },
+        imageResultId: { in: planImageIds },
         restoredAt: null,
       },
       data: { restoredAt: now },
@@ -123,7 +128,10 @@ export async function trashImages(
   if (uniqueImageIds.length === 0) return { count: 0, imageIds: [] };
 
   const images = await prisma.imageResult.findMany({
-    where: { id: { in: uniqueImageIds } },
+    where: {
+      id: { in: uniqueImageIds },
+      run: { project: buildGenerationProjectWhere() },
+    },
     select: {
       id: true,
       filePath: true,
@@ -202,7 +210,7 @@ export async function trashImages(
       }),
     ),
     prisma.project.updateMany({
-      where: { coverImageId: { in: plans.map((plan) => plan.imageId) } },
+      where: buildGenerationProjectWhere({ coverImageId: { in: plans.map((plan) => plan.imageId) } }),
       data: { coverImageId: null },
     }),
   ]);
@@ -222,8 +230,8 @@ export async function trashProjectImages(projectId: string) {
     throw new Error("PROJECT_ID_REQUIRED");
   }
 
-  const project = await prisma.project.findUnique({
-    where: { id: normalizedProjectId },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: normalizedProjectId }),
     select: { id: true },
   });
 
@@ -234,7 +242,10 @@ export async function trashProjectImages(projectId: string) {
   const images = await prisma.imageResult.findMany({
     where: {
       reviewStatus: { not: "trashed" },
-      run: { projectId: normalizedProjectId },
+      run: {
+        projectId: normalizedProjectId,
+        project: buildGenerationProjectWhere({ id: normalizedProjectId }),
+      },
     },
     select: { id: true },
   });
@@ -257,7 +268,10 @@ export async function clearTrash(): Promise<{
 }> {
   try {
     const records = await prisma.trashRecord.findMany({
-      where: { restoredAt: null },
+      where: {
+        restoredAt: null,
+        imageResult: { run: { project: buildGenerationProjectWhere() } },
+      },
       select: {
         id: true,
         imageResultId: true,
@@ -301,7 +315,7 @@ export async function clearTrash(): Promise<{
 
     const deleteResult = await prisma.$transaction(async (tx) => {
       await tx.project.updateMany({
-        where: { coverImageId: { in: imageIds } },
+        where: buildGenerationProjectWhere({ coverImageId: { in: imageIds } }),
         data: { coverImageId: null },
       });
 
@@ -345,8 +359,11 @@ export async function clearTrash(): Promise<{
 // ---------------------------------------------------------------------------
 
 export async function restoreImage(trashRecordId: string) {
-  const record = await prisma.trashRecord.findUnique({
-    where: { id: trashRecordId },
+  const record = await prisma.trashRecord.findFirst({
+    where: {
+      id: trashRecordId,
+      imageResult: { run: { project: buildGenerationProjectWhere() } },
+    },
     select: {
       imageResultId: true,
       originalPath: true,

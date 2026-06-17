@@ -1,6 +1,8 @@
 import { revalidatePath } from "next/cache";
+import { db } from "@/lib/db";
 import { ok, fail } from "@/lib/api-response";
 import { toImageUrl } from "@/lib/image-url";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { persistManualCensoredImage } from "@/server/services/censoring-service";
 
 type RouteContext = {
@@ -27,8 +29,19 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   try {
+    const image = await db.imageResult.findFirst({
+      where: {
+        id: imageId,
+        run: { project: buildGenerationProjectWhere() },
+      },
+      select: { id: true },
+    });
+    if (!image) {
+      return fail("Image not found", 404);
+    }
+
     const buffer = Buffer.from(await file.arrayBuffer());
-    const result = await persistManualCensoredImage(imageId, buffer);
+    const result = await persistManualCensoredImage(image.id, buffer);
     revalidatePath("/");
     return ok({
       ...result,

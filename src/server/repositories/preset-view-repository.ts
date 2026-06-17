@@ -2,12 +2,20 @@ import { prisma } from "@/lib/prisma";
 import { buildFolderScopedItemOrder } from "@/lib/folder-navigation";
 import { normalizeCivitaiLinks } from "@/lib/utils";
 import {
+  ORDINARY_PRESET_CATEGORY_TYPE,
+  ordinaryPresetLibraryCategoryTypeWhere,
+} from "@/lib/actions/preset-resource-scope";
+import {
   groupPresetGroupHistory,
   groupPresetHistory,
   type PresetChangeDimension,
   type PresetGroupChangeDimension,
   type PresetHistoryEntry,
 } from "@/server/services/preset-change-history-service";
+import {
+  buildGenerationPresetWhere,
+  isReservedTrainingResourceNotes,
+} from "@/server/repositories/generation-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Shared helper: resolve display names for group members
@@ -17,26 +25,37 @@ type MemberLike = {
   presetId?: string | null;
   variantId?: string | null;
   subGroupId?: string | null;
+  slotCategoryId?: string | null;
 };
 
 type ResolvedNameMaps = {
   presetMap: Map<string, string>;
   variantMap: Map<string, string>;
+  variantPresetMap: Map<string, string>;
   groupMap: Map<string, string>;
+  slotCategoryIds: Set<string>;
 };
 
 type LinkedVariantSource = {
   outgoingLinks: Array<{
     linkedVariantId: string;
-    linkedVariant: { presetId: string };
+    linkedVariant: {
+      presetId: string;
+      preset: { category: { type: string }; notes: string | null };
+    };
   }>;
 };
 
 function linkedVariantRefs(variant: LinkedVariantSource): LinkedVariantRef[] {
-  return variant.outgoingLinks.map((link) => ({
-    presetId: link.linkedVariant.presetId,
-    variantId: link.linkedVariantId,
-  }));
+  return variant.outgoingLinks
+    .filter((link) => (
+      link.linkedVariant.preset.category.type === ORDINARY_PRESET_CATEGORY_TYPE
+      && !isReservedTrainingResourceNotes(link.linkedVariant.preset.notes)
+    ))
+    .map((link) => ({
+      presetId: link.linkedVariant.presetId,
+      variantId: link.linkedVariantId,
+    }));
 }
 
 function slotTemplateFromRows(
@@ -72,32 +91,85 @@ async function resolveMemberNames(
   const allPresetIds = new Set<string>();
   const allVariantIds = new Set<string>();
   const allGroupIds = new Set<string>();
+  const allSlotCategoryIds = new Set<string>();
 
   for (const g of groups) {
     for (const m of g.members) {
       if (m.presetId) allPresetIds.add(m.presetId);
       if (m.variantId) allVariantIds.add(m.variantId);
       if (m.subGroupId) allGroupIds.add(m.subGroupId);
+      if (m.slotCategoryId) allSlotCategoryIds.add(m.slotCategoryId);
     }
   }
 
-  const [presetNames, variantNames, groupNames] = await Promise.all([
+  const [presetNames, variantNames, groupNames, slotCategories] = await Promise.all([
     allPresetIds.size > 0
-      ? prisma.preset.findMany({ where: { id: { in: [...allPresetIds] } }, select: { id: true, name: true } })
+      ? prisma.preset.findMany({
+          where: buildGenerationPresetWhere({
+            id: { in: [...allPresetIds] },
+            category: { type: ORDINARY_PRESET_CATEGORY_TYPE },
+          }),
+          select: { id: true, name: true },
+        })
       : [],
     allVariantIds.size > 0
-      ? prisma.presetVariant.findMany({ where: { id: { in: [...allVariantIds] } }, select: { id: true, name: true } })
+      ? prisma.presetVariant.findMany({
+          where: {
+            id: { in: [...allVariantIds] },
+            preset: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }),
+          },
+          select: { id: true, name: true, presetId: true },
+        })
       : [],
     allGroupIds.size > 0
-      ? prisma.presetGroup.findMany({ where: { id: { in: [...allGroupIds] } }, select: { id: true, name: true } })
+      ? prisma.presetGroup.findMany({
+          where: {
+            id: { in: [...allGroupIds] },
+            category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
+          },
+          select: { id: true, name: true },
+        })
+      : [],
+    allSlotCategoryIds.size > 0
+      ? prisma.presetCategory.findMany({
+          where: {
+            id: { in: [...allSlotCategoryIds] },
+            type: ORDINARY_PRESET_CATEGORY_TYPE,
+          },
+          select: { id: true },
+        })
       : [],
   ]);
 
   return {
     presetMap: new Map(presetNames.map((p) => [p.id, p.name])),
     variantMap: new Map(variantNames.map((v) => [v.id, v.name])),
+    variantPresetMap: new Map(variantNames.map((v) => [v.id, v.presetId])),
     groupMap: new Map(groupNames.map((g) => [g.id, g.name])),
+    slotCategoryIds: new Set(slotCategories.map((category) => category.id)),
   };
+}
+
+function filterVisibleOrdinaryGroupMembers<T extends MemberLike & { slotCategoryId?: string | null }>(
+  members: readonly T[],
+  maps: ResolvedNameMaps,
+) {
+  return members.filter((member) => {
+    if (member.presetId && member.subGroupId) return false;
+    if (!member.presetId && !member.subGroupId) return false;
+
+    if (member.presetId) {
+      if (!maps.presetMap.has(member.presetId)) return false;
+      if (member.variantId && maps.variantPresetMap.get(member.variantId) !== member.presetId) return false;
+    } else if (member.variantId) {
+      return false;
+    }
+
+    if (member.subGroupId && !maps.groupMap.has(member.subGroupId)) return false;
+    if (member.slotCategoryId && !maps.slotCategoryIds.has(member.slotCategoryId)) return false;
+
+    return true;
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -179,16 +251,17 @@ export type PresetFull = PresetItem & {
 
 export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFull[]> {
   const categories = await prisma.presetCategory.findMany({
-    where: { type: "preset" },
+    where: { type: ordinaryPresetLibraryCategoryTypeWhere() },
     orderBy: { sortOrder: "asc" },
     include: {
       _count: {
         select: {
-          presets: { where: { isActive: true } },
+          presets: { where: buildGenerationPresetWhere({ isActive: true }) },
           groups: { where: { isActive: true } },
         },
       },
       ownedSlots: {
+        where: { slotCategory: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
         orderBy: { sortOrder: "asc" },
         select: {
           slotCategoryId: true,
@@ -196,7 +269,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
         },
       },
       presets: {
-        where: { isActive: true },
+        where: buildGenerationPresetWhere({ isActive: true }),
         orderBy: { sortOrder: "asc" },
         include: {
           _count: { select: { variants: true } },
@@ -208,7 +281,12 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
                 orderBy: { sortOrder: "asc" },
                 select: {
                   linkedVariantId: true,
-                  linkedVariant: { select: { presetId: true } },
+                  linkedVariant: {
+                    select: {
+                      presetId: true,
+                      preset: { select: { category: { select: { type: true } }, notes: true } },
+                    },
+                  },
                 },
               },
             },
@@ -237,9 +315,8 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
   });
 
   // Resolve display names for group members (batch)
-  const { presetMap: pMap, variantMap: vMap, groupMap: gMap } = await resolveMemberNames(
-    categories.flatMap((c) => c.groups),
-  );
+  const memberMaps = await resolveMemberNames(categories.flatMap((c) => c.groups));
+  const { presetMap: pMap, variantMap: vMap, groupMap: gMap } = memberMaps;
 
   return categories.map((c) => {
     const orderedPresets = buildFolderScopedItemOrder(c.folders, c.presets);
@@ -294,7 +371,7 @@ export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFu
         sortOrder: g.sortOrder,
         folderId: g.folderId,
         changeHistory: groupPresetGroupHistory(g.changeLogs),
-        members: g.members.map((m) => ({
+        members: filterVisibleOrdinaryGroupMembers(g.members, memberMaps).map((m) => ({
           id: m.id,
           presetId: m.presetId,
           variantId: m.variantId,
@@ -325,7 +402,11 @@ export type PresetGroupEditData = {
 
 export async function getPresetGroupEditData(groupId: string): Promise<PresetGroupEditData | null> {
   const currentGroup = await prisma.presetGroup.findFirst({
-    where: { id: groupId, isActive: true },
+    where: {
+      id: groupId,
+      isActive: true,
+      category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
+    },
     include: {
       members: { orderBy: { sortOrder: "asc" } },
       changeLogs: {
@@ -343,16 +424,17 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
 
   const [categories, contentVariants] = await Promise.all([
     prisma.presetCategory.findMany({
-      where: { type: "preset" },
+      where: { type: ordinaryPresetLibraryCategoryTypeWhere() },
       orderBy: { sortOrder: "asc" },
       include: {
         _count: {
           select: {
-            presets: { where: { isActive: true } },
+            presets: { where: buildGenerationPresetWhere({ isActive: true }) },
             groups: { where: { isActive: true } },
           },
         },
         ownedSlots: {
+          where: { slotCategory: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
           orderBy: { sortOrder: "asc" },
           select: {
             slotCategoryId: true,
@@ -360,7 +442,7 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
           },
         },
         presets: {
-          where: { isActive: true },
+          where: buildGenerationPresetWhere({ isActive: true }),
           orderBy: { sortOrder: "asc" },
           select: {
             id: true,
@@ -406,13 +488,22 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
     }),
     contentVariantIds.length > 0
       ? prisma.presetVariant.findMany({
-          where: { id: { in: [...new Set(contentVariantIds)] }, isActive: true },
+          where: {
+            id: { in: [...new Set(contentVariantIds)] },
+            isActive: true,
+            preset: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }),
+          },
           include: {
             outgoingLinks: {
               orderBy: { sortOrder: "asc" },
               select: {
                 linkedVariantId: true,
-                linkedVariant: { select: { presetId: true } },
+                linkedVariant: {
+                  select: {
+                    presetId: true,
+                    preset: { select: { category: { select: { type: true } }, notes: true } },
+                  },
+                },
               },
             },
           },
@@ -423,19 +514,32 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
   const contentByVariantId = new Map(contentVariants.map((variant) => [variant.id, variant]));
   const presetNameMap = new Map<string, string>();
   const variantNameMap = new Map<string, string>();
+  const variantPresetMap = new Map<string, string>();
   const groupNameMap = new Map<string, string>();
+  const slotCategoryIds = new Set<string>();
 
   for (const category of categories) {
+    if (category.type === ORDINARY_PRESET_CATEGORY_TYPE) {
+      slotCategoryIds.add(category.id);
+    }
     for (const preset of category.presets) {
       presetNameMap.set(preset.id, preset.name);
       for (const variant of preset.variants) {
         variantNameMap.set(variant.id, variant.name);
+        variantPresetMap.set(variant.id, preset.id);
       }
     }
     for (const group of category.groups) {
       groupNameMap.set(group.id, group.name);
     }
   }
+  const memberMaps = {
+    presetMap: presetNameMap,
+    variantMap: variantNameMap,
+    variantPresetMap,
+    groupMap: groupNameMap,
+    slotCategoryIds,
+  };
 
   const mappedCategories: PresetCategoryFull[] = categories.map((category) => {
     const orderedPresets = buildFolderScopedItemOrder(category.folders, category.presets);
@@ -496,7 +600,7 @@ export async function getPresetGroupEditData(groupId: string): Promise<PresetGro
           ? groupPresetGroupHistory(currentGroup.changeLogs)
           : emptyPresetGroupHistory(),
         members: group.id === currentGroup.id
-          ? currentGroup.members.map((member) => ({
+          ? filterVisibleOrdinaryGroupMembers(currentGroup.members, memberMaps).map((member) => ({
               id: member.id,
               presetId: member.presetId,
               variantId: member.variantId,
@@ -581,10 +685,11 @@ export type PresetLibraryV2 = {
 
 export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
   const categories = await prisma.presetCategory.findMany({
-    where: { type: "preset" },
+    where: { type: ordinaryPresetLibraryCategoryTypeWhere() },
     orderBy: { sortOrder: "asc" },
     include: {
       ownedSlots: {
+        where: { slotCategory: { type: ORDINARY_PRESET_CATEGORY_TYPE } },
         orderBy: { sortOrder: "asc" },
         select: { slotCategoryId: true, label: true },
       },
@@ -593,7 +698,7 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
         select: { id: true, name: true, parentId: true, sortOrder: true },
       },
       presets: {
-        where: { isActive: true },
+        where: buildGenerationPresetWhere({ isActive: true }),
         orderBy: { sortOrder: "asc" },
         select: {
           id: true,
@@ -613,7 +718,12 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
                 orderBy: { sortOrder: "asc" },
                 select: {
                   linkedVariantId: true,
-                  linkedVariant: { select: { presetId: true } },
+                  linkedVariant: {
+                    select: {
+                      presetId: true,
+                      preset: { select: { category: { select: { type: true } }, notes: true } },
+                    },
+                  },
                 },
               },
             },
@@ -631,9 +741,8 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
   });
 
   // Resolve member display names for groups
-  const { presetMap: presetNameMap, variantMap: variantNameMap, groupMap: groupNameMap } = await resolveMemberNames(
-    categories.flatMap((c) => c.groups),
-  );
+  const memberMaps = await resolveMemberNames(categories.flatMap((c) => c.groups));
+  const { presetMap: presetNameMap, variantMap: variantNameMap, groupMap: groupNameMap } = memberMaps;
 
   return {
     categories: categories.map((c) => {
@@ -679,7 +788,7 @@ export async function getPresetLibraryV2(): Promise<PresetLibraryV2> {
           name: g.name,
           slug: g.slug,
           folderId: g.folderId,
-          members: g.members.map((m) => ({
+          members: filterVisibleOrdinaryGroupMembers(g.members, memberMaps).map((m) => ({
             id: m.id,
             presetId: m.presetId,
             variantId: m.variantId,
@@ -723,7 +832,10 @@ export type PresetGroupItem = {
 
 export async function getPresetGroups(): Promise<PresetGroupItem[]> {
   const groups = await prisma.presetGroup.findMany({
-    where: { isActive: true },
+    where: {
+      isActive: true,
+      category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
+    },
     orderBy: { sortOrder: "asc" },
     include: {
       members: {
@@ -737,8 +849,8 @@ export async function getPresetGroups(): Promise<PresetGroupItem[]> {
   });
 
   // Resolve display names for members
-  const { presetMap: pMap, variantMap: vMap, groupMap: gMap } = await resolveMemberNames(groups);
-
+  const memberMaps = await resolveMemberNames(groups);
+  const { presetMap: pMap, variantMap: vMap, groupMap: gMap } = memberMaps;
 
   return groups.map((g) => ({
     id: g.id,
@@ -748,7 +860,7 @@ export async function getPresetGroups(): Promise<PresetGroupItem[]> {
     sortOrder: g.sortOrder,
     folderId: g.folderId,
     changeHistory: groupPresetGroupHistory(g.changeLogs),
-    members: g.members.map((m) => ({
+    members: filterVisibleOrdinaryGroupMembers(g.members, memberMaps).map((m) => ({
       id: m.id,
       presetId: m.presetId,
       variantId: m.variantId,
@@ -773,6 +885,7 @@ export async function getPresetFolders(filters: {
 } = {}): Promise<PresetFolderItem[]> {
   const folders = await prisma.presetFolder.findMany({
     where: {
+      category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
       ...(filters.categoryId ? { categoryId: filters.categoryId } : {}),
       ...(filters.parentId !== undefined ? { parentId: filters.parentId } : {}),
     },
@@ -780,9 +893,9 @@ export async function getPresetFolders(filters: {
     include: {
       _count: {
         select: {
-          presets: true,
-          groups: true,
-          children: true,
+          presets: { where: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }) },
+          groups: { where: { category: { type: ordinaryPresetLibraryCategoryTypeWhere() } } },
+          children: { where: { category: { type: ordinaryPresetLibraryCategoryTypeWhere() } } },
         },
       },
     },
@@ -801,14 +914,17 @@ export async function getPresetFolders(filters: {
 }
 
 export async function getPresetFolder(folderId: string): Promise<PresetFolderItem | null> {
-  const folder = await prisma.presetFolder.findUnique({
-    where: { id: folderId },
+  const folder = await prisma.presetFolder.findFirst({
+    where: {
+      id: folderId,
+      category: { type: ordinaryPresetLibraryCategoryTypeWhere() },
+    },
     include: {
       _count: {
         select: {
-          presets: true,
-          groups: true,
-          children: true,
+          presets: { where: buildGenerationPresetWhere({ category: { type: ORDINARY_PRESET_CATEGORY_TYPE } }) },
+          groups: { where: { category: { type: ordinaryPresetLibraryCategoryTypeWhere() } } },
+          children: { where: { category: { type: ordinaryPresetLibraryCategoryTypeWhere() } } },
         },
       },
     },

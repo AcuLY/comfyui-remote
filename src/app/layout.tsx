@@ -4,15 +4,12 @@ import { cookies, headers } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
-import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { DESIGN_DEMO_THEME_COOKIE, resolveDemoTheme } from "./design-demos/routing/sfw";
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
-
 const geistSans = localFont({
   src: "./fonts/geist-latin.woff2",
-  variable: "--font-geist-sans",
+  variable: "--font-sans",
   weight: "100 900",
 });
 
@@ -47,7 +44,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       data-design-demo-theme={designDemoTheme}
       data-sfw-mode="off"
       suppressHydrationWarning
-      className={cn("antialiased", geistSans.variable, geistMono.variable, "font-sans", geist.variable)}
+      className={cn("antialiased", geistSans.variable, geistMono.variable, "font-sans")}
     >
       <body className="bg-[var(--bg)] text-[var(--fg)]">
         <TooltipProvider>{content}</TooltipProvider>

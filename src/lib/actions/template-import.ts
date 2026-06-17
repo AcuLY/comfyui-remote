@@ -4,12 +4,20 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import {
+  assertOrdinaryPresetLibraryBindingRefs,
+  assertOrdinaryProjectPresetBindingRefs,
+} from "./preset-resource-scope";
+import {
   buildProjectSectionDataForTemplateImport,
   buildProjectSectionRowsForTemplateImport,
   type SectionManualLoraEntryWrite,
   type SectionPresetBindingWrite,
   type SectionPromptBlockWrite,
 } from "@/server/prompt-config/template-resolver";
+import {
+  buildGenerationProjectTemplateWhere,
+  buildGenerationProjectWhere,
+} from "@/server/repositories/generation-resource-boundary";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,6 +63,33 @@ function safeRevalidatePath(path: string) {
     }
     throw error;
   }
+}
+
+async function assertOrdinaryTemplateImportBindings(input: {
+  projectLevelBindings: readonly {
+    categoryId: string;
+    presetId: string;
+    variantId?: string | null;
+  }[];
+  templateProjectBindings: readonly {
+    categoryId: string;
+    presetId: string;
+    variantId?: string | null;
+  }[];
+  templateSectionBindings: readonly {
+    categoryId: string;
+    presetId?: string | null;
+    variantId?: string | null;
+    presetGroupId?: string | null;
+  }[];
+}) {
+  const projectBindings = [
+    ...input.projectLevelBindings,
+    ...input.templateProjectBindings,
+  ];
+
+  await assertOrdinaryProjectPresetBindingRefs(projectBindings);
+  await assertOrdinaryPresetLibraryBindingRefs(input.templateSectionBindings);
 }
 
 async function createImportedSectionRows(
@@ -104,8 +139,8 @@ export async function importTemplateToProject(
   const onExistingSections = options?.onExistingSections ?? "append";
   const dryRun = options?.dryRun ?? false;
 
-  const template = await prisma.projectTemplate.findUnique({
-    where: { id: templateId },
+  const template = await prisma.projectTemplate.findFirst({
+    where: buildGenerationProjectTemplateWhere({ id: templateId }),
     include: {
       presetBindingRows: {
         orderBy: { sortOrder: "asc" },
@@ -201,8 +236,8 @@ export async function importTemplateToProject(
   });
   if (!template) throw new Error("TEMPLATE_NOT_FOUND");
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
+  const project = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       checkpointName: true,
       presetBindingRows: {
@@ -221,6 +256,12 @@ export async function importTemplateToProject(
     },
   });
   if (!project) throw new Error("PROJECT_NOT_FOUND");
+
+  await assertOrdinaryTemplateImportBindings({
+    projectLevelBindings: project.presetBindingRows,
+    templateProjectBindings: template.presetBindingRows,
+    templateSectionBindings: template.sections.flatMap((section) => section.presetBindingRows),
+  });
 
   const currentSectionCount = project.sections.length;
   const existingSectionNames = new Set(
