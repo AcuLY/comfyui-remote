@@ -162,9 +162,8 @@ function remapLinkedVariantRefs(
 async function replaceVariantLinks(
   tx: Prisma.TransactionClient,
   sourceVariantId: string,
-  linkedVariants: unknown,
+  refs: readonly LinkedVariantRef[],
 ) {
-  const refs = normalizeLinkedVariantRefs(linkedVariants);
   await assertOrdinaryPresetVariants(refs.map((ref) => ref.variantId));
 
   await tx.presetVariantLink.deleteMany({ where: { sourceVariantId } });
@@ -179,6 +178,14 @@ async function replaceVariantLinks(
   });
 
   return refs;
+}
+
+function linkedVariantRefsEqual(current: readonly LinkedVariantRef[], next: readonly LinkedVariantRef[]) {
+  if (current.length !== next.length) return false;
+  return current.every((ref, index) => {
+    const nextRef = next[index];
+    return nextRef?.variantId === ref.variantId && nextRef.sortOrder === ref.sortOrder;
+  });
 }
 
 async function readVariantLinkSnapshot(sourceVariantId: string) {
@@ -197,9 +204,21 @@ async function readVariantLinkSnapshot(sourceVariantId: string) {
   const linkedVariants = relationLinks.map((link) => ({
     presetId: link.linkedVariant.presetId,
     variantId: link.linkedVariantId,
+    sortOrder: link.sortOrder,
   }));
 
   return { linkedVariants };
+}
+
+function recordPresetChangeInBackground(input: Parameters<typeof recordPresetChange>[0]) {
+  void recordPresetChange(input).catch((error: unknown) => {
+    console.error("Failed to record preset change history:", {
+      presetId: input.presetId,
+      dimension: input.dimension,
+      title: input.title,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
 }
 
 function presetVariantRosterSnapshot(variant: {
@@ -447,6 +466,7 @@ export async function copyPreset(presetId: string) {
 export async function createPresetVariant(input: PresetVariantInput) {
   await assertOrdinaryPreset(input.presetId);
   const { lora1, lora2, linkedVariants, ...rest } = input;
+  const linkedRefs = normalizeLinkedVariantRefs(linkedVariants);
   if (rest.sortOrder === undefined) {
     const maxOrder = await prisma.presetVariant.aggregate({
       where: { presetId: input.presetId },
@@ -462,10 +482,10 @@ export async function createPresetVariant(input: PresetVariantInput) {
         lora2: toJsonValue(lora2) ?? Prisma.DbNull,
       },
     });
-    await replaceVariantLinks(tx, created.id, linkedVariants);
+    await replaceVariantLinks(tx, created.id, linkedRefs);
     return created;
   });
-  await recordPresetChange({
+  recordPresetChangeInBackground({
     presetId: variant.presetId,
     dimension: "variants",
     title: `创建变体：${variant.name}`,
@@ -492,8 +512,9 @@ export async function upsertPresetVariantBySlug(input: PresetVariantInput) {
     return createPresetVariant(input);
   }
 
-  const beforeLinked = await readVariantLinkSnapshot(existing.id);
   const { lora1, lora2, linkedVariants, ...rest } = input;
+  const linkedRefs = linkedVariants !== undefined ? normalizeLinkedVariantRefs(linkedVariants) : null;
+  const beforeLinked = linkedRefs ? await readVariantLinkSnapshot(existing.id) : emptyPresetVariantLinkedSnapshot();
   const data: Record<string, unknown> = { ...rest, isActive: true };
   delete data.presetId;
   if (lora1 !== undefined) data.lora1 = toJsonValue(lora1) ?? Prisma.DbNull;
@@ -504,20 +525,24 @@ export async function upsertPresetVariantBySlug(input: PresetVariantInput) {
       where: { id: existing.id },
       data,
     });
-    if (linkedVariants !== undefined) {
-      await replaceVariantLinks(tx, updated.id, linkedVariants);
+    if (linkedRefs && !linkedVariantRefsEqual(beforeLinked.linkedVariants, linkedRefs)) {
+      await replaceVariantLinks(tx, updated.id, linkedRefs);
     }
     return updated;
   });
-  const afterLinked = await readVariantLinkSnapshot(variant.id);
-  await recordPresetChange({
-    presetId: variant.presetId,
-    dimension: "variants",
-    title: `更新关联变体：${variant.name}`,
-    before: beforeLinked,
-    after: afterLinked,
-  });
-  await recordPresetChange({
+  if (linkedRefs) {
+    const afterLinked = linkedVariantRefsEqual(beforeLinked.linkedVariants, linkedRefs)
+      ? beforeLinked
+      : await readVariantLinkSnapshot(variant.id);
+    recordPresetChangeInBackground({
+      presetId: variant.presetId,
+      dimension: "variants",
+      title: `更新关联变体：${variant.name}`,
+      before: beforeLinked,
+      after: afterLinked,
+    });
+  }
+  recordPresetChangeInBackground({
     presetId: variant.presetId,
     dimension: "content",
     title: `更新提示词与 LoRA：${variant.name}`,
@@ -563,7 +588,8 @@ export async function updatePresetVariant(id: string, input: Partial<PresetVaria
 
   const before = await prisma.presetVariant.findUnique({ where: { id } });
   const { lora1, lora2, linkedVariants, ...rest } = input;
-  const beforeLinked = before
+  const linkedRefs = linkedVariants !== undefined ? normalizeLinkedVariantRefs(linkedVariants) : null;
+  const beforeLinked = before && linkedRefs
     ? await readVariantLinkSnapshot(before.id)
     : emptyPresetVariantLinkedSnapshot();
   const data: Record<string, unknown> = { ...rest };
@@ -573,21 +599,25 @@ export async function updatePresetVariant(id: string, input: Partial<PresetVaria
 
   const variant = await prisma.$transaction(async (tx) => {
     const updated = await tx.presetVariant.update({ where: { id }, data });
-    if (linkedVariants !== undefined) {
-      await replaceVariantLinks(tx, updated.id, linkedVariants);
+    if (linkedRefs && !linkedVariantRefsEqual(beforeLinked.linkedVariants, linkedRefs)) {
+      await replaceVariantLinks(tx, updated.id, linkedRefs);
     }
     return updated;
   });
   if (before) {
-    const afterLinked = await readVariantLinkSnapshot(variant.id);
-    await recordPresetChange({
-      presetId: variant.presetId,
-      dimension: "variants",
-      title: `更新关联变体：${variant.name}`,
-      before: beforeLinked,
-      after: afterLinked,
-    });
-    await recordPresetChange({
+    if (linkedRefs) {
+      const afterLinked = linkedVariantRefsEqual(beforeLinked.linkedVariants, linkedRefs)
+        ? beforeLinked
+        : await readVariantLinkSnapshot(variant.id);
+      recordPresetChangeInBackground({
+        presetId: variant.presetId,
+        dimension: "variants",
+        title: `更新关联变体：${variant.name}`,
+        before: beforeLinked,
+        after: afterLinked,
+      });
+    }
+    recordPresetChangeInBackground({
       presetId: variant.presetId,
       dimension: "content",
       title: `更新提示词与 LoRA：${variant.name}`,
@@ -615,7 +645,7 @@ export async function deletePresetVariant(id: string) {
   const before = await prisma.presetVariant.findUnique({ where: { id } });
   const variant = await prisma.presetVariant.update({ where: { id }, data: { isActive: false } });
   if (before) {
-    await recordPresetChange({
+    recordPresetChangeInBackground({
       presetId: variant.presetId,
       dimension: "variants",
       title: `删除变体：${variant.name}`,
@@ -661,7 +691,7 @@ export async function reorderPresetVariants(presetId: string, ids: string[]) {
     orderBy: { sortOrder: "asc" },
     select: { id: true, name: true, sortOrder: true },
   });
-  await recordPresetChange({
+  recordPresetChangeInBackground({
     presetId,
     dimension: "variants",
     title: "调整变体顺序",

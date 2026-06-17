@@ -35,6 +35,8 @@ type VariantSaveData = {
   linkedVariants: VariantDraft["linkedVariants"];
 };
 
+type VariantPatchData = Partial<Omit<VariantSaveData, "presetId">>;
+
 type SavedSnapshot = {
   preset: PresetSaveData;
   variants: Map<string, VariantSaveData>;
@@ -116,6 +118,20 @@ function variantChanged(before: VariantSaveData, after: VariantSaveData) {
     stableJson(before.lora2) !== stableJson(after.lora2) ||
     stableJson(before.linkedVariants) !== stableJson(after.linkedVariants)
   );
+}
+
+function variantPatchFromChange(before: VariantSaveData, after: VariantSaveData) {
+  const patch: VariantPatchData = {};
+  if (before.name !== after.name) patch.name = after.name;
+  if (before.slug !== after.slug) patch.slug = after.slug;
+  if (before.prompt !== after.prompt) patch.prompt = after.prompt;
+  if (before.negativePrompt !== after.negativePrompt) patch.negativePrompt = after.negativePrompt;
+  if (stableJson(before.lora1) !== stableJson(after.lora1)) patch.lora1 = after.lora1;
+  if (stableJson(before.lora2) !== stableJson(after.lora2)) patch.lora2 = after.lora2;
+  if (stableJson(before.linkedVariants) !== stableJson(after.linkedVariants)) {
+    patch.linkedVariants = after.linkedVariants;
+  }
+  return patch;
 }
 
 function findSavedVariant(snapshot: SavedSnapshot, draft: VariantDraft, data: VariantSaveData) {
@@ -229,12 +245,14 @@ export function PresetEditClient({
       for (const draft of variantDrafts) {
         const variantData = variantDataFromDraft(preset.id, draft);
         const savedVariant = findSavedVariant(nextSnapshot, draft, variantData);
-        if (savedVariant.data && !variantChanged(savedVariant.data, variantData)) {
-          continue;
-        }
 
         if (savedVariant.id && savedVariant.data) {
-          await updatePresetVariant(savedVariant.id, variantData);
+          if (!variantChanged(savedVariant.data, variantData)) {
+            continue;
+          }
+
+          const variantPatch = variantPatchFromChange(savedVariant.data, variantData);
+          await updatePresetVariant(savedVariant.id, variantPatch);
           nextSnapshot.variants.set(savedVariant.id, variantData);
         } else {
           const variant = await upsertPresetVariantBySlug(variantData);
