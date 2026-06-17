@@ -61,6 +61,8 @@
   --demo-lightbox-image-bg: #050507;
   --demo-lightbox-image-border: rgba(255, 255, 255, 0.16);
   --demo-lightbox-panel-bg: #18181b;
+  --panel: color-mix(in srgb, var(--demo-panel) 95%, var(--demo-bg));
+  --fg: var(--demo-text);
   min-height: 100vh;
   position: relative;
   isolation: isolate;
@@ -192,12 +194,18 @@
 .workspaceSidebarReady {
   --demo-sidebar-layout-ready: 1;
 }
+.workspaceNoNavigation {
+  grid-template-columns: minmax(0, 1fr);
+}
 .contentFrame {
   display: grid;
   grid-template-rows: minmax(0, 1fr);
   min-width: 0;
   min-height: 0;
   height: 100vh;
+}
+.contentFrameNoNavigation {
+  width: 100%;
 }
 .contentFrameWithRouteHeader {
   position: relative;
@@ -597,6 +605,12 @@
 }
 .mainWithRouteHeader {
   padding-top: calc(var(--demo-route-header-height, calc(96px + env(safe-area-inset-top))) + 18px);
+}
+.mainNoNavigation {
+  padding: 12px clamp(12px, 2.4vw, 28px) calc(104px + env(safe-area-inset-bottom));
+}
+.mainNoNavigation.mainWithRouteHeader {
+  padding-top: calc(var(--demo-route-header-height, calc(96px + env(safe-area-inset-top))) + 12px);
 }
 .mainWithRouteHeader > :global(div) > :global([data-demo-page-header]:first-child) {
   display: none;
@@ -1262,6 +1276,27 @@
     min-height: 0;
   }
 
+  .workspaceNoNavigation {
+    display: block;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .workspaceNoNavigation.workspaceWithRouteHeader {
+    height: 100dvh;
+    min-height: 100dvh;
+    overflow: hidden;
+  }
+
+  .workspaceNoNavigation.workspaceWithRouteHeader .contentFrame {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr);
+    position: relative;
+    height: 100dvh;
+    min-height: 0;
+  }
+
   .sidebar {
     position: fixed;
     inset: 0 auto 0 0;
@@ -1359,6 +1394,14 @@
 
   .mainWithRouteHeader {
     padding-top: calc(var(--demo-route-header-height, calc(60px + env(safe-area-inset-top))) + 14px);
+  }
+
+  .mainNoNavigation {
+    padding: 12px 12px calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .mainNoNavigation.mainWithRouteHeader {
+    padding-top: calc(var(--demo-route-header-height, calc(60px + env(safe-area-inset-top))) + 12px);
   }
 
   .routeHeader {

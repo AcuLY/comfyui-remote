@@ -208,30 +208,35 @@ test("production training route inventory is exported and every route renders a 
   );
 });
 
-test("training mobile bottom navigation reserves columns for every resource link plus the mode indicator", async () => {
+test("production training shell reuses the persistent bottom nav instead of demo mobile navigation", async () => {
   const { buildWorkModeResourceTargetList } = await import("../src/lib/work-mode-resources");
   const trainingLinkCount = buildWorkModeResourceTargetList("lora_training").length;
-  const trainingMobileRule = shellCssSource.match(
-    /\.mobileBottomNav\[data-work-mode="lora_training"\]\s*\{([\s\S]*?)\n\s*\}/,
-  )?.[1] ?? "";
 
   assert.equal(trainingLinkCount, 6, "training navigation should expose the six resource slots from the shared registry.");
   assert.match(
-    shellSource,
-    /\{links\.map\(\(link\) => \{/,
-    "mobile bottom navigation should render one item for every injected resource link.",
+    trainingShellSource,
+    /PersistentBottomNav/,
+    "training shell should reuse the production persistent bottom navigation.",
   );
   assert.match(
-    shellSource,
-    /<div className=\{s\.mobileModeIndicator\}/,
-    "mobile bottom navigation should render an extra work-mode indicator after resource links.",
+    trainingShellSource,
+    /footerNav=\{<PersistentBottomNav\s*\/>\}/,
+    "training shell should inject the persistent bottom nav into the shared shell footer slot.",
   );
   assert.match(
-    trainingMobileRule,
-    new RegExp(
-      `grid-template-columns:\\s*repeat\\(${trainingLinkCount},\\s*minmax\\(0,\\s*1fr\\)\\)\\s*minmax\\(52px,\\s*0\\.9fr\\)`,
-    ),
-    "the training mobile nav should reserve one column per training resource link, plus the mode indicator.",
+    trainingShellSource,
+    /navigationChrome="none"/,
+    "training shell should disable the demo sidebar and demo mobile drawer chrome.",
+  );
+  assert.doesNotMatch(
+    trainingShellSource,
+    /navigationLinks=\{|buildTrainingNavigationLinks|MobileBottomNav|mobileBottomNav/,
+    "training shell should not build or inject the old demo navigation links anymore.",
+  );
+  assert.match(
+    bottomNavSource,
+    /buildWorkModeResourceTargetList\(workMode\)/,
+    "persistent bottom nav should continue to consume the shared work-mode resource contract.",
   );
 });
 
@@ -364,13 +369,23 @@ test("training routes render a production shell without the /design-demos prefix
   );
   assert.match(
     trainingShellSource,
-    /buildWorkModeResourceTargetList\("lora_training"\)/,
-    "training shell should derive its navigation from the shared work-mode resource contract",
+    /PersistentBottomNav/,
+    "training shell should reuse the production persistent bottom navigation",
   );
   assert.match(
     trainingShellSource,
-    /navigationLinks=\{buildTrainingNavigationLinks\(data\)\}/,
-    "training shell should inject training-owned navigation links into the shared shell",
+    /navigationChrome="none"/,
+    "training shell should disable the shared shell sidebar chrome",
+  );
+  assert.match(
+    trainingShellSource,
+    /footerNav=\{<PersistentBottomNav\s*\/>\}/,
+    "training shell should inject shared bottom navigation through the shared shell footer slot",
+  );
+  assert.doesNotMatch(
+    trainingShellSource,
+    /buildTrainingNavigationLinks|navigationLinks=\{/,
+    "training shell should no longer inject demo sidebar navigation links",
   );
   assert.ok(
     existsSync(trainingHeaderSpecsPath),
@@ -430,6 +445,41 @@ test("training routes render a production shell without the /design-demos prefix
     shellSource,
     /themePersistence \?\? DEFAULT_DESIGN_DEMO_THEME_PERSISTENCE/,
     "shared shell should keep the design-demo theme persistence as the default only when no module-owned persistence is provided",
+  );
+  assert.match(
+    shellSource,
+    /navigationChrome\?:\s*"sidebar" \| "none"/,
+    "shared shell should expose an explicit way to disable its sidebar navigation chrome",
+  );
+  assert.match(
+    shellSource,
+    /navigationChrome = "sidebar"/,
+    "shared shell should preserve the existing design-demo sidebar behavior by default",
+  );
+  assert.match(
+    shellSource,
+    /footerNav\?:\s*ReactNode/,
+    "shared shell should expose a footer slot for modules that bring their own bottom navigation",
+  );
+  assert.match(
+    shellSource,
+    /showsNavigationChrome/,
+    "shared shell should gate sidebar, drawer, and demo bottom nav rendering behind navigation chrome state",
+  );
+  assert.match(
+    shellCssSource,
+    /\.workspaceNoNavigation\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)/,
+    "shared shell should support a full-width single-column frame when navigation chrome is disabled",
+  );
+  assert.match(
+    shellCssSource,
+    /\.mainNoNavigation\.mainWithRouteHeader\s*\{[\s\S]*?padding-top:\s*calc\(var\(--demo-route-header-height[\s\S]*?\+\s*12px\)/,
+    "navigation-free shell content should only reserve route header height plus compact spacing",
+  );
+  assert.match(
+    shellCssSource,
+    /padding:\s*12px[\s\S]*?calc\(104px \+ env\(safe-area-inset-bottom\)\)/,
+    "navigation-free shell content should reserve bottom space for the persistent bottom nav",
   );
   assert.match(
     trainingRuntimeSource,

@@ -492,8 +492,18 @@ test("production shell does not mount the legacy Character LoRA task panel", () 
 test("production training shell and routes expose only training-owned resources plus shared navigation", () => {
   assert.match(
     trainingShellSource,
-    /buildWorkModeResourceTargetList\("lora_training"\)/,
-    "Training navigation should be generated from the LoRA training resource contract.",
+    /PersistentBottomNav/,
+    "Training shell should render the shared persistent navigation instead of owning sidebar resource links.",
+  );
+  assert.match(
+    trainingShellSource,
+    /navigationChrome="none"/,
+    "Training shell should disable the demo sidebar navigation chrome.",
+  );
+  assert.doesNotMatch(
+    trainingShellSource,
+    /buildTrainingNavigationLinks|navigationLinks=\{/,
+    "Training shell should not build or inject private sidebar navigation links.",
   );
   assert.doesNotMatch(
     trainingShellSource,

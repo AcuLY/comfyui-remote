@@ -89,16 +89,26 @@ test("training list surfaces expand to two columns when there is enough width", 
   assert.ok(hasResponsiveColumns(resourcesCss, "usageList"), "Preset/template usage lists should use responsive two-column rows");
 });
 
-test("training shell navigation only exposes module-owned training surfaces", () => {
+test("training shell delegates resource navigation to the persistent bottom nav", () => {
   assert.match(
     shellSource,
-    /TRAINING_MODULE_NAV_KEYS\s*=\s*new Set<WorkModeResourceKey>\(\[\s*"runs",\s*"projects",\s*"presets",\s*"templates",?\s*\]\)/,
-    "Training shell should explicitly keep only runs, projects, presets, and templates in module navigation",
+    /PersistentBottomNav/,
+    "Training shell should render the shared persistent bottom navigation inside its standalone shell",
   );
   assert.match(
     shellSource,
-    /buildWorkModeResourceTargetList\("lora_training"\)\s*\.filter\(\(target\) => TRAINING_MODULE_NAV_KEYS\.has\(target\.key\)\)/,
-    "Training navigation should filter shared work-mode targets before passing links to the shell",
+    /navigationChrome="none"/,
+    "Training shell should disable demo sidebar navigation chrome",
+  );
+  assert.match(
+    shellSource,
+    /footerNav=\{<PersistentBottomNav\s*\/>\}/,
+    "Training shell should put the shared bottom navigation in the shared shell footer slot",
+  );
+  assert.doesNotMatch(
+    shellSource,
+    /TRAINING_MODULE_NAV_KEYS|buildTrainingNavigationLinks|navigationLinks=\{/,
+    "Training shell should not maintain its own sidebar navigation list",
   );
   assert.doesNotMatch(shellSource, /\bmodels:\s*Database\b|\bsettings:\s*Settings\b|case "models"|case "settings"/, "Models and settings should not be private training nav entries");
   assert.doesNotMatch(appSource, /training-(?:models|settings)|\/training\/(?:models|settings)/, "Training app should not route private model or settings pages");
