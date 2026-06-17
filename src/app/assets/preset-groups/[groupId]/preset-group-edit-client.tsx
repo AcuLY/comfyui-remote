@@ -306,7 +306,6 @@ export function PresetGroupEditClient({
     startTransition(async () => {
       try {
         await updatePresetGroup(currentGroup.id, {
-          categoryId,
           name: name.trim(),
         });
         setCurrentGroup((current) => ({ ...current, name: name.trim() }));
