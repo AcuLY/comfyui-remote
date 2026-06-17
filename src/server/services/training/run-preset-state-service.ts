@@ -29,7 +29,7 @@ async function readRunPresetStateMap() {
       return Object.fromEntries(
         Object.entries(parsed as Record<string, unknown>)
           .filter(([, value]) => value && typeof value === "object" && !Array.isArray(value))
-          .map(([runId, value]) => {
+          .map(([runId, value]): [string, TrainingRunPresetState] => {
             const record = value as Record<string, unknown>;
             return [
               runId,

@@ -1674,7 +1674,7 @@ export function LoraTrainingTemplateSectionPage({ data, templateId, sectionIndex
   const training = buildLoraTrainingDemoData(data);
   const template = findTemplate(data, templateId);
   const index = Number(sectionIndex);
-  const section = template && Number.isInteger(index) && index >= 0 ? template.sections[index] : undefined;
+  const section = (template && Number.isInteger(index) && index >= 0 ? template.sections[index] : undefined) as LoraTrainingTemplate["sections"][number];
   const [templateSectionSceneBlocksByKey, setTemplateSectionSceneBlocksByKey] = useState<Record<string, LoraTrainingSectionBlock[]>>(() => (
     template && section ? { [buildTemplateSectionStateKey(template.id, section.id)]: section.blocks } : {}
   ));

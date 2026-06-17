@@ -193,7 +193,7 @@ function deriveReferenceImages(
   const results = baseTraining.projects.flatMap((project) => project.resultPool);
   const projects = baseTraining.projects;
 
-  const picked = selectedReferenceIds.map((referenceId) => {
+  const picked = selectedReferenceIds.map((referenceId): LoraTrainingReferenceImage | null => {
     if (referenceId.startsWith("project-")) {
       const project = projects.find((item) => item.id === referenceId.slice("project-".length));
       const image = project?.referenceImages[0]?.image;
@@ -232,7 +232,7 @@ function deriveReferenceImages(
     }
 
     return null;
-  }).filter((item): item is LoraTrainingReferenceImage => Boolean(item));
+  }).filter((item): item is LoraTrainingReferenceImage => item !== null);
 
   return picked;
 }

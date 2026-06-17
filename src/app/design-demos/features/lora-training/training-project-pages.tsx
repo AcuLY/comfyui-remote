@@ -1236,7 +1236,7 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
   const router = useRouter();
   const { pushToast } = useDemoFeedback();
   const training = useTraining(data);
-  const project = findProject(data, projectId);
+  const project = findProject(data, projectId) as LoraTrainingProject;
   const [projectArchiveState, setProjectArchiveState] = useState(() => ({
     archived: project?.status === "archived",
     projectId: project?.id ?? null,
@@ -1367,16 +1367,16 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
   const referenceUploadInputRef = useRef<HTMLInputElement | null>(null);
-  const project = findProject(data, projectId);
+  const selectedProject = findProject(data, projectId);
   const [referenceImageState, setLocalReferenceImages] = useState(() => ({
-    images: project?.referenceImages ?? [],
-    projectId: project?.id ?? null,
+    images: selectedProject?.referenceImages ?? [],
+    projectId: selectedProject?.id ?? null,
   }));
   const [profileFormState, setProfileForm] = useState(() => ({
-    detailPrompt: project?.detailPrompt ?? "",
-    profileSummary: project?.profileSummary ?? "",
-    projectId: project?.id ?? null,
-    usagePrompt: project?.usagePrompt ?? "",
+    detailPrompt: selectedProject?.detailPrompt ?? "",
+    profileSummary: selectedProject?.profileSummary ?? "",
+    projectId: selectedProject?.id ?? null,
+    usagePrompt: selectedProject?.usagePrompt ?? "",
   }));
   const [profileDraft, setProfileDraft] = useState<{
     detailPrompt: string;
@@ -1387,15 +1387,16 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Demo
   } | null>(null);
   const [referenceResultState, setReferenceResultState] = useState(() => ({
     addedReferenceResultIds: new Set<string>(),
-    projectId: project?.id ?? null,
+    projectId: selectedProject?.id ?? null,
   }));
   const [referenceResultRequestState, setReferenceResultRequestState] = useState(() => ({
     pendingReferenceIds: new Set<string>(),
-    projectId: project?.id ?? null,
+    projectId: selectedProject?.id ?? null,
   }));
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingReferenceImage, setIsUploadingReferenceImage] = useState(false);
-  if (!project) return <EmptyPage title="没有角色资料数据" />;
+  if (!selectedProject) return <EmptyPage title="没有角色资料数据" />;
+  const project = selectedProject;
   const localReferenceImages = referenceImageState.projectId === project.id ? referenceImageState.images : project.referenceImages;
   const profileForm = profileFormState.projectId === project.id ? profileFormState : {
     detailPrompt: project.detailPrompt,
@@ -1809,7 +1810,7 @@ function SectionCard({
 export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
-  const project = findProject(data, projectId);
+  const project = findProject(data, projectId) as LoraTrainingProject;
   const [localSectionState, setLocalSections] = useState(() => ({
     projectId: project?.id ?? null,
     sections: project?.sections ?? [],
@@ -2107,8 +2108,8 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingDemoData(data);
-  const project = findProject(data, projectId);
-  const section = findSection(project, sectionId);
+  const project = findProject(data, projectId) as LoraTrainingProject;
+  const section = findSection(project, sectionId) as LoraTrainingSection;
   const [sectionSceneBlocksByKey, setSectionSceneBlocksByKey] = useState<Record<string, LoraTrainingSectionBlock[]>>(() => (
     project && section ? { [buildProjectSectionStateKey(project.id, section.id)]: section.blocks } : {}
   ));
@@ -2457,8 +2458,8 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
   const pathname = usePathname();
   const router = useRouter();
   const { pushToast } = useDemoFeedback();
-  const project = findProject(data, projectId);
-  const section = findSection(project, sectionId);
+  const project = findProject(data, projectId) as LoraTrainingProject;
+  const section = findSection(project, sectionId) as LoraTrainingSection;
   const referenceSourceTree: ReferenceSourceGroup[] = project && section ? [
     {
       id: "profile",
@@ -2902,7 +2903,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
 export function LoraTrainingProjectResultsPage({ data, projectId }: { data: DemoData; projectId?: string }) {
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
-  const project = findProject(data, projectId);
+  const project = findProject(data, projectId) as LoraTrainingProject;
   const [resultInteractionState, setResultInteractionState] = useState(() => ({
     filter: "all" as TrainingResultFilter,
     projectId: project?.id ?? null,
@@ -3118,7 +3119,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
   const { pushToast } = useDemoFeedback();
   const hrefForRoute = useRouteHref();
   const training = useTraining(data);
-  const project = findProject(data, projectId);
+  const project = findProject(data, projectId) as LoraTrainingProject;
   const [datasetResultState, setDatasetResultState] = useState<{
     hasOverride: boolean;
     projectId: string | null;
@@ -3477,7 +3478,7 @@ export function LoraTrainingProjectDatasetPage({ data, projectId }: { data: Demo
 
 export function LoraTrainingProjectDatasetRevisionPage({ data, projectId, revisionId }: { data: DemoData; projectId?: string; revisionId?: string }) {
   const training = useTraining(data);
-  const project = findProject(data, projectId);
+  const project = findProject(data, projectId) as LoraTrainingProject;
   const revision = project?.datasetRevisions.find((item) => item.id === revisionId);
   if (!project || !revision) return <EmptyPage title="没有冻结版本数据" />;
   const revisionResults = revision.samples.map((sample) => ({
@@ -3533,7 +3534,7 @@ export function LoraTrainingProjectScopedRunsPage({
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
   const training = useTraining(data);
-  const project = findProject(data, projectId);
+  const project = findProject(data, projectId) as LoraTrainingProject;
   const [projectRunInteractionState, setProjectRunInteractionState] = useState(() => ({
     hiddenProjectRunIds: new Set<string>(),
     kind,

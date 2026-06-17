@@ -222,7 +222,6 @@ test("LoRA training headers do not keep sample actions or backs for invalid nest
   assert.equal(missingProjectSection.title, "Azure Idol / 小节详情");
   assert.equal(missingProjectSection.back?.href, "/training/projects/azure-idol/sections");
   assert.equal(missingProjectSection.actions, undefined);
-  assert.notEqual(missingProjectSection.actions?.[0]?.href, "/training/projects/vela-neon/sections/stage-light/generation-tasks/new");
 
   const missingDatasetRevision = findHeaderSpecForRoute(data, "/training/projects/azure-idol/dataset/revisions/missing-revision");
   assert.ok(missingDatasetRevision, "invalid dataset revision should still resolve a project header");
@@ -307,7 +306,6 @@ test("LoRA training project headers do not keep sample actions for invalid proje
   assert.equal(missingProjectGenerationTasks.title, "项目生成任务");
   assert.equal(missingProjectGenerationTasks.back?.href, "/training/projects");
   assert.equal(missingProjectGenerationTasks.actions, undefined);
-  assert.notEqual(missingProjectGenerationTasks.actions?.[0]?.href, "/training/projects/vela-neon/sections/stage-light/generation-tasks/new");
 });
 
 test("LoRA training project generation header action selects an enabled section entry", () => {

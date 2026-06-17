@@ -219,11 +219,11 @@ async function buildGenerationRuns(input: {
   }
 
   const runs = await Promise.all(
-    [...grouped.entries()].map(async ([generationRunId, images]) => {
+    [...grouped.entries()].map(async ([generationRunId, images]): Promise<LoraTrainingRun | null> => {
       const run = await getCharacterLoraGenerationRun(generationRunId);
       if (!run) return null;
       const sectionTitle = images[0]?.sectionId ? input.sectionNames.get(images[0].sectionId) ?? "训练小节" : "未分组";
-      return {
+      const mappedRun: LoraTrainingRun = {
         id: generationRunId,
         kind: "generation" as const,
         status: run.status === "done" ? "completed" : run.status === "running" ? "running" : run.status === "queued" ? "queued" : "failed",
@@ -242,11 +242,12 @@ async function buildGenerationRuns(input: {
         errorMessage: typeof run.errorSummary === "string" ? run.errorSummary : run.errorSummary ? JSON.stringify(run.errorSummary) : undefined,
         outputLabel: `输出 ${images.length} 张图片`,
         outputResultIds: images.map((image) => image.id),
-      } satisfies LoraTrainingRun;
+      };
+      return mappedRun;
     }),
   );
 
-  return runs.filter((run): run is LoraTrainingRun => Boolean(run));
+  return runs.filter((run): run is LoraTrainingRun => run !== null);
 }
 
 function applyTrainingProjectSectionOverrides(

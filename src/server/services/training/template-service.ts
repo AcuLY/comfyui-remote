@@ -77,7 +77,7 @@ function mapTemplateSnapshot(snapshot: Awaited<ReturnType<typeof getCharacterLor
     id: snapshot.id,
     title: snapshot.name,
     status: snapshot.isActive ? "active" : "archived",
-    updatedAt: formatUpdatedAt(snapshot.updatedAt),
+    updatedAt: formatUpdatedAt(snapshot.capturedAt),
     description: snapshot.description ?? "",
     imageGuidance: readGuidance(snapshot.trainingDefaults, "imageGuidance") ?? "每次生成 1 张干净训练图，优先保证角色身份稳定、轮廓清晰。",
     captionGuidance: readGuidance(snapshot.promptCardDefaults, "captionGuidance") ?? "先写 LoRA 触发词，再补充姿态、服装、光线、镜头和背景。",

@@ -1,5 +1,6 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, extname, join } from "node:path";
+import type { LoraTrainingRun } from "@/app/design-demos/data/lora-training-types";
 import { getTrainingProject } from "@/server/services/training/read-service";
 import { enqueueManagedTrainingSectionGenerationRun, mapTrainingProjectError } from "@/server/services/training/project-service";
 import { enqueueCharacterLoraSectionGenerationRun, mapCharacterLoraPhase3Error } from "@/server/services/character-lora-training/phase3-service";
@@ -75,6 +76,28 @@ async function withGenerationTaskDraftWriteLock<T>(fn: () => Promise<T>) {
 
 function formatTimestamp(value = new Date()) {
   return value.toISOString();
+}
+
+function mapCharacterLoraGenerationRunToTrainingRun(
+  run: Awaited<ReturnType<typeof enqueueCharacterLoraSectionGenerationRun>>,
+  project: Awaited<ReturnType<typeof getTrainingProject>>,
+  section: Awaited<ReturnType<typeof getTrainingProject>>["sections"][number],
+): LoraTrainingRun {
+  return {
+    id: run.id,
+    kind: "generation",
+    status: run.status === "done" ? "completed" : run.status === "running" ? "running" : run.status === "queued" ? "queued" : "failed",
+    projectId: project.id,
+    sectionId: section.id,
+    projectTitle: project.title,
+    title: `${section.title} 图片生成`,
+    summary: "图片 · 手动创建",
+    timestamp: formatTimestamp(),
+    provider: run.imageModel ?? run.hostModel ?? run.provider,
+    finalInput: run.visualPrompt ?? run.hostInstruction ?? undefined,
+    errorMessage: typeof run.errorSummary === "string" ? run.errorSummary : run.errorSummary ? JSON.stringify(run.errorSummary) : undefined,
+    schedulerMessage: run.status === "queued" ? "等待生成队列处理" : undefined,
+  };
 }
 
 function createDraftId() {
@@ -428,7 +451,7 @@ export async function runManagedGenerationTask(taskId: string) {
   });
 
   if (!run) {
-    run = await enqueueCharacterLoraSectionGenerationRun(section.id, {
+    const fallbackRun = await enqueueCharacterLoraSectionGenerationRun(section.id, {
       previousCandidateImageIds,
       sourceImageIds,
       userInstruction: `${draft.taskType}\n\n${preview.finalInput}`,
@@ -436,6 +459,7 @@ export async function runManagedGenerationTask(taskId: string) {
       const mapped = mapCharacterLoraPhase3Error(error);
       throw new TrainingGenerationTaskDraftServiceError(mapped.message, mapped.status, mapped.details);
     });
+    run = mapCharacterLoraGenerationRunToTrainingRun(fallbackRun, project, section);
   }
 
   await withGenerationTaskDraftWriteLock(async () => {
