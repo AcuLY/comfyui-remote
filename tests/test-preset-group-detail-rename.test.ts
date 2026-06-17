@@ -36,6 +36,21 @@ test("preset group detail rename does not resubmit the group category id", () =>
   assert.notEqual(saveEnd, -1, "saveGroup body should end before removeGroup");
   const saveBody = source.slice(saveStart, saveEnd);
 
-  assert.match(saveBody, /await updatePresetGroup\(currentGroup\.id,\s*\{[\s\S]*name: name\.trim\(\)/, "rename should save the edited name");
+  assert.match(saveBody, /await updatePresetGroup\(currentGroup\.id,\s*\{[\s\S]*name: trimmedName/, "rename should save the edited name");
   assert.doesNotMatch(saveBody, /\bcategoryId\b/, "rename should not send the preset-group category id through the ordinary preset update payload");
+});
+
+test("preset group detail name input saves changed names on blur", () => {
+  const source = readSource("src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx");
+
+  assert.match(
+    source,
+    /<input[\s\S]*value=\{name\}[\s\S]*onChange=\{\(event\) => setName\(event\.target\.value\)\}[\s\S]*onBlur=\{\(\) => saveGroup\(\)\}/,
+    "group detail name input should submit the rename when the field loses focus",
+  );
+  assert.match(
+    source,
+    /const trimmedName = name\.trim\(\);[\s\S]*if \(!trimmedName \|\| trimmedName === currentGroup\.name/,
+    "blur autosave should skip empty or unchanged names",
+  );
 });
