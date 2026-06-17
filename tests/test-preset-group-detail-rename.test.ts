@@ -30,7 +30,7 @@ test("preset group rename invalidates the group detail route before refresh", ()
 
 test("preset group detail rename does not resubmit the group category id", () => {
   const source = readSource("src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx");
-  const saveStart = source.indexOf("function saveGroup()");
+  const saveStart = source.search(/\b(?:async\s+)?function saveGroup\(/);
   assert.notEqual(saveStart, -1, "group detail client should define saveGroup");
   const saveEnd = source.indexOf("\n  function removeGroup()", saveStart);
   assert.notEqual(saveEnd, -1, "saveGroup body should end before removeGroup");
@@ -45,12 +45,12 @@ test("preset group detail name input saves changed names on blur", () => {
 
   assert.match(
     source,
-    /<input[\s\S]*value=\{name\}[\s\S]*onChange=\{\(event\) => setName\(event\.target\.value\)\}[\s\S]*onBlur=\{\(\) => saveGroup\(\)\}/,
+    /<input[\s\S]*value=\{name\}[\s\S]*onChange=\{\(event\) => setName\(event\.target\.value\)\}[\s\S]*onBlur=\{\(event\) => void saveGroup\(event\.currentTarget\.value\)\}/,
     "group detail name input should submit the rename when the field loses focus",
   );
   assert.match(
     source,
-    /const trimmedName = name\.trim\(\);[\s\S]*if \(!trimmedName \|\| trimmedName === currentGroup\.name/,
+    /async function saveGroup\(nextName = name\)[\s\S]*const trimmedName = nextName\.trim\(\);[\s\S]*if \(!trimmedName \|\| trimmedName === currentGroup\.name/,
     "blur autosave should skip empty or unchanged names",
   );
 });

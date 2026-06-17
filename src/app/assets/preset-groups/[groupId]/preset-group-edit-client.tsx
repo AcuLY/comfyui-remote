@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useMemo, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import {
   closestCenter,
   DndContext,
@@ -177,7 +177,7 @@ export function PresetGroupEditClient({
   const [isPending, startTransition] = useTransition();
   const [currentGroup, setCurrentGroup] = useState(group);
   const [name, setName] = useState(group.name);
-  const saveInFlightRef = useRef(false);
+  const [isSavingGroup, setIsSavingGroup] = useState(false);
   const [openReplaceMemberId, setOpenReplaceMemberId] = useState<string | null>(null);
   const [slotTemplate, setSlotTemplate] = useState(initialCategory?.slotTemplate ?? []);
   const slotDndId = useId();
@@ -303,28 +303,26 @@ export function PresetGroupEditClient({
     return [...catMap.values()].sort((a, b) => (a.category?.sortOrder ?? 0) - (b.category?.sortOrder ?? 0));
   }, [currentGroup.members, variantLookup, categories]);
 
-  function saveGroup() {
-    const trimmedName = name.trim();
-    if (!trimmedName || trimmedName === currentGroup.name || saveInFlightRef.current) {
+  async function saveGroup(nextName = name) {
+    const trimmedName = nextName.trim();
+    if (!trimmedName || trimmedName === currentGroup.name || isSavingGroup) {
       return;
     }
 
-    saveInFlightRef.current = true;
-    startTransition(async () => {
-      try {
-        await updatePresetGroup(currentGroup.id, {
-          name: trimmedName,
-        });
-        setCurrentGroup((current) => ({ ...current, name: trimmedName }));
-        setName(trimmedName);
-        toast.success("预制组已保存");
-        router.refresh();
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "保存失败");
-      } finally {
-        saveInFlightRef.current = false;
-      }
-    });
+    setIsSavingGroup(true);
+    try {
+      await updatePresetGroup(currentGroup.id, {
+        name: trimmedName,
+      });
+      setCurrentGroup((current) => ({ ...current, name: trimmedName }));
+      setName(trimmedName);
+      toast.success("预制组已保存");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "保存失败");
+    } finally {
+      setIsSavingGroup(false);
+    }
   }
 
   function removeGroup() {
@@ -417,7 +415,7 @@ export function PresetGroupEditClient({
             <input
               value={name}
               onChange={(event) => setName(event.target.value)}
-              onBlur={() => saveGroup()}
+              onBlur={(event) => void saveGroup(event.currentTarget.value)}
               className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/30"
             />
           </label>
@@ -719,8 +717,8 @@ export function PresetGroupEditClient({
         <div className="flex flex-wrap gap-2 border-t border-white/5 pt-3">
           <button
             type="button"
-            disabled={isPending || !name.trim() || name.trim() === currentGroup.name}
-            onClick={saveGroup}
+            disabled={isPending || isSavingGroup || !name.trim() || name.trim() === currentGroup.name}
+            onClick={() => void saveGroup()}
             className="inline-flex items-center gap-1.5 rounded-lg bg-sky-500/20 px-3 py-2 text-xs text-sky-300 transition hover:bg-sky-500/30 disabled:opacity-50"
           >
             <Save className="size-3.5" /> 保存
