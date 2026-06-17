@@ -223,8 +223,8 @@ test("training mobile bottom navigation reserves columns for every resource link
   );
   assert.match(
     shellSource,
-    /<button[\s\S]*className=\{s\.mobileModeIndicator\}/,
-    "mobile bottom navigation should render an extra work-mode button after resource links.",
+    /<div className=\{s\.mobileModeIndicator\}/,
+    "mobile bottom navigation should render an extra work-mode indicator after resource links.",
   );
   assert.match(
     trainingMobileRule,
@@ -232,44 +232,6 @@ test("training mobile bottom navigation reserves columns for every resource link
       `grid-template-columns:\\s*repeat\\(${trainingLinkCount},\\s*minmax\\(0,\\s*1fr\\)\\)\\s*minmax\\(52px,\\s*0\\.9fr\\)`,
     ),
     "the training mobile nav should reserve one column per training resource link, plus the mode indicator.",
-  );
-});
-
-test("training mobile bottom mode button can switch back to generation resources", () => {
-  assert.match(
-    shellSource,
-    /workModeSwitchHref\?:/,
-    "shared shell should allow production modules to inject a mode switch target.",
-  );
-  assert.match(
-    shellSource,
-    /function applyWorkMode\(nextMode: DesignDemoWorkMode\)/,
-    "shared shell should own persisting mobile mode button changes.",
-  );
-  assert.match(
-    shellSource,
-    /new CustomEvent\(WORK_MODE_CHANGE_EVENT,\s*\{\s*detail:\s*\{\s*mode:\s*nextMode\s*\}\s*\}\)/,
-    "shared shell should broadcast the selected mode from the mobile mode button.",
-  );
-  assert.match(
-    shellSource,
-    /router\.push\(resolvedHrefForRoute\(modeSwitchHref\)\)/,
-    "shared shell should navigate the mobile mode button to the injected or inferred counterpart route.",
-  );
-  assert.match(
-    shellSource,
-    /onToggleWorkMode=\{toggleWorkMode\}/,
-    "mobile bottom mode button should call the shared direct switch handler.",
-  );
-  assert.doesNotMatch(
-    shellCssSource,
-    /mobileModeIndicator\s*\{[\s\S]*?pointer-events:\s*none/,
-    "the mobile mode control should remain clickable.",
-  );
-  assert.match(
-    trainingShellSource,
-    /workModeSwitchHref=\{resolveTrainingModeSwitchHref\(currentRoute\)\}/,
-    "production training shell should route its mode button back to the matching generation resource.",
   );
 });
 

@@ -5,7 +5,6 @@ import { ClipboardList, FileText, FolderTree, Tags } from "lucide-react";
 
 import { DesignDemoShell, type DesignDemoShellNavLink } from "@/components/design-demo-shell/app-shell";
 import {
-  WORK_MODE_RESOURCE_TARGETS,
   buildWorkModeResourceTargetList,
   type WorkModeResourceKey,
   type WorkModeResourceTarget,
@@ -32,29 +31,6 @@ const TRAINING_MODULE_NAV_KEYS = new Set<WorkModeResourceKey>([
 
 function trainingNavigationGroup(target: WorkModeResourceTarget) {
   return target.owner === "shared" ? "资源" : "工作区";
-}
-
-function isRouteUnder(pathname: string, prefix: string) {
-  return pathname === prefix || pathname.startsWith(`${prefix}/`);
-}
-
-function isResourceTargetActive(pathname: string, target: WorkModeResourceTarget) {
-  const prefixes = Array.isArray(target.activePrefix) ? target.activePrefix : [target.activePrefix ?? target.href];
-  return prefixes.some((prefix) => isRouteUnder(pathname, prefix));
-}
-
-function resolveTrainingModeSwitchHref(currentRoute: string) {
-  const generationTargets = WORK_MODE_RESOURCE_TARGETS.generation;
-  const trainingTargets = WORK_MODE_RESOURCE_TARGETS.lora_training;
-  const pairs: Array<[WorkModeResourceTarget, WorkModeResourceTarget]> = [
-    [trainingTargets.runs, generationTargets.runs],
-    [trainingTargets.projects, generationTargets.projects],
-    [trainingTargets.presets, generationTargets.presets],
-    [trainingTargets.templates, generationTargets.templates],
-    [trainingTargets.models, generationTargets.models],
-    [trainingTargets.settings, generationTargets.settings],
-  ];
-  return pairs.find(([trainingTarget]) => isResourceTargetActive(currentRoute, trainingTarget))?.[1].href ?? generationTargets.runs.href;
 }
 
 function countForTrainingResource(
@@ -112,7 +88,6 @@ export function TrainingShell({
       navigationLinks={buildTrainingNavigationLinks(data)}
       routeHeaderConfig={findTrainingHeaderSpecForRoute(data, currentRoute)}
       themePersistence={TRAINING_THEME_PERSISTENCE}
-      workModeSwitchHref={resolveTrainingModeSwitchHref(currentRoute)}
     >
       {children}
     </DesignDemoShell>
