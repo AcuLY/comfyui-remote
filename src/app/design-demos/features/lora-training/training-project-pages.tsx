@@ -1255,6 +1255,8 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: DemoD
   const latestRevision = project.datasetRevisions[0];
 
   async function handleToggleProjectArchive() {
+    if (!project) return;
+
     const currentArchived = projectArchiveState.projectId === project.id ? projectArchiveState.archived : project.status === "archived";
     const nextArchived = !currentArchived;
 
