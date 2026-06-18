@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
-import path from "node:path";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = dirname(fileURLToPath(import.meta.url));
 
 const runtimeTraceExcludes = [
   "./.next/**/*",
@@ -68,8 +71,9 @@ const broadPatternIssuePaths = [
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["localhost", "127.0.0.1"],
+  outputFileTracingRoot: projectRoot,
   turbopack: {
-    root: path.join(__dirname, ".."),
+    root: projectRoot,
     ignoreIssue: [
       {
         path: "**/next.config.ts",

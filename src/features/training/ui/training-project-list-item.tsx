@@ -72,7 +72,9 @@ export function TrainingProjectListItem({
   const hrefForRoute = useRouteHref();
   const projectHref = hrefForRoute(`/training/projects/${project.id}`);
   const sectionCountLabel = `${project.sectionCount} 小节`;
-  const recentResultImages = project.resultPool.map((result) => result.image);
+  const recentResultImages = project.resultPool.length > 0
+    ? project.resultPool.map((result) => result.image)
+    : project.images;
   const { ref, style, handleProps } = useDemoSortable(project.id);
 
   return (

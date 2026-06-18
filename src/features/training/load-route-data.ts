@@ -3,9 +3,17 @@ import {
   listModelAssets,
   ModelAssetError,
 } from "@/server/services/model-asset-service";
-import { loadTrainingSnapshot } from "@/server/services/training/snapshot-service";
+import {
+  loadTrainingProjectCreationRouteData,
+  loadTrainingProjectRouteData,
+  loadTrainingProjectsRouteData,
+  loadTrainingPresetsRouteData,
+  loadTrainingRunsRouteData,
+  loadTrainingTemplatesRouteData,
+} from "@/server/services/training/snapshot-service";
 import { buildTrainingShellData } from "./data";
 import type { TrainingAppData, TrainingModelOption } from "./data";
+import { matchRoute } from "./routes";
 
 function shouldReturnEmptyModelList(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
@@ -30,9 +38,51 @@ async function loadSharedModelAssets(kind: ModelKind): Promise<TrainingModelOpti
   }
 }
 
-export async function loadTrainingRouteData(): Promise<TrainingAppData> {
+function routeSegmentsToPath(route: readonly string[]) {
+  return route.length > 0 ? `/training/${route.join("/")}` : "/training";
+}
+
+async function loadLoraTrainingForRoute(route: readonly string[]) {
+  const match = matchRoute(routeSegmentsToPath(route));
+
+  switch (match.key) {
+    case "training-projects":
+      return loadTrainingProjectsRouteData();
+    case "training-project-new":
+      return loadTrainingProjectCreationRouteData();
+    case "training-project-detail":
+    case "training-project-profile":
+    case "training-project-sections":
+    case "training-project-section-detail":
+    case "training-generation-compose":
+    case "training-project-results":
+    case "training-project-dataset":
+    case "training-project-dataset-revision":
+    case "training-project-training-runs":
+    case "training-project-generation-tasks":
+      return loadTrainingProjectRouteData(match.params.trainingProjectId);
+    case "training-presets":
+    case "training-preset-new":
+    case "training-preset-detail":
+    case "training-preset-sort-rules":
+      return loadTrainingPresetsRouteData();
+    case "training-templates":
+    case "training-template-new":
+    case "training-template-edit":
+    case "training-template-section":
+      return loadTrainingTemplatesRouteData();
+    case "training-runs":
+    case "training-generation-run-detail":
+    case "training-training-run-detail":
+      return loadTrainingRunsRouteData();
+    case "not-found":
+      return { projects: [], runs: [], presets: [], templates: [] };
+  }
+}
+
+export async function loadTrainingRouteData(route: readonly string[] = []): Promise<TrainingAppData> {
   const [loraTraining, checkpointModels, loraModels] = await Promise.all([
-    loadTrainingSnapshot(),
+    loadLoraTrainingForRoute(route),
     loadSharedModelAssets("checkpoint"),
     loadSharedModelAssets("lora"),
   ]);

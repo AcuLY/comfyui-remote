@@ -11,9 +11,11 @@ import {
 } from "lucide-react";
 
 import type { HeaderAction, HeaderActionTone, HeaderSpec } from "@/components/design-demo-shell/header-types";
-import type { LoraTrainingDatasetRevision, LoraTrainingProject, LoraTrainingSection } from "./types";
-import type { TrainingShellData } from "./data";
+import type { TrainingShellData, TrainingShellProject } from "./data";
 import { matchRoute, type Match } from "./routes";
+
+type TrainingShellSection = TrainingShellProject["sections"][number];
+type TrainingShellDatasetRevision = TrainingShellProject["datasetRevisions"][number];
 
 function headerAction(
   label: string,
@@ -25,17 +27,17 @@ function headerAction(
 }
 
 function trainingData(data: TrainingShellData) {
-  return data.loraTraining ?? { projects: [], presets: [], runs: [], templates: [] };
+  return data.training;
 }
 
-function findProject(data: TrainingShellData, projectId?: string): LoraTrainingProject | undefined {
+function findProject(data: TrainingShellData, projectId?: string): TrainingShellProject | undefined {
   return trainingData(data).projects.find((project) => project.id === projectId);
 }
 
 function findProjectByDatasetRevision(
   data: TrainingShellData,
   revisionId?: string,
-): { project: LoraTrainingProject; revision: LoraTrainingDatasetRevision } | null {
+): { project: TrainingShellProject; revision: TrainingShellDatasetRevision } | null {
   for (const project of trainingData(data).projects) {
     const revision = project.datasetRevisions.find((item) => item.id === revisionId);
     if (revision) return { project, revision };
@@ -43,7 +45,7 @@ function findProjectByDatasetRevision(
   return null;
 }
 
-function findSection(project: LoraTrainingProject | undefined, sectionId?: string): LoraTrainingSection | undefined {
+function findSection(project: TrainingShellProject | undefined, sectionId?: string): TrainingShellSection | undefined {
   return project?.sections.find((section) => section.id === sectionId);
 }
 
@@ -51,7 +53,7 @@ function projectTitle(data: TrainingShellData, projectId?: string) {
   return findProject(data, projectId)?.title ?? "训练项目";
 }
 
-function sectionTitle(project: LoraTrainingProject | undefined, sectionId?: string) {
+function sectionTitle(project: TrainingShellProject | undefined, sectionId?: string) {
   return findSection(project, sectionId)?.title ?? "训练小节";
 }
 
@@ -59,7 +61,7 @@ function projectBack(projectId?: string) {
   return projectId ? { href: `/training/projects/${projectId}`, label: "返回项目" } : { href: "/training/projects", label: "返回项目" };
 }
 
-function projectMeta(project: LoraTrainingProject | undefined) {
+function projectMeta(project: TrainingShellProject | undefined) {
   if (!project) return undefined;
   return [
     `${project.sectionCount} 小节`,
@@ -135,7 +137,7 @@ function projectRouteSpec(data: TrainingShellData, match: Match): HeaderSpec {
             `/training/projects/${projectId}/sections/${match.params.sectionId}/generation-tasks/new`,
           ),
         ],
-        meta: section ? [`${section.blocks.length} 块`, `${section.images.length} 张`, section.resultStatus] : undefined,
+        meta: section ? [`${section.blockCount} 块`, `${section.imageCount} 张`, section.resultStatus] : undefined,
         status: "小节详情",
       };
     }
@@ -149,7 +151,7 @@ function projectRouteSpec(data: TrainingShellData, match: Match): HeaderSpec {
         title: sectionTitle(project, match.params.sectionId),
         subtitle: "基于训练小节生成候选训练集图片。",
         back: { href: `/training/projects/${projectId}/sections/${match.params.sectionId}`, label: "返回小节" },
-        meta: section ? [`${section.blocks.length} 块`, `${section.images.length} 张`] : undefined,
+        meta: section ? [`${section.blockCount} 块`, `${section.imageCount} 张`] : undefined,
         status: "新建生成任务",
       };
     }
@@ -162,7 +164,7 @@ function projectRouteSpec(data: TrainingShellData, match: Match): HeaderSpec {
         title,
         subtitle: "审核、保留和补全说明文本的训练集候选图片。",
         back: projectBack(projectId),
-        meta: project ? [`${project.resultPool.length} 结果`, `${project.keptCount} 已保留`] : undefined,
+        meta: project ? [`${project.resultCount} 结果`, `${project.keptCount} 已保留`] : undefined,
         status: "结果池",
       };
     case "training-project-dataset":
@@ -175,7 +177,7 @@ function projectRouteSpec(data: TrainingShellData, match: Match): HeaderSpec {
         subtitle: "冻结数据集版本并检查训练前准备状态。",
         back: projectBack(projectId),
         actions: [headerAction("训练记录", Activity, "default", `/training/projects/${projectId}/training-runs`)],
-        meta: project ? [project.datasetVersion, project.readiness, `${project.datasetRevisions.length} 版本`] : undefined,
+        meta: project ? [project.datasetVersion, project.readiness, `${project.datasetRevisionCount} 版本`] : undefined,
         status: "数据集",
       };
     case "training-project-training-runs":

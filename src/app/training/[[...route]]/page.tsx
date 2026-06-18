@@ -19,12 +19,14 @@ export default async function TrainingPage({
 }: {
   params: Promise<{ route?: string[] }>;
 }) {
-  const [{ route }, data, cookieStore] = await Promise.all([params, loadTrainingRouteData(), cookies()]);
+  const [{ route }, cookieStore] = await Promise.all([params, cookies()]);
+  const resolvedRoute = route ?? [];
 
-  if (!route?.length) {
+  if (!resolvedRoute.length) {
     redirect("/training/runs");
   }
 
+  const data = await loadTrainingRouteData(resolvedRoute);
   const initialTheme = resolveTrainingTheme(cookieStore.get(TRAINING_THEME_COOKIE)?.value);
 
   return <TrainingApp data={data} initialTheme={initialTheme} />;

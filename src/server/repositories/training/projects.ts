@@ -765,6 +765,13 @@ export async function getTrainingProductionProjectOverview(projectId: string) {
     sourceImages: {
       count: referenceImageCount,
     },
+    sections: {
+      count: sectionCount,
+    },
+    results: {
+      captionMissingCount,
+      keptCount,
+    },
   };
 }
 

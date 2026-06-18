@@ -150,10 +150,17 @@
 }
 
 html {
+  width: 100%;
+  min-width: 100%;
+  min-height: 100%;
   background: var(--bg);
 }
 
 body {
+  width: 100%;
+  min-width: 100%;
+  min-height: 100%;
+  margin: 0;
   color: var(--fg);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
   transition: background 0.3s ease, color 0.3s ease;

@@ -83,6 +83,24 @@ test("desktop shell keeps the bottom navigation hidden while mobile uses an off-
   );
 });
 
+test("shared shell explicitly fills the viewport width for WebKit route roots", () => {
+  assert.match(
+    cssSource,
+    /\.shell\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;/,
+    "the shell root should not depend on browser shrink-to-fit behavior for route-level width",
+  );
+  assert.match(
+    cssSource,
+    /\.workspace\s*\{[\s\S]*?width:\s*100%;/,
+    "the workspace grid should fill the shell instead of sizing to its content in WebKit",
+  );
+  assert.match(
+    cssSource,
+    /\.contentFrame\s*\{[\s\S]*?width:\s*100%;/,
+    "the scroll frame should inherit the full shell width on no-navigation training routes",
+  );
+});
+
 test("route header receives page-local actions without a standalone local action strip", () => {
   assert.match(
     pageHeaderSource,

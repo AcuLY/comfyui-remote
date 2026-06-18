@@ -328,156 +328,362 @@ async function buildGenerationRuns(input: {
   return runs.filter((run): run is LoraTrainingRun => Boolean(run));
 }
 
-async function mapRealTrainingProjects(): Promise<LoraTrainingData> {
-  const jobs = await listTrainingProductionProjects({ page: 1, pageSize: 100 });
-  const [presetRows, templateRows] = await Promise.all([
-    listTrainingSceneDescriptionPresetRows(),
-    listTrainingTemplateRows(),
+type TrainingProjectRow = Awaited<ReturnType<typeof listTrainingProductionProjects>>["jobs"][number];
+type TrainingProjectOverview = Awaited<ReturnType<typeof getTrainingProjectOverview>>;
+
+type TrainingProjectRunSource = {
+  candidateImages: Awaited<ReturnType<typeof listTrainingCandidateImages>>;
+  resultPool: LoraTrainingImageResult[];
+  revisionMap: Map<string, Set<string>>;
+  sectionNames: Map<string, string>;
+  trainingRuns: Awaited<ReturnType<typeof listTrainingRuns>>;
+};
+
+type TrainingProjectSummaryOptions = {
+  includePreviewImages?: boolean;
+  includeReferenceImages?: boolean;
+};
+
+function emptyTrainingData(input: Partial<LoraTrainingData> = {}): LoraTrainingData {
+  return {
+    projects: input.projects ?? [],
+    runs: input.runs ?? [],
+    presets: input.presets ?? [],
+    templates: input.templates ?? [],
+  };
+}
+
+async function loadMappedTrainingPresets() {
+  const rows = await listTrainingSceneDescriptionPresetRows();
+  return rows.map(mapTrainingScenePreset);
+}
+
+async function loadMappedTrainingTemplates() {
+  const rows = await listTrainingTemplateRows();
+  return rows.map(mapTrainingTemplate);
+}
+
+async function loadMappedTrainingPresetsAndTemplates() {
+  const [presets, templates] = await Promise.all([
+    loadMappedTrainingPresets(),
+    loadMappedTrainingTemplates(),
   ]);
+  return { presets, templates };
+}
 
-  const projects = await Promise.all(jobs.jobs.map(async (job) => {
-    const [overview, sourceImages, promptCardVersions, sections, candidateImages, revisions, trainingRuns] = await Promise.all([
-      getTrainingProjectOverview(job.id),
-      listTrainingReferenceImages(job.id),
-      listTrainingPromptCardVersions(job.id),
-      listTrainingProjectSections(job.id),
-      listTrainingCandidateImages(job.id, {}),
-      listTrainingDatasetRevisions(job.id),
-      listTrainingRuns(job.id),
-    ]);
-
-    const latestPromptCard = promptCardVersions.find((version) => version.id === job.currentPromptCardVersionId) ?? promptCardVersions.at(-1) ?? null;
-    const sectionNames = new Map(sections.map((section) => [section.id, section.name]));
-    const resultPool = buildResultPool({ candidateImages, sectionNames });
-    const keptResults = resultPool.filter((image) => image.reviewStatus === "kept");
-    const revisionMap = new Map<string, Set<string>>();
-    for (const revision of revisions) {
-      revisionMap.set(
-        revision.id,
-        new Set(candidateImages.filter((image) => image.includedDatasetRevisionId === revision.id).map((image) => image.id)),
-      );
-    }
-
-    const mappedSections: LoraTrainingSection[] = sections.map((section) => {
-      const baseResolvedScene = section.template?.description ?? section.name;
-      const baseImagePrompt = latestPromptCard?.finalPromptDraft ?? job.triggerToken;
-      return {
-        id: section.id,
-        title: section.name,
-        enabled: section.status !== "paused",
-        updatedAt: formatUpdatedAt(section.updatedAt),
-        blocks: [
-          {
-            id: `${section.id}-scene-block`,
-            source: "本地",
-            title: "训练场景说明",
-            text: baseResolvedScene,
-          },
-        ],
-        resolvedScene: baseResolvedScene,
-        imagePrompt: baseImagePrompt,
-        images: resultPool.filter((image) => image.sectionId === section.id).map((image) => image.image).slice(0, 5),
-        resultStatus: section.pendingCount > 0 ? "pending" : section.keepCount > 0 ? "kept" : "rejected",
-      };
-    });
-
-    const mappedRevisions: LoraTrainingDatasetRevision[] = revisions.map((revision) => {
-      const includedIds = revisionMap.get(revision.id) ?? new Set<string>();
-      const samples = buildDatasetRevisionSamples(revision.id, resultPool, includedIds);
-      return {
-        id: revision.id,
-        version: `v${revision.version}`,
-        status: revision.status === "frozen" ? "ready" : revision.status === "freezing" ? "training" : "draft",
-        createdAt: formatUpdatedAt(revision.createdAt),
-        itemCount: revision.itemCount,
-        captionMissingCount: samples.filter((sample) => !sample.captionSnapshot).length,
-        manifestName: revision.selectedManifestArtifactId ?? `dataset_v${revision.version}.jsonl`,
-        samples,
-        manifestRows: samples.map((sample) => `${sample.filePathSnapshot} | ${sample.captionSnapshot}`),
-        relatedTrainingRunIds: trainingRuns.filter((run) => run.datasetRevisionId === revision.id).map((run) => run.id),
-      };
-    });
-
-    const latestRevision = mappedRevisions[0] ?? null;
-    const latestTrainingRun = trainingRuns[0] ?? null;
-    const referenceImages = buildReferenceImages(sourceImages);
-
-    return {
-      id: job.id,
-      title: job.characterName,
-      status: mapProjectStatus({
-        archived: job.status === "archived",
-        latestTrainingStatus: latestTrainingRun?.status ?? null,
-        missingItems: overview.missingItems ?? null,
-      }),
-      updatedAt: formatUpdatedAt(job.updatedAt),
-      sectionCount: mappedSections.length,
-      imageCount: resultPool.length,
-      datasetVersion: latestRevision?.version ?? "草稿",
-      recentTraining: latestTrainingRun
-        ? `${latestTrainingRun.status === "done" ? "已完成" : latestTrainingRun.status === "running" ? "训练中" : latestTrainingRun.status === "queued" ? "排队中" : "失败"} · ${latestTrainingRun.finalSafetensorsArtifactId ?? latestTrainingRun.id}`
-        : "待启动训练",
-      profileSummary: `${job.characterName} · trigger ${job.triggerToken} · 源图 ${sourceImages.length} 张`,
-      usagePrompt: latestPromptCard?.finalPromptDraft ?? job.triggerToken,
-      detailPrompt: JSON.stringify(
-        {
-          identityTraits: latestPromptCard?.identityTraits ?? {},
-          outfitTraits: latestPromptCard?.outfitTraits ?? {},
-          negativeTraits: latestPromptCard?.negativeTraits ?? [],
-        },
-        null,
-        2,
-      ),
-      readiness: overview.missingItems?.some((item) => item.blocking) ? "待补" : "完整",
-      keptCount: keptResults.length,
-      captionMissingCount: keptResults.filter((image) => !image.caption).length,
-      images: resultPool.map((image) => image.image).slice(0, 8),
-      referenceImages,
-      resultPool,
-      sections: mappedSections,
-      datasetRevisions: mappedRevisions,
-    } satisfies LoraTrainingProject;
-  }));
-
-  const runsByProject = await Promise.all(projects.map(async (project) => {
-    const [candidateImages, trainingRuns] = await Promise.all([
-      listTrainingCandidateImages(project.id, {}),
-      listTrainingRuns(project.id),
-    ]);
-    const sectionNames = new Map(project.sections.map((section) => [section.id, section.title]));
-    const resultPool = project.resultPool;
-    const revisionMap = new Map(
-      project.datasetRevisions.map((revision) => [
-        revision.id,
-        new Set(
-          candidateImages
-            .filter((image) => image.includedDatasetRevisionId === revision.id)
-            .map((image) => image.id),
-        ),
-      ]),
-    );
-
-    const generationRuns = await buildGenerationRuns({
-      candidateImages,
-      jobId: project.id,
-      projectTitle: project.title,
-      sectionNames,
-    });
-    const mappedTrainingRuns = buildTrainingRuns(
-      { id: project.id, title: project.title },
-      resultPool,
-      trainingRuns,
-      revisionMap,
-    );
-
-    return [...generationRuns, ...mappedTrainingRuns];
-  }));
+async function mapTrainingProjectSummary(
+  job: TrainingProjectRow,
+  overview?: TrainingProjectOverview,
+  options: TrainingProjectSummaryOptions = {},
+): Promise<LoraTrainingProject> {
+  const includePreviewImages = options.includePreviewImages ?? true;
+  const includeReferenceImages = options.includeReferenceImages ?? true;
+  const needsSourceImages = includePreviewImages || includeReferenceImages;
+  const [resolvedOverview, sourceImages] = await Promise.all([
+    overview ? Promise.resolve(overview) : getTrainingProjectOverview(job.id),
+    needsSourceImages ? listTrainingReferenceImages(job.id) : Promise.resolve([]),
+  ]);
+  const sourceImageCount = needsSourceImages ? sourceImages.length : resolvedOverview.sourceImages.count;
+  const referenceImages = needsSourceImages ? buildReferenceImages(sourceImages) : [];
+  const sectionCount = resolvedOverview.sections.count;
+  const keptCount = resolvedOverview.results.keptCount;
+  const captionMissingCount = resolvedOverview.results.captionMissingCount;
 
   return {
+    id: job.id,
+    title: job.characterName,
+    status: mapProjectStatus({
+      archived: job.status === "archived",
+      missingItems: resolvedOverview.missingItems ?? null,
+    }),
+    updatedAt: formatUpdatedAt(job.updatedAt),
+    sectionCount,
+    imageCount: keptCount || sourceImageCount,
+    datasetVersion: "草稿",
+    recentTraining: "待启动训练",
+    profileSummary: job.profileSummary || `${job.characterName} · trigger ${job.triggerToken} · 源图 ${sourceImageCount} 张`,
+    usagePrompt: job.usagePrompt || job.triggerToken,
+    detailPrompt: job.detailPrompt || "",
+    readiness: resolvedOverview.missingItems?.some((item) => item.blocking) ? "待补" : "完整",
+    keptCount,
+    captionMissingCount,
+    images: includePreviewImages ? referenceImages.map((image) => image.image).slice(0, 4) : [],
+    referenceImages: includeReferenceImages ? referenceImages : [],
+    resultPool: [],
+    sections: [],
+    datasetRevisions: [],
+  };
+}
+
+function buildRevisionMap(input: {
+  candidateImages: Awaited<ReturnType<typeof listTrainingCandidateImages>>;
+  revisionIds: string[];
+}) {
+  const revisionMap = new Map<string, Set<string>>();
+  for (const revisionId of input.revisionIds) {
+    revisionMap.set(
+      revisionId,
+      new Set(
+        input.candidateImages
+          .filter((image) => image.includedDatasetRevisionId === revisionId)
+          .map((image) => image.id),
+      ),
+    );
+  }
+  return revisionMap;
+}
+
+async function mapTrainingProjectDetail(
+  job: TrainingProjectRow,
+  overview?: TrainingProjectOverview,
+): Promise<{ project: LoraTrainingProject; runSource: TrainingProjectRunSource }> {
+  const [resolvedOverview, sourceImages, promptCardVersions, sections, candidateImages, revisions, trainingRuns] = await Promise.all([
+    overview ? Promise.resolve(overview) : getTrainingProjectOverview(job.id),
+    listTrainingReferenceImages(job.id),
+    listTrainingPromptCardVersions(job.id),
+    listTrainingProjectSections(job.id),
+    listTrainingCandidateImages(job.id, {}),
+    listTrainingDatasetRevisions(job.id),
+    listTrainingRuns(job.id),
+  ]);
+
+  const latestPromptCard = promptCardVersions.find((version) => version.id === job.currentPromptCardVersionId) ?? promptCardVersions.at(-1) ?? null;
+  const sectionNames = new Map(sections.map((section) => [section.id, section.name]));
+  const resultPool = buildResultPool({ candidateImages, sectionNames });
+  const keptResults = resultPool.filter((image) => image.reviewStatus === "kept");
+  const revisionMap = buildRevisionMap({
+    candidateImages,
+    revisionIds: revisions.map((revision) => revision.id),
+  });
+
+  const mappedSections: LoraTrainingSection[] = sections.map((section) => {
+    const baseResolvedScene = section.template?.description ?? section.name;
+    const baseImagePrompt = latestPromptCard?.finalPromptDraft ?? job.triggerToken;
+    return {
+      id: section.id,
+      title: section.name,
+      enabled: section.status !== "paused",
+      updatedAt: formatUpdatedAt(section.updatedAt),
+      blocks: [
+        {
+          id: `${section.id}-scene-block`,
+          source: "本地",
+          title: "训练场景说明",
+          text: baseResolvedScene,
+        },
+      ],
+      resolvedScene: baseResolvedScene,
+      imagePrompt: baseImagePrompt,
+      images: resultPool.filter((image) => image.sectionId === section.id).map((image) => image.image).slice(0, 5),
+      resultStatus: section.pendingCount > 0 ? "pending" : section.keepCount > 0 ? "kept" : "rejected",
+    };
+  });
+
+  const mappedRevisions: LoraTrainingDatasetRevision[] = revisions.map((revision) => {
+    const includedIds = revisionMap.get(revision.id) ?? new Set<string>();
+    const samples = buildDatasetRevisionSamples(revision.id, resultPool, includedIds);
+    return {
+      id: revision.id,
+      version: `v${revision.version}`,
+      status: revision.status === "frozen" ? "ready" : revision.status === "freezing" ? "training" : "draft",
+      createdAt: formatUpdatedAt(revision.createdAt),
+      itemCount: revision.itemCount,
+      captionMissingCount: samples.filter((sample) => !sample.captionSnapshot).length,
+      manifestName: revision.selectedManifestArtifactId ?? `dataset_v${revision.version}.jsonl`,
+      samples,
+      manifestRows: samples.map((sample) => `${sample.filePathSnapshot} | ${sample.captionSnapshot}`),
+      relatedTrainingRunIds: trainingRuns.filter((run) => run.datasetRevisionId === revision.id).map((run) => run.id),
+    };
+  });
+
+  const latestRevision = mappedRevisions[0] ?? null;
+  const latestTrainingRun = trainingRuns[0] ?? null;
+  const referenceImages = buildReferenceImages(sourceImages);
+  const project: LoraTrainingProject = {
+    id: job.id,
+    title: job.characterName,
+    status: mapProjectStatus({
+      archived: job.status === "archived",
+      latestTrainingStatus: latestTrainingRun?.status ?? null,
+      missingItems: resolvedOverview.missingItems ?? null,
+    }),
+    updatedAt: formatUpdatedAt(job.updatedAt),
+    sectionCount: mappedSections.length,
+    imageCount: resultPool.length,
+    datasetVersion: latestRevision?.version ?? "草稿",
+    recentTraining: latestTrainingRun
+      ? `${latestTrainingRun.status === "done" ? "已完成" : latestTrainingRun.status === "running" ? "训练中" : latestTrainingRun.status === "queued" ? "排队中" : "失败"} · ${latestTrainingRun.finalSafetensorsArtifactId ?? latestTrainingRun.id}`
+      : "待启动训练",
+    profileSummary: `${job.characterName} · trigger ${job.triggerToken} · 源图 ${sourceImages.length} 张`,
+    usagePrompt: latestPromptCard?.finalPromptDraft ?? job.triggerToken,
+    detailPrompt: JSON.stringify(
+      {
+        identityTraits: latestPromptCard?.identityTraits ?? {},
+        outfitTraits: latestPromptCard?.outfitTraits ?? {},
+        negativeTraits: latestPromptCard?.negativeTraits ?? [],
+      },
+      null,
+      2,
+    ),
+    readiness: resolvedOverview.missingItems?.some((item) => item.blocking) ? "待补" : "完整",
+    keptCount: keptResults.length,
+    captionMissingCount: keptResults.filter((image) => !image.caption).length,
+    images: resultPool.map((image) => image.image).slice(0, 8),
+    referenceImages,
+    resultPool,
+    sections: mappedSections,
+    datasetRevisions: mappedRevisions,
+  };
+
+  return {
+    project,
+    runSource: {
+      candidateImages,
+      resultPool,
+      revisionMap,
+      sectionNames,
+      trainingRuns,
+    },
+  };
+}
+
+async function mapTrainingProjectRuns(
+  project: Pick<LoraTrainingProject, "id" | "title">,
+  source: TrainingProjectRunSource,
+) {
+  const generationRuns = await buildGenerationRuns({
+    candidateImages: source.candidateImages,
+    jobId: project.id,
+    projectTitle: project.title,
+    sectionNames: source.sectionNames,
+  });
+  const mappedTrainingRuns = buildTrainingRuns(
+    { id: project.id, title: project.title },
+    source.resultPool,
+    source.trainingRuns,
+    source.revisionMap,
+  );
+  return [...generationRuns, ...mappedTrainingRuns];
+}
+
+async function mapTrainingProjectRunSummary(job: TrainingProjectRow): Promise<{ project: LoraTrainingProject; runs: LoraTrainingRun[] }> {
+  const [summaryProject, candidateImages, trainingRuns] = await Promise.all([
+    mapTrainingProjectSummary(job, undefined, { includePreviewImages: false, includeReferenceImages: false }),
+    listTrainingCandidateImages(job.id, {}),
+    listTrainingRuns(job.id),
+  ]);
+  const sectionNames = new Map<string, string>();
+  const resultPool = buildResultPool({ candidateImages, sectionNames });
+  const revisionIds = Array.from(
+    new Set(trainingRuns.map((run) => run.datasetRevisionId).filter((id): id is string => Boolean(id))),
+  );
+  const revisionMap = buildRevisionMap({ candidateImages, revisionIds });
+  const project = {
+    ...summaryProject,
+    imageCount: resultPool.length || summaryProject.imageCount,
+    images: resultPool.map((result) => result.image).slice(0, 8),
+    resultPool,
+  };
+  const runs = await mapTrainingProjectRuns(project, {
+    candidateImages,
+    resultPool,
+    revisionMap,
+    sectionNames,
+    trainingRuns,
+  });
+  return { project, runs };
+}
+
+function sortTrainingRuns(runs: LoraTrainingRun[]) {
+  return [...runs].sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+}
+
+export async function loadTrainingProjectsRouteData(): Promise<LoraTrainingData> {
+  const jobs = await listTrainingProductionProjects({ page: 1, pageSize: 100 });
+  const projects = await Promise.all(
+    jobs.jobs.map((job) => mapTrainingProjectSummary(job, undefined, { includeReferenceImages: false })),
+  );
+
+  return emptyTrainingData({ projects });
+}
+
+export async function loadTrainingProjectCreationRouteData(): Promise<LoraTrainingData> {
+  const jobs = await listTrainingProductionProjects({ page: 1, pageSize: 100 });
+  const [projects, { presets, templates }] = await Promise.all([
+    Promise.all(jobs.jobs.map((job) => mapTrainingProjectSummary(job))),
+    loadMappedTrainingPresetsAndTemplates(),
+  ]);
+  return emptyTrainingData({
     projects,
-    runs: runsByProject.flat().sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp))),
-    presets: presetRows.map(mapTrainingScenePreset),
-    templates: templateRows.map(mapTrainingTemplate),
+    presets,
+    templates,
+  });
+}
+
+export async function loadTrainingProjectRouteData(projectId: string): Promise<LoraTrainingData> {
+  const overview = await getTrainingProjectOverview(projectId);
+  const [{ project, runSource }, { presets, templates }] = await Promise.all([
+    mapTrainingProjectDetail(overview.job, overview),
+    loadMappedTrainingPresetsAndTemplates(),
+  ]);
+  const runs = await mapTrainingProjectRuns(project, runSource);
+
+  return emptyTrainingData({
+    projects: [project],
+    runs: sortTrainingRuns(runs),
+    presets,
+    templates,
+  });
+}
+
+export async function loadTrainingRunsRouteData(): Promise<LoraTrainingData> {
+  const jobs = await listTrainingProductionProjects({ page: 1, pageSize: 100 });
+  const runSummaries = await Promise.all(jobs.jobs.map((job) => mapTrainingProjectRunSummary(job)));
+
+  return emptyTrainingData({
+    projects: runSummaries.map((summary) => summary.project),
+    runs: sortTrainingRuns(runSummaries.flatMap((summary) => summary.runs)),
+  });
+}
+
+export async function loadTrainingPresetsRouteData(): Promise<LoraTrainingData> {
+  const presets = await loadMappedTrainingPresets();
+  return emptyTrainingData({ presets });
+}
+
+export async function loadTrainingTemplatesRouteData(): Promise<LoraTrainingData> {
+  const jobs = await listTrainingProductionProjects({ page: 1, pageSize: 100 });
+  const [projects, { presets, templates }] = await Promise.all([
+    Promise.all(
+      jobs.jobs.map((job) => mapTrainingProjectSummary(job, undefined, {
+        includePreviewImages: false,
+        includeReferenceImages: false,
+      })),
+    ),
+    loadMappedTrainingPresetsAndTemplates(),
+  ]);
+  return emptyTrainingData({
+    projects,
+    presets,
+    templates,
+  });
+}
+
+async function mapRealTrainingProjects(): Promise<LoraTrainingData> {
+  const jobs = await listTrainingProductionProjects({ page: 1, pageSize: 100 });
+  const [projectDetails, { presets, templates }] = await Promise.all([
+    Promise.all(jobs.jobs.map((job) => mapTrainingProjectDetail(job))),
+    loadMappedTrainingPresetsAndTemplates(),
+  ]);
+  const runsByProject = await Promise.all(
+    projectDetails.map(({ project, runSource }) => mapTrainingProjectRuns(project, runSource)),
+  );
+
+  return {
+    projects: projectDetails.map(({ project }) => project),
+    runs: sortTrainingRuns(runsByProject.flat()),
+    presets,
+    templates,
   };
 }
 

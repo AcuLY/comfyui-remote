@@ -205,8 +205,13 @@ test("production training route loader delegates snapshot assembly to a dedicate
   );
   assert.match(
     trainingRouteLoaderSource,
+    /loadTraining(?:Projects|Project|Runs|Presets|Templates)RouteData/,
+    "training route loader should import route-aware training snapshot service helpers",
+  );
+  assert.doesNotMatch(
+    trainingRouteLoaderSource,
     /loadTrainingSnapshot/,
-    "training route loader should import the dedicated training snapshot service",
+    "training route loader should not hydrate every /training route with the full snapshot",
   );
   assert.doesNotMatch(
     trainingFeatureDataSource,

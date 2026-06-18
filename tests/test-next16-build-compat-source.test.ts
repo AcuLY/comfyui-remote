@@ -30,3 +30,18 @@ test("root layout uses local fonts only for offline production builds", () => {
   assert.doesNotMatch(source, /next\/font\/google/, "production build should not fetch Google Fonts");
   assert.doesNotMatch(source, /\bGeist\(/, "layout should not instantiate a Google font loader");
 });
+
+test("global document sizing does not depend on browser default body margins", () => {
+  const source = readSource("src/app/globals.css");
+
+  assert.match(
+    source,
+    /html\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*100%;[\s\S]*?min-height:\s*100%;/,
+    "html should explicitly fill the viewport so standalone surfaces stay flush in Safari",
+  );
+  assert.match(
+    source,
+    /body\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*100%;[\s\S]*?min-height:\s*100%;[\s\S]*?margin:\s*0;/,
+    "body should not rely on preflight defaults for route-level shell alignment",
+  );
+});
