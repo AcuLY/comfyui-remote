@@ -455,8 +455,8 @@ test("section results can switch the lightbox to a project-wide continuous revie
   );
   assert.match(
     gridSource,
-    /const \[continuousReviewEnabled, setContinuousReviewEnabled\] = useState\(false\)/,
-    "continuous review should default off",
+    /const \[continuousReviewEnabled, setContinuousReviewEnabled\] = useState\(true\)/,
+    "continuous review should default on",
   );
   assert.match(
     gridSource,

@@ -80,7 +80,7 @@ export function ResultsGrid({
   const [isPending, startTransition] = useTransition();
   const [lastTrashedIds, setLastTrashedIds] = useState<string[]>([]);
   const [tempBatchSize, setTempBatchSize] = useState(initialBatchSize);
-  const [continuousReviewEnabled, setContinuousReviewEnabled] = useState(false);
+  const [continuousReviewEnabled, setContinuousReviewEnabled] = useState(true);
 
   const handleQuickRun = useCallback(async () => {
     if (isPending) return;
