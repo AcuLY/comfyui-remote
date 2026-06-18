@@ -46,8 +46,8 @@ export async function POST(request: Request, context: RouteContext) {
     return ok({
       ...result,
       censoredAt: result.censoredAt.toISOString(),
-      censoredFull: toImageUrl(result.censoredFilePath),
-      censoredSrc: toImageUrl(result.censoredThumbPath),
+      censoredFull: toImageUrl(result.censoredFilePath, result.censoredAt),
+      censoredSrc: toImageUrl(result.censoredThumbPath, result.censoredAt),
     });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Failed to save manual censor image", 400);

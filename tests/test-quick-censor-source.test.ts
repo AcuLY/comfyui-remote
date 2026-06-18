@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { toImageUrl } from "../src/lib/image-url";
 
 function readSource(path: string) {
   return readFileSync(resolve(process.cwd(), path), "utf8");
@@ -44,6 +45,42 @@ test("manual quick censor route accepts form data and persists a censored replac
     serviceSource,
     /persistCensoredImage\([\s\S]*manualCensoredImagePath/,
     "manual persistence should reuse the existing censored path and thumbnail writer",
+  );
+});
+
+test("manual quick censor returns versioned censored URLs so replaced files do not reuse the stale image cache", () => {
+  const routeSource = readSource("src/app/api/images/[imageId]/manual-censor/route.ts");
+  const detailViewSource = readSource("src/server/repositories/project-view-repository/detail-view.ts");
+
+  assert.equal(
+    toImageUrl("data/images/censored/project/image.jpg", "2026-06-18T00:00:00.000Z"),
+    "/api/images/censored/project/image.jpg?v=2026-06-18T00%3A00%3A00.000Z",
+    "image URLs should accept an optional cache-busting version",
+  );
+  assert.equal(
+    toImageUrl("data/images/raw/project/image.jpg"),
+    "/api/images/raw/project/image.jpg",
+    "ordinary generated image URLs should remain unversioned by default",
+  );
+  assert.match(
+    routeSource,
+    /censoredFull:\s*toImageUrl\(result\.censoredFilePath,\s*result\.censoredAt\)/,
+    "manual censor upload should return a versioned full-size censored URL",
+  );
+  assert.match(
+    routeSource,
+    /censoredSrc:\s*toImageUrl\(result\.censoredThumbPath,\s*result\.censoredAt\)/,
+    "manual censor upload should return a versioned censored thumbnail URL",
+  );
+  assert.equal(
+    detailViewSource.match(/toImageUrl\(img\.censoredFilePath,\s*img\.censoredAt\)/g)?.length,
+    2,
+    "section and project results should version full censored image URLs from censoredAt",
+  );
+  assert.equal(
+    detailViewSource.match(/toImageUrl\(img\.censoredThumbPath,\s*img\.censoredAt\)/g)?.length,
+    2,
+    "section and project results should version censored thumbnail URLs from censoredAt",
   );
 });
 

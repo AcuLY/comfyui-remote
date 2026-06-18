@@ -99,3 +99,63 @@ test("project results review actions update local image state before awaiting th
     "trash should remove the image from local project result state",
   );
 });
+
+test("project results lightbox supports the same review shortcuts as section results", () => {
+  const source = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+  const shortcuts = sourceSlice(
+    source,
+    "function handleKeyDown(event: KeyboardEvent) {",
+    "    window.addEventListener(\"keydown\", handleKeyDown);",
+  );
+
+  assert.match(
+    shortcuts,
+    /event\.target instanceof HTMLInputElement \|\| event\.target instanceof HTMLTextAreaElement/,
+    "project lightbox shortcuts should not fire while typing in form controls",
+  );
+  assert.match(
+    shortcuts,
+    /key === "i"[\s\S]*key === "I"[\s\S]*key === "d"[\s\S]*key === "D"[\s\S]*closeLightbox\(\)/,
+    "I and D should close the project results lightbox like section results",
+  );
+  assert.match(
+    shortcuts,
+    /key === "s"[\s\S]*key === "S"[\s\S]*key === "ArrowLeft"[\s\S]*goLightboxPrev\(\)/,
+    "S and ArrowLeft should navigate to the previous image",
+  );
+  assert.match(
+    shortcuts,
+    /key === "f"[\s\S]*key === "F"[\s\S]*key === "ArrowRight"[\s\S]*goLightboxNext\(\)/,
+    "F and ArrowRight should navigate to the next image",
+  );
+  assert.match(
+    shortcuts,
+    /key === "j"[\s\S]*key === "J"[\s\S]*key === "w"[\s\S]*key === "W"[\s\S]*reviewLightboxImage\("keep", true\)/,
+    "J and W should keep the current image and advance",
+  );
+  assert.match(
+    shortcuts,
+    /key === "k"[\s\S]*key === "K"[\s\S]*key === "e"[\s\S]*key === "E"[\s\S]*reviewLightboxImage\("trash", true\)/,
+    "K and E should delete the current image and advance",
+  );
+  assert.match(
+    shortcuts,
+    /key === "l"[\s\S]*key === "L"[\s\S]*key === "r"[\s\S]*key === "R"[\s\S]*handleToggleFeatured\(currentLightboxImage\.id,\s*!currentLightboxImage\.featured\)/,
+    "L and R should toggle the p-site marker",
+  );
+  assert.match(
+    shortcuts,
+    /key === ";"[\s\S]*key === "t"[\s\S]*key === "T"[\s\S]*handleToggleFeatured2\(currentLightboxImage\.id,\s*!currentLightboxImage\.featured2\)/,
+    "; and T should toggle the preview marker",
+  );
+  assert.match(
+    shortcuts,
+    /key === "'"[\s\S]*handleSetCover\(currentLightboxImage\.id\)/,
+    "apostrophe should set the current image as cover",
+  );
+  assert.match(
+    shortcuts,
+    /key === "h"[\s\S]*key === "H"[\s\S]*setShowCensoredMode\(\(prev\) => !prev\)/,
+    "H should toggle the censored version",
+  );
+});

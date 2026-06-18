@@ -305,8 +305,8 @@ function serializeSectionResultImage(
     featured: img.featured,
     featured2: img.featured2,
     cover: img.id === coverImageId,
-    censoredSrc: img.censoredThumbPath ? toImageUrl(img.censoredThumbPath) ?? "" : null,
-    censoredFull: img.censoredFilePath ? toImageUrl(img.censoredFilePath) ?? "" : null,
+    censoredSrc: img.censoredThumbPath ? toImageUrl(img.censoredThumbPath, img.censoredAt) ?? "" : null,
+    censoredFull: img.censoredFilePath ? toImageUrl(img.censoredFilePath, img.censoredAt) ?? "" : null,
     censoredAt: img.censoredAt ? img.censoredAt.toISOString() : null,
   };
 }
@@ -619,8 +619,8 @@ export async function getProjectResults(projectId: string): Promise<ProjectResul
               cover: img.id === project.coverImageId,
               width: img.width,
               height: img.height,
-              censoredSrc: img.censoredThumbPath ? toImageUrl(img.censoredThumbPath) ?? "" : null,
-              censoredFull: img.censoredFilePath ? toImageUrl(img.censoredFilePath) ?? "" : null,
+              censoredSrc: img.censoredThumbPath ? toImageUrl(img.censoredThumbPath, img.censoredAt) ?? "" : null,
+              censoredFull: img.censoredFilePath ? toImageUrl(img.censoredFilePath, img.censoredAt) ?? "" : null,
               censoredAt: img.censoredAt ? img.censoredAt.toISOString() : null,
             };
           });

@@ -678,34 +678,6 @@ export function ProjectResultsClient({
     setQuickCensorMode(false);
   }, [lightboxImageId]);
 
-  useEffect(() => {
-    if (!lightboxImage) return;
-    const currentLightboxImage = lightboxImage;
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (quickCensorMode) {
-        if (event.key === "Escape") {
-          event.preventDefault();
-          setQuickCensorMode(false);
-        }
-        return;
-      }
-
-      if (event.key === "Escape") closeLightbox();
-      if (event.key === "ArrowLeft") goLightboxPrev();
-      if (event.key === "ArrowRight") goLightboxNext();
-      if (event.key === "h" || event.key === "H") {
-        event.preventDefault();
-        if (currentLightboxImage.censoredFull) {
-          setShowCensoredMode((prev) => !prev);
-        }
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [closeLightbox, goLightboxNext, goLightboxPrev, lightboxImage, quickCensorMode]);
-
   const toggleExpandedSection = useCallback((sectionId: string) => {
     setExpandedSectionIds((current) => {
       const next = new Set(current);
@@ -1062,6 +1034,94 @@ export function ProjectResultsClient({
       setImageReviewStatus,
     ],
   );
+
+  useEffect(() => {
+    if (!lightboxImage) return;
+    const currentLightboxImage = lightboxImage;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+
+      const key = event.key;
+
+      if (quickCensorMode) {
+        if (key === "Escape") {
+          event.preventDefault();
+          setQuickCensorMode(false);
+        }
+        return;
+      }
+
+      if (key === "i" || key === "I" || key === "d" || key === "D") {
+        event.preventDefault();
+        closeLightbox();
+        return;
+      }
+      if (key === "Escape") {
+        closeLightbox();
+        return;
+      }
+
+      if (key === "s" || key === "S" || key === "ArrowLeft") {
+        event.preventDefault();
+        if (filteredImages.length > 1) goLightboxPrev();
+        return;
+      }
+      if (key === "f" || key === "F" || key === "ArrowRight") {
+        event.preventDefault();
+        if (filteredImages.length > 1) goLightboxNext();
+        return;
+      }
+
+      if (key === "j" || key === "J" || key === "w" || key === "W") {
+        event.preventDefault();
+        reviewLightboxImage("keep", true);
+        return;
+      }
+      if (key === "k" || key === "K" || key === "e" || key === "E") {
+        event.preventDefault();
+        reviewLightboxImage("trash", true);
+        return;
+      }
+
+      if (key === "l" || key === "L" || key === "r" || key === "R") {
+        event.preventDefault();
+        handleToggleFeatured(currentLightboxImage.id, !currentLightboxImage.featured);
+        return;
+      }
+      if (key === ";" || key === "t" || key === "T") {
+        event.preventDefault();
+        handleToggleFeatured2(currentLightboxImage.id, !currentLightboxImage.featured2);
+        return;
+      }
+      if (key === "'") {
+        event.preventDefault();
+        handleSetCover(currentLightboxImage.id);
+        return;
+      }
+
+      if (key === "h" || key === "H") {
+        event.preventDefault();
+        if (currentLightboxImage.censoredFull) {
+          setShowCensoredMode((prev) => !prev);
+        }
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    closeLightbox,
+    filteredImages.length,
+    goLightboxNext,
+    goLightboxPrev,
+    handleSetCover,
+    handleToggleFeatured,
+    handleToggleFeatured2,
+    lightboxImage,
+    quickCensorMode,
+    reviewLightboxImage,
+  ]);
 
   const handleTrashAllImages = useCallback(() => {
     if (isTrashingAll || totalImages === 0) return;
