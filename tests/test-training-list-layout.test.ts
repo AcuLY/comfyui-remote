@@ -331,8 +331,13 @@ test("training mobile row actions keep compact demo toolbar density", () => {
   );
   assert.match(
     cssRule(projectPagesCss, "sceneBlockActions"),
-    /display:\s*flex/,
-    "Project scene block actions should use compact wrapping controls",
+    /display:\s*inline-flex/,
+    "Project scene block actions should use a compact prompt-block icon rail",
+  );
+  assert.equal(
+    classHasDeclaration(projectPagesCss, "sceneBlockIconButton", /width:\s*28px/),
+    true,
+    "Project scene block action buttons should stay visually icon-sized",
   );
   assert.match(
     cssRule(resourcesCss, "templateSceneBlockActions"),

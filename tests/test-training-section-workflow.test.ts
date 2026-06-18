@@ -17,6 +17,10 @@ function sourceBetween(startMarker: string, endMarker: string) {
   return pagesSource.slice(start, end);
 }
 
+function cssRule(className: string) {
+  return cssSource.match(new RegExp(`\\.${className}\\s*\\{[\\s\\S]*?\\n\\}`))?.[0] ?? "";
+}
+
 function nestedFunctionSource(source: string, functionName: string) {
   const asyncFunctionStart = source.indexOf(`async function ${functionName}`);
   const callbackStart = source.indexOf(`const ${functionName} = useCallback(async () =>`);
@@ -250,6 +254,44 @@ test("training section detail exposes full scene-block management controls", () 
   assert.match(detailPage, /SceneBlockCard/, "section detail should render scene block cards");
   assert.match(sceneBlockCard, /sceneBlockActions/, "scene blocks should use a dedicated action rail");
   assert.match(detailPage, /TrainingResultGrid/, "section results should use the same thumbnail/lightbox grid as result pool");
+});
+
+test("training section detail puts results first and uses the page scroll", () => {
+  const detailPage = sourceBetween(
+    "export function LoraTrainingProjectSectionDetailPage",
+    "export function LoraTrainingGenerationComposePage",
+  );
+  const sectionScrollPaneRule = cssRule("sectionScrollPane");
+
+  assert.match(
+    detailPage,
+    /<TrainingSectionWorkspace[\s\S]*?>\s*<div id="section-results">[\s\S]*?<div className=\{s\.twoCol\}>/,
+    "section results should render before scene blocks and preview content",
+  );
+  assert.doesNotMatch(sectionScrollPaneRule, /overflow-y:\s*auto/, "section detail content should not create a second vertical scroll container");
+  assert.doesNotMatch(sectionScrollPaneRule, /max-height:/, "section detail content should not trap scrolling inside a viewport-height pane");
+  assert.doesNotMatch(sectionScrollPaneRule, /mask-image:/, "section detail content should not fade out as though it owns scrolling");
+});
+
+test("training scene-block cards mirror the compact prompt-block row pattern", () => {
+  const sceneBlockCard = sourceBetween("function SceneBlockCard", "function ReferencePicker");
+  const sceneBlockCardRule = cssRule("sceneBlockCard");
+
+  assert.match(sceneBlockCard, /className=\{s\.sceneBlockTitleRow\}/, "scene block title and source should share a stable title row");
+  assert.match(sceneBlockCard, /className=\{s\.sceneBlockGrip\}/, "scene block rows should expose the same leading grip slot as prompt blocks");
+  assert.match(sceneBlockCard, /className=\{s\.sceneBlockPreview\}/, "scene block body should use a compact prompt-preview line");
+  assert.match(sceneBlockCard, /className=\{s\.sceneBlockPreviewSign\}/, "scene block preview should show a signed prompt prefix");
+  assert.match(sceneBlockCard, /iconOnly/, "scene block actions should be icon-only like the prompt block reference");
+  assert.match(
+    sceneBlockCardRule,
+    /grid-template-columns:\s*28px minmax\(0,\s*1fr\) auto/,
+    "scene block rows should use a prompt-block-like grip / content / action grid",
+  );
+  assert.match(
+    cssSource,
+    /\.sceneBlockInlineBody\s*\{[\s\S]*?grid-column:\s*2 \/ -1/,
+    "expanded scene block editing should align under the main prompt row content",
+  );
 });
 
 test("training section detail scene-block actions update local front-end state", () => {

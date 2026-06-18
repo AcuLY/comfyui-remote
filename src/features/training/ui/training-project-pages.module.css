@@ -919,17 +919,11 @@
   container-type: inline-size;
   display: grid;
   min-width: 0;
-  max-height: var(--training-section-scroll-height);
-  min-height: min(420px, var(--training-section-scroll-height));
   align-content: start;
   gap: 12px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  overflow: visible;
   padding-right: 2px;
   padding-bottom: 18px;
-  scrollbar-width: thin;
-  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 calc(100% - 34px), transparent 100%);
 }
 
 .trainingSectionRail {
@@ -1311,22 +1305,59 @@
 .sceneBlockCard {
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: start;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  align-items: center;
   gap: 10px;
+  min-height: 58px;
   border: 1px solid var(--demo-border);
   border-radius: 12px;
   background: var(--demo-field-bg);
-  padding: 10px;
+  padding: 10px 12px 12px;
+  transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease, box-shadow 140ms ease;
+}
+
+.sceneBlockCard:hover {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-hover);
+  box-shadow: var(--demo-glass-hover-shadow);
+  transform: translateY(-1px);
+}
+
+.sceneBlockCard[data-editing="true"] {
+  border-color: var(--demo-glass-accent-border);
+  background: var(--demo-glass-bg);
+}
+
+.sceneBlockGrip {
+  display: inline-flex;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  color: var(--demo-faint);
 }
 
 .sceneBlockBody {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  gap: 5px;
+  width: 100%;
+  gap: 3px;
+}
+
+.sceneBlockTitleRow {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  row-gap: 4px;
 }
 
 .sceneBlockSource {
+  flex: 0 0 auto;
   width: fit-content;
   border: 1px solid var(--demo-border);
   border-radius: 999px;
@@ -1337,23 +1368,51 @@
   padding: 2px 7px;
 }
 
-.sceneBlockBody strong {
+.sceneBlockTitleRow strong {
   min-width: 0;
+  max-width: 18ch;
   overflow: hidden;
   color: var(--demo-text);
-  font-size: 13px;
-  font-weight: 620;
+  font-size: 14px;
+  font-weight: 560;
+  line-height: 24px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.sceneBlockBody p {
+.sceneBlockPreview {
+  display: flex;
+  width: 100%;
   min-width: 0;
-  margin: 0;
+  align-items: center;
+  gap: 6px;
   color: var(--demo-muted);
-  font-size: 11px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
+  font-family: var(--demo-font-mono);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.sceneBlockPreview code {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sceneBlockPreviewSign {
+  flex: 0 0 auto;
+  color: var(--demo-green);
+  font-weight: 680;
+}
+
+.sceneBlockInlineBody {
+  grid-column: 2 / -1;
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  border-top: 1px solid var(--demo-border);
+  padding-top: 10px;
 }
 
 .sceneBlockEditor {
@@ -1363,18 +1422,41 @@
 }
 
 .sceneBlockActions {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-start;
-  gap: 6px;
+  gap: 4px;
+  border-radius: 999px;
 }
 
 .sceneBlockActions :where([data-demo-ui-button="true"]) {
   flex: 0 0 auto;
-  min-height: 32px;
-  border-radius: 8px;
-  padding-inline: 8px;
+}
+
+.sceneBlockIconButton:where([data-demo-ui-button="true"]) {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  border-radius: 7px;
+  padding: 0;
+}
+
+@container (max-width: 520px) {
+  .sceneBlockCard {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding-inline: 10px;
+  }
+
+  .sceneBlockGrip {
+    width: 24px;
+    min-width: 24px;
+  }
+
+  .sceneBlockIconButton:where([data-demo-ui-button="true"]) {
+    width: 26px;
+    min-width: 26px;
+  }
 }
 
 .referencePicker {

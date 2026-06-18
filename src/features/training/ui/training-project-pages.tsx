@@ -839,6 +839,11 @@ function TrainingSectionWorkspace({
   );
 }
 
+function sceneBlockPreviewText(text: string) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  return normalized.length > 0 ? normalized : "无";
+}
+
 function SceneBlockCard({
   block,
   index,
@@ -859,10 +864,30 @@ function SceneBlockCard({
   total: number;
 }) {
   return (
-    <article className={s.sceneBlockCard}>
+    <article className={s.sceneBlockCard} data-editing={isEditing ? "true" : undefined}>
+      <span className={s.sceneBlockGrip} aria-hidden="true">
+        <GripVertical />
+      </span>
       <div className={s.sceneBlockBody}>
-        <span className={s.sceneBlockSource}>{block.source}</span>
-        {isEditing ? (
+        <div className={s.sceneBlockTitleRow}>
+          <strong>{block.title}</strong>
+          <span className={s.sceneBlockSource}>{block.source}</span>
+        </div>
+        {!isEditing ? (
+          <span className={s.sceneBlockPreview}>
+            <span className={s.sceneBlockPreviewSign}>+</span>
+            <code>{sceneBlockPreviewText(block.text)}</code>
+          </span>
+        ) : null}
+      </div>
+      <div className={s.sceneBlockActions} aria-label={`${block.title} 操作`}>
+        <Button className={s.sceneBlockIconButton} size="sm" iconOnly icon={Edit3} ariaLabel={isEditing ? `收起场景块编辑：${block.title}` : `编辑场景块：${block.title}`} onClick={() => onEdit?.(isEditing ? null : block.id)} />
+        <Button className={s.sceneBlockIconButton} size="sm" iconOnly icon={ArrowUp} disabled={index === 0} onClick={() => onMove?.(index, -1)} ariaLabel={`上移场景块：${block.title}`} feedback={{ title: "场景块已上移", detail: block.title }} />
+        <Button className={s.sceneBlockIconButton} size="sm" iconOnly icon={ArrowDown} disabled={index === total - 1} onClick={() => onMove?.(index, 1)} ariaLabel={`下移场景块：${block.title}`} feedback={{ title: "场景块已下移", detail: block.title }} />
+        <Button className={s.sceneBlockIconButton} size="sm" iconOnly icon={Trash2} tone="danger" onClick={() => onDelete?.(block.id)} ariaLabel={`删除场景块：${block.title}`} feedback={{ tone: "warning", title: "场景块已从草稿移除", detail: block.title }} />
+      </div>
+      {isEditing ? (
+        <div className={s.sceneBlockInlineBody}>
           <div className={s.sceneBlockEditor}>
             <Field label="场景块标题" value={block.title} onChange={(value) => onUpdate?.(block.id, { title: value })} />
             <Field
@@ -873,19 +898,8 @@ function SceneBlockCard({
               onChange={(value) => onUpdate?.(block.id, { text: value })}
             />
           </div>
-        ) : (
-          <>
-            <strong>{block.title}</strong>
-            <p>{block.text}</p>
-          </>
-        )}
-      </div>
-      <div className={s.sceneBlockActions} aria-label={`${block.title} 操作`}>
-        <Button size="sm" icon={Edit3} ariaLabel={isEditing ? `收起场景块编辑：${block.title}` : `编辑场景块：${block.title}`} onClick={() => onEdit?.(isEditing ? null : block.id)}>{isEditing ? "收起" : "编辑"}</Button>
-        <Button size="sm" icon={ArrowUp} disabled={index === 0} onClick={() => onMove?.(index, -1)} ariaLabel={`上移场景块：${block.title}`} feedback={{ title: "场景块已上移", detail: block.title }}>上移</Button>
-        <Button size="sm" icon={ArrowDown} disabled={index === total - 1} onClick={() => onMove?.(index, 1)} ariaLabel={`下移场景块：${block.title}`} feedback={{ title: "场景块已下移", detail: block.title }}>下移</Button>
-        <Button size="sm" icon={Trash2} tone="danger" onClick={() => onDelete?.(block.id)} ariaLabel={`删除场景块：${block.title}`} feedback={{ tone: "warning", title: "场景块已从草稿移除", detail: block.title }}>删除</Button>
-      </div>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -3378,6 +3392,15 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
         )}
       />
       <TrainingSectionWorkspace activeSectionId={section.id} project={project}>
+        <div id="section-results">
+          <Panel title="小节结果">
+            <TrainingResultGrid
+              onReviewStatusChange={handleReviewSectionResult}
+              results={sectionResults}
+              title={`${section.title} 结果`}
+            />
+          </Panel>
+        </div>
         <div className={s.twoCol}>
           <Panel
             title="场景块"
@@ -3468,15 +3491,6 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
             </dl>
           </Panel>
         ) : null}
-        <div id="section-results">
-          <Panel title="小节结果">
-            <TrainingResultGrid
-              onReviewStatusChange={handleReviewSectionResult}
-              results={sectionResults}
-              title={`${section.title} 结果`}
-            />
-          </Panel>
-        </div>
       </TrainingSectionWorkspace>
     </div>
   );
