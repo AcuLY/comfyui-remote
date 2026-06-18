@@ -43,6 +43,7 @@ import { parseLoraBindings } from "@/lib/lora-types";
 import type { LinkedVariantRef, VariantDraft } from "./preset-types";
 import { PRESET_HISTORY_TABS } from "./preset-types";
 import { PresetChangeHistoryPanel } from "./change-history-panel";
+import { PresetVariantBulkEditDialog } from "./preset-variant-bulk-edit-dialog";
 import { toSlug } from "./group-utils";
 
 function uniqueSlug(base: string, usedSlugs: Set<string>) {
@@ -631,6 +632,11 @@ export function PresetForm({
     saveDrafts(updated);
   }
 
+  function applyBulkTextVariants(updated: VariantDraft[]) {
+    setVariants(updated);
+    saveDrafts(updated);
+  }
+
   function applyLoraToAllVariants(key: "lora1" | "lora2", entry: VariantDraft["lora1"][number]) {
     const path = entry.path.trim();
     if (!path) return;
@@ -992,15 +998,24 @@ export function PresetForm({
 
         {/* Variant prompt fields */}
         <div className="space-y-1">
-          <span className="text-[10px] text-zinc-500">正面提示词</span>
-          <button
-            type="button"
-            onClick={() => applyPromptToAllVariants("prompt")}
-            className={`${applyAllButtonClass} float-right -mt-1 mb-1`}
-            title="Apply to all variants"
-          >
-            应用到所有变体
-          </button>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] text-zinc-500">正面提示词</span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <PresetVariantBulkEditDialog
+                variants={variants}
+                defaultField="prompt"
+                onApply={applyBulkTextVariants}
+              />
+              <button
+                type="button"
+                onClick={() => applyPromptToAllVariants("prompt")}
+                className={applyAllButtonClass}
+                title="Apply to all variants"
+              >
+                应用到所有变体
+              </button>
+            </div>
+          </div>
           <textarea
             value={current.prompt}
             onChange={(e) => updateVariant(current.clientId, { prompt: e.target.value })}
@@ -1012,15 +1027,24 @@ export function PresetForm({
         </div>
 
         <div className="space-y-1">
-          <span className="text-[10px] text-zinc-500">负面提示词</span>
-          <button
-            type="button"
-            onClick={() => applyPromptToAllVariants("negativePrompt")}
-            className={`${applyAllButtonClass} float-right -mt-1 mb-1`}
-            title="Apply to all variants"
-          >
-            应用到所有变体
-          </button>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[10px] text-zinc-500">负面提示词</span>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <PresetVariantBulkEditDialog
+                variants={variants}
+                defaultField="negativePrompt"
+                onApply={applyBulkTextVariants}
+              />
+              <button
+                type="button"
+                onClick={() => applyPromptToAllVariants("negativePrompt")}
+                className={applyAllButtonClass}
+                title="Apply to all variants"
+              >
+                应用到所有变体
+              </button>
+            </div>
+          </div>
           <textarea
             value={current.negativePrompt}
             onChange={(e) => updateVariant(current.clientId, { negativePrompt: e.target.value })}
