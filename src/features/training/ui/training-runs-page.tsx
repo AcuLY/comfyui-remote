@@ -224,17 +224,20 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [hiddenRunIds, setHiddenRunIds] = useState<Set<string>>(new Set());
   const [retriedRunIds, setRetriedRunIds] = useState<Set<string>>(new Set());
+  const [retryingRunIds, setRetryingRunIds] = useState<Set<string>>(new Set());
   const [cancelledRunIds, setCancelledRunIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeletingRuns, setIsDeletingRuns] = useState(false);
-  const [isRetryingRuns, setIsRetryingRuns] = useState(false);
   const [isCancellingRuns, setIsCancellingRuns] = useState(false);
+  const retryingRunIdsRef = useRef<Set<string>>(new Set());
   const effectiveRunStatus = (run: LoraTrainingRun) => (cancelledRunIds.has(run.id) ? "failed" : run.status);
   const runsForKind = training.runs.filter((run) => run.kind === kind && !hiddenRunIds.has(run.id));
   const runningRunsForKind = runsForKind.filter((run) => effectiveRunStatus(run) === "running").slice(0, 2);
   const visibleRuns = runsForKind.filter((run) => effectiveRunStatus(run) === status);
   const groups = groupRunsByProject(visibleRuns);
   const selectedVisibleCount = visibleRuns.filter((run) => selectedIds.has(run.id)).length;
+  const selectedRetryingCount = visibleRuns.filter((run) => selectedIds.has(run.id) && retryingRunIds.has(run.id)).length;
+  const allSelectedRetrying = selectedVisibleCount > 0 && selectedRetryingCount === selectedVisibleCount;
   const allVisibleSelected = visibleRuns.length > 0 && selectedVisibleCount === visibleRuns.length;
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const canCancelSelectedRuns = status === "queued" || status === "running";
@@ -337,15 +340,30 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
 
   async function retryRuns(runIds: Iterable<string>) {
     const ids = new Set(runIds);
-    const runs = runsForKind.filter((run) => ids.has(run.id));
+    const runs = runsForKind.filter((run) => ids.has(run.id) && !retryingRunIdsRef.current.has(run.id));
+    const retryingIds = new Set(runs.map((run) => run.id));
 
     const applyLocalRetriedRuns = (appliedIds: Set<string>) => {
       setRetriedRunIds((current) => new Set([...current, ...appliedIds]));
       setSelectedIds((current) => new Set([...current].filter((id) => !appliedIds.has(id))));
     };
 
+    const markRetryingRuns = (appliedIds: Set<string>) => {
+      const next = new Set(retryingRunIdsRef.current);
+      appliedIds.forEach((id) => next.add(id));
+      retryingRunIdsRef.current = next;
+      setRetryingRunIds(next);
+    };
+
+    const clearRetryingRuns = (appliedIds: Set<string>) => {
+      const next = new Set(retryingRunIdsRef.current);
+      appliedIds.forEach((id) => next.delete(id));
+      retryingRunIdsRef.current = next;
+      setRetryingRunIds(next);
+    };
+
     if (!isProductionTrainingRoute) {
-      applyLocalRetriedRuns(ids);
+      applyLocalRetriedRuns(retryingIds);
       pushToast({
         tone: "success",
         title: runs.length === 1 ? "重试已排队" : "失败任务已加入重试队列",
@@ -354,9 +372,9 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
       return;
     }
 
-    if (isRetryingRuns || runs.length === 0) return;
+    if (runs.length === 0) return;
 
-    setIsRetryingRuns(true);
+    markRetryingRuns(retryingIds);
     try {
       const responses = await Promise.all(
         runs.map(async (run) => {
@@ -429,7 +447,7 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
         detail: error instanceof Error ? error.message : "重试请求失败",
       });
     } finally {
-      setIsRetryingRuns(false);
+      clearRetryingRuns(retryingIds);
     }
   }
 
@@ -560,8 +578,8 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
                 <Button
                   icon={RotateCcw}
                   tone="primary"
-                  pending={isRetryingRuns}
-                  disabled={selectedVisibleCount === 0}
+                  pending={allSelectedRetrying}
+                  disabled={selectedVisibleCount === 0 || allSelectedRetrying}
                   onClick={() => retryRuns(selectedIds)}
                 >
                   重试所选
@@ -706,7 +724,7 @@ export function LoraTrainingRunsPage({ data }: { data: TrainingAppData }) {
                                             tone="subtle"
                                             icon={RotateCcw}
                                             size="sm"
-                                            pending={isRetryingRuns}
+                                            pending={retryingRunIds.has(run.id)}
                                             ariaLabel={`重试任务：${run.title}`}
                                             onClick={() => retryRuns([run.id])}
                                           >

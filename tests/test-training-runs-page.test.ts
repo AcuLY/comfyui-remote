@@ -163,6 +163,13 @@ test("failed training runs retry through the formal HTTP API on production route
   assert.match(pageSource, /pushToast/, "runs page should surface retry API success or failure through the shared feedback system");
 });
 
+test("failed training run retries keep row actions independent while another retry is pending", () => {
+  assert.match(pageSource, /retryingRunIds/, "runs page should track in-flight retry state by run id");
+  assert.doesNotMatch(pageSource, /if \(isRetryingRuns \|\| runs\.length === 0\) return;/, "one pending retry must not block retrying a different failed task");
+  assert.doesNotMatch(pageSource, /pending=\{isRetryingRuns\}/, "row retry buttons should not all share one pending flag");
+  assert.match(pageSource, /pending=\{retryingRunIds\.has\(run\.id\)\}/, "only the row currently being retried should show pending state");
+});
+
 test("queued or running training rows cancel through the formal HTTP API on production routes", () => {
   assert.match(pageSource, /`\/api\/training\/generation-tasks\/\$\{run\.id\}\/cancel`/, "generation rows should call the formal generation cancel API");
   assert.match(pageSource, /`\/api\/training\/training-runs\/\$\{run\.id\}\/cancel`/, "training rows should call the formal training cancel API");
