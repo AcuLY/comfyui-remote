@@ -520,14 +520,11 @@ function TrainingResultGrid({
                   <StatusBadge status={reviewStatusTone(result.reviewStatus)} label={reviewStatusLabel(result.reviewStatus)} />
                 </div>
               ) : null}
-              <button
-                aria-label={`打开训练结果：${result.sourceLabel}`}
-                className={s.trainingResultPreviewButton}
-                type="button"
-                onClick={() => setActiveResultId(result.id)}
-              >
-                <ImagePreviewFrame image={result.image} />
-              </button>
+              <ImageThumbMedium
+                image={result.image}
+                onOpen={() => setActiveResultId(result.id)}
+                showStatus={false}
+              />
               <span className={s.trainingResultMeta}>
                 <strong>{result.sourceLabel}</strong>
                 {onToggleSelected ? null : <StatusBadge status={reviewStatusTone(result.reviewStatus)} label={reviewStatusLabel(result.reviewStatus)} />}
@@ -2623,6 +2620,7 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
   const pathname = usePathname();
   const { pushToast } = useDemoFeedback();
   const project = findProject(data, projectId);
+  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
   const [localSectionState, setLocalSections] = useState(() => ({
     projectId: project?.id ?? null,
     sections: project?.sections ?? [],
@@ -2632,6 +2630,91 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
     projectId: project?.id ?? null,
   }));
   const [isMutatingSections, setIsMutatingSections] = useState(false);
+
+  const handleAddSection = useCallback(async () => {
+    if (!project) return;
+    if (isProductionTrainingRoute && isMutatingSections) return;
+
+    const activeProject = project;
+    const localSections = localSectionState.projectId === activeProject.id ? localSectionState.sections : activeProject.sections;
+    const orderedSectionIds = orderedSectionState.projectId === activeProject.id ? orderedSectionState.ids : activeProject.sections.map((section) => section.id);
+    const source = localSections[0];
+    const draftNumber = nextProjectSectionDraftNumber(localSections);
+    const draftId = `new-section-${draftNumber}`;
+    const draftIndex = localSections.length + 1;
+    const draft: LoraTrainingSection = source ? {
+      ...source,
+      id: draftId,
+      title: `新小节 ${draftIndex}`,
+      updatedAt: "刚刚",
+      images: [],
+      resultStatus: "pending",
+    } : {
+      id: draftId,
+      title: `新小节 ${draftIndex}`,
+      enabled: true,
+      updatedAt: "刚刚",
+      blocks: [
+        { id: "draft-local-block", source: "本地", title: "本地场景描述", text: "补充这个小节的训练场景描述。" },
+      ],
+      resolvedScene: "补充这个小节的训练场景描述。",
+      imagePrompt: "生成干净、可训练的角色样本。",
+      images: [],
+      resultStatus: "pending",
+    };
+    setLocalSections({ projectId: activeProject.id, sections: [...localSections, draft] });
+    setOrderedSectionIds({ ids: [...orderedSectionIds, draft.id], projectId: activeProject.id });
+
+    if (!isProductionTrainingRoute) return;
+
+    setIsMutatingSections(true);
+    try {
+      const response = await fetch(`/api/training/projects/${activeProject.id}/sections`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.ok || !payload?.data?.id) {
+        pushToast({
+          tone: "error",
+          title: "新建小节失败",
+          detail: payload?.error?.message ?? "训练小节创建请求失败",
+        });
+        setLocalSections({ projectId: activeProject.id, sections: localSections });
+        setOrderedSectionIds({ ids: orderedSectionIds, projectId: activeProject.id });
+        return;
+      }
+      const savedSection = payload.data as LoraTrainingSection;
+      setLocalSections({ projectId: activeProject.id, sections: [...localSections, savedSection] });
+      setOrderedSectionIds({ ids: [...orderedSectionIds, savedSection.id], projectId: activeProject.id });
+      pushToast({
+        tone: "success",
+        title: "小节草稿已添加",
+        detail: savedSection.title,
+      });
+    } catch (error) {
+      setLocalSections({ projectId: activeProject.id, sections: localSections });
+      setOrderedSectionIds({ ids: orderedSectionIds, projectId: activeProject.id });
+      pushToast({
+        tone: "error",
+        title: "新建小节失败",
+        detail: error instanceof Error ? error.message : "训练小节创建请求失败",
+      });
+    } finally {
+      setIsMutatingSections(false);
+    }
+  }, [isMutatingSections, isProductionTrainingRoute, localSectionState, orderedSectionState, project, pushToast]);
+
+  useEffect(() => {
+    function handleHeaderAddSection() {
+      void handleAddSection();
+    }
+
+    window.addEventListener(TRAINING_PROJECT_SECTION_ADD_EVENT, handleHeaderAddSection);
+    return () => window.removeEventListener(TRAINING_PROJECT_SECTION_ADD_EVENT, handleHeaderAddSection);
+  }, [handleAddSection]);
+
   if (!project) return <EmptyPage title="没有训练小节数据" />;
   const localSections = localSectionState.projectId === project.id ? localSectionState.sections : project.sections;
   const orderedSectionIds = orderedSectionState.projectId === project.id ? orderedSectionState.ids : project.sections.map((section) => section.id);
@@ -2640,8 +2723,6 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
   const sections = orderedSectionIds
     .map((sectionId) => sectionMap.get(sectionId))
     .filter((section): section is LoraTrainingSection => Boolean(section));
-  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
-
   async function handleCopySection(section: LoraTrainingSection) {
     if (isProductionTrainingRoute && isMutatingSections) return;
 
@@ -2817,86 +2898,6 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
       setIsMutatingSections(false);
     }
   }
-
-  async function handleAddSection() {
-    if (isProductionTrainingRoute && isMutatingSections) return;
-
-    const source = localSections[0];
-    const draftNumber = nextProjectSectionDraftNumber(localSections);
-    const draftId = `new-section-${draftNumber}`;
-    const draftIndex = localSections.length + 1;
-    const draft: LoraTrainingSection = source ? {
-      ...source,
-      id: draftId,
-      title: `新小节 ${draftIndex}`,
-      updatedAt: "刚刚",
-      images: [],
-      resultStatus: "pending",
-    } : {
-      id: draftId,
-      title: `新小节 ${draftIndex}`,
-      enabled: true,
-      updatedAt: "刚刚",
-      blocks: [
-        { id: "draft-local-block", source: "本地", title: "本地场景描述", text: "补充这个小节的训练场景描述。" },
-      ],
-      resolvedScene: "补充这个小节的训练场景描述。",
-      imagePrompt: "生成干净、可训练的角色样本。",
-      images: [],
-      resultStatus: "pending",
-    };
-    setLocalSections({ projectId: activeProject.id, sections: [...localSections, draft] });
-    setOrderedSectionIds({ ids: [...orderedSectionIds, draft.id], projectId: activeProject.id });
-
-    if (!isProductionTrainingRoute) return;
-
-    setIsMutatingSections(true);
-    try {
-      const response = await fetch(`/api/training/projects/${activeProject.id}/sections`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({}),
-      });
-      const payload = await response.json().catch(() => null);
-      if (!response.ok || !payload?.ok || !payload?.data?.id) {
-        pushToast({
-          tone: "error",
-          title: "新建小节失败",
-          detail: payload?.error?.message ?? "训练小节创建请求失败",
-        });
-        setLocalSections({ projectId: activeProject.id, sections: localSections });
-        setOrderedSectionIds({ ids: orderedSectionIds, projectId: activeProject.id });
-        return;
-      }
-      const savedSection = payload.data as LoraTrainingSection;
-      setLocalSections({ projectId: activeProject.id, sections: [...localSections, savedSection] });
-      setOrderedSectionIds({ ids: [...orderedSectionIds, savedSection.id], projectId: activeProject.id });
-      pushToast({
-        tone: "success",
-        title: "小节草稿已添加",
-        detail: savedSection.title,
-      });
-    } catch (error) {
-      setLocalSections({ projectId: activeProject.id, sections: localSections });
-      setOrderedSectionIds({ ids: orderedSectionIds, projectId: activeProject.id });
-      pushToast({
-        tone: "error",
-        title: "新建小节失败",
-        detail: error instanceof Error ? error.message : "训练小节创建请求失败",
-      });
-    } finally {
-      setIsMutatingSections(false);
-    }
-  }
-
-  useEffect(() => {
-    function handleHeaderAddSection() {
-      void handleAddSection();
-    }
-
-    window.addEventListener(TRAINING_PROJECT_SECTION_ADD_EVENT, handleHeaderAddSection);
-    return () => window.removeEventListener(TRAINING_PROJECT_SECTION_ADD_EVENT, handleHeaderAddSection);
-  }, [handleAddSection]);
 
   return (
     <div className={s.page}>

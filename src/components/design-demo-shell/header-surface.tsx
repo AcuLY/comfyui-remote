@@ -35,7 +35,7 @@ function HeaderActionButton({
   if (item.href) {
     return (
       <ButtonLink
-        ariaLabel={item.label}
+        ariaLabel={item.ariaLabel ?? item.label}
         href={item.href}
         icon={item.icon}
         tone={item.tone ?? "default"}
@@ -47,7 +47,7 @@ function HeaderActionButton({
 
   return (
     <Button
-      ariaLabel={item.label}
+      ariaLabel={item.ariaLabel ?? item.label}
       icon={item.icon}
       tone={item.tone ?? "default"}
     >
@@ -383,6 +383,7 @@ export function RouteHeaderSurface({
                     );
                     return unit.action.href ? (
                       <Link
+                        aria-label={unit.action.ariaLabel ?? unit.action.label}
                         className={s.overflowMenuItem}
                         data-tone={unit.action.tone ?? "default"}
                         href={hrefForRoute(unit.action.href)}
@@ -393,6 +394,7 @@ export function RouteHeaderSurface({
                       </Link>
                     ) : (
                       <button
+                        aria-label={unit.action.ariaLabel ?? unit.action.label}
                         className={s.overflowMenuItem}
                         data-tone={unit.action.tone ?? "default"}
                         key={unit.key}

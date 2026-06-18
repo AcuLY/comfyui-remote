@@ -613,7 +613,7 @@ test("training result lightbox tracks the active image by result id", () => {
   assert.match(gridSource, /setActiveResultId/, "result grid should update the active result by id");
   assert.match(gridSource, /results\.find\(\(result\) => result\.id === activeResultId\)/, "active lightbox result should resolve from the current results by id");
   assert.match(gridSource, /results\.findIndex\(\(result\) => result\.id === activeResult\.id\)/, "next and previous navigation should use the current result id");
-  assert.match(gridSource, /onClick=\{\(\) => setActiveResultId\(result\.id\)\}/, "opening a result should store its id");
+  assert.match(gridSource, /onOpen=\{\(\) => setActiveResultId\(result\.id\)\}/, "opening a result should store its id");
   assert.match(gridSource, /setActiveResultId\(null\)/, "closing the lightbox should clear the active result id");
   assert.doesNotMatch(gridSource, /activeResultIndex, setActiveResultIndex\] = useState<number \| null>/, "result grid should not store the active result as an array index");
   assert.doesNotMatch(gridSource, /results\[activeResultIndex\]/, "active lightbox result should not be read by stale array index");

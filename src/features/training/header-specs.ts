@@ -22,8 +22,9 @@ function headerAction(
   icon: HeaderAction["icon"],
   tone: HeaderActionTone = "default",
   href?: string,
+  ariaLabel?: string,
 ): HeaderAction {
-  return { label, icon, tone, href };
+  return ariaLabel === undefined ? { label, icon, tone, href } : { ariaLabel, label, icon, tone, href };
 }
 
 function trainingData(data: TrainingShellData) {
@@ -255,7 +256,15 @@ export function findTrainingHeaderSpecForRoute(data: TrainingShellData, route: s
         subtitle: run?.summary ?? "查看任务输入、进度、输出和错误信息。",
         back: { href: "/training/runs", label: "返回运行" },
         actions: run?.projectId
-          ? [headerAction("项目详情", FolderTree, "default", `/training/projects/${run.projectId}`)]
+          ? [
+              headerAction(
+                "项目详情",
+                FolderTree,
+                "default",
+                `/training/projects/${run.projectId}`,
+                `打开任务项目：${run.projectTitle}`,
+              ),
+            ]
           : undefined,
         meta: run ? [run.projectTitle, run.timestamp, run.status] : undefined,
         status: isTrainingRun ? "训练详情" : "生成详情",

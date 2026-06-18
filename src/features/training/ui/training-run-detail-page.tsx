@@ -5,8 +5,8 @@ import { useState } from "react";
 import { AlertTriangle, Check, CheckCircle2, Clock3, Copy, ExternalLink, History, ImageIcon, ImagePlus, Play, RotateCcw, Trash2 } from "lucide-react";
 
 import { useDemoFeedback } from "@/components/design-demo-ui/feedback/context";
-import { ImagePreviewFrame } from "@/components/design-demo-ui/media/image-preview-frame";
 import { ImagePreviewLarge } from "@/components/design-demo-ui/media/image-preview-large";
+import { ImageThumbMedium } from "@/components/design-demo-ui/media/image-thumb-medium";
 import { ImageListSmall } from "@/components/design-demo-ui/media/image-list-small";
 import { Button, ButtonLink } from "@/components/design-demo-ui/primitives/button";
 import { EmptyPage } from "@/components/design-demo-ui/primitives/empty-page";
@@ -182,14 +182,11 @@ function GenerationOutputGrid({
       <div className={s.generationOutputGrid}>
         {results.map((result) => (
           <article className={s.generationOutputCard} data-review-status={result.reviewStatus} key={result.id}>
-            <button
-              aria-label={`打开生成输出：${result.sourceLabel}`}
-              className={s.generationOutputPreviewButton}
-              type="button"
-              onClick={() => onActiveResultChange(result.id)}
-            >
-              <ImagePreviewFrame image={result.image} />
-            </button>
+            <ImageThumbMedium
+              image={result.image}
+              onOpen={() => onActiveResultChange(result.id)}
+              showStatus={false}
+            />
             <span className={s.generationOutputMeta}>
               <strong>{result.sourceLabel}</strong>
               <StatusBadge status={reviewStatusTone(result.reviewStatus)} label={reviewStatusLabel(result.reviewStatus)} />
@@ -844,20 +841,22 @@ export function LoraTrainingRunDetailPage({
             {datasetSamples.length > 0 ? (
               <div className={s.trainingSampleGrid}>
                 {datasetSamples.map((sample, index) => (
-                  <button
+                  <article
                     className={s.trainingSampleCard}
                     data-status={sample.status}
                     key={sample.id}
-                    type="button"
-                    onClick={() => setActiveSampleState({ index, runId: currentRun.id })}
                   >
-                    <ImagePreviewFrame image={sample.image} />
+                    <ImageThumbMedium
+                      image={sample.image}
+                      onOpen={() => setActiveSampleState({ index, runId: currentRun.id })}
+                      showStatus={false}
+                    />
                     <span className={s.sampleMeta}>
                       <strong>{sample.label}</strong>
                       <em>{sample.sectionTitle}</em>
                     </span>
                     <p className={s.sampleCaption}>{sample.caption}</p>
-                  </button>
+                  </article>
                 ))}
               </div>
             ) : (

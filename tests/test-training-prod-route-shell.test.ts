@@ -126,6 +126,24 @@ test("production training route headers keep caption copy product-facing", () =>
   assert.match(trainingHeaderSpecsSource, /说明文本/, "training route headers should describe captions as user-facing text.");
 });
 
+test("production training run detail route header names the target project action accessibly", () => {
+  assert.match(
+    headerSurfaceSource,
+    /ariaLabel=\{item\.ariaLabel \?\? item\.label\}/,
+    "shared route header actions should allow labels that are more specific than the visible button copy",
+  );
+  assert.match(
+    headerSurfaceSource,
+    /aria-label=\{unit\.action\.ariaLabel \?\? unit\.action\.label\}/,
+    "overflowed route header actions should preserve the specific accessible label",
+  );
+  assert.match(
+    trainingHeaderSpecsSource,
+    /headerAction\(\s*"项目详情"[\s\S]*?`打开任务项目：\$\{run\.projectTitle\}`/,
+    "training run detail route header should name the target project in its accessible action label",
+  );
+});
+
 test("production app shell does not mount the legacy task panel while navigation owns resource links", () => {
   assert.doesNotMatch(
     appShellSource,

@@ -133,7 +133,7 @@ test("completed image generation detail renders result thumbnails with review ac
   assert.match(detailSource, /resultReviewState/, "generation output review state should be local to the detail page");
   assert.match(detailSource, /handleReviewGenerationOutput/, "generation output review actions should update local state");
   assert.match(detailSource, /setActiveGenerationResultId/, "generation result thumbnails should open a lightbox by result id");
-  assert.match(detailSource, /ImagePreviewFrame image=\{result\.image\}/, "generation image outputs should render as clickable thumbnails");
+  assert.match(detailSource, /ImageThumbMedium[\s\S]*image=\{result\.image\}[\s\S]*onOpen=\{\(\) => onActiveResultChange\(result\.id\)\}/, "generation image outputs should render as clickable thumbnails");
   assert.match(detailSource, /ImagePreviewLarge/, "generation image outputs should use the shared lightbox");
   assert.match(detailSource, /onReviewStatusChange=\{handleReviewGenerationOutput\}/, "generation output cards should wire keep/reject actions");
   assert.match(detailCss, /\.generationOutputGrid\b/, "generation outputs should have a dedicated thumbnail grid");
@@ -187,7 +187,7 @@ test("training run detail repeated object actions include the acted-on object na
   assert.match(outputGridSource, /ariaLabel=\{`加入资料图：\$\{activeResult\.sourceLabel\}`\}/, "apply-to-reference action should name the active output");
   assert.match(detailPageSource, /ariaLabel=\{`打开生成任务小节：\$\{currentRun\.title\}`\}/, "section jump should name the run context");
   assert.match(detailPageSource, /ariaLabel=\{`查看生成任务结果：\$\{currentRun\.title\}`\}/, "results jump should name the run context");
-  assert.match(detailPageSource, /ariaLabel=\{`打开任务项目：\$\{currentRun\.projectTitle\}`\}/, "project jump should name the target project");
+  assert.doesNotMatch(detailPageSource, /ariaLabel=\{`打开任务项目：\$\{currentRun\.projectTitle\}`\}/, "project jump should be owned by the route header, not duplicated inside the detail page");
   assert.match(detailPageSource, /ariaLabel=\{`查看训练任务数据集版本：\$\{currentRun\.title\}`\}/, "dataset jump should name the run context");
   assert.match(detailPageSource, /ariaLabel=\{`从训练任务创建预制：\$\{currentRun\.title\}`\}/, "preset creation should name the source run");
   assert.match(detailPageSource, /ariaLabel=\{`重试任务：\$\{currentRun\.title\}`\}/, "retry action should name the run");
@@ -286,7 +286,7 @@ test("training sample lightbox state stays scoped to the active run", () => {
   );
   assert.match(
     detailSource,
-    /onClick=\{\(\) => setActiveSampleState\(\{ index, runId: currentRun\.id \}\)\}/,
+    /onOpen=\{\(\) => setActiveSampleState\(\{ index, runId: currentRun\.id \}\)\}/,
     "sample cards should store the current run id when opening the lightbox",
   );
   assert.match(

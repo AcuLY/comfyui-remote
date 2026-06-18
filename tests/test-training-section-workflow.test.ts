@@ -18,12 +18,15 @@ function sourceBetween(startMarker: string, endMarker: string) {
 }
 
 function nestedFunctionSource(source: string, functionName: string) {
-  const start = source.indexOf(`async function ${functionName}`);
+  const asyncFunctionStart = source.indexOf(`async function ${functionName}`);
+  const callbackStart = source.indexOf(`const ${functionName} = useCallback(async () =>`);
+  const start = asyncFunctionStart === -1 ? callbackStart : asyncFunctionStart;
   assert.notEqual(start, -1, `${functionName} should exist`);
 
   const nextFunction = source.indexOf("\n  async function ", start + 1);
+  const callbackEnd = source.indexOf("\n  }, [", start + 1);
   const returnStart = source.indexOf("\n  return (", start + 1);
-  const endCandidates = [nextFunction, returnStart].filter((index) => index !== -1);
+  const endCandidates = [nextFunction, callbackEnd, returnStart].filter((index) => index !== -1);
   assert.ok(endCandidates.length > 0, `${functionName} should have a bounded source range`);
   return source.slice(start, Math.min(...endCandidates));
 }

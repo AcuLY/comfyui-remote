@@ -196,7 +196,8 @@
 
 .generationOutputGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 176px));
+  justify-content: start;
   gap: 10px;
   min-width: 0;
 }
@@ -221,22 +222,10 @@
   background: color-mix(in srgb, var(--demo-red-soft) 54%, var(--demo-field-bg));
 }
 
-.generationOutputPreviewButton {
-  display: block;
+.generationOutputCard :global([class*="imageThumbMedium"]) {
   width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  border: 0;
+  aspect-ratio: 2 / 3;
   border-radius: 10px;
-  background: transparent;
-  color: inherit;
-  cursor: zoom-in;
-  padding: 0;
-}
-
-.generationOutputPreviewButton:focus-visible {
-  outline: 2px solid var(--demo-ring);
-  outline-offset: 2px;
 }
 
 .generationOutputMeta {
@@ -314,12 +303,12 @@
 
 .trainingSampleGrid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 176px));
+  justify-content: start;
   gap: 10px;
 }
 
 .trainingSampleCard {
-  appearance: none;
   display: grid;
   min-width: 0;
   gap: 8px;
@@ -327,23 +316,23 @@
   border-radius: 12px;
   background: var(--demo-field-bg);
   color: inherit;
-  cursor: pointer;
   padding: 9px;
   text-align: left;
   transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
 }
 
 .trainingSampleCard:hover,
-.trainingSampleCard:focus-visible {
+.trainingSampleCard:focus-within {
   border-color: var(--demo-glass-accent-border);
   background: var(--demo-glass-hover);
   outline: none;
   transform: translateY(-1px);
 }
 
-.trainingSampleCard :global([class*="imagePreviewFrame"]) {
-  aspect-ratio: 4 / 5;
-  min-height: 0;
+.trainingSampleCard :global([class*="imageThumbMedium"]) {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
 }
 
 .sampleMeta {

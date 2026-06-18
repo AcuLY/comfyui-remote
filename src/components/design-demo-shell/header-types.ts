@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 export type HeaderActionTone = "default" | "primary" | "pink" | "danger" | "subtle";
 
 export type HeaderAction = {
+  ariaLabel?: string;
   href?: string;
   icon: ComponentType<{ className?: string }>;
   label: string;

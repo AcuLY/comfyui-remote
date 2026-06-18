@@ -699,12 +699,17 @@
 .trainingResultGrid {
   display: grid;
   min-width: 0;
-  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  align-items: start;
+  justify-content: start;
   gap: 10px;
 }
 
 .referenceImageGrid {
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(132px, 156px));
+}
+
+.trainingResultGrid {
+  grid-template-columns: repeat(auto-fill, minmax(148px, 176px));
 }
 
 .referenceImageCard,
@@ -768,30 +773,18 @@
   gap: 8px;
 }
 
-.trainingResultPreviewButton {
-  appearance: none;
-  display: grid;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: zoom-in;
-  padding: 0;
-  text-align: left;
-}
-
-.trainingResultPreviewButton:focus-visible {
-  border-radius: 10px;
-  outline: 3px solid color-mix(in srgb, var(--demo-green) 42%, transparent);
-  outline-offset: 3px;
-}
-
 .referenceImageCard :global([class*="imagePreviewFrame"]),
 .trainingResultCard :global([class*="imagePreviewFrame"]) {
   aspect-ratio: 4 / 5;
   min-height: 0;
   border-radius: 8px;
   background: var(--demo-panel);
+}
+
+.trainingResultCard :global([class*="imageThumbMedium"]) {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 8px;
 }
 
 .referenceImageCard > div:last-child {
