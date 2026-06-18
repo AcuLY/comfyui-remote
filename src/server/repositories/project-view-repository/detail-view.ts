@@ -23,6 +23,7 @@ export type ProjectDetailSection = {
   name: string;
   batchSize: number | null;
   upscaleFactor: number | null;
+  useTwoStageKSampler: boolean;
   aspectRatio: string | null;
   seedPolicy1: string | null;
   seedPolicy2: string | null;
@@ -47,6 +48,7 @@ export type ProjectDetail = {
     folderId: string | null;
     batchSize: number | null;
     aspectRatio: string | null;
+    useTwoStageKSampler: boolean;
     seedPolicy1: string | null;
     seedPolicy2: string | null;
     latestRunStatus: string | null;
@@ -84,6 +86,14 @@ function readResolvedString(
 ) {
   const value = resolvedConfig.parameters[key];
   return typeof value === "string" ? value : null;
+}
+
+function readResolvedBoolean(
+  resolvedConfig: ResolvedSectionConfig,
+  key: string,
+) {
+  const value = resolvedConfig.parameters[key];
+  return typeof value === "boolean" ? value : null;
 }
 
 export async function getProjectDetail(projectId: string): Promise<ProjectDetail | null> {
@@ -214,6 +224,7 @@ export async function getProjectDetail(projectId: string): Promise<ProjectDetail
         folderId: pos.folderId,
         batchSize: readResolvedNumber(resolvedConfig, "batchSize") ?? projectDefaultBatchSize,
         aspectRatio: readResolvedString(resolvedConfig, "aspectRatio"),
+        useTwoStageKSampler: readResolvedBoolean(resolvedConfig, "useTwoStageKSampler") ?? true,
         seedPolicy1: readResolvedString(resolvedConfig, "seedPolicy1"),
         seedPolicy2: readResolvedString(resolvedConfig, "seedPolicy2"),
         latestRunStatus: latestRun?.status ?? null,

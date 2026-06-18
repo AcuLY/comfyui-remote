@@ -36,6 +36,7 @@ type SectionParamsFormProps = {
     ksampler1: unknown;
     ksampler2: unknown;
     upscaleFactor: number | null;
+    useTwoStageKSampler: boolean | null;
     checkpointName: string | null;
     projectCheckpointName: string | null;
   };
@@ -54,6 +55,9 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
   );
   const [upscaleFactor, setUpscaleFactor] = useState<string>(
     String(initialParams.upscaleFactor ?? 2),
+  );
+  const [useTwoStageKSampler, setUseTwoStageKSampler] = useState<boolean>(
+    initialParams.useTwoStageKSampler ?? true,
   );
   const [checkpointName, setCheckpointName] = useState(initialParams.checkpointName ?? "");
 
@@ -83,6 +87,7 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
       <input type="hidden" name="ksampler1" value={JSON.stringify(ks1)} />
       <input type="hidden" name="ksampler2" value={JSON.stringify(ks2)} />
       <input type="hidden" name="upscaleFactor" value={upscaleFactor} />
+      <input type="hidden" name="useTwoStageKSampler" value={useTwoStageKSampler ? "true" : "false"} />
       <input type="hidden" name="checkpointName" value={checkpointName} />
 
       <div className="space-y-3">
@@ -168,12 +173,41 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
               disabled={pending}
               size="sm"
             />
-            {upscaleFactor === "1" && (
+            {!useTwoStageKSampler && (
               <p className="text-[10px] text-amber-400/70">
-                1x 模式将跳过 Upscale Latent 和 KSampler2（无高清修复）
+                单阶段模式会直接生成最终倍率尺寸，不使用 Upscale Latent 和 KSampler2
               </p>
             )}
           </div>
+        </div>
+
+        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+          <div className="min-w-0">
+            <div className="text-[11px] text-zinc-400">二阶段 KSampler</div>
+            <div className="text-[10px] text-zinc-600">
+              {useTwoStageKSampler ? "Upscale Latent + KSampler2" : "一阶段直接生成最终尺寸"}
+            </div>
+          </div>
+          <button
+            type="button"
+            aria-pressed={useTwoStageKSampler}
+            onClick={() => {
+              setUseTwoStageKSampler((current) => !current);
+              setTimeout(scheduleAutoSave, 0);
+            }}
+            disabled={pending}
+            className={`relative h-6 w-11 rounded-full border transition disabled:opacity-50 ${
+              useTwoStageKSampler
+                ? "border-sky-400/40 bg-sky-500/30"
+                : "border-white/10 bg-white/[0.05]"
+            }`}
+          >
+            <span
+              className={`absolute top-1/2 size-4 -translate-y-1/2 rounded-full bg-white transition ${
+                useTwoStageKSampler ? "left-6" : "left-1"
+              }`}
+            />
+          </button>
         </div>
 
           {/* KSampler panels */}
@@ -189,12 +223,12 @@ export function SectionParamsForm({ projectId, sectionId, initialParams }: Secti
             />
             <KSamplerPanel
               label="KSampler2（高清修复）"
-              subtitle={upscaleFactor === "1" ? "1x 模式下不使用" : `steps ${ks2.steps ?? DEFAULT_KSAMPLER2.steps} · cfg ${ks2.cfg ?? DEFAULT_KSAMPLER2.cfg} · ${ks2.sampler_name ?? DEFAULT_KSAMPLER2.sampler_name}`}
+              subtitle={!useTwoStageKSampler ? "单阶段模式下不使用" : `steps ${ks2.steps ?? DEFAULT_KSAMPLER2.steps} · cfg ${ks2.cfg ?? DEFAULT_KSAMPLER2.cfg} · ${ks2.sampler_name ?? DEFAULT_KSAMPLER2.sampler_name}`}
               params={ks2}
               defaults={DEFAULT_KSAMPLER2}
               onChange={setKs2}
               onFieldBlur={scheduleAutoSave}
-              disabled={pending || upscaleFactor === "1"}
+              disabled={pending || !useTwoStageKSampler}
             />
           </div>
 

@@ -620,6 +620,95 @@ test("duplicate preset LoRA paths remain independent across different binding ke
   );
 });
 
+test("single-stage workflow loras merge stage two by category order without mutating resolved lora config", () => {
+  const character = category({
+    id: "cat-character",
+    name: "Character",
+    lora1Order: 20,
+    lora2Order: 30,
+  });
+  const style = category({
+    id: "cat-style",
+    name: "Style",
+    lora1Order: 50,
+    lora2Order: 10,
+  });
+  const characterPreset = preset({
+    id: "preset-character",
+    categoryId: character.id,
+    name: "Character",
+    variants: [
+      {
+        id: "variant-character",
+        name: "Default",
+        prompt: "character",
+        lora1: [{ path: "/shared.safetensors", weight: 0.8, enabled: true }],
+        lora2: [
+          { path: "/shared.safetensors", weight: 1.5, enabled: true },
+          { path: "/char-upscale.safetensors", weight: 0.4, enabled: true },
+        ],
+      },
+    ],
+  });
+  const stylePreset = preset({
+    id: "preset-style",
+    categoryId: style.id,
+    name: "Style",
+    variants: [
+      {
+        id: "variant-style",
+        name: "Default",
+        prompt: "style",
+        lora2: [{ path: "/style-upscale.safetensors", weight: 0.6, enabled: true }],
+      },
+    ],
+  });
+
+  const resolved = resolveSectionConfigFromRows(input({
+    section: {
+      id: "section-single-stage",
+      useTwoStageKSampler: false,
+    },
+    presetBindings: [
+      binding({
+        id: "db-binding-character",
+        bindingKey: "bind-character",
+        category: character,
+        preset: characterPreset,
+      }),
+      binding({
+        id: "db-binding-style",
+        bindingKey: "bind-style",
+        category: style,
+        preset: stylePreset,
+      }),
+    ],
+  }));
+
+  assert.equal(resolved.parameters.useTwoStageKSampler, false);
+  assert.deepEqual(
+    resolved.loraConfig.lora1.map((entry) => [entry.path, entry.weight]),
+    [["/shared.safetensors", 0.8]],
+  );
+  assert.deepEqual(
+    resolved.loraConfig.lora2.map((entry) => [entry.path, entry.weight]),
+    [
+      ["/style-upscale.safetensors", 0.6],
+      ["/shared.safetensors", 1.5],
+      ["/char-upscale.safetensors", 0.4],
+    ],
+  );
+  assert.deepEqual(
+    resolved.workflowLoraConfig.lora1.map((entry) => [entry.path, entry.weight]),
+    [
+      ["/style-upscale.safetensors", 0.6],
+      ["/shared.safetensors", 0.8],
+      ["/char-upscale.safetensors", 0.4],
+    ],
+  );
+  assert.deepEqual(resolved.workflowLoraConfig.lora2, []);
+});
+
 test("detached LoRA suppression is scoped to the originating binding key", () => {
   const character = category({ id: "cat-character", name: "Character", lora1Order: 10 });
   const style = category({ id: "cat-style", name: "Style", lora1Order: 20 });
@@ -728,6 +817,7 @@ test("resolved section config preserves params shape and diff avoids params fals
       seedPolicy1: null,
       seedPolicy2: null,
       upscaleFactor: null,
+      useTwoStageKSampler: true,
       checkpointName: null,
     },
     ksampler1: null,
@@ -743,6 +833,7 @@ test("resolved section config preserves params shape and diff avoids params fals
     seedPolicy1: "fixed",
     seedPolicy2: "random",
     upscaleFactor: 2,
+    useTwoStageKSampler: false,
     checkpointName: "dream.ckpt",
     ksampler1: { steps: 24, cfg: 4 },
     ksampler2: { steps: 12, cfg: 7 },
@@ -761,6 +852,7 @@ test("resolved section config preserves params shape and diff avoids params fals
       seedPolicy1: "fixed",
       seedPolicy2: "random",
       upscaleFactor: 2,
+      useTwoStageKSampler: false,
       checkpointName: "dream.ckpt",
     },
     ksampler1: { steps: 24, cfg: 4 },
@@ -777,6 +869,7 @@ test("resolved section config preserves params shape and diff avoids params fals
     seedPolicy1: "fixed",
     seedPolicy2: "increment",
     upscaleFactor: 1.5,
+    useTwoStageKSampler: true,
     checkpointName: "project.ckpt",
   });
   assert.deepEqual(projectDefaultResolved.ksampler1, { steps: 20 });
@@ -1005,6 +1098,7 @@ test("diffResolvedSectionConfig classifies prompt, lora, missing reference, and 
         seedPolicy1: null,
         seedPolicy2: null,
         upscaleFactor: null,
+        useTwoStageKSampler: true,
         checkpointName: null,
       },
       ksampler1: null,
@@ -1044,6 +1138,18 @@ test("diffResolvedSectionConfig classifies prompt, lora, missing reference, and 
         ],
         lora2: [],
       },
+      workflowLoraConfig: {
+        lora1: [
+          {
+            id: "new-lora",
+            path: "/new.safetensors",
+            weight: 1,
+            enabled: true,
+            source: "manual",
+          },
+        ],
+        lora2: [],
+      },
       parameters: {
         aspectRatio: null,
         aspectRatios: null,
@@ -1053,6 +1159,7 @@ test("diffResolvedSectionConfig classifies prompt, lora, missing reference, and 
         seedPolicy1: null,
         seedPolicy2: null,
         upscaleFactor: null,
+        useTwoStageKSampler: true,
         checkpointName: null,
       },
       ksampler1: null,

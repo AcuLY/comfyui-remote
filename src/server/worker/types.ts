@@ -54,6 +54,7 @@ export type NormalizedResolvedConfigSnapshot = {
     seedPolicy1: string | null;
     seedPolicy2: string | null;
     upscaleFactor: number | null;
+    useTwoStageKSampler: boolean;
     checkpointName: string | null;
   };
   checkpointName: string | null;
@@ -63,6 +64,8 @@ export type NormalizedResolvedConfigSnapshot = {
   ksampler2: Prisma.JsonObject | null;
   /** v0.4: Restructured to { lora1, lora2 } */
   loraConfig: Prisma.JsonObject | null;
+  /** Effective LoRA config used when building the submitted workflow */
+  workflowLoraConfig: Prisma.JsonObject | null;
   extraParams: Prisma.JsonObject | null;
 };
 
@@ -83,6 +86,7 @@ export type ComfyPromptDraft = {
     seedPolicy1: string | null;
     seedPolicy2: string | null;
     upscaleFactor: number | null;
+    useTwoStageKSampler: boolean;
     checkpointName: string | null;
   };
   checkpointName: string | null;
@@ -92,6 +96,8 @@ export type ComfyPromptDraft = {
   ksampler2: Prisma.JsonObject | null;
   /** v0.4: Restructured to { lora1, lora2 } */
   loraConfig: Prisma.JsonObject | null;
+  /** Effective LoRA config used when building the submitted workflow */
+  workflowLoraConfig: Prisma.JsonObject | null;
   extraParams: Prisma.JsonObject | null;
   metadata: {
     runId: string;

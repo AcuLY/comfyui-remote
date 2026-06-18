@@ -235,6 +235,7 @@ export async function saveProjectAsTemplate(
     ksampler1: section.ksampler1 ?? undefined,
     ksampler2: section.ksampler2 ?? undefined,
     upscaleFactor: section.upscaleFactor ?? undefined,
+    useTwoStageKSampler: section.useTwoStageKSampler,
     checkpointName: section.checkpointName ?? project.checkpointName ?? DEFAULT_CHECKPOINT_NAME,
     extraParams: section.extraParams ?? undefined,
   });

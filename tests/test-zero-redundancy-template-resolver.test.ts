@@ -121,6 +121,7 @@ function resolverInput(
       seedPolicy1: null,
       seedPolicy2: null,
       upscaleFactor: null,
+      useTwoStageKSampler: true,
       checkpointName: null,
       ksampler1: null,
       ksampler2: null,
@@ -179,6 +180,7 @@ test("template section bindings resolve preset prompt and lora lazily from curre
       seedPolicy1: null,
       seedPolicy2: null,
       upscaleFactor: null,
+      useTwoStageKSampler: true,
       checkpointName: null,
       ksampler1: null,
       ksampler2: null,
@@ -467,6 +469,7 @@ test("importing a template section plans section relation rows without legacy ex
       ksampler1: { steps: 20 },
       ksampler2: null,
       upscaleFactor: 1.5,
+      useTwoStageKSampler: false,
       checkpointName: "model.safetensors",
       extraParams: { tiled: true },
     },
@@ -494,6 +497,7 @@ test("importing a template section plans section relation rows without legacy ex
   assert.equal("negativePrompt" in sectionData, false);
   assert.equal("loraConfig" in sectionData, false);
   assert.deepEqual(sectionData.aspectRatios, ["2:3", "3:2"]);
+  assert.equal(sectionData.useTwoStageKSampler, false);
   assert.deepEqual(rows.presetBindings.map((row) => row.bindingKey), ["bind-style"]);
   assert.deepEqual(rows.promptBlocks.map((row) => ({
     type: row.type,

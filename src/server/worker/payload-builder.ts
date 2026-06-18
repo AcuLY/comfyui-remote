@@ -35,6 +35,10 @@ function asNullableNumber(value: Prisma.JsonValue | undefined) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function asBoolean(value: Prisma.JsonValue | undefined, fallback: boolean) {
+  return typeof value === "boolean" ? value : fallback;
+}
+
 function asInteger(value: Prisma.JsonValue | undefined, fallback: number) {
   return typeof value === "number" && Number.isInteger(value) ? value : fallback;
 }
@@ -104,12 +108,14 @@ export function normalizeResolvedConfigSnapshot(
       seedPolicy1: asNullableString(parameters?.seedPolicy1),
       seedPolicy2: asNullableString(parameters?.seedPolicy2),
       upscaleFactor: asNullableNumber(parameters?.upscaleFactor),
+      useTwoStageKSampler: asBoolean(parameters?.useTwoStageKSampler, true),
       checkpointName: asNullableString(parameters?.checkpointName),
     },
     checkpointName: asNullableString(root?.checkpointName) ?? asNullableString(parameters?.checkpointName),
     ksampler1: asJsonObject(root?.ksampler1 ?? null),
     ksampler2: asJsonObject(root?.ksampler2 ?? null),
     loraConfig: asJsonObject(root?.loraConfig ?? null),
+    workflowLoraConfig: asJsonObject(root?.workflowLoraConfig ?? null) ?? asJsonObject(root?.loraConfig ?? null),
     extraParams: asJsonObject(root?.extraParams ?? null),
   };
 }
@@ -133,6 +139,7 @@ export function buildComfyPromptDraft(run: WorkerRunSnapshot): ComfyPromptDraft 
     ksampler1: resolvedConfig.ksampler1,
     ksampler2: resolvedConfig.ksampler2,
     loraConfig: resolvedConfig.loraConfig,
+    workflowLoraConfig: resolvedConfig.workflowLoraConfig,
     extraParams: resolvedConfig.extraParams,
     metadata: {
       runId: run.runId,

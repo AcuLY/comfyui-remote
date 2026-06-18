@@ -114,6 +114,7 @@ function buildTemplateSectionUpdateData(section: ProjectTemplateSectionData) {
     ksampler1: toNullableJsonValue(section.ksampler1),
     ksampler2: toNullableJsonValue(section.ksampler2),
     upscaleFactor: section.upscaleFactor,
+    useTwoStageKSampler: section.useTwoStageKSampler ?? true,
     checkpointName: section.checkpointName,
     extraParams: toNullableJsonValue(section.extraParams),
   };
@@ -405,6 +406,7 @@ export async function copyProjectTemplateSection(sectionId: string): Promise<str
         ksampler1: section.ksampler1 ?? undefined,
         ksampler2: section.ksampler2 ?? undefined,
         upscaleFactor: section.upscaleFactor ?? undefined,
+        useTwoStageKSampler: section.useTwoStageKSampler,
         checkpointName: section.checkpointName,
         extraParams: section.extraParams ?? undefined,
       },

@@ -75,6 +75,7 @@ type UpdateProjectSectionRequestBody = {
   ksampler1?: unknown;
   ksampler2?: unknown;
   upscaleFactor?: unknown;
+  useTwoStageKSampler?: unknown;
   checkpointName?: unknown;
   loraConfig?: unknown;
 };
@@ -106,6 +107,7 @@ const PROJECT_SECTION_UPDATE_FIELDS = [
   "ksampler1",
   "ksampler2",
   "upscaleFactor",
+  "useTwoStageKSampler",
   "checkpointName",
   "loraConfig",
 ] as const;
@@ -120,6 +122,7 @@ const SECTION_RUN_PARAM_FIELDS = [
   "ksampler1",
   "ksampler2",
   "upscaleFactor",
+  "useTwoStageKSampler",
   "checkpointName",
 ] as const;
 
@@ -133,6 +136,7 @@ const SECTION_RUN_PARAM_SELECT = {
   ksampler1: true,
   ksampler2: true,
   upscaleFactor: true,
+  useTwoStageKSampler: true,
   checkpointName: true,
 } as const;
 
@@ -465,6 +469,7 @@ export async function updateProjectSection(
     upscaleFactor: parsedBody.upscaleFactor !== undefined
       ? (typeof parsedBody.upscaleFactor === "number" && Number.isFinite(parsedBody.upscaleFactor) ? parsedBody.upscaleFactor : null)
       : undefined,
+    useTwoStageKSampler: normalizeOptionalBoolean(parsedBody.useTwoStageKSampler, "useTwoStageKSampler"),
     checkpointName: normalizeNullableStringField(parsedBody.checkpointName, "checkpointName"),
     loraConfig: normalizeNullableObjectField(parsedBody.loraConfig, "loraConfig"),
   };

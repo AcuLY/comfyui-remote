@@ -39,6 +39,8 @@ export type WorkflowBuildInput = {
   batchSize: number;
   /** Upscale factor for LatentUpscale (default 2) */
   upscaleFactor?: number;
+  /** Whether to keep Upscale Latent + KSampler2 in the generated workflow. */
+  useTwoStageKSampler?: boolean;
   /** Checkpoint filename for node 1 (CheckpointLoaderSimple) */
   checkpointName?: string | null;
   /** LoRA 1 list (fills node 522 → KS1) */
@@ -142,7 +144,9 @@ function resolveSeed(params: KSamplerParams): number {
 export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, unknown> {
   const wf = input.workflowTemplate;
   const upscale = input.upscaleFactor ?? 2;
-  const skipHiresFix = upscale === 1;
+  const useTwoStageKSampler = input.useTwoStageKSampler ?? true;
+  const finalWidth = Math.round((input.width * upscale) / 8) * 8;
+  const finalHeight = Math.round((input.height * upscale) / 8) * 8;
 
   if (input.checkpointName?.trim()) {
     nodeInputs(wf, "1").ckpt_name = input.checkpointName.trim();
@@ -154,12 +158,12 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
 
   // 2. Image dimensions — node 407 (Empty Latent Image)
   const latent = nodeInputs(wf, "407");
-  latent.width = input.width;
-  latent.height = input.height;
+  latent.width = useTwoStageKSampler ? input.width : finalWidth;
+  latent.height = useTwoStageKSampler ? input.height : finalHeight;
   latent.batch_size = input.batchSize;
 
-  if (skipHiresFix) {
-    // 1x: bypass hires fix — remove Upscale Latent (425), KSampler2 (427),
+  if (!useTwoStageKSampler) {
+    // Single-stage mode removes Upscale Latent (425), KSampler2 (427),
     // and KS2 LoRA node (36). Rewire VAEDecode (410) to read from KS1 (3).
     delete (wf as Record<string, unknown>)["425"];
     delete (wf as Record<string, unknown>)["427"];
@@ -169,15 +173,15 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
     // 3. Upscale dimensions — node 425 (Upscale Latent)
     // Round to nearest multiple of 8 for latent alignment
     const upscaleInputs = nodeInputs(wf, "425");
-    upscaleInputs.width = Math.round((input.width * upscale) / 8) * 8;
-    upscaleInputs.height = Math.round((input.height * upscale) / 8) * 8;
+    upscaleInputs.width = finalWidth;
+    upscaleInputs.height = finalHeight;
   }
 
   // 4. LoRA 1 — node 522 (checkpoint → 522 → KS1)
   fillPowerLoraLoader(nodeInputs(wf, "522"), input.lora1List);
 
   // 5. LoRA 2 — node 36 (checkpoint → 36 → KS2, only when hires fix active)
-  if (!skipHiresFix) {
+  if (useTwoStageKSampler) {
     fillPowerLoraLoader(nodeInputs(wf, "36"), input.lora2List);
   }
 
@@ -192,7 +196,7 @@ export function buildWorkflowPrompt(input: WorkflowBuildInput): Record<string, u
   ks1.seed = resolveSeed(input.ksampler1);
 
   // 8. KSampler2 — node 427 (only when hires fix is active)
-  if (!skipHiresFix) {
+  if (useTwoStageKSampler) {
     const ks2Defaults = DEFAULT_KSAMPLER2;
     const ks2 = nodeInputs(wf, "427");
     ks2.steps = input.ksampler2.steps ?? ks2Defaults.steps;

@@ -139,6 +139,7 @@ setupDb.exec(`
     "ksampler1" JSONB,
     "ksampler2" JSONB,
     "upscaleFactor" REAL,
+    "useTwoStageKSampler" BOOLEAN NOT NULL DEFAULT true,
     "checkpointName" TEXT,
     "loraConfig" JSONB,
     "extraParams" JSONB,
@@ -252,6 +253,7 @@ setupDb.exec(`
     "ksampler1" JSONB,
     "ksampler2" JSONB,
     "upscaleFactor" REAL,
+    "useTwoStageKSampler" BOOLEAN NOT NULL DEFAULT true,
     "checkpointName" TEXT,
     "loraConfig" JSONB,
     "extraParams" JSONB,
@@ -393,6 +395,7 @@ let updateProject: typeof ProjectActions.updateProject;
 let copyProject: typeof ProjectActions.copyProject;
 let applyParamToAllSections: typeof ProjectActions.applyParamToAllSections;
 let createProjectForApi: typeof ProjectService.createProject;
+let updateProjectSectionForApi: typeof ProjectService.updateProjectSection;
 let listProjects: typeof ProjectViewRepository.listProjects;
 let listProjectsForApi: typeof ProjectRepository.listProjects;
 let listProjectTemplates: typeof TemplateViewRepository.listProjectTemplates;
@@ -447,6 +450,7 @@ test.before(async () => {
   copyProject = projectActions.copyProject;
   applyParamToAllSections = projectActions.applyParamToAllSections;
   createProjectForApi = projectService.createProject;
+  updateProjectSectionForApi = projectService.updateProjectSection;
   listProjects = projectViewRepository.listProjects;
   listProjectsForApi = projectRepository.listProjects;
   listProjectTemplates = templateViewRepository.listProjectTemplates;
@@ -1130,6 +1134,7 @@ function templateSectionInput(input: Awaited<ReturnType<typeof seedProjectWithPr
     ksampler1: null,
     ksampler2: null,
     upscaleFactor: null,
+    useTwoStageKSampler: true,
     checkpointName: null,
     extraParams: null,
     promptBlocks: [
@@ -1601,6 +1606,77 @@ test("copySection inserts the copied section immediately after the source sectio
     laterSection.id,
   ]);
   assert.deepEqual(orderedSections.map((section) => section.sortOrder), [1, 2, 3]);
+});
+
+test("section two-stage KSampler switch persists through update, copy, template save, import, and template copy", async () => {
+  const seed = await seedProjectWithPreset();
+
+  await updateProjectSectionForApi(seed.project.id, seed.section.id, {
+    useTwoStageKSampler: false,
+  });
+  const updatedSection = await prisma.projectSection.findUniqueOrThrow({
+    where: { id: seed.section.id },
+  });
+  assert.equal(updatedSection.useTwoStageKSampler, false);
+
+  const copiedSectionId = await ignoreStaticRevalidateError(() => copySection(seed.section.id)) ??
+    (await prisma.projectSection.findFirstOrThrow({
+      where: {
+        projectId: seed.project.id,
+        id: { not: seed.section.id },
+      },
+      orderBy: { sortOrder: "desc" },
+      select: { id: true },
+    })).id;
+  const copiedSection = await prisma.projectSection.findUniqueOrThrow({
+    where: { id: copiedSectionId },
+  });
+  assert.equal(copiedSection.useTwoStageKSampler, false);
+
+  const templateId = await ignoreStaticRevalidateError(() =>
+    saveProjectAsTemplate(seed.project.id, `${seed.key} Two Stage Persistence Template`)
+  ) ?? (await prisma.projectTemplate.findFirstOrThrow({
+    where: { name: `${seed.key} Two Stage Persistence Template` },
+    select: { id: true },
+  })).id;
+  const templateSection = await prisma.projectTemplateSection.findFirstOrThrow({
+    where: {
+      projectTemplateId: templateId,
+      name: seed.section.name,
+    },
+  });
+  assert.equal(templateSection.useTwoStageKSampler, false);
+
+  const targetProject = await prisma.project.create({
+    data: {
+      id: `${seed.key}-target-project`,
+      title: `${seed.key} Target Project`,
+      slug: `${seed.key}-target-project`,
+      status: "draft",
+    },
+  });
+  await ignoreStaticRevalidateError(() => importTemplateToProject(targetProject.id, templateId));
+  const importedSection = await prisma.projectSection.findFirstOrThrow({
+    where: {
+      projectId: targetProject.id,
+      name: seed.section.name,
+    },
+  });
+  assert.equal(importedSection.useTwoStageKSampler, false);
+
+  const copiedTemplateSectionId = await ignoreStaticRevalidateError(() => copyProjectTemplateSection(templateSection.id)) ??
+    (await prisma.projectTemplateSection.findFirstOrThrow({
+      where: {
+        projectTemplateId: templateId,
+        id: { not: templateSection.id },
+      },
+      orderBy: { sortOrder: "desc" },
+      select: { id: true },
+    })).id;
+  const copiedTemplateSection = await prisma.projectTemplateSection.findUniqueOrThrow({
+    where: { id: copiedTemplateSectionId },
+  });
+  assert.equal(copiedTemplateSection.useTwoStageKSampler, false);
 });
 
 test("editing a preset-bound SectionPromptBlock detaches prompt and LoRA rows without loraConfig writes", async () => {

@@ -34,6 +34,7 @@ export type ProjectSectionUpdateInput = {
   ksampler1?: Record<string, unknown> | null;
   ksampler2?: Record<string, unknown> | null;
   upscaleFactor?: number | null;
+  useTwoStageKSampler?: boolean;
   checkpointName?: string | null;
   loraConfig?: Record<string, unknown> | null;
 };
@@ -87,6 +88,7 @@ export type ProjectSectionRecord = {
   ksampler1: Prisma.JsonValue | null;
   ksampler2: Prisma.JsonValue | null;
   upscaleFactor: number | null;
+  useTwoStageKSampler: boolean;
   checkpointName: string | null;
   loraConfig?: Prisma.JsonValue | null;
   extraParams: Prisma.JsonValue | null;
@@ -187,6 +189,10 @@ export function serializeProjectSection(
     const value = resolvedParameters?.[key];
     return typeof value === "number" && Number.isFinite(value) ? value : null;
   };
+  const resolvedBoolean = (key: string, fallback: boolean) => {
+    const value = resolvedParameters?.[key];
+    return typeof value === "boolean" ? value : fallback;
+  };
   const resolvedStringArray = (key: string) => {
     const value = resolvedParameters?.[key];
     return Array.isArray(value)
@@ -208,6 +214,7 @@ export function serializeProjectSection(
     seedPolicy2: resolvedString("seedPolicy2"),
     ksampler1: resolvedConfig.ksampler1,
     ksampler2: resolvedConfig.ksampler2,
+    useTwoStageKSampler: resolvedBoolean("useTwoStageKSampler", true),
     checkpointName: resolvedString("checkpointName"),
     loraConfig: resolvedConfig.loraConfig,
     extraParams: resolvedConfig.extraParams,
@@ -399,6 +406,7 @@ export function buildResolvedConfigSnapshot(
     ksampler1: cloneInputJsonValue(resolvedConfig.ksampler1),
     ksampler2: cloneInputJsonValue(resolvedConfig.ksampler2),
     loraConfig: cloneInputJsonValue(resolvedConfig.loraConfig),
+    workflowLoraConfig: cloneInputJsonValue(resolvedConfig.workflowLoraConfig),
     extraParams: cloneInputJsonValue(resolvedConfig.extraParams),
     warnings: cloneInputJsonValue(resolvedConfig.warnings),
     missingReferences: cloneInputJsonValue(resolvedConfig.missingReferences),

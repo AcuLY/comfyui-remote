@@ -44,6 +44,7 @@ function staleSection(): ProjectSectionRecord {
     ksampler1: { stale: "ksampler1" },
     ksampler2: { stale: "ksampler2" },
     upscaleFactor: 1,
+    useTwoStageKSampler: true,
     checkpointName: "section-stale.ckpt",
     loraConfig: {
       lora1: [
@@ -115,6 +116,18 @@ function resolvedConfig(): ResolvedSectionConfig {
       ],
       lora2: [],
     },
+    workflowLoraConfig: {
+      lora1: [
+        {
+          id: "workflow-lora",
+          path: "/workflow.safetensors",
+          weight: 0.9,
+          enabled: true,
+          source: "manual",
+        },
+      ],
+      lora2: [],
+    },
     parameters: {
       aspectRatio: "16:9",
       aspectRatios: ["16:9"],
@@ -124,6 +137,7 @@ function resolvedConfig(): ResolvedSectionConfig {
       seedPolicy1: "resolver-seed-1",
       seedPolicy2: "resolver-seed-2",
       upscaleFactor: 2,
+      useTwoStageKSampler: false,
       checkpointName: "resolver.ckpt",
     },
     ksampler1: { steps: 28 },
@@ -155,6 +169,7 @@ function assertSnapshotUsesResolvedConfig(
   assert.deepEqual(snapshot.composedPrompt, resolved.prompt);
   assert.deepEqual(snapshot.presets, resolved.presets);
   assert.deepEqual(snapshot.loraConfig, resolved.loraConfig);
+  assert.deepEqual(snapshot.workflowLoraConfig, resolved.workflowLoraConfig);
   assert.deepEqual(snapshot.ksampler1, resolved.ksampler1);
   assert.deepEqual(snapshot.ksampler2, resolved.ksampler2);
   assert.deepEqual(snapshot.extraParams, resolved.extraParams);
@@ -311,6 +326,7 @@ test("project section serialization treats resolver nulls as authoritative", () 
       seedPolicy1: null,
       seedPolicy2: null,
       upscaleFactor: null,
+      useTwoStageKSampler: true,
       checkpointName: null,
     },
     ksampler1: null,
@@ -371,6 +387,7 @@ test("resolved config snapshots survive worker prompt draft normalization", () =
   assert.equal(promptDraft.parameters.batchSize, 13);
   assert.deepEqual(promptDraft.parameters.aspectRatios, ["16:9"]);
   assert.deepEqual(promptDraft.loraConfig, resolved.loraConfig);
+  assert.deepEqual(promptDraft.workflowLoraConfig, resolved.workflowLoraConfig);
   assert.deepEqual(promptDraft.ksampler1, resolved.ksampler1);
   assert.deepEqual(promptDraft.ksampler2, resolved.ksampler2);
   assert.deepEqual(promptDraft.extraParams, resolved.extraParams);

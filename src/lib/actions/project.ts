@@ -49,6 +49,7 @@ export type UpdateProjectInput = {
     seedPolicy2?: string | null;
     ksampler1?: Record<string, unknown> | null;
     ksampler2?: Record<string, unknown> | null;
+    useTwoStageKSampler?: boolean | null;
   }[];
   // 小节默认值覆盖
   projectLevelOverrides?: {
@@ -261,6 +262,9 @@ export async function updateProject(input: UpdateProjectInput) {
             seedPolicy2: update.seedPolicy2 ?? null,
             ksampler1: update.ksampler1 ? (update.ksampler1 as Prisma.InputJsonValue) : undefined,
             ksampler2: update.ksampler2 ? (update.ksampler2 as Prisma.InputJsonValue) : undefined,
+            ...(Object.prototype.hasOwnProperty.call(update, "useTwoStageKSampler")
+              ? { useTwoStageKSampler: update.useTwoStageKSampler ?? true }
+              : {}),
           },
         });
       }
@@ -318,6 +322,7 @@ export type ApplyParamName =
   | "shortSidePx"
   | "batchSize"
   | "upscaleFactor"
+  | "useTwoStageKSampler"
   | "seedPolicy"
   | "ksampler1"
   | "ksampler2"
@@ -434,6 +439,9 @@ export async function applyParamToAllSections(
         break;
       case "upscaleFactor":
         data = { upscaleFactor: typeof value === "number" ? value : null };
+        break;
+      case "useTwoStageKSampler":
+        data = { useTwoStageKSampler: typeof value === "boolean" ? value : true };
         break;
       case "seedPolicy":
         if (typeof value === "object" && value !== null) {

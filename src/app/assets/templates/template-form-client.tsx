@@ -240,6 +240,7 @@ export function TemplateFormClient({
       ksampler1: null,
       ksampler2: null,
       upscaleFactor: 2,
+      useTwoStageKSampler: true,
       checkpointName: DEFAULT_CHECKPOINT_NAME,
       loraConfig: { lora1: [], lora2: [] },
       extraParams: null,

@@ -511,6 +511,9 @@ export async function updateProjectSection(
   if (input.upscaleFactor !== undefined) {
     data.upscaleFactor = input.upscaleFactor;
   }
+  if (input.useTwoStageKSampler !== undefined) {
+    data.useTwoStageKSampler = input.useTwoStageKSampler;
+  }
 
   if (input.checkpointName !== undefined) {
     data.checkpointName = input.checkpointName;
@@ -546,6 +549,7 @@ export async function copyProject(projectId: string) {
             ksampler1: true,
             ksampler2: true,
             upscaleFactor: true,
+            useTwoStageKSampler: true,
             checkpointName: true,
             extraParams: true,
             presetBindingRows: {
@@ -624,6 +628,7 @@ export async function copyProject(projectId: string) {
             ksampler1: cloneJsonValueForCreate(section.ksampler1),
             ksampler2: cloneJsonValueForCreate(section.ksampler2),
             upscaleFactor: section.upscaleFactor,
+            useTwoStageKSampler: section.useTwoStageKSampler,
             checkpointName: section.checkpointName,
             extraParams: cloneJsonValueForCreate(section.extraParams),
           })),

@@ -1418,6 +1418,7 @@ function legacyResolvedSectionConfig(
     .map((block) => block.negative)
     .filter((value): value is string => Boolean(value?.trim()))
     .join(" BREAK ") || null;
+  const loraConfig = legacyLoraConfigToResolved(legacyLoras);
 
   return {
     promptBlocks: resolvedPromptBlocks,
@@ -1431,7 +1432,8 @@ function legacyResolvedSectionConfig(
         bindingId: block.bindingId!,
         label: block.label,
       })),
-    loraConfig: legacyLoraConfigToResolved(legacyLoras),
+    loraConfig,
+    workflowLoraConfig: loraConfig,
       parameters: {
         aspectRatio: section.aspectRatio ?? null,
         aspectRatios: section.aspectRatio ? [section.aspectRatio] : null,

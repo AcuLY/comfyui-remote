@@ -63,6 +63,12 @@ function getNullableStringArray(formData: FormData, fieldName: string): string[]
   }
 }
 
+function getOptionalBoolean(formData: FormData, fieldName: string): boolean | undefined {
+  if (!formData.has(fieldName)) return undefined;
+  const raw = String(formData.get(fieldName) ?? "").trim().toLowerCase();
+  return raw === "true" || raw === "1" || raw === "on";
+}
+
 function getPositiveInteger(formData: FormData, fieldName: string, label: string): PositiveIntegerResult {
   const rawValue = String(formData.get(fieldName) ?? "").trim();
 
@@ -113,6 +119,7 @@ export async function saveSectionEditAction(
   const ksampler1 = getNullableJsonObject(formData, "ksampler1");
   const ksampler2 = getNullableJsonObject(formData, "ksampler2");
   const aspectRatios = getNullableStringArray(formData, "aspectRatios");
+  const useTwoStageKSampler = getOptionalBoolean(formData, "useTwoStageKSampler");
   const checkpointName = formData.has("checkpointName")
     ? getNullableString(formData, "checkpointName")
     : undefined;
@@ -156,6 +163,9 @@ export async function saveSectionEditAction(
   }
   if (upscaleFactor !== null && Number.isFinite(upscaleFactor)) {
     payload.upscaleFactor = upscaleFactor;
+  }
+  if (useTwoStageKSampler !== undefined) {
+    payload.useTwoStageKSampler = useTwoStageKSampler;
   }
 
   try {

@@ -130,6 +130,7 @@ async function createPhase0SqliteFixture(
         name text,
         sortOrder integer,
         checkpointName text,
+        useTwoStageKSampler integer not null default 1,
         loraConfig text
       );
       create table Run (

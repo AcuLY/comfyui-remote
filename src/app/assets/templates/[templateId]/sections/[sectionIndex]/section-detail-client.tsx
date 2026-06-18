@@ -115,6 +115,9 @@ export function TemplateSectionDetailClient({
   const [shortSidePx, setShortSidePx] = useState<number | null>(initialSection.shortSidePx ?? null);
   const [batchSize, setBatchSize] = useState<string | null>(initialSection.batchSize?.toString() ?? null);
   const [upscaleFactor, setUpscaleFactor] = useState<string | null>(initialSection.upscaleFactor?.toString() ?? null);
+  const [useTwoStageKSampler, setUseTwoStageKSampler] = useState<boolean>(
+    initialSection.useTwoStageKSampler ?? true,
+  );
   const [checkpointName, setCheckpointName] = useState<string | null>(initialSection.checkpointName ?? null);
   const [ks1, setKs1] = useState<KSamplerParams | null>(() => {
     if (!initialSection.ksampler1) return null;
@@ -297,6 +300,7 @@ export function TemplateSectionDetailClient({
       ksampler1: ks1 as unknown as Record<string, unknown> | null,
       ksampler2: ks2 as unknown as Record<string, unknown> | null,
       upscaleFactor: upscaleFactor ? parseFloat(upscaleFactor) : null,
+      useTwoStageKSampler,
       checkpointName: checkpointName?.trim() ? checkpointName.trim() : null,
       loraConfig: loraConfig as unknown as Record<string, unknown>,
       extraParams: initialSection.extraParams,
@@ -319,6 +323,7 @@ export function TemplateSectionDetailClient({
     sectionIndex,
     shortSidePx,
     upscaleFactor,
+    useTwoStageKSampler,
   ]);
 
   const saveCurrentSection = useCallback(() => {
@@ -900,15 +905,41 @@ export function TemplateSectionDetailClient({
                   disabled={isPending}
                   size="sm"
                 />
-                {upscaleFactor === "1" && (
-                  <p className="text-[10px] text-amber-400/70">
-                    1x 模式将跳过 Upscale Latent 和 KSampler2（无高清修复）
-                  </p>
-                )}
               </>
             )}
           </div>
         </div>
+
+        <button
+          type="button"
+          aria-pressed={useTwoStageKSampler}
+          disabled={isPending}
+          onClick={() => {
+            setUseTwoStageKSampler((current) => !current);
+            scheduleSaveAfterState();
+          }}
+          className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition hover:bg-white/[0.06] disabled:opacity-50"
+        >
+          <span className="min-w-0">
+            <span className="block text-xs font-medium text-zinc-200">使用二阶段 KSampler</span>
+            <span className="block truncate text-[11px] text-zinc-500">
+              {useTwoStageKSampler ? "Upscale Latent + KSampler2" : "一阶段直接生成最终尺寸"}
+            </span>
+          </span>
+          <span
+            className={`relative h-5 w-10 rounded-full border transition ${
+              useTwoStageKSampler
+                ? "border-sky-400/40 bg-sky-400/25"
+                : "border-white/10 bg-white/[0.04]"
+            }`}
+          >
+            <span
+              className={`absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full bg-white transition ${
+                useTwoStageKSampler ? "left-5" : "left-1"
+              }`}
+            />
+          </span>
+        </button>
 
         {/* KSampler panels */}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -969,12 +1000,12 @@ export function TemplateSectionDetailClient({
             ) : (
               <KSamplerPanel
                 label=""
-                subtitle={upscaleFactor === "1" ? "1x 模式下不使用" : `steps ${ks2.steps ?? DEFAULT_KSAMPLER2.steps} · cfg ${ks2.cfg ?? DEFAULT_KSAMPLER2.cfg} · ${ks2.sampler_name ?? DEFAULT_KSAMPLER2.sampler_name}`}
+                subtitle={!useTwoStageKSampler ? "单阶段模式下不使用" : `steps ${ks2.steps ?? DEFAULT_KSAMPLER2.steps} · cfg ${ks2.cfg ?? DEFAULT_KSAMPLER2.cfg} · ${ks2.sampler_name ?? DEFAULT_KSAMPLER2.sampler_name}`}
                 params={ks2}
                 defaults={DEFAULT_KSAMPLER2}
                 onChange={setKs2}
                 onFieldBlur={saveOnBlur}
-                disabled={isPending || upscaleFactor === "1"}
+                disabled={isPending || !useTwoStageKSampler}
               />
             )}
           </div>

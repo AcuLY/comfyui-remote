@@ -51,6 +51,7 @@ type TemplateSectionForImport = {
   ksampler1?: unknown;
   ksampler2?: unknown;
   upscaleFactor?: number | null;
+  useTwoStageKSampler?: boolean | null;
   checkpointName?: string | null;
   extraParams?: unknown;
 };
@@ -263,6 +264,7 @@ export async function resolveTemplateSectionConfig(
       seedPolicy1: true,
       seedPolicy2: true,
       upscaleFactor: true,
+      useTwoStageKSampler: true,
       checkpointName: true,
       ksampler1: true,
       ksampler2: true,
@@ -658,6 +660,7 @@ export function buildProjectSectionDataForTemplateImport(input: {
     ...(section.ksampler1 !== null && section.ksampler1 !== undefined ? { ksampler1: section.ksampler1 } : {}),
     ...(section.ksampler2 !== null && section.ksampler2 !== undefined ? { ksampler2: section.ksampler2 } : {}),
     ...(section.upscaleFactor !== null && section.upscaleFactor !== undefined ? { upscaleFactor: section.upscaleFactor } : {}),
+    useTwoStageKSampler: section.useTwoStageKSampler ?? true,
     ...(section.checkpointName !== null && section.checkpointName !== undefined ? { checkpointName: section.checkpointName } : {}),
     ...(section.extraParams !== null && section.extraParams !== undefined ? { extraParams: section.extraParams } : {}),
   };

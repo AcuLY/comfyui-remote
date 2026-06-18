@@ -22,6 +22,7 @@ export type ProjectTemplateSectionData = {
   ksampler1: Record<string, unknown> | null;
   ksampler2: Record<string, unknown> | null;
   upscaleFactor: number | null;
+  useTwoStageKSampler: boolean | null;
   checkpointName: string | null;
   loraConfig: Record<string, unknown> | null;
   extraParams: Record<string, unknown> | null;
@@ -140,6 +141,7 @@ export async function getProjectTemplateDetail(
         ksampler1: s.ksampler1 as Record<string, unknown> | null,
         ksampler2: s.ksampler2 as Record<string, unknown> | null,
         upscaleFactor: s.upscaleFactor,
+        useTwoStageKSampler: s.useTwoStageKSampler ?? true,
         checkpointName: s.checkpointName,
         loraConfig: resolvedConfig?.loraConfig ?? null,
         extraParams: s.extraParams as Record<string, unknown> | null,

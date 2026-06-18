@@ -311,7 +311,7 @@ export function extractExecutionMeta(
     meta.checkpointName = promptDraft.checkpointName ?? promptDraft.parameters.checkpointName ?? null;
     meta.workflowId = promptDraft.workflowId ?? null;
     // LoRA summary (paths + weights)
-    const loraConfig = promptDraft.loraConfig as Record<string, unknown> | null;
+    const loraConfig = (promptDraft.workflowLoraConfig ?? promptDraft.loraConfig) as Record<string, unknown> | null;
     if (loraConfig) {
       const summarizeLoras = (arr: unknown) => {
         if (!Array.isArray(arr)) return null;
@@ -487,8 +487,9 @@ async function resolveStandardWorkflowPrompt(
     promptDraft.parameters.shortSidePx,
   );
 
-  const loraConfig = promptDraft.loraConfig
-    ? parseSectionLoraConfig(promptDraft.loraConfig)
+  const workflowLoraConfig = promptDraft.workflowLoraConfig ?? promptDraft.loraConfig;
+  const loraConfig = workflowLoraConfig
+    ? parseSectionLoraConfig(workflowLoraConfig)
     : { lora1: [], lora2: [] };
 
   const ksampler1 = parseKSamplerParams(promptDraft.ksampler1, DEFAULT_KSAMPLER1);
@@ -510,6 +511,7 @@ async function resolveStandardWorkflowPrompt(
     height,
     batchSize: promptDraft.parameters.batchSize ?? 1,
     upscaleFactor: promptDraft.parameters.upscaleFactor ?? 2,
+    useTwoStageKSampler: promptDraft.parameters.useTwoStageKSampler,
     checkpointName: promptDraft.checkpointName ?? promptDraft.parameters.checkpointName ?? null,
     lora1List: toBindings(loraConfig.lora1),
     lora2List: toBindings(loraConfig.lora2),
@@ -560,6 +562,7 @@ export async function validateComfyPromptDraft(
       prompt: promptDraft.prompt,
       parameters: promptDraft.parameters,
       loraConfig: promptDraft.loraConfig,
+      workflowLoraConfig: promptDraft.workflowLoraConfig,
       metadata: promptDraft.metadata,
     },
   };

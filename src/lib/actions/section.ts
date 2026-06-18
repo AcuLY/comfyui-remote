@@ -135,6 +135,7 @@ export async function addSection(projectId: string, name?: string, folderId?: st
       shortSidePx: defaultShortSidePx,
       batchSize: defaultBatchSize,
       upscaleFactor: defaultUpscaleFactor,
+      useTwoStageKSampler: true,
       seedPolicy1: defaultSeedPolicy1,
       seedPolicy2: defaultSeedPolicy2,
       ksampler1: (defaultKsampler1 as object) ?? undefined,
@@ -360,6 +361,7 @@ export async function copySection(sectionId: string): Promise<string | null> {
         ksampler1: section.ksampler1 ?? undefined,
         ksampler2: section.ksampler2 ?? undefined,
         upscaleFactor: section.upscaleFactor ?? undefined,
+        useTwoStageKSampler: section.useTwoStageKSampler,
         extraParams: section.extraParams ?? undefined,
       },
     });

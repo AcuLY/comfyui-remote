@@ -331,13 +331,17 @@ export async function importTemplateToProject(
 
     for (let i = 0; i < sectionsToImport.length; i++) {
       const ts = sectionsToImport[i];
+      const sectionData = buildProjectSectionDataForTemplateImport({
+        projectId,
+        sortOrder: sortOrderBase + i + 1,
+        templateSection: ts,
+      });
 
       const section = await tx.projectSection.create({
-        data: buildProjectSectionDataForTemplateImport({
-          projectId,
-          sortOrder: sortOrderBase + i + 1,
-          templateSection: ts,
-        }),
+        data: {
+          ...sectionData,
+          useTwoStageKSampler: sectionData.useTwoStageKSampler ?? true,
+        },
       });
 
       const relationRows = buildProjectSectionRowsForTemplateImport({

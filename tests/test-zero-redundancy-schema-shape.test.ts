@@ -151,6 +151,18 @@ for (const schemaFile of schemaFiles) {
     ]);
   });
 
+  test(`${schemaFile} stores the section-level two-stage KSampler switch by default`, async () => {
+    const section = await readSchemaModel(schemaFile, "ProjectSection");
+    const templateSection = await readSchemaModel(schemaFile, "ProjectTemplateSection");
+
+    assertModelDeclaresFields(section, [
+      "useTwoStageKSampler Boolean @default(true)",
+    ]);
+    assertModelDeclaresFields(templateSection, [
+      "useTwoStageKSampler Boolean @default(true)",
+    ]);
+  });
+
   test(`${schemaFile} keeps new prompt blocks resolver-backed instead of copying legacy payloads`, async () => {
     const sectionPromptBlock = await readSchemaModel(schemaFile, "SectionPromptBlock");
     const templateSectionPromptBlock = await readSchemaModel(schemaFile, "TemplateSectionPromptBlock");

@@ -94,6 +94,7 @@ setupDb.exec(`
     "ksampler1" JSONB,
     "ksampler2" JSONB,
     "upscaleFactor" REAL,
+    "useTwoStageKSampler" BOOLEAN NOT NULL DEFAULT true,
     "checkpointName" TEXT,
     "extraParams" JSONB,
     "latestRunId" TEXT,

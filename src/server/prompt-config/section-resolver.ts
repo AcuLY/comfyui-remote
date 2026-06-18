@@ -97,6 +97,7 @@ function buildSectionParameters(section: ResolveSectionConfigInput["section"]) {
     seedPolicy1: section.seedPolicy1 ?? readOverrideString(overrides, "defaultSeedPolicy1") ?? null,
     seedPolicy2: section.seedPolicy2 ?? readOverrideString(overrides, "defaultSeedPolicy2") ?? null,
     upscaleFactor: section.upscaleFactor ?? readOverrideNumber(overrides, "defaultUpscaleFactor") ?? null,
+    useTwoStageKSampler: section.useTwoStageKSampler ?? true,
     checkpointName: section.checkpointName ?? section.project?.checkpointName ?? null,
   };
 }
@@ -143,6 +144,7 @@ function buildResolvedSectionConfig(
   input: ResolveSectionConfigInput,
   promptBlocks: ResolvedSectionConfig["promptBlocks"],
   loraConfig: ResolvedSectionConfig["loraConfig"],
+  workflowLoraConfig: ResolvedSectionConfig["workflowLoraConfig"],
   missingReferences: MissingReference[],
 ): ResolvedSectionConfig {
   return {
@@ -150,6 +152,7 @@ function buildResolvedSectionConfig(
     prompt: buildResolvedPrompt(promptBlocks),
     presets: buildResolvedPresets(promptBlocks),
     loraConfig,
+    workflowLoraConfig,
     parameters: buildSectionParameters(input.section),
     ksampler1: input.section.ksampler1 ?? readOverrideRecord(readProjectOverrides(input.section), "defaultKsampler1"),
     ksampler2: input.section.ksampler2 ?? readOverrideRecord(readProjectOverrides(input.section), "defaultKsampler2"),
@@ -594,7 +597,10 @@ function resolveLoraConfig(
   input: ResolveSectionConfigInput,
   variants: readonly PresetVariantRow[],
   missingReferences: MissingReference[],
-): SectionLoraConfig {
+): {
+  loraConfig: SectionLoraConfig;
+  singleStageWorkflowLoraConfig: SectionLoraConfig;
+} {
   const bindingById = new Map(input.presetBindings.map((binding) => [binding.id, binding]));
   const groupById = resolvedGroupsById(input);
   const suppressedPresetPathKeys = buildSuppressedPresetPathKeys(input.manualLoraEntries, bindingById);
@@ -666,9 +672,23 @@ function resolveLoraConfig(
     index += 1;
   }
 
+  const lora1 = dedupeLoraEntriesByPath(sortResolvedLoras(sortable.lora1));
+  const lora2 = dedupeLoraEntriesByPath(sortResolvedLoras(sortable.lora2));
+  const lora1Paths = new Set(lora1.map((entry) => entry.path));
+  const mergedSingleStageLoras = dedupeLoraEntriesByPath(sortResolvedLoras([
+    ...sortable.lora1,
+    ...sortable.lora2.filter((item) => !lora1Paths.has(item.entry.path)),
+  ]));
+
   return {
-    lora1: dedupeLoraEntriesByPath(sortResolvedLoras(sortable.lora1)),
-    lora2: dedupeLoraEntriesByPath(sortResolvedLoras(sortable.lora2)),
+    loraConfig: {
+      lora1,
+      lora2,
+    },
+    singleStageWorkflowLoraConfig: {
+      lora1: mergedSingleStageLoras,
+      lora2: [],
+    },
   };
 }
 
@@ -676,9 +696,12 @@ export function resolveSectionConfigFromRows(input: ResolveSectionConfigInput): 
   const variants = collectPresetVariants(input);
   const missingReferences: MissingReference[] = [];
   const promptBlocks = resolvePromptBlocks(input, variants, missingReferences);
-  const loraConfig = resolveLoraConfig(input, variants, missingReferences);
+  const { loraConfig, singleStageWorkflowLoraConfig } = resolveLoraConfig(input, variants, missingReferences);
+  const workflowLoraConfig = input.section.useTwoStageKSampler === false
+    ? singleStageWorkflowLoraConfig
+    : loraConfig;
 
-  return buildResolvedSectionConfig(input, promptBlocks, loraConfig, missingReferences);
+  return buildResolvedSectionConfig(input, promptBlocks, loraConfig, workflowLoraConfig, missingReferences);
 }
 
 async function resolveInitialVariantIds(
@@ -733,6 +756,7 @@ export async function resolveSectionConfig(
       seedPolicy1: true,
       seedPolicy2: true,
       upscaleFactor: true,
+      useTwoStageKSampler: true,
       checkpointName: true,
       ksampler1: true,
       ksampler2: true,

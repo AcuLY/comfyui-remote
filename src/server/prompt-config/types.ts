@@ -170,6 +170,7 @@ export type SectionResolverSectionRow = {
   seedPolicy1?: string | null;
   seedPolicy2?: string | null;
   upscaleFactor?: number | null;
+  useTwoStageKSampler?: boolean | null;
   checkpointName?: string | null;
   ksampler1?: unknown;
   ksampler2?: unknown;
@@ -264,6 +265,7 @@ export type ResolvedSectionConfig = {
     label: string;
   }>;
   loraConfig: SectionLoraConfig;
+  workflowLoraConfig: SectionLoraConfig;
   parameters: Record<string, unknown>;
   ksampler1: unknown;
   ksampler2: unknown;

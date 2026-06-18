@@ -759,28 +759,29 @@ model ProjectTemplatePresetBinding {
 }
 
 model ProjectTemplateSection {
-  id                String                           @id @default(cuid())
-  projectTemplateId String
-  folderId          String?
-  sortOrder         Int                              @default(0)
-  name              String?
-  notes             String?
-  aspectRatio       String?
-  aspectRatios      Json?
-  shortSidePx       Int?
-  batchSize         Int?
-  seedPolicy1       String?
-  seedPolicy2       String?
-  ksampler1         Json?
-  ksampler2         Json?
-  upscaleFactor     Float?
-  checkpointName    String?
-  extraParams       Json?
-  projectTemplate   ProjectTemplate                  @relation(fields: [projectTemplateId], references: [id], onDelete: Cascade)
-  folder            ProjectTemplateSectionFolder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  presetBindingRows TemplateSectionPresetBinding[]
-  promptBlockRows   TemplateSectionPromptBlock[]
-  manualLoraEntries TemplateSectionManualLoraEntry[]
+  id                  String                           @id @default(cuid())
+  projectTemplateId   String
+  folderId            String?
+  sortOrder           Int                              @default(0)
+  name                String?
+  notes               String?
+  aspectRatio         String?
+  aspectRatios        Json?
+  shortSidePx         Int?
+  batchSize           Int?
+  seedPolicy1         String?
+  seedPolicy2         String?
+  ksampler1           Json?
+  ksampler2           Json?
+  upscaleFactor       Float?
+  useTwoStageKSampler Boolean                          @default(true)
+  checkpointName      String?
+  extraParams         Json?
+  projectTemplate     ProjectTemplate                  @relation(fields: [projectTemplateId], references: [id], onDelete: Cascade)
+  folder              ProjectTemplateSectionFolder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  presetBindingRows   TemplateSectionPresetBinding[]
+  promptBlockRows     TemplateSectionPromptBlock[]
+  manualLoraEntries   TemplateSectionManualLoraEntry[]
 
   @@index([projectTemplateId, sortOrder])
   @@index([folderId])
@@ -951,6 +952,7 @@ model ProjectSection {
   ksampler1           Json?
   ksampler2           Json?
   upscaleFactor       Float?
+  useTwoStageKSampler Boolean                  @default(true)
   checkpointName      String?
   extraParams         Json?
   latestRunId         String?

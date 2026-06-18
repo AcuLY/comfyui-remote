@@ -142,6 +142,10 @@ export default async function SectionEditPage({
     const value = resolvedConfig?.parameters[key];
     return typeof value === "number" && Number.isFinite(value) ? value : null;
   };
+  const readResolvedBooleanParam = (key: string) => {
+    const value = resolvedConfig?.parameters[key];
+    return typeof value === "boolean" ? value : null;
+  };
 
   const resolvedPromptBlocks = resolvedConfig?.promptBlocks ?? [];
   const usedResolvedBlockIndexes = new Set<number>();
@@ -216,6 +220,7 @@ export default async function SectionEditPage({
         ksampler1: resolvedConfig.ksampler1 ?? null,
         ksampler2: resolvedConfig.ksampler2 ?? null,
         upscaleFactor: readResolvedNumberParam("upscaleFactor"),
+        useTwoStageKSampler: readResolvedBooleanParam("useTwoStageKSampler"),
         checkpointName: pos.checkpointName ?? null,
         projectCheckpointName: readResolvedStringParam("checkpointName"),
       }
@@ -231,6 +236,7 @@ export default async function SectionEditPage({
         ksampler1: pos.ksampler1 ?? null,
         ksampler2: pos.ksampler2 ?? null,
         upscaleFactor: pos.upscaleFactor ?? null,
+        useTwoStageKSampler: pos.useTwoStageKSampler ?? true,
         checkpointName: pos.checkpointName ?? null,
         projectCheckpointName: pos.project.checkpointName ?? null,
       };

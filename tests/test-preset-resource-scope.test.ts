@@ -155,6 +155,7 @@ setupDb.exec(`
     "name" TEXT,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "useTwoStageKSampler" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
@@ -214,6 +215,7 @@ setupDb.exec(`
     "projectTemplateId" TEXT NOT NULL,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "name" TEXT,
+    "useTwoStageKSampler" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
