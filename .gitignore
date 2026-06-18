@@ -37,6 +37,25 @@ yarn-error.log*
 .env*
 !.env.example
 
+# local Manager/worker machine configs
+config/*.local.json
+config/*local.json
+config/training-dataset-angle-sections.*.json
+scripts/training/sync-angle-sections.ts
+
+# local Manager runtime data, build artifacts, and deploy/debug logs
+/data/
+/logs/
+/.tmp/
+/.next.pre-prod-switch-*/
+/.next.failed-build-*/
+/comfyui-manager-build-backups/
+*.log
+*.err.log
+*.trace
+*.heapprofile
+*.heapsnapshot
+
 # vercel
 .vercel
 
@@ -51,4 +70,3 @@ next-env.d.ts
 *.db
 *.db-journal
 *.sqlite
-/data/

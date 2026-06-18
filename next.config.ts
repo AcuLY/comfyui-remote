@@ -1,6 +1,52 @@
 import type { NextConfig } from "next";
 import path from "node:path";
 
+const runtimeTraceExcludes = [
+  "./.next/**/*",
+  "./.next.pre-prod-switch-*",
+  "./.next.pre-prod-switch-*/**/*",
+  "./.next.failed-build-*",
+  "./.next.failed-build-*/**/*",
+  "./comfyui-manager-build-backups/**/*",
+  "./data/**/*",
+  "./logs/**/*",
+  "./.tmp/**/*",
+  "./prisma/data/**/*",
+  "./*.log",
+  "./*.err.log",
+  "./*.trace",
+  "./*.heapprofile",
+  "./*.heapsnapshot",
+  "./debug-*",
+  "./tmp-debug.js",
+  "./check-template.js",
+  "./next.config.ts",
+];
+
+type TraceEntryPointsPluginLike = {
+  constructor?: { name?: string };
+  traceIgnores?: unknown;
+};
+
+function addRuntimeTraceIgnores(config: { plugins?: unknown[] }) {
+  for (const plugin of config.plugins ?? []) {
+    const maybeTracePlugin = plugin as TraceEntryPointsPluginLike;
+    if (!Array.isArray(maybeTracePlugin.traceIgnores)) continue;
+
+    const existing = new Set(
+      maybeTracePlugin.traceIgnores.filter(
+        (pattern): pattern is string => typeof pattern === "string",
+      ),
+    );
+    for (const pattern of runtimeTraceExcludes) {
+      if (!existing.has(pattern)) {
+        maybeTracePlugin.traceIgnores.push(pattern);
+        existing.add(pattern);
+      }
+    }
+  }
+}
+
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["localhost", "127.0.0.1"],
   turbopack: {
@@ -42,31 +88,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack(config) {
+    addRuntimeTraceIgnores(config);
+    return config;
+  },
   outputFileTracingExcludes: {
-    "/*": [
-      "./.next/**/*",
-      "./data/**/*",
-      "./logs/**/*",
-      "./prisma/data/**/*",
-      "./*.log",
-      "./server*.log",
-      "./debug-*",
-      "./tmp-debug.js",
-      "./check-template.js",
-      "./next.config.ts",
-    ],
-    "/**/*": [
-      "./.next/**/*",
-      "./data/**/*",
-      "./logs/**/*",
-      "./prisma/data/**/*",
-      "./*.log",
-      "./server*.log",
-      "./debug-*",
-      "./tmp-debug.js",
-      "./check-template.js",
-      "./next.config.ts",
-    ],
+    "/*": runtimeTraceExcludes,
+    "/**/*": runtimeTraceExcludes,
   },
 };
 
