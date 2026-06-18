@@ -6,10 +6,15 @@ import { toImageUrl } from "@/lib/image-url";
 import type { DemoImage } from "./types";
 import { isRenderableLocalImageFile } from "./local-image-files";
 
+function configuredOutputImageRoot() {
+  const outputBasePath = process.env.OUTPUT_BASE_PATH;
+  return outputBasePath ? path.resolve(/* turbopackIgnore: true */ outputBasePath) : null;
+}
+
 export function fallbackImages(): DemoImage[] {
-  const imageRoot = path.resolve(
-    /* turbopackIgnore: true */ process.env.OUTPUT_BASE_PATH ?? path.join(process.cwd(), "data", "images"),
-  );
+  const imageRoot = configuredOutputImageRoot();
+  if (!imageRoot) return [];
+
   const files: string[] = [];
 
   function walk(dir: string) {

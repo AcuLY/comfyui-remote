@@ -4,7 +4,8 @@ import path from "node:path";
 const DATA_IMAGES_PREFIX = "data/images/";
 
 function outputImageRoot() {
-  return path.resolve(/* turbopackIgnore: true */ process.env.OUTPUT_BASE_PATH ?? path.join(process.cwd(), "data/images"));
+  const outputBasePath = process.env.OUTPUT_BASE_PATH;
+  return outputBasePath ? path.resolve(/* turbopackIgnore: true */ outputBasePath) : null;
 }
 
 function stripDataImagesPrefix(value: string) {
@@ -68,6 +69,8 @@ export function isRenderableLocalImagePath(value: string) {
   if (!relativePath) return false;
 
   const root = outputImageRoot();
+  if (!root) return false;
+
   const resolved = path.resolve(/* turbopackIgnore: true */ root, relativePath);
   if (!isInsideImageRoot(root, resolved)) return false;
 

@@ -47,6 +47,25 @@ function addRuntimeTraceIgnores(config: { plugins?: unknown[] }) {
   }
 }
 
+const broadPatternIssuePaths = [
+  "**/src/app/design-demos/design-demo-data.ts",
+  "**/src/app/design-demos/data/fallback-images.ts",
+  "**/src/app/design-demos/data/local-image-files.ts",
+  "**/src/lib/actions/section.ts",
+  "**/src/lib/logger.ts",
+  "**/src/server/repositories/training/projects.ts",
+  "**/src/server/services/censoring-service.ts",
+  "**/src/server/services/comfy-patch-manager.ts",
+  "**/src/server/services/image-file-service.ts",
+  "**/src/server/services/image-result-service.ts",
+  "**/src/server/services/project-actions-service.ts",
+  "**/src/server/services/project-archive-service.ts",
+  "**/src/server/services/project-deletion-service.ts",
+  "**/src/server/services/project-export-service.ts",
+  "**/src/server/services/run-executor.ts",
+  "**/src/server/services/section-cleanup-service.ts",
+] as const;
+
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["localhost", "127.0.0.1"],
   turbopack: {
@@ -56,33 +75,13 @@ const nextConfig: NextConfig = {
         path: "**/next.config.ts",
         title: "Encountered unexpected file in NFT list",
       },
-      {
-        path: "**/src/app/design-demos/design-demo-data.ts",
+      ...broadPatternIssuePaths.map((issuePath) => ({
+        path: issuePath,
         title: /The file pattern/,
         description: /Overly broad patterns/,
-      },
-      {
-        path: "**/src/server/services/image-result-service.ts",
-        title: /The file pattern/,
-        description: /Overly broad patterns/,
-      },
-      {
-        path: "**/src/server/services/image-file-service.ts",
-        title: /The file pattern/,
-        description: /Overly broad patterns/,
-      },
-      {
-        path: "**/src/server/services/comfy-patch-manager.ts",
-        title: /The file pattern/,
-        description: /Overly broad patterns/,
-      },
+      })),
       {
         path: /src[\\/]app[\\/]api[\\/]images[\\/]\[\.\.\.path\][\\/]route\.ts$/,
-        title: /The file pattern/,
-        description: /Overly broad patterns/,
-      },
-      {
-        path: "**/src/lib/logger.ts",
         title: /The file pattern/,
         description: /Overly broad patterns/,
       },

@@ -30,5 +30,32 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "prisma/seed.ts", ".next/dev/types/**/*.ts"]
+  "exclude": [
+    "node_modules",
+    "data",
+    "data/**/*",
+    "logs",
+    "logs/**/*",
+    ".tmp",
+    ".tmp/**/*",
+    ".next/cache",
+    ".next/cache/**/*",
+    ".next/precache",
+    ".next/precache/**/*",
+    ".next.pre-prod-switch-*",
+    ".next.pre-prod-switch-*/**/*",
+    ".next.failed-build-*",
+    ".next.failed-build-*/**/*",
+    "comfyui-manager-build-backups",
+    "comfyui-manager-build-backups/**/*",
+    "prisma/data",
+    "prisma/data/**/*",
+    "*.log",
+    "*.err.log",
+    "*.trace",
+    "*.heapprofile",
+    "*.heapsnapshot",
+    "prisma/seed.ts",
+    ".next/dev/types/**/*.ts"
+  ]
 }

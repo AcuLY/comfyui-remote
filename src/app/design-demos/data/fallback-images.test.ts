@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { fallbackImages } from "./fallback-images";
+import { isRenderableLocalImagePath } from "./local-image-files";
 
 const ONE_BY_ONE_PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
@@ -22,6 +23,26 @@ const TWO_BY_TWO_PNG_HEADER = Buffer.from([
   0x00, 0x00, 0x00, 0x02,
   0x08, 0x06, 0x00, 0x00, 0x00,
 ]);
+
+function restoreOutputBase(previousOutputBase: string | undefined) {
+  if (previousOutputBase === undefined) {
+    delete process.env.OUTPUT_BASE_PATH;
+  } else {
+    process.env.OUTPUT_BASE_PATH = previousOutputBase;
+  }
+}
+
+test("fallback image helpers do not scan repo data/images unless OUTPUT_BASE_PATH is configured", () => {
+  const previousOutputBase = process.env.OUTPUT_BASE_PATH;
+  delete process.env.OUTPUT_BASE_PATH;
+
+  try {
+    assert.deepEqual(fallbackImages(), []);
+    assert.equal(isRenderableLocalImagePath("data/images/sample/preview.png"), false);
+  } finally {
+    restoreOutputBase(previousOutputBase);
+  }
+});
 
 test("fallbackImages skips zero-byte files when scanning local previews", () => {
   const previousOutputBase = process.env.OUTPUT_BASE_PATH;
