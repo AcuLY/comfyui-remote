@@ -10,6 +10,7 @@ import { useDemoFeedback } from "../../feedback/context";
 import { preventReadonlyEdit } from "@/components/design-demo-ui/primitives/shared/utils";
 
 type FieldProps = {
+  actions?: React.ReactNode;
   label: string;
   value?: string | number;
   defaultValue?: string | number;
@@ -25,6 +26,7 @@ type FieldProps = {
 };
 
 export function Field({
+  actions,
   label,
   value,
   defaultValue,
@@ -136,7 +138,14 @@ export function Field({
 
   return (
     <div className={s.root} data-demo-ui-field="true">
-      <label htmlFor={controlId}>{label}</label>
+      <div className={s.fieldHeader}>
+        <label htmlFor={controlId}>{label}</label>
+        {actions ? (
+          <div className={s.fieldActions} role="group" aria-label={`${label} 字段操作`}>
+            {actions}
+          </div>
+        ) : null}
+      </div>
       {hasClipboardTools ? (
         <div className={s.controlFrame}>
           {control}

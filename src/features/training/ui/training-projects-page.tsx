@@ -2,12 +2,12 @@
 
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Archive, CheckSquare, Grid2X2, List, Plus, X } from "lucide-react";
+import { Archive, CheckSquare, Grid2X2, List, X } from "lucide-react";
 
 import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import { useDemoFeedback } from "@/components/design-demo-ui/feedback/context";
 import { SelectionBatchBar } from "@/components/design-demo-ui/patterns";
-import { Button, ButtonLink } from "@/components/design-demo-ui/primitives/button";
+import { Button } from "@/components/design-demo-ui/primitives/button";
 import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
 import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
 import { SortableList } from "@/components/design-demo-ui/primitives/sortable";
@@ -258,10 +258,7 @@ export function LoraTrainingProjectsPage({ data }: { data: TrainingAppData }) {
 
   return (
     <div className={s.page}>
-      <PageHeader
-        title="项目"
-        actions={<ButtonLink href="/training/projects/new" icon={Plus} tone="primary">新建</ButtonLink>}
-      />
+      <PageHeader title="项目" />
 
       <SegmentedControl
         ariaLabel="切换训练项目范围"

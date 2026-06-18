@@ -33,6 +33,7 @@ import { useDemoFeedback } from "@/components/design-demo-ui/feedback/context";
 import { ImageListSmall } from "@/components/design-demo-ui/media/image-list-small";
 import { ImagePreviewFrame } from "@/components/design-demo-ui/media/image-preview-frame";
 import { ImagePreviewLarge } from "@/components/design-demo-ui/media/image-preview-large";
+import { ImageThumbMedium } from "@/components/design-demo-ui/media/image-thumb-medium";
 import { Button, ButtonLink } from "@/components/design-demo-ui/primitives/button";
 import { Checkbox } from "@/components/design-demo-ui/primitives/checkbox";
 import { EmptyPage } from "@/components/design-demo-ui/primitives/empty-page";
@@ -47,6 +48,7 @@ import { SwitchRow } from "@/components/design-demo-ui/primitives/switch-row";
 import { SelectionBatchBar } from "@/components/design-demo-ui/patterns";
 import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData, TrainingModelOption } from "@/features/training/data";
+import { TRAINING_PROJECT_SECTION_ADD_EVENT } from "@/features/training/header-action-slots";
 import type { TrainingImage, LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "@/features/training/types";
 import s from "./training-project-pages.module.css";
 
@@ -1761,6 +1763,7 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
     projectId: project?.id ?? null,
   }));
   const [editingReferenceImageId, setEditingReferenceImageId] = useState<string | null>(null);
+  const [activeReferenceImageId, setActiveReferenceImageId] = useState<string | null>(null);
   const [savingReferenceImageIds, setSavingReferenceImageIds] = useState<Set<string>>(new Set());
   const [deletingReferenceImageIds, setDeletingReferenceImageIds] = useState<Set<string>>(new Set());
   const [profileRevisionField, setProfileRevisionField] = useState<TrainingProfileRevisionField | null>(null);
@@ -1794,6 +1797,21 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
   const visibleProfileRevisions = profileRevisionState.projectId === activeProject.id && profileRevisionState.fieldName === profileRevisionField
     ? profileRevisionState.revisions
     : [];
+  const activeReferenceImage = activeReferenceImageId
+    ? localReferenceImages.find((reference) => reference.id === activeReferenceImageId) ?? null
+    : null;
+  const activeReferenceImageIndex = activeReferenceImage
+    ? localReferenceImages.findIndex((reference) => reference.id === activeReferenceImage.id)
+    : -1;
+
+  function moveActiveReferenceImage(offset: number) {
+    if (localReferenceImages.length === 0) return;
+    setActiveReferenceImageId((current) => {
+      const currentIndex = current ? localReferenceImages.findIndex((reference) => reference.id === current) : -1;
+      const nextIndex = ((currentIndex >= 0 ? currentIndex : 0) + offset + localReferenceImages.length) % localReferenceImages.length;
+      return localReferenceImages[nextIndex]?.id ?? null;
+    });
+  }
 
   async function handleSaveProfile() {
     const nextDraft = {
@@ -2304,60 +2322,20 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
         )}
       />
       <div className={s.twoCol}>
-        <Panel title="角色文本">
-          <div className={s.formStack}>
-            <div className={s.profileFieldShell}>
-              <div className={s.profileFieldActions}>
-                <Button
-                  size="sm"
-                  tone="subtle"
-                  pending={isLoadingProfileRevisions && profileRevisionField === "loraUsagePrompt"}
-                  ariaLabel="查看资料历史：LoRA 使用提示词"
-                  onClick={() => handleOpenProfileRevisionHistory("loraUsagePrompt")}
-                >
-                  历史
-                </Button>
-              </div>
-              <Field multiline features={{ resize: true, clipboard: true }} label="LoRA 使用提示词" value={profileForm.usagePrompt} onChange={(value) => handleUpdateProfileForm("usagePrompt", value)} />
-            </div>
-            <div className={s.profileFieldShell}>
-              <div className={s.profileFieldActions}>
-                <Button
-                  size="sm"
-                  tone="subtle"
-                  pending={isLoadingProfileRevisions && profileRevisionField === "characterDetailPrompt"}
-                  ariaLabel="查看资料历史：角色细节描述"
-                  onClick={() => handleOpenProfileRevisionHistory("characterDetailPrompt")}
-                >
-                  历史
-                </Button>
-              </div>
-              <Field multiline features={{ resize: true, clipboard: true }} label="角色细节描述" value={profileForm.detailPrompt} onChange={(value) => handleUpdateProfileForm("detailPrompt", value)} />
-            </div>
-            <div className={s.profileFieldShell}>
-              <div className={s.profileFieldActions}>
-                <Button
-                  size="sm"
-                  tone="subtle"
-                  pending={isLoadingProfileRevisions && profileRevisionField === "profileSummary"}
-                  ariaLabel="查看资料历史：资料备注"
-                  onClick={() => handleOpenProfileRevisionHistory("profileSummary")}
-                >
-                  历史
-                </Button>
-              </div>
-              <Field multiline features={{ resize: true, clipboard: true }} label="资料备注" value={profileForm.profileSummary} onChange={(value) => handleUpdateProfileForm("profileSummary", value)} />
-            </div>
-          </div>
-        </Panel>
         <Panel title="参考图" subtitle="original / generated / auxiliary 都作为自由参考图管理，不做 fixed slots。">
           <div className={s.stack}>
             <div className={s.referenceImageGrid}>
               {localReferenceImages.map((reference) => (
                 <article className={s.referenceImageCard} key={reference.id}>
-                  <ImagePreviewFrame image={reference.image} />
+                  <div className={s.referenceImageThumb}>
+                    <ImageThumbMedium
+                      image={reference.image}
+                      onOpen={() => setActiveReferenceImageId(reference.id)}
+                      showStatus={false}
+                      tags={[referenceKindLabel(reference.kind)]}
+                    />
+                  </div>
                   <div>
-                    <span>{referenceKindLabel(reference.kind)}</span>
                     {editingReferenceImageId === reference.id ? (
                       <div className={s.referenceImageEditFields}>
                         <Field
@@ -2382,42 +2360,51 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
                     {addedReferenceResultIds.has(reference.id) ? <StatusBadge status="pending" label="已加入结果池" /> : null}
                     <div className={s.referenceImageActions}>
                       <Button
+                        className={s.referenceImageResultAction}
                         size="sm"
-                        tone="subtle"
-                        icon={Edit3}
-                        onClick={() => setEditingReferenceImageId(editingReferenceImageId === reference.id ? null : reference.id)}
-                      >
-                        {editingReferenceImageId === reference.id ? "收起" : "编辑"}
-                      </Button>
-                      {editingReferenceImageId === reference.id ? (
-                        <Button
-                          size="sm"
-                          tone="primary"
-                          icon={Save}
-                          pending={savingReferenceImageIds.has(reference.id)}
-                          onClick={() => handleSaveReferenceImage(reference)}
-                        >
-                          保存
-                        </Button>
-                      ) : null}
-                      <Button
-                        size="sm"
-                        tone="subtle"
+                        tone="primary"
                         pending={pendingReferenceIds.has(reference.id)}
                         disabled={addedReferenceResultIds.has(reference.id)}
                         onClick={() => handleAddReferenceImageToResults(reference.id, reference.label)}
                       >
                         {addedReferenceResultIds.has(reference.id) ? "已加入结果池" : "加入结果池"}
                       </Button>
-                      <Button
-                        size="sm"
-                        tone="danger"
-                        icon={Trash2}
-                        pending={deletingReferenceImageIds.has(reference.id)}
-                        onClick={() => handleDeleteReferenceImage(reference.id, reference.label)}
-                      >
-                        删除
-                      </Button>
+                      <div className={s.referenceImageSecondaryActions}>
+                        <Button
+                          size="sm"
+                          tone="subtle"
+                          icon={Edit3}
+                          iconOnly
+                          ariaLabel={editingReferenceImageId === reference.id ? `收起参考图编辑：${reference.label}` : `编辑参考图：${reference.label}`}
+                          onClick={() => setEditingReferenceImageId(editingReferenceImageId === reference.id ? null : reference.id)}
+                        >
+                          {editingReferenceImageId === reference.id ? "收起" : "编辑"}
+                        </Button>
+                        {editingReferenceImageId === reference.id ? (
+                          <Button
+                            size="sm"
+                            tone="primary"
+                            icon={Save}
+                            iconOnly
+                            pending={savingReferenceImageIds.has(reference.id)}
+                            ariaLabel={`保存参考图：${reference.label}`}
+                            onClick={() => handleSaveReferenceImage(reference)}
+                          >
+                            保存
+                          </Button>
+                        ) : null}
+                        <Button
+                          size="sm"
+                          tone="danger"
+                          icon={Trash2}
+                          iconOnly
+                          pending={deletingReferenceImageIds.has(reference.id)}
+                          ariaLabel={`删除参考图：${reference.label}`}
+                          onClick={() => handleDeleteReferenceImage(reference.id, reference.label)}
+                        >
+                          删除
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </article>
@@ -2433,7 +2420,84 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
             <Button icon={ImagePlus} pending={isUploadingReferenceImage} onClick={handleUploadReferenceImage}>上传参考图</Button>
           </div>
         </Panel>
+        <Panel title="角色文本">
+          <div className={cx(s.formStack, s.profileTextFields)}>
+            <div className={s.profileFieldShell}>
+              <Field
+                multiline
+                features={{ clipboard: true }}
+                label="LoRA 使用提示词"
+                value={profileForm.usagePrompt}
+                onChange={(value) => handleUpdateProfileForm("usagePrompt", value)}
+                actions={(
+                  <Button
+                    size="sm"
+                    tone="subtle"
+                    icon={FileText}
+                    pending={isLoadingProfileRevisions && profileRevisionField === "loraUsagePrompt"}
+                    ariaLabel="查看资料历史：LoRA 使用提示词"
+                    onClick={() => handleOpenProfileRevisionHistory("loraUsagePrompt")}
+                  >
+                    历史
+                  </Button>
+                )}
+              />
+            </div>
+            <div className={s.profileFieldShell}>
+              <Field
+                multiline
+                features={{ clipboard: true }}
+                label="角色细节描述"
+                value={profileForm.detailPrompt}
+                onChange={(value) => handleUpdateProfileForm("detailPrompt", value)}
+                actions={(
+                  <Button
+                    size="sm"
+                    tone="subtle"
+                    icon={FileText}
+                    pending={isLoadingProfileRevisions && profileRevisionField === "characterDetailPrompt"}
+                    ariaLabel="查看资料历史：角色细节描述"
+                    onClick={() => handleOpenProfileRevisionHistory("characterDetailPrompt")}
+                  >
+                    历史
+                  </Button>
+                )}
+              />
+            </div>
+            <div className={s.profileFieldShell}>
+              <Field
+                multiline
+                features={{ clipboard: true }}
+                label="资料备注"
+                value={profileForm.profileSummary}
+                onChange={(value) => handleUpdateProfileForm("profileSummary", value)}
+                actions={(
+                  <Button
+                    size="sm"
+                    tone="subtle"
+                    icon={FileText}
+                    pending={isLoadingProfileRevisions && profileRevisionField === "profileSummary"}
+                    ariaLabel="查看资料历史：资料备注"
+                    onClick={() => handleOpenProfileRevisionHistory("profileSummary")}
+                  >
+                    历史
+                  </Button>
+                )}
+              />
+            </div>
+          </div>
+        </Panel>
       </div>
+      {activeReferenceImage ? (
+        <ImagePreviewLarge
+          image={activeReferenceImage.image}
+          title={activeReferenceImage.label}
+          meta={activeReferenceImage.note}
+          onClose={() => setActiveReferenceImageId(null)}
+          onNext={activeReferenceImageIndex >= 0 ? () => moveActiveReferenceImage(1) : undefined}
+          onPrevious={activeReferenceImageIndex >= 0 ? () => moveActiveReferenceImage(-1) : undefined}
+        />
+      ) : null}
       {selectedProfileRevisionField ? (
         <Panel title="文本历史" subtitle={`${selectedProfileRevisionField.label} · 可恢复到任一历史版本`}>
           <div className={s.textRevisionPanel}>
@@ -2825,12 +2889,20 @@ export function LoraTrainingProjectSectionsPage({ data, projectId }: { data: Tra
     }
   }
 
+  useEffect(() => {
+    function handleHeaderAddSection() {
+      void handleAddSection();
+    }
+
+    window.addEventListener(TRAINING_PROJECT_SECTION_ADD_EVENT, handleHeaderAddSection);
+    return () => window.removeEventListener(TRAINING_PROJECT_SECTION_ADD_EVENT, handleHeaderAddSection);
+  }, [handleAddSection]);
+
   return (
     <div className={s.page}>
       <ProjectHeader
         active="sections"
         project={project}
-        actions={<Button icon={Plus} tone="primary" onClick={handleAddSection} feedback={{ title: "小节草稿已添加", detail: `新小节 ${sections.length + 1}` }}>新建小节</Button>}
       />
       <TrainingSectionWorkspace activeSectionId={sections[0]?.id} project={project} sections={sections}>
         <div className={s.sectionGrid}>

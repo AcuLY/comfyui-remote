@@ -1,10 +1,12 @@
 "use client";
 
 import type * as React from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft } from "lucide-react";
 
 import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import s from "./page-header.module.css";
+import { usePageHeaderActionPortal } from "./action-portal-context";
 import { ButtonLink } from "../button";
 
 export function PageHeaderBack({
@@ -36,6 +38,11 @@ export function PageHeader({
   actions?: React.ReactNode;
   className?: string;
 }) {
+  const { routeHeaderActive, target } = usePageHeaderActionPortal();
+  const actionToolbar = actions ? <div className={s.toolbar} data-demo-page-header-actions>{actions}</div> : null;
+  const shouldPortalActions = Boolean(actionToolbar && routeHeaderActive && target);
+  const shouldRenderLocalActions = Boolean(actionToolbar && !routeHeaderActive);
+
   return (
     <header
       className={cx(s.pageHeader, className)}
@@ -50,7 +57,8 @@ export function PageHeader({
         <h1 className={s.pageTitle}>{title}</h1>
         {subtitle ? <div className={s.pageSubtitle}>{subtitle}</div> : null}
       </div>
-      {actions ? <div className={s.toolbar} data-demo-page-header-actions>{actions}</div> : null}
+      {shouldRenderLocalActions ? actionToolbar : null}
+      {shouldPortalActions && target ? createPortal(actionToolbar, target) : null}
     </header>
   );
 }

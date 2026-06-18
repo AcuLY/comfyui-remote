@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { readdir, readFile, rm, writeFile } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { dirname, join, relative } from "node:path";
 import test from "node:test";
+import Database from "better-sqlite3";
 import { NextRequest } from "next/server";
 
+const TRAINING_API_TEST_DB_PATH = join(process.cwd(), "data", "test-training-api-routes.db");
+const TRAINING_API_TEST_DB_URL = "file:./data/test-training-api-routes.db";
 const TRAINING_RUN_PRESET_STATE_PATH = join(process.cwd(), "data", "training-run-preset-state.json");
 const TRAINING_TEMPLATES_PATH = join(process.cwd(), "data", "training-templates.json");
 const TRAINING_TEMPLATE_ORDER_PATH = join(process.cwd(), "data", "training-template-order.json");
@@ -26,6 +30,271 @@ const retiredTrainingCamelPrefix = ["character", "Lora"].join("");
 const retiredProviderPrefix = ["Legacy", "Training"].join("");
 const retiredAdapterBasename = ["legacy", "compat", "service"].join("-");
 let trainingFileStateSnapshotQueue: Promise<unknown> = Promise.resolve();
+
+process.env.DB_PROVIDER = "sqlite";
+process.env.DATABASE_URL = TRAINING_API_TEST_DB_URL;
+
+function generateCurrentSqliteSchemaSql() {
+  const prismaCliPath = join(process.cwd(), "node_modules", "prisma", "build", "index.js");
+  const output = execFileSync(
+    process.execPath,
+    [
+      prismaCliPath,
+      "migrate",
+      "diff",
+      "--from-empty",
+      "--to-schema",
+      "prisma/schema.sqlite.prisma",
+      "--script",
+    ],
+    {
+      cwd: process.cwd(),
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        PRISMA_HIDE_UPDATE_MESSAGE: "1",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  const start = output.indexOf("-- CreateTable");
+  if (start === -1) {
+    throw new Error("Prisma migrate diff did not return SQLite schema SQL.");
+  }
+  return output.slice(start);
+}
+
+async function prepareTrainingApiTestDatabase() {
+  await mkdir(dirname(TRAINING_API_TEST_DB_PATH), { recursive: true });
+  await rm(TRAINING_API_TEST_DB_PATH, { force: true });
+  await rm(`${TRAINING_API_TEST_DB_PATH}-journal`, { force: true });
+
+  const db = new Database(TRAINING_API_TEST_DB_PATH);
+  try {
+    db.exec(generateCurrentSqliteSchemaSql());
+    seedTrainingApiTestDatabase(db);
+  } finally {
+    db.close();
+  }
+}
+
+function seedTrainingApiTestDatabase(db: Database.Database) {
+  const now = new Date().toISOString();
+
+  db.transaction(() => {
+    db.prepare(`
+      INSERT INTO TrainingProject (
+        id, name, slug, status, sortOrder, imagePromptGuidance, imagePromptFormat,
+        captioningGuidance, trainingCaptionFormat, trainingDefaultsJson, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "training-api-seed-project",
+      "Training API Seed Project",
+      "training-api-seed-project",
+      "active",
+      0,
+      "Generate stable character training images.",
+      "Positive prompt first, then framing and lighting.",
+      "Caption trigger token, subject, pose, outfit, and background.",
+      "trigger, subject, pose, outfit, background",
+      JSON.stringify({
+        checkpointRelativePath: "models/checkpoints/mock.safetensors",
+        triggerToken: "training_api_seed",
+      }),
+      now,
+    );
+
+    db.prepare(`
+      INSERT INTO TrainingCharacterProfile (
+        id, trainingProjectId, loraUsagePrompt, characterDetailPrompt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?)
+    `).run(
+      "training-api-seed-profile",
+      "training-api-seed-project",
+      "training_api_seed portrait",
+      "Seed project profile for route tests.",
+      now,
+    );
+
+    db.prepare(`
+      INSERT INTO TrainingSection (
+        id, trainingProjectId, name, sortOrder, enabled, sectionDefaultsJson, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "training-api-seed-section",
+      "training-api-seed-project",
+      "Seed Section",
+      0,
+      1,
+      JSON.stringify({ resolvedScene: "seed scene description" }),
+      now,
+    );
+
+    db.prepare(`
+      INSERT INTO TrainingSceneDescriptionBlock (
+        id, trainingSectionId, sourceType, title, localText, sortOrder, enabled, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "training-api-seed-block",
+      "training-api-seed-section",
+      "local",
+      "Seed Scene Block",
+      "seed scene description",
+      0,
+      1,
+      now,
+    );
+
+    db.prepare(`
+      INSERT INTO TrainingSceneDescriptionPresetCategory (
+        id, name, slug, sortOrder, sceneDescriptionOrder, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      "training-api-seed-scene-category",
+      "Seed Scene Category",
+      "training-api-seed-scene-category",
+      0,
+      0,
+      now,
+    );
+
+    db.prepare(`
+      INSERT INTO TrainingSceneDescriptionPreset (
+        id, categoryId, name, slug, sceneDescriptionText, sortOrder, isActive, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "training-api-seed-scene-preset",
+      "training-api-seed-scene-category",
+      "Seed Scene Preset",
+      "training-api-seed-scene-preset",
+      "seed preset scene description",
+      0,
+      1,
+      now,
+    );
+
+    db.prepare(`
+      INSERT INTO TrainingTemplate (
+        id, name, slug, description, imagePromptGuidance, imagePromptFormat,
+        captioningGuidance, trainingCaptionFormat, trainingDefaultsJson, sortOrder,
+        isActive, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "training-api-seed-template",
+      "Seed Training Template",
+      "training-api-seed-template",
+      "Seed template for training API route tests.",
+      "Generate a clear seed image.",
+      "Subject, pose, scene.",
+      "Write a stable seed caption.",
+      "trigger, subject, scene",
+      JSON.stringify({
+        autoFreezeDataset: false,
+        autoGenerateSamples: false,
+      }),
+      0,
+      1,
+      now,
+    );
+
+    db.prepare(`
+      INSERT INTO TrainingTemplate (
+        id, name, slug, description, imagePromptGuidance, imagePromptFormat,
+        captioningGuidance, trainingCaptionFormat, trainingDefaultsJson, sortOrder,
+        isActive, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "training-api-seed-template-secondary",
+      "Secondary Seed Training Template",
+      "training-api-seed-template-secondary",
+      "Second seed template for reorder route tests.",
+      "Generate a second clear seed image.",
+      "Subject, alternate pose, scene.",
+      "Write a second stable seed caption.",
+      "trigger, subject, alternate scene",
+      JSON.stringify({
+        autoFreezeDataset: false,
+        autoGenerateSamples: false,
+      }),
+      1,
+      1,
+      now,
+    );
+
+    db.prepare(`
+      INSERT INTO TrainingTemplateSection (
+        id, trainingTemplateId, name, sortOrder, enabled, sectionDefaultsJson, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "training-api-seed-template-section",
+      "training-api-seed-template",
+      "Seed Template Section",
+      0,
+      1,
+      JSON.stringify({ resolvedScene: "seed template scene" }),
+      now,
+    );
+
+    db.prepare(`
+      INSERT INTO TrainingTemplateSection (
+        id, trainingTemplateId, name, sortOrder, enabled, sectionDefaultsJson, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "training-api-seed-template-secondary-section",
+      "training-api-seed-template-secondary",
+      "Secondary Seed Template Section",
+      0,
+      1,
+      JSON.stringify({ resolvedScene: "secondary seed template scene" }),
+      now,
+    );
+
+    db.prepare(`
+      INSERT INTO TrainingTemplateSectionSceneDescriptionBlock (
+        id, trainingTemplateSectionId, sourceType, title, localText, sortOrder, enabled, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "training-api-seed-template-block",
+      "training-api-seed-template-section",
+      "local",
+      "Seed Template Block",
+      "seed template scene",
+      0,
+      1,
+      now,
+    );
+
+    db.prepare(`
+      INSERT INTO TrainingTemplateSectionSceneDescriptionBlock (
+        id, trainingTemplateSectionId, sourceType, title, localText, sortOrder, enabled, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      "training-api-seed-template-secondary-block",
+      "training-api-seed-template-secondary-section",
+      "local",
+      "Secondary Seed Template Block",
+      "secondary seed template scene",
+      0,
+      1,
+      now,
+    );
+  })();
+}
+
+test.before(async () => {
+  await prepareTrainingApiTestDatabase();
+});
+
+test.after(async () => {
+  try {
+    const { prisma } = await import("../src/lib/prisma");
+    await prisma.$disconnect();
+  } catch {
+    // The Prisma module is not imported for manifest-only filtered test runs.
+  }
+  await rm(TRAINING_API_TEST_DB_PATH, { force: true });
+  await rm(`${TRAINING_API_TEST_DB_PATH}-journal`, { force: true });
+});
 
 function findRetiredTrainingTokens(source: string) {
   return [

@@ -36,10 +36,36 @@
   gap: 8px;
 }
 
+.fieldHeader {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .root label {
+  min-width: 0;
   color: var(--ui-muted);
   font-size: 12px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fieldActions {
+  display: inline-flex;
+  min-width: 0;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.fieldActions :where([data-demo-ui-button="true"]) {
+  min-height: 28px;
+  padding-block: 4px;
+  padding-inline: 8px;
 }
 
 .controlFrame {

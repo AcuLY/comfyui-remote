@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, CheckSquare, CopyPlus, Edit3, GripVertical, Plus, Save, Shuffle, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CheckSquare, CopyPlus, Edit3, GripVertical, Plus, Save, Trash2 } from "lucide-react";
 
 import { useRouteHref } from "@/components/design-demo-routing";
 import { cx } from "@/components/design-demo-ui/primitives/classnames";
@@ -621,12 +621,6 @@ export function LoraTrainingPresetsPage({ data }: { data: TrainingAppData }) {
         eyebrow="LoRA 训练"
         title="训练预制"
         subtitle="管理可复用的训练场景描述，导入小节时只带入场景文本。"
-        actions={(
-          <>
-            <ButtonLink href="/training/presets/sort-rules" icon={Shuffle}>排序规则</ButtonLink>
-            <ButtonLink href="/training/presets/new" icon={Plus} tone="primary">新建</ButtonLink>
-          </>
-        )}
       />
       <div className={s.resourceLayout}>
         <aside className={s.resourceRail}>
@@ -1254,18 +1248,36 @@ function TrainingTemplateListItem({
           {templateStatus(template)}
           <StatusBadge status="template" label={`${template.sectionCount} 小节`} />
           <div className={s.trainingTemplateListActions}>
-            <ButtonLink href={createProjectHref} icon={CopyPlus} ariaLabel={`用训练模板创建项目：${template.title}`}>创建项目</ButtonLink>
-            <ButtonLink href={`/training/templates/${template.id}/edit`} icon={Edit3} ariaLabel={`编辑训练模板：${template.title}`}>编辑</ButtonLink>
-            <Button
-              className={s.trainingTemplateListDeleteButton}
-              tone="danger"
-              icon={Trash2}
-              ariaLabel={`删除训练模板：${template.title}`}
-              onClick={onDelete}
-              feedback={{ tone: "warning", title: "训练模板已移除", detail: template.title }}
+            <ButtonLink
+              className={s.trainingTemplateListCreateButton}
+              href={createProjectHref}
+              icon={CopyPlus}
+              tone="primary"
+              ariaLabel={`用训练模板创建项目：${template.title}`}
             >
-              删除
-            </Button>
+              创建项目
+            </ButtonLink>
+            <div className={s.trainingTemplateListSecondaryActions}>
+              <ButtonLink
+                href={`/training/templates/${template.id}/edit`}
+                icon={Edit3}
+                iconOnly
+                ariaLabel={`编辑训练模板：${template.title}`}
+              >
+                编辑
+              </ButtonLink>
+              <Button
+                className={s.trainingTemplateListDeleteButton}
+                tone="danger"
+                icon={Trash2}
+                iconOnly
+                ariaLabel={`删除训练模板：${template.title}`}
+                onClick={onDelete}
+                feedback={{ tone: "warning", title: "训练模板已移除", detail: template.title }}
+              >
+                删除
+              </Button>
+            </div>
           </div>
         </div>
       </article>
@@ -1520,20 +1532,15 @@ export function LoraTrainingTemplatesPage({ data }: { data: TrainingAppData }) {
         eyebrow="LoRA 训练"
         title="训练模板"
         subtitle="模板提供创建训练项目时的初始小节结构；项目创建后会独立编辑。"
-            actions={(
-              <>
-                {projectTemplateSource ? (
-                  <ButtonLink
-                    href={createProjectFromTemplateHref(projectTemplateSource)}
-                    icon={CopyPlus}
-                    ariaLabel={`从训练模板创建项目：${projectTemplateSource.title}`}
-                  >
-                    从模板创建项目
-                  </ButtonLink>
-                ) : null}
-            <ButtonLink href="/training/templates/new" tone="primary" icon={Plus}>新建模板</ButtonLink>
-          </>
-        )}
+        actions={projectTemplateSource ? (
+          <ButtonLink
+            href={createProjectFromTemplateHref(projectTemplateSource)}
+            icon={CopyPlus}
+            ariaLabel={`从训练模板创建项目：${projectTemplateSource.title}`}
+          >
+            从模板创建项目
+          </ButtonLink>
+        ) : undefined}
       />
       <div className={s.trainingTemplateListToolbar}>
         <div>

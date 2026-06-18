@@ -161,7 +161,16 @@ test("training section list can add a section through the project section API on
   assert.match(sectionsPage, /handleAddSection/, "section list should define an add action");
   assert.match(sectionsPage, /新小节/, "local add action should create a readable draft section title");
   assert.match(sectionsPage, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/sections`/, "add should call the project section collection API");
-  assert.match(sectionsPage, /onClick=\{handleAddSection\}/, "new section button should call the local add action");
+  assert.match(
+    sectionsPage,
+    /window\.addEventListener\(TRAINING_PROJECT_SECTION_ADD_EVENT,\s*handleHeaderAddSection\)/,
+    "route header new-section action should call the local add action",
+  );
+  assert.doesNotMatch(
+    sectionsPage,
+    /actions=\{<Button icon=\{Plus\} tone="primary" onClick=\{handleAddSection\}/,
+    "section list should not keep a duplicate content-header new-section button",
+  );
 });
 
 test("training section list generation actions name the target section while detail pages leave the CTA to route headers", () => {

@@ -89,10 +89,34 @@
   gap: 6px;
 }
 
-.profileFieldActions {
-  display: flex;
-  justify-content: flex-end;
-  min-width: 0;
+.profileTextFields {
+  gap: 10px;
+}
+
+.profileTextFields :global([data-demo-ui-field="true"]) {
+  border: 1px solid var(--demo-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--demo-field-bg) 72%, transparent);
+  padding: 10px;
+}
+
+.profileTextFields :global([data-demo-ui-field="true"] textarea) {
+  min-height: 96px;
+  max-height: 132px;
+  resize: none;
+}
+
+.profileTextFields .profileFieldShell:nth-child(2) :global([data-demo-ui-field="true"] textarea) {
+  min-height: 124px;
+  max-height: 160px;
+}
+
+.profileTextFields :global([data-demo-ui-field="true"] [class*="controlFrame"]) {
+  padding-bottom: 28px;
+}
+
+.profileTextFields :global([data-demo-ui-field="true"] [class*="clipboardDock"]) {
+  bottom: 0;
 }
 
 .textRevisionPanel {
@@ -679,6 +703,10 @@
   gap: 10px;
 }
 
+.referenceImageGrid {
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+}
+
 .referenceImageCard,
 .trainingResultCard {
   display: grid;
@@ -689,6 +717,27 @@
   background: var(--demo-field-bg);
   color: inherit;
   padding: 9px;
+}
+
+.referenceImageCard {
+  gap: 7px;
+  padding: 8px;
+}
+
+.referenceImageThumb {
+  min-width: 0;
+}
+
+.referenceImageThumb :global([class*="imageThumbMedium"]) {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+}
+
+.referenceImageThumb :global([class*="imageThumbTags"]) {
+  top: 6px;
+  right: 6px;
+  max-width: calc(100% - 12px);
 }
 
 .trainingResultCard {
@@ -758,21 +807,29 @@
 }
 
 .referenceImageActions {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  margin-top: 3px;
+}
+
+.referenceImageResultAction.referenceImageResultAction {
+  width: 100%;
+}
+
+.referenceImageSecondaryActions {
   display: flex;
   min-width: 0;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
 
-.referenceImageCard span {
-  width: fit-content;
-  border: 1px solid var(--demo-border);
-  border-radius: 999px;
-  background: var(--demo-glass-soft);
-  color: var(--demo-green);
-  font-size: 10px;
-  font-weight: 640;
-  padding: 2px 7px;
+.referenceImageSecondaryActions :global([data-demo-ui-button="true"]) {
+  flex: 0 0 auto;
+}
+
+.referenceImageSecondaryActions :global([data-demo-ui-button-tone="danger"]) {
+  margin-left: auto;
 }
 
 .referenceImageCard strong {
@@ -1753,6 +1810,10 @@
   .referenceImageGrid,
   .trainingResultGrid {
     grid-template-columns: 1fr;
+  }
+
+  .referenceImageGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .entityRow,

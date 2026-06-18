@@ -112,6 +112,7 @@ export function RouteHeaderSurface({
   headingLevel = 1,
   hidden = false,
   mode = "expanded",
+  pageActionPortalRef,
   spec,
   surfaceRef,
   titleId,
@@ -121,6 +122,7 @@ export function RouteHeaderSurface({
   hidden?: boolean;
   headingLevel?: HeadingLevel;
   mode?: RouteHeaderMode;
+  pageActionPortalRef?: (node: HTMLDivElement | null) => void;
   spec: HeaderSpec;
   surfaceRef?: (node: HTMLElement | null) => void;
   titleId?: string;
@@ -332,6 +334,11 @@ export function RouteHeaderSurface({
           {visibleActionUnits?.map((unit) => (
             <HeaderActionUnitView key={unit.key} unit={unit} />
           ))}
+          <div
+            className={s.pageActionPortalSlot}
+            data-header-action-portal-slot
+            ref={pageActionPortalRef}
+          />
           {showsMoreActions ? (
             <div className={s.overflowMenuWrap} ref={overflowRef}>
               <Button

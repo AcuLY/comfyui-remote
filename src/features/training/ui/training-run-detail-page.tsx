@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { AlertTriangle, Check, CheckCircle2, Clock3, Copy, ExternalLink, FileText, History, ImageIcon, ImagePlus, Play, RotateCcw, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Clock3, Copy, ExternalLink, History, ImageIcon, ImagePlus, Play, RotateCcw, Trash2 } from "lucide-react";
 
 import { useDemoFeedback } from "@/components/design-demo-ui/feedback/context";
 import { ImagePreviewFrame } from "@/components/design-demo-ui/media/image-preview-frame";
@@ -694,9 +694,6 @@ export function LoraTrainingRunDetailPage({
                   查看结果
                 </ButtonLink>
               ) : null}
-              <ButtonLink href={projectHref} icon={FileText} ariaLabel={`打开任务项目：${currentRun.projectTitle}`}>
-                项目详情
-              </ButtonLink>
               {!isGeneration ? (
                 <ButtonLink href={datasetHref} icon={History} ariaLabel={`查看训练任务数据集版本：${currentRun.title}`}>
                   数据集版本

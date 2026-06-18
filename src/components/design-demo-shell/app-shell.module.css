@@ -205,6 +205,7 @@
   height: 100vh;
 }
 .contentFrameNoNavigation {
+  grid-column: 1 / -1;
   width: 100%;
 }
 .contentFrameWithRouteHeader {
@@ -610,23 +611,10 @@
   padding: 12px clamp(12px, 2.4vw, 28px) calc(104px + env(safe-area-inset-bottom));
 }
 .mainNoNavigation.mainWithRouteHeader {
-  padding-top: calc(var(--demo-route-header-height, calc(96px + env(safe-area-inset-top))) + 12px);
+  padding-top: calc(var(--demo-route-header-height, calc(96px + env(safe-area-inset-top))) + 6px);
 }
 .mainWithRouteHeader > :global(div) > :global([data-demo-page-header]:first-child) {
   display: none;
-}
-.mainWithRouteHeader > :global(div) > :global([data-demo-page-header][data-demo-page-header-has-actions="true"]:first-child) {
-  display: flex;
-  justify-content: flex-end;
-  border-bottom: 0;
-  padding-bottom: 0;
-}
-.mainWithRouteHeader > :global(div) > :global([data-demo-page-header][data-demo-page-header-has-actions="true"]:first-child [data-demo-page-header-title-block]) {
-  display: none;
-}
-.mainWithRouteHeader > :global(div) > :global([data-demo-page-header][data-demo-page-header-has-actions="true"]:first-child [data-demo-page-header-actions]) {
-  width: 100%;
-  justify-content: flex-end;
 }
 .pageHeader > .toolbar {
   align-self: end;
@@ -1048,6 +1036,10 @@
     grid-template-columns: 76px minmax(0, 1fr);
   }
 
+  .workspaceNoNavigation {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .sidebar .sidebarTools {
     grid-template-columns: 1fr;
     justify-content: stretch;
@@ -1082,6 +1074,10 @@
 
   .workspaceCollapsed {
     grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .workspaceNoNavigation {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .sidebar {
@@ -1126,7 +1122,7 @@
     display: inline-flex;
   }
 
-  .workspace:not(.workspaceSidebarReady) {
+  .workspace:not(.workspaceSidebarReady):not(.workspaceNoNavigation) {
     grid-template-columns: 76px minmax(0, 1fr);
   }
 
@@ -1401,7 +1397,7 @@
   }
 
   .mainNoNavigation.mainWithRouteHeader {
-    padding-top: calc(var(--demo-route-header-height, calc(60px + env(safe-area-inset-top))) + 12px);
+    padding-top: calc(var(--demo-route-header-height, calc(60px + env(safe-area-inset-top))) + 8px);
   }
 
   .routeHeader {
@@ -1576,7 +1572,7 @@
   }
 
   .mobileBottomNav[data-work-mode="lora_training"] {
-    grid-template-columns: repeat(6, minmax(0, 1fr)) minmax(52px, 0.9fr);
+    grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(52px, 0.9fr);
   }
 
   .mobileBottomItem,

@@ -116,6 +116,28 @@
   max-width: 100%;
 }
 
+.pageActionPortalSlot {
+  display: inline-flex;
+  min-width: 0;
+  max-width: min(420px, 48vw);
+  flex: 0 1 auto;
+  align-items: center;
+}
+
+.pageActionPortalSlot:empty {
+  display: none;
+}
+
+.pageActionPortalSlot > :where([data-demo-page-header-actions]) {
+  display: flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .actionSlot :where([data-project-view-control="true"]),
 .actionSlot :where([data-project-run-control="true"]),
 .actionSlot :where([data-section-nav-control="true"]) {
@@ -435,6 +457,20 @@
 
 .fixedHeaderMobile .actionSlot {
   max-width: min(132px, 34vw);
+}
+
+.fixedHeaderMobile .pageActionPortalSlot {
+  max-width: min(220px, 46vw);
+}
+
+.fixedHeaderMobile .pageActionPortalSlot > :where([data-demo-page-header-actions]) {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.fixedHeaderMobile .pageActionPortalSlot > :where([data-demo-page-header-actions])::-webkit-scrollbar {
+  display: none;
 }
 
 .fixedHeaderMobile .actionSlot[data-header-action-slot="project-run"],

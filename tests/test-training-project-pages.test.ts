@@ -217,6 +217,21 @@ test("training profile page renders reference image cards with kind, label, and 
   assert.match(profileSource, /reference\.note/, "reference cards should show notes");
 });
 
+test("training profile page places reference images before profile text", () => {
+  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
+  const sectionsStart = pagesSource.indexOf("function SectionCard");
+  assert.notEqual(profileStart, -1);
+  assert.notEqual(sectionsStart, -1);
+
+  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const referencePanelIndex = profileSource.indexOf('<Panel title="参考图"');
+  const textPanelIndex = profileSource.indexOf('<Panel title="角色文本"');
+
+  assert.ok(referencePanelIndex >= 0, "profile should render the reference image panel");
+  assert.ok(textPanelIndex >= 0, "profile should render the profile text panel");
+  assert.ok(referencePanelIndex < textPanelIndex, "reference images should appear before prompt fields");
+});
+
 test("training profile page edits reference image label and note from local card state", () => {
   const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const sectionsStart = pagesSource.indexOf("function SectionCard");
@@ -818,6 +833,8 @@ test("training result cards keep thumbnail density and clamp captions", () => {
   assert.match(cssSource, /\.trainingResultCaption\b/, "training result captions should be styled separately");
   assert.match(cssSource, /-webkit-line-clamp:\s*2/, "training result captions should be compact by default");
   assert.match(cssSource, /\.referenceImageGrid\b/, "profile reference image card grid CSS should exist");
+  assert.match(cssSource, /\.referenceImageSecondaryActions\b/, "reference image utility actions should be grouped separately");
+  assert.doesNotMatch(cssSource, /\.referenceImageCard\s+span\b/, "reference image cards should not recolor every nested span");
   assert.match(cssSource, /\.manifestList\b/, "dataset revision manifest list CSS should exist");
 });
 

@@ -6,7 +6,6 @@ import {
   ListChecks,
   Play,
   Plus,
-  Save,
   Shuffle,
   Wand2,
 } from "lucide-react";
@@ -100,7 +99,6 @@ function projectRouteSpec(data: TrainingShellData, match: Match): HeaderSpec {
         title,
         subtitle: "维护角色描述、触发词、用途提示和参考图。",
         back: projectBack(projectId),
-        actions: [headerAction("保存资料", Save, "primary")],
         meta: projectMeta(project),
         status: "资料",
       };

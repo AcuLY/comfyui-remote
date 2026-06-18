@@ -21,6 +21,7 @@ const trainingAppClientPath = resolve(repoRoot, "src/app/training/training-app-c
 const trainingFeatureAppPath = resolve(repoRoot, "src/features/training/app.tsx");
 const trainingRuntimePath = resolve(repoRoot, "src/features/training/runtime.ts");
 const trainingShellPath = resolve(repoRoot, "src/features/training/shell.tsx");
+const trainingHeaderActionSlotsPath = resolve(repoRoot, "src/features/training/header-action-slots.tsx");
 const trainingHeaderSpecsPath = resolve(repoRoot, "src/features/training/header-specs.ts");
 const trainingRoutesPath = resolve(repoRoot, "src/features/training/routes.ts");
 const trainingThemePath = resolve(repoRoot, "src/features/training/theme.ts");
@@ -40,6 +41,7 @@ const trainingAppClientSource = existsSync(trainingAppClientPath) ? readFileSync
 const trainingFeatureAppSource = existsSync(trainingFeatureAppPath) ? readFileSync(trainingFeatureAppPath, "utf8") : "";
 const trainingRuntimeSource = existsSync(trainingRuntimePath) ? readFileSync(trainingRuntimePath, "utf8") : "";
 const trainingShellSource = existsSync(trainingShellPath) ? readFileSync(trainingShellPath, "utf8") : "";
+const trainingHeaderActionSlotsSource = existsSync(trainingHeaderActionSlotsPath) ? readFileSync(trainingHeaderActionSlotsPath, "utf8") : "";
 const trainingHeaderSpecsSource = existsSync(trainingHeaderSpecsPath) ? readFileSync(trainingHeaderSpecsPath, "utf8") : "";
 const trainingRoutesSource = existsSync(trainingRoutesPath) ? readFileSync(trainingRoutesPath, "utf8") : "";
 const trainingThemeSource = existsSync(trainingThemePath) ? readFileSync(trainingThemePath, "utf8") : "";
@@ -473,8 +475,8 @@ test("training routes render a production shell without the /design-demos prefix
   );
   assert.match(
     shellCssSource,
-    /\.mainNoNavigation\.mainWithRouteHeader\s*\{[\s\S]*?padding-top:\s*calc\(var\(--demo-route-header-height[\s\S]*?\+\s*12px\)/,
-    "navigation-free shell content should only reserve route header height plus compact spacing",
+    /\.mainNoNavigation\.mainWithRouteHeader\s*\{[\s\S]*?padding-top:\s*calc\(var\(--demo-route-header-height[\s\S]*?\+\s*6px\)/,
+    "navigation-free shell content should only reserve route header height plus tight spacing",
   );
   assert.match(
     shellCssSource,
@@ -485,6 +487,21 @@ test("training routes render a production shell without the /design-demos prefix
     trainingRuntimeSource,
     /from "\.\/routes"/,
     "feature-layer training runtime should read route matching from a local training route module",
+  );
+  assert.match(
+    shellSource,
+    /routeHeaderActionSlots\?:\s*HeaderActionSlot\[\]/,
+    "shared shell should allow feature shells to inject route-header action slots",
+  );
+  assert.match(
+    trainingShellSource,
+    /routeHeaderActionSlots=\{getTrainingHeaderActionSlots\(currentRoute\)\}/,
+    "production training shell should inject training-specific route-header action slots",
+  );
+  assert.match(
+    trainingHeaderActionSlotsSource,
+    /TRAINING_PROJECT_SECTION_ADD_EVENT/,
+    "training section creation should be exposed through a header action event bridge",
   );
   assert.doesNotMatch(
     trainingThemeSource,

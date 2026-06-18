@@ -9,6 +9,8 @@ const shellDir = resolve(testDir, "../../../components/design-demo-shell");
 const sharedUiDir = resolve(testDir, "../../../components/design-demo-ui");
 const shellSource = readFileSync(resolve(shellDir, "app-shell.tsx"), "utf8");
 const cssSource = readFileSync(resolve(shellDir, "app-shell.module.css"), "utf8");
+const headerSurfaceSource = readFileSync(resolve(shellDir, "header-surface.tsx"), "utf8");
+const headerSurfaceCssSource = readFileSync(resolve(shellDir, "header-surface.module.css"), "utf8");
 const pageHeaderSource = readFileSync(resolve(sharedUiDir, "primitives/page-header/index.tsx"), "utf8");
 
 function sourceRegion(source: string, startMarker: string, endMarker: string) {
@@ -81,7 +83,7 @@ test("desktop shell keeps the bottom navigation hidden while mobile uses an off-
   );
 });
 
-test("route header keeps page-local actions visible without duplicating the local title block", () => {
+test("route header receives page-local actions without a standalone local action strip", () => {
   assert.match(
     pageHeaderSource,
     /data-demo-page-header-has-actions=\{actions \? "true" : undefined\}/,
@@ -98,18 +100,33 @@ test("route header keeps page-local actions visible without duplicating the loca
     "PageHeader should expose the action toolbar for route-header preservation",
   );
   assert.match(
+    pageHeaderSource,
+    /createPortal\(actionToolbar,\s*target\)/,
+    "PageHeader should portal page-local actions into the route header target",
+  );
+  assert.match(
+    shellSource,
+    /PageHeaderActionPortalContext\.Provider/,
+    "The shell should provide the PageHeader action portal context",
+  );
+  assert.match(
+    headerSurfaceSource,
+    /data-header-action-portal-slot/,
+    "RouteHeaderSurface should expose a dedicated portal slot for page-local actions",
+  );
+  assert.match(
+    headerSurfaceCssSource,
+    /\.pageActionPortalSlot\s*\{/,
+    "The route-header portal slot should be styled as part of the header action cluster",
+  );
+  assert.match(
+    cssSource,
+    /\[data-demo-page-header\]:first-child\)\s*\{\s*display:\s*none/,
+    "Route-header pages should still suppress the first local PageHeader",
+  );
+  assert.doesNotMatch(
     cssSource,
     /\[data-demo-page-header\]\[data-demo-page-header-has-actions="true"\]:first-child[\s\S]*?display:\s*flex/,
-    "Route-header pages should keep the first PageHeader visible as an action-only strip when it has actions",
-  );
-  assert.match(
-    cssSource,
-    /\[data-demo-page-header-title-block\][\s\S]*?display:\s*none/,
-    "The local PageHeader title copy should stay hidden under the fixed route header",
-  );
-  assert.match(
-    cssSource,
-    /\[data-demo-page-header-actions\][\s\S]*?justify-content:\s*flex-end/,
-    "Preserved local PageHeader actions should align as a compact page toolbar",
+    "Route-header pages should not preserve a standalone local PageHeader action strip",
   );
 });

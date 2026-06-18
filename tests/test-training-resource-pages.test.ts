@@ -8,6 +8,7 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const pageSource = readFileSync(resolve(featureUiDir, "training-resource-pages.tsx"), "utf8");
 const cssSource = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
+const headerSpecsSource = readFileSync(resolve(testDir, "../src/features/training/header-specs.ts"), "utf8");
 const legacyPageSource = readFileSync(resolve(testDir, "../src/app/design-demos/features/lora-training/training-resource-pages.tsx"), "utf8");
 
 function nestedComponentFunctionSource(source: string, functionName: string) {
@@ -310,7 +311,7 @@ test("training preset new actions route into a real new-preset form", () => {
   const presetsSource = pageSource.slice(presetsStart, detailStart);
   const detailSource = pageSource.slice(detailStart, sortStart);
 
-  assert.match(presetsSource, /<ButtonLink href="\/training\/presets\/new" icon=\{Plus\} tone="primary">新建<\/ButtonLink>/, "global new action should navigate to the new training preset route");
+  assert.match(headerSpecsSource, /headerAction\("新建预制",\s*Plus,\s*"primary",\s*"\/training\/presets\/new"\)/, "global new action should live in the route header and navigate to the new training preset route");
   assert.match(presetsSource, /newPresetInCategoryHref/, "category-scoped new action should preserve the active category");
   assert.match(presetsSource, /href=\{newPresetInCategoryHref\}/, "category-scoped new action should be a link, not a feedback-only button");
   assert.match(presetsSource, /ariaLabel=\{`新建训练预制到分类：\$\{activeCategoryLabel\}`\}/, "category-scoped new action should name the active category");
@@ -811,29 +812,25 @@ test("training template list follows the template-list surface with local delete
   assert.match(cssSource, /\.trainingTemplateListItem\b/, "template cards should use a dedicated list-item class");
 });
 
-test("training template list compresses repeated destructive actions on mobile", () => {
+test("training template list keeps card actions grouped by priority", () => {
   const itemStart = pageSource.indexOf("function TrainingTemplateListItem");
   const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
   assert.notEqual(itemStart, -1);
   assert.notEqual(templatesStart, -1);
 
   const itemSource = pageSource.slice(itemStart, templatesStart);
+  const actionRule = cssSource.match(/\.trainingTemplateListActions\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
 
+  assert.match(itemSource, /className=\{s\.trainingTemplateListCreateButton\}/, "template card should make create-project the primary action");
+  assert.match(itemSource, /className=\{s\.trainingTemplateListSecondaryActions\}/, "template card should group edit and delete as secondary tools");
+  assert.match(itemSource, /iconOnly[\s\S]*ariaLabel=\{`编辑训练模板：/, "template edit action should be an icon tool with an accessible label");
   assert.match(
     itemSource,
-    /className=\{s\.trainingTemplateListDeleteButton\}/,
-    "template row delete action should expose a dedicated class for responsive density",
+    /className=\{s\.trainingTemplateListDeleteButton\}[\s\S]*iconOnly[\s\S]*ariaLabel=\{`删除训练模板：/,
+    "template delete action should be an icon danger tool with an accessible label",
   );
-  assert.match(
-    cssSource,
-    /@media \(max-width: 639px\) \{[\s\S]*?\.trainingTemplateListDeleteButton:where\(\[data-demo-ui-button="true"\]\) \{[\s\S]*?width:\s*30px;[\s\S]*?min-width:\s*30px;[\s\S]*?padding:\s*0;/,
-    "template row delete action should collapse to an icon-sized button on mobile",
-  );
-  assert.match(
-    cssSource,
-    /@media \(max-width: 639px\) \{[\s\S]*?\.trainingTemplateListDeleteButton\s+:where\(\[data-demo-ui-button-label="true"\]\) \{[\s\S]*?display:\s*none;/,
-    "template row delete action should hide repeated visible text on mobile while keeping its aria label",
-  );
+  assert.match(actionRule, /display:\s*grid/, "template card actions should stack as a controlled primary-plus-tools group");
+  assert.doesNotMatch(actionRule, /flex-wrap/, "template card actions should not wrap three text buttons into a tall column");
 });
 
 test("training template list deletes through the formal HTTP API on production routes", () => {

@@ -12,6 +12,12 @@ test("design demo field binds the visible label to single-line controls", () => 
   assert.match(inputSource, /id=\{controlId\}/, "input should expose the id referenced by the label");
 });
 
+test("design demo field can render actions in the label row", () => {
+  assert.match(fieldSource, /actions\?: React\.ReactNode/, "Field should accept optional label-row actions");
+  assert.match(fieldSource, /className=\{s\.fieldActions\}/, "field actions should render in a dedicated header region");
+  assert.match(fieldSource, /aria-label=\{`\$\{label\} 字段操作`\}/, "field actions should be grouped with an accessible label");
+});
+
 test("design demo field binds the visible label to multiline controls", () => {
   const textareaSource = fieldSource.match(/<textarea[\s\S]*?\/>/)?.[0] ?? "";
 

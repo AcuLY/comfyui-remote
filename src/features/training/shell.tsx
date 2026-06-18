@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { DesignDemoShell } from "@/components/design-demo-shell/app-shell";
 import { PersistentBottomNav } from "@/components/persistent-bottom-nav";
 import type { TrainingShellData } from "./data";
+import { getTrainingHeaderActionSlots } from "./header-action-slots";
 import { findTrainingHeaderSpecForRoute } from "./header-specs";
 import { TRAINING_THEME_PERSISTENCE, type TrainingTheme } from "./theme";
 
@@ -29,6 +30,7 @@ export function TrainingShell({
       initialTheme={initialTheme}
       footerNav={<PersistentBottomNav />}
       navigationChrome="none"
+      routeHeaderActionSlots={getTrainingHeaderActionSlots(currentRoute)}
       routeHeaderConfig={findTrainingHeaderSpecForRoute(data, currentRoute)}
       themePersistence={TRAINING_THEME_PERSISTENCE}
     >

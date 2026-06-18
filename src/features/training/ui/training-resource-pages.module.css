@@ -799,11 +799,27 @@
 }
 
 .trainingTemplateListActions {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+  justify-self: end;
+  width: min(100%, 150px);
+}
+
+.trainingTemplateListCreateButton.trainingTemplateListCreateButton {
+  width: 100%;
+}
+
+.trainingTemplateListSecondaryActions {
   display: flex;
   min-width: 0;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
   gap: 6px;
+}
+
+.trainingTemplateListSecondaryActions :global([data-demo-ui-button="true"]) {
+  flex: 0 0 auto;
 }
 
 .trainingTemplateList > .emptyInline {
@@ -1284,16 +1300,8 @@
     justify-content: flex-start;
   }
 
-  .trainingTemplateListDeleteButton:where([data-demo-ui-button="true"]) {
-    width: 30px;
-    min-width: 30px;
-    height: 30px;
-    min-height: 30px;
-    padding: 0;
-  }
-
-  .trainingTemplateListDeleteButton :where([data-demo-ui-button-label="true"]) {
-    display: none;
+  .trainingTemplateListActions {
+    justify-self: start;
   }
 
   .trainingTemplateListItem {

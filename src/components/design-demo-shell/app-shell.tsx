@@ -8,6 +8,7 @@ import { Eye, EyeOff, FlaskConical, ImageIcon, Menu, Moon, MoreHorizontal, Sun }
 import type { DemoData } from "@/app/design-demos/data";
 import { RouteHrefProvider, useRouteHref } from "@/components/design-demo-routing";
 import { DemoFeedbackProvider } from "@/components/design-demo-ui/feedback";
+import { PageHeaderActionPortalContext } from "@/components/design-demo-ui/primitives/page-header/action-portal-context";
 import { Button } from "@/components/design-demo-ui/primitives/button";
 import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import {
@@ -31,6 +32,7 @@ import { findHeaderSpecForRoute } from "@/app/design-demos/routing/header-specs"
 import s from "./app-shell.module.css";
 import { getHeaderActionSlots } from "./header-action-slots";
 import { RouteHeaderSurface } from "./header-surface";
+import type { HeaderActionSlot } from "./header-surface";
 import type { HeaderSpec } from "./header-types";
 
 export type DesignDemoShellNavLink = NavLinkDef;
@@ -291,26 +293,32 @@ function MobileTopbar({
 }
 
 function DemoRouteHeader({
+  actionSlots,
   config,
   compact,
   data,
   hidden,
+  pageActionPortalRef,
   surfaceRef,
 }: {
+  actionSlots?: HeaderActionSlot[];
   config: HeaderSpec;
   compact: boolean;
   data: DemoData;
   hidden: boolean;
+  pageActionPortalRef?: (node: HTMLDivElement | null) => void;
   surfaceRef: (node: HTMLElement | null) => void;
 }) {
-  const actionSlots = getHeaderActionSlots(config.key, data);
+  const defaultActionSlots = getHeaderActionSlots(config.key, data) ?? [];
+  const resolvedActionSlots = actionSlots?.length ? [...defaultActionSlots, ...actionSlots] : defaultActionSlots;
 
   return (
     <RouteHeaderSurface
-      actionSlots={actionSlots}
+      actionSlots={resolvedActionSlots}
       className={s.routeHeaderSurface}
       hidden={hidden}
       mode={compact ? "mobile" : "expanded"}
+      pageActionPortalRef={pageActionPortalRef}
       spec={config}
       surfaceRef={surfaceRef}
     />
@@ -326,6 +334,7 @@ export function DesignDemoShell({
   footerNav,
   navigationChrome = "sidebar",
   navigationLinks,
+  routeHeaderActionSlots,
   routeHeaderConfig,
   themePersistence,
 }: {
@@ -337,6 +346,7 @@ export function DesignDemoShell({
   footerNav?: ReactNode;
   navigationChrome?: "sidebar" | "none";
   navigationLinks?: DesignDemoShellNavLink[];
+  routeHeaderActionSlots?: HeaderActionSlot[];
   routeHeaderConfig?: HeaderSpec | null;
   themePersistence?: DesignDemoShellThemePersistence;
 }) {
@@ -354,6 +364,7 @@ export function DesignDemoShell({
   const [storedWorkMode, setStoredWorkMode] = useState<DesignDemoWorkMode>("generation");
   const [routeHeaderCompact, setRouteHeaderCompact] = useState(false);
   const [routeHeaderHidden, setRouteHeaderHidden] = useState(false);
+  const [pageHeaderActionPortalTarget, setPageHeaderActionPortalTarget] = useState<HTMLDivElement | null>(null);
   const isLightTheme = theme === "light";
   const showsNavigationChrome = navigationChrome === "sidebar";
   const defaultRouteHeaderConfig = useMemo(() => findHeaderSpecForRoute(data, currentRoute), [currentRoute, data]);
@@ -363,6 +374,16 @@ export function DesignDemoShell({
   const setRouteHeaderNode = useCallback((node: HTMLElement | null) => {
     routeHeaderRef.current = node;
   }, []);
+  const setPageHeaderActionPortalNode = useCallback((node: HTMLDivElement | null) => {
+    setPageHeaderActionPortalTarget(node);
+  }, []);
+  const pageHeaderActionPortalValue = useMemo(
+    () => ({
+      routeHeaderActive: hasRouteHeader,
+      target: pageHeaderActionPortalTarget,
+    }),
+    [hasRouteHeader, pageHeaderActionPortalTarget],
+  );
   const workMode = resolveWorkModeForRoute(currentRoute, storedWorkMode);
   const navLinks = useMemo(
     () => showsNavigationChrome ? navigationLinks ?? buildWorkModeNavLinks(workMode) : [],
@@ -442,9 +463,8 @@ export function DesignDemoShell({
 
     function syncHeaderInset() {
       const nextHeight = Math.ceil(observedHeader.getBoundingClientRect().height);
-      const stableHeight = Math.max(routeHeaderInsetRef.current, nextHeight);
-      routeHeaderInsetRef.current = stableHeight;
-      observedFrame.style.setProperty("--demo-route-header-height", `${stableHeight}px`);
+      routeHeaderInsetRef.current = nextHeight;
+      observedFrame.style.setProperty("--demo-route-header-height", `${nextHeight}px`);
     }
 
     syncHeaderInset();
@@ -558,8 +578,9 @@ export function DesignDemoShell({
 
   return (
     <RouteHrefProvider hrefForRoute={hrefForRoute ?? demoHref}>
-      <div className={cx(s.shell, isLightTheme && s.shellLight)} data-app-shell data-demo-font="harmonyos" data-theme={theme}>
-        <DemoFeedbackProvider>
+      <PageHeaderActionPortalContext.Provider value={pageHeaderActionPortalValue}>
+        <div className={cx(s.shell, isLightTheme && s.shellLight)} data-app-shell data-demo-font="harmonyos" data-theme={theme}>
+          <DemoFeedbackProvider>
           {!hasRouteHeader && showsNavigationChrome ? (
             <MobileTopbar
               activeLabel={activeNav?.label ?? "工作台"}
@@ -616,10 +637,12 @@ export function DesignDemoShell({
             >
               {resolvedRouteHeaderConfig ? (
                 <DemoRouteHeader
+                  actionSlots={routeHeaderActionSlots}
                   config={resolvedRouteHeaderConfig}
                   compact={routeHeaderCompact}
                   data={data}
                   hidden={routeHeaderHidden}
+                  pageActionPortalRef={setPageHeaderActionPortalNode}
                   surfaceRef={setRouteHeaderNode}
                 />
               ) : null}
@@ -659,8 +682,9 @@ export function DesignDemoShell({
               <Menu className={s.iconMd} aria-hidden="true" />
             </button>
           ) : null}
-        </DemoFeedbackProvider>
-      </div>
+          </DemoFeedbackProvider>
+        </div>
+      </PageHeaderActionPortalContext.Provider>
     </RouteHrefProvider>
   );
 }
