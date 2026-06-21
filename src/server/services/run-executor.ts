@@ -44,6 +44,7 @@ import {
 import { db } from "@/lib/db";
 import type { WorkerRunSnapshot, ComfyPromptDraft } from "@/server/worker/types";
 import { waitForPromptToStart } from "@/server/services/comfyui-service";
+import { getActiveComfyApiUrl } from "@/server/services/comfy-target";
 
 const log = createLogger({ module: "run-executor" });
 const FINALIZING_OUTPUT_DIR_PREFIX = "__finalizing__:";
@@ -458,7 +459,7 @@ export async function pollRunCompletion(runId: string): Promise<void> {
       runIndex: runRecord.runIndex,
       status: runRecord.status as RunStatus,
       workflowId: runRecord.project.slug,
-      comfyApiUrl: process.env.COMFY_API_URL ?? "http://127.0.0.1:8188",
+      comfyApiUrl: getActiveComfyApiUrl(),
       outputDir: runRecord.outputDir,
       resolvedConfigSnapshot: runRecord.resolvedConfigSnapshot,
       project: {

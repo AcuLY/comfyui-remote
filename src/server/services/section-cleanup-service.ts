@@ -1,7 +1,7 @@
 import { rm } from "node:fs/promises";
-import { resolve, sep } from "node:path";
-import { env } from "@/lib/env";
+import { resolve } from "node:path";
 import { createLogger } from "@/lib/logger";
+import { cleanupActiveComfyOutputSubfolders } from "@/server/services/comfy-output-cleanup";
 import { resolveDataPath, withTrailingSeparator } from "@/server/services/runtime-data-path";
 
 const log = createLogger({ module: "section-cleanup" });
@@ -40,36 +40,10 @@ export async function cleanupProjectSectionFiles(
     }
   }
 
-  // 2. Delete ComfyUI output directories
-  if (env.comfyLaunchCwd) {
-    const outputBase = resolve(env.comfyLaunchCwd, "output");
-    const safePrefix = outputBase + sep;
-    const uniqueDirs = new Set<string>();
-
-    for (const section of sections) {
-      for (const run of section.runs) {
-        if (run.comfyOutputSubfolder) {
-          // Use top-level directory (same logic as archive service)
-          const topLevel = run.comfyOutputSubfolder.split("/")[0];
-          if (topLevel) {
-            const dirPath = resolve(outputBase, topLevel);
-            if (dirPath.startsWith(safePrefix)) {
-              uniqueDirs.add(dirPath);
-            }
-          }
-        }
-      }
-    }
-
-    for (const dir of uniqueDirs) {
-      try {
-        await rm(dir, { recursive: true, force: true });
-        deletedComfyDirs++;
-      } catch (err) {
-        log.warn("Failed to delete ComfyUI output directory", { path: dir, error: err });
-      }
-    }
-  }
+  const comfyOutputSubfolders = sections.flatMap((section) =>
+    section.runs.map((run) => run.comfyOutputSubfolder),
+  );
+  deletedComfyDirs = await cleanupActiveComfyOutputSubfolders(comfyOutputSubfolders);
 
   return { deletedManagedDir, deletedComfyDirs };
 }

@@ -6,12 +6,13 @@
 
 import { fail, ok } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
-import { env } from "@/lib/env";
 import { checkComfyUIReachability } from "@/server/services/comfyui-service";
 import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
+import { getActiveComfyTarget } from "@/server/services/comfy-target";
 
 export async function GET() {
   try {
+    const target = getActiveComfyTarget();
     const [queuedCount, runningCount, recentDone, recentFailed, comfyReachability] =
       await Promise.all([
         prisma.run.count({ where: { status: "queued", project: buildGenerationProjectWhere() } }),
@@ -40,7 +41,9 @@ export async function GET() {
     return ok({
       comfyui: {
         reachable: comfyReachability.reachable,
-        url: env.comfyApiUrl,
+        url: target.apiUrl,
+        targetId: target.id,
+        targetMode: target.mode,
       },
       queue: {
         queued: queuedCount,

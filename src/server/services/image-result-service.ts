@@ -6,6 +6,7 @@ import sharp from "sharp";
 
 import { env } from "@/lib/env";
 import { ComfyPromptOutputImage } from "@/server/services/comfyui-service";
+import { ensureActiveComfySshTunnel } from "@/server/services/comfy-ssh";
 import { resolveDataPath } from "@/server/services/runtime-data-path";
 import { WorkerRunSnapshot } from "@/server/worker/types";
 
@@ -178,12 +179,14 @@ async function downloadOutputImageBuffer(
   }, env.comfyRequestTimeoutMs);
 
   try {
+    const normalizedApiUrl = normalizeApiUrl(apiUrl);
+    await ensureActiveComfySshTunnel(normalizedApiUrl);
     const searchParams = new URLSearchParams({
       filename: outputImage.filename,
       subfolder: normalizeSubfolder(outputImage.subfolder),
       type: outputImage.type,
     });
-    const response = await fetch(`${normalizeApiUrl(apiUrl)}/view?${searchParams.toString()}`, {
+    const response = await fetch(`${normalizedApiUrl}/view?${searchParams.toString()}`, {
       method: "GET",
       headers: {
         Accept: "image/*",

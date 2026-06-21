@@ -11,10 +11,10 @@ import {
   getComfyQueuePosition,
   interruptComfyPrompt,
 } from "@/server/services/comfyui-service";
+import { getActiveComfyApiUrl } from "@/server/services/comfy-target";
 import {
   removeManagedRunOutput,
 } from "@/server/services/image-result-service";
-import { env } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { WorkerRunSnapshot } from "@/server/worker/types";
 import {
@@ -194,13 +194,14 @@ function matchesResumeOptions(
 async function cancelComfyPrompts(
   runs: Array<{ status?: string; comfyPromptId: string | null }>,
 ): Promise<void> {
+  const comfyApiUrl = getActiveComfyApiUrl();
   const promptIdsToDelete: string[] = [];
   let shouldInterrupt = false;
 
   for (const run of runs) {
     if (run.status === "paused" || !run.comfyPromptId) continue;
     const position = await getComfyQueuePosition(
-      env.comfyApiUrl,
+      comfyApiUrl,
       run.comfyPromptId,
     );
     if (position === "running") {
@@ -211,21 +212,22 @@ async function cancelComfyPrompts(
   }
 
   if (promptIdsToDelete.length > 0) {
-    await deleteComfyQueueItems(env.comfyApiUrl, promptIdsToDelete);
+    await deleteComfyQueueItems(comfyApiUrl, promptIdsToDelete);
   }
   if (shouldInterrupt) {
-    await interruptComfyPrompt(env.comfyApiUrl);
+    await interruptComfyPrompt(comfyApiUrl);
   }
 }
 
 async function cancelComfyPromptForPause(promptId: string) {
+  const comfyApiUrl = getActiveComfyApiUrl();
   for (let attempt = 0; attempt < 2; attempt++) {
     clearComfyQueueSnapshotCache();
-    const position = await getComfyQueuePosition(env.comfyApiUrl, promptId);
+    const position = await getComfyQueuePosition(comfyApiUrl, promptId);
     if (position === "running") {
-      await interruptComfyPrompt(env.comfyApiUrl);
+      await interruptComfyPrompt(comfyApiUrl);
     } else if (position === "pending") {
-      await deleteComfyQueueItems(env.comfyApiUrl, [promptId]);
+      await deleteComfyQueueItems(comfyApiUrl, [promptId]);
     } else {
       return;
     }
@@ -504,7 +506,7 @@ export async function resumeRun(
   // Re-submit to ComfyUI
   let newComfyPromptId: string;
   try {
-    const apiUrl = env.comfyApiUrl.trim().replace(/\/+$/, "");
+    const apiUrl = getActiveComfyApiUrl().trim().replace(/\/+$/, "");
     const res = await fetch(`${apiUrl}/prompt`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

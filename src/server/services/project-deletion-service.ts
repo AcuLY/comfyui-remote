@@ -1,6 +1,5 @@
 import { rm } from "node:fs/promises";
 import { prisma } from "@/lib/prisma";
-import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
 import {
   CENSORING_CANCELLABLE_STATUSES,
@@ -17,6 +16,7 @@ import { cleanupProjectSectionFiles } from "@/server/services/section-cleanup-se
 import { cleanupProjectExportDirectory } from "@/server/services/project-file-cleanup-service";
 import { isPathInsideDirectory, resolveDataPath, resolveProjectPath } from "@/server/services/runtime-data-path";
 import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
+import { getActiveComfyApiUrl } from "@/server/services/comfy-target";
 
 const log = createLogger({ module: "project-deletion" });
 
@@ -107,7 +107,7 @@ export function createProjectDeletionDependencies(db: ProjectDeletionDb): Projec
     cleanupProjectExportDirectory,
     removeTrashFile: (path) => rm(path, { force: true }),
     comfy: {
-      apiUrl: env.comfyApiUrl,
+      apiUrl: getActiveComfyApiUrl(),
       clearQueueSnapshotCache: clearComfyQueueSnapshotCache,
       getQueuePosition: getComfyQueuePosition,
       deleteQueueItems: deleteComfyQueueItems,

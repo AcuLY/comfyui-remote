@@ -1,9 +1,9 @@
 import { Prisma } from "@/generated/prisma";
 import { JobStatus, RunStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
-import { env } from "@/lib/env";
 import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { WorkerRunSnapshot } from "@/server/worker/types";
+import { getActiveComfyApiUrl } from "@/server/services/comfy-target";
 
 const workerRunInclude = {
   project: {
@@ -58,7 +58,7 @@ function serializeWorkerRunSnapshot(run: WorkerRunRecord): WorkerRunSnapshot {
     runIndex: run.runIndex,
     status: run.status,
     workflowId: run.project.slug,
-    comfyApiUrl: env.comfyApiUrl,
+    comfyApiUrl: getActiveComfyApiUrl(),
     outputDir: run.outputDir,
     resolvedConfigSnapshot: run.resolvedConfigSnapshot,
     project: {

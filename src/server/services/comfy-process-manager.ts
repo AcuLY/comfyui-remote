@@ -17,6 +17,13 @@ import {
   type GpuAvailability,
 } from "@/server/services/comfy-gpu-watchdog";
 import { applyComfyPatches } from "@/server/services/comfy-patch-manager";
+import {
+  getActiveComfyTarget,
+  type ComfyTarget,
+  type LocalComfyTarget,
+} from "@/server/services/comfy-target";
+import { ensureSshTunnel } from "@/server/services/comfy-ssh";
+import { runComfyTargetProcessAction } from "@/server/services/comfy-target-process";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,6 +51,9 @@ export type ComfyProcessStatus = {
   gpuAwareRestartEnabled: boolean;
   gpuAvailability: GpuAvailability | null;
   managedMode: boolean;
+  targetId: string;
+  targetMode: ComfyTarget["mode"];
+  tunnelAutoStart: boolean | null;
   logs: string[];
   comfyApiUrl: string;
   errorMessage: string | null;
@@ -130,9 +140,10 @@ class ComfyProcessManager {
   // -------------------------------------------------------------------------
 
   getStatus(): ComfyProcessStatus {
+    const target = getActiveComfyTarget();
     return {
       state: this.state,
-      pid: this.getStatusPid(),
+      pid: this.getStatusPid(target),
       uptime:
         this.startedAt !== null ? Math.floor((Date.now() - this.startedAt) / 1000) : null,
       lastHealthCheck: this.lastHealthCheck,
@@ -143,9 +154,12 @@ class ComfyProcessManager {
       autoRestartEnabled: env.comfyAutoRestart,
       gpuAwareRestartEnabled: env.comfyGpuAwareRestart,
       gpuAvailability: this.lastGpuAvailability,
-      managedMode: Boolean(env.comfyLaunchCmd.trim()),
+      managedMode: this.isManagedTarget(target),
+      targetId: target.id,
+      targetMode: target.mode,
+      tunnelAutoStart: target.mode === "ssh" ? target.tunnelAutoStart : null,
       logs: this.logs.toArray(),
-      comfyApiUrl: env.comfyApiUrl,
+      comfyApiUrl: target.apiUrl,
       errorMessage: this.errorMessage,
     };
   }
@@ -155,7 +169,26 @@ class ComfyProcessManager {
   // -------------------------------------------------------------------------
 
   async start(): Promise<{ ok: boolean; message: string }> {
-    if (!env.comfyLaunchCmd.trim()) {
+    const target = getActiveComfyTarget();
+
+    if (target.mode === "ssh") {
+      if (this.autoRestartTimer) {
+        clearTimeout(this.autoRestartTimer);
+        this.autoRestartTimer = null;
+      }
+      await ensureSshTunnel(target);
+      const result = await runComfyTargetProcessAction(target, "start");
+      if (result.ok) {
+        this.maxRestartsReached = false;
+        this.errorMessage = null;
+        this.externallyStarted = true;
+        this.setState("starting");
+        this.startHealthCheck();
+      }
+      return result;
+    }
+
+    if (!target.comfyLaunchCmd.trim()) {
       return { ok: false, message: "COMFY_LAUNCH_CMD is not configured" };
     }
 
@@ -170,13 +203,13 @@ class ComfyProcessManager {
     }
 
     // Check if ComfyUI is already reachable (e.g. started externally)
-    const alreadyRunning = await this.checkExistingComfyUI();
+    const alreadyRunning = await this.checkExistingComfyUI(target);
     if (alreadyRunning) {
       this.markExternalRunning("start check");
       this.startHealthCheck();
       return { ok: true, message: "ComfyUI is already running (external)" };
     }
-    if (this.hasConfiguredPortListener()) {
+    if (this.hasConfiguredPortListener(target)) {
       this.markExternalUnhealthy("start check", "ComfyUI is listening but health check failed");
       this.startHealthCheck();
       return { ok: true, message: "ComfyUI is already listening (external, unhealthy)" };
@@ -197,10 +230,24 @@ class ComfyProcessManager {
   }
 
   async stop(): Promise<{ ok: boolean; message: string }> {
+    const target = getActiveComfyTarget();
+
     // Cancel any pending auto-restart to prevent duplicate spawns
     if (this.autoRestartTimer) {
       clearTimeout(this.autoRestartTimer);
       this.autoRestartTimer = null;
+    }
+
+    if (target.mode === "ssh") {
+      const result = await runComfyTargetProcessAction(target, "stop");
+      if (result.ok) {
+        this.stopHealthCheck();
+        this.setState("stopped");
+        this.startedAt = null;
+        this.spawnedAt = null;
+        this.externallyStarted = false;
+      }
+      return result;
     }
 
     // ComfyUI detected as externally started — kill by port
@@ -218,7 +265,7 @@ class ComfyProcessManager {
       const previousErrorMessage = this.errorMessage;
       this.log("[manager] ComfyUI is not owned by this Next.js process, killing by port...");
       this.stopHealthCheck();
-      const result = await this.killByPort();
+      const result = await this.killByPort(target);
       if (!result.ok) {
         this.externallyStarted = true;
         this.setState(previousState);
@@ -247,6 +294,24 @@ class ComfyProcessManager {
   }
 
   async restart(): Promise<{ ok: boolean; message: string }> {
+    const target = getActiveComfyTarget();
+    if (target.mode === "ssh") {
+      if (this.autoRestartTimer) {
+        clearTimeout(this.autoRestartTimer);
+        this.autoRestartTimer = null;
+      }
+      await ensureSshTunnel(target);
+      const result = await runComfyTargetProcessAction(target, "restart");
+      if (result.ok) {
+        this.maxRestartsReached = false;
+        this.errorMessage = null;
+        this.externallyStarted = true;
+        this.setState("starting");
+        this.startHealthCheck();
+      }
+      return result;
+    }
+
     const stopResult = await this.stop();
     if (!stopResult.ok) {
       return stopResult;
@@ -258,7 +323,23 @@ class ComfyProcessManager {
 
   /** Called once at server startup from instrumentation.ts */
   initAutoStart() {
-    if (!env.comfyLaunchCmd.trim()) {
+    const target = getActiveComfyTarget();
+
+    if (target.mode === "ssh") {
+      this.log(`[manager] SSH target mode enabled for ${target.id}`);
+      if (env.comfyAutoStart) {
+        this.log("[manager] Remote auto-start enabled, running configured start command...");
+        this.start().catch((err) => {
+          this.log(`[manager] Remote auto-start failed: ${String(err)}`);
+        });
+      } else {
+        this.log("[manager] Remote auto-start disabled, monitoring SSH tunnel API");
+        this.startHealthCheck();
+      }
+      return;
+    }
+
+    if (!target.comfyLaunchCmd.trim()) {
       this.log("[manager] Managed mode disabled: COMFY_LAUNCH_CMD not set");
       // Even in non-managed mode, start health monitoring
       this.startHealthCheck();
@@ -283,11 +364,16 @@ class ComfyProcessManager {
   // -------------------------------------------------------------------------
 
   private async spawnProcess(): Promise<{ ok: boolean; message: string }> {
+    const target = getActiveComfyTarget();
+    if (target.mode !== "local") {
+      return { ok: false, message: "Local spawn is not available for SSH ComfyUI targets" };
+    }
+
     this.setState("starting");
     this.errorMessage = null;
 
-    const cmd = env.comfyLaunchCmd.trim();
-    const cwd = env.comfyLaunchCwd.trim() || undefined;
+    const cmd = target.comfyLaunchCmd.trim();
+    const cwd = target.comfyLaunchCwd.trim() || undefined;
 
     this.log(`[manager] Starting ComfyUI: ${cmd}`);
 
@@ -419,8 +505,8 @@ class ComfyProcessManager {
    * Used when ComfyUI was started externally (we don't hold the ChildProcess handle).
    * Uses `lsof` (macOS/Linux) or `netstat` (Windows) to find the PID.
    */
-  private async killByPort(): Promise<{ ok: boolean; message: string }> {
-    const port = this.extractPortFromUrl(env.comfyApiUrl);
+  private async killByPort(target: LocalComfyTarget): Promise<{ ok: boolean; message: string }> {
+    const port = this.extractPortFromUrl(target.apiUrl);
     if (!port) {
       const message = "Cannot extract port from COMFY_API_URL; refusing to kill unrelated Python processes";
       this.log(`[manager] ${message}`);
@@ -540,9 +626,12 @@ class ComfyProcessManager {
   // -------------------------------------------------------------------------
 
   /** Check if ComfyUI is already reachable via its API endpoint */
-  private async checkExistingComfyUI(): Promise<boolean> {
+  private async checkExistingComfyUI(target: ComfyTarget): Promise<boolean> {
     try {
-      const res = await fetch(`${env.comfyApiUrl}/system_stats`, {
+      if (target.mode === "ssh") {
+        await ensureSshTunnel(target);
+      }
+      const res = await fetch(`${target.apiUrl}/system_stats`, {
         signal: AbortSignal.timeout(3000),
       });
       if (res.ok) {
@@ -585,8 +674,12 @@ class ComfyProcessManager {
    */
   async probeHealth(): Promise<{ ok: boolean; latencyMs: number; error?: string }> {
     const start = Date.now();
+    const target = getActiveComfyTarget();
     try {
-      const res = await fetch(`${env.comfyApiUrl}/system_stats`, {
+      if (target.mode === "ssh") {
+        await ensureSshTunnel(target);
+      }
+      const res = await fetch(`${target.apiUrl}/system_stats`, {
         signal: AbortSignal.timeout(5000),
       });
       const latencyMs = Date.now() - start;
@@ -607,7 +700,7 @@ class ComfyProcessManager {
       this.lastHealthCheck = new Date().toISOString();
       this.lastHealthOk = false;
       this.consecutiveHealthFailures += 1;
-      if (!this.process && this.hasConfiguredPortListener()) {
+      if (!this.process && this.hasConfiguredPortListener(target)) {
         this.markExternalUnhealthy("manual probe", `HTTP ${res.status}`);
       } else if (this.state === "running") {
         this.log(`[health] Manual probe: HTTP ${res.status} (${this.consecutiveHealthFailures} consecutive failures)`);
@@ -622,7 +715,7 @@ class ComfyProcessManager {
       this.lastHealthCheck = new Date().toISOString();
       this.lastHealthOk = false;
       this.consecutiveHealthFailures += 1;
-      if (!this.process && this.hasConfiguredPortListener()) {
+      if (!this.process && this.hasConfiguredPortListener(target)) {
         this.markExternalUnhealthy("manual probe", String(err));
       } else if (this.state === "running") {
         this.log(`[health] Manual probe: ComfyUI is unreachable (${this.consecutiveHealthFailures} consecutive failures)`);
@@ -637,9 +730,13 @@ class ComfyProcessManager {
   private async performHealthCheck() {
     const now = new Date().toISOString();
     this.lastHealthCheck = now;
+    const target = getActiveComfyTarget();
 
     try {
-      const res = await fetch(`${env.comfyApiUrl}/system_stats`, {
+      if (target.mode === "ssh") {
+        await ensureSshTunnel(target);
+      }
+      const res = await fetch(`${target.apiUrl}/system_stats`, {
         signal: AbortSignal.timeout(5000),
       });
 
@@ -672,7 +769,7 @@ class ComfyProcessManager {
     this.lastHealthOk = false;
     this.consecutiveHealthFailures += 1;
 
-    if (!this.process && this.hasConfiguredPortListener()) {
+    if (!this.process && this.hasConfiguredPortListener(target)) {
       this.markExternalUnhealthy("health check", "Health check failed while ComfyUI port is listening");
       return;
     }
@@ -724,7 +821,8 @@ class ComfyProcessManager {
       return;
     }
 
-    if (!env.comfyLaunchCmd.trim()) {
+    const target = getActiveComfyTarget();
+    if (!this.isManagedTarget(target)) {
       return; // Non-managed mode, no auto-restart
     }
 
@@ -815,8 +913,9 @@ class ComfyProcessManager {
     }
   }
 
-  private getStatusPid(): number | null {
+  private getStatusPid(target: ComfyTarget): number | null {
     if (this.process?.pid) return this.process.pid;
+    if (target.mode === "ssh") return null;
     if (
       this.state !== "running" &&
       this.state !== "unhealthy" &&
@@ -827,14 +926,22 @@ class ComfyProcessManager {
       return null;
     }
 
-    const port = this.extractPortFromUrl(env.comfyApiUrl);
+    const port = this.extractPortFromUrl(target.apiUrl);
     if (!port) return null;
     return this.findPidsOnPort(port)[0] ?? null;
   }
 
-  private hasConfiguredPortListener(): boolean {
-    const port = this.extractPortFromUrl(env.comfyApiUrl);
+  private hasConfiguredPortListener(target: ComfyTarget): boolean {
+    if (target.mode === "ssh") return false;
+    const port = this.extractPortFromUrl(target.apiUrl);
     return port !== null && this.findPidsOnPort(port).length > 0;
+  }
+
+  private isManagedTarget(target: ComfyTarget) {
+    if (target.mode === "ssh") {
+      return Boolean(target.startCommand || target.stopCommand || target.restartCommand);
+    }
+    return Boolean(target.comfyLaunchCmd.trim());
   }
 
   private markExternalRunning(source: string) {
