@@ -1,12 +1,17 @@
 import assert from "node:assert/strict";
+import { writeFile, mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import {
   buildSshArgs,
   buildSshTunnelArgs,
   quotePosixShellArg,
+  waitForSshTunnelPort,
 } from "../src/server/services/comfy-ssh";
 import {
+  loadComfyTargetConfig,
   resolveComfyTargetFromConfig,
   type ComfyTargetConfigFile,
 } from "../src/server/services/comfy-target";
@@ -67,6 +72,28 @@ test("comfy target config falls back to local .env style settings without a conf
   assert.equal(target.comfyLaunchCwd, "D:/ComfyUI");
 });
 
+test("comfy target config loads UTF-8 BOM JSON files written by Windows tools", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "comfy-target-config-bom-"));
+  const configPath = join(dir, "targets.json");
+  await writeFile(
+    configPath,
+    `\uFEFF${JSON.stringify({
+      active: "local",
+      targets: {
+        local: {
+          mode: "local",
+          apiUrl: "http://127.0.0.1:8188",
+        },
+      },
+    })}`,
+    "utf8",
+  );
+
+  const config = loadComfyTargetConfig(configPath);
+
+  assert.equal(config?.active, "local");
+});
+
 test("SSH command builders use argv arrays and preserve spaces through shell quoting", () => {
   const target = resolveComfyTargetFromConfig({
     active: "remote-a",
@@ -111,4 +138,27 @@ test("SSH command builders use argv arrays and preserve spaces through shell quo
     "C:/Users/me/.ssh/id_ed25519",
     "artist@example.com",
   ]);
+});
+
+test("SSH tunnel readiness waits until the forwarded local port is listening", async () => {
+  let attempts = 0;
+  const sleeps: number[] = [];
+
+  const ready = await waitForSshTunnelPort(
+    async () => {
+      attempts += 1;
+      return attempts === 3;
+    },
+    {
+      intervalMs: 10,
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+      timeoutMs: 1_000,
+    },
+  );
+
+  assert.equal(ready, true);
+  assert.equal(attempts, 3);
+  assert.deepEqual(sleeps, [10, 10]);
 });

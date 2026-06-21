@@ -192,7 +192,7 @@ export function loadComfyTargetConfig(configPath: string | null | undefined): Co
   if (!existsSync(resolvedPath)) {
     throw new Error(`ComfyUI target config not found: ${resolvedPath}`);
   }
-  return JSON.parse(readFileSync(resolvedPath, "utf8")) as ComfyTargetConfigFile;
+  return JSON.parse(readFileSync(resolvedPath, "utf8").replace(/^\uFEFF/, "")) as ComfyTargetConfigFile;
 }
 
 export function getActiveComfyTarget(): ComfyTarget {

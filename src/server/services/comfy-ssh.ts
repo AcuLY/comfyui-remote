@@ -67,6 +67,26 @@ function isPortListening(hostname: string, port: number) {
   });
 }
 
+export async function waitForSshTunnelPort(
+  probe: () => Promise<boolean>,
+  options: {
+    intervalMs?: number;
+    sleep?: (ms: number) => Promise<void>;
+    timeoutMs?: number;
+  } = {},
+) {
+  const intervalMs = options.intervalMs ?? 250;
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const deadline = Date.now() + (options.timeoutMs ?? 5_000);
+
+  while (true) {
+    if (await probe()) return true;
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) return false;
+    await sleep(Math.min(intervalMs, remainingMs));
+  }
+}
+
 export async function runSshCommand(
   target: SshComfyTarget,
   remoteCommand: string,
@@ -129,7 +149,12 @@ export async function ensureSshTunnel(target: SshComfyTarget) {
   child.unref();
   tunnelProcesses.set(target.id, child);
 
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  const ready = await waitForSshTunnelPort(
+    () => isPortListening(local.hostname, local.port),
+  );
+  if (!ready) {
+    throw new Error(`SSH tunnel did not start listening on ${local.hostname}:${local.port}`);
+  }
 }
 
 export async function ensureActiveComfySshTunnel(apiUrl?: string) {
