@@ -14,6 +14,8 @@ import {
   type WorkflowBuildInput,
 } from "@/server/services/workflow-prompt-builder";
 import { ComfyPromptDraft } from "@/server/worker/types";
+import { getActiveComfyApiUrl } from "@/server/services/comfy-target";
+import { ensureActiveComfySshTunnel } from "@/server/services/comfy-ssh";
 
 // ComfyUI service logger
 const log = createLogger({ module: "comfyui" });
@@ -123,7 +125,7 @@ function formatUnknownValue(value: unknown) {
 }
 
 export async function checkComfyUIReachability(
-  apiUrl = env.comfyApiUrl,
+  apiUrl = getActiveComfyApiUrl(),
   timeoutMs = 5000,
 ): Promise<ComfyUIReachabilityResult> {
   let normalizedApiUrl: string;
@@ -138,6 +140,7 @@ export async function checkComfyUIReachability(
   }
 
   try {
+    await ensureActiveComfySshTunnel(normalizedApiUrl);
     const response = await fetch(`${normalizedApiUrl}/system_stats`, {
       headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(timeoutMs),
@@ -399,6 +402,7 @@ async function fetchJson(
   }, env.comfyRequestTimeoutMs);
 
   try {
+    await ensureActiveComfySshTunnel(new URL(url).origin);
     const response = await fetch(url, {
       ...init,
       signal: controller.signal,

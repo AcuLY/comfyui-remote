@@ -1,8 +1,8 @@
 import { access, rm } from "node:fs/promises";
-import { resolve, sep } from "node:path";
+import { resolve } from "node:path";
 import { prisma } from "@/lib/prisma";
-import { env } from "@/lib/env";
 import { createLogger } from "@/lib/logger";
+import { cleanupActiveComfyOutputSubfolders } from "@/server/services/comfy-output-cleanup";
 import { cancelProjectTasksForCleanup } from "@/server/services/project-deletion-service";
 import { cleanupProjectExportDirectory } from "@/server/services/project-file-cleanup-service";
 import { isPathInsideDirectory, resolveDataPath, resolveProjectPath } from "@/server/services/runtime-data-path";
@@ -114,49 +114,21 @@ export async function archiveProject(projectId: string): Promise<ArchiveProjectR
 
   // 5. Delete ComfyUI output directories
   let deletedComfyDirs = 0;
-  if (env.comfyLaunchCwd) {
-    try {
-      const runs = await prisma.run.findMany({
-        where: {
-          projectId,
-          project: buildGenerationProjectWhere({ id: projectId }),
-          comfyOutputSubfolder: { not: null },
-        },
-        select: { comfyOutputSubfolder: true },
-      });
+  try {
+    const runs = await prisma.run.findMany({
+      where: {
+        projectId,
+        project: buildGenerationProjectWhere({ id: projectId }),
+        comfyOutputSubfolder: { not: null },
+      },
+      select: { comfyOutputSubfolder: true },
+    });
 
-      const outputBase = resolve(env.comfyLaunchCwd, "output");
-      const safePrefix = outputBase + sep;
-
-      const uniqueTopLevelDirs = new Set<string>();
-      for (const run of runs) {
-        if (run.comfyOutputSubfolder) {
-          const topLevel = run.comfyOutputSubfolder.split("/")[0];
-          if (topLevel) {
-            uniqueTopLevelDirs.add(topLevel);
-          }
-        }
-      }
-
-      for (const dirName of uniqueTopLevelDirs) {
-        const dirPath = resolve(outputBase, dirName);
-
-        // Safety check: resolved path must be inside the output directory
-        if (!dirPath.startsWith(safePrefix)) {
-          log.warn("Skipping ComfyUI output dir outside safe prefix", { dirPath, safePrefix });
-          continue;
-        }
-
-        try {
-          await rm(dirPath, { recursive: true, force: true });
-          deletedComfyDirs++;
-        } catch (err) {
-          log.warn("Failed to delete ComfyUI output directory", { path: dirPath, error: err });
-        }
-      }
-    } catch (err) {
-      log.error("Failed to process ComfyUI output directories", { projectId, error: err });
-    }
+    deletedComfyDirs = await cleanupActiveComfyOutputSubfolders(
+      runs.map((run) => run.comfyOutputSubfolder),
+    );
+  } catch (err) {
+    log.error("Failed to process ComfyUI output directories", { projectId, error: err });
   }
 
   // 6. Delete export artifacts

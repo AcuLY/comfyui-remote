@@ -6,8 +6,15 @@ import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 import { db } from "@/lib/db";
-import { env } from "@/lib/env";
 import type { ModelKind } from "@/lib/model-constants";
+import { getActiveComfyTarget, type ComfyTarget } from "@/server/services/comfy-target";
+import {
+  browseRemoteModelDirectory,
+  hashRemoteModelFile,
+  moveRemoteModelFile,
+  resolveRemoteModelPath,
+  uploadRemoteModelFile,
+} from "@/server/services/comfy-remote-file-adapter";
 
 type ModelFileItem = {
   name: string;
@@ -37,17 +44,14 @@ export type ModelFileHash = {
 
 const MODEL_CONFIG: Record<ModelKind, {
   label: string;
-  baseDir: () => string;
   extensions: Set<string>;
 }> = {
   lora: {
     label: "LoRA",
-    baseDir: () => env.loraBaseDir,
     extensions: new Set([".safetensors", ".ckpt", ".pt", ".pth"]),
   },
   checkpoint: {
     label: "checkpoint",
-    baseDir: () => env.checkpointBaseDir,
     extensions: new Set([".safetensors"]),
   },
 };
@@ -74,11 +78,18 @@ export function parseModelKind(value: string | null | undefined): ModelKind {
 }
 
 export function getModelBaseDir(kind: ModelKind) {
-  return MODEL_CONFIG[kind].baseDir();
+  return getModelBaseDirForTarget(getActiveComfyTarget(), kind);
 }
 
-function getRequiredModelBaseDir(kind: ModelKind) {
-  const baseDir = getModelBaseDir(kind);
+function getModelBaseDirForTarget(target: ComfyTarget, kind: ModelKind) {
+  if (target.mode === "ssh") {
+    return `${target.remoteModelsRoot.replace(/\/+$/, "")}/${kind === "lora" ? "loras" : "checkpoints"}`;
+  }
+  return kind === "lora" ? target.loraBaseDir : target.checkpointBaseDir;
+}
+
+function getRequiredModelBaseDir(kind: ModelKind, target = getActiveComfyTarget()) {
+  const baseDir = getModelBaseDirForTarget(target, kind);
   if (!baseDir) {
     throw new ModelAssetError("MODEL_BASE_DIR is not configured.", 500);
   }
@@ -97,6 +108,36 @@ function isWithinBase(baseDir: string, targetPath: string): boolean {
 
 function normalizeRelativePath(value: string) {
   return value.replace(/\\/g, "/");
+}
+
+function normalizeRemoteRelativePath(value: string) {
+  const parts = value
+    .replace(/\\/g, "/")
+    .replace(/^\/+/, "")
+    .replace(/\/+$/, "")
+    .split("/")
+    .filter(Boolean);
+
+  if (parts.some((part) => part === "." || part === "..")) {
+    throw new ModelAssetError("Invalid path", 400);
+  }
+
+  return parts.join("/");
+}
+
+function resolveAssetPath(baseDir: string, relativePath: string, remote: boolean) {
+  if (!remote) return path.resolve(baseDir, relativePath);
+  const normalizedBase = baseDir.replace(/\/+$/, "");
+  const normalizedRelativePath = normalizeRemoteRelativePath(relativePath);
+  return normalizedRelativePath ? `${normalizedBase}/${normalizedRelativePath}` : normalizedBase;
+}
+
+function relativeAssetPath(baseDir: string, absolutePath: string, remote: boolean) {
+  if (!remote) return path.relative(baseDir, absolutePath).replace(/\\/g, "/");
+  const normalizedBase = baseDir.replace(/\/+$/, "");
+  return absolutePath.startsWith(`${normalizedBase}/`)
+    ? absolutePath.slice(normalizedBase.length + 1)
+    : absolutePath;
 }
 
 function isAllowedModelFile(kind: ModelKind, fileName: string) {
@@ -151,10 +192,10 @@ async function collectFilesRecursive(
   return results;
 }
 
-async function attachAssetNotes(kind: ModelKind, baseDir: string, items: ModelBrowseItem[]) {
+async function attachAssetNotes(kind: ModelKind, baseDir: string, items: ModelBrowseItem[], remote = false) {
   const fileAbsolutePaths = items
     .filter((item): item is ModelFileItem => item.type === "file")
-    .map((item) => path.resolve(baseDir, item.path));
+    .map((item) => resolveAssetPath(baseDir, item.path, remote));
 
   if (fileAbsolutePaths.length === 0) {
     return;
@@ -179,7 +220,7 @@ async function attachAssetNotes(kind: ModelKind, baseDir: string, items: ModelBr
 
   for (const item of items) {
     if (item.type !== "file") continue;
-    const absPath = path.resolve(baseDir, item.path);
+    const absPath = resolveAssetPath(baseDir, item.path, remote);
     const note = notesMap.get(absPath);
     if (note) item.notes = note;
     const triggerWords = triggerMap.get(absPath);
@@ -196,7 +237,18 @@ export async function browseModelDirectory(
   rawRelativePath: string,
   recursive: boolean,
 ) {
-  const baseDir = getRequiredModelBaseDir(kind);
+  const target = getActiveComfyTarget();
+  if (target.mode === "ssh") {
+    try {
+      const data = await browseRemoteModelDirectory(target, kind, rawRelativePath, recursive);
+      await attachAssetNotes(kind, getModelBaseDirForTarget(target, kind), data.items, true);
+      return data;
+    } catch (error) {
+      throw new ModelAssetError("Failed to browse remote directory", 500, String(error));
+    }
+  }
+
+  const baseDir = getRequiredModelBaseDir(kind, target);
   const relativePath = normalizeRelativePath(rawRelativePath);
   const absoluteDir = path.resolve(baseDir, relativePath);
 
@@ -258,7 +310,16 @@ export async function browseModelDirectory(
 }
 
 export async function hashModelFile(kind: ModelKind, rawRelativePath: string): Promise<ModelFileHash> {
-  const baseDir = getRequiredModelBaseDir(kind);
+  const target = getActiveComfyTarget();
+  if (target.mode === "ssh") {
+    try {
+      return await hashRemoteModelFile(target, kind, rawRelativePath);
+    } catch (error) {
+      throw new ModelAssetError("Failed to hash remote model file", 500, String(error));
+    }
+  }
+
+  const baseDir = getRequiredModelBaseDir(kind, target);
   const requestedPath = normalizeRelativePath(rawRelativePath);
   if (!requestedPath.trim()) {
     throw new ModelAssetError("path is required", 400);
@@ -329,13 +390,15 @@ export async function listModelAssets(kind: ModelKind) {
 }
 
 export async function getModelNotes(kind: ModelKind, rawPaths: string) {
-  const baseDir = getRequiredModelBaseDir(kind);
+  const target = getActiveComfyTarget();
+  const remote = target.mode === "ssh";
+  const baseDir = getRequiredModelBaseDir(kind, target);
   if (!rawPaths.trim()) {
     return {};
   }
 
   const relativePaths = rawPaths.split(",").filter(Boolean).map(normalizeRelativePath);
-  const absolutePaths = relativePaths.map((relativePath) => path.resolve(baseDir, relativePath));
+  const absolutePaths = relativePaths.map((relativePath) => resolveAssetPath(baseDir, relativePath, remote));
 
   const assets = await db.loraAsset.findMany({
     where: {
@@ -348,7 +411,7 @@ export async function getModelNotes(kind: ModelKind, rawPaths: string) {
   const result: Record<string, { notes?: string; triggerWords?: string; civitaiLink?: string }> = {};
   for (const asset of assets) {
     if (!asset.notes && !asset.triggerWords && !asset.civitaiLink) continue;
-    const relativePath = path.relative(baseDir, asset.absolutePath).replace(/\\/g, "/");
+    const relativePath = relativeAssetPath(baseDir, asset.absolutePath, remote);
     result[relativePath] = {};
     if (asset.notes) result[relativePath].notes = asset.notes;
     if (kind === "lora" && asset.triggerWords) {
@@ -364,7 +427,9 @@ export async function updateModelNotes(
   kind: ModelKind,
   input: { path?: string; notes?: string; triggerWords?: string; civitaiLink?: string },
 ) {
-  const baseDir = getRequiredModelBaseDir(kind);
+  const target = getActiveComfyTarget();
+  const remote = target.mode === "ssh";
+  const baseDir = getRequiredModelBaseDir(kind, target);
   const relativePath = input.path ? normalizeRelativePath(input.path) : "";
   const notes = input.notes ?? "";
   const triggerWords = kind === "lora" ? (input.triggerWords ?? "") : null;
@@ -374,8 +439,8 @@ export async function updateModelNotes(
     throw new ModelAssetError("path is required", 400);
   }
 
-  const absolutePath = path.resolve(baseDir, relativePath);
-  if (!isWithinBase(baseDir, absolutePath)) {
+  const absolutePath = resolveAssetPath(baseDir, relativePath, remote);
+  if (!remote && !isWithinBase(baseDir, absolutePath)) {
     throw new ModelAssetError("Invalid path", 400);
   }
 
@@ -408,7 +473,7 @@ export async function updateModelNotes(
 }
 
 export async function saveUploadedModelFile(kind: ModelKind, file: File, targetDir: string) {
-  const baseDir = getRequiredModelBaseDir(kind);
+  const target = getActiveComfyTarget();
   const safeName = sanitizeFileName(file.name);
   if (!isAllowedModelFile(kind, safeName)) {
     throw new ModelAssetError(`${MODEL_CONFIG[kind].label} only supports ${[...MODEL_CONFIG[kind].extensions].join(", ")} files.`, 400);
@@ -418,6 +483,47 @@ export async function saveUploadedModelFile(kind: ModelKind, file: File, targetD
   if (file.size > MAX_UPLOAD_SIZE) {
     throw new ModelAssetError("File too large (max 10GB)", 413);
   }
+
+  if (target.mode === "ssh") {
+    let saved: Awaited<ReturnType<typeof uploadRemoteModelFile>>;
+    try {
+      saved = await uploadRemoteModelFile(target, kind, file, targetDir);
+    } catch (error) {
+      throw new ModelAssetError("Failed to upload remote model file", 500, String(error));
+    }
+
+    const record = await db.loraAsset.upsert({
+      where: { absolutePath: saved.absolutePath },
+      update: {
+        modelType: kind,
+        name: saved.name,
+        category: saved.category,
+        fileName: saved.fileName,
+        relativePath: saved.relativePath,
+        size: saved.size,
+        source: "upload",
+      },
+      create: {
+        modelType: kind,
+        name: saved.name,
+        category: saved.category,
+        fileName: saved.fileName,
+        absolutePath: saved.absolutePath,
+        relativePath: saved.relativePath,
+        size: saved.size,
+        source: "upload",
+      },
+    });
+
+    return {
+      ...record,
+      size: record.size === null ? null : Number(record.size),
+      uploadedAt: record.uploadedAt.toISOString(),
+      updatedAt: record.updatedAt.toISOString(),
+    };
+  }
+
+  const baseDir = getRequiredModelBaseDir(kind, target);
 
   const normalizedDir = normalizeRelativePath(targetDir || "");
   const absoluteTargetDir = path.resolve(baseDir, normalizedDir);
@@ -473,7 +579,7 @@ export async function moveModelFile(
   kind: ModelKind,
   input: { sourcePath?: string; targetDir?: string },
 ) {
-  const baseDir = getRequiredModelBaseDir(kind);
+  const target = getActiveComfyTarget();
   const { sourcePath, targetDir } = input;
 
   if (typeof sourcePath !== "string" || !sourcePath.trim()) {
@@ -482,6 +588,31 @@ export async function moveModelFile(
   if (typeof targetDir !== "string") {
     throw new ModelAssetError("targetDir is required", 400);
   }
+
+  if (target.mode === "ssh") {
+    const normalizedTargetDir = normalizeRemoteRelativePath(targetDir || ".");
+    try {
+      const moved = await moveRemoteModelFile(target, kind, {
+        sourcePath,
+        targetDir: normalizedTargetDir,
+      });
+      const oldAbsolutePath = resolveRemoteModelPath(target.remoteModelsRoot, kind, sourcePath);
+      const newAbsolutePath = resolveRemoteModelPath(target.remoteModelsRoot, kind, moved.path);
+      await db.loraAsset.updateMany({
+        where: { absolutePath: oldAbsolutePath, modelType: kind },
+        data: {
+          absolutePath: newAbsolutePath,
+          relativePath: moved.path,
+          category: normalizedTargetDir || ".",
+        },
+      }).catch(() => {});
+      return { newPath: moved.path };
+    } catch (error) {
+      throw new ModelAssetError("Failed to move remote model file", 500, String(error));
+    }
+  }
+
+  const baseDir = getRequiredModelBaseDir(kind, target);
 
   const absoluteSource = path.resolve(baseDir, normalizeRelativePath(sourcePath));
   const absoluteTargetDir = path.resolve(baseDir, normalizeRelativePath(targetDir || "."));

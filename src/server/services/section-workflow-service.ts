@@ -1,4 +1,3 @@
-import { env } from "@/lib/env";
 import { db } from "@/lib/db";
 import { buildResolvedConfigSnapshot } from "@/server/repositories/project-repository/helpers";
 import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
@@ -6,6 +5,7 @@ import { validateComfyPromptDraft } from "@/server/services/comfyui-service";
 import { buildComfyPromptDraft } from "@/server/worker/payload-builder";
 import type { WorkerRunSnapshot } from "@/server/worker/types";
 import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
+import { getActiveComfyApiUrl } from "@/server/services/comfy-target";
 
 function sectionSlug(sortOrder: number) {
   return `section_${sortOrder + 1}`;
@@ -79,7 +79,7 @@ export async function buildCurrentSectionWorkflow(projectId: string, sectionId: 
     runIndex: (latestRunIndex._max.runIndex ?? 0) + 1,
     status: "draft",
     workflowId: project.slug,
-    comfyApiUrl: env.comfyApiUrl,
+    comfyApiUrl: getActiveComfyApiUrl(),
     outputDir: null,
     resolvedConfigSnapshot,
     project: {
@@ -94,7 +94,7 @@ export async function buildCurrentSectionWorkflow(projectId: string, sectionId: 
     },
   };
   const promptDraft = buildComfyPromptDraft(run);
-  const validatedDraft = await validateComfyPromptDraft(env.comfyApiUrl, promptDraft);
+  const validatedDraft = await validateComfyPromptDraft(getActiveComfyApiUrl(), promptDraft);
 
   return {
     workflow: validatedDraft.apiPrompt,

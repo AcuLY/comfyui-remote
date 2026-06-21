@@ -1,0 +1,29 @@
+{
+  "active": "local",
+  "targets": {
+    "local": {
+      "mode": "local",
+      "apiUrl": "http://127.0.0.1:8188",
+      "modelBaseDir": "D:/ComfyUI/models",
+      "comfyLaunchCmd": "python main.py --listen 127.0.0.1 --port 8188",
+      "comfyLaunchCwd": "D:/ComfyUI"
+    },
+    "remote-a": {
+      "mode": "ssh",
+      "sshHost": "comfy-user@comfy.example.com",
+      "sshPort": 22,
+      "sshKeyPath": "C:/Users/you/.ssh/id_ed25519",
+      "localApiUrl": "http://127.0.0.1:18188",
+      "remoteApiHost": "127.0.0.1",
+      "remoteApiPort": 8188,
+      "remoteComfyRoot": "/srv/ComfyUI",
+      "remoteModelsRoot": "/srv/ComfyUI/models",
+      "startCommand": "systemctl --user start comfyui.service",
+      "stopCommand": "systemctl --user stop comfyui.service",
+      "restartCommand": "systemctl --user restart comfyui.service",
+      "logCommand": "journalctl --user -u comfyui.service -n 200 --no-pager",
+      "hashCommandTemplate": "sha256sum {path}",
+      "tunnelAutoStart": true
+    }
+  }
+}
