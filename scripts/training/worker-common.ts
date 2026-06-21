@@ -23,6 +23,7 @@ export type WorkerCliOptions = {
   once: boolean;
   poll: boolean;
   pollIntervalMs: number;
+  projectId?: string;
   values: Map<string, string | true>;
   workerOwner: string;
 };
@@ -53,6 +54,7 @@ export type ManagerClient = {
 export type WorkerTaskLeaseInput = {
   leaseDurationSeconds?: number;
   leaseOwner?: string;
+  projectId?: string;
   targetId?: string;
   targetType?: string;
   workerType: TrainingWorkerType;
@@ -134,6 +136,7 @@ export function parseWorkerCli(
   const once = values.has("--once");
   const poll = values.has("--poll") || !once;
   const pollIntervalMs = readNumberOption(values, "--interval-ms") ?? defaults.pollIntervalMs ?? 5_000;
+  const projectId = (readStringOption(values, "--project-id") ?? process.env.TRAINING_WORKER_PROJECT_ID?.trim()) || undefined;
   const leaseDurationSeconds = readNumberOption(values, "--lease-seconds") ?? defaults.leaseDurationSeconds ?? 300;
   const workerOwner = readStringOption(values, "--worker-owner") ?? defaults.workerOwner ?? "training-worker";
 
@@ -150,6 +153,7 @@ export function parseWorkerCli(
     once,
     poll,
     pollIntervalMs,
+    projectId,
     values,
     workerOwner,
   };
@@ -298,6 +302,7 @@ async function processNextTask(
   const task = await client.leaseNextTask({
     leaseDurationSeconds: cli.leaseDurationSeconds,
     leaseOwner: cli.workerOwner,
+    projectId: cli.projectId,
     workerType: input.workerType,
   });
 

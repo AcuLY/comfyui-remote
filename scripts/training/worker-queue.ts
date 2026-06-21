@@ -35,6 +35,7 @@ Options:
   --worker-owner-prefix <name>  Prefix for per-worker lease owners. Default: training-queue.
   --interval-ms <ms>           Poll interval passed to child workers. Default: 5000.
   --lease-seconds <sec>        Lease/heartbeat extension passed to child workers. Default: 300.
+  --project-id <id>            Restrict child worker leases to one training project.
   --restart-delay-ms <ms>      Restart delay for crashed child workers. Default: 5000.
 
   --mock-image                 Force image worker provider to mock-local.
@@ -104,6 +105,7 @@ async function main() {
       String(cli.pollIntervalMs),
       "--lease-seconds",
       String(cli.leaseDurationSeconds),
+      ...(cli.projectId ? ["--project-id", cli.projectId] : []),
       ...spec.extraArgs,
     ];
 

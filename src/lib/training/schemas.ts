@@ -131,6 +131,7 @@ export const trainingWorkerTaskLeaseRequestSchema = z.object({
   workerType: trainingWorkerTypeSchema,
   leaseOwner: z.string().trim().min(1).optional(),
   leaseDurationSeconds: z.number().int().min(30).max(86_400).optional(),
+  projectId: z.string().trim().min(1).optional(),
   targetType: z.string().trim().min(1).optional(),
   targetId: z.string().trim().min(1).optional(),
 }).strict().superRefine((value, ctx) => {

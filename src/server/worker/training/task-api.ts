@@ -168,11 +168,12 @@ function mapTrainingRunToTarget(row: {
   };
 }
 
-async function countWorkerTargets(workerType: TrainingWorkerType, status: "queued" | "running") {
+async function countWorkerTargets(workerType: TrainingWorkerType, status: "queued" | "running", projectId?: string) {
   if (workerType === "image_generation") {
     return prisma.trainingGenerationTask.count({
       where: {
         generationKind: "image_generation",
+        ...(projectId ? { trainingProjectId: projectId } : {}),
         status,
       },
     });
@@ -180,24 +181,32 @@ async function countWorkerTargets(workerType: TrainingWorkerType, status: "queue
   if (workerType === "dataset_freeze") {
     return prisma.trainingDatasetRevision.count({
       where: {
+        ...(projectId ? { trainingProjectId: projectId } : {}),
         status: status === "queued" ? "draft" : "freezing",
       },
     });
   }
   return prisma.trainingRun.count({
     where: {
+      ...(projectId ? { trainingProjectId: projectId } : {}),
       status,
     },
   });
 }
 
-async function findRunningWorkerTarget(workerType: TrainingWorkerType, targetId?: string, targetType?: string) {
+async function findRunningWorkerTarget(
+  workerType: TrainingWorkerType,
+  targetId?: string,
+  targetType?: string,
+  projectId?: string,
+) {
   if (workerType === "image_generation") {
     if (targetType && targetType !== "generationRun") return null;
     const row = await prisma.trainingGenerationTask.findFirst({
       where: {
         generationKind: "image_generation",
         id: targetId,
+        ...(projectId ? { trainingProjectId: projectId } : {}),
         status: "running",
       },
       orderBy: {
@@ -211,6 +220,7 @@ async function findRunningWorkerTarget(workerType: TrainingWorkerType, targetId?
     const row = await prisma.trainingDatasetRevision.findFirst({
       where: {
         id: targetId,
+        ...(projectId ? { trainingProjectId: projectId } : {}),
         status: "freezing",
       },
       orderBy: {
@@ -223,6 +233,7 @@ async function findRunningWorkerTarget(workerType: TrainingWorkerType, targetId?
   const row = await prisma.trainingRun.findFirst({
     where: {
       id: targetId,
+      ...(projectId ? { trainingProjectId: projectId } : {}),
       status: "running",
     },
     orderBy: {
@@ -232,13 +243,19 @@ async function findRunningWorkerTarget(workerType: TrainingWorkerType, targetId?
   return row ? mapTrainingRunToTarget(row) : null;
 }
 
-async function findQueuedWorkerTarget(workerType: TrainingWorkerType, targetId?: string, targetType?: string) {
+async function findQueuedWorkerTarget(
+  workerType: TrainingWorkerType,
+  targetId?: string,
+  targetType?: string,
+  projectId?: string,
+) {
   if (workerType === "image_generation") {
     if (targetType && targetType !== "generationRun") return null;
     const row = await prisma.trainingGenerationTask.findFirst({
       where: {
         generationKind: "image_generation",
         id: targetId,
+        ...(projectId ? { trainingProjectId: projectId } : {}),
         status: "queued",
       },
       orderBy: {
@@ -252,6 +269,7 @@ async function findQueuedWorkerTarget(workerType: TrainingWorkerType, targetId?:
     const row = await prisma.trainingDatasetRevision.findFirst({
       where: {
         id: targetId,
+        ...(projectId ? { trainingProjectId: projectId } : {}),
         status: "draft",
       },
       orderBy: {
@@ -264,6 +282,7 @@ async function findQueuedWorkerTarget(workerType: TrainingWorkerType, targetId?:
   const row = await prisma.trainingRun.findFirst({
     where: {
       id: targetId,
+      ...(projectId ? { trainingProjectId: projectId } : {}),
       status: "queued",
     },
     orderBy: {
@@ -574,6 +593,7 @@ export async function leaseNextTrainingWorkerTask(input: unknown) {
     parsed.data.workerType,
     parsed.data.targetId,
     parsed.data.targetType,
+    parsed.data.projectId,
   );
   if (running) {
     return serializeWorkerTask(running, {
@@ -581,7 +601,7 @@ export async function leaseNextTrainingWorkerTask(input: unknown) {
     });
   }
 
-  if (await countWorkerTargets(parsed.data.workerType, "running") > 0) {
+  if (await countWorkerTargets(parsed.data.workerType, "running", parsed.data.projectId) > 0) {
     return null;
   }
 
@@ -589,6 +609,7 @@ export async function leaseNextTrainingWorkerTask(input: unknown) {
     parsed.data.workerType,
     parsed.data.targetId,
     parsed.data.targetType,
+    parsed.data.projectId,
   );
   if (!queued) return null;
 
