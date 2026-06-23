@@ -233,7 +233,7 @@ export function ResultsGrid({
         event.preventDefault();
         const toggleLightbox = (window as unknown as Record<string, (index?: number) => void>).__resultsGalleryToggleLightbox;
         if (toggleLightbox) {
-          toggleLightbox(0);
+          toggleLightbox();
         }
       }
       if (event.key === "x" || event.key === "X") {
@@ -280,6 +280,7 @@ export function ResultsGrid({
   return (
     <ResultsGalleryProvider
       allImages={continuousReviewEnabled ? continuousReviewImages : allImages}
+      defaultOpenSectionId={sectionId}
       onUndo={handleUndo}
     >
       {({ openImageLightbox, getImage, reviewImages, imageCount, pendingImageCount, isFeatured, isFeatured2, isCover }) => {

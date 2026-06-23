@@ -41,3 +41,21 @@ export function getLightboxPreloadCandidates<T extends { full: string }>(
 
   return candidates;
 }
+
+export function getNextPendingImageIndex<T extends { status: string }>(
+  images: T[],
+  currentIndex: number,
+): number | null {
+  if (images.length <= 1 || currentIndex < 0 || currentIndex >= images.length) {
+    return null;
+  }
+
+  for (let offset = 1; offset < images.length; offset += 1) {
+    const index = (currentIndex + offset) % images.length;
+    if (images[index]?.status === "pending") {
+      return index;
+    }
+  }
+
+  return null;
+}

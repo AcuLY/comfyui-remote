@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import {
+  getNextPendingImageIndex,
   getLightboxPreloadCandidates,
   LIGHTBOX_PRELOAD_AHEAD,
   reconcileReviewImagesWithOptimisticReviews,
@@ -477,6 +478,92 @@ test("section results can switch the lightbox to a project-wide continuous revie
     gallerySource,
     /第 \{current\.sectionSortOrder \+ 1\} 小节/,
     "lightbox header should show the section when navigating a continuous sequence",
+  );
+});
+
+test("section results opens the current section first image when continuous review is enabled", () => {
+  const gridSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",
+    "utf8",
+  );
+  const gallerySource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-gallery.tsx",
+    "utf8",
+  );
+  const providerUsage = sourceSlice(
+    gridSource,
+    "<ResultsGalleryProvider",
+    "</ResultsGalleryProvider>",
+  );
+  const pageShortcuts = sourceSlice(
+    gridSource,
+    "  // Keyboard shortcuts: page-level navigation and actions",
+    "  // Undo function",
+  );
+  const defaultOpenIndex = sourceSlice(
+    gallerySource,
+    "  const getDefaultOpenIndex = useCallback",
+    "  const toggleLightbox = useCallback",
+  );
+
+  assert.match(
+    providerUsage,
+    /defaultOpenSectionId=\{sectionId\}/,
+    "results grid should tell the provider which section owns the current page",
+  );
+  assert.match(
+    pageShortcuts,
+    /toggleLightbox\(\)/,
+    "I/D should ask the provider to open its default image instead of a project-wide index",
+  );
+  assert.doesNotMatch(
+    pageShortcuts,
+    /toggleLightbox\(0\)/,
+    "I/D must not open index 0 of the continuous project-wide sequence",
+  );
+  assert.match(
+    defaultOpenIndex,
+    /allImages\.findIndex\(\(image\) => image\.sectionId === defaultOpenSectionId\)/,
+    "the provider default should resolve the first current-section image inside the active sequence",
+  );
+});
+
+test("lightbox next pending index starts after the current image and wraps once", () => {
+  const images = [
+    image("image-a", "kept"),
+    image("image-b", "pending"),
+    image("image-c", "pending"),
+    image("image-d", "kept"),
+  ];
+
+  assert.equal(getNextPendingImageIndex(images, 0), 1);
+  assert.equal(getNextPendingImageIndex(images, 1), 2);
+  assert.equal(getNextPendingImageIndex(images, 2), 1);
+  assert.equal(getNextPendingImageIndex(images, 3), 1);
+  assert.equal(getNextPendingImageIndex([image("image-a", "pending")], 0), null);
+  assert.equal(getNextPendingImageIndex([image("image-a", "kept")], 0), null);
+});
+
+test("section results lightbox binds G to the next pending image in the active image sequence", () => {
+  const gallerySource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-gallery.tsx",
+    "utf8",
+  );
+  const keyboardShortcuts = sourceSlice(
+    gallerySource,
+    "      // Next image: F / ArrowRight",
+    "      // Keep + advance: J / W",
+  );
+
+  assert.match(
+    gallerySource,
+    /getNextPendingImageIndex/,
+    "results gallery should use the shared next-pending index helper",
+  );
+  assert.match(
+    keyboardShortcuts,
+    /key === "g"[\s\S]*key === "G"[\s\S]*goNextPending\(\)/,
+    "G should trigger next pending navigation while the lightbox is open",
   );
 });
 

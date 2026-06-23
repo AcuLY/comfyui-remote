@@ -17,6 +17,7 @@ import { censorImage } from "@/lib/actions";
 import { submitReviewMutation } from "@/lib/client-review-mutation";
 import {
   getLightboxPreloadCandidates,
+  getNextPendingImageIndex,
   LIGHTBOX_PRELOAD_AHEAD,
   reconcileReviewImagesWithOptimisticReviews,
 } from "@/lib/review-lightbox-state";
@@ -57,10 +58,12 @@ type ManualCensorUploadResponse = {
 
 export function ResultsGalleryProvider({
   allImages: initialImages,
+  defaultOpenSectionId,
   children,
   onUndo,
 }: {
   allImages: GalleryImage[];
+  defaultOpenSectionId?: string;
   children: (ctx: {
     openLightbox: (index: number) => void;
     openImageLightbox: (imageId: string) => void;
@@ -187,6 +190,10 @@ export function ResultsGalleryProvider({
   const goNext = useCallback(() => {
     setCurrentIndex((index) => (index < allImages.length - 1 ? index + 1 : 0));
   }, [allImages.length]);
+
+  const goNextPending = useCallback(() => {
+    setCurrentIndex((index) => getNextPendingImageIndex(allImages, index) ?? index);
+  }, [allImages]);
 
   const setImageMarker = useCallback(
     (imageId: string, field: MarkerField, value: boolean) => {
@@ -554,6 +561,11 @@ export function ResultsGalleryProvider({
         if (allImages.length > 1) goNext();
         return;
       }
+      if (key === "g" || key === "G") {
+        event.preventDefault();
+        goNextPending();
+        return;
+      }
 
       // Keep + advance: J / W
       if (key === "j" || key === "J" || key === "w" || key === "W") {
@@ -609,7 +621,7 @@ export function ResultsGalleryProvider({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [allImages.length, goNext, goPrev, open, quickCensorMode, restoreImages, reviewCurrent, toggleMarker, onUndo, current]);
+  }, [allImages.length, goNext, goNextPending, goPrev, open, quickCensorMode, restoreImages, reviewCurrent, toggleMarker, onUndo, current]);
 
   // Reset censored view when navigating
   useEffect(() => {
@@ -647,17 +659,27 @@ export function ResultsGalleryProvider({
     [imageById],
   );
 
+  const getDefaultOpenIndex = useCallback(() => {
+    if (allImages.length === 0) return -1;
+    if (defaultOpenSectionId) {
+      const sectionIndex = allImages.findIndex((image) => image.sectionId === defaultOpenSectionId);
+      if (sectionIndex >= 0) return sectionIndex;
+    }
+    return 0;
+  }, [allImages, defaultOpenSectionId]);
+
   const toggleLightbox = useCallback(
-    (index: number = 0) => {
+    (index?: number) => {
       if (open) {
         setOpen(false);
       } else {
-        if (!allImages[index]) return;
-        setCurrentIndex(index);
+        const targetIndex = typeof index === "number" ? index : getDefaultOpenIndex();
+        if (!allImages[targetIndex]) return;
+        setCurrentIndex(targetIndex);
         setOpen(true);
       }
     },
-    [open, allImages],
+    [open, allImages, getDefaultOpenIndex],
   );
 
   // Expose toggleLightbox to window for cross-component communication
