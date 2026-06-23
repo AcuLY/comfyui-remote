@@ -49,6 +49,15 @@ import { getActiveComfyApiUrl } from "@/server/services/comfy-target";
 const log = createLogger({ module: "run-executor" });
 const FINALIZING_OUTPUT_DIR_PREFIX = "__finalizing__:";
 const FINALIZING_CLAIM_TTL_MS = 30 * 60 * 1000;
+const DEFAULT_MAX_RECOVERY_POLLS = 12;
+
+function readMaxRecoveryPolls() {
+  const raw = process.env.COMFY_MANAGER_MAX_RECOVERY_POLLS;
+  if (!raw) return DEFAULT_MAX_RECOVERY_POLLS;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return DEFAULT_MAX_RECOVERY_POLLS;
+  return parsed;
+}
 
 function buildGenerationRunWhere(where: Prisma.RunWhereInput = {}): Prisma.RunWhereInput {
   return {
@@ -727,6 +736,7 @@ export async function recoverStaleRuns(): Promise<void> {
       return; // env not configured, skip
     }
 
+    const maxRecoveryPolls = readMaxRecoveryPolls();
     const staleRuns = await db.run.findMany({
       where: {
         status: { in: [RunStatus.queued, RunStatus.running] },
@@ -734,6 +744,12 @@ export async function recoverStaleRuns(): Promise<void> {
         project: buildGenerationProjectWhere(),
       },
       select: { id: true, comfyPromptId: true },
+      orderBy: [
+        { status: "desc" },
+        { startedAt: "asc" },
+        { createdAt: "asc" },
+        { id: "asc" },
+      ],
     });
 
     const unsubmittedQueuedRuns = await db.run.findMany({
@@ -764,12 +780,20 @@ export async function recoverStaleRuns(): Promise<void> {
 
     if (staleRuns.length === 0) return;
 
-    // Filter out runs that already have an active polling loop
-    const needsRecovery = staleRuns.filter((r) => r.comfyPromptId && activePolls.get(r.id) !== r.comfyPromptId);
+    // Filter out runs that already have an active polling loop before applying
+    // the recovery cap, otherwise already-owned rows can starve later runs.
+    const recoveryCandidates = staleRuns.filter((r) => r.comfyPromptId && activePolls.get(r.id) !== r.comfyPromptId);
+    const needsRecovery = recoveryCandidates.slice(0, maxRecoveryPolls);
 
     if (needsRecovery.length === 0) return;
 
-    log.info("Recovering stale runs", { count: needsRecovery.length });
+    log.info("Recovering stale runs", {
+      count: needsRecovery.length,
+      limit: maxRecoveryPolls,
+      candidateCount: recoveryCandidates.length,
+      alreadyPollingCount: staleRuns.length - recoveryCandidates.length,
+      remainingCandidateCount: Math.max(recoveryCandidates.length - needsRecovery.length, 0),
+    });
 
     const RECOVERY_CONCURRENCY = 3;
     for (let i = 0; i < needsRecovery.length; i += RECOVERY_CONCURRENCY) {
