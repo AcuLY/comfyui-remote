@@ -50,8 +50,6 @@ function isPublicPath(pathname: string): boolean {
   if (pathname === "/login" || pathname === "/favicon.ico") return true;
   if (pathname.startsWith("/api/auth/")) return true;
   if (pathname.startsWith("/_next")) return true;
-  if (pathname.startsWith("/api/health")) return true;
-  if (pathname.startsWith("/api/images/")) return true;
   return false;
 }
 
@@ -112,6 +110,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/).*)",
   ],
 };
