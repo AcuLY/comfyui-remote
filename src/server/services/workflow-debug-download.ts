@@ -285,7 +285,7 @@ function buildDebugGraphWorkflow(workflow: JsonRecord): FrontendGraphWorkflow {
         output("VAE", "VAE", 1, 2),
       ],
       properties: coreProperties("CheckpointLoaderSimple"),
-      widgets_values: [stringInput(workflow, "1", "ckpt_name", "oneObsession_v19Atypical.safetensors")],
+      widgets_values: [stringInput(workflow, "1", "ckpt_name", "waiIllustriousSDXL_v170.safetensors")],
     }),
     createNode({
       id: 3,

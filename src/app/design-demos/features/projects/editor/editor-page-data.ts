@@ -3,7 +3,7 @@ import { demoHref } from "../../../routing";
 import type { LoraRowData, PresetBinding, PromptBlockRowData } from "./editor-parts";
 
 const CHECKPOINT_OPTIONS_FALLBACK = [
-  "oneObsession_v19Atypical.safetensors",
+  "waiIllustriousSDXL_v170.safetensors",
   "realisticVision_v60B1.safetensors",
   "dreamshaper_8.safetensors",
   "animagineXL_v30.safetensors",
