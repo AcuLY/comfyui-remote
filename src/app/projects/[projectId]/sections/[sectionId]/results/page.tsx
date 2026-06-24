@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight, Images, Pencil } from "lucide-react";
+import { ArrowLeft, Images, Pencil } from "lucide-react";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { SectionCard } from "@/components/section-card";
@@ -61,17 +61,6 @@ export default async function SectionResultsPage({
             <Images className="size-3.5" />
             项目结果
           </HardNavigationLink>
-          {data.nextPendingSection && (
-            <HardNavigationLink
-              href={`/projects/${projectId}/sections/${data.nextPendingSection.id}/results`}
-              data-nav-next-pending
-              title={data.nextPendingSection.name}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-300 transition hover:bg-amber-500/20 hover:text-amber-200"
-            >
-              <ArrowRight className="size-3.5" />
-              下一个待审
-            </HardNavigationLink>
-          )}
           <NeighborNavigation
             previousHref={data.previousSection ? `/projects/${projectId}/sections/${data.previousSection.id}/results` : null}
             nextHref={data.nextSection ? `/projects/${projectId}/sections/${data.nextSection.id}/results` : null}

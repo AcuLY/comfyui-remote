@@ -16,10 +16,14 @@ import { QuickCensorCanvas } from "@/components/quick-censor-canvas";
 import { censorImage } from "@/lib/actions";
 import { submitReviewMutation } from "@/lib/client-review-mutation";
 import {
+  clearSharedOptimisticReviewAction,
   getLightboxPreloadCandidates,
   getNextPendingImageIndex,
+  getNextPendingSectionId,
+  getSharedOptimisticReviewState,
   LIGHTBOX_PRELOAD_AHEAD,
   reconcileReviewImagesWithOptimisticReviews,
+  setSharedOptimisticReviewAction,
 } from "@/lib/review-lightbox-state";
 
 type GalleryImage = {
@@ -73,6 +77,7 @@ export function ResultsGalleryProvider({
     reviewImages: (action: ReviewAction, imageIds: string[]) => void;
     imageCount: number;
     pendingImageCount: number;
+    nextPendingSectionHref: string | null;
     isFeatured: (imageId: string) => boolean;
     isFeatured2: (imageId: string) => boolean;
     isCover: (imageId: string) => boolean;
@@ -82,7 +87,13 @@ export function ResultsGalleryProvider({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [allImages, setAllImages] = useState(initialImages);
+  const [allImages, setAllImages] = useState(() =>
+    reconcileReviewImagesWithOptimisticReviews(
+      initialImages,
+      getSharedOptimisticReviewState(),
+    ),
+  );
+  const [routeSectionId, setRouteSectionId] = useState<string | null>(defaultOpenSectionId ?? null);
   const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(new Set());
   const [togglingMarker, setTogglingMarker] = useState<MarkerField | null>(null);
   const [pendingReviewActions, setPendingReviewActions] = useState<Map<string, ReviewAction>>(new Map());
@@ -90,7 +101,9 @@ export function ResultsGalleryProvider({
   const [quickCensorMode, setQuickCensorMode] = useState(false);
   const preloadedImageUrlsRef = useRef<Set<string>>(new Set());
   const preloadImagesRef = useRef<HTMLImageElement[]>([]);
-  const optimisticReviewsRef = useRef<Map<string, ReviewAction>>(new Map());
+  const optimisticReviewsRef = useRef<Map<string, ReviewAction>>(
+    new Map(getSharedOptimisticReviewState()),
+  );
   const pendingReviewIdsRef = useRef<Set<string>>(new Set());
   const knownImageByIdRef = useRef<Map<string, GalleryImage>>(new Map());
   const imageOrderByIdRef = useRef<Map<string, number>>(new Map());
@@ -98,6 +111,10 @@ export function ResultsGalleryProvider({
   const [, startTransition] = useTransition();
 
   const current = allImages[currentIndex];
+
+  useEffect(() => {
+    setRouteSectionId(defaultOpenSectionId ?? null);
+  }, [defaultOpenSectionId]);
 
   useEffect(() => {
     currentImageIdRef.current = current?.id ?? null;
@@ -108,6 +125,9 @@ export function ResultsGalleryProvider({
       knownImageByIdRef.current.set(image.id, image);
       imageOrderByIdRef.current.set(image.id, index);
     });
+    for (const [imageId, action] of getSharedOptimisticReviewState()) {
+      optimisticReviewsRef.current.set(imageId, action);
+    }
     const reconciled = reconcileReviewImagesWithOptimisticReviews(
       initialImages,
       optimisticReviewsRef.current,
@@ -135,6 +155,27 @@ export function ResultsGalleryProvider({
     () => allImages.reduce((count, image) => count + (image.status === "pending" ? 1 : 0), 0),
     [allImages],
   );
+  const sectionOrder = useMemo(() => {
+    const seenSectionIds = new Set<string>();
+    const sectionIds: string[] = [];
+    for (const image of initialImages) {
+      if (seenSectionIds.has(image.sectionId)) continue;
+      seenSectionIds.add(image.sectionId);
+      sectionIds.push(image.sectionId);
+    }
+    return sectionIds;
+  }, [initialImages]);
+  const nextPendingSectionId = useMemo(
+    () => getNextPendingSectionId(
+      allImages,
+      routeSectionId ?? defaultOpenSectionId,
+      sectionOrder,
+    ),
+    [allImages, defaultOpenSectionId, routeSectionId, sectionOrder],
+  );
+  const nextPendingSectionHref = nextPendingSectionId
+    ? `/projects/${projectId}/sections/${nextPendingSectionId}/results`
+    : null;
   const imageLoaded = current ? loadedImageIds.has(current.id) : false;
   const busy = Boolean(togglingMarker);
   const currentReviewingAction = current
@@ -245,6 +286,7 @@ export function ResultsGalleryProvider({
 
     for (const imageId of uniqueImageIds) {
       optimisticReviewsRef.current.delete(imageId);
+      clearSharedOptimisticReviewAction(imageId);
       pendingReviewIdsRef.current.delete(imageId);
     }
 
@@ -399,6 +441,7 @@ export function ResultsGalleryProvider({
           }
         }
         optimisticReviewsRef.current.set(imageId, action);
+        setSharedOptimisticReviewAction(imageId, action);
         addPendingReviewAction(imageId, action);
       }
 
@@ -418,8 +461,10 @@ export function ResultsGalleryProvider({
             const previousAction = previousOptimisticActions.get(imageId);
             if (previousAction) {
               optimisticReviewsRef.current.set(imageId, previousAction);
+              setSharedOptimisticReviewAction(imageId, previousAction);
             } else {
               optimisticReviewsRef.current.delete(imageId);
+              clearSharedOptimisticReviewAction(imageId);
             }
           }
 
@@ -473,6 +518,7 @@ export function ResultsGalleryProvider({
         imageOrderByIdRef.current.set(imageId, currentIndex);
       }
       optimisticReviewsRef.current.set(imageId, action);
+      setSharedOptimisticReviewAction(imageId, action);
       addPendingReviewAction(imageId, action);
 
       if (action === "keep") {
@@ -503,8 +549,10 @@ export function ResultsGalleryProvider({
         .catch((error) => {
           if (previousOptimisticAction) {
             optimisticReviewsRef.current.set(imageId, previousOptimisticAction);
+            setSharedOptimisticReviewAction(imageId, previousOptimisticAction);
           } else {
             optimisticReviewsRef.current.delete(imageId);
+            clearSharedOptimisticReviewAction(imageId);
           }
 
           if (action === "keep") {
@@ -530,6 +578,7 @@ export function ResultsGalleryProvider({
   const closeLightbox = useCallback(() => {
     setOpen(false);
     if (current && defaultOpenSectionId && current.sectionId !== defaultOpenSectionId) {
+      setRouteSectionId(current.sectionId);
       router.replace(`/projects/${projectId}/sections/${current.sectionId}/results`);
     }
   }, [current, defaultOpenSectionId, projectId, router]);
@@ -680,7 +729,7 @@ export function ResultsGalleryProvider({
   const toggleLightbox = useCallback(
     (index?: number) => {
       if (open) {
-        setOpen(false);
+        closeLightbox();
       } else {
         const targetIndex = typeof index === "number" ? index : getDefaultOpenIndex();
         if (!allImages[targetIndex]) return;
@@ -688,7 +737,7 @@ export function ResultsGalleryProvider({
         setOpen(true);
       }
     },
-    [open, allImages, getDefaultOpenIndex],
+    [open, allImages, closeLightbox, getDefaultOpenIndex],
   );
 
   // Expose toggleLightbox to window for cross-component communication
@@ -725,6 +774,7 @@ export function ResultsGalleryProvider({
         reviewImages,
         imageCount: allImages.length,
         pendingImageCount,
+        nextPendingSectionHref,
         isFeatured,
         isFeatured2,
         isCover,

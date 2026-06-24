@@ -44,7 +44,7 @@ test("image-heavy production pages use document navigation for primary route exi
     ["src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx", "href={returnHref}"],
     ["src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx", "href={`/projects/${projectId}/sections/${sectionId}`}"],
     ["src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx", "href={`/projects/${projectId}/results`}"],
-    ["src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx", "href={`/projects/${projectId}/sections/${data.nextPendingSection.id}/results`}"],
+    ["src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx", "href={nextPendingSectionHref}"],
     ["src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx", "href={`/queue/${run.id}`}"],
     ["src/app/queue/queue-page-client.tsx", "href={`/queue/${run.id}`}"],
     ["src/app/queue/[runId]/page.tsx", "href={`/queue#run-${runId}`}"],
@@ -67,11 +67,11 @@ test("shared neighbor navigation can opt into document navigation", () => {
 });
 
 test("section results page exposes next pending section navigation as a visible button", () => {
-  const source = readSource("src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx");
+  const source = readSource("src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx");
 
   assert.match(
     source,
-    /data\.nextPendingSection && \([\s\S]*<HardNavigationLink[\s\S]*href=\{`\/projects\/\$\{projectId\}\/sections\/\$\{data\.nextPendingSection\.id\}\/results`\}[\s\S]*data-nav-next-pending[\s\S]*下一个待审/,
+    /nextPendingSectionHref && \([\s\S]*<HardNavigationLink[\s\S]*href=\{nextPendingSectionHref\}[\s\S]*data-nav-next-pending[\s\S]*下一待审/,
     "the G shortcut target should also be rendered as a visible next-pending button",
   );
   assert.doesNotMatch(

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, useEffect, useCallback, useMemo } from "react";
 import {
+  ArrowRight,
   Check,
   CheckSquare,
   ClipboardCheck,
@@ -286,7 +287,7 @@ export function ResultsGrid({
       defaultOpenSectionId={sectionId}
       onUndo={handleUndo}
     >
-      {({ openImageLightbox, getImage, reviewImages, imageCount, pendingImageCount, isFeatured, isFeatured2, isCover }) => {
+      {({ openImageLightbox, getImage, reviewImages, imageCount, pendingImageCount, nextPendingSectionHref, isFeatured, isFeatured2, isCover }) => {
         return (
         <div className="space-y-6">
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -306,6 +307,16 @@ export function ResultsGrid({
                   disabled={isPending}
                   size="sm"
                 />
+                {nextPendingSectionHref && (
+                  <HardNavigationLink
+                    href={nextPendingSectionHref}
+                    data-nav-next-pending
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-300 transition hover:bg-amber-500/20 hover:text-amber-200"
+                  >
+                    <ArrowRight className="size-3" />
+                    下一待审
+                  </HardNavigationLink>
+                )}
                 <button
                   type="button"
                   role="switch"

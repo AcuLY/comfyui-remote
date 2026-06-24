@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { strict as assert } from "node:assert";
 import {
   getNextPendingImageIndex,
+  getNextPendingSectionId,
   getLightboxPreloadCandidates,
   LIGHTBOX_PRELOAD_AHEAD,
   reconcileReviewImagesWithOptimisticReviews,
@@ -564,6 +565,92 @@ test("section results lightbox binds G to the next pending image in the active i
     keyboardShortcuts,
     /key === "g"[\s\S]*key === "G"[\s\S]*goNextPending\(\)/,
     "G should trigger next pending navigation while the lightbox is open",
+  );
+});
+
+test("section results page-level G uses optimistic next pending section state", () => {
+  const staleImages = [
+    { ...image("section-a-image", "pending"), sectionId: "section-a" },
+    { ...image("section-b-image", "pending"), sectionId: "section-b" },
+    { ...image("section-c-image", "pending"), sectionId: "section-c" },
+  ];
+  const optimisticReviews: OptimisticReviewState = new Map([
+    ["section-b-image", "keep"],
+  ]);
+  const reconciled = reconcileReviewImagesWithOptimisticReviews(
+    staleImages,
+    optimisticReviews,
+  );
+
+  assert.equal(
+    getNextPendingSectionId(
+      reconciled,
+      "section-a",
+      ["section-a", "section-b", "section-c"],
+    ),
+    "section-c",
+    "page-level G should skip a section that is only pending in stale server data",
+  );
+});
+
+test("section results renders the page-level G target from the provider optimistic state", () => {
+  const pageSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx",
+    "utf8",
+  );
+  const gridSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",
+    "utf8",
+  );
+  const gallerySource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-gallery.tsx",
+    "utf8",
+  );
+  const childContext = sourceSlice(
+    gallerySource,
+    "children: (ctx: {",
+    "  onUndo?: (helpers: ResultsGalleryUndoHelpers) => Promise<void>;",
+  );
+  const providerUsage = sourceSlice(
+    gridSource,
+    "<ResultsGalleryProvider",
+    "</ResultsGalleryProvider>",
+  );
+  const pageShortcuts = sourceSlice(
+    gridSource,
+    "  // Keyboard shortcuts: page-level navigation and actions",
+    "  // Undo function",
+  );
+
+  assert.match(
+    gallerySource,
+    /getSharedOptimisticReviewState/,
+    "section results provider should seed route-remounted pages from shared optimistic review state",
+  );
+  assert.match(
+    childContext,
+    /nextPendingSectionHref: string \| null/,
+    "provider should expose the next pending section href after applying optimistic review state",
+  );
+  assert.match(
+    providerUsage,
+    /nextPendingSectionHref/,
+    "results grid should render the next-pending target from provider state",
+  );
+  assert.match(
+    gridSource,
+    /nextPendingSectionHref && \([\s\S]*<HardNavigationLink[\s\S]*href=\{nextPendingSectionHref\}[\s\S]*data-nav-next-pending/,
+    "the visible next-pending button should use the optimistic provider href",
+  );
+  assert.match(
+    pageShortcuts,
+    /document\.querySelector<HTMLAnchorElement>\('\[data-nav-next-pending\]'\)/,
+    "page-level G should click the provider-rendered next-pending target",
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /data-nav-next-pending/,
+    "the server page header should not keep a stale next-pending shortcut target",
   );
 });
 
