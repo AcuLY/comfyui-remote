@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { writeFile, mkdtemp } from "node:fs/promises";
+import { readFile, writeFile, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -172,4 +172,27 @@ test("SSH tunnel readiness waits until the forwarded local port is listening", a
   assert.equal(ready, true);
   assert.equal(attempts, 3);
   assert.deepEqual(sleeps, [10, 10]);
+});
+
+test("SSH tunnel startup failure cleans up the tracked child so later calls retry", async () => {
+  const source = await readFile(join(process.cwd(), "src/server/services/comfy-ssh.ts"), "utf8");
+  const failureBranchStart = source.indexOf("if (!ready) {");
+  assert.notEqual(failureBranchStart, -1, "ensureSshTunnel should check the readiness result");
+  const failureBranch = source.slice(failureBranchStart, source.indexOf("\n  }\n}", failureBranchStart));
+
+  assert.match(
+    failureBranch,
+    /tunnelProcesses\.delete\(target\.id\)/,
+    "failed tunnel startup should not leave the child tracked as active",
+  );
+  assert.match(
+    failureBranch,
+    /terminateChildProcess\(child\)/,
+    "failed tunnel startup should terminate the child process before throwing",
+  );
+  assert.match(
+    source,
+    /stderr/i,
+    "failed tunnel startup should preserve SSH stderr or exit context for diagnostics",
+  );
 });

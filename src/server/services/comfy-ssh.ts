@@ -139,6 +139,28 @@ export async function runSshCommand(
   });
 }
 
+function bufferedText(chunks: Buffer[]) {
+  return Buffer.concat(chunks).toString("utf8").trim();
+}
+
+function terminateChildProcess(child: ChildProcess) {
+  if (child.killed || child.exitCode !== null) return;
+  if (process.platform !== "win32" && child.pid) {
+    try {
+      process.kill(-child.pid, "SIGTERM");
+      return;
+    } catch {
+      // Fall back to killing the direct child if process-group termination fails.
+    }
+  }
+  child.kill();
+}
+
+function detachStderrPipe(child: ChildProcess) {
+  child.stderr?.removeAllListeners("data");
+  (child.stderr as (typeof child.stderr & { unref?: () => void }) | null)?.unref?.();
+}
+
 export async function ensureSshTunnel(target: SshComfyTarget) {
   if (!target.tunnelAutoStart) return;
 
@@ -155,17 +177,57 @@ export async function ensureSshTunnel(target: SshComfyTarget) {
   const child = spawn("ssh", buildSshTunnelArgs(target), {
     windowsHide: true,
     detached: true,
-    stdio: "ignore",
+    stdio: ["ignore", "ignore", "pipe"],
   });
-  child.unref();
+  const stderr: Buffer[] = [];
+  let spawnError: unknown = null;
+  let exitCode: number | null = null;
+  let exitSignal: NodeJS.Signals | null = null;
+
+  child.stderr?.on("data", (chunk) => {
+    stderr.push(Buffer.from(chunk));
+  });
+  const childFailed = new Promise<false>((resolve) => {
+    child.once("error", (error) => {
+      spawnError = error;
+      resolve(false);
+    });
+    child.once("exit", (code, signal) => {
+      exitCode = code;
+      exitSignal = signal;
+      resolve(false);
+    });
+  });
+  child.once("close", () => {
+    if (tunnelProcesses.get(target.id) === child) {
+      tunnelProcesses.delete(target.id);
+    }
+  });
   tunnelProcesses.set(target.id, child);
 
-  const ready = await waitForSshTunnelPort(
-    () => isPortListening(local.hostname, local.port),
-  );
+  const ready = await Promise.race([
+    waitForSshTunnelPort(() => isPortListening(local.hostname, local.port)),
+    childFailed,
+  ]);
   if (!ready) {
-    throw new Error(`SSH tunnel did not start listening on ${local.hostname}:${local.port}`);
+    tunnelProcesses.delete(target.id);
+    terminateChildProcess(child);
+    const stderrText = bufferedText(stderr);
+    const details = [
+      spawnError instanceof Error ? `spawn error: ${spawnError.message}` : null,
+      exitCode !== null ? `ssh exited with code ${exitCode}` : null,
+      exitSignal ? `ssh exited with signal ${exitSignal}` : null,
+      stderrText ? `stderr: ${stderrText}` : null,
+    ].filter(Boolean);
+    child.stderr?.removeAllListeners("data");
+    child.stderr?.destroy();
+    throw new Error(
+      `SSH tunnel did not start listening on ${local.hostname}:${local.port}${details.length ? `: ${details.join("; ")}` : ""}`,
+    );
   }
+
+  detachStderrPipe(child);
+  child.unref();
 }
 
 export async function ensureActiveComfySshTunnel(apiUrl?: string) {
