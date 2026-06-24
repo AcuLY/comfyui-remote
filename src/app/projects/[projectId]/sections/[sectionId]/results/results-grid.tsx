@@ -63,6 +63,7 @@ type ResultsGalleryUndoHelpers = {
 export function ResultsGrid({
   runs,
   continuousReviewImages,
+  projectId,
   sectionId,
   sectionName,
   sectionSortOrder,
@@ -70,6 +71,7 @@ export function ResultsGrid({
 }: {
   runs: RunData[];
   continuousReviewImages: GalleryImageData[];
+  projectId: string;
   sectionId: string;
   sectionName: string;
   sectionSortOrder: number;
@@ -280,6 +282,7 @@ export function ResultsGrid({
   return (
     <ResultsGalleryProvider
       allImages={continuousReviewEnabled ? continuousReviewImages : allImages}
+      projectId={projectId}
       defaultOpenSectionId={sectionId}
       onUndo={handleUndo}
     >

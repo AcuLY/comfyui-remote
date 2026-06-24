@@ -567,6 +567,68 @@ test("section results lightbox binds G to the next pending image in the active i
   );
 });
 
+test("section results lazily switches to the current image section route when closing cross-section lightbox", () => {
+  const gridSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",
+    "utf8",
+  );
+  const gallerySource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-gallery.tsx",
+    "utf8",
+  );
+  const providerUsage = sourceSlice(
+    gridSource,
+    "<ResultsGalleryProvider",
+    "</ResultsGalleryProvider>",
+  );
+  const closeLightbox = sourceSlice(
+    gallerySource,
+    "  const closeLightbox = useCallback",
+    "  const openLightbox = useCallback",
+  );
+  const keyboardShortcuts = sourceSlice(
+    gallerySource,
+    "      // Close lightbox: I / D / Escape",
+    "      // Prev image: S / ArrowLeft",
+  );
+  const lightboxShell = sourceSlice(
+    gallerySource,
+    "{open && current && (",
+    "<div className=\"grid h-[calc(100dvh-8.5rem)]",
+  );
+
+  assert.match(
+    providerUsage,
+    /projectId=\{projectId\}/,
+    "results grid should pass the project id so the provider can build section result routes",
+  );
+  assert.match(
+    closeLightbox,
+    /current\.sectionId !== defaultOpenSectionId/,
+    "closing should only navigate when the current image belongs to a different section",
+  );
+  assert.match(
+    closeLightbox,
+    /router\.replace\(`\/projects\/\$\{projectId\}\/sections\/\$\{current\.sectionId\}\/results`\)/,
+    "closing a cross-section image should navigate to that image's section results route",
+  );
+  assert.doesNotMatch(
+    gallerySource,
+    /window\.history\.(?:pushState|replaceState)/,
+    "continuous review should not mutate the route while the user is still browsing the lightbox",
+  );
+  assert.match(
+    keyboardShortcuts,
+    /closeLightbox\(\)/,
+    "I, D, and Escape should use the lazy route-aware close handler",
+  );
+  assert.match(
+    lightboxShell,
+    /onClick=\{closeLightbox\}/,
+    "backdrop close should use the lazy route-aware close handler",
+  );
+});
+
 test("section results render runs without visible images at the collapsed bottom", () => {
   const gridSource = readFileSync(
     "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",

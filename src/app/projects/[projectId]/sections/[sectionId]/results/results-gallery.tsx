@@ -58,11 +58,13 @@ type ManualCensorUploadResponse = {
 
 export function ResultsGalleryProvider({
   allImages: initialImages,
+  projectId,
   defaultOpenSectionId,
   children,
   onUndo,
 }: {
   allImages: GalleryImage[];
+  projectId: string;
   defaultOpenSectionId?: string;
   children: (ctx: {
     openLightbox: (index: number) => void;
@@ -525,6 +527,13 @@ export function ResultsGalleryProvider({
     [allImages.length, busy, current, currentIndex, goNext],
   );
 
+  const closeLightbox = useCallback(() => {
+    setOpen(false);
+    if (current && defaultOpenSectionId && current.sectionId !== defaultOpenSectionId) {
+      router.replace(`/projects/${projectId}/sections/${current.sectionId}/results`);
+    }
+  }, [current, defaultOpenSectionId, projectId, router]);
+
   useEffect(() => {
     if (!open) return;
     const handler = (event: KeyboardEvent) => {
@@ -544,10 +553,10 @@ export function ResultsGalleryProvider({
       // Close lightbox: I / D / Escape
       if (key === "i" || key === "I" || key === "d" || key === "D") {
         event.preventDefault();
-        setOpen(false);
+        closeLightbox();
         return;
       }
-      if (key === "Escape") { setOpen(false); return; }
+      if (key === "Escape") { closeLightbox(); return; }
 
       // Prev image: S / ArrowLeft
       if (key === "s" || key === "S" || key === "ArrowLeft") {
@@ -621,7 +630,7 @@ export function ResultsGalleryProvider({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [allImages.length, goNext, goNextPending, goPrev, open, quickCensorMode, restoreImages, reviewCurrent, toggleMarker, onUndo, current]);
+  }, [allImages.length, closeLightbox, goNext, goNextPending, goPrev, open, quickCensorMode, restoreImages, reviewCurrent, toggleMarker, onUndo, current]);
 
   // Reset censored view when navigating
   useEffect(() => {
@@ -725,7 +734,7 @@ export function ResultsGalleryProvider({
         <div
           data-results-lightbox
           className="fixed inset-0 z-[100] flex flex-col bg-black/90 backdrop-blur-sm"
-          onClick={() => setOpen(false)}
+          onClick={closeLightbox}
         >
           <div className="z-10 flex items-center justify-between gap-3 px-3 py-3 sm:px-4">
             <div className="flex min-w-0 items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs text-zinc-300">
@@ -769,7 +778,7 @@ export function ResultsGalleryProvider({
               className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
               onClick={(event) => {
                 event.stopPropagation();
-                setOpen(false);
+                closeLightbox();
               }}
               title="关闭"
             >

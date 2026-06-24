@@ -98,6 +98,7 @@ export default async function SectionResultsPage({
           key={`${sectionId}:${data.batchSize ?? 2}`}
           runs={data.runs}
           continuousReviewImages={data.continuousReviewImages}
+          projectId={projectId}
           sectionId={sectionId}
           sectionName={data.sectionName}
           sectionSortOrder={data.sectionSortOrder}
