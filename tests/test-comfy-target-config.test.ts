@@ -130,6 +130,17 @@ test("SSH command builders use argv arrays and preserve spaces through shell quo
   ]);
   assert.deepEqual(buildSshTunnelArgs(target), [
     "-N",
+    "-T",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ExitOnForwardFailure=yes",
+    "-o",
+    "ServerAliveInterval=15",
+    "-o",
+    "ServerAliveCountMax=3",
+    "-o",
+    "TCPKeepAlive=yes",
     "-L",
     "127.0.0.1:18188:127.0.0.1:8188",
     "-p",

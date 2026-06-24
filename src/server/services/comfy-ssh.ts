@@ -46,6 +46,17 @@ export function buildSshTunnelArgs(target: SshComfyTarget) {
   const local = getLocalTunnelEndpoint(target);
   return [
     "-N",
+    "-T",
+    "-o",
+    "BatchMode=yes",
+    "-o",
+    "ExitOnForwardFailure=yes",
+    "-o",
+    "ServerAliveInterval=15",
+    "-o",
+    "ServerAliveCountMax=3",
+    "-o",
+    "TCPKeepAlive=yes",
     "-L",
     `${local.hostname}:${local.port}:${target.remoteApiHost}:${target.remoteApiPort}`,
     ...buildSshBaseArgs(target),
