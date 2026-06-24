@@ -256,10 +256,8 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       }
       setCensoringProgress(data.censoringProgress ?? []);
       setCensoringHistory(data.censoringHistory ?? []);
-
-      router.refresh();
     });
-  }, [activeTab, queuePagination.page, queuePagination.pageSize, router]);
+  }, [activeTab, queuePagination.page, queuePagination.pageSize]);
 
   // Auto-poll
   useEffect(() => {
