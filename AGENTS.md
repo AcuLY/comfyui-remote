@@ -26,11 +26,19 @@ log in. Do not hard-code the token, print it in logs, or commit token values.
 轻量改动例外：
 
 - 只有当改动不改变运行时行为时，才可以视为轻量改动；典型例子包括纯样式微调、文案修正、原型/说明文档更新，或其他可直接人工查看且不需要上线验证的改动。
-- 像可独立验收的 bug 修复、小 feature、交互/路由/数据流变化，或任何会影响线上运行时行为的修改，即使代码量很小，也默认不属于轻量改动；除非用户明确要求“不提交”“不推送”或“先不部署”，否则应按完整流程收口。
-- 判断是否跳过提交和部署时，优先看改动是否需要通过提交、构建、重启或线上验证来证明结果；代码量只作为参考。
-- 轻量改动默认跳过代码检查、`git add`、`git commit`、`git push`、构建、部署和公网验证。
-- 只有当用户明确要求“检查”“提交”“推送”“部署”“这一批好了”等收口动作时，才对轻量改动执行对应流程。
+- 像可独立验收的 bug 修复、小 feature、交互/路由/数据流变化，或任何会影响线上运行时行为的修改，即使代码量很小，也默认不属于轻量改动；除非用户明确要求“不提交”“不推送”或“仅本地”，否则应按完整流程收口。
+- 判断是否跳过构建、重启、部署或线上验证时，优先看改动是否需要这些动作来证明结果；代码量只作为参考。
+- 轻量改动默认跳过代码检查、构建、部署和公网验证，但不要默认跳过提交和推送。
+- 只有当用户明确要求“检查”“部署”“这一批好了”等收口动作时，才对轻量改动执行对应检查、构建、部署或公网验证。
 - 如果无法确定改动是否轻量，或改动可能影响运行时行为，继续按完整部署流程执行。
+
+非部署提交推送规则：
+
+- “不部署”“先不部署”“只推送”只表示跳过构建、服务重启、部署和公网验证，不表示把已完成改动留在本地。
+- 每次修改 tracked 文件后，最终回复前必须运行 `git status --short`。如果只剩本次任务范围内的 tracked 改动，除非用户明确要求“不提交”“不推送”或“仅本地”，否则必须只暂存本次范围文件，`git commit` 并 `git push` 当前分支。
+- 如果工作区里混有无关改动，只能暂存本次范围文件；无法安全区分时停止并向用户说明具体文件，不要为了收口执行 `git add -A`。
+- 如果提交或推送失败，最终回复必须明确说明失败原因、当前 dirty/staged 文件和下一步需要什么；不要默默留下未提交改动。
+- 运行时文件、日志、数据库、`.next/`、`.deploy.lock/`、生成缓存和本地配置仍然不要提交，除非用户明确要求并确认范围。
 
 开发服务管理例外：
 
@@ -136,7 +144,7 @@ log in. Do not hard-code the token, print it in logs, or commit token values.
      $env:DB_PROVIDER="postgresql"; npx prisma db push
      ```
    - 不要在 SQLite 本机环境里强行执行 PostgreSQL `db push`，也不要为了通过命令临时改写 `.env` 里的数据库连接。
-6. 构建前先处理 Next build 竞争，再清理 `.next` 缓存目录。
+6. 构建前先处理 Next build 竞争，并保留 `.next/cache` 构建缓存。
    - 构建前必须检查当前项目目录下是否已有 `next build` 或 `.next\build` 子进程：
      ```powershell
      Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" |
@@ -145,12 +153,13 @@ log in. Do not hard-code the token, print it in logs, or commit token values.
    - 如果已有活跃 build 进程，不要启动第二个 build；等待该进程完成，或向用户报告当前构建进程信息后停止。
    - 如果 Next 报错 `Another next build process is already running`，先确认没有活跃 build / `.next\build` 进程；只有确认没有活跃构建后，才可以把 `.next\lock` 当作 stale lock 删除并重试。
    - build 失败时，把输出写入专门日志再诊断，例如 `build-prod.log`；先读取日志和 `.next/diagnostics`，不要连续盲目重试。
-   - 运行生产 build 前再清理 `.next` 缓存目录，否则增量 build 可能产生过期的 static chunk（浏览器请求旧 chunk hash 时返回 500）：
+   - 生产 build 默认保留 `.next/cache`。不要在构建前手动执行 `Remove-Item -Recurse -Force .next`，也不要删除 `.next/cache`；Next 16 的 `cleanDistDir` 默认会在 build 内部清理 `.next` 下的构建输出，同时排除 `cache`、`dev` 和 `lock`。
+   - 保留 `.next/cache` 后，旧 static chunk 风险通过 Next 自身的 dist 清理、新的 `BUILD_ID`、构建后服务重启和网站资源加载验证来控制。只有当验证发现旧 chunk 500 或构建产物明显损坏时，才针对 `.next/static`、`.next/server`、`.next/types`、manifest/trace 等非 cache 产物做定向诊断或清理；不要把 `.next/cache` 作为第一处理目标。
+   - 构建命令仍使用 webpack 路径：
    ```powershell
-   Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue
+   npx next build --webpack
    ```
-   然后执行 `npx next build` 构建项目。
-   - 如果当前项目目录下已经有通过 `npm run dev` / `next dev` 启动的开发服务，不要清理 `.next` 缓存目录；清理会破坏正在运行的 dev 服务缓存并导致 500。此时跳过 `.next` 清理，并优先使用当前 dev 服务做验证。
+   - 如果当前项目目录下已经有通过 `npm run dev` / `next dev` 启动的开发服务，不要清理 `.next` 或 `.next/dev`；清理会破坏正在运行的 dev 服务缓存并导致 500。此时跳过生产构建清理动作，并优先使用当前 dev 服务做验证。
 7. 部署完成后必须访问网站验证，确保没有 500 或资源加载错误，直到所有请求正常。
 8. 重启服务时，不要执行 `Stop-Process -Name node -Force`，因为这会误杀当前终端里的 CodeBuddy/Codex 进程。只停止当前项目目录下的 `next start` 进程，然后再启动服务：
    ```powershell
