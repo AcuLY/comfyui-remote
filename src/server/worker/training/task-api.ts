@@ -298,9 +298,6 @@ async function markWorkerTargetRunning(target: WorkerTarget, leaseOwner?: string
     const updated = await prisma.trainingGenerationTask.update({
       where: { id: target.id },
       data: {
-        paramsJson: {
-          ...(leaseOwner ? { leaseOwner } : {}),
-        },
         startedAt: now,
         status: "running",
         sectionRuns: {
@@ -785,10 +782,20 @@ export async function heartbeatTrainingWorkerTask(taskId: string, input: unknown
   if (!target) return null;
 
   if (target.workerType === "image_generation") {
+    const current = await prisma.trainingGenerationTask.findUnique({
+      where: { id: target.id },
+      select: { paramsJson: true },
+    });
+    const existingParams = current?.paramsJson
+      && typeof current.paramsJson === "object"
+      && !Array.isArray(current.paramsJson)
+      ? current.paramsJson as Record<string, unknown>
+      : {};
     await prisma.trainingGenerationTask.update({
       where: { id: target.id },
       data: {
         paramsJson: normalizeJson({
+          ...existingParams,
           heartbeatAt: new Date().toISOString(),
           leaseOwner: parsed.data.leaseOwner ?? null,
           progressJson: parsed.data.progressJson ?? null,
