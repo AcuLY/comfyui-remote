@@ -855,7 +855,7 @@ export function PresetForm({
           onBlur={handleAutoSave}
           rows={1}
           placeholder="可选备注..."
-          className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+          className="cm-text-editor cm-text-editor--compact w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
         />
       </label>
 
@@ -1022,7 +1022,7 @@ export function PresetForm({
             onBlur={handleAutoSave}
             rows={3}
             placeholder="positive prompt..."
-            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+            className="cm-text-editor w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
           />
         </div>
 
@@ -1051,7 +1051,7 @@ export function PresetForm({
             onBlur={handleAutoSave}
             rows={2}
             placeholder="negative prompt..."
-            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+            className="cm-text-editor w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
           />
         </div>
 

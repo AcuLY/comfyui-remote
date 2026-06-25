@@ -890,7 +890,7 @@ export function ModelFileManager({
                         }}
                         placeholder="别名/备注..."
                         rows={1}
-                        className="w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+                        className="cm-text-editor cm-text-editor--compact w-full resize-none rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
                       />
                       {kind === "lora" && (
                         <div className="flex items-center gap-1.5">

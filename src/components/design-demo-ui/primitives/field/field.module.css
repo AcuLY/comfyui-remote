@@ -113,9 +113,15 @@
 
 .multilineControl {
   height: auto;
-  min-height: 104px;
+  min-height: 120px;
   line-height: 1.4;
   padding: 7px 12px;
+}
+
+@media (max-width: 639px) {
+  .multilineControl {
+    min-height: clamp(144px, 34dvh, 208px);
+  }
 }
 
 .noResize {

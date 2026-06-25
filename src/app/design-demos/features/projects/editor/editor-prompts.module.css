@@ -278,7 +278,7 @@
   font-size: 12px;
   outline: none;
   resize: vertical;
-  min-height: 52px;
+  min-height: 7rem;
 }
 
 .pbFieldArea:focus {
@@ -478,6 +478,12 @@
   .pbRowActions {
     grid-column: 3;
     grid-row: 1;
+  }
+}
+
+@media (max-width: 639px) {
+  .pbFieldArea {
+    min-height: clamp(9rem, 34dvh, 13rem);
   }
 }
 

@@ -106,8 +106,14 @@
 }
 
 .textarea {
-  min-height: 96px;
+  min-height: 120px;
   resize: vertical;
+}
+
+@media (max-width: 639px) {
+  .textarea {
+    min-height: clamp(144px, 34dvh, 208px);
+  }
 }
 
 .textarea:focus {

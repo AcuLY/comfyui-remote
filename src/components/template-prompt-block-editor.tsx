@@ -198,7 +198,7 @@ function SortableBlockCard({
             value={editValue}
             onChange={(e) => onEditChange(e.target.value)}
             rows={3}
-            className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
+            className="cm-text-editor w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
           />
           <div className="flex gap-1.5">
             <button
@@ -386,7 +386,7 @@ export function TemplatePromptBlockEditor({ blocks, onChange, onDetachBinding, c
               onChange={(e) => setAddText(e.target.value)}
               rows={2}
               placeholder="提示词内容…"
-              className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+              className="cm-text-editor w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
             />
             <div className="flex gap-1.5">
               <button type="button" disabled={!addText.trim()} onClick={handleAdd}

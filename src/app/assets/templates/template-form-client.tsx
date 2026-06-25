@@ -508,7 +508,7 @@ export function TemplateFormClient({
             onBlur={handleMetaBlur}
             placeholder="模板用途说明"
             rows={2}
-            className="mt-1 w-full resize-none rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+            className="cm-text-editor cm-text-editor--compact mt-1 w-full resize-none rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
           />
         </div>
       </div>

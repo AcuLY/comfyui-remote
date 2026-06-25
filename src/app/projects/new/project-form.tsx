@@ -173,7 +173,7 @@ export function ProjectForm({ categories, folderId = null }: Props) {
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
           placeholder="项目备注..."
-          className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40"
+          className="cm-text-editor cm-text-editor--compact w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40"
         />
       </div>
 

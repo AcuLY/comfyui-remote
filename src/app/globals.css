@@ -235,6 +235,24 @@ button {
   cursor: pointer;
 }
 
+.cm-text-editor {
+  min-height: 7rem;
+}
+
+.cm-text-editor--compact {
+  min-height: 5rem;
+}
+
+@media (max-width: 639px) {
+  .cm-text-editor {
+    min-height: clamp(9rem, 34dvh, 13rem);
+  }
+
+  .cm-text-editor--compact {
+    min-height: clamp(6.5rem, 24dvh, 9rem);
+  }
+}
+
 :root[data-sfw-mode="on"] img[src*="/api/images/"],
 :root[data-sfw-mode="on"] img[src*="%2Fapi%2Fimages%2F"],
 :root[data-sfw-mode="on"] img[srcset*="/api/images/"],

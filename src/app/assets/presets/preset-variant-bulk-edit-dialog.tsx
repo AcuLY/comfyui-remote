@@ -223,7 +223,7 @@ export function PresetVariantBulkEditDialog({
                   onChange={(event) => setFindText(event.target.value)}
                   rows={3}
                   placeholder="black hair, blue eyes"
-                  className="w-full resize-y rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-100 outline-none focus:border-sky-500/40"
+                  className="cm-text-editor w-full resize-y rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-100 outline-none focus:border-sky-500/40"
                 />
               </label>
               <label className="space-y-1 text-xs text-zinc-400">
@@ -233,7 +233,7 @@ export function PresetVariantBulkEditDialog({
                   onChange={(event) => setReplaceText(event.target.value)}
                   rows={3}
                   placeholder="black hair, long hair, blue eyes"
-                  className="w-full resize-y rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-100 outline-none focus:border-sky-500/40"
+                  className="cm-text-editor w-full resize-y rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-100 outline-none focus:border-sky-500/40"
                 />
               </label>
             </div>

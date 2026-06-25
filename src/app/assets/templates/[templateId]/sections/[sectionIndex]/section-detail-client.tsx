@@ -733,7 +733,7 @@ export function TemplateSectionDetailClient({
           onBlur={saveOnBlur}
           placeholder="给这个模板小节添加备注"
           rows={3}
-          className="min-h-20 w-full resize-y rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm leading-5 text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
+          className="cm-text-editor cm-text-editor--compact min-h-20 w-full resize-y rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm leading-5 text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
         />
       </div>
 
