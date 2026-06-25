@@ -2703,6 +2703,85 @@ test("createProjectFromExisting clones source sections with target project prese
   );
 });
 
+test("createProjectFromExisting resolves cloned section configs for many preset-bound sections", async () => {
+  const seed = await seedProjectWithPreset();
+  const { resolveSectionConfigsById } = await import("../src/server/repositories/project-repository/helpers");
+  const presetBindings = [
+    {
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantA.id,
+    },
+  ];
+
+  for (let index = 1; index < 10; index += 1) {
+    const category = await prisma.presetCategory.create({
+      data: {
+        id: `${seed.key}-many-category-${index}`,
+        name: `${seed.key} Many Category ${index}`,
+        slug: `${seed.key}-many-category-${index}`,
+        positivePromptOrder: index,
+        lora1Order: index,
+        lora2Order: index,
+      },
+    });
+    const preset = await prisma.preset.create({
+      data: {
+        id: `${seed.key}-many-preset-${index}`,
+        categoryId: category.id,
+        name: `${seed.key} Many Preset ${index}`,
+        slug: `${seed.key}-many-preset-${index}`,
+      },
+    });
+    const variant = await prisma.presetVariant.create({
+      data: {
+        id: `${seed.key}-many-variant-${index}`,
+        presetId: preset.id,
+        name: "A",
+        slug: `${seed.key}-many-variant-${index}`,
+        prompt: `${seed.key} many positive ${index}`,
+        negativePrompt: `${seed.key} many negative ${index}`,
+      },
+    });
+    presetBindings.push({
+      categoryId: category.id,
+      presetId: preset.id,
+      variantId: variant.id,
+    });
+  }
+
+  const extraSections = Array.from({ length: 175 }, (_, index) => ({
+    id: `${seed.key}-many-section-${index}`,
+    projectId: seed.project.id,
+    name: `${seed.key} Many Section ${index}`,
+    sortOrder: index + 2,
+    enabled: true,
+  }));
+  await prisma.projectSection.createMany({ data: extraSections });
+
+  const createdProjectId = await ignoreStaticRevalidateError(() => createProjectFromExisting({
+    sourceProjectId: seed.project.id,
+    title: `${seed.key} Many From Existing Project`,
+    checkpointName: `${seed.key}-target.ckpt`,
+    presetBindings,
+    notes: null,
+  })) ?? (await prisma.project.findFirstOrThrow({
+    where: { title: `${seed.key} Many From Existing Project` },
+    select: { id: true },
+  })).id;
+
+  const sections = await prisma.projectSection.findMany({
+    where: { projectId: createdProjectId },
+    orderBy: { sortOrder: "asc" },
+    select: { id: true },
+  });
+  const resolvedConfigsBySectionId = await resolveSectionConfigsById(
+    sections.map((section) => section.id),
+  );
+
+  assert.equal(resolvedConfigsBySectionId.size, 176);
+});
+
 test("project preset binding writes reject LoRA training preset resources", async () => {
   const seed = await seedProjectWithPreset();
   await prisma.presetCategory.create({

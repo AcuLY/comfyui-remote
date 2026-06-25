@@ -231,18 +231,20 @@ export async function resolveSectionConfigsById(
   sectionIds: readonly string[],
   client?: Prisma.TransactionClient,
 ) {
-  const entries = await Promise.all(
-    sectionIds.map(async (sectionId) => {
-      const resolvedConfig = await resolveSectionConfig(
-        sectionId,
-        client as Parameters<typeof resolveSectionConfig>[1],
-      );
-      if (!resolvedConfig) {
-        throw new Error("JOB_POSITION_CONFIG_NOT_FOUND");
-      }
-      return [sectionId, resolvedConfig] as const;
-    }),
-  );
+  const entries: Array<readonly [string, ResolvedSectionConfig]> = [];
+
+  for (const sectionId of sectionIds) {
+    // Keep these lookups out of the same Prisma dataloader batch. Large
+    // projects can otherwise exceed SQLite's query parameter limit.
+    const resolvedConfig = await resolveSectionConfig(
+      sectionId,
+      client as Parameters<typeof resolveSectionConfig>[1],
+    );
+    if (!resolvedConfig) {
+      throw new Error("JOB_POSITION_CONFIG_NOT_FOUND");
+    }
+    entries.push([sectionId, resolvedConfig] as const);
+  }
 
   return new Map(entries);
 }
