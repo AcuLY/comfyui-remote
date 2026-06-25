@@ -103,6 +103,10 @@ function isResolvedOnlyBlockId(blockId: string) {
   return blockId.startsWith(RESOLVED_ONLY_BLOCK_ID_PREFIX);
 }
 
+function isProjectScopedBindingId(bindingId: string | null | undefined) {
+  return bindingId?.startsWith("project:") === true || bindingId?.startsWith("template-project:") === true;
+}
+
 // ---------------------------------------------------------------------------
 // Icon / Color resolution
 // ---------------------------------------------------------------------------
@@ -208,6 +212,7 @@ type SortableBlockCardProps = {
   isSaving: boolean;
   categoryMap: Map<string, CategoryConfig>;
   isReadOnly: boolean;
+  isDragDisabled: boolean;
 };
 
 function SortableBlockCard({
@@ -224,10 +229,11 @@ function SortableBlockCard({
   isSaving,
   categoryMap,
   isReadOnly,
+  isDragDisabled,
 }: SortableBlockCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: block.id,
-    disabled: isReadOnly,
+    disabled: isDragDisabled,
   });
 
   const [mounted, setMounted] = useState(false);
@@ -255,12 +261,12 @@ function SortableBlockCard({
         <button
           type="button"
           className={
-            isReadOnly
+            isDragDisabled
               ? "touch-none text-zinc-700"
               : "cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
           }
-          {...(mounted && !isReadOnly ? attributes : {})}
-          {...(mounted && !isReadOnly ? listeners : {})}
+          {...(mounted && !isDragDisabled ? attributes : {})}
+          {...(mounted && !isDragDisabled ? listeners : {})}
         >
           <GripVertical className="size-3.5" />
         </button>
@@ -281,7 +287,7 @@ function SortableBlockCard({
               <Pencil className="size-3" />
             </button>
           )}
-          {!isReadOnly && onStandaloneDelete && block.bindingId && (
+          {!isReadOnly && !isDragDisabled && onStandaloneDelete && block.bindingId && (
             <button type="button" onClick={onStandaloneDelete} title="独立删除（仅此块）" className="rounded p-1 text-zinc-500 hover:bg-amber-500/10 hover:text-amber-400">
               <Unlink className="size-3" />
             </button>
@@ -399,7 +405,9 @@ function BlockColumn({
         </div>
       ) : (
         visibleBlocks.map((block) => {
-          const isReadOnly = isResolvedOnlyBlockId(block.id);
+          const isResolvedOnly = isResolvedOnlyBlockId(block.id);
+          const isProjectBinding = isProjectScopedBindingId(block.bindingId);
+          const isReadOnly = isResolvedOnly && !isProjectBinding;
           return (
             <SortableBlockCard
               key={block.id}
@@ -416,6 +424,7 @@ function BlockColumn({
               isSaving={isSaving}
               categoryMap={categoryMap}
               isReadOnly={isReadOnly}
+              isDragDisabled={isResolvedOnly}
             />
           );
         })
@@ -584,7 +593,7 @@ export function PromptBlockEditor({
       : { negative: editValue.trim() || null };
 
     startTransition(async () => {
-      const updated = await updateSectionBlock(editingId, update);
+      const updated = await updateSectionBlock(editingId, update, sectionId);
       setBlocks((prev) => prev.map((b) => (b.id === editingId ? updated : b)));
       onBlockUpdated?.(updated);
       if (block.bindingId && !updated.bindingId) {
@@ -603,7 +612,7 @@ export function PromptBlockEditor({
     if (!onDeleteConfirm && !confirm("确认删除此提示词块？")) return;
 
     startTransition(async () => {
-      await deleteSectionBlock(blockId);
+      await deleteSectionBlock(blockId, sectionId);
       if (onBlockDeleted) {
         onBlockDeleted(blockId);
       } else {
@@ -618,7 +627,7 @@ export function PromptBlockEditor({
     if (!onStandaloneDeleteConfirm && !confirm("独立删除此提示词块？")) return;
 
     startTransition(async () => {
-      await deleteSectionBlock(blockId);
+      await deleteSectionBlock(blockId, sectionId);
       if (onStandaloneBlockDeleted) {
         onStandaloneBlockDeleted(blockId);
       } else {

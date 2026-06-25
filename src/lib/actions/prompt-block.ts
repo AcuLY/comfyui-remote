@@ -117,7 +117,7 @@ function makePresetLoraEntries(
   };
 }
 
-async function findNormalizedPromptBlockById(blockId: string) {
+async function findNormalizedPromptBlockById(blockId: string, sectionId?: string) {
   const direct = await prisma.sectionPromptBlock.findUnique({
     where: { id: blockId },
     include: {
@@ -134,19 +134,43 @@ async function findNormalizedPromptBlockById(blockId: string) {
       },
     },
   });
-  if (direct) return direct;
+  if (direct) {
+    if (sectionId && direct.projectSectionId !== sectionId) return null;
+    return direct;
+  }
 
   const bindingKey = parseResolvedOnlyBlockId(blockId);
   if (!bindingKey) return null;
 
-  const bindings = await prisma.sectionPresetBinding.findMany({
-    where: { bindingKey },
-    take: 2,
-    select: { id: true, projectSectionId: true },
-  });
-  if (bindings.length !== 1) return null;
+  if (!sectionId) {
+    const bindings = await prisma.sectionPresetBinding.findMany({
+      where: { bindingKey },
+      take: 2,
+      select: { id: true, projectSectionId: true, sortOrder: true },
+    });
+    if (bindings.length !== 1) return null;
+    return materializeNormalizedPromptBlock(bindings[0]);
+  }
 
-  const binding = bindings[0];
+  const binding = await prisma.sectionPresetBinding.findUnique({
+    where: {
+      projectSectionId_bindingKey: {
+        projectSectionId: sectionId,
+        bindingKey,
+      },
+    },
+    select: { id: true, projectSectionId: true, sortOrder: true },
+  });
+
+  if (!binding) return null;
+  return materializeNormalizedPromptBlock(binding);
+}
+
+async function materializeNormalizedPromptBlock(binding: {
+  id: string;
+  projectSectionId: string;
+  sortOrder: number;
+}) {
   const existing = await prisma.sectionPromptBlock.findFirst({
     where: {
       projectSectionId: binding.projectSectionId,
@@ -173,7 +197,7 @@ async function findNormalizedPromptBlockById(blockId: string) {
       projectSectionId: binding.projectSectionId,
       sectionBindingId: binding.id,
       type: "preset",
-      sortOrder: 0,
+      sortOrder: binding.sortOrder,
     },
     include: {
       sectionBinding: {
@@ -407,10 +431,11 @@ export async function updateSectionBlock(
     positive?: string;
     negative?: string | null;
   },
+  sectionId?: string,
 ): Promise<PromptBlockData> {
   const { audit } = await import("@/server/services/audit-service");
 
-  const normalizedBefore = await findNormalizedPromptBlockById(blockId);
+  const normalizedBefore = await findNormalizedPromptBlockById(blockId, sectionId);
   if (normalizedBefore) {
     const beforeResolved = await resolvePromptBlockDataForRow(normalizedBefore);
     const shouldDetachFromPreset = Boolean(normalizedBefore.sectionBinding);
@@ -473,10 +498,10 @@ export async function updateSectionBlock(
   throw new Error("PROMPT_BLOCK_NOT_FOUND");
 }
 
-export async function deleteSectionBlock(blockId: string): Promise<void> {
+export async function deleteSectionBlock(blockId: string, sectionId?: string): Promise<void> {
   const { audit } = await import("@/server/services/audit-service");
 
-  const beforeRow = await findNormalizedPromptBlockById(blockId);
+  const beforeRow = await findNormalizedPromptBlockById(blockId, sectionId);
   if (!beforeRow) throw new Error("PROMPT_BLOCK_NOT_FOUND");
 
   const before = await resolvePromptBlockDataForRow(beforeRow);
@@ -485,10 +510,10 @@ export async function deleteSectionBlock(blockId: string): Promise<void> {
       await tx.sectionManualLoraEntry.deleteMany({
         where: { projectSectionId: beforeRow.projectSectionId, sectionBindingId: beforeRow.sectionBinding.id },
       });
-      await tx.sectionPromptBlock.delete({ where: { id: blockId } });
+      await tx.sectionPromptBlock.delete({ where: { id: beforeRow.id } });
       await tx.sectionPresetBinding.delete({ where: { id: beforeRow.sectionBinding.id } });
     } else {
-      await tx.sectionPromptBlock.delete({ where: { id: blockId } });
+      await tx.sectionPromptBlock.delete({ where: { id: beforeRow.id } });
     }
   });
   audit("SectionPromptBlock", blockId, "delete", {}, "user" as const);

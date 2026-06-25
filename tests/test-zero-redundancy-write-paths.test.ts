@@ -376,6 +376,7 @@ let importPresetGroupToSection: typeof PromptBlockActions.importPresetGroupToSec
 let removeImportedPresetFromSection: typeof PromptBlockActions.removeImportedPresetFromSection;
 let switchBindingVariant: typeof PromptBlockActions.switchBindingVariant;
 let updateSectionBlock: typeof PromptBlockActions.updateSectionBlock;
+let deleteSectionBlock: typeof PromptBlockActions.deleteSectionBlock;
 let addSection: typeof SectionActions.addSection;
 let copySection: typeof SectionActions.copySection;
 let addPromptBlock: typeof PromptBlockService.addPromptBlock;
@@ -431,6 +432,7 @@ test.before(async () => {
   removeImportedPresetFromSection = promptBlockActions.removeImportedPresetFromSection;
   switchBindingVariant = promptBlockActions.switchBindingVariant;
   updateSectionBlock = promptBlockActions.updateSectionBlock;
+  deleteSectionBlock = promptBlockActions.deleteSectionBlock;
   addSection = sectionActions.addSection;
   copySection = sectionActions.copySection;
   addPromptBlock = promptBlockService.addPromptBlock;
@@ -1734,6 +1736,97 @@ test("editing a preset-bound SectionPromptBlock detaches prompt and LoRA rows wi
     ],
   );
   await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
+});
+
+test("editing a resolver-only project binding uses the current section when binding keys repeat", async () => {
+  const seed = await seedProjectWithPreset();
+  const bindingKey = `project:${seed.category.id}`;
+  const otherSection = await prisma.projectSection.create({
+    data: {
+      id: `${seed.key}-other-section`,
+      projectId: seed.project.id,
+      name: `${seed.key} Other Section`,
+      sortOrder: 2,
+      enabled: true,
+    },
+  });
+  const targetBinding = await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: seed.section.id,
+      bindingKey,
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantA.id,
+      sortOrder: 0,
+    },
+  });
+  const otherBinding = await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: otherSection.id,
+      bindingKey,
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantA.id,
+      sortOrder: 0,
+    },
+  });
+
+  const result = await updateSectionBlock(`resolved:${bindingKey}:0`, {
+    positive: "section owned positive",
+  }, seed.section.id);
+
+  assert.equal(result.type, "custom");
+  assert.equal(result.bindingId, null);
+  assert.equal(result.positive, "section owned positive");
+  assert.equal(result.negative, `${seed.key} source negative A`);
+  assert.equal(await prisma.sectionPresetBinding.count({ where: { id: targetBinding.id } }), 0);
+  assert.equal(await prisma.sectionPresetBinding.count({ where: { id: otherBinding.id } }), 1);
+  const detachedBlock = await prisma.sectionPromptBlock.findFirstOrThrow({
+    where: { projectSectionId: seed.section.id },
+  });
+  assert.equal(detachedBlock.sectionBindingId, null);
+  assert.equal(detachedBlock.type, "custom");
+  assert.equal(detachedBlock.customPositive, "section owned positive");
+});
+
+test("deleting a resolver-only project binding uses the current section when binding keys repeat", async () => {
+  const seed = await seedProjectWithPreset();
+  const bindingKey = `project:${seed.category.id}`;
+  const otherSection = await prisma.projectSection.create({
+    data: {
+      id: `${seed.key}-other-section`,
+      projectId: seed.project.id,
+      name: `${seed.key} Other Section`,
+      sortOrder: 2,
+      enabled: true,
+    },
+  });
+  const targetBinding = await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: seed.section.id,
+      bindingKey,
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantA.id,
+      sortOrder: 0,
+    },
+  });
+  const otherBinding = await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: otherSection.id,
+      bindingKey,
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantA.id,
+      sortOrder: 0,
+    },
+  });
+
+  await deleteSectionBlock(`resolved:${bindingKey}:0`, seed.section.id);
+
+  assert.equal(await prisma.sectionPresetBinding.count({ where: { id: targetBinding.id } }), 0);
+  assert.equal(await prisma.sectionPresetBinding.count({ where: { id: otherBinding.id } }), 1);
+  assert.equal(await prisma.sectionPromptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
 });
 
 test("prompt block service CRUD uses normalized SectionPromptBlock rows for custom blocks", async () => {

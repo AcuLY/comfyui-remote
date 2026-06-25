@@ -35,6 +35,10 @@ function isResolvedOnlyBlockId(blockId: string) {
   return blockId.startsWith(RESOLVED_ONLY_BLOCK_ID_PREFIX);
 }
 
+function isProjectScopedBindingId(bindingId: string | null | undefined) {
+  return bindingId?.startsWith("project:") === true || bindingId?.startsWith("template-project:") === true;
+}
+
 /** A preset binding record (derived from blocks + loras with same bindingId) */
 type PresetBindingInfo = {
   bindingId: string;
@@ -403,7 +407,7 @@ export function SectionEditor({
       startTransition(async () => {
         const blocksToDelete = blocks.filter((b) => b.bindingId === bindingId);
         for (const b of blocksToDelete) {
-          await deleteSectionBlock(b.id);
+          await deleteSectionBlock(b.id, sectionId);
         }
         setBlocks((prev) => prev.filter((b) => b.bindingId !== bindingId));
 
@@ -426,7 +430,7 @@ export function SectionEditor({
     startTransition(async () => {
       const blocksToDelete = blocks.filter((b) => b.bindingId === bindingId);
       for (const b of blocksToDelete) {
-        await deleteSectionBlock(b.id);
+        await deleteSectionBlock(b.id, sectionId);
       }
       setBlocks((prev) => prev.filter((b) => b.bindingId !== bindingId));
 
@@ -477,7 +481,7 @@ export function SectionEditor({
         startTransition(async () => {
           const blocksToDelete = blocks.filter((b) => b.groupBindingId === groupBid && b.id !== blockId);
           for (const b of blocksToDelete) {
-            await deleteSectionBlock(b.id);
+            await deleteSectionBlock(b.id, sectionId);
           }
           setBlocks((prev) => prev.filter((b) => b.groupBindingId !== groupBid));
           const updatedLora1 = lora1.filter((e) => !e.bindingId || !groupBindingIds.has(e.bindingId));
@@ -492,7 +496,7 @@ export function SectionEditor({
         startTransition(async () => {
           const otherBlocks = blocks.filter((b) => b.bindingId === bid && b.id !== blockId);
           for (const b of otherBlocks) {
-            await deleteSectionBlock(b.id);
+            await deleteSectionBlock(b.id, sectionId);
           }
           setBlocks((prev) => prev.filter((b) => b.bindingId !== bid));
           const updatedLora1 = lora1.filter((e) => e.bindingId !== bid);
@@ -591,6 +595,7 @@ export function SectionEditor({
             {presetBindingRows.map((row) => {
               const binding = row.binding;
               const canSwitchVariant = !row.isPresetGroupMember && canSwitchSectionPresetVariant(binding);
+              const canMutateBinding = !binding.resolvedOnly || isProjectScopedBindingId(binding.bindingId);
               const cardHref = getSectionPresetRowCardHref(row, libraryV2);
               const cardTitle = row.isPresetGroupMember ? "打开所属预制组" : "打开预制详情";
               const memberPresetHref = getSectionPresetMemberPresetHref(row, libraryV2);
@@ -689,7 +694,7 @@ export function SectionEditor({
                         <ClipboardCopy className="size-3" />
                       </button>
                     )}
-                    {!binding.resolvedOnly && (
+                    {canMutateBinding && (
                       <>
                         {!row.isPresetGroupMember && (
                           <button
