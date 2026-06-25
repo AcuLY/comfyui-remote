@@ -184,6 +184,24 @@ async function seedPresetVariantFlowFixture() {
       sortOrder: 1,
     },
   });
+  const sourceAltPreset = await prisma.preset.create({
+    data: {
+      id: "preset-keqing-alt",
+      categoryId: characterCategory.id,
+      name: "刻晴-第二角色预设",
+      slug: "keqing-alt",
+      sortOrder: 2,
+    },
+  });
+  const targetAltPreset = await prisma.preset.create({
+    data: {
+      id: "preset-mami-alt",
+      categoryId: characterCategory.id,
+      name: "七海麻美-第二角色预设",
+      slug: "nanami-mami-alt",
+      sortOrder: 3,
+    },
+  });
   const expressionPreset = await prisma.preset.create({
     data: {
       id: "preset-smile",
@@ -228,6 +246,30 @@ async function seedPresetVariantFlowFixture() {
         sortOrder: 1,
       },
       {
+        id: "keqing-alt-half",
+        presetId: sourceAltPreset.id,
+        name: "大腿以上",
+        slug: "upper-thigh",
+        prompt: "source alt half",
+        sortOrder: 0,
+      },
+      {
+        id: "mami-alt-full",
+        presetId: targetAltPreset.id,
+        name: "全身",
+        slug: "full-body",
+        prompt: "target alt full",
+        sortOrder: 0,
+      },
+      {
+        id: "mami-alt-half",
+        presetId: targetAltPreset.id,
+        name: "大腿以上",
+        slug: "upper-thigh",
+        prompt: "target alt half",
+        sortOrder: 1,
+      },
+      {
         id: "smile-default",
         presetId: expressionPreset.id,
         name: "默认",
@@ -267,8 +309,8 @@ async function seedPresetVariantFlowFixture() {
         projectSectionId: "source-section-2",
         bindingKey: "role",
         categoryId: characterCategory.id,
-        presetId: sourcePreset.id,
-        variantId: "keqing-half",
+        presetId: sourceAltPreset.id,
+        variantId: "keqing-alt-half",
         sortOrder: 0,
       },
       {
@@ -285,8 +327,8 @@ async function seedPresetVariantFlowFixture() {
         projectSectionId: "target-section-2",
         bindingKey: "role",
         categoryId: characterCategory.id,
-        presetId: targetPreset.id,
-        variantId: "mami-full",
+        presetId: targetAltPreset.id,
+        variantId: "mami-alt-full",
         sortOrder: 0,
       },
       {
@@ -327,30 +369,34 @@ async function seedPresetVariantFlowFixture() {
   });
 }
 
-test("syncPresetVariantFlow uses project role bindings instead of stale prompt blocks", async () => {
+test("syncPresetVariantFlow syncs each matched section's own role binding", async () => {
   const result = await syncPresetVariantFlow({
     sourceProjectTitle: "刻晴",
     targetProjectTitle: "七海麻美",
     dryRun: true,
   });
 
-  assert.equal(result.sourcePresetName, "刻晴-霓裾翩跹");
-  assert.equal(result.targetPresetName, "七海麻美");
+  assert.equal(result.sourcePresetName, null);
+  assert.equal(result.targetPresetName, null);
   assert.equal(result.initialDryRun.plannedUpdateCount, 2);
   assert.deepEqual(
-    result.initialDryRun.plan.map((item) => ({
-      sectionName: item.sectionName,
-      action: item.action,
-      targetVariantName: item.targetVariantName,
-    })),
+    result.initialDryRun.plan.map((item) => {
+      const row = item as Record<string, unknown>;
+      return {
+        sectionName: row.sectionName,
+        action: row.action,
+        targetPresetId: row.targetPresetId,
+        targetVariantName: row.targetVariantName,
+      };
+    }),
     [
-      { sectionName: "背手站立 · 单人", action: "switch", targetVariantName: "全身" },
-      { sectionName: "胸部 · 单人", action: "switch", targetVariantName: "大腿以上" },
+      { sectionName: "背手站立 · 单人", action: "switch", targetPresetId: "preset-mami", targetVariantName: "全身" },
+      { sectionName: "胸部 · 单人", action: "switch", targetPresetId: "preset-mami-alt", targetVariantName: "大腿以上" },
     ],
   );
 });
 
-test("syncPresetVariantFlow ignores manual preset names and uses each project's role binding", async () => {
+test("syncPresetVariantFlow ignores manual preset names and uses section role bindings", async () => {
   const result = await syncPresetVariantFlow({
     sourceProjectTitle: "刻晴",
     targetProjectTitle: "七海麻美",
@@ -359,7 +405,7 @@ test("syncPresetVariantFlow ignores manual preset names and uses each project's 
     dryRun: true,
   });
 
-  assert.equal(result.sourcePresetName, "刻晴-霓裾翩跹");
-  assert.equal(result.targetPresetName, "七海麻美");
+  assert.equal(result.sourcePresetName, null);
+  assert.equal(result.targetPresetName, null);
   assert.equal(result.initialDryRun.plannedUpdateCount, 2);
 });

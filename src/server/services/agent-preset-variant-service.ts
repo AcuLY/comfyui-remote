@@ -154,11 +154,10 @@ function parseSyncInput(body: unknown): SyncPresetVariantsInput {
   if (typeof sourceProjectId !== "string" || !sourceProjectId.trim()) {
     throw new Error("sourceProjectId is required");
   }
-  if (!sourcePresetId && !sourcePresetName) {
-    throw new Error("sourcePresetName is required");
-  }
-  if (!targetPresetId && !targetPresetName) {
-    throw new Error("targetPresetName is required");
+  const hasSourcePresetReference = Boolean(sourcePresetId || sourcePresetName);
+  const hasTargetPresetReference = Boolean(targetPresetId || targetPresetName);
+  if (hasSourcePresetReference !== hasTargetPresetReference) {
+    throw new Error("source and target preset references must be provided together");
   }
   if (matchSectionsBy !== "name") {
     throw new Error('Only matchSectionsBy: "name" is supported');
@@ -267,12 +266,170 @@ async function getProjectSectionsForSync(projectId: string) {
               presetId: true,
               variantId: true,
               sortOrder: true,
+              category: { select: { name: true, slug: true } },
+              preset: {
+                select: {
+                  id: true,
+                  name: true,
+                  variants: {
+                    where: { isActive: true },
+                    orderBy: { sortOrder: "asc" },
+                    select: { id: true, name: true, slug: true },
+                  },
+                },
+              },
             },
           },
         },
       },
     },
   });
+}
+
+type SyncProject = NonNullable<Awaited<ReturnType<typeof getProjectSectionsForSync>>>;
+type SyncSection = SyncProject["sections"][number];
+
+function hasExplicitPresetReference(input: SyncPresetVariantsInput) {
+  return Boolean(input.sourcePresetId || input.sourcePresetName || input.targetPresetId || input.targetPresetName);
+}
+
+function pickSectionRoleBinding(section: SyncSection, requireVariant: boolean) {
+  return section.presetBindingRows.find((binding) => {
+    if (!binding.presetId || !binding.preset) return false;
+    if (requireVariant && !binding.variantId) return false;
+    return isRoleCategory(binding.category);
+  }) ?? null;
+}
+
+function buildRoleBindingSyncPlan(sourceProject: SyncProject, targetProject: SyncProject) {
+  const sourceSectionsByName = new Map(
+    sourceProject.sections
+      .filter((section) => normalizeKey(section.name))
+      .map((section) => [normalizeKey(section.name), section]),
+  );
+
+  const plan = [];
+  const updates: SwitchVariantUpdate[] = [];
+
+  for (const targetSection of targetProject.sections) {
+    const sectionKey = normalizeKey(targetSection.name);
+    const sourceSection = sectionKey ? sourceSectionsByName.get(sectionKey) : undefined;
+    if (!sourceSection) {
+      plan.push({
+        sectionId: targetSection.id,
+        sectionName: targetSection.name,
+        action: "skip",
+        reason: "No matching source section",
+      });
+      continue;
+    }
+
+    const sourceBinding = pickSectionRoleBinding(sourceSection, true);
+    if (!sourceBinding?.variantId || !sourceBinding.preset) {
+      plan.push({
+        sectionId: targetSection.id,
+        sectionName: targetSection.name,
+        sourceSectionId: sourceSection.id,
+        action: "skip",
+        reason: "Source role preset block not found in source section",
+      });
+      continue;
+    }
+
+    const sourceVariant = sourceBinding.preset.variants.find((variant) => variant.id === sourceBinding.variantId);
+    if (!sourceVariant) {
+      plan.push({
+        sectionId: targetSection.id,
+        sectionName: targetSection.name,
+        sourceSectionId: sourceSection.id,
+        sourcePresetId: sourceBinding.presetId,
+        action: "skip",
+        reason: "Source role variant is inactive or missing",
+      });
+      continue;
+    }
+
+    const targetBinding = pickSectionRoleBinding(targetSection, false);
+    if (!targetBinding?.bindingKey || !targetBinding.preset) {
+      plan.push({
+        sectionId: targetSection.id,
+        sectionName: targetSection.name,
+        sourceSectionId: sourceSection.id,
+        sourcePresetId: sourceBinding.presetId,
+        sourcePresetName: sourceBinding.preset.name,
+        sourceVariantId: sourceVariant.id,
+        sourceVariantName: sourceVariant.name,
+        action: "skip",
+        reason: "Target role preset block not found in target section",
+      });
+      continue;
+    }
+
+    const targetVariantsByName = new Map(
+      targetBinding.preset.variants.map((variant) => [normalizeKey(variant.name), variant]),
+    );
+    const targetVariant = targetVariantsByName.get(normalizeKey(sourceVariant.name));
+    if (!targetVariant) {
+      plan.push({
+        sectionId: targetSection.id,
+        sectionName: targetSection.name,
+        sourceSectionId: sourceSection.id,
+        sourcePresetId: sourceBinding.presetId,
+        sourcePresetName: sourceBinding.preset.name,
+        sourceVariantId: sourceVariant.id,
+        sourceVariantName: sourceVariant.name,
+        targetPresetId: targetBinding.presetId,
+        targetPresetName: targetBinding.preset.name,
+        action: "skip",
+        reason: "No target role variant with the same name",
+      });
+      continue;
+    }
+
+    if (targetBinding.variantId === targetVariant.id) {
+      plan.push({
+        sectionId: targetSection.id,
+        sectionName: targetSection.name,
+        sourceSectionId: sourceSection.id,
+        bindingId: targetBinding.bindingKey,
+        sourcePresetId: sourceBinding.presetId,
+        sourcePresetName: sourceBinding.preset.name,
+        sourceVariantId: sourceVariant.id,
+        sourceVariantName: sourceVariant.name,
+        currentVariantId: targetBinding.variantId,
+        targetPresetId: targetBinding.presetId,
+        targetPresetName: targetBinding.preset.name,
+        targetVariantId: targetVariant.id,
+        targetVariantName: targetVariant.name,
+        action: "skip",
+        reason: "Target variant already selected",
+      });
+      continue;
+    }
+
+    const update = {
+      sectionId: targetSection.id,
+      bindingId: targetBinding.bindingKey,
+      newVariantId: targetVariant.id,
+    };
+    updates.push(update);
+    plan.push({
+      ...update,
+      sectionName: targetSection.name,
+      sourceSectionId: sourceSection.id,
+      sourcePresetId: sourceBinding.presetId,
+      sourcePresetName: sourceBinding.preset.name,
+      sourceVariantId: sourceVariant.id,
+      sourceVariantName: sourceVariant.name,
+      currentVariantId: targetBinding.variantId,
+      targetPresetId: targetBinding.presetId,
+      targetPresetName: targetBinding.preset.name,
+      targetVariantName: targetVariant.name,
+      action: "switch",
+    });
+  }
+
+  return { plan, updates };
 }
 
 export async function syncPresetVariants(targetProjectId: string, body: unknown) {
@@ -282,17 +439,53 @@ export async function syncPresetVariants(targetProjectId: string, body: unknown)
     throw new Error("targetProjectId is required");
   }
 
+  const explicitPresetMode = hasExplicitPresetReference(input);
   const [sourcePreset, targetPreset, sourceProject, targetProject] = await Promise.all([
-    findPresetByReference({ presetId: input.sourcePresetId, nameOrSlug: input.sourcePresetName }, "SOURCE"),
-    findPresetByReference({ presetId: input.targetPresetId, nameOrSlug: input.targetPresetName }, "TARGET"),
+    explicitPresetMode
+      ? findPresetByReference({ presetId: input.sourcePresetId, nameOrSlug: input.sourcePresetName }, "SOURCE")
+      : Promise.resolve(null),
+    explicitPresetMode
+      ? findPresetByReference({ presetId: input.targetPresetId, nameOrSlug: input.targetPresetName }, "TARGET")
+      : Promise.resolve(null),
     getProjectSectionsForSync(input.sourceProjectId),
     getProjectSectionsForSync(normalizedTargetProjectId),
   ]);
 
-  if (!sourcePreset) throw new Error("SOURCE_PRESET_NOT_FOUND");
-  if (!targetPreset) throw new Error("TARGET_PRESET_NOT_FOUND");
+  if (explicitPresetMode && !sourcePreset) throw new Error("SOURCE_PRESET_NOT_FOUND");
+  if (explicitPresetMode && !targetPreset) throw new Error("TARGET_PRESET_NOT_FOUND");
   if (!sourceProject) throw new Error("SOURCE_PROJECT_NOT_FOUND");
   if (!targetProject) throw new Error("TARGET_PROJECT_NOT_FOUND");
+
+  if (!explicitPresetMode) {
+    const { plan, updates } = buildRoleBindingSyncPlan(sourceProject, targetProject);
+    if (input.dryRun) {
+      return {
+        dryRun: true,
+        sourceProject: { id: sourceProject.id, title: sourceProject.title },
+        targetProject: { id: targetProject.id, title: targetProject.title },
+        sourcePreset: null,
+        targetPreset: null,
+        plannedUpdateCount: updates.length,
+        plan,
+      };
+    }
+
+    const execution = await switchProjectVariants(normalizedTargetProjectId, updates);
+    return {
+      dryRun: false,
+      sourceProject: { id: sourceProject.id, title: sourceProject.title },
+      targetProject: { id: targetProject.id, title: targetProject.title },
+      sourcePreset: null,
+      targetPreset: null,
+      plannedUpdateCount: updates.length,
+      plan,
+      execution,
+    };
+  }
+
+  if (!sourcePreset || !targetPreset) {
+    throw new Error("PRESET_REFERENCE_NOT_FOUND");
+  }
 
   const sourceSectionsByName = new Map(
     sourceProject.sections

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  buildRoleSyncPresetVariantFlowVerification,
   buildSyncPresetVariantFlowVerification,
   parseSyncPresetVariantFlowInput,
   pickLatestProjectByExactTitle,
@@ -114,4 +115,63 @@ test("buildSyncPresetVariantFlowVerification reports planned update pass, distri
   assert.equal(verification.loraConfig.okCount, 2);
   assert.deepEqual(verification.loraConfig.missing.map((item) => item.sectionId), ["s3"]);
   assert.deepEqual(verification.sampleBlocks.map((sample) => sample.label), ["尼可·莱恩 / 默认", "尼可·莱恩 / 半脱", "尼可·莱恩 / 半脱"]);
+});
+
+test("buildRoleSyncPresetVariantFlowVerification verifies each section role binding", () => {
+  const verification = buildRoleSyncPresetVariantFlowVerification({
+    verificationDryRun: {
+      plannedUpdateCount: 0,
+      plan: [
+        { sectionId: "s1", sectionName: "1", action: "skip", reason: "Target variant already selected" },
+        { sectionId: "s2", sectionName: "2", action: "skip", reason: "Target variant already selected" },
+      ],
+    },
+    sections: [
+      {
+        id: "s1",
+        name: "1",
+        sortOrder: 1,
+        manualLoraEntries: [{ sectionBindingId: "b1", enabled: true }],
+        promptBlocks: [{
+          id: "pb1",
+          bindingId: "b1",
+          sourceId: "p1",
+          variantId: "v-full",
+          categoryName: "角色",
+          categorySlug: "character",
+          presetName: "七海麻美",
+          variantName: "全身",
+          label: "七海麻美 / 全身",
+          sortOrder: 1,
+        }],
+      },
+      {
+        id: "s2",
+        name: "2",
+        sortOrder: 2,
+        manualLoraEntries: [{ sectionBindingId: "b2", enabled: true }],
+        promptBlocks: [{
+          id: "pb2",
+          bindingId: "b2",
+          sourceId: "p2",
+          variantId: "v-half",
+          categoryName: "角色",
+          categorySlug: "character",
+          presetName: "七海麻美-第二角色预设",
+          variantName: "大腿以上",
+          label: "七海麻美-第二角色预设 / 大腿以上",
+          sortOrder: 1,
+        }],
+      },
+    ],
+    sampleSectionNumbers: [1, 2],
+  });
+
+  assert.equal(verification.passed, true);
+  assert.deepEqual(verification.variantDistribution, { "全身": 1, "大腿以上": 1 });
+  assert.equal(verification.loraConfig.missingCount, 0);
+  assert.deepEqual(verification.sampleBlocks.map((sample) => sample.label), [
+    "七海麻美 / 全身",
+    "七海麻美-第二角色预设 / 大腿以上",
+  ]);
 });

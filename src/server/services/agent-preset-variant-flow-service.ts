@@ -1,17 +1,12 @@
-import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
-import {
-  buildGenerationPresetWhere,
-  buildGenerationProjectWhere,
-} from "@/server/repositories/generation-resource-boundary";
+import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { syncPresetVariants } from "@/server/services/agent-preset-variant-service";
 import {
-  buildSyncPresetVariantFlowVerification,
+  buildRoleSyncPresetVariantFlowVerification,
   parseSyncPresetVariantFlowInput,
   pickLatestProjectByExactTitle,
   type FlowDryRunForVerification,
   type FlowSectionForVerification,
-  type FlowTargetPreset,
 } from "@/server/services/agent-preset-variant-flow-core";
 
 type ProjectLookup = {
@@ -20,30 +15,6 @@ type ProjectLookup = {
   updatedAt: Date | string;
   createdAt?: Date | string;
 };
-
-type PresetRecord = {
-  id: string;
-  name: string;
-  slug: string;
-  sortOrder: number;
-  createdAt: Date;
-  category: {
-    name: string;
-    slug: string;
-  };
-};
-
-type PresetCandidate = PresetRecord & {
-  count: number;
-  bindingKey: string;
-  bindingSortOrder: number;
-};
-
-function isRoleCategory(category: { name: string; slug: string }) {
-  const normalizedName = category.name.trim().toLocaleLowerCase();
-  const normalizedSlug = category.slug.trim().toLocaleLowerCase();
-  return normalizedName === "角色" || ["character", "characters", "role", "roles"].includes(normalizedSlug);
-}
 
 async function findProjectByTitle(title: string, expectedProjectId: string | null, errorPrefix: "SOURCE" | "TARGET"): Promise<ProjectLookup> {
   if (expectedProjectId) {
@@ -65,113 +36,6 @@ async function findProjectByTitle(title: string, expectedProjectId: string | nul
     select: { id: true, title: true, updatedAt: true, createdAt: true },
   });
   return pickLatestProjectByExactTitle(projects, title);
-}
-
-async function findProjectRolePreset(projectId: string, errorPrefix: "SOURCE" | "TARGET") {
-  const sections = await prisma.projectSection.findMany({
-    where: {
-      projectId,
-      enabled: true,
-      project: buildGenerationProjectWhere({ id: projectId }),
-    },
-    select: {
-      presetBindingRows: {
-        where: { presetId: { not: null } },
-        select: {
-          presetId: true,
-          preset: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              sortOrder: true,
-              createdAt: true,
-              category: { select: { name: true, slug: true } },
-              isActive: true,
-            },
-          },
-          bindingKey: true,
-          sortOrder: true,
-        },
-      },
-    },
-  });
-
-  const candidatesById = new Map<string, PresetCandidate>();
-  for (const section of sections) {
-    for (const binding of section.presetBindingRows) {
-      const preset = binding.preset;
-      if (!preset?.isActive) continue;
-      if (!isRoleCategory(preset.category)) continue;
-
-      const candidateKey = `${binding.bindingKey}\u0000${preset.id}`;
-      const existing = candidatesById.get(candidateKey);
-      if (existing) {
-        existing.count += 1;
-      } else {
-        candidatesById.set(candidateKey, {
-          id: preset.id,
-          name: preset.name,
-          slug: preset.slug,
-          sortOrder: preset.sortOrder,
-          createdAt: preset.createdAt,
-          category: preset.category,
-          count: 1,
-          bindingKey: binding.bindingKey,
-          bindingSortOrder: binding.sortOrder,
-        });
-      }
-    }
-  }
-
-  const candidates = [...candidatesById.values()];
-  if (candidates.length === 0) {
-    throw new Error(`${errorPrefix}_ROLE_PRESET_NOT_INFERRED`);
-  }
-
-  const sortedCandidates = [...candidates].sort((left, right) => {
-    const byCount = right.count - left.count;
-    if (byCount !== 0) return byCount;
-    const byBindingSortOrder = left.bindingSortOrder - right.bindingSortOrder;
-    if (byBindingSortOrder !== 0) return byBindingSortOrder;
-    const bySortOrder = left.sortOrder - right.sortOrder;
-    if (bySortOrder !== 0) return bySortOrder;
-    return left.createdAt.getTime() - right.createdAt.getTime();
-  });
-
-  const [picked, runnerUp] = sortedCandidates;
-  if (
-    runnerUp &&
-    runnerUp.count === picked.count &&
-    runnerUp.bindingSortOrder === picked.bindingSortOrder &&
-    runnerUp.sortOrder === picked.sortOrder
-  ) {
-    throw new Error(`${errorPrefix}_ROLE_PRESET_AMBIGUOUS`);
-  }
-
-  return picked;
-}
-
-async function findPresetForVerification(presetId: string): Promise<FlowTargetPreset> {
-  const preset = await prisma.preset.findFirst({
-    where: buildGenerationPresetWhere({
-      id: presetId,
-      isActive: true,
-      category: { type: ordinaryPresetCategoryTypeWhere() },
-    }),
-    select: {
-      id: true,
-      name: true,
-      variants: {
-        where: { isActive: true },
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: { id: true, name: true },
-      },
-    },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-  });
-  if (!preset) throw new Error("TARGET_PRESET_NOT_FOUND");
-  return preset;
 }
 
 async function getSectionsForVerification(projectId: string): Promise<FlowSectionForVerification[]> {
@@ -200,6 +64,7 @@ async function getSectionsForVerification(projectId: string): Promise<FlowSectio
           customLabel: true,
           sectionBinding: {
             select: {
+              category: { select: { name: true, slug: true } },
               presetId: true,
               variantId: true,
               preset: { select: { name: true } },
@@ -222,8 +87,12 @@ async function getSectionsForVerification(projectId: string): Promise<FlowSectio
       sourceId: block.sectionBinding?.presetId ?? null,
       variantId: block.sectionBinding?.variantId ?? null,
       bindingId: block.sectionBindingId,
-        label: block.customLabel ??
-          [
+      categoryName: block.sectionBinding?.category?.name ?? null,
+      categorySlug: block.sectionBinding?.category?.slug ?? null,
+      presetName: block.sectionBinding?.preset?.name ?? null,
+      variantName: block.sectionBinding?.variant?.name ?? null,
+      label: block.customLabel ??
+        [
           block.sectionBinding?.preset?.name,
           block.sectionBinding?.variant?.name,
         ].filter(Boolean).join(" / "),
@@ -245,25 +114,17 @@ export async function syncPresetVariantFlow(body: unknown) {
     findProjectByTitle(input.sourceProjectTitle, input.expectedSourceProjectId, "SOURCE"),
     findProjectByTitle(input.targetProjectTitle, input.expectedTargetProjectId, "TARGET"),
   ]);
-  const [sourceRolePreset, targetRolePreset] = await Promise.all([
-    findProjectRolePreset(sourceProject.id, "SOURCE"),
-    findProjectRolePreset(targetProject.id, "TARGET"),
-  ]);
 
   const syncBody = {
     sourceProjectId: sourceProject.id,
-    sourcePresetId: sourceRolePreset.id,
-    sourcePresetName: sourceRolePreset.name,
-    targetPresetId: targetRolePreset.id,
-    targetPresetName: targetRolePreset.name,
     matchSectionsBy: input.matchSectionsBy,
     matchVariantsBy: input.matchVariantsBy,
   };
   const initialDryRun = await syncPresetVariants(targetProject.id, { ...syncBody, dryRun: true });
   const resolvedSyncBody = {
     ...syncBody,
-    sourcePresetName: initialDryRun.sourcePreset.name,
-    targetPresetName: initialDryRun.targetPreset.name,
+    sourcePresetName: initialDryRun.sourcePreset?.name ?? null,
+    targetPresetName: initialDryRun.targetPreset?.name ?? null,
   };
 
   if (input.dryRun) {
@@ -277,17 +138,12 @@ export async function syncPresetVariantFlow(body: unknown) {
     };
   }
 
-  const apply = await syncPresetVariants(targetProject.id, { ...resolvedSyncBody, dryRun: false });
-  const verificationDryRun = await syncPresetVariants(targetProject.id, { ...resolvedSyncBody, dryRun: true });
-  const [targetPreset, sections] = await Promise.all([
-    findPresetForVerification(targetRolePreset.id),
-    getSectionsForVerification(targetProject.id),
-  ]);
-  const verification = buildSyncPresetVariantFlowVerification({
-    targetPresetName: resolvedSyncBody.targetPresetName,
+  const apply = await syncPresetVariants(targetProject.id, { ...syncBody, dryRun: false });
+  const verificationDryRun = await syncPresetVariants(targetProject.id, { ...syncBody, dryRun: true });
+  const sections = await getSectionsForVerification(targetProject.id);
+  const verification = buildRoleSyncPresetVariantFlowVerification({
     verificationDryRun: toVerificationDryRun(verificationDryRun),
     sections,
-    targetPreset,
     sampleSectionNumbers: input.sampleSectionNumbers,
   });
 

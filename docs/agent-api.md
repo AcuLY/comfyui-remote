@@ -589,7 +589,7 @@ Returns per-item success or failure results without aborting the whole batch for
 }
 ```
 
-Use `dryRun: true` first to inspect the plan, then `dryRun: false` to execute the planned switches.
+Use `dryRun: true` first to inspect the plan, then `dryRun: false` to execute the planned switches. Provide both `sourcePresetName`/`targetPresetName` (or IDs) for explicit preset sync; omit both to sync each matched section's own role/character preset binding by same-name variants.
 
 ### Sync Preset Variant Flow by Project Title
 
@@ -601,8 +601,6 @@ Use `dryRun: true` first to inspect the plan, then `dryRun: false` to execute th
   "targetProjectTitle": "尼可莱恩",
   "expectedSourceProjectId": "optional-source-project-id-from-dry-run",
   "expectedTargetProjectId": "optional-target-project-id-from-current-page-or-dry-run",
-  "sourcePresetName": "西施",
-  "targetPresetName": "尼可·莱恩",
   "matchSectionsBy": "name",
   "matchVariantsBy": "name",
   "dryRun": true,
@@ -610,4 +608,4 @@ Use `dryRun: true` first to inspect the plan, then `dryRun: false` to execute th
 }
 ```
 
-`sourcePresetName` and `targetPresetName` are optional. When omitted, the service infers the active character preset used most often in each project, preferring the role/character preset category. Without expected IDs, projects are resolved by the latest exact title. The UI sends `expectedTargetProjectId` from the current project page during preview, then sends the dry-run's resolved `expectedSourceProjectId` and `expectedTargetProjectId` during apply so duplicate titles or concurrent same-title updates cannot switch a different project than the previewed one. `dryRun: false` requires both expected project IDs and fails closed if either ID is missing or its title no longer matches. The flow always runs an initial dry-run. With `dryRun: false`, it applies the planned switches through the existing variant-switch service, then runs a verification dry-run and returns `verification` with `plannedUpdateCount`, `variantDistribution`, `loraConfig` coverage, and sampled prompt blocks.
+The project-title flow does not infer one project-level role preset. It matches enabled sections by exact section name. For each matched section, it reads the source section's role/character preset binding and selected variant, then finds a same-name variant in the target section's own role/character preset binding. If any step is missing, that section is skipped. Without expected IDs, projects are resolved by the latest exact title. The UI sends `expectedTargetProjectId` from the current project page during preview, then sends the dry-run's resolved `expectedSourceProjectId` and `expectedTargetProjectId` during apply so duplicate titles or concurrent same-title updates cannot switch a different project than the previewed one. `dryRun: false` requires both expected project IDs and fails closed if either ID is missing or its title no longer matches. The flow always runs an initial dry-run. With `dryRun: false`, it applies the planned switches through the existing variant-switch service, then runs a verification dry-run and returns `verification` with `plannedUpdateCount`, `variantDistribution`, `loraConfig` coverage, and sampled prompt blocks.

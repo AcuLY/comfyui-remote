@@ -29,6 +29,10 @@ export type FlowPromptBlock = {
   sourceId: string | null;
   variantId: string | null;
   bindingId: string | null;
+  categoryName?: string | null;
+  categorySlug?: string | null;
+  presetName?: string | null;
+  variantName?: string | null;
   label: string;
   sortOrder: number;
 };
@@ -54,6 +58,12 @@ export type BuildFlowVerificationInput = {
   verificationDryRun: FlowDryRunForVerification;
   sections: FlowSectionForVerification[];
   targetPreset: FlowTargetPreset;
+  sampleSectionNumbers?: number[] | null;
+};
+
+export type BuildRoleFlowVerificationInput = {
+  verificationDryRun: FlowDryRunForVerification;
+  sections: FlowSectionForVerification[];
   sampleSectionNumbers?: number[] | null;
 };
 
@@ -152,6 +162,18 @@ function getTargetBlock(section: FlowSectionForVerification, targetPresetId: str
     .sort((left, right) => left.sortOrder - right.sortOrder)[0] ?? null;
 }
 
+function isRoleCategory(category: { name?: string | null; slug?: string | null }) {
+  const normalizedName = (category.name ?? "").trim().toLocaleLowerCase();
+  const normalizedSlug = (category.slug ?? "").trim().toLocaleLowerCase();
+  return normalizedName === "角色" || ["character", "characters", "role", "roles"].includes(normalizedSlug);
+}
+
+function getRoleBlock(section: FlowSectionForVerification): FlowPromptBlock | null {
+  return section.promptBlocks
+    .filter((block) => isRoleCategory({ name: block.categoryName, slug: block.categorySlug }))
+    .sort((left, right) => left.sortOrder - right.sortOrder)[0] ?? null;
+}
+
 function defaultSampleSectionNumbers(total: number): number[] {
   if (total <= 0) return [];
   return [...new Set([1, Math.ceil(total / 2), total])];
@@ -211,6 +233,80 @@ export function buildSyncPresetVariantFlowVerification(input: BuildFlowVerificat
         bindingId: block?.bindingId ?? null,
         variantId: block?.variantId ?? null,
         variantName: block?.variantId ? variantNameById.get(block.variantId) ?? null : null,
+        label: block?.label ?? null,
+      };
+    })
+    .filter((sample): sample is NonNullable<typeof sample> => sample !== null);
+
+  const plannedUpdateCount = input.verificationDryRun.plannedUpdateCount;
+  return {
+    passed: plannedUpdateCount === 0 && missing.length === 0,
+    plannedUpdateCount,
+    plan: input.verificationDryRun.plan,
+    variantDistribution,
+    loraConfig: {
+      totalSections: sections.length,
+      okCount: sections.length - missing.length,
+      missingCount: missing.length,
+      missing,
+    },
+    sampleBlocks,
+  };
+}
+
+export function buildRoleSyncPresetVariantFlowVerification(input: BuildRoleFlowVerificationInput) {
+  const sections = [...input.sections].sort((left, right) => {
+    const bySortOrder = left.sortOrder - right.sortOrder;
+    if (bySortOrder !== 0) return bySortOrder;
+    return left.id.localeCompare(right.id);
+  });
+  const variantDistribution: Record<string, number> = {};
+  const missing: Array<{ sectionId: string; sectionName: string | null; reason: string }> = [];
+
+  for (const section of sections) {
+    const block = getRoleBlock(section);
+    if (block?.variantId) {
+      const variantName = block.variantName ?? "Unknown variant";
+      variantDistribution[variantName] = (variantDistribution[variantName] ?? 0) + 1;
+    }
+
+    if (!block?.bindingId) {
+      missing.push({
+        sectionId: section.id,
+        sectionName: section.name,
+        reason: "Target role preset block not found",
+      });
+      continue;
+    }
+
+    const hasRoleLoraEntry = section.manualLoraEntries.some(
+      (entry) => entry.enabled && entry.sectionBindingId === block.bindingId,
+    );
+    if (!hasRoleLoraEntry) {
+      missing.push({
+        sectionId: section.id,
+        sectionName: section.name,
+        reason: "Target role binding LoRA entry not found in manual LoRA rows",
+      });
+    }
+  }
+
+  const sampleNumbers = input.sampleSectionNumbers?.length
+    ? input.sampleSectionNumbers
+    : defaultSampleSectionNumbers(sections.length);
+  const sampleBlocks = sampleNumbers
+    .map((sectionNumber) => {
+      const section = sections[sectionNumber - 1];
+      if (!section) return null;
+      const block = getRoleBlock(section);
+      return {
+        sectionNumber,
+        sectionId: section.id,
+        sectionName: section.name,
+        blockId: block?.id ?? null,
+        bindingId: block?.bindingId ?? null,
+        variantId: block?.variantId ?? null,
+        variantName: block?.variantName ?? null,
         label: block?.label ?? null,
       };
     })
