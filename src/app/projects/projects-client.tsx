@@ -19,7 +19,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Archive, ChevronRight, Folder, FolderPlus, ImageIcon, Plus, Save, X } from "lucide-react";
+import { Archive, ChevronRight, Copy, Folder, FolderPlus, ImageIcon, Plus, Save, X } from "lucide-react";
 import { toast } from "sonner";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { SectionCard } from "@/components/section-card";
@@ -166,12 +166,20 @@ export function ProjectsClient({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div />
-        <Link
-          href={currentFolderId ? `/projects/new?folder=${encodeURIComponent(currentFolderId)}` : "/projects/new"}
-          className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-2 text-sm text-sky-300 transition hover:bg-sky-500/20"
-        >
-          <Plus className="size-4" /> 创建新项目
-        </Link>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Link
+            href={currentFolderId ? `/projects/new/from-existing?folder=${encodeURIComponent(currentFolderId)}` : "/projects/new/from-existing"}
+            className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-zinc-300 transition hover:bg-white/[0.08]"
+          >
+            <Copy className="size-4" /> 从已有项目创建
+          </Link>
+          <Link
+            href={currentFolderId ? `/projects/new?folder=${encodeURIComponent(currentFolderId)}` : "/projects/new"}
+            className="inline-flex items-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-2 text-sm text-sky-300 transition hover:bg-sky-500/20"
+          >
+            <Plus className="size-4" /> 创建新项目
+          </Link>
+        </div>
       </div>
       <SectionCard
         title="项目"

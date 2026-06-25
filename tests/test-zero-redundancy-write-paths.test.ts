@@ -392,6 +392,9 @@ let deleteProjectTemplateSection: typeof TemplateCrudActions.deleteProjectTempla
 let copyProjectTemplateSection: typeof TemplateCrudActions.copyProjectTemplateSection;
 let saveProjectAsTemplate: typeof TemplateSaveActions.saveProjectAsTemplate;
 let createProject: typeof ProjectActions.createProject;
+let createProjectFromExisting: (
+  input: ProjectActions.CreateProjectInput & { sourceProjectId: string }
+) => Promise<string>;
 let updateProject: typeof ProjectActions.updateProject;
 let copyProject: typeof ProjectActions.copyProject;
 let applyParamToAllSections: typeof ProjectActions.applyParamToAllSections;
@@ -448,6 +451,7 @@ test.before(async () => {
   copyProjectTemplateSection = templateCrudActions.copyProjectTemplateSection;
   saveProjectAsTemplate = templateSaveActions.saveProjectAsTemplate;
   createProject = projectActions.createProject;
+  createProjectFromExisting = projectActions.createProjectFromExisting;
   updateProject = projectActions.updateProject;
   copyProject = projectActions.copyProject;
   applyParamToAllSections = projectActions.applyParamToAllSections;
@@ -2567,6 +2571,136 @@ test("project preset binding writes use ProjectPresetBinding rows without rewrit
   ]);
   await prisma.projectSection.findUniqueOrThrow({ where: { id: seed.section.id } });
   assert.equal(await prisma.sectionPromptBlock.count({ where: { projectSectionId: seed.section.id } }), 0);
+});
+
+test("createProjectFromExisting clones source sections with target project presets and checkpoint", async () => {
+  const seed = await seedProjectWithPreset({ withProjectBinding: true });
+  await prisma.projectSection.update({
+    where: { id: seed.section.id },
+    data: {
+      checkpointName: `${seed.key}-source-section.ckpt`,
+      aspectRatio: "3:4",
+      batchSize: 5,
+    },
+  });
+  const secondSourceSection = await prisma.projectSection.create({
+    data: {
+      id: `${seed.key}-second-section`,
+      projectId: seed.project.id,
+      name: `${seed.key} Second Section`,
+      sortOrder: 2,
+      enabled: true,
+      checkpointName: `${seed.key}-second-source.ckpt`,
+    },
+  });
+  const sourceProjectBindingKey = `project:${seed.category.id}`;
+  const sourceProjectBinding = await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: seed.section.id,
+      bindingKey: sourceProjectBindingKey,
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantA.id,
+      sortOrder: 0,
+    },
+  });
+  await prisma.sectionPromptBlock.create({
+    data: {
+      projectSectionId: seed.section.id,
+      sectionBindingId: sourceProjectBinding.id,
+      type: "preset",
+      sortOrder: 0,
+    },
+  });
+  await prisma.sectionManualLoraEntry.create({
+    data: {
+      projectSectionId: seed.section.id,
+      sectionBindingId: sourceProjectBinding.id,
+      stage: "lora1",
+      path: `/${seed.key}-source-project-override.safetensors`,
+      weight: 0.9,
+      enabled: true,
+      detachedFromBindingKey: sourceProjectBindingKey,
+      detachedFromPresetId: seed.preset.id,
+      detachedFromVariantId: seed.variantA.id,
+      detachedFromPath: `/${seed.key}-a.safetensors`,
+      sortOrder: 0,
+    },
+  });
+  await prisma.sectionPromptBlock.create({
+    data: {
+      projectSectionId: seed.section.id,
+      type: "custom",
+      customLabel: `${seed.key} Custom`,
+      customPositive: `${seed.key} custom positive`,
+      customNegative: `${seed.key} custom negative`,
+      sortOrder: 1,
+    },
+  });
+
+  const createdProjectId = await ignoreStaticRevalidateError(() => createProjectFromExisting({
+    sourceProjectId: seed.project.id,
+    title: `${seed.key} From Existing Project`,
+    checkpointName: `${seed.key}-target.ckpt`,
+    presetBindings: [
+      {
+        categoryId: seed.category.id,
+        presetId: seed.preset.id,
+        variantId: seed.variantB.id,
+      },
+    ],
+    notes: null,
+  })) ?? (await prisma.project.findFirstOrThrow({
+    where: { title: `${seed.key} From Existing Project` },
+    select: { id: true },
+  })).id;
+
+  const createdProject = await prisma.project.findUniqueOrThrow({
+    where: { id: createdProjectId },
+    include: {
+      presetBindingRows: true,
+      sections: { orderBy: { sortOrder: "asc" } },
+    },
+  });
+  assert.equal(createdProject.checkpointName, `${seed.key}-target.ckpt`);
+  assert.deepEqual(createdProject.presetBindingRows.map((row) => [row.categoryId, row.presetId, row.variantId]), [
+    [seed.category.id, seed.preset.id, seed.variantB.id],
+  ]);
+  assert.deepEqual(
+    createdProject.sections.map((section) => [section.name, section.sortOrder, section.checkpointName]),
+    [
+      [seed.section.name, 1, `${seed.key}-target.ckpt`],
+      [secondSourceSection.name, 2, `${seed.key}-target.ckpt`],
+    ],
+  );
+  assert.equal(createdProject.sections[0].aspectRatio, "3:4");
+  assert.equal(createdProject.sections[0].batchSize, 5);
+
+  const targetSection = createdProject.sections[0];
+  const targetProjectBinding = await prisma.sectionPresetBinding.findFirstOrThrow({
+    where: { projectSectionId: targetSection.id, bindingKey: sourceProjectBindingKey },
+  });
+  assert.equal(targetProjectBinding.presetId, seed.preset.id);
+  assert.equal(targetProjectBinding.variantId, seed.variantB.id);
+
+  const targetPromptRows = await prisma.sectionPromptBlock.findMany({
+    where: { projectSectionId: targetSection.id },
+    orderBy: { sortOrder: "asc" },
+  });
+  assert.equal(targetPromptRows[0].sectionBindingId, targetProjectBinding.id);
+  assert.equal(targetPromptRows[1].sectionBindingId, null);
+  assert.equal(targetPromptRows[1].customPositive, `${seed.key} custom positive`);
+
+  assert.equal(
+    await prisma.sectionManualLoraEntry.count({
+      where: {
+        projectSectionId: targetSection.id,
+        path: `/${seed.key}-source-project-override.safetensors`,
+      },
+    }),
+    0,
+    "source project-bound LoRA overrides must not survive after rebasing to the target project preset",
+  );
 });
 
 test("project preset binding writes reject LoRA training preset resources", async () => {

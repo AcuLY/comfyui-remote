@@ -13,6 +13,7 @@ import { copyProject as copyProjectRepo } from "@/server/repositories/project-re
 import { archiveProject as archiveProjectService } from "@/server/services/project-archive-service";
 import { deleteProjectCompletely } from "@/server/services/project-deletion-service";
 import {
+  assertOrdinaryPresetLibraryBindingRefs,
   assertOrdinaryProjectPresetBindingRefs,
   PresetResourceScopeError,
 } from "./preset-resource-scope";
@@ -29,6 +30,10 @@ export type CreateProjectInput = {
   folderId?: string | null;
   presetBindings: PresetBinding[];
   notes: string | null;
+};
+
+export type CreateProjectFromExistingInput = CreateProjectInput & {
+  sourceProjectId: string;
 };
 
 export type UpdateProjectInput = {
@@ -105,6 +110,14 @@ function normalizeProjectPresetBindings(bindings: readonly PresetBinding[]) {
   return normalized;
 }
 
+function projectBindingKey(categoryId: string) {
+  return `project:${categoryId}`;
+}
+
+function isProjectBindingKey(bindingKey: string) {
+  return bindingKey.startsWith("project:");
+}
+
 async function assertOrdinaryProjectPresetBindings(bindings: readonly PresetBinding[]) {
   const normalized = normalizeProjectPresetBindings(bindings);
   await assertOrdinaryProjectPresetBindingRefs(normalized);
@@ -132,6 +145,16 @@ async function replaceProjectPresetBindingRows(
       },
     });
   }
+}
+
+function cloneJsonValueForCreate(
+  value: Prisma.JsonValue | null,
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput {
+  if (value === null) {
+    return Prisma.DbNull;
+  }
+
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
 export async function createProject(input: CreateProjectInput): Promise<string> {
@@ -185,6 +208,297 @@ export async function createProject(input: CreateProjectInput): Promise<string> 
         continue;
       }
       throw error; // Re-throw non-slug errors
+    }
+  }
+
+  throw new Error("Failed to generate unique slug after multiple attempts");
+}
+
+export async function createProjectFromExisting(input: CreateProjectFromExistingInput): Promise<string> {
+  const sourceProjectId = input.sourceProjectId.trim();
+  if (!sourceProjectId) {
+    throw new Error("Source project is required");
+  }
+
+  const checkpointName = input.checkpointName.trim() || DEFAULT_CHECKPOINT_NAME;
+  await assertOrdinaryProjectPresetBindings(input.presetBindings);
+  assertGenerationProjectNotes(input.notes);
+
+  const sourceProject = await prisma.project.findFirst({
+    where: buildGenerationProjectWhere({ id: sourceProjectId }),
+    select: {
+      id: true,
+      projectLevelOverrides: true,
+      sections: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          id: true,
+          name: true,
+          sortOrder: true,
+          enabled: true,
+          aspectRatio: true,
+          aspectRatios: true,
+          shortSidePx: true,
+          batchSize: true,
+          seedPolicy1: true,
+          seedPolicy2: true,
+          ksampler1: true,
+          ksampler2: true,
+          upscaleFactor: true,
+          useTwoStageKSampler: true,
+          extraParams: true,
+          presetBindingRows: {
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+            select: {
+              id: true,
+              bindingKey: true,
+              categoryId: true,
+              presetId: true,
+              variantId: true,
+              presetGroupId: true,
+              groupBindingKey: true,
+              sortOrder: true,
+            },
+          },
+          sectionPromptBlocks: {
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+            select: {
+              sectionBindingId: true,
+              type: true,
+              customLabel: true,
+              customPositive: true,
+              customNegative: true,
+              sortOrder: true,
+            },
+          },
+          manualLoraEntries: {
+            orderBy: [{ stage: "asc" }, { sortOrder: "asc" }],
+            select: {
+              sectionBindingId: true,
+              stage: true,
+              path: true,
+              weight: true,
+              enabled: true,
+              detachedFromBindingKey: true,
+              detachedFromPresetId: true,
+              detachedFromVariantId: true,
+              detachedFromPath: true,
+              metadata: true,
+              sortOrder: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!sourceProject) {
+    throw new Error("Source project not found");
+  }
+
+  await assertOrdinaryPresetLibraryBindingRefs(
+    sourceProject.sections
+      .flatMap((section) => section.presetBindingRows)
+      .filter((binding) => !isProjectBindingKey(binding.bindingKey)),
+  );
+
+  const normalizedProjectBindings = normalizeProjectPresetBindings(input.presetBindings);
+
+  // 生成唯一 slug
+  const baseSlug = input.title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    || "untitled";
+  let slug = baseSlug;
+  let i = 1;
+
+  while (await prisma.project.findUnique({ where: { slug } })) {
+    slug = `${baseSlug}-${i++}`;
+  }
+
+  const MAX_RETRIES = 5;
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      const project = await prisma.$transaction(async (tx) => {
+        const createdProject = await tx.project.create({
+          data: {
+            title: input.title,
+            slug,
+            status: "draft",
+            folderId: input.folderId ?? null,
+            checkpointName,
+            projectLevelOverrides: cloneJsonValueForCreate(sourceProject.projectLevelOverrides),
+            notes: input.notes,
+            sections: {
+              create: sourceProject.sections.map((section) => ({
+                name: section.name,
+                sortOrder: section.sortOrder,
+                enabled: section.enabled,
+                aspectRatio: section.aspectRatio,
+                aspectRatios: cloneJsonValueForCreate(section.aspectRatios),
+                shortSidePx: section.shortSidePx,
+                batchSize: section.batchSize,
+                seedPolicy1: section.seedPolicy1,
+                seedPolicy2: section.seedPolicy2,
+                ksampler1: cloneJsonValueForCreate(section.ksampler1),
+                ksampler2: cloneJsonValueForCreate(section.ksampler2),
+                upscaleFactor: section.upscaleFactor,
+                useTwoStageKSampler: section.useTwoStageKSampler,
+                checkpointName,
+                extraParams: cloneJsonValueForCreate(section.extraParams),
+              })),
+            },
+          },
+          select: {
+            id: true,
+            sections: {
+              orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+              select: { id: true },
+            },
+          },
+        });
+
+        await replaceProjectPresetBindingRows(tx, createdProject.id, input.presetBindings);
+
+        const copiedSectionIdBySourceId = new Map<string, string>();
+        for (const [index, sourceSection] of sourceProject.sections.entries()) {
+          const copiedSectionId = createdProject.sections[index]?.id;
+          if (copiedSectionId) copiedSectionIdBySourceId.set(sourceSection.id, copiedSectionId);
+        }
+
+        for (const sourceSection of sourceProject.sections) {
+          const copiedSectionId = copiedSectionIdBySourceId.get(sourceSection.id);
+          if (!copiedSectionId) continue;
+
+          const sourceBindingById = new Map(sourceSection.presetBindingRows.map((binding) => [binding.id, binding]));
+          const sourceProjectBindingIds = new Set(
+            sourceSection.presetBindingRows
+              .filter((binding) => isProjectBindingKey(binding.bindingKey))
+              .map((binding) => binding.id),
+          );
+          const sourceProjectPromptByBindingKey = new Map(
+            sourceSection.sectionPromptBlocks
+              .map((block) => {
+                const binding = block.sectionBindingId ? sourceBindingById.get(block.sectionBindingId) : null;
+                return binding && isProjectBindingKey(binding.bindingKey)
+                  ? [binding.bindingKey, block] as const
+                  : null;
+              })
+              .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
+          );
+
+          const copiedBindingIdBySourceId = new Map<string, string>();
+          const copiedProjectBindingIdByKey = new Map<string, string>();
+
+          for (const binding of normalizedProjectBindings) {
+            const bindingKey = projectBindingKey(binding.categoryId);
+            const copiedBinding = await tx.sectionPresetBinding.create({
+              data: {
+                projectSectionId: copiedSectionId,
+                bindingKey,
+                categoryId: binding.categoryId,
+                presetId: binding.presetId,
+                variantId: binding.variantId,
+                sortOrder: binding.sortOrder,
+              },
+              select: { id: true },
+            });
+            copiedProjectBindingIdByKey.set(bindingKey, copiedBinding.id);
+          }
+
+          for (const binding of sourceSection.presetBindingRows) {
+            if (isProjectBindingKey(binding.bindingKey)) continue;
+
+            const copiedBinding = await tx.sectionPresetBinding.create({
+              data: {
+                projectSectionId: copiedSectionId,
+                bindingKey: binding.bindingKey,
+                categoryId: binding.categoryId,
+                presetId: binding.presetId,
+                variantId: binding.variantId,
+                presetGroupId: binding.presetGroupId,
+                groupBindingKey: binding.groupBindingKey,
+                sortOrder: binding.sortOrder,
+              },
+              select: { id: true },
+            });
+            copiedBindingIdBySourceId.set(binding.id, copiedBinding.id);
+          }
+
+          for (const binding of normalizedProjectBindings) {
+            const bindingKey = projectBindingKey(binding.categoryId);
+            const copiedBindingId = copiedProjectBindingIdByKey.get(bindingKey);
+            if (!copiedBindingId) continue;
+            const sourcePrompt = sourceProjectPromptByBindingKey.get(bindingKey);
+            await tx.sectionPromptBlock.create({
+              data: {
+                projectSectionId: copiedSectionId,
+                sectionBindingId: copiedBindingId,
+                type: "preset",
+                sortOrder: sourcePrompt?.sortOrder ?? binding.sortOrder,
+              },
+            });
+          }
+
+          for (const block of sourceSection.sectionPromptBlocks) {
+            if (block.sectionBindingId && sourceProjectBindingIds.has(block.sectionBindingId)) continue;
+            const copiedBindingId = block.sectionBindingId
+              ? copiedBindingIdBySourceId.get(block.sectionBindingId) ?? null
+              : null;
+            await tx.sectionPromptBlock.create({
+              data: {
+                projectSectionId: copiedSectionId,
+                sectionBindingId: copiedBindingId,
+                type: block.type,
+                customLabel: block.customLabel,
+                customPositive: block.customPositive,
+                customNegative: block.customNegative,
+                sortOrder: block.sortOrder,
+              },
+            });
+          }
+
+          for (const entry of sourceSection.manualLoraEntries) {
+            if (entry.sectionBindingId && sourceProjectBindingIds.has(entry.sectionBindingId)) continue;
+            if (entry.detachedFromBindingKey && isProjectBindingKey(entry.detachedFromBindingKey)) continue;
+
+            const copiedBindingId = entry.sectionBindingId
+              ? copiedBindingIdBySourceId.get(entry.sectionBindingId) ?? null
+              : null;
+            await tx.sectionManualLoraEntry.create({
+              data: {
+                projectSectionId: copiedSectionId,
+                sectionBindingId: copiedBindingId,
+                stage: entry.stage,
+                path: entry.path,
+                weight: entry.weight,
+                enabled: entry.enabled,
+                detachedFromBindingKey: entry.detachedFromBindingKey,
+                detachedFromPresetId: entry.detachedFromPresetId,
+                detachedFromVariantId: entry.detachedFromVariantId,
+                detachedFromPath: entry.detachedFromPath,
+                metadata: entry.metadata ?? undefined,
+                sortOrder: entry.sortOrder,
+              },
+            });
+          }
+        }
+
+        return createdProject;
+      });
+
+      safeRevalidatePath("/projects");
+      return project.id;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002" &&
+        (error.meta?.target as string[] | undefined)?.includes("slug")
+      ) {
+        slug = `${baseSlug}-${i++}`;
+        continue;
+      }
+      throw error;
     }
   }
 

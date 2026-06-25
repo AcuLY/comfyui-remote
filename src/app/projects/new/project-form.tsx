@@ -3,22 +3,45 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus } from "lucide-react";
-import { createProject } from "@/lib/actions";
+import { createProject, createProjectFromExisting } from "@/lib/actions";
 import { toast } from "sonner";
 import type { ProjectFormCategory } from "@/lib/server-data";
 import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
+import { ProjectCascadePicker } from "@/components/project-cascade-picker";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
+
+type SourceProjectOption = {
+  id: string;
+  title: string;
+  folderId?: string | null;
+};
+
+type SourceProjectFolderOption = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  sortOrder?: number;
+};
 
 type Props = {
   categories: ProjectFormCategory[];
   folderId?: string | null;
+  sourceProjects?: SourceProjectOption[];
+  projectFolders?: SourceProjectFolderOption[];
 };
 
-export function ProjectForm({ categories, folderId = null }: Props) {
+export function ProjectForm({
+  categories,
+  folderId = null,
+  sourceProjects,
+  projectFolders,
+}: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const isCreateFromExisting = Boolean(sourceProjects && projectFolders);
 
+  const [sourceProjectId, setSourceProjectId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [checkpointName, setCheckpointName] = useState(DEFAULT_CHECKPOINT_NAME);
   // categoryId → { presetId, variantId? } (one per category, empty string = not selected)
@@ -45,6 +68,7 @@ export function ProjectForm({ categories, folderId = null }: Props) {
 
   function handleSubmit() {
     if (!title.trim() || !checkpointName.trim()) return;
+    if (isCreateFromExisting && !sourceProjectId) return;
 
     const presetBindings = Object.entries(selections)
       .filter(([, selection]) => selection.presetId)
@@ -56,13 +80,16 @@ export function ProjectForm({ categories, folderId = null }: Props) {
 
     startTransition(async () => {
       try {
-        const newProjectId = await createProject({
+        const payload = {
           title: title.trim(),
           checkpointName: checkpointName.trim(),
           folderId,
           presetBindings,
           notes: notes.trim() || null,
-        });
+        };
+        const newProjectId = isCreateFromExisting
+          ? await createProjectFromExisting({ ...payload, sourceProjectId: sourceProjectId! })
+          : await createProject(payload);
         toast.success("项目已创建");
         router.push(`/projects/${newProjectId}`);
       } catch (e: unknown) {
@@ -91,6 +118,20 @@ export function ProjectForm({ categories, folderId = null }: Props) {
           className="w-full rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-sky-500/40"
         />
       </div>
+
+      {isCreateFromExisting && (
+        <div className="space-y-2">
+          <label className="text-xs text-zinc-400">来源项目 *</label>
+          <ProjectCascadePicker
+            projects={sourceProjects ?? []}
+            folders={projectFolders ?? []}
+            value={sourceProjectId}
+            onChange={(project) => setSourceProjectId(project?.id ?? null)}
+            placeholder="选择来源项目"
+            disabled={isPending}
+          />
+        </div>
+      )}
 
       <div className="space-y-2">
         <label className="text-xs text-zinc-400">Checkpoint *</label>
@@ -156,13 +197,13 @@ export function ProjectForm({ categories, folderId = null }: Props) {
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isPending || !title.trim() || !checkpointName.trim()}
+        disabled={isPending || !title.trim() || !checkpointName.trim() || (isCreateFromExisting && !sourceProjectId)}
         className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-500/20 bg-sky-500/10 px-4 py-3 text-sm font-medium text-sky-300 transition hover:bg-sky-500/20 disabled:cursor-not-allowed disabled:opacity-40"
       >
         {isPending ? (
           <><Loader2 className="size-4 animate-spin" /> 创建中...</>
         ) : (
-          <><Plus className="size-4" /> 创建项目</>
+          <><Plus className="size-4" /> {isCreateFromExisting ? "从已有项目创建" : "创建项目"}</>
         )}
       </button>
     </div>
