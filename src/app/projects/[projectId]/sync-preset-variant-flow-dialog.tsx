@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { AlertTriangle, CheckCircle2, ChevronDown, Loader2, RefreshCw, Shuffle, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Shuffle, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { ProjectCascadePicker } from "@/components/project-cascade-picker";
 
 import {
   buildSyncPresetVariantFlowPayload,
@@ -12,7 +13,8 @@ import {
   summarizeSyncPresetVariantFlowPlan,
 } from "@/lib/sync-preset-variant-flow-ui";
 
-type ProjectOption = { id: string; title: string };
+type ProjectOption = { id: string; title: string; folderId: string | null };
+type ProjectFolderOption = { id: string; name: string; parentId: string | null; sortOrder: number };
 
 type FlowPlanItem = Record<string, unknown>;
 
@@ -106,20 +108,29 @@ export function SyncPresetVariantFlowDialog({ projectId, projectTitle }: { proje
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectOption[]>([]);
+  const [projectFolders, setProjectFolders] = useState<ProjectFolderOption[]>([]);
   const [sourceProjectId, setSourceProjectId] = useState("");
   const [sampleSectionNumbersText, setSampleSectionNumbersText] = useState("1,33,65");
   const [dryRunResult, setDryRunResult] = useState<FlowDryRunResult | null>(null);
   const [applyResult, setApplyResult] = useState<FlowApplyResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch project list when dialog opens
+  // Fetch project list and folders when dialog opens
   useEffect(() => {
     if (!isOpen) return;
-    fetch("/api/projects")
-      .then((r) => r.json())
-      .then((result: { ok?: boolean; data?: ProjectOption[] }) => {
-        if (result.ok && Array.isArray(result.data)) {
-          setProjects(result.data.filter((p) => p.id !== projectId));
+    Promise.all([
+      fetch("/api/projects").then((response) => response.json()),
+      fetch("/api/project-folders").then((response) => response.json()),
+    ])
+      .then(([projectResult, folderResult]: [
+        { ok?: boolean; data?: ProjectOption[] },
+        { ok?: boolean; data?: ProjectFolderOption[] },
+      ]) => {
+        if (projectResult.ok && Array.isArray(projectResult.data)) {
+          setProjects(projectResult.data.filter((project) => project.id !== projectId));
+        }
+        if (folderResult.ok && Array.isArray(folderResult.data)) {
+          setProjectFolders(folderResult.data);
         }
       })
       .catch(() => {});
@@ -252,19 +263,18 @@ export function SyncPresetVariantFlowDialog({ projectId, projectTitle }: { proje
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="space-y-1 text-xs text-zinc-400">
               <span>参考项目</span>
-              <div className="relative">
-                <select
-                  value={sourceProjectId}
-                  onChange={(event) => { setSourceProjectId(event.target.value); resetResults(); }}
-                  className="w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 pr-8 text-sm text-zinc-100 outline-none focus:border-sky-500/40"
-                >
-                  <option value="" className="bg-zinc-900">选择参考项目…</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id} className="bg-zinc-900">{p.title}</option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 size-3.5 -translate-y-1/2 text-zinc-500" />
-              </div>
+              <ProjectCascadePicker
+                projects={projects}
+                folders={projectFolders}
+                value={sourceProjectId || null}
+                onChange={(project) => {
+                  setSourceProjectId(project?.id ?? "");
+                  resetResults();
+                }}
+                placeholder="选择参考项目..."
+                clearable
+                clearLabel="清空参考项目"
+              />
             </label>
             <label className="space-y-1 text-xs text-zinc-400">
               <span>目标项目</span>

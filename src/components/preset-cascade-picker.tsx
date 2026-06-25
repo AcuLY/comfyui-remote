@@ -44,6 +44,9 @@ type PresetCascadePickerProps = {
   presetCategoriesOnly?: boolean;
   /** If true, the picker modal opens automatically on mount */
   defaultOpen?: boolean;
+  /** If true, shows a clear choice inside the picker */
+  clearable?: boolean;
+  clearLabel?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -59,6 +62,8 @@ export function PresetCascadePicker({
   lockedCategoryId,
   presetCategoriesOnly = false,
   defaultOpen = false,
+  clearable = false,
+  clearLabel = "不选择",
 }: PresetCascadePickerProps) {
   // Filter categories
   const filteredCats = useMemo(
@@ -288,12 +293,26 @@ export function PresetCascadePicker({
             <div className="flex-1 overflow-y-auto p-2">
               {!selectedCat ? (
                 <div className="flex items-center justify-center py-12 text-xs text-zinc-600">选择一个分类</div>
-              ) : visiblePresets.length === 0 && subFolders.length === 0 ? (
+              ) : visiblePresets.length === 0 && subFolders.length === 0 && !(clearable && value) ? (
                 <div className="flex items-center justify-center py-12 text-xs text-zinc-600">
                   {isSearching ? "无匹配预制" : "空目录"}
                 </div>
               ) : (
                 <div className="space-y-1">
+                  {clearable && value && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange(null);
+                        setOpen(false);
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-zinc-400 transition hover:bg-white/[0.04] hover:text-zinc-200"
+                      style={{ minHeight: 40 }}
+                    >
+                      <X className="size-4 shrink-0 text-zinc-500" />
+                      <span className="flex-1 truncate text-xs">{clearLabel}</span>
+                    </button>
+                  )}
                   {/* Folders (hidden during search) */}
                   {!isSearching && subFolders.map((folder) => (
                     <button

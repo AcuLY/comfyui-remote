@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Loader2, Plus } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { createProject } from "@/lib/actions";
 import { toast } from "sonner";
 import type { ProjectFormCategory } from "@/lib/server-data";
 import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";
+import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 
 type Props = {
@@ -70,13 +71,6 @@ export function ProjectForm({ categories, folderId = null }: Props) {
     });
   }
 
-  const CATEGORY_COLORS: Record<string, string> = {
-    sky: "border-sky-500/20 focus:border-sky-500/40",
-    emerald: "border-emerald-500/20 focus:border-emerald-500/40",
-    violet: "border-violet-500/20 focus:border-violet-500/40",
-    amber: "border-amber-500/20 focus:border-amber-500/40",
-  };
-
   const CATEGORY_LABELS: Record<string, string> = {
     sky: "text-sky-400",
     emerald: "text-emerald-400",
@@ -110,54 +104,33 @@ export function ProjectForm({ categories, folderId = null }: Props) {
       {/* Dynamic category selectors */}
       <div className="grid gap-3 md:grid-cols-2">
         {categories.map((cat) => {
-          const colorClass = CATEGORY_COLORS[cat.color ?? ""] ?? "border-white/10 focus:border-sky-500/40";
           const labelClass = CATEGORY_LABELS[cat.color ?? ""] ?? "text-zinc-400";
-          const selectedPreset = cat.presets.find((p) => p.id === selections[cat.id]?.presetId);
+          const currentSelection = selections[cat.id] ?? { presetId: "" };
+          const selectedPreset = cat.presets.find((p) => p.id === currentSelection.presetId);
+          const selectedVariant = selectedPreset?.variants.find((v) => v.id === currentSelection.variantId) ?? selectedPreset?.variants[0];
+          const pickerValue = selectedPreset && selectedVariant
+            ? { presetId: selectedPreset.id, variantId: selectedVariant.id }
+            : null;
 
           return (
             <div key={cat.id} className="space-y-2">
               <label className={`text-xs ${labelClass}`}>
                 {cat.name}（可选）
               </label>
-              <div className="relative">
-                <select
-                  value={selections[cat.id]?.presetId || ""}
-                  onChange={(e) => setSelection(cat.id, e.target.value)}
-                  className={`w-full appearance-none rounded-2xl bg-white/[0.03] px-4 py-3 pr-10 text-sm text-white outline-none ${colorClass}`}
-                >
-                  <option value="" className="bg-zinc-900">
-                    不选择{cat.name}
-                  </option>
-                  {cat.presets.map((preset) => (
-                    <option key={preset.id} value={preset.id} className="bg-zinc-900">
-                      {preset.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-              </div>
-
-              {/* 变体选择器（仅多变体时显示） */}
-              {selectedPreset && selectedPreset.variants.length > 1 && (
-                <div className="relative">
-                  <select
-                    value={selections[cat.id]?.variantId || ""}
-                    onChange={(e) => setSelection(cat.id, selectedPreset.id, e.target.value || undefined)}
-                    className="w-full appearance-none rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 pr-8 text-xs text-white outline-none focus:border-sky-500/30"
-                  >
-                    {selectedPreset.variants.map((variant) => (
-                      <option key={variant.id} value={variant.id} className="bg-zinc-900">
-                        {variant.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-                </div>
-              )}
+              <PresetCascadePicker
+                categories={categories}
+                value={pickerValue}
+                onChange={(value) => setSelection(cat.id, value?.presetId ?? "", value?.variantId)}
+                lockedCategoryId={cat.id}
+                placeholder={`不选择${cat.name}`}
+                presetCategoriesOnly
+                clearable
+                clearLabel={`不选择${cat.name}`}
+              />
 
               {selectedPreset && (
                 <div className="rounded-xl bg-white/[0.03] px-3 py-2 text-xs text-zinc-500">
-                  {selectedPreset.variants.find(v => v.id === selections[cat.id]?.variantId)?.prompt || selectedPreset.variants[0]?.prompt || "无提示词"}
+                  {selectedVariant?.prompt || "\u65e0\u63d0\u793a\u8bcd"}
                 </div>
               )}
             </div>

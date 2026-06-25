@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { AlertTriangle, CheckCircle2, ChevronDown, Loader2, Plus, RefreshCw, Repeat2, Trash2, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Plus, RefreshCw, Repeat2, Trash2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import {
   buildPresetSectionReplacementPayload,
   extractPresetSectionReplacementError,
@@ -116,7 +117,7 @@ export function PresetSectionReplacementDialog({
           next.toPresetId = "";
           next.toVariantId = "";
         }
-        if (patch.toPresetId !== undefined) {
+        if (patch.toPresetId !== undefined && patch.toVariantId === undefined) {
           next.toVariantId = "";
         }
         return next;
@@ -187,6 +188,12 @@ export function PresetSectionReplacementDialog({
     if (!isSubmitting) setIsOpen(false);
   }
 
+  function pickerValueForPreset(presetId: string, variantId?: string | null) {
+    const preset = presetId ? presetById.get(presetId) ?? null : null;
+    const resolvedVariantId = variantId || preset?.variants[0]?.id;
+    return preset && resolvedVariantId ? { presetId: preset.id, variantId: resolvedVariantId } : null;
+  }
+
   const dialog = isOpen ? createPortal(
     <>
       <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm" onClick={closeDialog} />
@@ -216,64 +223,36 @@ export function PresetSectionReplacementDialog({
           <div className="space-y-2">
             {rules.map((rule, index) => {
               const fromPreset = rule.fromPresetId ? presetById.get(rule.fromPresetId) ?? null : null;
-              const targetPresets = fromPreset ? presets.filter((preset) => preset.categoryId === fromPreset.categoryId) : presets;
-              const toPreset = rule.toPresetId ? presetById.get(rule.toPresetId) ?? null : null;
               return (
-                <div key={rule.id} className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.025] p-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                <div key={rule.id} className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.025] p-2 sm:grid-cols-[1fr_1fr_auto]">
                   <label className="space-y-1 text-xs text-zinc-400">
                     <span>A 预制</span>
-                    <div className="relative">
-                      <select
-                        value={rule.fromPresetId}
-                        onChange={(event) => updateRule(rule.id, { fromPresetId: event.target.value })}
-                        className="w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 pr-7 text-xs text-zinc-100 outline-none focus:border-sky-500/40"
-                      >
-                        <option value="" className="bg-zinc-900">选择来源...</option>
-                        {presets.map((preset) => (
-                          <option key={preset.id} value={preset.id} className="bg-zinc-900">
-                            {preset.categoryName} / {preset.name}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3.5 -translate-y-1/2 text-zinc-500" />
-                    </div>
+                    <PresetCascadePicker
+                      categories={library.categories}
+                      value={pickerValueForPreset(rule.fromPresetId)}
+                      onChange={(value) => updateRule(rule.id, { fromPresetId: value?.presetId ?? "" })}
+                      placeholder="选择来源..."
+                      presetCategoriesOnly
+                      clearable
+                      clearLabel="清空来源预制"
+                    />
                   </label>
 
                   <label className="space-y-1 text-xs text-zinc-400">
                     <span>B 预制</span>
-                    <div className="relative">
-                      <select
-                        value={rule.toPresetId}
-                        onChange={(event) => updateRule(rule.id, { toPresetId: event.target.value })}
-                        className="w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 pr-7 text-xs text-zinc-100 outline-none focus:border-sky-500/40"
-                      >
-                        <option value="" className="bg-zinc-900">选择目标...</option>
-                        {targetPresets.map((preset) => (
-                          <option key={preset.id} value={preset.id} className="bg-zinc-900">
-                            {preset.categoryName} / {preset.name}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3.5 -translate-y-1/2 text-zinc-500" />
-                    </div>
-                  </label>
-
-                  <label className="space-y-1 text-xs text-zinc-400">
-                    <span>B 变体</span>
-                    <div className="relative">
-                      <select
-                        value={rule.toVariantId ?? ""}
-                        onChange={(event) => updateRule(rule.id, { toVariantId: event.target.value })}
-                        disabled={!toPreset}
-                        className="w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 pr-7 text-xs text-zinc-100 outline-none focus:border-sky-500/40 disabled:opacity-50"
-                      >
-                        <option value="" className="bg-zinc-900">默认可用变体</option>
-                        {(toPreset?.variants ?? []).map((variant) => (
-                          <option key={variant.id} value={variant.id} className="bg-zinc-900">{variant.name}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3.5 -translate-y-1/2 text-zinc-500" />
-                    </div>
+                    <PresetCascadePicker
+                      categories={library.categories}
+                      value={pickerValueForPreset(rule.toPresetId, rule.toVariantId)}
+                      onChange={(value) => updateRule(rule.id, {
+                        toPresetId: value?.presetId ?? "",
+                        toVariantId: value?.variantId ?? "",
+                      })}
+                      placeholder="选择目标..."
+                      lockedCategoryId={fromPreset?.categoryId}
+                      presetCategoriesOnly
+                      clearable
+                      clearLabel="清空目标预制"
+                    />
                   </label>
 
                   <div className="flex items-end justify-between gap-2 sm:justify-end">

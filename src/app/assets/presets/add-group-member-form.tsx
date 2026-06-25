@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
+import { PresetGroupCascadePicker } from "@/components/preset-group-cascade-picker";
 import type { PresetCategoryFull, PresetGroupItem } from "@/lib/server-data";
 
 export function AddGroupMemberForm({
@@ -38,7 +39,7 @@ export function AddGroupMemberForm({
     }
   }
 
-  const selectClass = "w-full appearance-none rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 pr-7 text-xs text-zinc-200 outline-none focus:border-sky-500/30";
+  const allowedGroupIds = groups.map((group) => group.id);
 
   return (
     <div className="space-y-2 rounded-lg border border-dashed border-white/10 p-2">
@@ -73,15 +74,15 @@ export function AddGroupMemberForm({
           presetCategoriesOnly
         />
       ) : (
-        <div className="relative">
-          <select value={selGroupId} onChange={(e) => setSelGroupId(e.target.value)} className={selectClass}>
-            <option value="">选择子组...</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id} className="bg-zinc-900">{g.name}</option>
-            ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2 top-1/2 size-3 -translate-y-1/2 text-zinc-500" />
-        </div>
+        <PresetGroupCascadePicker
+          categories={categories}
+          value={selGroupId || null}
+          onChange={(value) => setSelGroupId(value?.groupId ?? "")}
+          allowedGroupIds={allowedGroupIds}
+          placeholder="选择子组..."
+          clearable
+          clearLabel="清空子组"
+        />
       )}
 
       <button

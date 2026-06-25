@@ -10,6 +10,7 @@ import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";
 import { DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2 } from "@/lib/lora-types";
 import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";
+import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
 
 function ApplyToAllButton({
@@ -163,13 +164,6 @@ export function ProjectEditForm({ project, categories }: Props) {
     });
   }
 
-  const CATEGORY_COLORS: Record<string, string> = {
-    sky: "border-sky-500/20 focus:border-sky-500/40",
-    emerald: "border-emerald-500/20 focus:border-emerald-500/40",
-    violet: "border-violet-500/20 focus:border-violet-500/40",
-    amber: "border-amber-500/20 focus:border-amber-500/40",
-  };
-
   const CATEGORY_LABELS: Record<string, string> = {
     sky: "text-sky-400",
     emerald: "text-emerald-400",
@@ -216,39 +210,26 @@ export function ProjectEditForm({ project, categories }: Props) {
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {categories.map((cat) => {
-            const colorClass = CATEGORY_COLORS[cat.color ?? ""] ?? "border-white/10 focus:border-sky-500/40";
             const labelClass = CATEGORY_LABELS[cat.color ?? ""] ?? "text-zinc-400";
-            const selectedPreset = cat.presets.find((preset) => preset.id === selections[cat.id]?.presetId);
+            const currentSelection = selections[cat.id] ?? { presetId: "" };
+            const selectedPreset = cat.presets.find((preset) => preset.id === currentSelection.presetId);
+            const selectedVariant = selectedPreset?.variants.find((variant) => variant.id === currentSelection.variantId) ?? selectedPreset?.variants[0];
+            const pickerValue = selectedPreset && selectedVariant
+              ? { presetId: selectedPreset.id, variantId: selectedVariant.id }
+              : null;
             return (
               <div key={cat.id} className="space-y-2">
                 <label className={`text-xs ${labelClass}`}>{cat.name}（可选）</label>
-                <div className="relative">
-                  <select
-                    value={selections[cat.id]?.presetId ?? ""}
-                    onChange={(e) => setSelection(cat.id, e.target.value)}
-                    className={`w-full appearance-none rounded-lg bg-white/[0.04] px-2.5 py-2 pr-9 text-sm text-zinc-200 outline-none ${colorClass}`}
-                  >
-                    <option value="" className="bg-zinc-900">不选择{cat.name}</option>
-                    {cat.presets.map((preset) => (
-                      <option key={preset.id} value={preset.id} className="bg-zinc-900">{preset.name}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-                </div>
-                {selectedPreset && selectedPreset.variants.length > 1 && (
-                  <div className="relative">
-                    <select
-                      value={selections[cat.id]?.variantId ?? selectedPreset.variants[0]?.id ?? ""}
-                      onChange={(e) => setSelection(cat.id, selectedPreset.id, e.target.value)}
-                      className={`w-full appearance-none rounded-lg bg-white/[0.04] px-2.5 py-2 pr-9 text-xs text-zinc-300 outline-none ${colorClass}`}
-                    >
-                      {selectedPreset.variants.map((variant) => (
-                        <option key={variant.id} value={variant.id} className="bg-zinc-900">{variant.name}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-zinc-500" />
-                  </div>
-                )}
+                <PresetCascadePicker
+                  categories={categories}
+                  value={pickerValue}
+                  onChange={(value) => setSelection(cat.id, value?.presetId ?? "", value?.variantId)}
+                  lockedCategoryId={cat.id}
+                  placeholder={`不选择${cat.name}`}
+                  presetCategoriesOnly
+                  clearable
+                  clearLabel={`不选择${cat.name}`}
+                />
               </div>
             );
           })}

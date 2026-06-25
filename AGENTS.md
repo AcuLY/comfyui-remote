@@ -76,7 +76,10 @@ log in. Do not hard-code the token, print it in logs, or commit token values.
 
 除轻量改动例外外，每次代码修改完成后，必须依次执行以下部署步骤：
 
-1. 在执行任何完整部署动作前，必须先获取部署互斥锁，避免多个会话同时执行部署、构建、重启或队列恢复操作。
+1. `git add` + `git commit` + `git push`（提交并推送到远程）。
+   - Git 操作不纳入 `.deploy.lock` 保护范围，不需要获取部署锁；即使已有部署锁存在，也可以按“非部署提交推送规则”只暂存本次范围文件并推送当前分支。
+   - 目标机 `git pull` 只有作为部署/运行时动作的一部分时才进入部署锁范围；单纯本地提交推送不要因为 `.deploy.lock` 阻塞。
+2. 在执行任何完整部署动作前，必须先获取部署互斥锁，避免多个会话同时执行部署、构建、重启或队列恢复操作。
    - 锁目录固定为当前部署目标项目根目录下的 `.deploy.lock`，在本机 `mypc` 上即 `D:\Luca\Code\MyProject\comfyui-manager\.deploy.lock`。
    - 必须用 PowerShell 的原子目录创建获取锁，不要用 `Test-Path` 先判断再创建：
      ```powershell
@@ -114,15 +117,14 @@ log in. Do not hard-code the token, print it in logs, or commit token values.
        }
      }
      ```
-   - 锁必须覆盖后续 `git add`/`commit`/`push`、目标机 `git pull`、队列检查/暂停、Prisma、`.next` 清理、构建、停止/重启服务、公网验证和队列恢复。
-   - 如果当前不在 `mypc` 且后续需要 SSH 到 `mypc` 部署，进入目标机项目目录后也必须先用同样规则获取目标目录的 `.deploy.lock`，再执行 `git pull` 或任何会影响服务的动作。
+   - 锁必须覆盖后续目标机 `git pull`、队列检查/暂停、Prisma、`.next` 清理、构建、停止/重启服务、公网验证和队列恢复。
+   - 如果当前不在 `mypc` 且后续需要 SSH 到 `mypc` 部署，进入目标机项目目录后也必须先用同样规则获取目标目录的 `.deploy.lock`，再执行属于部署流程的 `git pull` 或任何会影响服务的动作。
    - 获取锁后，应随着部署阶段更新 `owner.json` 的 `phase`；如果暂停了队列任务，必须把本次接口返回的 `batchId` 和 `runIds` 写入 `owner.json`。
    - 如果锁已经被占用，不要继续执行部署动作；读取 `owner.json` 后按指数退避等待锁释放，初始等待 5 秒、每次翻倍、单次等待最多 120 秒，总等待时间最多 30 分钟。
    - 等待期间每次重试仍必须使用原子目录创建获取锁，不要用 `Test-Path` 先判断再创建。
    - 如果等待 30 分钟后仍然无法获取锁，停止部署；读取 `owner.json` 后向用户报告当前持有者、进程、分支、阶段和开始时间。
    - 正常完成公网验证并恢复本次暂停的任务后，删除 `.deploy.lock` 释放锁；如果部署失败、验证失败、或存在尚未恢复的本次暂停任务，更新 `owner.json` 为失败阶段并保留锁，等待用户确认后再接管或清理。
    - `.deploy.lock/` 是运行时锁目录，不要提交到 git。
-2. `git add` + `git commit` + `git push`（提交并推送到远程）。
 3. 判断当前执行环境：
    - 如果当前机器的当前项目目录下已经有通过 `npm run dev` / `next dev` 或 `npm run start` / `next start` 启动的服务，无论是开发服务还是生产服务，都不要 SSH 到 `mypc`；直接在当前目录继续执行后续检查、验证或必要的本机服务处理。
    - 如果当前已经在 `mypc` 这台 Windows 设备，且仓库目录是 `D:\Luca\Code\MyProject\comfyui-manager`，不要 SSH，直接在当前目录继续执行后续步骤。

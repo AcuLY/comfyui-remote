@@ -16,12 +16,20 @@ export type ProjectFormCategory = {
   slug: string;
   icon: string | null;
   color: string | null;
+  type: string;
   sortOrder: number;
+  folders: Array<{
+    id: string;
+    name: string;
+    parentId: string | null;
+    sortOrder: number;
+  }>;
   presets: Array<{
     id: string;
     name: string;
     slug: string;
     isActive: boolean;
+    folderId: string | null;
     variants: Array<{
       id: string;
       name: string;
@@ -43,6 +51,10 @@ export async function getProjectFormOptions(): Promise<ProjectFormOptions> {
     where: { type: ordinaryPresetCategoryTypeWhere() },
     orderBy: { sortOrder: "asc" },
     include: {
+      folders: {
+        orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+        select: { id: true, name: true, parentId: true, sortOrder: true },
+      },
       presets: {
         where: buildGenerationPresetWhere({ isActive: true }),
         orderBy: { sortOrder: "asc" },
@@ -64,12 +76,20 @@ export async function getProjectFormOptions(): Promise<ProjectFormOptions> {
       slug: c.slug,
       icon: c.icon,
       color: c.color,
+      type: c.type,
       sortOrder: c.sortOrder,
+      folders: c.folders.map((folder) => ({
+        id: folder.id,
+        name: folder.name,
+        parentId: folder.parentId,
+        sortOrder: folder.sortOrder,
+      })),
       presets: c.presets.map((p) => ({
         id: p.id,
         name: p.name,
         slug: p.slug,
         isActive: p.isActive,
+        folderId: p.folderId,
         variants: p.variants,
       })),
     })),
