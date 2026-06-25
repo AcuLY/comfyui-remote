@@ -2612,6 +2612,44 @@ test("createProjectFromExisting clones source sections with target project prese
       sortOrder: 0,
     },
   });
+  const sourceTemplateProjectBindingKey = `template-project:${seed.category.id}`;
+  const sourceTemplateProjectBinding = await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: seed.section.id,
+      bindingKey: sourceTemplateProjectBindingKey,
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantA.id,
+      sortOrder: 0,
+    },
+  });
+  await prisma.sectionPromptBlock.create({
+    data: {
+      projectSectionId: seed.section.id,
+      sectionBindingId: sourceTemplateProjectBinding.id,
+      type: "preset",
+      sortOrder: 0,
+    },
+  });
+  const sourceProjectCategoryBindingKey = `${seed.key}-source-project-category-binding`;
+  const sourceProjectCategoryBinding = await prisma.sectionPresetBinding.create({
+    data: {
+      projectSectionId: seed.section.id,
+      bindingKey: sourceProjectCategoryBindingKey,
+      categoryId: seed.category.id,
+      presetId: seed.preset.id,
+      variantId: seed.variantA.id,
+      sortOrder: 1,
+    },
+  });
+  await prisma.sectionPromptBlock.create({
+    data: {
+      projectSectionId: seed.section.id,
+      sectionBindingId: sourceProjectCategoryBinding.id,
+      type: "preset",
+      sortOrder: 1,
+    },
+  });
   await prisma.sectionManualLoraEntry.create({
     data: {
       projectSectionId: seed.section.id,
@@ -2625,6 +2663,36 @@ test("createProjectFromExisting clones source sections with target project prese
       detachedFromVariantId: seed.variantA.id,
       detachedFromPath: `/${seed.key}-a.safetensors`,
       sortOrder: 0,
+    },
+  });
+  await prisma.sectionManualLoraEntry.create({
+    data: {
+      projectSectionId: seed.section.id,
+      sectionBindingId: sourceTemplateProjectBinding.id,
+      stage: "lora1",
+      path: `/${seed.key}-source-template-project-override.safetensors`,
+      weight: 0.9,
+      enabled: true,
+      detachedFromBindingKey: sourceTemplateProjectBindingKey,
+      detachedFromPresetId: seed.preset.id,
+      detachedFromVariantId: seed.variantA.id,
+      detachedFromPath: `/${seed.key}-a.safetensors`,
+      sortOrder: 1,
+    },
+  });
+  await prisma.sectionManualLoraEntry.create({
+    data: {
+      projectSectionId: seed.section.id,
+      sectionBindingId: sourceProjectCategoryBinding.id,
+      stage: "lora1",
+      path: `/${seed.key}-source-category-project-override.safetensors`,
+      weight: 0.9,
+      enabled: true,
+      detachedFromBindingKey: sourceProjectCategoryBindingKey,
+      detachedFromPresetId: seed.preset.id,
+      detachedFromVariantId: seed.variantA.id,
+      detachedFromPath: `/${seed.key}-a.safetensors`,
+      sortOrder: 2,
     },
   });
   await prisma.sectionPromptBlock.create({
@@ -2682,11 +2750,32 @@ test("createProjectFromExisting clones source sections with target project prese
   });
   assert.equal(targetProjectBinding.presetId, seed.preset.id);
   assert.equal(targetProjectBinding.variantId, seed.variantB.id);
+  assert.equal(
+    await prisma.sectionPresetBinding.count({
+      where: {
+        projectSectionId: targetSection.id,
+        bindingKey: { startsWith: "template-project:" },
+      },
+    }),
+    0,
+    "template-imported project bindings must be rebased to target project bindings, not duplicated",
+  );
+  assert.equal(
+    await prisma.sectionPresetBinding.count({
+      where: {
+        projectSectionId: targetSection.id,
+        bindingKey: sourceProjectCategoryBindingKey,
+      },
+    }),
+    0,
+    "source bindings in target project-bound categories must be replaced by the target project preset",
+  );
 
   const targetPromptRows = await prisma.sectionPromptBlock.findMany({
     where: { projectSectionId: targetSection.id },
     orderBy: { sortOrder: "asc" },
   });
+  assert.equal(targetPromptRows.length, 2);
   assert.equal(targetPromptRows[0].sectionBindingId, targetProjectBinding.id);
   assert.equal(targetPromptRows[1].sectionBindingId, null);
   assert.equal(targetPromptRows[1].customPositive, `${seed.key} custom positive`);
@@ -2700,6 +2789,26 @@ test("createProjectFromExisting clones source sections with target project prese
     }),
     0,
     "source project-bound LoRA overrides must not survive after rebasing to the target project preset",
+  );
+  assert.equal(
+    await prisma.sectionManualLoraEntry.count({
+      where: {
+        projectSectionId: targetSection.id,
+        path: `/${seed.key}-source-template-project-override.safetensors`,
+      },
+    }),
+    0,
+    "source template-project LoRA overrides must not survive after rebasing to the target project preset",
+  );
+  assert.equal(
+    await prisma.sectionManualLoraEntry.count({
+      where: {
+        projectSectionId: targetSection.id,
+        path: `/${seed.key}-source-category-project-override.safetensors`,
+      },
+    }),
+    0,
+    "source project-category LoRA overrides must not survive after rebasing to the target project preset",
   );
 });
 

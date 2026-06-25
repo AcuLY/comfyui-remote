@@ -115,7 +115,14 @@ function projectBindingKey(categoryId: string) {
 }
 
 function isProjectBindingKey(bindingKey: string) {
-  return bindingKey.startsWith("project:");
+  return bindingKey.startsWith("project:") || bindingKey.startsWith("template-project:");
+}
+
+function shouldRebaseSourceProjectBinding(
+  binding: { bindingKey: string; categoryId: string },
+  targetProjectBindingCategoryIds: ReadonlySet<string>,
+) {
+  return isProjectBindingKey(binding.bindingKey) || targetProjectBindingCategoryIds.has(binding.categoryId);
 }
 
 async function assertOrdinaryProjectPresetBindings(bindings: readonly PresetBinding[]) {
@@ -295,13 +302,14 @@ export async function createProjectFromExisting(input: CreateProjectFromExisting
     throw new Error("Source project not found");
   }
 
+  const normalizedProjectBindings = normalizeProjectPresetBindings(input.presetBindings);
+  const targetProjectBindingCategoryIds = new Set(normalizedProjectBindings.map((binding) => binding.categoryId));
+
   await assertOrdinaryPresetLibraryBindingRefs(
     sourceProject.sections
       .flatMap((section) => section.presetBindingRows)
-      .filter((binding) => !isProjectBindingKey(binding.bindingKey)),
+      .filter((binding) => !shouldRebaseSourceProjectBinding(binding, targetProjectBindingCategoryIds)),
   );
-
-  const normalizedProjectBindings = normalizeProjectPresetBindings(input.presetBindings);
 
   // 生成唯一 slug
   const baseSlug = input.title
@@ -371,21 +379,19 @@ export async function createProjectFromExisting(input: CreateProjectFromExisting
           if (!copiedSectionId) continue;
 
           const sourceBindingById = new Map(sourceSection.presetBindingRows.map((binding) => [binding.id, binding]));
-          const sourceProjectBindingIds = new Set(
-            sourceSection.presetBindingRows
-              .filter((binding) => isProjectBindingKey(binding.bindingKey))
-              .map((binding) => binding.id),
+          const sourceProjectBindings = sourceSection.presetBindingRows.filter((binding) =>
+            shouldRebaseSourceProjectBinding(binding, targetProjectBindingCategoryIds),
           );
-          const sourceProjectPromptByBindingKey = new Map(
-            sourceSection.sectionPromptBlocks
-              .map((block) => {
-                const binding = block.sectionBindingId ? sourceBindingById.get(block.sectionBindingId) : null;
-                return binding && isProjectBindingKey(binding.bindingKey)
-                  ? [binding.bindingKey, block] as const
-                  : null;
-              })
-              .filter((entry): entry is NonNullable<typeof entry> => entry !== null),
-          );
+          const sourceProjectBindingIds = new Set(sourceProjectBindings.map((binding) => binding.id));
+          const sourceProjectBindingKeys = new Set(sourceProjectBindings.map((binding) => binding.bindingKey));
+          const sourceProjectPromptByCategoryId = new Map<string, (typeof sourceSection.sectionPromptBlocks)[number]>();
+          for (const block of sourceSection.sectionPromptBlocks) {
+            const binding = block.sectionBindingId ? sourceBindingById.get(block.sectionBindingId) : null;
+            if (!binding || !sourceProjectBindingIds.has(binding.id)) continue;
+            if (!sourceProjectPromptByCategoryId.has(binding.categoryId)) {
+              sourceProjectPromptByCategoryId.set(binding.categoryId, block);
+            }
+          }
 
           const copiedBindingIdBySourceId = new Map<string, string>();
           const copiedProjectBindingIdByKey = new Map<string, string>();
@@ -407,7 +413,7 @@ export async function createProjectFromExisting(input: CreateProjectFromExisting
           }
 
           for (const binding of sourceSection.presetBindingRows) {
-            if (isProjectBindingKey(binding.bindingKey)) continue;
+            if (sourceProjectBindingIds.has(binding.id)) continue;
 
             const copiedBinding = await tx.sectionPresetBinding.create({
               data: {
@@ -429,7 +435,7 @@ export async function createProjectFromExisting(input: CreateProjectFromExisting
             const bindingKey = projectBindingKey(binding.categoryId);
             const copiedBindingId = copiedProjectBindingIdByKey.get(bindingKey);
             if (!copiedBindingId) continue;
-            const sourcePrompt = sourceProjectPromptByBindingKey.get(bindingKey);
+            const sourcePrompt = sourceProjectPromptByCategoryId.get(binding.categoryId);
             await tx.sectionPromptBlock.create({
               data: {
                 projectSectionId: copiedSectionId,
@@ -460,6 +466,7 @@ export async function createProjectFromExisting(input: CreateProjectFromExisting
 
           for (const entry of sourceSection.manualLoraEntries) {
             if (entry.sectionBindingId && sourceProjectBindingIds.has(entry.sectionBindingId)) continue;
+            if (entry.detachedFromBindingKey && sourceProjectBindingKeys.has(entry.detachedFromBindingKey)) continue;
             if (entry.detachedFromBindingKey && isProjectBindingKey(entry.detachedFromBindingKey)) continue;
 
             const copiedBindingId = entry.sectionBindingId
