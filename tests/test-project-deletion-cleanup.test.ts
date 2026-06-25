@@ -135,7 +135,7 @@ test("complete project deletion cancels queued, running, and paused tasks before
   assert.ok(events.indexOf("run.updateMany") < events.indexOf("cleanup.sections"));
   assert.ok(events.indexOf("censoringTask.updateMany") < events.indexOf("cleanup.sections"));
   assert.ok(events.indexOf("cleanup.export") < events.indexOf("project.delete"));
-  assert.ok(events.includes("comfy.delete:prompt-pending"));
+  assert.ok(events.includes("comfy.delete:prompt-pending,prompt-paused"));
   assert.ok(events.includes("comfy.delete:censor-pending,censor-paused"));
   assert.ok(events.includes("comfy.interrupt"));
 });

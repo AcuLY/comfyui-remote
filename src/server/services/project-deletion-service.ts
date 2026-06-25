@@ -256,7 +256,7 @@ async function cancelComfyPromptsForRuns(
   deps.comfy.clearQueueSnapshotCache();
   try {
     for (const run of runs) {
-      if (run.status === "paused" || !run.comfyPromptId) continue;
+      if (!run.comfyPromptId) continue;
       const position = await deps.comfy.getQueuePosition(deps.comfy.apiUrl, run.comfyPromptId);
       if (position === "running") {
         shouldInterrupt = true;

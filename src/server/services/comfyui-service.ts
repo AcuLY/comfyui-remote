@@ -619,6 +619,40 @@ export async function submitComfyPrompt(
   return promptId;
 }
 
+export async function submitRawComfyPrompt(
+  apiUrl: string,
+  apiPrompt: Prisma.JsonValue,
+) {
+  const normalizedApiUrl = normalizeApiUrl(apiUrl);
+  const payload = await fetchJson(
+    `${normalizedApiUrl}/prompt`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt: apiPrompt }),
+    },
+    "ComfyUI prompt resume",
+  );
+  const response = asRecord(payload);
+  const promptId = typeof response?.prompt_id === "string" ? response.prompt_id : null;
+  const nodeErrors = asRecord(response?.node_errors);
+
+  if (nodeErrors && Object.keys(nodeErrors).length > 0) {
+    throw new Error(
+      `ComfyUI prompt resume returned node_errors: ${formatUnknownValue(nodeErrors)}`,
+    );
+  }
+
+  if (!promptId) {
+    throw new Error("ComfyUI prompt resume did not return prompt_id");
+  }
+
+  clearComfyQueueSnapshotCache();
+  return promptId;
+}
+
 export type ComfyQueuePosition = "running" | "pending" | "not_found";
 
 type ComfyQueueSnapshot = {

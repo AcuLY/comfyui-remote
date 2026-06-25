@@ -6,11 +6,9 @@ import { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import { pollRunCompletion } from "@/server/services/run-executor";
 import {
-  clearComfyQueueSnapshotCache,
-  deleteComfyQueueItems,
-  getComfyQueuePosition,
-  interruptComfyPrompt,
+  submitRawComfyPrompt,
 } from "@/server/services/comfyui-service";
+import { cancelComfyPromptsForRuns } from "@/server/services/comfy-queue-cancellation";
 import { getActiveComfyApiUrl } from "@/server/services/comfy-target";
 import {
   removeManagedRunOutput,
@@ -187,54 +185,6 @@ function matchesResumeOptions(
   return true;
 }
 
-/**
- * Cancel ComfyUI prompts for a batch of runs. Interrupts the currently
- * running prompt and deletes pending ones from the queue.
- */
-async function cancelComfyPrompts(
-  runs: Array<{ status?: string; comfyPromptId: string | null }>,
-): Promise<void> {
-  const comfyApiUrl = getActiveComfyApiUrl();
-  const promptIdsToDelete: string[] = [];
-  let shouldInterrupt = false;
-
-  for (const run of runs) {
-    if (run.status === "paused" || !run.comfyPromptId) continue;
-    const position = await getComfyQueuePosition(
-      comfyApiUrl,
-      run.comfyPromptId,
-    );
-    if (position === "running") {
-      shouldInterrupt = true;
-    } else if (position === "pending") {
-      promptIdsToDelete.push(run.comfyPromptId);
-    }
-  }
-
-  if (promptIdsToDelete.length > 0) {
-    await deleteComfyQueueItems(comfyApiUrl, promptIdsToDelete);
-  }
-  if (shouldInterrupt) {
-    await interruptComfyPrompt(comfyApiUrl);
-  }
-}
-
-async function cancelComfyPromptForPause(promptId: string) {
-  const comfyApiUrl = getActiveComfyApiUrl();
-  for (let attempt = 0; attempt < 2; attempt++) {
-    clearComfyQueueSnapshotCache();
-    const position = await getComfyQueuePosition(comfyApiUrl, promptId);
-    if (position === "running") {
-      await interruptComfyPrompt(comfyApiUrl);
-    } else if (position === "pending") {
-      await deleteComfyQueueItems(comfyApiUrl, [promptId]);
-    } else {
-      return;
-    }
-  }
-  clearComfyQueueSnapshotCache();
-}
-
 // ---------------------------------------------------------------------------
 // 取消任务（Run）
 // ---------------------------------------------------------------------------
@@ -251,9 +201,9 @@ export async function cancelRun(
     return { ok: false, error: `任务状态为「${run.status}」，无法取消` };
   }
 
-  if (run.comfyPromptId && run.status !== "paused") {
+  if (run.comfyPromptId) {
     try {
-      await cancelComfyPrompts([run]);
+      await cancelComfyPromptsForRuns([run]);
     } catch (e) {
       // Best-effort: still mark as cancelled in DB even if ComfyUI call fails
       console.warn("Failed to cancel in ComfyUI:", e);
@@ -288,7 +238,7 @@ export async function cancelProjectRuns(projectId: string): Promise<number> {
   });
 
   try {
-    await cancelComfyPrompts(activeRuns);
+    await cancelComfyPromptsForRuns(activeRuns);
   } catch (e) {
     console.warn("Failed to cancel in ComfyUI:", e);
   }
@@ -323,7 +273,7 @@ export async function clearActiveRuns(): Promise<{
     });
 
     try {
-      await cancelComfyPrompts(activeRuns);
+      await cancelComfyPromptsForRuns(activeRuns);
     } catch (e) {
       console.warn("Failed to clear active ComfyUI queue:", e);
     }
@@ -442,36 +392,23 @@ export async function pauseRun(
     return { ok: false, error: "任务即将完成，无法暂停" };
   }
 
-  // Cancel in ComfyUI (best-effort)
-  if (run.comfyPromptId) {
-    try {
-      await cancelComfyPromptForPause(run.comfyPromptId);
-    } catch (e) {
-      console.warn("Failed to cancel in ComfyUI during pause:", e);
-    }
-  }
-
   await prisma.run.updateMany({
     where: buildGenerationRunWhere({ id: runId }),
     data: {
       status: "paused",
-      comfyPromptId: null,
       executionMeta: buildExecutionMetaUpdate(run.executionMeta, marker),
     },
   });
 
-  // Recalculate project status
-  const activeRuns = await prisma.run.count({
-    where: buildGenerationRunWhere({ projectId: run.projectId, status: { in: ["queued", "running"] } }),
-  });
-  if (activeRuns === 0) {
-    const pausedRuns = await prisma.run.count({
-      where: buildGenerationRunWhere({ projectId: run.projectId, status: "paused" }),
-    });
-    await prisma.project.updateMany({
-      where: buildGenerationProjectWhere({ id: run.projectId }),
-      data: { status: pausedRuns > 0 ? "queued" : "draft" },
-    });
+  await updateProjectStatusFromActiveRuns(run.projectId);
+
+  // Cancel in ComfyUI after preserving the remote prompt id locally.
+  if (run.comfyPromptId) {
+    try {
+      await cancelComfyPromptsForRuns([run]);
+    } catch (e) {
+      console.warn("Failed to cancel in ComfyUI during pause:", e);
+    }
   }
 
   revalidatePath("/queue");
@@ -507,21 +444,7 @@ export async function resumeRun(
   let newComfyPromptId: string;
   try {
     const apiUrl = getActiveComfyApiUrl().trim().replace(/\/+$/, "");
-    const res = await fetch(`${apiUrl}/prompt`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: run.submittedPrompt }),
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "unknown error");
-      throw new Error(`ComfyUI returned ${res.status}: ${text}`);
-    }
-    const data = await res.json();
-    newComfyPromptId = data.prompt_id;
-    if (!newComfyPromptId) {
-      throw new Error("ComfyUI did not return prompt_id");
-    }
-    clearComfyQueueSnapshotCache();
+    newComfyPromptId = await submitRawComfyPrompt(apiUrl, run.submittedPrompt);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, error: `无法连接到 ComfyUI: ${msg}` };
@@ -569,24 +492,60 @@ export async function pauseAllRuns(
   try {
     const activeRuns = await prisma.run.findMany({
       where: buildGenerationRunWhere({ status: { in: ["queued", "running"] } }),
-      select: { id: true },
+      select: {
+        id: true,
+        status: true,
+        projectId: true,
+        comfyPromptId: true,
+        outputDir: true,
+        executionMeta: true,
+      },
       orderBy: { createdAt: "asc" },
     });
 
     let count = 0;
     const runIds: string[] = [];
     const failures: string[] = [];
+    const pausedRuns: typeof activeRuns = [];
     const marker = options?.source
       ? { source: options.source, batchId }
       : undefined;
+
     for (const run of activeRuns) {
-      const result = await pauseRun(run.id, marker);
-      if (result.ok) {
+      if (run.outputDir?.startsWith("__finalizing__:")) {
+        failures.push(`${run.id}: 浠诲姟鍗冲皢瀹屾垚锛屾棤娉曟殏鍋?`);
+        continue;
+      }
+
+      const result = await prisma.run.updateMany({
+        where: buildGenerationRunWhere({
+          id: run.id,
+          status: { in: ["queued", "running"] },
+        }),
+        data: {
+          status: "paused",
+          executionMeta: buildExecutionMetaUpdate(run.executionMeta, marker),
+        },
+      });
+
+      if (result.count > 0) {
         count++;
         runIds.push(run.id);
+        pausedRuns.push(run);
       } else {
-        failures.push(`${run.id}: ${result.error ?? "unknown error"}`);
+        failures.push(`${run.id}: task was no longer active`);
       }
+    }
+
+    const projectIds = [...new Set(pausedRuns.map((run) => run.projectId))];
+    for (const projectId of projectIds) {
+      await updateProjectStatusFromActiveRuns(projectId);
+    }
+
+    try {
+      await cancelComfyPromptsForRuns(pausedRuns);
+    } catch (e) {
+      console.warn("Failed to cancel ComfyUI prompts during batch pause:", e);
     }
 
     revalidatePath("/queue");
