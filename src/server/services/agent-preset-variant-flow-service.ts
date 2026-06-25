@@ -16,6 +16,8 @@ type ProjectLookup = {
   createdAt?: Date | string;
 };
 
+const PROJECT_SECTION_QUERY_BATCH_SIZE = 250;
+
 async function findProjectByTitle(title: string, expectedProjectId: string | null, errorPrefix: "SOURCE" | "TARGET"): Promise<ProjectLookup> {
   if (expectedProjectId) {
     const project = await prisma.project.findFirst({
@@ -39,43 +41,50 @@ async function findProjectByTitle(title: string, expectedProjectId: string | nul
 }
 
 async function getSectionsForVerification(projectId: string): Promise<FlowSectionForVerification[]> {
-  const sections = await prisma.projectSection.findMany({
-    where: {
-      projectId,
-      enabled: true,
-      project: buildGenerationProjectWhere({ id: projectId }),
-    },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      sortOrder: true,
-      manualLoraEntries: {
-        select: {
-          sectionBindingId: true,
-          enabled: true,
-        },
+  const sections = [];
+  for (let skip = 0; ; skip += PROJECT_SECTION_QUERY_BATCH_SIZE) {
+    const page = await prisma.projectSection.findMany({
+      where: {
+        projectId,
+        enabled: true,
+        project: buildGenerationProjectWhere({ id: projectId }),
       },
-      sectionPromptBlocks: {
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: {
-          id: true,
-          sectionBindingId: true,
-          customLabel: true,
-          sectionBinding: {
-            select: {
-              category: { select: { name: true, slug: true } },
-              presetId: true,
-              variantId: true,
-              preset: { select: { name: true } },
-              variant: { select: { name: true } },
-            },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+      skip,
+      take: PROJECT_SECTION_QUERY_BATCH_SIZE,
+      select: {
+        id: true,
+        name: true,
+        sortOrder: true,
+        manualLoraEntries: {
+          select: {
+            sectionBindingId: true,
+            enabled: true,
           },
-          sortOrder: true,
+        },
+        sectionPromptBlocks: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: {
+            id: true,
+            sectionBindingId: true,
+            customLabel: true,
+            sectionBinding: {
+              select: {
+                category: { select: { name: true, slug: true } },
+                presetId: true,
+                variantId: true,
+                preset: { select: { name: true } },
+                variant: { select: { name: true } },
+              },
+            },
+            sortOrder: true,
+          },
         },
       },
-    },
-  });
+    });
+    sections.push(...page);
+    if (page.length < PROJECT_SECTION_QUERY_BATCH_SIZE) break;
+  }
 
   return sections.map((section) => ({
     id: section.id,

@@ -49,6 +49,9 @@ test("sync preset variant flow picks reference projects through a folder-aware p
   assert.match(picker, /export function ProjectCascadePicker/);
   assert.match(picker, /Folder/);
   assert.match(picker, /folderId/);
+  assert.match(picker, /import \{ createPortal \} from "react-dom"/);
+  assert.match(picker, /createPortal\(/);
+  assert.match(picker, /document\.body/);
   assert.match(dialog, /import \{ ProjectCascadePicker \} from "@\/components\/project-cascade-picker"/);
   assert.match(dialog, /fetch\("\/api\/project-folders"\)/);
   assert.match(dialog, /<ProjectCascadePicker/);

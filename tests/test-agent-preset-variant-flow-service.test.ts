@@ -409,3 +409,61 @@ test("syncPresetVariantFlow ignores manual preset names and uses section role bi
   assert.equal(result.targetPresetName, null);
   assert.equal(result.initialDryRun.plannedUpdateCount, 2);
 });
+
+test("syncPresetVariantFlow handles projects with more sections than the database parameter limit", async () => {
+  const sectionCount = 1100;
+  await prisma.project.createMany({
+    data: [
+      { id: "project-bulk-source", title: "Bulk Source", slug: "bulk-source", updatedAt: new Date("2026-06-14T02:00:00Z") },
+      { id: "project-bulk-target", title: "Bulk Target", slug: "bulk-target", updatedAt: new Date("2026-06-14T03:00:00Z") },
+    ],
+  });
+
+  const sourceSections = Array.from({ length: sectionCount }, (_, index) => ({
+    id: `bulk-source-section-${index}`,
+    projectId: "project-bulk-source",
+    name: `Bulk Section ${index}`,
+    sortOrder: index,
+  }));
+  const targetSections = Array.from({ length: sectionCount }, (_, index) => ({
+    id: `bulk-target-section-${index}`,
+    projectId: "project-bulk-target",
+    name: `Bulk Section ${index}`,
+    sortOrder: index,
+  }));
+  for (let index = 0; index < sectionCount; index += 100) {
+    await prisma.projectSection.createMany({ data: sourceSections.slice(index, index + 100) });
+    await prisma.projectSection.createMany({ data: targetSections.slice(index, index + 100) });
+  }
+
+  const sourceBindings = sourceSections.map((section, index) => ({
+    id: `bulk-source-role-${index}`,
+    projectSectionId: section.id,
+    bindingKey: "role",
+    categoryId: "cat-character",
+    presetId: "preset-keqing",
+    variantId: "keqing-half",
+    sortOrder: 0,
+  }));
+  const targetBindings = targetSections.map((section, index) => ({
+    id: `bulk-target-role-${index}`,
+    projectSectionId: section.id,
+    bindingKey: "role",
+    categoryId: "cat-character",
+    presetId: "preset-mami",
+    variantId: "mami-full",
+    sortOrder: 0,
+  }));
+  for (let index = 0; index < sectionCount; index += 100) {
+    await prisma.sectionPresetBinding.createMany({ data: sourceBindings.slice(index, index + 100) });
+    await prisma.sectionPresetBinding.createMany({ data: targetBindings.slice(index, index + 100) });
+  }
+
+  const result = await syncPresetVariantFlow({
+    sourceProjectTitle: "Bulk Source",
+    targetProjectTitle: "Bulk Target",
+    dryRun: true,
+  });
+
+  assert.equal(result.initialDryRun.plannedUpdateCount, sectionCount);
+});

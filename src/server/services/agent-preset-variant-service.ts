@@ -29,6 +29,16 @@ export type SyncPresetVariantsInput = {
   dryRun?: boolean;
 };
 
+const DATABASE_QUERY_BATCH_SIZE = 250;
+
+function chunkArray<T>(items: readonly T[], size = DATABASE_QUERY_BATCH_SIZE) {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    chunks.push(items.slice(index, index + size));
+  }
+  return chunks;
+}
+
 function normalizeKey(value: string | null | undefined) {
   return (value ?? "").trim().toLocaleLowerCase();
 }
@@ -94,17 +104,20 @@ export async function switchProjectVariants(
   }
 
   const sectionIds = [...new Set(updates.map((update) => update.sectionId))];
-  const sections = sectionIds.length > 0
-    ? await prisma.projectSection.findMany({
+  const sectionIdSet = new Set<string>();
+  for (const sectionIdChunk of chunkArray(sectionIds)) {
+    const sections = await prisma.projectSection.findMany({
         where: {
           projectId: normalizedProjectId,
-          id: { in: sectionIds },
+          id: { in: sectionIdChunk },
           project: buildGenerationProjectWhere({ id: normalizedProjectId }),
         },
         select: { id: true },
-      })
-    : [];
-  const sectionIdSet = new Set(sections.map((section) => section.id));
+      });
+    for (const section of sections) {
+      sectionIdSet.add(section.id);
+    }
+  }
 
   const results: SwitchVariantResult[] = [];
   for (const update of updates) {
@@ -247,43 +260,58 @@ async function findPresetByReference(
 }
 
 async function getProjectSectionsForSync(projectId: string) {
-  return prisma.project.findFirst({
+  const project = await prisma.project.findFirst({
     where: buildGenerationProjectWhere({ id: projectId }),
     select: {
       id: true,
       title: true,
-      sections: {
-        where: { enabled: true },
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: {
-          id: true,
-          name: true,
-          sortOrder: true,
-          presetBindingRows: {
-            orderBy: { sortOrder: "asc" },
-            select: {
-              bindingKey: true,
-              presetId: true,
-              variantId: true,
-              sortOrder: true,
-              category: { select: { name: true, slug: true } },
-              preset: {
-                select: {
-                  id: true,
-                  name: true,
-                  variants: {
-                    where: { isActive: true },
-                    orderBy: { sortOrder: "asc" },
-                    select: { id: true, name: true, slug: true },
-                  },
+    },
+  });
+  if (!project) return null;
+
+  const sections = [];
+  for (let skip = 0; ; skip += DATABASE_QUERY_BATCH_SIZE) {
+    const page = await prisma.projectSection.findMany({
+      where: {
+        projectId,
+        enabled: true,
+        project: buildGenerationProjectWhere({ id: projectId }),
+      },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+      skip,
+      take: DATABASE_QUERY_BATCH_SIZE,
+      select: {
+        id: true,
+        name: true,
+        sortOrder: true,
+        presetBindingRows: {
+          orderBy: { sortOrder: "asc" },
+          select: {
+            bindingKey: true,
+            presetId: true,
+            variantId: true,
+            sortOrder: true,
+            category: { select: { name: true, slug: true } },
+            preset: {
+              select: {
+                id: true,
+                name: true,
+                variants: {
+                  where: { isActive: true },
+                  orderBy: { sortOrder: "asc" },
+                  select: { id: true, name: true, slug: true },
                 },
               },
             },
           },
         },
       },
-    },
-  });
+    });
+    sections.push(...page);
+    if (page.length < DATABASE_QUERY_BATCH_SIZE) break;
+  }
+
+  return { ...project, sections };
 }
 
 type SyncProject = NonNullable<Awaited<ReturnType<typeof getProjectSectionsForSync>>>;
