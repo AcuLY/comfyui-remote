@@ -65,8 +65,14 @@ export async function cancelComfyPromptsForRuns(
 
   deps.clearQueueSnapshotCache();
   try {
-    for (const promptId of promptIds) {
-      const position = await deps.getQueuePosition(deps.apiUrl, promptId);
+    const promptPositions = await Promise.all(
+      promptIds.map(async (promptId) => ({
+        promptId,
+        position: await deps.getQueuePosition(deps.apiUrl, promptId),
+      })),
+    );
+
+    for (const { promptId, position } of promptPositions) {
       if (position === "running") {
         shouldInterrupt = true;
       } else if (position === "pending") {

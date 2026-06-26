@@ -272,11 +272,7 @@ export async function clearActiveRuns(): Promise<{
       select: { id: true, projectId: true, status: true, comfyPromptId: true },
     });
 
-    try {
-      await cancelComfyPromptsForRuns(activeRuns);
-    } catch (e) {
-      console.warn("Failed to clear active ComfyUI queue:", e);
-    }
+    await cancelComfyPromptsForRuns(activeRuns);
 
     const result = await prisma.run.updateMany({
       where: buildGenerationRunWhere({ status: { in: RUN_ACTIVE_STATUSES } }),
