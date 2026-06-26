@@ -13,7 +13,7 @@ import {
 } from "@/server/repositories/project-repository";
 import { audit } from "@/server/services/audit-service";
 import {
-  submitQueuedRunsToComfyUIWithHealthCheck,
+  scheduleQueuedRunsToComfyUI,
 } from "@/server/services/run-executor";
 import {
   ServiceValidationError,
@@ -36,8 +36,8 @@ type EnqueuedRun = {
   runId: string;
 };
 
-async function submitQueuedRunsInBackground(runs: EnqueuedRun[]) {
-  return submitQueuedRunsToComfyUIWithHealthCheck(runs);
+function submitQueuedRunsInBackground(runs: EnqueuedRun[]) {
+  return scheduleQueuedRunsToComfyUI(runs);
 }
 
 type CreateProjectRequestBody = {
@@ -536,7 +536,7 @@ export async function enqueueProjectRuns(projectId: string, overrideBatchSize?: 
   log.info("Project runs enqueued", { projectId: normalizedId, queuedRunCount: result.queuedRunCount });
   audit("Project", normalizedId, "enqueue", { queuedRunCount: result.queuedRunCount }, actorType);
 
-  const submission = await submitQueuedRunsInBackground(result.runs);
+  const submission = submitQueuedRunsInBackground(result.runs);
 
   return { ...result, submission };
 }
@@ -580,7 +580,7 @@ export async function enqueueProjectSectionRun(
   );
   audit("ProjectSection", normalizedSectionId, "enqueue", { projectId: normalizedProjectId }, actorType);
 
-  const submission = await submitQueuedRunsInBackground(result.runs);
+  const submission = submitQueuedRunsInBackground(result.runs);
 
   return { ...result, submission };
 }

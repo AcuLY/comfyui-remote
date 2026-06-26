@@ -6,7 +6,7 @@ import {
   enqueueProjectRuns as enqueueProjectRunsRepo,
   enqueueProjectSectionRun as enqueueProjectSectionRunRepo,
 } from "@/server/repositories/project-repository";
-import { submitQueuedRunsToComfyUIWithHealthCheck } from "@/server/services/run-executor";
+import { scheduleQueuedRunsToComfyUI } from "@/server/services/run-executor";
 import type { SubmitComfyPromptOptions } from "@/server/services/comfyui-service";
 
 type RunSectionOptions = {
@@ -17,11 +17,11 @@ type EnqueuedRun = {
   runId: string;
 };
 
-async function submitQueuedRunsInBackground(
+function submitQueuedRunsInBackground(
   runs: EnqueuedRun[],
   optionsForRun?: (run: EnqueuedRun) => SubmitComfyPromptOptions,
 ) {
-  return submitQueuedRunsToComfyUIWithHealthCheck(runs, optionsForRun);
+  return scheduleQueuedRunsToComfyUI(runs, optionsForRun);
 }
 
 // ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ export async function runProject(
     overrideBatchSize ?? undefined,
   );
 
-  const submission = await submitQueuedRunsInBackground(result.runs);
+  const submission = submitQueuedRunsInBackground(result.runs);
 
   revalidatePath("/projects");
   revalidatePath("/queue");
@@ -55,7 +55,7 @@ export async function runSections(
   );
 
   if (uniqueSectionIds.length === 0) {
-    const submission = await submitQueuedRunsInBackground([]);
+    const submission = submitQueuedRunsInBackground([]);
     return {
       queuedRunCount: 0,
       runs: [],
@@ -86,7 +86,7 @@ export async function runSections(
   }
 
   const runs = results.flatMap((result) => result.runs);
-  const submission = await submitQueuedRunsInBackground(runs);
+  const submission = submitQueuedRunsInBackground(runs);
 
   revalidatePath("/projects");
   revalidatePath("/queue");
@@ -125,7 +125,7 @@ export async function runSection(
     ? [...result.runs].reverse()
     : result.runs;
 
-  const submission = await submitQueuedRunsInBackground(runsToSubmit, () => ({
+  const submission = submitQueuedRunsInBackground(runsToSubmit, () => ({
     front: options?.prioritize === true,
   }));
 

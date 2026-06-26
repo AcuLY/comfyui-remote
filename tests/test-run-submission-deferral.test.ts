@@ -52,13 +52,13 @@ test("run actions defer ComfyUI submission failures instead of deleting queued r
   );
   assert.match(
     actionSource,
-    /submitQueuedRunsToComfyUIWithHealthCheck\(runs/,
-    "server actions should use the batch submission helper",
+    /scheduleQueuedRunsToComfyUI\(/,
+    "server actions should use the non-blocking submission scheduler",
   );
   assert.match(
     serviceSource,
-    /submitQueuedRunsToComfyUIWithHealthCheck\(runs/,
-    "API and agent services should use the batch submission helper",
+    /scheduleQueuedRunsToComfyUI\(/,
+    "API and agent services should use the non-blocking submission scheduler",
   );
   assert.doesNotMatch(
     actionSource,
@@ -70,6 +70,39 @@ test("run actions defer ComfyUI submission failures instead of deleting queued r
     /run\.delete/,
     "API and agent services must not delete the queued run when ComfyUI submission fails",
   );
+});
+
+test("run actions schedule ComfyUI submission without awaiting reachability", () => {
+  const actionSource = readSource("src/lib/actions/run-execution.ts");
+  const serviceSource = readSource("src/server/services/project-service.ts");
+  const executorSource = readSource("src/server/services/run-executor.ts");
+
+  assert.match(
+    executorSource,
+    /export function scheduleQueuedRunsToComfyUI/,
+    "run-executor should expose a non-blocking scheduler for user-facing run creation",
+  );
+  assert.match(
+    executorSource,
+    /void submitQueuedRunsToComfyUIWithHealthCheck\(runs,\s*optionsForRun\)/,
+    "the scheduler should run ComfyUI reachability and submission outside the request lifecycle",
+  );
+
+  for (const [name, source] of [
+    ["server actions", actionSource],
+    ["API and agent services", serviceSource],
+  ] as const) {
+    assert.match(
+      source,
+      /scheduleQueuedRunsToComfyUI\(/,
+      `${name} should schedule ComfyUI submission after local enqueue`,
+    );
+    assert.doesNotMatch(
+      source,
+      /await submitQueuedRunsInBackground/,
+      `${name} should not block run creation on ComfyUI reachability checks`,
+    );
+  }
 });
 
 test("batch run actions and toasts report ComfyUI outage once", () => {

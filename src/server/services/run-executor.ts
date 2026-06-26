@@ -1,7 +1,7 @@
 /**
  * Run Executor — Submit-then-Poll Model
  *
- * Submission happens synchronously in the server action (runProject/runSection).
+ * User-facing run creation schedules submission and returns after local enqueue.
  * This module handles:
  * - submitRunToComfyUI(): validates and submits a single run to ComfyUI
  * - pollRunCompletion(): polls ComfyUI for a submitted run's execution and completion
@@ -211,6 +211,12 @@ export type QueuedRunSubmissionBatchOutcome =
       deferredRunCount: 0;
     }
   | {
+      status: "scheduled";
+      queuedRunCount: number;
+      submittedRunCount: 0;
+      deferredRunCount: 0;
+    }
+  | {
       status: "submitting";
       queuedRunCount: number;
       submittedRunCount: number;
@@ -322,6 +328,34 @@ export async function submitQueuedRunsToComfyUIWithHealthCheck<T extends QueuedR
     status: "submitting",
     queuedRunCount: runs.length,
     submittedRunCount: runs.length,
+    deferredRunCount: 0,
+  };
+}
+
+export function scheduleQueuedRunsToComfyUI<T extends QueuedRunForSubmission>(
+  runs: T[],
+  optionsForRun?: (run: T) => SubmitComfyPromptOptions,
+): QueuedRunSubmissionBatchOutcome {
+  if (runs.length === 0) {
+    return {
+      status: "empty",
+      queuedRunCount: 0,
+      submittedRunCount: 0,
+      deferredRunCount: 0,
+    };
+  }
+
+  void submitQueuedRunsToComfyUIWithHealthCheck(runs, optionsForRun).catch((error) => {
+    log.error(
+      "Failed to schedule queued runs for ComfyUI submission",
+      error instanceof Error ? error : new Error(String(error)),
+    );
+  });
+
+  return {
+    status: "scheduled",
+    queuedRunCount: runs.length,
+    submittedRunCount: 0,
     deferredRunCount: 0,
   };
 }
