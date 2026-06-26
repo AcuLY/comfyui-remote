@@ -1,7 +1,17 @@
 import { fail, ok } from "@/lib/api-response";
 import { clearActiveRuns } from "@/lib/actions";
+import {
+  createQueueControlProgressStream,
+  wantsQueueControlStream,
+} from "@/server/services/queue-control-stream";
 
-export async function POST() {
+export async function POST(request: Request) {
+  if (wantsQueueControlStream(request)) {
+    return createQueueControlProgressStream((onProgress) =>
+      clearActiveRuns({ onProgress }),
+    );
+  }
+
   try {
     const result = await clearActiveRuns();
 

@@ -1,5 +1,9 @@
 import { fail, ok } from "@/lib/api-response";
 import { resumeAllRuns } from "@/lib/actions/run";
+import {
+  createQueueControlProgressStream,
+  wantsQueueControlStream,
+} from "@/server/services/queue-control-stream";
 
 const QUEUE_API_PAUSE_SOURCE = "api-pause-active";
 
@@ -40,6 +44,18 @@ export async function POST(request: Request) {
     const body = await readOptionalJsonBody(request);
     const runIds = normalizeRunIds(body.runIds);
     const batchId = normalizeBatchId(body.batchId);
+    if (wantsQueueControlStream(request)) {
+      return createQueueControlProgressStream((onProgress) =>
+        resumeAllRuns({
+          runIds,
+          batchId,
+          source: QUEUE_API_PAUSE_SOURCE,
+          markedOnly: true,
+          onProgress,
+        }),
+      );
+    }
+
     const result = await resumeAllRuns({
       runIds,
       batchId,

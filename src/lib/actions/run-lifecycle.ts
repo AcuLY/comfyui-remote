@@ -19,6 +19,7 @@ import {
   RUN_CANCELLABLE_STATUSES,
   isRunCancellableStatus,
 } from "@/lib/actions/cancellation-helpers";
+import type { QueueControlProgressReporter } from "@/lib/queue-control-progress";
 import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 
 const QUEUE_PAUSE_META_KEY = "__queuePause";
@@ -39,6 +40,7 @@ type QueuePauseMarkerInput = {
 type PauseAllRunsOptions = {
   source?: string;
   batchId?: string;
+  onProgress?: QueueControlProgressReporter;
 };
 
 type PauseAllRunsResult = {
@@ -54,6 +56,7 @@ type ResumeAllRunsOptions = {
   source?: string;
   batchId?: string;
   markedOnly?: boolean;
+  onProgress?: QueueControlProgressReporter;
 };
 
 type ResumeAllRunsResult = {
@@ -61,6 +64,10 @@ type ResumeAllRunsResult = {
   count: number;
   runIds: string[];
   error?: string;
+};
+
+type QueueControlOptions = {
+  onProgress?: QueueControlProgressReporter;
 };
 
 // ---------------------------------------------------------------------------
@@ -185,6 +192,56 @@ function matchesResumeOptions(
   return true;
 }
 
+function formatActionError(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+async function reportQueueProgress(
+  reporter: QueueControlProgressReporter | undefined,
+  event: Parameters<QueueControlProgressReporter>[0],
+) {
+  await reporter?.(event);
+}
+
+function splitRunsByRemotePrompt<T extends { comfyPromptId: string | null }>(runs: T[]) {
+  const remoteRuns: T[] = [];
+  const localOnlyRuns: T[] = [];
+
+  for (const run of runs) {
+    if (run.comfyPromptId?.trim()) {
+      remoteRuns.push(run);
+    } else {
+      localOnlyRuns.push(run);
+    }
+  }
+
+  return { remoteRuns, localOnlyRuns };
+}
+
+async function refreshProjectStatuses(projectIds: Iterable<string>) {
+  for (const projectId of new Set(projectIds)) {
+    await updateProjectStatusFromActiveRuns(projectId);
+  }
+}
+
+async function markRunsCancelled(runIds: string[]) {
+  if (runIds.length === 0) return 0;
+
+  const result = await prisma.run.updateMany({
+    where: buildGenerationRunWhere({
+      id: { in: runIds },
+      status: { in: RUN_ACTIVE_STATUSES },
+    }),
+    data: {
+      status: "cancelled",
+      finishedAt: new Date(),
+      errorMessage: "用户取消",
+    },
+  });
+
+  return result.count;
+}
+
 // ---------------------------------------------------------------------------
 // 取消任务（Run）
 // ---------------------------------------------------------------------------
@@ -204,20 +261,12 @@ export async function cancelRun(
   if (run.comfyPromptId) {
     try {
       await cancelComfyPromptsForRuns([run]);
-    } catch (e) {
-      // Best-effort: still mark as cancelled in DB even if ComfyUI call fails
-      console.warn("Failed to cancel in ComfyUI:", e);
+    } catch (error) {
+      return { ok: false, error: `ComfyUI cancellation failed: ${formatActionError(error)}` };
     }
   }
 
-  await prisma.run.updateMany({
-    where: buildGenerationRunWhere({ id: runId }),
-    data: {
-      status: "cancelled",
-      finishedAt: new Date(),
-      errorMessage: "用户取消",
-    },
-  });
+  await markRunsCancelled([runId]);
 
   await updateProjectStatusFromActiveRuns(run.projectId);
 
@@ -228,72 +277,165 @@ export async function cancelRun(
 
 /** Cancel all queued/running runs for a project */
 export async function cancelProjectRuns(projectId: string): Promise<number> {
-  // Find all active runs with comfyPromptIds to cancel in ComfyUI
   const activeRuns = await prisma.run.findMany({
     where: buildGenerationRunWhere({
       projectId,
       status: { in: RUN_ACTIVE_STATUSES },
     }),
-    select: { id: true, status: true, comfyPromptId: true },
+    select: { id: true, projectId: true, status: true, comfyPromptId: true },
   });
 
-  try {
-    await cancelComfyPromptsForRuns(activeRuns);
-  } catch (e) {
-    console.warn("Failed to cancel in ComfyUI:", e);
+  const { remoteRuns, localOnlyRuns } = splitRunsByRemotePrompt(activeRuns);
+  let cancelledCount = 0;
+
+  if (localOnlyRuns.length > 0) {
+    cancelledCount += await markRunsCancelled(localOnlyRuns.map((run) => run.id));
+    await updateProjectStatusFromActiveRuns(projectId);
   }
 
-  const result = await prisma.run.updateMany({
-    where: buildGenerationRunWhere({
-      projectId,
-      status: { in: RUN_ACTIVE_STATUSES },
-    }),
-    data: {
-      status: "cancelled",
-      finishedAt: new Date(),
-      errorMessage: "用户取消",
+  await cancelComfyPromptsForRuns(remoteRuns, undefined, {
+    onBatchConfirmed: async (batch) => {
+      const result = await prisma.run.updateMany({
+        where: buildGenerationRunWhere({
+          id: { in: batch.runs.map((run) => run.id).filter((id): id is string => Boolean(id)) },
+          status: { in: RUN_ACTIVE_STATUSES },
+        }),
+        data: {
+          status: "cancelled",
+          finishedAt: new Date(),
+          errorMessage: "用户取消",
+        },
+      });
+      cancelledCount += result.count;
+      await updateProjectStatusFromActiveRuns(projectId);
     },
   });
-  await updateProjectStatusFromActiveRuns(projectId);
+
   revalidatePath("/queue");
   revalidatePath(`/projects/${projectId}`);
-  return result.count;
+  return cancelledCount;
 }
 
 /** Cancel all queued/running runs across projects. */
-export async function clearActiveRuns(): Promise<{
+export async function clearActiveRuns(options: QueueControlOptions = {}): Promise<{
   ok: boolean;
   count: number;
   error?: string;
 }> {
+  let cancelledCount = 0;
+  let processedRuns = 0;
+  let totalRuns = 0;
   try {
+    await reportQueueProgress(options.onProgress, {
+      stage: "reading_queue",
+      processedRuns,
+      totalRuns,
+      message: "Reading active queue",
+    });
+
     const activeRuns = await prisma.run.findMany({
       where: buildGenerationRunWhere({ status: { in: RUN_ACTIVE_STATUSES } }),
       select: { id: true, projectId: true, status: true, comfyPromptId: true },
     });
+    totalRuns = activeRuns.length;
+    const projectIdByRunId = new Map(activeRuns.map((run) => [run.id, run.projectId]));
+    const { remoteRuns, localOnlyRuns } = splitRunsByRemotePrompt(activeRuns);
 
-    await cancelComfyPromptsForRuns(activeRuns);
+    await reportQueueProgress(options.onProgress, {
+      stage: "reading_queue",
+      processedRuns,
+      totalRuns,
+      message: `Found ${totalRuns} active run(s)`,
+    });
 
-    const result = await prisma.run.updateMany({
-      where: buildGenerationRunWhere({ status: { in: RUN_ACTIVE_STATUSES } }),
-      data: {
-        status: "cancelled",
-        finishedAt: new Date(),
-        errorMessage: "用户取消",
+    if (localOnlyRuns.length > 0) {
+      await reportQueueProgress(options.onProgress, {
+        stage: "updating_local",
+        processedRuns,
+        totalRuns,
+        batchIndex: 0,
+        batchSize: localOnlyRuns.length,
+        message: "Cancelling local-only queued runs",
+      });
+      cancelledCount += await markRunsCancelled(localOnlyRuns.map((run) => run.id));
+      processedRuns += localOnlyRuns.length;
+      await refreshProjectStatuses(localOnlyRuns.map((run) => run.projectId));
+    }
+
+    await cancelComfyPromptsForRuns(remoteRuns, undefined, {
+      onProgress: async (progress) => {
+        await reportQueueProgress(options.onProgress, {
+          stage:
+            progress.stage === "confirming_remote"
+              ? "confirming_remote"
+              : progress.stage === "updating_local"
+                ? "updating_local"
+                : "syncing_comfy",
+          processedRuns: processedRuns + progress.processedRuns,
+          totalRuns,
+          batchIndex: progress.batchIndex,
+          batchSize: progress.batchSize,
+          elapsedMs: progress.elapsedMs,
+          message: progress.message,
+        });
+      },
+      onBatchConfirmed: async (batch) => {
+        await reportQueueProgress(options.onProgress, {
+          stage: "updating_local",
+          processedRuns,
+          totalRuns,
+          batchIndex: batch.batchIndex,
+          batchSize: batch.runs.length,
+          elapsedMs: batch.elapsedMs,
+          message: "Updating confirmed local rows",
+        });
+        const result = await prisma.run.updateMany({
+          where: buildGenerationRunWhere({
+            id: { in: batch.runs.map((run) => run.id).filter((id): id is string => Boolean(id)) },
+            status: { in: RUN_ACTIVE_STATUSES },
+          }),
+          data: {
+            status: "cancelled",
+            finishedAt: new Date(),
+            errorMessage: "用户取消",
+          },
+        });
+        cancelledCount += result.count;
+        processedRuns += batch.runs.length;
+        await refreshProjectStatuses(
+          batch.runs
+            .map((run) => (run.id ? projectIdByRunId.get(run.id) : null))
+            .filter((projectId): projectId is string => Boolean(projectId)),
+        );
       },
     });
 
-    const projectIds = [...new Set(activeRuns.map((run) => run.projectId))];
-    for (const projectId of projectIds) {
-      await updateProjectStatusFromActiveRuns(projectId);
-    }
-
+    await reportQueueProgress(options.onProgress, {
+      stage: "refreshing",
+      processedRuns,
+      totalRuns,
+      message: "Refreshing queue views",
+    });
     revalidatePath("/queue");
     revalidatePath("/projects");
-    return { ok: true, count: result.count };
-  } catch (e) {
-    console.error("Failed to clear active runs:", e);
-    return { ok: false, count: 0, error: "清空运行中队列失败" };
+    await reportQueueProgress(options.onProgress, {
+      stage: "done",
+      processedRuns,
+      totalRuns,
+      message: "Active queue cancelled",
+    });
+    return { ok: true, count: cancelledCount };
+  } catch (error) {
+    const message = formatActionError(error);
+    console.error("Failed to clear active runs:", error);
+    await reportQueueProgress(options.onProgress, {
+      stage: "failed",
+      processedRuns,
+      totalRuns,
+      error: message,
+      message: "Active queue cancellation failed",
+    });
+    return { ok: false, count: cancelledCount, error: `清空运行中队列失败: ${message}` };
   }
 }
 
@@ -388,6 +530,14 @@ export async function pauseRun(
     return { ok: false, error: "任务即将完成，无法暂停" };
   }
 
+  if (run.comfyPromptId) {
+    try {
+      await cancelComfyPromptsForRuns([run]);
+    } catch (error) {
+      return { ok: false, error: `ComfyUI pause cancellation failed: ${formatActionError(error)}` };
+    }
+  }
+
   await prisma.run.updateMany({
     where: buildGenerationRunWhere({ id: runId }),
     data: {
@@ -397,15 +547,6 @@ export async function pauseRun(
   });
 
   await updateProjectStatusFromActiveRuns(run.projectId);
-
-  // Cancel in ComfyUI after preserving the remote prompt id locally.
-  if (run.comfyPromptId) {
-    try {
-      await cancelComfyPromptsForRuns([run]);
-    } catch (e) {
-      console.warn("Failed to cancel in ComfyUI during pause:", e);
-    }
-  }
 
   revalidatePath("/queue");
   return { ok: true };
@@ -485,7 +626,18 @@ export async function pauseAllRuns(
   options?: PauseAllRunsOptions,
 ): Promise<PauseAllRunsResult> {
   const batchId = options?.batchId ?? randomUUID();
+  let count = 0;
+  const runIds: string[] = [];
+  let processedRuns = 0;
+  let totalRuns = 0;
   try {
+    await reportQueueProgress(options?.onProgress, {
+      stage: "reading_queue",
+      processedRuns,
+      totalRuns,
+      message: "Reading active queue",
+    });
+
     const activeRuns = await prisma.run.findMany({
       where: buildGenerationRunWhere({ status: { in: ["queued", "running"] } }),
       select: {
@@ -498,21 +650,15 @@ export async function pauseAllRuns(
       },
       orderBy: { createdAt: "asc" },
     });
+    totalRuns = activeRuns.length;
 
-    let count = 0;
-    const runIds: string[] = [];
     const failures: string[] = [];
     const pausedRuns: typeof activeRuns = [];
     const marker = options?.source
       ? { source: options.source, batchId }
       : undefined;
-
-    for (const run of activeRuns) {
-      if (run.outputDir?.startsWith("__finalizing__:")) {
-        failures.push(`${run.id}: 浠诲姟鍗冲皢瀹屾垚锛屾棤娉曟殏鍋?`);
-        continue;
-      }
-
+    const runById = new Map(activeRuns.map((run) => [run.id, run]));
+    const markPausedRun = async (run: (typeof activeRuns)[number]) => {
       const result = await prisma.run.updateMany({
         where: buildGenerationRunWhere({
           id: run.id,
@@ -528,24 +674,92 @@ export async function pauseAllRuns(
         count++;
         runIds.push(run.id);
         pausedRuns.push(run);
+        await updateProjectStatusFromActiveRuns(run.projectId);
       } else {
         failures.push(`${run.id}: task was no longer active`);
       }
+      processedRuns++;
+    };
+
+    await reportQueueProgress(options?.onProgress, {
+      stage: "reading_queue",
+      processedRuns,
+      totalRuns,
+      message: `Found ${totalRuns} active run(s)`,
+    });
+
+    for (const run of activeRuns) {
+      if (run.outputDir?.startsWith("__finalizing__:")) {
+        failures.push(`${run.id}: 浠诲姟鍗冲皢瀹屾垚锛屾棤娉曟殏鍋?`);
+        continue;
+      }
+
+      if (run.comfyPromptId?.trim()) {
+        continue;
+      }
+
+      await markPausedRun(run);
     }
+
+    const remotePauseRuns = activeRuns.filter(
+      (run) => run.comfyPromptId?.trim() && !run.outputDir?.startsWith("__finalizing__:"),
+    );
+    await cancelComfyPromptsForRuns(remotePauseRuns, undefined, {
+      onProgress: async (progress) => {
+        await reportQueueProgress(options?.onProgress, {
+          stage:
+            progress.stage === "confirming_remote"
+              ? "confirming_remote"
+              : progress.stage === "updating_local"
+                ? "updating_local"
+                : "syncing_comfy",
+          processedRuns: processedRuns + progress.processedRuns,
+          totalRuns,
+          batchIndex: progress.batchIndex,
+          batchSize: progress.batchSize,
+          elapsedMs: progress.elapsedMs,
+          message: progress.message,
+        });
+      },
+      onBatchConfirmed: async (batch) => {
+        await reportQueueProgress(options?.onProgress, {
+          stage: "updating_local",
+          processedRuns,
+          totalRuns,
+          batchIndex: batch.batchIndex,
+          batchSize: batch.runs.length,
+          elapsedMs: batch.elapsedMs,
+          message: "Pausing confirmed local rows",
+        });
+        for (const batchRun of batch.runs) {
+          const run = batchRun.id ? runById.get(batchRun.id) : undefined;
+          if (run) {
+            await markPausedRun(run);
+          }
+        }
+      },
+    });
 
     const projectIds = [...new Set(pausedRuns.map((run) => run.projectId))];
     for (const projectId of projectIds) {
       await updateProjectStatusFromActiveRuns(projectId);
     }
 
-    try {
-      await cancelComfyPromptsForRuns(pausedRuns);
-    } catch (e) {
-      console.warn("Failed to cancel ComfyUI prompts during batch pause:", e);
-    }
-
+    await reportQueueProgress(options?.onProgress, {
+      stage: "refreshing",
+      processedRuns,
+      totalRuns,
+      message: "Refreshing queue views",
+    });
     revalidatePath("/queue");
     if (failures.length > 0) {
+      await reportQueueProgress(options?.onProgress, {
+        stage: "failed",
+        processedRuns,
+        totalRuns,
+        error: failures.join("; "),
+        message: "Some runs could not be paused",
+      });
       return {
         ok: false,
         count,
@@ -555,10 +769,23 @@ export async function pauseAllRuns(
       };
     }
 
+    await reportQueueProgress(options?.onProgress, {
+      stage: "done",
+      processedRuns,
+      totalRuns,
+      message: "Active queue paused",
+    });
     return { ok: true, count, runIds, batchId };
   } catch (e) {
     console.error("Failed to pause all runs:", e);
-    return { ok: false, count: 0, runIds: [], batchId, error: "批量暂停失败" };
+    await reportQueueProgress(options?.onProgress, {
+      stage: "failed",
+      processedRuns,
+      totalRuns,
+      error: formatActionError(e),
+      message: "Batch pause failed",
+    });
+    return { ok: false, count, runIds, batchId, error: `批量暂停失败: ${formatActionError(e)}` };
   }
 }
 
@@ -569,7 +796,18 @@ export async function pauseAllRuns(
 export async function resumeAllRuns(
   options?: ResumeAllRunsOptions,
 ): Promise<ResumeAllRunsResult> {
+  let count = 0;
+  const runIds: string[] = [];
+  let processedRuns = 0;
+  let totalRuns = 0;
   try {
+    await reportQueueProgress(options?.onProgress, {
+      stage: "reading_queue",
+      processedRuns,
+      totalRuns,
+      message: "Reading paused queue",
+    });
+
     const uniqueRunIds = options?.runIds
       ? [...new Set(options.runIds)].filter(Boolean)
       : undefined;
@@ -591,21 +829,79 @@ export async function resumeAllRuns(
     const pausedRuns = candidateRuns.filter((run) =>
       matchesResumeOptions(run, resumeOptions),
     );
+    totalRuns = pausedRuns.length;
 
-    let count = 0;
-    const runIds: string[] = [];
+    await reportQueueProgress(options?.onProgress, {
+      stage: "reading_queue",
+      processedRuns,
+      totalRuns,
+      message: `Found ${totalRuns} paused run(s)`,
+    });
+
+    let batchIndex = 0;
     for (const run of pausedRuns) {
+      batchIndex++;
+      const startedAt = Date.now();
+      await reportQueueProgress(options?.onProgress, {
+        stage: "syncing_comfy",
+        processedRuns,
+        totalRuns,
+        batchIndex,
+        batchSize: 1,
+        message: "Resubmitting paused run",
+      });
       const result = await resumeRun(run.id);
+      const elapsedMs = Date.now() - startedAt;
       if (result.ok) {
         count++;
         runIds.push(run.id);
+        await reportQueueProgress(options?.onProgress, {
+          stage: "updating_local",
+          processedRuns: processedRuns + 1,
+          totalRuns,
+          batchIndex,
+          batchSize: 1,
+          elapsedMs,
+          message: "Run resumed",
+        });
+      } else {
+        await reportQueueProgress(options?.onProgress, {
+          stage: "failed",
+          processedRuns,
+          totalRuns,
+          batchIndex,
+          batchSize: 1,
+          elapsedMs,
+          error: result.error,
+          message: "Run resume failed",
+        });
       }
+      processedRuns++;
     }
 
+    await reportQueueProgress(options?.onProgress, {
+      stage: "refreshing",
+      processedRuns,
+      totalRuns,
+      message: "Refreshing queue views",
+    });
     revalidatePath("/queue");
+    await reportQueueProgress(options?.onProgress, {
+      stage: "done",
+      processedRuns,
+      totalRuns,
+      message: "Paused queue resumed",
+    });
     return { ok: true, count, runIds };
   } catch (e) {
     console.error("Failed to resume all runs:", e);
-    return { ok: false, count: 0, runIds: [], error: "批量恢复失败" };
+    await reportQueueProgress(options?.onProgress, {
+      stage: "failed",
+      processedRuns,
+      totalRuns,
+      error: formatActionError(e),
+      message: "Batch resume failed",
+    });
+    return { ok: false, count, runIds, error: "批量恢复失败" };
   }
 }

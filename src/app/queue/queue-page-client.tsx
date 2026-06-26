@@ -10,8 +10,9 @@ import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { cancelRun, runSection, clearRuns, clearActiveRuns, clearTrash, restoreImage, pauseRun, resumeRun, pauseAllRuns, resumeAllRuns } from "@/lib/actions";
+import { cancelRun, runSection, clearRuns, clearTrash, restoreImage, pauseRun, resumeRun } from "@/lib/actions";
 import { showRunSubmissionToast } from "@/lib/run-submission-toast";
+import type { QueueControlProgressEvent } from "@/lib/queue-control-progress";
 import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem, CensoringProgressItem, CensoringHistoryItem } from "@/lib/types";
 
 export type QueueTabKey = "pending" | "running" | "failed" | "censoring" | "trash";
@@ -27,6 +28,91 @@ const TABS: TabDef[] = [
 ];
 
 const POLL_INTERVAL_MS = 5_000;
+
+type QueueControlStreamResult = {
+  ok?: boolean;
+  count?: number;
+  runIds?: string[];
+  batchId?: string;
+  error?: string;
+  data?: Record<string, unknown>;
+};
+
+function formatQueueControlProgress(event: QueueControlProgressEvent) {
+  const processedRuns = event.processedRuns ?? 0;
+  const totalRuns = event.totalRuns ?? 0;
+  const batchSize = event.batchSize ?? 0;
+  const elapsedMs = event.elapsedMs;
+  const stageLabel: Record<QueueControlProgressEvent["stage"], string> = {
+    reading_queue: "Reading queue",
+    syncing_comfy: "Syncing ComfyUI",
+    confirming_remote: "Confirming remote",
+    updating_local: "Updating local rows",
+    refreshing: "Refreshing",
+    done: "Done",
+    failed: "Failed",
+  };
+  const details = [
+    totalRuns > 0 ? `${processedRuns}/${totalRuns} runs` : null,
+    batchSize > 0 ? `batch ${event.batchIndex ?? 1}: ${batchSize}` : null,
+    typeof elapsedMs === "number" ? `${elapsedMs}ms` : null,
+    event.error ? `error: ${event.error}` : null,
+  ].filter((item): item is string => Boolean(item));
+
+  return {
+    title: stageLabel[event.stage] ?? event.stage,
+    description: details.join(" · ") || event.message,
+  };
+}
+
+async function readQueueControlProgressStream(
+  response: Response,
+  onProgress: (event: QueueControlProgressEvent) => void,
+) {
+  if (!response.body) {
+    return (await response.json()) as QueueControlStreamResult;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: QueueControlStreamResult | null = null;
+
+  const processBlock = (block: string) => {
+    const eventName = block.match(/^event: (.+)$/m)?.[1]?.trim() ?? "message";
+    const dataText = block
+      .split("\n")
+      .filter((line) => line.startsWith("data: "))
+      .map((line) => line.slice(6))
+      .join("\n");
+    if (!dataText) return;
+
+    const payload = JSON.parse(dataText) as QueueControlProgressEvent | QueueControlStreamResult;
+    if (eventName === "progress") {
+      onProgress(payload as QueueControlProgressEvent);
+    } else if (eventName === "result") {
+      result = payload as QueueControlStreamResult;
+    }
+  };
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split("\n\n");
+    buffer = blocks.pop() ?? "";
+    for (const block of blocks) {
+      processBlock(block);
+    }
+  }
+
+  buffer += decoder.decode();
+  if (buffer.trim()) {
+    processBlock(buffer);
+  }
+
+  return result ?? {};
+}
 
 /** Format a time string: <1h shows "X 分钟前", >=1h shows absolute time */
 function formatTimeAgo(isoString: string | null): string | null {
@@ -331,16 +417,54 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
     });
   }
 
+  async function runQueueControlProgressStream(
+    url: string,
+    options: {
+      loading: string;
+      success: (result: QueueControlStreamResult) => string;
+      error: string;
+      onSuccess?: (result: QueueControlStreamResult) => void;
+    },
+  ) {
+    const toastId = toast.loading(options.loading);
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { Accept: "text/event-stream" },
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+        throw new Error(payload?.error?.message ?? options.error);
+      }
+
+      const result = await readQueueControlProgressStream(response, (event) => {
+        const next = formatQueueControlProgress(event);
+        toast.loading(next.title, { id: toastId, description: next.description });
+      });
+
+      if (result.ok === false) {
+        toast.error(result.error ?? options.error, { id: toastId });
+        return;
+      }
+
+      toast.success(options.success(result), { id: toastId });
+      options.onSuccess?.(result);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : options.error, { id: toastId });
+    }
+  }
+
   function handleClearActiveRuns() {
     startTransition(async () => {
-      const result = await clearActiveRuns();
-      if (result.ok) {
-        toast.success(`已清空 ${result.count} 个运行中任务`);
-        setRunningRuns([]);
-        router.refresh();
-      } else {
-        toast.error(result.error ?? "清空运行中队列失败");
-      }
+      await runQueueControlProgressStream("/api/queue/clear-active?stream=1", {
+        loading: "Clearing active queue",
+        success: (result) => `Cleared ${result.count ?? 0} active run(s)`,
+        error: "Failed to clear active queue",
+        onSuccess: () => {
+          setRunningRuns([]);
+          router.refresh();
+        },
+      });
     });
   }
 
@@ -598,13 +722,12 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                 disabled={isPending}
                 onClick={() => {
                   startTransition(async () => {
-                    const result = await pauseAllRuns();
-                    if (result.ok) {
-                      toast.success(`已暂停 ${result.count} 个任务`);
-                      refresh();
-                    } else {
-                      toast.error(result.error ?? "批量暂停失败");
-                    }
+                    await runQueueControlProgressStream("/api/queue/pause-active?stream=1", {
+                      loading: "Pausing active queue",
+                      success: (result) => `Paused ${result.count ?? 0} run(s)`,
+                      error: "Failed to pause active queue",
+                      onSuccess: refresh,
+                    });
                   });
                 }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-[11px] text-amber-400 transition hover:bg-amber-500/20 disabled:opacity-40"
@@ -618,13 +741,12 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                 disabled={isPending}
                 onClick={() => {
                   startTransition(async () => {
-                    const result = await resumeAllRuns();
-                    if (result.ok) {
-                      toast.success(`已恢复 ${result.count} 个任务`);
-                      refresh();
-                    } else {
-                      toast.error(result.error ?? "批量恢复失败");
-                    }
+                    await runQueueControlProgressStream("/api/queue/resume-paused?stream=1", {
+                      loading: "Resuming paused queue",
+                      success: (result) => `Resumed ${result.count ?? 0} run(s)`,
+                      error: "Failed to resume paused queue",
+                      onSuccess: refresh,
+                    });
                   });
                 }}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] text-emerald-400 transition hover:bg-emerald-500/20 disabled:opacity-40"
