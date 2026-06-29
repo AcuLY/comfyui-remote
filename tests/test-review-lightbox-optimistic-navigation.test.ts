@@ -934,6 +934,29 @@ test("section results batch review buttons use optimistic background mutations",
   );
 });
 
+test("section results run-level trash targets the whole visible run when nothing is selected", () => {
+  const gridSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",
+    "utf8",
+  );
+  const quickTrash = sourceSlice(
+    gridSource,
+    "                          // Quick trash:",
+    "                          setLastTrashedIds(runSelectedIds);",
+  );
+
+  assert.match(
+    quickTrash,
+    /const ids = runImages\.map\(\(img\) => img\.id\);/,
+    "run-level trash should collect every visible image in the run when there is no explicit selection",
+  );
+  assert.doesNotMatch(
+    quickTrash,
+    /runPendingImages\.map/,
+    "run-level trash must not silently no-op after all images have already been reviewed",
+  );
+});
+
 test("single-image review controls do not use one global pending lock", () => {
   const queueSource = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
   const queueBusySource = sourceSlice(

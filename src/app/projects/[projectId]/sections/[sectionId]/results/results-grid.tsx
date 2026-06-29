@@ -527,8 +527,8 @@ export function ResultsGrid({
                     <button
                       onClick={() => {
                         if (runSelectedIds.length === 0) {
-                          // Quick trash: trash all pending in this run
-                          const ids = runPendingImages.map((img) => img.id);
+                          // Quick trash: trash all visible images in this run
+                          const ids = runImages.map((img) => img.id);
                           if (ids.length === 0) return;
                           setLastTrashedIds(ids);
                           reviewImages("trash", ids);
@@ -547,9 +547,7 @@ export function ResultsGrid({
                         ? "处理中…"
                         : runSelectedCount > 0
                           ? `删除 (${runSelectedCount})`
-                          : runPendingImages.length > 0
-                            ? `全部删除 (${runPendingImages.length})`
-                            : "删除"}
+                          : `全部删除 (${runImages.length})`}
                     </button>
                     <button
                       onClick={() => {
