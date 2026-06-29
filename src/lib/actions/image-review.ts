@@ -14,6 +14,11 @@ type ReviewImageMutationOptions = {
   revalidate?: boolean;
 };
 
+const REVIEW_IMAGE_TRANSACTION_OPTIONS = {
+  maxWait: 15_000,
+  timeout: 30_000,
+};
+
 // ---------------------------------------------------------------------------
 // 查询小节回收站
 // ---------------------------------------------------------------------------
@@ -179,19 +184,18 @@ export async function trashImages(
   );
 
   // 2. 批量更新 DB
-  await prisma.$transaction([
-    ...plans.map((plan) =>
-      prisma.imageResult.update({
+  await prisma.$transaction(async (tx) => {
+    for (const plan of plans) {
+      await tx.imageResult.update({
         where: { id: plan.imageId },
         data: {
           filePath: plan.nextFilePath,
           reviewStatus: "trashed",
           reviewedAt: now,
         },
-      }),
-    ),
-    ...plans.map((plan) =>
-      prisma.trashRecord.upsert({
+      });
+
+      await tx.trashRecord.upsert({
         where: { imageResultId: plan.imageId },
         create: {
           imageResultId: plan.imageId,
@@ -207,13 +211,14 @@ export async function trashImages(
           restoredAt: null,
           actorType: "user",
         },
-      }),
-    ),
-    prisma.project.updateMany({
+      });
+    }
+
+    await tx.project.updateMany({
       where: buildGenerationProjectWhere({ coverImageId: { in: plans.map((plan) => plan.imageId) } }),
       data: { coverImageId: null },
-    }),
-  ]);
+    });
+  }, REVIEW_IMAGE_TRANSACTION_OPTIONS);
 
   if (options.revalidate !== false) {
     for (const p of sectionPaths) revalidatePath(p);

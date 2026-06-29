@@ -1018,6 +1018,31 @@ test("review server actions can skip page revalidation for optimistic lightbox a
   );
 });
 
+test("trash image review uses an explicit transaction wait budget", () => {
+  const source = readFileSync("src/lib/actions/image-review.ts", "utf8");
+  const trashImagesSource = sourceSlice(
+    source,
+    "export async function trashImages",
+    "export async function trashProjectImages",
+  );
+
+  assert.match(
+    source,
+    /const REVIEW_IMAGE_TRANSACTION_OPTIONS = \{\s*maxWait: 15_000,\s*timeout: 30_000,\s*\}/,
+    "review image transactions should define a wait budget above Prisma's 2s default",
+  );
+  assert.match(
+    trashImagesSource,
+    /prisma\.\$transaction\(async \(tx\) =>/,
+    "trashImages should use an interactive transaction so Prisma can apply the wait budget",
+  );
+  assert.match(
+    trashImagesSource,
+    /\}\s*,\s*REVIEW_IMAGE_TRANSACTION_OPTIONS\s*\)/,
+    "trashImages should use the review image transaction wait budget",
+  );
+});
+
 test("lightbox preloads neighbors only after the current full image has loaded", () => {
   const candidates = getLightboxPreloadCandidates(
     [image("image-a"), image("image-b"), image("image-c"), image("image-d")],

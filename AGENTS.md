@@ -1,6 +1,6 @@
 # Agent Rule Index
 
-This file is the required entrypoint for this repository. Keep it short. Read linked rule files only when their trigger applies.
+This file is the required entrypoint for this repository. Keep it short. Read `agent-rules/git.md` and `agent-rules/deploy/index.md` proactively on every task, then read other linked rule files when their trigger applies.
 
 <!-- BEGIN:nextjs-agent-rules -->
 ## Next.js
@@ -23,11 +23,16 @@ This file is the required entrypoint for this repository. Keep it short. Read li
 <!-- END:subagent-development-rules -->
 
 <!-- BEGIN:deploy-rules -->
+## Always-Read Workflow Rules
+
+- At the start of every task, read `agent-rules/git.md` and `agent-rules/deploy/index.md` so commit, push, deploy, and no-deploy boundaries are understood before work begins.
+- Reading these files does not mean running Git operations, acquiring `.deploy.lock`, building, restarting, deploying, or public verification. It only establishes the workflow boundaries.
+
 ## Rule Triggers
 
-- Git commit or push, including "不部署", "先不部署", or "只推送": read `agent-rules/git.md`.
+- Git commit or push, including "不部署", "先不部署", or "只推送": follow `agent-rules/git.md`.
 - Pure `npm run dev` / `next dev` start, stop, restart, or verification: read `agent-rules/dev-service.md`.
-- Production deploy, production build, `next start` restart, target-machine `git pull`, Prisma sync, queue pause/resume, `.next` cleanup, or public verification: read `agent-rules/deploy/index.md`.
+- Production deploy, production build, `next start` restart, target-machine `git pull`, Prisma sync, queue pause/resume, `.next` cleanup, or public verification: follow `agent-rules/deploy/index.md`.
 - Mixed production and dev service work: read `agent-rules/deploy/index.md` for production parts and `agent-rules/dev-service.md` for dev parts.
 - Complex PowerShell through SSH to `mypc`: read `agent-rules/mypc-powershell.md`.
 

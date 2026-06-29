@@ -5,6 +5,7 @@ import {
   buildGenerationPresetWhere,
   buildGenerationProjectWhere,
 } from "@/server/repositories/generation-resource-boundary";
+import { toPrismaJson } from "@/server/services/change-history-utils";
 
 export type SwitchVariantUpdate = {
   sectionId: string;
@@ -30,6 +31,24 @@ export type SyncPresetVariantsInput = {
 };
 
 const DATABASE_QUERY_BATCH_SIZE = 250;
+const SYNC_VARIANT_TRANSACTION_OPTIONS = {
+  maxWait: 15_000,
+  timeout: 30_000,
+};
+
+type SyncVariantBinding = {
+  id: string;
+  projectSectionId: string;
+  bindingKey: string;
+  variantId: string | null;
+  preset: {
+    name: string;
+    variants: Array<{ id: string; name: string }>;
+  } | null;
+};
+type ResolvedSyncVariantBinding = SyncVariantBinding & {
+  preset: NonNullable<SyncVariantBinding["preset"]>;
+};
 
 function chunkArray<T>(items: readonly T[], size = DATABASE_QUERY_BATCH_SIZE) {
   const chunks: T[][] = [];
@@ -140,6 +159,131 @@ export async function switchProjectVariants(
         error: error instanceof Error ? error.message : "Failed to switch variant",
       });
     }
+  }
+
+  return {
+    total: results.length,
+    successCount: results.filter((result) => result.ok).length,
+    failureCount: results.filter((result) => !result.ok).length,
+    results,
+  };
+}
+
+async function applySyncVariantUpdates(
+  projectId: string,
+  updates: SwitchVariantUpdate[],
+) {
+  const normalizedProjectId = projectId.trim();
+  if (!normalizedProjectId) {
+    throw new Error("projectId is required");
+  }
+
+  const sectionIds = [...new Set(updates.map((update) => update.sectionId))];
+  const sectionIdSet = new Set<string>();
+  for (const sectionIdChunk of chunkArray(sectionIds)) {
+    const sections = await prisma.projectSection.findMany({
+      where: {
+        projectId: normalizedProjectId,
+        id: { in: sectionIdChunk },
+        project: buildGenerationProjectWhere({ id: normalizedProjectId }),
+      },
+      select: { id: true },
+    });
+    for (const section of sections) {
+      sectionIdSet.add(section.id);
+    }
+  }
+
+  const validUpdates = updates.filter((update) => sectionIdSet.has(update.sectionId));
+  const bindingKeys = [...new Set(validUpdates.map((update) => update.bindingId))];
+  const bindingByKey = new Map<string, SyncVariantBinding>();
+
+  if (bindingKeys.length > 0) {
+    for (const sectionIdChunk of chunkArray([...new Set(validUpdates.map((update) => update.sectionId))])) {
+      const bindings = await prisma.sectionPresetBinding.findMany({
+        where: {
+          projectSectionId: { in: sectionIdChunk },
+          bindingKey: { in: bindingKeys },
+        },
+        include: {
+          preset: {
+            select: {
+              id: true,
+              name: true,
+              variants: {
+                where: { isActive: true },
+                select: { id: true, name: true, sortOrder: true, isActive: true },
+                orderBy: { sortOrder: "asc" },
+              },
+            },
+          },
+        },
+      });
+      for (const binding of bindings) {
+        bindingByKey.set(`${binding.projectSectionId}\0${binding.bindingKey}`, binding);
+      }
+    }
+  }
+
+  const results: SwitchVariantResult[] = [];
+  const changes: Array<{
+    update: SwitchVariantUpdate;
+    binding: ResolvedSyncVariantBinding;
+    variant: { id: string; name: string };
+  }> = [];
+
+  for (const update of updates) {
+    if (!sectionIdSet.has(update.sectionId)) {
+      results.push({ ...update, ok: false, error: "Section not found in project" });
+      continue;
+    }
+
+    const binding = bindingByKey.get(`${update.sectionId}\0${update.bindingId}`);
+    if (!binding?.preset) {
+      results.push({ ...update, ok: false, error: "Binding or variant not found" });
+      continue;
+    }
+
+    const variant = binding.preset.variants.find((item) => item.id === update.newVariantId);
+    if (!variant) {
+      results.push({ ...update, ok: false, error: "Binding or variant not found" });
+      continue;
+    }
+
+    changes.push({ update, binding: { ...binding, preset: binding.preset }, variant });
+    results.push({ ...update, ok: true });
+  }
+
+  if (changes.length > 0) {
+    await prisma.$transaction(async (tx) => {
+      for (const change of changes) {
+        const before = {
+          id: change.binding.id,
+          bindingKey: change.binding.bindingKey,
+          variantId: change.binding.variantId,
+        };
+        const updatedBinding = await tx.sectionPresetBinding.update({
+          where: { id: change.binding.id },
+          data: { variantId: change.update.newVariantId },
+          select: { id: true, bindingKey: true, variantId: true },
+        });
+        const after = {
+          id: updatedBinding.id,
+          bindingKey: updatedBinding.bindingKey,
+          variantId: updatedBinding.variantId,
+        };
+
+        await tx.sectionChangeLog.create({
+          data: {
+            projectSectionId: change.update.sectionId,
+            dimension: "prompt",
+            title: `切换预设变体：${change.binding.preset.name} / ${change.variant.name}`,
+            before: toPrismaJson(before),
+            after: toPrismaJson(after),
+          },
+        });
+      }
+    }, SYNC_VARIANT_TRANSACTION_OPTIONS);
   }
 
   return {
@@ -498,7 +642,7 @@ export async function syncPresetVariants(targetProjectId: string, body: unknown)
       };
     }
 
-    const execution = await switchProjectVariants(normalizedTargetProjectId, updates);
+    const execution = await applySyncVariantUpdates(normalizedTargetProjectId, updates);
     return {
       dryRun: false,
       sourceProject: { id: sourceProject.id, title: sourceProject.title },
@@ -644,7 +788,7 @@ export async function syncPresetVariants(targetProjectId: string, body: unknown)
     };
   }
 
-  const execution = await switchProjectVariants(normalizedTargetProjectId, updates);
+  const execution = await applySyncVariantUpdates(normalizedTargetProjectId, updates);
   return {
     dryRun: false,
     sourceProject: { id: sourceProject.id, title: sourceProject.title },

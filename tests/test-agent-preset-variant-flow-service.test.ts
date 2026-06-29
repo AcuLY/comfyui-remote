@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import { tmpdir } from "node:os";
@@ -130,11 +130,29 @@ setupDb.exec(`
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
   CREATE UNIQUE INDEX "SectionPromptBlock_projectSectionId_sectionBindingId_key" ON "SectionPromptBlock"("projectSectionId", "sectionBindingId");
+  CREATE TABLE "SectionChangeLog" (
+    "id" TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(12)))),
+    "projectSectionId" TEXT NOT NULL,
+    "dimension" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "before" JSONB,
+    "after" JSONB,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX "SectionChangeLog_projectSectionId_dimension_createdAt_idx" ON "SectionChangeLog"("projectSectionId", "dimension", "createdAt");
 `);
 setupDb.close();
 
 let prisma: typeof PrismaClientSingleton;
 let syncPresetVariantFlow: typeof FlowService.syncPresetVariantFlow;
+
+function sourceSlice(source: string, start: string, end: string) {
+  const startIndex = source.indexOf(start);
+  assert.notEqual(startIndex, -1, `Missing source start marker: ${start}`);
+  const endIndex = source.indexOf(end, startIndex);
+  assert.notEqual(endIndex, -1, `Missing source end marker: ${end}`);
+  return source.slice(startIndex, endIndex);
+}
 
 test.before(async () => {
   const prismaModule = await import("../src/lib/prisma");
@@ -147,6 +165,31 @@ test.before(async () => {
 test.after(async () => {
   await prisma?.$disconnect();
   await rm(tempDir, { recursive: true, force: true });
+});
+
+test("sync preset variant apply uses an explicit transaction wait budget", () => {
+  const source = readFileSync("src/server/services/agent-preset-variant-service.ts", "utf8");
+  const applySource = sourceSlice(
+    source,
+    "async function applySyncVariantUpdates",
+    "function parseSyncInput",
+  );
+
+  assert.match(
+    source,
+    /const SYNC_VARIANT_TRANSACTION_OPTIONS = \{\s*maxWait: 15_000,\s*timeout: 30_000,\s*\}/,
+    "sync variant apply should define a wait budget above Prisma's 2s default",
+  );
+  assert.match(
+    applySource,
+    /prisma\.\$transaction\(async \(tx\) =>/,
+    "sync variant apply should use an interactive transaction so Prisma can apply the wait budget",
+  );
+  assert.match(
+    applySource,
+    /\}\s*,\s*SYNC_VARIANT_TRANSACTION_OPTIONS\s*\)/,
+    "sync variant apply should pass the transaction wait budget",
+  );
 });
 
 async function seedPresetVariantFlowFixture() {
@@ -466,4 +509,35 @@ test("syncPresetVariantFlow handles projects with more sections than the databas
   });
 
   assert.equal(result.initialDryRun.plannedUpdateCount, sectionCount);
+});
+
+test("syncPresetVariants apply switches variants and records history", async () => {
+  const { syncPresetVariants } = await import("../src/server/services/agent-preset-variant-service");
+  const result = await syncPresetVariants("project-mami", {
+    sourceProjectId: "project-keqing",
+    dryRun: false,
+  });
+
+  assert.equal(result.dryRun, false);
+  assert.ok(result.execution);
+  assert.equal(result.execution.successCount, 2);
+  assert.equal(result.execution.failureCount, 0);
+
+  const targetBindings = await prisma.sectionPresetBinding.findMany({
+    where: { id: { in: ["target-role-1", "target-role-2"] } },
+    orderBy: { id: "asc" },
+    select: { id: true, variantId: true },
+  });
+  assert.deepEqual(targetBindings, [
+    { id: "target-role-1", variantId: "mami-full" },
+    { id: "target-role-2", variantId: "mami-alt-half" },
+  ]);
+
+  const historyCount = await prisma.sectionChangeLog.count({
+    where: {
+      projectSectionId: { in: ["target-section-1", "target-section-2"] },
+      dimension: "prompt",
+    },
+  });
+  assert.equal(historyCount, 2);
 });
