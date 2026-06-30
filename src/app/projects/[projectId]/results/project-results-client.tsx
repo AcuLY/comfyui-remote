@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -36,6 +37,7 @@ import {
   submitReviewMutation,
   type ReviewMutationAction,
 } from "@/lib/client-review-mutation";
+import { getNextImageIdAfterCurrentLeavesSequence } from "@/lib/review-lightbox-state";
 import {
   SidebarSectionNav,
   useSyncedSidebarContent,
@@ -71,6 +73,13 @@ type ProjectResultFilterCounts = Record<ProjectResultFilter, number>;
 
 type ProjectResultsImageWithRun = ProjectResultsImage & {
   runIndex: number;
+};
+
+type ProjectResultMarkerUndoEntry = {
+  imageId: string;
+  field: "featured" | "featured2";
+  value: boolean;
+  restoreLightboxImageId: string | null;
 };
 
 type ManualCensorUploadResponse = {
@@ -570,6 +579,8 @@ export function ProjectResultsClient({
   const [reviewingImageId, setReviewingImageId] = useState<string | null>(null);
   const [reviewingAction, setReviewingAction] = useState<ReviewMutationAction | null>(null);
   const [resultFilter, setResultFilter] = useState<ProjectResultFilter>("all");
+  const [markerUndoStack, setMarkerUndoStack] = useState<ProjectResultMarkerUndoEntry[]>([]);
+  const previousFilteredImagesRef = useRef<ProjectResultsImageWithRun[]>([]);
   const [, startTransition] = useTransition();
   const filteredSections = useMemo(() =>
     filterProjectResultSections(sections, resultFilter),
@@ -671,8 +682,20 @@ export function ProjectResultsClient({
   useEffect(() => {
     if (!lightboxImageId) return;
     if (filteredImages.some((image) => image.id === lightboxImageId)) return;
-    setLightboxImageId(null);
+    const nextImageId = getNextImageIdAfterCurrentLeavesSequence(
+      previousFilteredImagesRef.current,
+      lightboxImageId,
+    );
+    if (nextImageId && filteredImages.some((image) => image.id === nextImageId)) {
+      setLightboxImageId(nextImageId);
+      return;
+    }
+    setLightboxImageId(filteredImages[0]?.id ?? null);
   }, [filteredImages, lightboxImageId]);
+
+  useEffect(() => {
+    previousFilteredImagesRef.current = filteredImages;
+  }, [filteredImages]);
 
   useEffect(() => {
     setQuickCensorMode(false);
@@ -843,9 +866,26 @@ export function ProjectResultsClient({
   const handleToggleFeatured = useCallback(
     (imageId: string, featured: boolean) => {
       if (togglingImageId) return;
+      const image = allImages.find((item) => item.id === imageId);
+      if (!image || image.featured === featured) return;
+
       const previousSections = sections;
+      const nextLightboxImageId =
+        resultFilter === "featured" && lightboxImageId === imageId && !featured
+          ? getNextImageIdAfterCurrentLeavesSequence(filteredImages, imageId)
+          : undefined;
+      const undoEntry: ProjectResultMarkerUndoEntry = {
+        imageId,
+        field: "featured",
+        value: image.featured,
+        restoreLightboxImageId: lightboxImageId === imageId ? imageId : null,
+      };
+
       setTogglingImageId(imageId);
       setImageFeatured(imageId, featured);
+      if (nextLightboxImageId !== undefined) {
+        setLightboxImageId(nextLightboxImageId);
+      }
 
       startTransition(async () => {
         try {
@@ -861,26 +901,49 @@ export function ProjectResultsClient({
             ok?: boolean;
             error?: { message?: string };
           } | null;
+          if (response.ok && result?.ok !== false) {
+            setMarkerUndoStack((prev) => [...prev, undoEntry]);
+          }
           if (!response.ok || result?.ok === false) {
             throw new Error(result?.error?.message ?? "更新p站标记失败");
           }
         } catch (error) {
           setSections(previousSections);
+          if (nextLightboxImageId !== undefined) {
+            setLightboxImageId(imageId);
+          }
           toast.error(error instanceof Error ? error.message : "更新p站标记失败");
         } finally {
           setTogglingImageId(null);
         }
       });
     },
-    [sections, setImageFeatured, togglingImageId],
+    [allImages, filteredImages, lightboxImageId, resultFilter, sections, setImageFeatured, togglingImageId],
   );
 
   const handleToggleFeatured2 = useCallback(
     (imageId: string, featured2: boolean) => {
       if (togglingImageId) return;
+      const image = allImages.find((item) => item.id === imageId);
+      if (!image || image.featured2 === featured2) return;
+
       const previousSections = sections;
+      const nextLightboxImageId =
+        resultFilter === "featured2" && lightboxImageId === imageId && !featured2
+          ? getNextImageIdAfterCurrentLeavesSequence(filteredImages, imageId)
+          : undefined;
+      const undoEntry: ProjectResultMarkerUndoEntry = {
+        imageId,
+        field: "featured2",
+        value: image.featured2,
+        restoreLightboxImageId: lightboxImageId === imageId ? imageId : null,
+      };
+
       setTogglingImageId(imageId);
       setImageFeatured2(imageId, featured2);
+      if (nextLightboxImageId !== undefined) {
+        setLightboxImageId(nextLightboxImageId);
+      }
 
       startTransition(async () => {
         try {
@@ -896,19 +959,74 @@ export function ProjectResultsClient({
             ok?: boolean;
             error?: { message?: string };
           } | null;
+          if (response.ok && result?.ok !== false) {
+            setMarkerUndoStack((prev) => [...prev, undoEntry]);
+          }
           if (!response.ok || result?.ok === false) {
             throw new Error(result?.error?.message ?? "更新预览标记失败");
           }
         } catch (error) {
           setSections(previousSections);
+          if (nextLightboxImageId !== undefined) {
+            setLightboxImageId(imageId);
+          }
           toast.error(error instanceof Error ? error.message : "更新预览标记失败");
         } finally {
           setTogglingImageId(null);
         }
       });
     },
-    [sections, setImageFeatured2, togglingImageId],
+    [allImages, filteredImages, lightboxImageId, resultFilter, sections, setImageFeatured2, togglingImageId],
   );
+
+  const handleUndoMarkerToggle = useCallback(() => {
+    if (togglingImageId) return;
+
+    const undoEntry = markerUndoStack[markerUndoStack.length - 1];
+    if (!undoEntry) {
+      toast.error("没有可撤销的标记操作");
+      return;
+    }
+
+    const applyValue =
+      undoEntry.field === "featured" ? setImageFeatured : setImageFeatured2;
+    const endpoint =
+      undoEntry.field === "featured" ? "featured" : "featured2";
+
+    setMarkerUndoStack((prev) => prev.slice(0, -1));
+    setTogglingImageId(undoEntry.imageId);
+    applyValue(undoEntry.imageId, undoEntry.value);
+    if (undoEntry.restoreLightboxImageId) {
+      setLightboxImageId(undoEntry.restoreLightboxImageId);
+    }
+
+    startTransition(async () => {
+      try {
+        const response = await fetch(
+          `/api/images/${encodeURIComponent(undoEntry.imageId)}/${endpoint}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ [undoEntry.field]: undoEntry.value }),
+          },
+        );
+        const result = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          error?: { message?: string };
+        } | null;
+        if (!response.ok || result?.ok === false) {
+          throw new Error(result?.error?.message ?? "撤销标记失败");
+        }
+        toast.success("已撤销标记");
+      } catch (error) {
+        applyValue(undoEntry.imageId, !undoEntry.value);
+        setMarkerUndoStack((prev) => [...prev, undoEntry]);
+        toast.error(error instanceof Error ? error.message : "撤销标记失败");
+      } finally {
+        setTogglingImageId(null);
+      }
+    });
+  }, [markerUndoStack, setImageFeatured, setImageFeatured2, togglingImageId]);
 
   const handleSetCover = useCallback(
     (imageId: string) => {
@@ -1100,6 +1218,12 @@ export function ProjectResultsClient({
         return;
       }
 
+      if ((key === "z" || key === "Z") && !event.ctrlKey && !event.metaKey) {
+        event.preventDefault();
+        handleUndoMarkerToggle();
+        return;
+      }
+
       if (key === "h" || key === "H") {
         event.preventDefault();
         if (currentLightboxImage.censoredFull) {
@@ -1118,6 +1242,7 @@ export function ProjectResultsClient({
     handleSetCover,
     handleToggleFeatured,
     handleToggleFeatured2,
+    handleUndoMarkerToggle,
     lightboxImage,
     quickCensorMode,
     reviewLightboxImage,

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { strict as assert } from "node:assert";
+import { getNextImageIdAfterCurrentLeavesSequence } from "../src/lib/review-lightbox-state";
 
 function readSource(path: string) {
   return readFileSync(path, "utf8");
@@ -14,6 +15,20 @@ function sourceSlice(source: string, startNeedle: string, endNeedle: string) {
   assert.notEqual(end, -1, `missing end needle: ${endNeedle}`);
   return normalizedSource.slice(start, end);
 }
+
+test("filtered lightbox advances to the next matching image when the current image leaves the sequence", () => {
+  const images = [
+    { id: "image-a" },
+    { id: "image-b" },
+    { id: "image-c" },
+  ];
+
+  assert.equal(getNextImageIdAfterCurrentLeavesSequence(images, "image-a"), "image-b");
+  assert.equal(getNextImageIdAfterCurrentLeavesSequence(images, "image-b"), "image-c");
+  assert.equal(getNextImageIdAfterCurrentLeavesSequence(images, "image-c"), "image-a");
+  assert.equal(getNextImageIdAfterCurrentLeavesSequence([{ id: "image-a" }], "image-a"), null);
+  assert.equal(getNextImageIdAfterCurrentLeavesSequence(images, "missing"), null);
+});
 
 test("project results lightbox exposes review and censor controls like section results", () => {
   const source = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
@@ -157,5 +172,65 @@ test("project results lightbox supports the same review shortcuts as section res
     shortcuts,
     /key === "h"[\s\S]*key === "H"[\s\S]*setShowCensoredMode\(\(prev\) => !prev\)/,
     "H should toggle the censored version",
+  );
+});
+
+test("project results marker removal keeps the filtered lightbox open and supports plain Z undo", () => {
+  const source = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+  const handleToggleFeatured = sourceSlice(
+    source,
+    "  const handleToggleFeatured = useCallback",
+    "  const handleToggleFeatured2 = useCallback",
+  );
+  const handleToggleFeatured2 = sourceSlice(
+    source,
+    "  const handleToggleFeatured2 = useCallback",
+    "  const handleSetCover = useCallback",
+  );
+  const shortcuts = sourceSlice(
+    source,
+    "function handleKeyDown(event: KeyboardEvent) {",
+    "    window.addEventListener(\"keydown\", handleKeyDown);",
+  );
+
+  assert.match(
+    source,
+    /getNextImageIdAfterCurrentLeavesSequence/,
+    "project results should share the filtered lightbox replacement helper",
+  );
+  assert.match(
+    handleToggleFeatured,
+    /resultFilter === "featured"[\s\S]*getNextImageIdAfterCurrentLeavesSequence\(filteredImages,\s*imageId\)/,
+    "removing p-site from the active filtered lightbox image should compute the next p-site image before state changes",
+  );
+  assert.match(
+    handleToggleFeatured,
+    /setLightboxImageId\(nextLightboxImageId\)/,
+    "p-site removal should keep the lightbox pointed at the replacement image",
+  );
+  assert.match(
+    handleToggleFeatured2,
+    /resultFilter === "featured2"[\s\S]*getNextImageIdAfterCurrentLeavesSequence\(filteredImages,\s*imageId\)/,
+    "removing preview from the active filtered lightbox image should compute the next preview image before state changes",
+  );
+  assert.match(
+    handleToggleFeatured2,
+    /setLightboxImageId\(nextLightboxImageId\)/,
+    "preview removal should keep the lightbox pointed at the replacement image",
+  );
+  assert.match(
+    source,
+    /const \[markerUndoStack, setMarkerUndoStack\]/,
+    "project results should keep marker toggle undo entries",
+  );
+  assert.match(
+    source,
+    /const handleUndoMarkerToggle = useCallback/,
+    "project results should expose a marker undo handler",
+  );
+  assert.match(
+    shortcuts,
+    /key === "z"[\s\S]*key === "Z"[\s\S]*!event\.ctrlKey[\s\S]*!event\.metaKey[\s\S]*handleUndoMarkerToggle\(\)/,
+    "project results lightbox should bind plain Z to marker undo",
   );
 });

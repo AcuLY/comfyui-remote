@@ -77,6 +77,19 @@ export function getNextPendingImageIndex<T extends { status: string }>(
   return null;
 }
 
+export function getNextImageIdAfterCurrentLeavesSequence<T extends { id: string }>(
+  images: readonly T[],
+  currentImageId: string,
+): string | null {
+  if (images.length <= 1) return null;
+
+  const currentIndex = images.findIndex((image) => image.id === currentImageId);
+  if (currentIndex < 0) return null;
+
+  const nextIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0;
+  return images[nextIndex]?.id ?? null;
+}
+
 export function getNextPendingSectionId<T extends { sectionId: string; status: string }>(
   images: T[],
   currentSectionId: string | null | undefined,
