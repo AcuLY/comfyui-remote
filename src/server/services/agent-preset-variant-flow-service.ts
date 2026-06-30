@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
-import { syncPresetVariants } from "@/server/services/agent-preset-variant-service";
+import { buildRoleCategoryWhere, syncPresetVariants } from "@/server/services/agent-preset-variant-service";
 import {
   buildRoleSyncPresetVariantFlowVerification,
   parseSyncPresetVariantFlowInput,
@@ -57,12 +57,23 @@ async function getSectionsForVerification(projectId: string): Promise<FlowSectio
         name: true,
         sortOrder: true,
         manualLoraEntries: {
+          where: {
+            enabled: true,
+            sectionBinding: {
+              category: buildRoleCategoryWhere(),
+            },
+          },
           select: {
             sectionBindingId: true,
             enabled: true,
           },
         },
         sectionPromptBlocks: {
+          where: {
+            sectionBinding: {
+              category: buildRoleCategoryWhere(),
+            },
+          },
           orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
           select: {
             id: true,

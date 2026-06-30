@@ -130,6 +130,26 @@ setupDb.exec(`
     "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
   CREATE UNIQUE INDEX "SectionPromptBlock_projectSectionId_sectionBindingId_key" ON "SectionPromptBlock"("projectSectionId", "sectionBindingId");
+  CREATE TABLE "SectionManualLoraEntry" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "projectSectionId" TEXT NOT NULL,
+    "sectionBindingId" TEXT,
+    "stage" TEXT NOT NULL,
+    "path" TEXT NOT NULL,
+    "weight" REAL NOT NULL DEFAULT 1,
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "detachedFromBindingKey" TEXT,
+    "detachedFromPresetId" TEXT,
+    "detachedFromVariantId" TEXT,
+    "detachedFromPath" TEXT,
+    "metadata" JSONB,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE INDEX "SectionManualLoraEntry_projectSectionId_stage_sortOrder_idx" ON "SectionManualLoraEntry"("projectSectionId", "stage", "sortOrder");
+  CREATE INDEX "SectionManualLoraEntry_sectionBindingId_idx" ON "SectionManualLoraEntry"("sectionBindingId");
+  CREATE INDEX "SectionManualLoraEntry_detachedFromBindingKey_idx" ON "SectionManualLoraEntry"("detachedFromBindingKey");
   CREATE TABLE "SectionChangeLog" (
     "id" TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(12)))),
     "projectSectionId" TEXT NOT NULL,
@@ -453,7 +473,7 @@ test("syncPresetVariantFlow ignores manual preset names and uses section role bi
   assert.equal(result.initialDryRun.plannedUpdateCount, 2);
 });
 
-test("syncPresetVariantFlow handles projects with more sections than the database parameter limit", async () => {
+test("syncPresetVariantFlow handles preview and apply for projects with more sections than the database parameter limit", async () => {
   const sectionCount = 1100;
   await prisma.project.createMany({
     data: [
@@ -497,9 +517,79 @@ test("syncPresetVariantFlow handles projects with more sections than the databas
     variantId: "mami-full",
     sortOrder: 0,
   }));
+  const extraSourceBindings = sourceSections.flatMap((section, sectionIndex) =>
+    Array.from({ length: 4 }, (_, bindingIndex) => ({
+      id: `bulk-source-expression-${sectionIndex}-${bindingIndex}`,
+      projectSectionId: section.id,
+      bindingKey: `expression-${bindingIndex}`,
+      categoryId: "cat-expression",
+      presetId: "preset-smile",
+      variantId: "smile-default",
+      sortOrder: bindingIndex + 1,
+    })),
+  );
+  const extraTargetBindings = targetSections.flatMap((section, sectionIndex) =>
+    Array.from({ length: 4 }, (_, bindingIndex) => ({
+      id: `bulk-target-expression-${sectionIndex}-${bindingIndex}`,
+      projectSectionId: section.id,
+      bindingKey: `expression-${bindingIndex}`,
+      categoryId: "cat-expression",
+      presetId: "preset-smile",
+      variantId: "smile-default",
+      sortOrder: bindingIndex + 1,
+    })),
+  );
   for (let index = 0; index < sectionCount; index += 100) {
     await prisma.sectionPresetBinding.createMany({ data: sourceBindings.slice(index, index + 100) });
     await prisma.sectionPresetBinding.createMany({ data: targetBindings.slice(index, index + 100) });
+  }
+  for (let index = 0; index < extraSourceBindings.length; index += 100) {
+    await prisma.sectionPresetBinding.createMany({ data: extraSourceBindings.slice(index, index + 100) });
+    await prisma.sectionPresetBinding.createMany({ data: extraTargetBindings.slice(index, index + 100) });
+  }
+  const targetPromptBlocks = targetSections.map((section, index) => ({
+    id: `bulk-target-role-block-${index}`,
+    projectSectionId: section.id,
+    sectionBindingId: `bulk-target-role-${index}`,
+    sortOrder: 0,
+  }));
+  const extraTargetPromptBlocks = targetSections.flatMap((section, sectionIndex) =>
+    Array.from({ length: 4 }, (_, bindingIndex) => ({
+      id: `bulk-target-expression-block-${sectionIndex}-${bindingIndex}`,
+      projectSectionId: section.id,
+      sectionBindingId: `bulk-target-expression-${sectionIndex}-${bindingIndex}`,
+      sortOrder: bindingIndex + 1,
+    })),
+  );
+  const targetLoraEntries = targetSections.map((section, index) => ({
+    id: `bulk-target-role-lora-${index}`,
+    projectSectionId: section.id,
+    sectionBindingId: `bulk-target-role-${index}`,
+    stage: "lora1",
+    path: "character/bulk-target.safetensors",
+    weight: 1,
+    enabled: true,
+    sortOrder: 0,
+  }));
+  const extraTargetLoraEntries = targetSections.flatMap((section, sectionIndex) =>
+    Array.from({ length: 4 }, (_, bindingIndex) => ({
+      id: `bulk-target-expression-lora-${sectionIndex}-${bindingIndex}`,
+      projectSectionId: section.id,
+      sectionBindingId: `bulk-target-expression-${sectionIndex}-${bindingIndex}`,
+      stage: "lora1",
+      path: "expression/bulk-target.safetensors",
+      weight: 1,
+      enabled: true,
+      sortOrder: bindingIndex + 1,
+    })),
+  );
+  for (let index = 0; index < sectionCount; index += 100) {
+    await prisma.sectionPromptBlock.createMany({ data: targetPromptBlocks.slice(index, index + 100) });
+    await prisma.sectionManualLoraEntry.createMany({ data: targetLoraEntries.slice(index, index + 100) });
+  }
+  for (let index = 0; index < extraTargetPromptBlocks.length; index += 100) {
+    await prisma.sectionPromptBlock.createMany({ data: extraTargetPromptBlocks.slice(index, index + 100) });
+    await prisma.sectionManualLoraEntry.createMany({ data: extraTargetLoraEntries.slice(index, index + 100) });
   }
 
   const result = await syncPresetVariantFlow({
@@ -509,6 +599,23 @@ test("syncPresetVariantFlow handles projects with more sections than the databas
   });
 
   assert.equal(result.initialDryRun.plannedUpdateCount, sectionCount);
+
+  const applied = await syncPresetVariantFlow({
+    sourceProjectTitle: "Bulk Source",
+    targetProjectTitle: "Bulk Target",
+    expectedSourceProjectId: "project-bulk-source",
+    expectedTargetProjectId: "project-bulk-target",
+    dryRun: false,
+  });
+
+  assert.equal(applied.dryRun, false);
+  assert.ok(applied.apply?.execution);
+  assert.ok(applied.verificationDryRun);
+  assert.ok(applied.verification);
+  assert.equal(applied.apply.execution.successCount, sectionCount);
+  assert.equal(applied.apply.execution.failureCount, 0);
+  assert.equal(applied.verificationDryRun.plannedUpdateCount, 0);
+  assert.equal(applied.verification.passed, true);
 });
 
 test("syncPresetVariants apply switches variants and records history", async () => {

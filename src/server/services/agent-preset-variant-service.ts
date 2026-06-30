@@ -1,5 +1,6 @@
 import { switchBindingVariant } from "@/lib/actions";
 import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
+import type { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import {
   buildGenerationPresetWhere,
@@ -35,6 +36,8 @@ const SYNC_VARIANT_TRANSACTION_OPTIONS = {
   maxWait: 15_000,
   timeout: 30_000,
 };
+const ROLE_CATEGORY_NAMES = ["\u89d2\u8272"] as const;
+const ROLE_CATEGORY_SLUGS = ["character", "characters", "role", "roles"] as const;
 
 type SyncVariantBinding = {
   id: string;
@@ -49,6 +52,9 @@ type SyncVariantBinding = {
 type ResolvedSyncVariantBinding = SyncVariantBinding & {
   preset: NonNullable<SyncVariantBinding["preset"]>;
 };
+type ProjectSectionBindingScope =
+  | { kind: "role" }
+  | { kind: "preset"; presetIds: readonly string[] };
 
 function chunkArray<T>(items: readonly T[], size = DATABASE_QUERY_BATCH_SIZE) {
   const chunks: T[][] = [];
@@ -75,7 +81,32 @@ function optionalStringField(input: Record<string, unknown>, field: string): str
 function isRoleCategory(category: { name: string; slug: string }) {
   const normalizedName = normalizeKey(category.name);
   const normalizedSlug = normalizeKey(category.slug);
-  return normalizedName === "角色" || ["character", "characters", "role", "roles"].includes(normalizedSlug);
+  return (
+    ROLE_CATEGORY_NAMES.some((name) => normalizedName === name) ||
+    ROLE_CATEGORY_SLUGS.some((slug) => normalizedSlug === slug)
+  );
+}
+
+export function buildRoleCategoryWhere(): Prisma.PresetCategoryWhereInput {
+  return {
+    OR: [
+      { name: { in: [...ROLE_CATEGORY_NAMES] } },
+      { slug: { in: [...ROLE_CATEGORY_SLUGS] } },
+    ],
+  };
+}
+
+function buildSectionBindingScopeWhere(scope: ProjectSectionBindingScope): Prisma.SectionPresetBindingWhereInput {
+  if (scope.kind === "role") {
+    return {
+      presetId: { not: null },
+      category: buildRoleCategoryWhere(),
+    };
+  }
+
+  return {
+    presetId: { in: [...new Set(scope.presetIds)] },
+  };
 }
 
 function isSwitchVariantUpdate(value: unknown): value is SwitchVariantUpdate {
@@ -403,7 +434,10 @@ async function findPresetByReference(
   return usableMatches[0] ?? null;
 }
 
-async function getProjectSectionsForSync(projectId: string) {
+async function getProjectSectionsForSync(
+  projectId: string,
+  bindingScope: ProjectSectionBindingScope,
+) {
   const project = await prisma.project.findFirst({
     where: buildGenerationProjectWhere({ id: projectId }),
     select: {
@@ -429,6 +463,7 @@ async function getProjectSectionsForSync(projectId: string) {
         name: true,
         sortOrder: true,
         presetBindingRows: {
+          where: buildSectionBindingScopeWhere(bindingScope),
           orderBy: { sortOrder: "asc" },
           select: {
             bindingKey: true,
@@ -612,19 +647,27 @@ export async function syncPresetVariants(targetProjectId: string, body: unknown)
   }
 
   const explicitPresetMode = hasExplicitPresetReference(input);
-  const [sourcePreset, targetPreset, sourceProject, targetProject] = await Promise.all([
-    explicitPresetMode
-      ? findPresetByReference({ presetId: input.sourcePresetId, nameOrSlug: input.sourcePresetName }, "SOURCE")
-      : Promise.resolve(null),
-    explicitPresetMode
-      ? findPresetByReference({ presetId: input.targetPresetId, nameOrSlug: input.targetPresetName }, "TARGET")
-      : Promise.resolve(null),
-    getProjectSectionsForSync(input.sourceProjectId),
-    getProjectSectionsForSync(normalizedTargetProjectId),
-  ]);
+  const [sourcePreset, targetPreset] = explicitPresetMode
+    ? await Promise.all([
+      findPresetByReference({ presetId: input.sourcePresetId, nameOrSlug: input.sourcePresetName }, "SOURCE"),
+      findPresetByReference({ presetId: input.targetPresetId, nameOrSlug: input.targetPresetName }, "TARGET"),
+    ])
+    : [null, null];
 
   if (explicitPresetMode && !sourcePreset) throw new Error("SOURCE_PRESET_NOT_FOUND");
   if (explicitPresetMode && !targetPreset) throw new Error("TARGET_PRESET_NOT_FOUND");
+
+  const sourceBindingScope: ProjectSectionBindingScope = explicitPresetMode && sourcePreset
+    ? { kind: "preset", presetIds: [sourcePreset.id] }
+    : { kind: "role" };
+  const targetBindingScope: ProjectSectionBindingScope = explicitPresetMode && targetPreset
+    ? { kind: "preset", presetIds: [targetPreset.id] }
+    : { kind: "role" };
+  const [sourceProject, targetProject] = await Promise.all([
+    getProjectSectionsForSync(input.sourceProjectId, sourceBindingScope),
+    getProjectSectionsForSync(normalizedTargetProjectId, targetBindingScope),
+  ]);
+
   if (!sourceProject) throw new Error("SOURCE_PROJECT_NOT_FOUND");
   if (!targetProject) throw new Error("TARGET_PROJECT_NOT_FOUND");
 
