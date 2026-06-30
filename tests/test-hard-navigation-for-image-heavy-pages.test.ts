@@ -44,7 +44,7 @@ test("image-heavy production pages use document navigation for primary route exi
     ["src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx", "href={returnHref}"],
     ["src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx", "href={`/projects/${projectId}/sections/${sectionId}`}"],
     ["src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx", "href={`/projects/${projectId}/results`}"],
-    ["src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx", "href={nextPendingSectionHref}"],
+    ["src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx", "href={resolvedNextPendingSectionHref}"],
     ["src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx", "href={`/queue/${run.id}`}"],
     ["src/app/queue/queue-page-client.tsx", "href={`/queue/${run.id}`}"],
     ["src/app/queue/[runId]/page.tsx", "href={`/queue#run-${runId}`}"],
@@ -71,7 +71,7 @@ test("section results page exposes next pending section navigation as a visible 
 
   assert.match(
     source,
-    /nextPendingSectionHref && \([\s\S]*<HardNavigationLink[\s\S]*href=\{nextPendingSectionHref\}[\s\S]*data-nav-next-pending[\s\S]*下一待审/,
+    /resolvedNextPendingSectionHref && \([\s\S]*<HardNavigationLink[\s\S]*href=\{resolvedNextPendingSectionHref\}[\s\S]*data-nav-next-pending[\s\S]*下一待审/,
     "the G shortcut target should also be rendered as a visible next-pending button",
   );
   assert.doesNotMatch(

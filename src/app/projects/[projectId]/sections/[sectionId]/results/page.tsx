@@ -87,6 +87,7 @@ export default async function SectionResultsPage({
           key={`${sectionId}:${data.batchSize ?? 2}`}
           runs={data.runs}
           continuousReviewImages={data.continuousReviewImages}
+          fallbackNextPendingSectionHref={data.nextPendingSection ? `/projects/${projectId}/sections/${data.nextPendingSection.id}/results` : null}
           projectId={projectId}
           sectionId={sectionId}
           sectionName={data.sectionName}

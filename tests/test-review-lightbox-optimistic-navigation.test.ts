@@ -639,8 +639,8 @@ test("section results renders the page-level G target from the provider optimist
   );
   assert.match(
     gridSource,
-    /nextPendingSectionHref && \([\s\S]*<HardNavigationLink[\s\S]*href=\{nextPendingSectionHref\}[\s\S]*data-nav-next-pending/,
-    "the visible next-pending button should use the optimistic provider href",
+    /const resolvedNextPendingSectionHref = nextPendingSectionHref \?\? fallbackNextPendingSectionHref[\s\S]*resolvedNextPendingSectionHref && \([\s\S]*<HardNavigationLink[\s\S]*href=\{resolvedNextPendingSectionHref\}[\s\S]*data-nav-next-pending/,
+    "the visible next-pending button should use the optimistic provider href before falling back",
   );
   assert.match(
     pageShortcuts,
@@ -651,6 +651,38 @@ test("section results renders the page-level G target from the provider optimist
     pageSource,
     /data-nav-next-pending/,
     "the server page header should not keep a stale next-pending shortcut target",
+  );
+});
+
+test("section results keeps page-level G available on empty current sections", () => {
+  const pageSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx",
+    "utf8",
+  );
+  const gridSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",
+    "utf8",
+  );
+
+  assert.match(
+    pageSource,
+    /fallbackNextPendingSectionHref=\{data\.nextPendingSection \? `\/projects\/\$\{projectId\}\/sections\/\$\{data\.nextPendingSection\.id\}\/results` : null\}/,
+    "server results data should pass a fallback next-pending href for sections with no local images",
+  );
+  assert.match(
+    gridSource,
+    /fallbackNextPendingSectionHref:\s*string \| null/,
+    "results grid should accept the server fallback next-pending href",
+  );
+  assert.match(
+    gridSource,
+    /const resolvedNextPendingSectionHref = nextPendingSectionHref \?\? fallbackNextPendingSectionHref/,
+    "provider optimistic href should win, falling back only when the provider cannot compute a target",
+  );
+  assert.match(
+    gridSource,
+    /resolvedNextPendingSectionHref && \([\s\S]*<HardNavigationLink[\s\S]*href=\{resolvedNextPendingSectionHref\}[\s\S]*data-nav-next-pending/,
+    "the G shortcut target should still render when the current section has no result images",
   );
 });
 

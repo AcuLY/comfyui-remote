@@ -64,6 +64,7 @@ type ResultsGalleryUndoHelpers = {
 export function ResultsGrid({
   runs,
   continuousReviewImages,
+  fallbackNextPendingSectionHref,
   projectId,
   sectionId,
   sectionName,
@@ -72,6 +73,7 @@ export function ResultsGrid({
 }: {
   runs: RunData[];
   continuousReviewImages: GalleryImageData[];
+  fallbackNextPendingSectionHref: string | null;
   projectId: string;
   sectionId: string;
   sectionName: string;
@@ -288,6 +290,7 @@ export function ResultsGrid({
       onUndo={handleUndo}
     >
       {({ openImageLightbox, getImage, reviewImages, imageCount, pendingImageCount, nextPendingSectionHref, isFeatured, isFeatured2, isCover }) => {
+        const resolvedNextPendingSectionHref = nextPendingSectionHref ?? fallbackNextPendingSectionHref;
         return (
         <div className="space-y-6">
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -307,9 +310,9 @@ export function ResultsGrid({
                   disabled={isPending}
                   size="sm"
                 />
-                {nextPendingSectionHref && (
+                {resolvedNextPendingSectionHref && (
                   <HardNavigationLink
-                    href={nextPendingSectionHref}
+                    href={resolvedNextPendingSectionHref}
                     data-nav-next-pending
                     className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-300 transition hover:bg-amber-500/20 hover:text-amber-200"
                   >
