@@ -2,6 +2,14 @@
 
 Use this file for production deploys, production builds, `next start` restarts, target-machine `git pull`, Prisma sync, queue pause/resume, `.next` cleanup, or public verification.
 
+## Default Runtime Status Gate
+
+- After code changes, check the current project runtime status before final close-out, even when the user did not explicitly say "deploy".
+- If this machine has only a local `npm run dev` / `next dev` deployment for this repo, skip production deployment by default and keep verification local to the dev service.
+- If this machine has a production `npm run start` / `next start` deployment for this repo, continue with the normal deployment flow in this checkout.
+- If this machine does not have the repo running locally, check `mypc` for this repo's production deployment; when `mypc` has it, continue with the normal target-machine deployment flow.
+- An explicit local-only, no-deploy, or push-only user instruction overrides this default runtime-status gate for deployment, but not the Git submission rules in `../git.md`.
+
 ## Lightweight Change Exception
 
 - A change is lightweight only when it does not change runtime behavior, for example pure style tweaks, copy changes, prototype/documentation updates, or other changes that can be checked manually without deployment verification.

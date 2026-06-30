@@ -30,6 +30,7 @@ This file is the required entrypoint for this repository. Keep it short. Read `a
 
 ## Rule Triggers
 
+- After code changes, check the current project runtime status before final close-out. If this machine has only a local `next dev` / `npm run dev` deployment for this repo, skip production deployment by default. If this machine or `mypc` has a production `next start` / `npm run start` deployment for this repo, follow `agent-rules/deploy/index.md` for the normal deployment flow unless the user explicitly scoped the task to local-only or no-deploy.
 - Git commit or push, including "不部署", "先不部署", or "只推送": follow `agent-rules/git.md`.
 - Pure `npm run dev` / `next dev` start, stop, restart, or verification: read `agent-rules/dev-service.md`.
 - Production deploy, production build, `next start` restart, target-machine `git pull`, Prisma sync, queue pause/resume, `.next` cleanup, or public verification: follow `agent-rules/deploy/index.md`.
@@ -43,6 +44,7 @@ This file is the required entrypoint for this repository. Keep it short. Read `a
 - Git operations are not protected by `.deploy.lock`. `git add`, `git commit`, and `git push` do not require acquiring, waiting for, or releasing the deployment lock.
 - Target-machine `git pull` is deployment-protected only when it is part of deploy or runtime-affecting work.
 - Pure dev-service management does not require `.deploy.lock`, Prisma sync, `.next` cleanup, production build, queue pause/resume, production restart, public verification, or Git operations.
+- A local dev deployment does not by itself trigger production deployment. A local or `mypc` production deployment does trigger the normal deployment flow after code changes, unless the user explicitly scoped the task to local-only or no-deploy.
 - Do not stop all `node.exe` processes. Never use `Stop-Process -Name node -Force`; stop only the current project process that matches the exact service rule.
 - If a task is ambiguous between dev-only and production deploy, classify it before touching `.deploy.lock` or runtime services.
 <!-- END:deploy-rules -->
