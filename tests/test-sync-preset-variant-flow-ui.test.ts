@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   buildSyncPresetVariantFlowPayload,
   extractSyncPresetVariantFlowError,
+  formatSyncPresetVariantFlowApplyToast,
   parseSampleSectionNumbersInput,
   summarizeSyncPresetVariantFlowPlan,
 } from "../src/lib/sync-preset-variant-flow-ui";
@@ -64,4 +65,20 @@ test("extractSyncPresetVariantFlowError reads API error payloads", () => {
     "PROJECT_TITLE_NOT_FOUND",
   );
   assert.equal(extractSyncPresetVariantFlowError(null, "fallback"), "fallback");
+});
+
+test("formatSyncPresetVariantFlowApplyToast explains lora verification failures when planned updates are zero", () => {
+  const toast = formatSyncPresetVariantFlowApplyToast({
+    passed: false,
+    plannedUpdateCount: 0,
+    loraConfig: {
+      totalSections: 65,
+      okCount: 62,
+      missingCount: 3,
+    },
+  });
+
+  assert.equal(toast.tone, "warning");
+  assert.match(toast.message, /plannedUpdateCount=0/);
+  assert.match(toast.message, /LoRA 缺失 3\/65/);
 });

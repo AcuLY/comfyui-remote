@@ -45,6 +45,10 @@ export type FlowSectionForVerification = {
     sectionBindingId: string | null;
     enabled: boolean;
   }>;
+  loraEntries?: Array<{
+    bindingId: string | null | undefined;
+    enabled: boolean;
+  }>;
   promptBlocks: FlowPromptBlock[];
 };
 
@@ -174,6 +178,16 @@ function getRoleBlock(section: FlowSectionForVerification): FlowPromptBlock | nu
     .sort((left, right) => left.sortOrder - right.sortOrder)[0] ?? null;
 }
 
+function hasEnabledLoraForBinding(section: FlowSectionForVerification, bindingId: string) {
+  if (section.loraEntries) {
+    return section.loraEntries.some((entry) => entry.enabled && entry.bindingId === bindingId);
+  }
+
+  return section.manualLoraEntries.some(
+    (entry) => entry.enabled && entry.sectionBindingId === bindingId,
+  );
+}
+
 function defaultSampleSectionNumbers(total: number): number[] {
   if (total <= 0) return [];
   return [...new Set([1, Math.ceil(total / 2), total])];
@@ -205,9 +219,7 @@ export function buildSyncPresetVariantFlowVerification(input: BuildFlowVerificat
       continue;
     }
 
-    const hasRoleLoraEntry = section.manualLoraEntries.some(
-      (entry) => entry.enabled && entry.sectionBindingId === block.bindingId,
-    );
+    const hasRoleLoraEntry = hasEnabledLoraForBinding(section, block.bindingId);
     if (!hasRoleLoraEntry) {
       missing.push({
         sectionId: section.id,
@@ -279,9 +291,7 @@ export function buildRoleSyncPresetVariantFlowVerification(input: BuildRoleFlowV
       continue;
     }
 
-    const hasRoleLoraEntry = section.manualLoraEntries.some(
-      (entry) => entry.enabled && entry.sectionBindingId === block.bindingId,
-    );
+    const hasRoleLoraEntry = hasEnabledLoraForBinding(section, block.bindingId);
     if (!hasRoleLoraEntry) {
       missing.push({
         sectionId: section.id,

@@ -63,6 +63,30 @@ setupDb.exec(`
   );
   CREATE UNIQUE INDEX "PresetVariant_presetId_slug_key" ON "PresetVariant"("presetId", "slug");
   CREATE UNIQUE INDEX "PresetVariant_presetId_id_key" ON "PresetVariant"("presetId", "id");
+  CREATE TABLE "PresetVariantLink" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "sourceVariantId" TEXT NOT NULL,
+    "linkedVariantId" TEXT NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE UNIQUE INDEX "PresetVariantLink_sourceVariantId_linkedVariantId_key" ON "PresetVariantLink"("sourceVariantId", "linkedVariantId");
+  CREATE INDEX "PresetVariantLink_sourceVariantId_sortOrder_idx" ON "PresetVariantLink"("sourceVariantId", "sortOrder");
+  CREATE INDEX "PresetVariantLink_linkedVariantId_idx" ON "PresetVariantLink"("linkedVariantId");
+  CREATE TABLE "PresetGroup" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "categoryId" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "sortOrder" INTEGER NOT NULL DEFAULT 0,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "folderId" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+  CREATE UNIQUE INDEX "PresetGroup_categoryId_slug_key" ON "PresetGroup"("categoryId", "slug");
+  CREATE INDEX "PresetGroup_categoryId_sortOrder_idx" ON "PresetGroup"("categoryId", "sortOrder");
   CREATE TABLE "Project" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "title" TEXT NOT NULL,
@@ -616,6 +640,109 @@ test("syncPresetVariantFlow handles preview and apply for projects with more sec
   assert.equal(applied.apply.execution.failureCount, 0);
   assert.equal(applied.verificationDryRun.plannedUpdateCount, 0);
   assert.equal(applied.verification.passed, true);
+});
+
+test("syncPresetVariantFlow verifies resolved role lora entries without persisted manual lora rows", async () => {
+  await prisma.preset.createMany({
+    data: [
+      {
+        id: "preset-resolved-source",
+        categoryId: "cat-character",
+        name: "Resolved Source Role",
+        slug: "resolved-source-role",
+        sortOrder: 20,
+      },
+      {
+        id: "preset-resolved-target",
+        categoryId: "cat-character",
+        name: "Resolved Target Role",
+        slug: "resolved-target-role",
+        sortOrder: 21,
+      },
+    ],
+  });
+  await prisma.presetVariant.createMany({
+    data: [
+      {
+        id: "resolved-source-pose",
+        presetId: "preset-resolved-source",
+        name: "Pose",
+        slug: "pose",
+        prompt: "source pose",
+        lora1: [],
+        lora2: [],
+        sortOrder: 0,
+      },
+      {
+        id: "resolved-target-pose",
+        presetId: "preset-resolved-target",
+        name: "Pose",
+        slug: "pose",
+        prompt: "target pose",
+        lora1: [{ path: "character/resolved-target.safetensors", weight: 1, enabled: true }],
+        lora2: [],
+        sortOrder: 0,
+      },
+      {
+        id: "resolved-target-other",
+        presetId: "preset-resolved-target",
+        name: "Other",
+        slug: "other",
+        prompt: "target other",
+        lora1: [{ path: "character/resolved-other.safetensors", weight: 1, enabled: true }],
+        lora2: [],
+        sortOrder: 1,
+      },
+    ],
+  });
+  await prisma.project.createMany({
+    data: [
+      { id: "project-resolved-source", title: "Resolved Source", slug: "resolved-source", updatedAt: new Date("2026-06-14T04:00:00Z") },
+      { id: "project-resolved-target", title: "Resolved Target", slug: "resolved-target", updatedAt: new Date("2026-06-14T05:00:00Z") },
+    ],
+  });
+  await prisma.projectSection.createMany({
+    data: [
+      { id: "resolved-source-section", projectId: "project-resolved-source", name: "Resolved Role Section", sortOrder: 1 },
+      { id: "resolved-target-section", projectId: "project-resolved-target", name: "Resolved Role Section", sortOrder: 1 },
+    ],
+  });
+  await prisma.sectionPresetBinding.createMany({
+    data: [
+      {
+        id: "resolved-source-role",
+        projectSectionId: "resolved-source-section",
+        bindingKey: "role",
+        categoryId: "cat-character",
+        presetId: "preset-resolved-source",
+        variantId: "resolved-source-pose",
+        sortOrder: 0,
+      },
+      {
+        id: "resolved-target-role",
+        projectSectionId: "resolved-target-section",
+        bindingKey: "role",
+        categoryId: "cat-character",
+        presetId: "preset-resolved-target",
+        variantId: "resolved-target-other",
+        sortOrder: 0,
+      },
+    ],
+  });
+
+  const applied = await syncPresetVariantFlow({
+    sourceProjectTitle: "Resolved Source",
+    targetProjectTitle: "Resolved Target",
+    expectedSourceProjectId: "project-resolved-source",
+    expectedTargetProjectId: "project-resolved-target",
+    dryRun: false,
+  });
+
+  assert.ok(applied.verificationDryRun);
+  assert.ok(applied.verification);
+  assert.equal(applied.verificationDryRun.plannedUpdateCount, 0);
+  assert.equal(applied.verification.passed, true);
+  assert.equal(applied.verification.loraConfig.missingCount, 0);
 });
 
 test("syncPresetVariants apply switches variants and records history", async () => {

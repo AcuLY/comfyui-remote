@@ -175,3 +175,38 @@ test("buildRoleSyncPresetVariantFlowVerification verifies each section role bind
     "七海麻美-第二角色预设 / 大腿以上",
   ]);
 });
+
+test("buildRoleSyncPresetVariantFlowVerification accepts resolved preset lora entries without manual lora rows", () => {
+  const verification = buildRoleSyncPresetVariantFlowVerification({
+    verificationDryRun: {
+      plannedUpdateCount: 0,
+      plan: [
+        { sectionId: "s1", sectionName: "1", action: "skip", reason: "Target variant already selected" },
+      ],
+    },
+    sections: [
+      {
+        id: "s1",
+        name: "1",
+        sortOrder: 1,
+        manualLoraEntries: [],
+        loraEntries: [{ bindingId: "role", enabled: true }],
+        promptBlocks: [{
+          id: "pb1",
+          bindingId: "role",
+          sourceId: "p1",
+          variantId: "v-full",
+          categoryName: "角色",
+          categorySlug: "character",
+          presetName: "七海麻美",
+          variantName: "全身",
+          label: "七海麻美 / 全身",
+          sortOrder: 1,
+        }],
+      },
+    ],
+  });
+
+  assert.equal(verification.passed, true);
+  assert.equal(verification.loraConfig.missingCount, 0);
+});

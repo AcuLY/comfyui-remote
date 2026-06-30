@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
+import { resolveSectionConfigsById } from "@/server/repositories/project-repository/helpers";
 import { buildRoleCategoryWhere, syncPresetVariants } from "@/server/services/agent-preset-variant-service";
 import {
   buildRoleSyncPresetVariantFlowVerification,
@@ -56,39 +57,21 @@ async function getSectionsForVerification(projectId: string): Promise<FlowSectio
         id: true,
         name: true,
         sortOrder: true,
-        manualLoraEntries: {
+        presetBindingRows: {
           where: {
-            enabled: true,
-            sectionBinding: {
-              category: buildRoleCategoryWhere(),
-            },
+            presetId: { not: null },
+            category: buildRoleCategoryWhere(),
           },
-          select: {
-            sectionBindingId: true,
-            enabled: true,
-          },
-        },
-        sectionPromptBlocks: {
-          where: {
-            sectionBinding: {
-              category: buildRoleCategoryWhere(),
-            },
-          },
-          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          orderBy: { sortOrder: "asc" },
           select: {
             id: true,
-            sectionBindingId: true,
-            customLabel: true,
-            sectionBinding: {
-              select: {
-                category: { select: { name: true, slug: true } },
-                presetId: true,
-                variantId: true,
-                preset: { select: { name: true } },
-                variant: { select: { name: true } },
-              },
-            },
+            bindingKey: true,
+            presetId: true,
+            variantId: true,
             sortOrder: true,
+            category: { select: { name: true, slug: true } },
+            preset: { select: { name: true } },
+            variant: { select: { name: true } },
           },
         },
       },
@@ -97,26 +80,34 @@ async function getSectionsForVerification(projectId: string): Promise<FlowSectio
     if (page.length < PROJECT_SECTION_QUERY_BATCH_SIZE) break;
   }
 
+  const resolvedConfigsBySectionId = await resolveSectionConfigsById(sections.map((section) => section.id));
+
   return sections.map((section) => ({
     id: section.id,
     name: section.name,
     sortOrder: section.sortOrder,
-    manualLoraEntries: section.manualLoraEntries,
-    promptBlocks: section.sectionPromptBlocks.map((block) => ({
-      id: block.id,
-      sourceId: block.sectionBinding?.presetId ?? null,
-      variantId: block.sectionBinding?.variantId ?? null,
-      bindingId: block.sectionBindingId,
-      categoryName: block.sectionBinding?.category?.name ?? null,
-      categorySlug: block.sectionBinding?.category?.slug ?? null,
-      presetName: block.sectionBinding?.preset?.name ?? null,
-      variantName: block.sectionBinding?.variant?.name ?? null,
-      label: block.customLabel ??
-        [
-          block.sectionBinding?.preset?.name,
-          block.sectionBinding?.variant?.name,
-        ].filter(Boolean).join(" / "),
-      sortOrder: block.sortOrder,
+    manualLoraEntries: [],
+    loraEntries: [
+      ...(resolvedConfigsBySectionId.get(section.id)?.loraConfig.lora1 ?? []),
+      ...(resolvedConfigsBySectionId.get(section.id)?.loraConfig.lora2 ?? []),
+    ].map((entry) => ({
+      bindingId: entry.bindingId,
+      enabled: entry.enabled,
+    })),
+    promptBlocks: section.presetBindingRows.map((binding) => ({
+      id: binding.id,
+      sourceId: binding.presetId,
+      variantId: binding.variantId,
+      bindingId: binding.bindingKey,
+      categoryName: binding.category?.name ?? null,
+      categorySlug: binding.category?.slug ?? null,
+      presetName: binding.preset?.name ?? null,
+      variantName: binding.variant?.name ?? null,
+      label: [
+        binding.preset?.name,
+        binding.variant?.name,
+      ].filter(Boolean).join(" / "),
+      sortOrder: binding.sortOrder,
     })),
   }));
 }

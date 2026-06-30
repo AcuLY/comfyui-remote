@@ -25,6 +25,21 @@ export type SyncPresetVariantFlowPlanSummary = {
   skipReasons: Record<string, number>;
 };
 
+export type SyncPresetVariantFlowVerificationToastInput = {
+  passed?: boolean;
+  plannedUpdateCount?: number;
+  loraConfig?: {
+    totalSections?: number;
+    okCount?: number;
+    missingCount?: number;
+  };
+};
+
+export type SyncPresetVariantFlowApplyToast = {
+  tone: "success" | "warning";
+  message: string;
+};
+
 function optionalTrimmed(value: string | undefined): string | undefined {
   const trimmed = value?.trim() ?? "";
   return trimmed ? trimmed : undefined;
@@ -98,4 +113,32 @@ export function extractSyncPresetVariantFlowError(payload: unknown, fallback: st
   if (!error || typeof error !== "object") return fallback;
   const message = (error as Record<string, unknown>).message;
   return typeof message === "string" && message.trim() ? message : fallback;
+}
+
+export function formatSyncPresetVariantFlowApplyToast(
+  verification: SyncPresetVariantFlowVerificationToastInput | null | undefined,
+): SyncPresetVariantFlowApplyToast {
+  if (verification?.passed === true) {
+    return {
+      tone: "success",
+      message: "Apply 完成，复查 plannedUpdateCount = 0",
+    };
+  }
+
+  const plannedUpdateCount = verification?.plannedUpdateCount ?? "?";
+  const parts = [`plannedUpdateCount=${plannedUpdateCount}`];
+  const missingCount = verification?.loraConfig?.missingCount;
+  if (typeof missingCount === "number") {
+    const totalSections = verification?.loraConfig?.totalSections;
+    parts.push(
+      typeof totalSections === "number"
+        ? `LoRA 缺失 ${missingCount}/${totalSections}`
+        : `LoRA 缺失 ${missingCount}`,
+    );
+  }
+
+  return {
+    tone: "warning",
+    message: `Apply 完成但复查未通过：${parts.join("，")}`,
+  };
 }

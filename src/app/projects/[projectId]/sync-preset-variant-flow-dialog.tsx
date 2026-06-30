@@ -10,6 +10,7 @@ import { ProjectCascadePicker } from "@/components/project-cascade-picker";
 import {
   buildSyncPresetVariantFlowPayload,
   extractSyncPresetVariantFlowError,
+  formatSyncPresetVariantFlowApplyToast,
   summarizeSyncPresetVariantFlowPlan,
 } from "@/lib/sync-preset-variant-flow-ui";
 
@@ -102,6 +103,21 @@ function Distribution({ distribution }: { distribution?: Record<string, number> 
       </div>
     </div>
   );
+}
+
+function formatVerificationStatus(verification: NonNullable<FlowApplyResult["verification"]>) {
+  const plannedUpdateCount = verification.plannedUpdateCount ?? "?";
+  if (verification.passed) return `复查通过：plannedUpdateCount = ${plannedUpdateCount}`;
+
+  const missingCount = verification.loraConfig?.missingCount;
+  const totalSections = verification.loraConfig?.totalSections;
+  const loraText = typeof missingCount === "number"
+    ? typeof totalSections === "number"
+      ? `，LoRA 缺失 ${missingCount}/${totalSections}`
+      : `，LoRA 缺失 ${missingCount}`
+    : "";
+
+  return `复查未通过：plannedUpdateCount = ${plannedUpdateCount}${loraText}`;
 }
 
 export function SyncPresetVariantFlowDialog({ projectId, projectTitle }: { projectId: string; projectTitle: string }) {
@@ -217,12 +233,8 @@ export function SyncPresetVariantFlowDialog({ projectId, projectTitle }: { proje
       const applyData = result as FlowApplyResult;
       setApplyResult(applyData);
       router.refresh();
-      const passed = applyData.verification?.passed === true;
-      toast[passed ? "success" : "warning"](
-        passed
-          ? "Apply 完成，复查 plannedUpdateCount = 0"
-          : `Apply 完成但复查未通过：plannedUpdateCount=${applyData.verification?.plannedUpdateCount ?? "?"}`,
-      );
+      const applyToast = formatSyncPresetVariantFlowApplyToast(applyData.verification);
+      toast[applyToast.tone](applyToast.message);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Apply 失败");
     } finally {
@@ -343,7 +355,7 @@ export function SyncPresetVariantFlowDialog({ projectId, projectTitle }: { proje
                   <div className="flex items-center gap-2 text-xs font-medium">
                     {applyResult.verification.passed ? <CheckCircle2 className="size-4 text-emerald-300" /> : <AlertTriangle className="size-4 text-amber-300" />}
                     <span className={applyResult.verification.passed ? "text-emerald-300" : "text-amber-300"}>
-                      复查 {applyResult.verification.passed ? "通过" : "未通过"}：plannedUpdateCount = {applyResult.verification.plannedUpdateCount ?? "?"}
+                      {formatVerificationStatus(applyResult.verification)}
                     </span>
                   </div>
                   <div className="mt-2 text-xs text-zinc-400">
