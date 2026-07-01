@@ -11,7 +11,7 @@ function readSource(path: string) {
 
 test("queue auto-poll refresh updates client state without triggering a server component refresh", () => {
   const source = readSource("src/app/queue/queue-page-client.tsx");
-  const refreshStart = source.indexOf("const refresh = useCallback(() => {");
+  const refreshStart = source.indexOf("const refresh = useCallback");
   assert.notEqual(refreshStart, -1, "Queue page should define the auto-poll refresh callback");
 
   const refreshEnd = source.indexOf("}, [activeTab", refreshStart);

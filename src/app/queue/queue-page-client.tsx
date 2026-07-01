@@ -13,7 +13,7 @@ import { StatChip } from "@/components/stat-chip";
 import { cancelRun, runSection, clearRuns, clearTrash, pauseRun, resumeRun } from "@/lib/actions";
 import { showRunSubmissionToast } from "@/lib/run-submission-toast";
 import type { QueueControlProgressEvent } from "@/lib/queue-control-progress";
-import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem, CensoringProgressItem, CensoringHistoryItem } from "@/lib/types";
+import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem, TrashPagination, CensoringProgressItem, CensoringHistoryItem } from "@/lib/types";
 
 export type QueueTabKey = "pending" | "running" | "failed" | "censoring" | "trash";
 
@@ -194,6 +194,7 @@ type Props = {
   initialRunningRuns: RunningRun[];
   initialFailedRuns?: FailedRun[];
   initialTrashItems?: TrashItem[];
+  initialTrashPagination: TrashPagination;
   initialCensoringProgress?: CensoringProgressItem[];
   initialCensoringHistory?: CensoringHistoryItem[];
 };
@@ -268,13 +269,14 @@ function CensoringProgressCard({
   );
 }
 
-export function QueuePageClient({ initialQueueRuns, initialQueuePagination, initialRunningRuns, initialFailedRuns, initialTrashItems, initialCensoringProgress, initialCensoringHistory }: Props) {
+export function QueuePageClient({ initialQueueRuns, initialQueuePagination, initialRunningRuns, initialFailedRuns, initialTrashItems, initialTrashPagination, initialCensoringProgress, initialCensoringHistory }: Props) {
   const [activeTab, setActiveTab] = useState<QueueTabKey>("pending");
   const [queueRuns, setQueueRuns] = useState<QueueRun[]>(initialQueueRuns);
   const [queuePagination, setQueuePagination] = useState<QueuePagination>(initialQueuePagination);
   const [runningRuns, setRunningRuns] = useState<RunningRun[]>(initialRunningRuns);
   const [failedRuns, setFailedRuns] = useState<FailedRun[]>(initialFailedRuns ?? []);
   const [trashItems, setTrashItems] = useState<TrashItem[]>(initialTrashItems ?? []);
+  const [trashPagination, setTrashPagination] = useState<TrashPagination>(initialTrashPagination);
   const [censoringProgress, setCensoringProgress] = useState<CensoringProgressItem[]>(initialCensoringProgress ?? []);
   const [censoringHistory, setCensoringHistory] = useState<CensoringHistoryItem[]>(initialCensoringHistory ?? []);
   const [isPending, startTransition] = useTransition();
@@ -293,16 +295,20 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
 
   useEffect(() => {
     setTrashItems(initialTrashItems ?? []);
-  }, [initialTrashItems]);
+    setTrashPagination(initialTrashPagination);
+  }, [initialTrashItems, initialTrashPagination]);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback((options: { trashPage?: number } = {}) => {
     startTransition(async () => {
+      const nextTrashPage = options.trashPage ?? trashPagination.page;
       const params = new URLSearchParams({
         page: String(queuePagination.page),
         pageSize: String(queuePagination.pageSize),
       });
       if (activeTab === "trash") {
         params.set("includeTrash", "1");
+        params.set("trashPage", String(nextTrashPage));
+        params.set("trashPageSize", String(trashPagination.pageSize));
       }
       const res = await fetch(`/api/queue-data?${params.toString()}`);
       if (!res.ok) return;
@@ -340,10 +346,13 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       if (Array.isArray(data.trashItems)) {
         setTrashItems(data.trashItems);
       }
+      if (data.trashPagination) {
+        setTrashPagination(data.trashPagination);
+      }
       setCensoringProgress(data.censoringProgress ?? []);
       setCensoringHistory(data.censoringHistory ?? []);
     });
-  }, [activeTab, queuePagination.page, queuePagination.pageSize]);
+  }, [activeTab, queuePagination.page, queuePagination.pageSize, trashPagination.page, trashPagination.pageSize]);
 
   // Auto-poll
   useEffect(() => {
@@ -371,7 +380,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
   const runningCount = runningRuns.length + censoringActiveCount;
   const censoringCount = censoringActiveCount;
   const failedCount = failedRuns.length;
-  const trashCount = trashItems.length;
+  const trashCount = trashPagination.totalItems;
   const visiblePages = Array.from(
     new Set([
       1,
@@ -381,7 +390,22 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       queuePagination.totalPages,
     ]),
   ).filter((page) => page >= 1 && page <= queuePagination.totalPages);
+  const trashVisiblePages = Array.from(
+    new Set([
+      1,
+      trashPagination.page - 1,
+      trashPagination.page,
+      trashPagination.page + 1,
+      trashPagination.totalPages,
+    ]),
+  ).filter((page) => page >= 1 && page <= trashPagination.totalPages);
   const pageHref = (page: number) => (page <= 1 ? "/queue" : `/queue?page=${page}`);
+
+  function handleTrashPageChange(page: number) {
+    const nextPage = Math.min(Math.max(1, page), trashPagination.totalPages);
+    if (nextPage === trashPagination.page || isPending) return;
+    refresh({ trashPage: nextPage });
+  }
 
   function handleRestore(item: TrashItem) {
     startTransition(async () => {
@@ -399,6 +423,21 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
         }
 
         setTrashItems((prev) => prev.filter((trashItem) => trashItem.id !== item.id));
+        setTrashPagination((prev) => {
+          const totalItems = Math.max(0, prev.totalItems - 1);
+          const totalPages = Math.max(1, Math.ceil(totalItems / prev.pageSize));
+          const page = Math.min(prev.page, totalPages);
+          const startIndex = (page - 1) * prev.pageSize;
+          return {
+            ...prev,
+            page,
+            totalItems,
+            totalPages,
+            startItem: totalItems === 0 ? 0 : startIndex + 1,
+            endItem: Math.min(Math.max(startIndex, prev.endItem - 1), totalItems),
+          };
+        });
+        refresh({ trashPage: trashPagination.page });
         toast.success("图片已恢复");
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "恢复失败");
@@ -407,10 +446,10 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
   }
 
   function handleClearTrash() {
-    if (trashItems.length === 0) return;
+    if (trashCount === 0) return;
     if (
       !confirm(
-        `确定要永久清空回收站中的 ${trashItems.length} 张图片吗？此操作不可恢复。`,
+        `确定要永久清空回收站中的 ${trashCount} 张图片吗？此操作不可恢复。`,
       )
     ) {
       return;
@@ -420,6 +459,14 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       const result = await clearTrash();
       if (result.ok) {
         setTrashItems([]);
+        setTrashPagination((prev) => ({
+          ...prev,
+          page: 1,
+          totalItems: 0,
+          totalPages: 1,
+          startItem: 0,
+          endItem: 0,
+        }));
         const suffix =
           result.fileDeleteFailures > 0
             ? `，其中 ${result.fileDeleteFailures} 个文件未能删除`
@@ -607,7 +654,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
           <Trash2 className="size-3.5" /> 清空
         </button>
         <button
-          onClick={refresh}
+          onClick={() => refresh()}
           disabled={isPending}
           className="rounded-xl p-2 text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-200 disabled:opacity-50"
           title="刷新"
@@ -741,7 +788,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                       loading: "Pausing active queue",
                       success: (result) => `Paused ${result.count ?? 0} run(s)`,
                       error: "Failed to pause active queue",
-                      onSuccess: refresh,
+                      onSuccess: () => refresh(),
                     });
                   });
                 }}
@@ -760,7 +807,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                       loading: "Resuming paused queue",
                       success: (result) => `Resumed ${result.count ?? 0} run(s)`,
                       error: "Failed to resume paused queue",
-                      onSuccess: refresh,
+                      onSuccess: () => refresh(),
                     });
                   });
                 }}
@@ -1089,6 +1136,53 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                   </div>
                 ))}
               </div>
+              {trashPagination.totalPages > 1 && (
+                <div className="mt-4 flex flex-col gap-2 border-t border-white/10 pt-3 text-xs text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
+                  <span>
+                    {trashPagination.startItem}-{trashPagination.endItem} / {trashPagination.totalItems}
+                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={isPending || trashPagination.page <= 1}
+                      onClick={() => handleTrashPageChange(trashPagination.page - 1)}
+                      className="inline-flex size-7 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.06] disabled:opacity-40"
+                    >
+                      <ChevronLeft className="size-3.5" />
+                    </button>
+                    {trashVisiblePages.map((page, index) => {
+                      const prev = trashVisiblePages[index - 1];
+                      return (
+                        <div key={page} className="flex items-center gap-1.5">
+                          {prev && page - prev > 1 && (
+                            <span className="px-1 text-zinc-600">…</span>
+                          )}
+                          <button
+                            type="button"
+                            disabled={isPending || page === trashPagination.page}
+                            onClick={() => handleTrashPageChange(page)}
+                            className={`inline-flex size-7 items-center justify-center rounded-md border text-[11px] transition ${
+                              page === trashPagination.page
+                                ? "border-sky-500/30 bg-sky-500/20 text-sky-200"
+                                : "border-white/10 bg-white/[0.03] text-zinc-300 hover:bg-white/[0.06]"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </div>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      disabled={isPending || trashPagination.page >= trashPagination.totalPages}
+                      onClick={() => handleTrashPageChange(trashPagination.page + 1)}
+                      className="inline-flex size-7 items-center justify-center rounded-md border border-white/10 bg-white/[0.03] text-zinc-300 transition hover:bg-white/[0.06] disabled:opacity-40"
+                    >
+                      <ChevronRight className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </SectionCard>
           )}
         </>

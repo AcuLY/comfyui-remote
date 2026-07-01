@@ -16,11 +16,13 @@ export async function GET(request: NextRequest) {
   const page = readPositiveInteger(request.nextUrl.searchParams.get("page"));
   const pageSize = readPositiveInteger(request.nextUrl.searchParams.get("pageSize"));
   const includeTrash = request.nextUrl.searchParams.get("includeTrash") === "1";
-  const [queuePage, runningRuns, failedRuns, trashItems] = await Promise.all([
+  const trashPage = readPositiveInteger(request.nextUrl.searchParams.get("trashPage"));
+  const trashPageSize = readPositiveInteger(request.nextUrl.searchParams.get("trashPageSize"));
+  const [queuePage, runningRuns, failedRuns, trashPageData] = await Promise.all([
     getQueueRunsPage({ page, pageSize }),
     getRunningRuns(),
     getFailedRuns(),
-    includeTrash ? getTrashItems() : Promise.resolve(null),
+    includeTrash ? getTrashItems({ page: trashPage, pageSize: trashPageSize }) : Promise.resolve(null),
   ]);
 
   // Auto-recover: if there are active runs (queued/running) that may not
@@ -126,6 +128,6 @@ export async function GET(request: NextRequest) {
       projectTitle: t.project.title,
       thumbUrl: toImageUrl(t.imageResult.censoredThumbPath ?? t.imageResult.thumbPath ?? t.imageResult.filePath) ?? "",
     })),
-    ...(trashItems ? { trashItems } : {}),
+    ...(trashPageData ? { trashItems: trashPageData.items, trashPagination: trashPageData.pagination } : {}),
   });
 }

@@ -122,6 +122,15 @@ export type TrashItem = {
   sectionSortOrder: number;
 };
 
+export type TrashPagination = {
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  startItem: number;
+  endItem: number;
+};
+
 export type LoraAsset = {
   id: string;
   name: string;

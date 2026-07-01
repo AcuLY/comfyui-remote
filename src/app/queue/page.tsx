@@ -15,14 +15,14 @@ function readPage(value: string | string[] | undefined) {
 export default async function QueuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string | string[] }>;
+  searchParams: Promise<{ page?: string | string[]; trashPage?: string | string[] }>;
 }) {
-  const { page } = await searchParams;
-  const [queuePage, runningRuns, failedRuns, trashItems] = await Promise.all([
+  const { page, trashPage } = await searchParams;
+  const [queuePage, runningRuns, failedRuns, trashPageData] = await Promise.all([
     getQueueRunsPage({ page: readPage(page) }),
     getRunningRuns(),
     getFailedRuns(),
-    getTrashItems(),
+    getTrashItems({ page: readPage(trashPage) }),
   ]);
 
   // Get censoring progress
@@ -120,7 +120,8 @@ export default async function QueuePage({
       initialQueuePagination={queuePage.pagination}
       initialRunningRuns={runningRuns}
       initialFailedRuns={failedRuns}
-      initialTrashItems={trashItems}
+      initialTrashItems={trashPageData.items}
+      initialTrashPagination={trashPageData.pagination}
       initialCensoringProgress={censoringProgress}
       initialCensoringHistory={censoringHistory}
     />
