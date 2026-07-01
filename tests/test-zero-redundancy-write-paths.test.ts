@@ -2575,12 +2575,24 @@ test("project preset binding writes use ProjectPresetBinding rows without rewrit
 
 test("createProjectFromExisting clones source sections with target project presets and checkpoint", async () => {
   const seed = await seedProjectWithPreset({ withProjectBinding: true });
+  await prisma.project.update({
+    where: { id: seed.project.id },
+    data: {
+      projectLevelOverrides: {
+        defaultAspectRatio: "1:1",
+        defaultShortSidePx: 512,
+        defaultBatchSize: 2,
+        defaultUpscaleFactor: 1.5,
+      },
+    },
+  });
   await prisma.projectSection.update({
     where: { id: seed.section.id },
     data: {
       checkpointName: `${seed.key}-source-section.ckpt`,
       aspectRatio: "3:4",
       batchSize: 5,
+      upscaleFactor: 3,
     },
   });
   const secondSourceSection = await prisma.projectSection.create({
@@ -2731,6 +2743,10 @@ test("createProjectFromExisting clones source sections with target project prese
     },
   });
   assert.equal(createdProject.checkpointName, `${seed.key}-target.ckpt`);
+  assert.equal(
+    (createdProject.projectLevelOverrides as { defaultUpscaleFactor?: number } | null)?.defaultUpscaleFactor,
+    1.5,
+  );
   assert.deepEqual(createdProject.presetBindingRows.map((row) => [row.categoryId, row.presetId, row.variantId]), [
     [seed.category.id, seed.preset.id, seed.variantB.id],
   ]);
@@ -2743,6 +2759,7 @@ test("createProjectFromExisting clones source sections with target project prese
   );
   assert.equal(createdProject.sections[0].aspectRatio, "3:4");
   assert.equal(createdProject.sections[0].batchSize, 5);
+  assert.equal(createdProject.sections[0].upscaleFactor, 3);
 
   const targetSection = createdProject.sections[0];
   const targetProjectBinding = await prisma.sectionPresetBinding.findFirstOrThrow({

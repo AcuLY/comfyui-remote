@@ -12,6 +12,7 @@ import { DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2 } from "@/lib/lora-types";
 import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import { DEFAULT_CHECKPOINT_NAME } from "@/lib/model-constants";
+import { readApplyParamResponse } from "./apply-param-response";
 
 function ApplyToAllButton({
   projectId,
@@ -38,11 +39,11 @@ function ApplyToAllButton({
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ param, value }),
           });
-          const data = await res.json();
+          const data = readApplyParamResponse(await res.json());
           if (data.ok) {
             toast.success(`已应用到 ${data.count} 个小节`);
           } else {
-            toast.error(data.error ?? "应用失败");
+            toast.error(data.error);
           }
         });
       }}
