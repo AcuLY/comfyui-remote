@@ -10,7 +10,7 @@ import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { cancelRun, runSection, clearRuns, clearTrash, restoreImage, pauseRun, resumeRun } from "@/lib/actions";
+import { cancelRun, runSection, clearRuns, clearTrash, pauseRun, resumeRun } from "@/lib/actions";
 import { showRunSubmissionToast } from "@/lib/run-submission-toast";
 import type { QueueControlProgressEvent } from "@/lib/queue-control-progress";
 import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem, CensoringProgressItem, CensoringHistoryItem } from "@/lib/types";
@@ -383,11 +383,26 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
   ).filter((page) => page >= 1 && page <= queuePagination.totalPages);
   const pageHref = (page: number) => (page <= 1 ? "/queue" : `/queue?page=${page}`);
 
-  function handleRestore(trashRecordId: string) {
+  function handleRestore(item: TrashItem) {
     startTransition(async () => {
-      await restoreImage(trashRecordId);
-      setTrashItems((prev) => prev.filter((item) => item.id !== trashRecordId));
-      toast.success("图片已恢复");
+      try {
+        const response = await fetch(`/api/images/${encodeURIComponent(item.imageResultId)}/restore`, {
+          method: "POST",
+        });
+        const result = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          error?: { message?: string };
+        } | null;
+
+        if (!response.ok || result?.ok === false) {
+          throw new Error(result?.error?.message ?? "恢复失败");
+        }
+
+        setTrashItems((prev) => prev.filter((trashItem) => trashItem.id !== item.id));
+        toast.success("图片已恢复");
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "恢复失败");
+      }
     });
   }
 
@@ -1065,7 +1080,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
                     </div>
                     <button
                       disabled={isPending}
-                      onClick={() => handleRestore(item.id)}
+                      onClick={() => handleRestore(item)}
                       className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-xs font-medium text-emerald-300 transition hover:bg-emerald-500/20 disabled:opacity-50"
                     >
                       <RotateCcw className={`size-3.5 ${isPending ? "animate-spin" : ""}`} />
