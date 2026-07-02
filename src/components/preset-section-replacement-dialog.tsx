@@ -234,6 +234,7 @@ export function PresetSectionReplacementDialog({
                       placeholder="选择来源..."
                       presetCategoriesOnly
                       clearable
+                      selectDefaultVariantOnPresetClick
                       clearLabel="清空来源预制"
                     />
                   </label>
@@ -251,6 +252,7 @@ export function PresetSectionReplacementDialog({
                       lockedCategoryId={fromPreset?.categoryId}
                       presetCategoriesOnly
                       clearable
+                      selectDefaultVariantOnPresetClick
                       clearLabel="清空目标预制"
                     />
                   </label>

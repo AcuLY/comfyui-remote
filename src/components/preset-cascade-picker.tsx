@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { Folder, Search, ChevronRight, ChevronLeft, X } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -47,6 +48,8 @@ type PresetCascadePickerProps = {
   /** If true, shows a clear choice inside the picker */
   clearable?: boolean;
   clearLabel?: string;
+  /** If true, clicking a preset selects its first variant instead of expanding variants */
+  selectDefaultVariantOnPresetClick?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -64,6 +67,7 @@ export function PresetCascadePicker({
   defaultOpen = false,
   clearable = false,
   clearLabel = "不选择",
+  selectDefaultVariantOnPresetClick = false,
 }: PresetCascadePickerProps) {
   // Filter categories
   const filteredCats = useMemo(
@@ -80,6 +84,7 @@ export function PresetCascadePicker({
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedPresetId, setExpandedPresetId] = useState<string | null>(null);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -111,12 +116,16 @@ export function PresetCascadePicker({
     setExpandedPresetId(null);
   }
 
+  useEffect(() => {
+    setPortalTarget(document.body);
+  }, []);
+
   // Focus search after the dialog is mounted.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !portalTarget) return;
     const timeoutId = window.setTimeout(() => searchInputRef.current?.focus(), 100);
     return () => window.clearTimeout(timeoutId);
-  }, [open]);
+  }, [open, portalTarget]);
 
   // Close on Escape
   useEffect(() => {
@@ -158,6 +167,12 @@ export function PresetCascadePicker({
 
   function handleSelectPreset(preset: PresetDef) {
     if (preset.variants.length === 0) return;
+    if (selectDefaultVariantOnPresetClick) {
+      const v = preset.variants[0];
+      onChange({ presetId: preset.id, variantId: v.id, presetName: preset.name, variantName: v.name, categoryId: activeCategoryId });
+      setOpen(false);
+      return;
+    }
     if (preset.variants.length === 1) {
       const v = preset.variants[0];
       onChange({ presetId: preset.id, variantId: v.id, presetName: preset.name, variantName: v.name, categoryId: activeCategoryId });
@@ -191,10 +206,10 @@ export function PresetCascadePicker({
       </button>
 
       {/* Modal overlay */}
-      {open && (
+      {open && portalTarget ? createPortal((
         <div
           ref={backdropRef}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 p-4"
           onClick={(e) => { if (e.target === backdropRef.current) setOpen(false); }}
         >
           <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl" style={{ maxHeight: "75vh" }}>
@@ -345,12 +360,12 @@ export function PresetCascadePicker({
                           {preset.variants.length > 1 && (
                             <span className="shrink-0 text-[10px] text-zinc-500">{preset.variants.length} 变体</span>
                           )}
-                          {preset.variants.length > 1 && (
+                          {preset.variants.length > 1 && !selectDefaultVariantOnPresetClick && (
                             <ChevronRight className={`size-3 shrink-0 text-zinc-600 transition ${isExpanded ? "rotate-90" : ""}`} />
                           )}
                         </button>
                         {/* Variant sub-list */}
-                        {isExpanded && preset.variants.length > 1 && (
+                        {!selectDefaultVariantOnPresetClick && isExpanded && preset.variants.length > 1 && (
                           <div className="ml-6 mt-0.5 space-y-0.5">
                             {preset.variants.map((v) => {
                               const vSelected = value?.variantId === v.id && value?.presetId === preset.id;
@@ -377,7 +392,7 @@ export function PresetCascadePicker({
             </div>
           </div>
         </div>
-      )}
+      ), portalTarget) : null}
     </>
   );
 }
