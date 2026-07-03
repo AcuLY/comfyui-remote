@@ -53,6 +53,7 @@ type RunnerCaseOptions = {
   sourceIsDirectory?: boolean;
   sourceExists?: boolean;
   outputPath?: string;
+  pollutePythonEnv?: boolean;
   timeoutMs?: number;
 };
 
@@ -60,6 +61,7 @@ type RunnerCaseResult = {
   result: { ok: true; result: unknown } | { ok: false; message: string };
   args?: string[];
   manifest?: unknown;
+  childPythonEnv?: Record<string, string | null>;
   outputDirExists: boolean;
   paths: {
     modelPath: string;
@@ -95,6 +97,7 @@ async function runRunnerCase(options: RunnerCaseOptions = {}): Promise<RunnerCas
   const outputPath = options.outputPath ?? "nested/output.png";
   const outputAbsPath = resolve(childRoot, outputPath);
   const argsPath = join(tempRoot, "spawn-args.json");
+  const envSnapshotPath = join(tempRoot, "child-python-env.json");
   const manifestSnapshotPath = join(tempRoot, "batch-manifest.json");
   const spawnsPath = join(tempRoot, "spawn-calls.json");
   const fakeScriptPath = join(tempRoot, "scripts", "auto-censor-mosaic.py");
@@ -119,10 +122,12 @@ async function runRunnerCase(options: RunnerCaseOptions = {}): Promise<RunnerCas
 
     const result = await runNodeHarness(harnessPath, {
       argsPath,
+      envSnapshotPath,
       mode: options.mode ?? "success",
       modelPath,
       manifestSnapshotPath,
       outputPath,
+      pollutePythonEnv: options.pollutePythonEnv,
       root: tempRoot,
       sourcePath,
       spawnsPath,
@@ -138,11 +143,15 @@ async function runRunnerCase(options: RunnerCaseOptions = {}): Promise<RunnerCas
     const manifest = existsSync(manifestSnapshotPath)
       ? JSON.parse(await readFile(manifestSnapshotPath, "utf8")) as unknown
       : undefined;
+    const childPythonEnv = existsSync(envSnapshotPath)
+      ? JSON.parse(await readFile(envSnapshotPath, "utf8")) as Record<string, string | null>
+      : undefined;
 
     return {
       result,
       args,
       manifest,
+      childPythonEnv,
       outputDirExists: await pathExists(dirname(outputAbsPath)),
       paths: {
         modelPath: modelPath ?? "",
@@ -249,6 +258,7 @@ async function runNodeHarness(
   input: {
     api?: "single" | "batch";
     argsPath: string;
+    envSnapshotPath?: string;
     items?: Array<{
       sourcePath: string;
       outputPath: string;
@@ -257,6 +267,7 @@ async function runNodeHarness(
     mode: string;
     modelPath: string | null | undefined;
     outputPath?: string;
+    pollutePythonEnv?: boolean;
     root: string;
     sourcePath?: string;
     spawnsPath: string;
@@ -373,9 +384,19 @@ if (input.modelPath) {
   delete process.env.AUTO_CENSOR_MODEL_PATH;
 }
 
+if (input.pollutePythonEnv) {
+  process.env.PYTHONPATH = "D:/polluted/pythonpath";
+  process.env.PYTHONHOME = "D:/polluted/pythonhome";
+  process.env.VIRTUAL_ENV = "D:/polluted/venv";
+  process.env.PYTHONNOUSERSITE = "0";
+}
+
 process.env.AUTO_CENSOR_PYTHON_CMD = process.execPath;
 process.env.FAKE_AUTO_CENSOR_MODE = input.mode;
 process.env.FAKE_AUTO_CENSOR_ARGS_PATH = input.argsPath;
+if (input.envSnapshotPath) {
+  process.env.FAKE_AUTO_CENSOR_ENV_PATH = input.envSnapshotPath;
+}
 process.env.FAKE_AUTO_CENSOR_MANIFEST_PATH = input.manifestSnapshotPath;
 process.env.FAKE_AUTO_CENSOR_SPAWNS_PATH = input.spawnsPath;
 
@@ -409,6 +430,15 @@ const { existsSync, readFileSync, writeFileSync } = require("node:fs");
 
 const args = process.argv.slice(2);
 writeFileSync(process.env.FAKE_AUTO_CENSOR_ARGS_PATH, JSON.stringify(args));
+
+if (process.env.FAKE_AUTO_CENSOR_ENV_PATH) {
+  writeFileSync(process.env.FAKE_AUTO_CENSOR_ENV_PATH, JSON.stringify({
+    PYTHONPATH: process.env.PYTHONPATH ?? null,
+    PYTHONHOME: process.env.PYTHONHOME ?? null,
+    VIRTUAL_ENV: process.env.VIRTUAL_ENV ?? null,
+    PYTHONNOUSERSITE: process.env.PYTHONNOUSERSITE ?? null,
+  }));
+}
 
 if (process.env.FAKE_AUTO_CENSOR_SPAWNS_PATH) {
   const previousCalls = existsSync(process.env.FAKE_AUTO_CENSOR_SPAWNS_PATH)
@@ -576,6 +606,18 @@ test("auto-censor single-image wrapper uses batch-of-one while preserving return
       outputPath: paths.outputAbsPath,
     },
   ]);
+});
+
+test("auto-censor runner strips parent Python environment before spawning CLI", async () => {
+  const { childPythonEnv, result } = await runRunnerCase({ pollutePythonEnv: true });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(childPythonEnv, {
+    PYTHONPATH: null,
+    PYTHONHOME: null,
+    VIRTUAL_ENV: null,
+    PYTHONNOUSERSITE: "1",
+  });
 });
 
 test("auto-censor batch runner spawns once with manifest and returns per-item errors", async () => {

@@ -11,6 +11,7 @@ import { AUTO_CENSOR_MOSAIC_SIZE } from "@/lib/quick-censor-core";
 export const AUTO_CENSOR_SELECTED_CLASSES = [2, 4] as const; // CLI argument: "2,4"
 
 const DEFAULT_TIMEOUT_MS = 120_000;
+const PYTHON_ENV_KEYS_TO_CLEAR = ["PYTHONPATH", "PYTHONHOME", "VIRTUAL_ENV", "PYTHONUSERBASE"] as const;
 
 export type AutoCensorRunInput = {
   sourcePath: string;
@@ -165,6 +166,23 @@ function batchTimeoutMs(inputs: NormalizedBatchInput[]) {
   return DEFAULT_TIMEOUT_MS * Math.max(1, inputs.length);
 }
 
+function autoCensorPythonEnv(baseEnv: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const childEnv: NodeJS.ProcessEnv = {
+    ...baseEnv,
+    PYTHONNOUSERSITE: "1",
+  };
+
+  for (const blockedKey of PYTHON_ENV_KEYS_TO_CLEAR) {
+    for (const key of Object.keys(childEnv)) {
+      if (key.toUpperCase() === blockedKey) {
+        delete childEnv[key];
+      }
+    }
+  }
+
+  return childEnv;
+}
+
 function runPythonCli(
   command: string,
   args: readonly string[],
@@ -178,6 +196,7 @@ function runPythonCli(
     let forceKillTimer: NodeJS.Timeout | undefined;
 
     const child = spawn(command, [...args], {
+      env: autoCensorPythonEnv(process.env),
       shell: false,
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
