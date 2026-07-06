@@ -196,6 +196,9 @@ test("generation project mutations use shared raw JSON parsing", () => {
     "src/app/api/projects/route.ts",
     "src/app/api/projects/[projectId]/route.ts",
     "src/app/api/project-folders/route.ts",
+    "src/app/api/project-folders/[folderId]/route.ts",
+    "src/app/api/project-folders/move/route.ts",
+    "src/app/api/project-folders/reorder/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -223,6 +226,9 @@ test("generation project mutations preserve invalid JSON response envelope", asy
   const projectsRoute = await import("../src/app/api/projects/route");
   const projectDetailRoute = await import("../src/app/api/projects/[projectId]/route");
   const projectFoldersRoute = await import("../src/app/api/project-folders/route");
+  const projectFolderDetailRoute = await import("../src/app/api/project-folders/[folderId]/route");
+  const projectFolderMoveRoute = await import("../src/app/api/project-folders/move/route");
+  const projectFolderReorderRoute = await import("../src/app/api/project-folders/reorder/route");
 
   for (const response of [
     await projectsRoute.POST(makeRequest("not-json")),
@@ -230,6 +236,11 @@ test("generation project mutations preserve invalid JSON response envelope", asy
       params: Promise.resolve({ projectId: "project-1" }),
     }),
     await projectFoldersRoute.POST(makeRequest("not-json")),
+    await projectFolderDetailRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ folderId: "folder-1" }),
+    }),
+    await projectFolderMoveRoute.POST(makeRequest("not-json")),
+    await projectFolderReorderRoute.POST(makeRequest("not-json")),
   ]) {
     assert.equal(response.status, 400);
     assert.deepEqual(await response.json(), {
