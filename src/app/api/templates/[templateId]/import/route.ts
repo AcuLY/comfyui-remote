@@ -1,5 +1,6 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { importTemplateToProject } from "@/lib/actions";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = { params: Promise<{ templateId: string }> };
 const duplicatePolicies = new Set(["skip", "replace", "append", "error"]);
@@ -8,9 +9,9 @@ export async function POST(request: Request, context: RouteContext) {
   const { templateId } = await context.params;
   let body: Record<string, unknown>;
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request) as Record<string, unknown>;
+  } catch (error) {
+    return failFromError(error);
   }
 
   const projectId = body?.projectId;

@@ -61,6 +61,9 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/projects/[projectId]/apply-param/route.ts`
 - `src/app/api/projects/[projectId]/preset-replacements/route.ts`
 - `src/app/api/projects/[projectId]/sections/batch-delete/route.ts`
+- `src/app/api/templates/[templateId]/import/route.ts`
+- `src/app/api/templates/[templateId]/preset-replacements/route.ts`
+- `src/app/api/templates/[templateId]/sections/[sectionId]/route.ts`
 
 ## Compatibility Exceptions
 

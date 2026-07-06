@@ -192,6 +192,9 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/projects/[projectId]/apply-param/route.ts",
     "src/app/api/projects/[projectId]/preset-replacements/route.ts",
     "src/app/api/projects/[projectId]/sections/batch-delete/route.ts",
+    "src/app/api/templates/[templateId]/import/route.ts",
+    "src/app/api/templates/[templateId]/preset-replacements/route.ts",
+    "src/app/api/templates/[templateId]/sections/[sectionId]/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -210,6 +213,21 @@ test("generation project run routes use shared optional JSON parsing", () => {
 
     assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
     assert.match(source, /readOptionalJsonObject\(request\)/, `${routePath} should parse through readOptionalJsonObject`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+});
+
+test("generation template mutations use shared raw JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/templates/[templateId]/import/route.ts",
+    "src/app/api/templates/[templateId]/preset-replacements/route.ts",
+    "src/app/api/templates/[templateId]/sections/[sectionId]/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
     assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
     assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
   }
@@ -339,6 +357,32 @@ test("generation project mutations preserve invalid JSON response envelope", asy
     }),
     await projectSectionsBatchDeleteRoute.POST(makeRequest("not-json"), {
       params: Promise.resolve({ projectId: "project-1" }),
+    }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("generation template mutations preserve invalid JSON response envelope", async () => {
+  const templateImportRoute = await import("../src/app/api/templates/[templateId]/import/route");
+  const templatePresetReplacementsRoute = await import("../src/app/api/templates/[templateId]/preset-replacements/route");
+  const templateSectionRoute = await import("../src/app/api/templates/[templateId]/sections/[sectionId]/route");
+
+  for (const response of [
+    await templateImportRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ templateId: "template-1" }),
+    }),
+    await templatePresetReplacementsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ templateId: "template-1" }),
+    }),
+    await templateSectionRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ templateId: "template-1", sectionId: "section-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);

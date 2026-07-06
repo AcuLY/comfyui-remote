@@ -207,6 +207,8 @@
 - Phase 3 slice 11 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 989 tests discovered, 988 pass, 0 fail, 1 skipped.
 - Phase 3 slice 12 migrated destructive generation section batch-delete parsing in `src/app/api/projects/[projectId]/sections/batch-delete/route.ts` to `readJsonBody`/`failFromError`, moved section ownership checks into `deleteProjectSections` in `src/server/services/project-service.ts`, and added service tests covering dedupe, project ownership, and no-delete-on-missing-section behavior.
 - Phase 3 slice 12 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-project-section-delete-service.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 994 tests discovered, 993 pass, 0 fail, 1 skipped.
+- Phase 3 slice 13 migrated generation template import, preset-replacement, and section PATCH parsing in `src/app/api/templates/[templateId]/import/route.ts`, `src/app/api/templates/[templateId]/preset-replacements/route.ts`, and `src/app/api/templates/[templateId]/sections/[sectionId]/route.ts` to `readJsonBody`/`failFromError`.
+- Phase 3 slice 13 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-repo-inventory.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 996 tests discovered, 995 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
