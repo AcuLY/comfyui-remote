@@ -2,6 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+  PRISMA_SCHEMA_PATHS,
+  readPrismaModelBlock,
+} from "./fixtures/prisma-schema-source";
 
 const rootDir = process.cwd();
 
@@ -9,16 +13,9 @@ function readSource(path: string) {
   return readFileSync(join(rootDir, path), "utf8");
 }
 
-function readSchemaModel(schemaFile: string, modelName: string) {
-  const schema = readSource(schemaFile);
-  const match = schema.match(new RegExp(`model ${modelName} \\{\\r?\\n([\\s\\S]*?)\\r?\\n\\}`));
-  assert.notEqual(match, null, `${modelName} exists in ${schemaFile}`);
-  return match![1];
-}
-
 test("LoraAsset schema stores one Civitai link for model files", () => {
-  for (const schemaFile of ["prisma/schema.prisma", "prisma/schema.sqlite.prisma"]) {
-    const modelSource = readSchemaModel(schemaFile, "LoraAsset");
+  for (const schemaFile of PRISMA_SCHEMA_PATHS) {
+    const modelSource = readPrismaModelBlock(schemaFile, "LoraAsset");
     assert.match(modelSource, /^\s*civitaiLink\s+String\?\s*$/m, `${schemaFile} declares civitaiLink`);
   }
 });

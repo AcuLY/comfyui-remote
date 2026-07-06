@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import {
+  listPrismaEnumDefinitions,
+  listPrismaEnumFieldReferences,
+  listPrismaModelDirectives,
+  listPrismaModelNames,
+} from "./fixtures/prisma-schema-source";
 
 const POSTGRES_SCHEMA = "prisma/schema.prisma";
 const SQLITE_SCHEMA = "prisma/schema.sqlite.prisma";
@@ -47,59 +53,6 @@ const LEGACY_COMPATIBILITY_SURFACES = [
   },
 ] as const;
 
-function modelNames(schemaPath: string) {
-  return [...readFileSync(schemaPath, "utf8").matchAll(/^model\s+(\w+)\s*\{/gm)].map((match) => match[1]);
-}
-
-function enumDefinitions(schemaPath: string) {
-  const source = readFileSync(schemaPath, "utf8");
-  const enums = new Map<string, string[]>();
-
-  for (const match of source.matchAll(/^enum\s+(\w+)\s*\{([\s\S]*?)^}/gm)) {
-    const values = match[2]
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith("//"));
-    enums.set(match[1], values);
-  }
-
-  return enums;
-}
-
-function enumFieldReferences(schemaPath: string, enumNames: Iterable<string>) {
-  const source = readFileSync(schemaPath, "utf8");
-  const enumNameSet = new Set(enumNames);
-  const references = new Map<string, string[]>();
-
-  for (const modelMatch of source.matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^}/gm)) {
-    const modelName = modelMatch[1];
-    for (const line of modelMatch[2].split("\n")) {
-      const fieldMatch = line.trim().match(/^(\w+)\s+(\w+)\b/);
-      if (fieldMatch && enumNameSet.has(fieldMatch[2])) {
-        const fields = references.get(fieldMatch[2]) ?? [];
-        fields.push(`${modelName}.${fieldMatch[1]}`);
-        references.set(fieldMatch[2], fields);
-      }
-    }
-  }
-
-  return references;
-}
-
-function modelBlock(schemaPath: string, model: string): string {
-  const source = readFileSync(schemaPath, "utf8");
-  const match = source.match(new RegExp(`^model\\s+${model}\\s*\\{([\\s\\S]*?)^}`, "m"));
-  assert.ok(match, `${schemaPath} missing model ${model}`);
-  return match[1];
-}
-
-function modelDirectives(schemaPath: string, model: string) {
-  return modelBlock(schemaPath, model)
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("@@unique") || line.startsWith("@@index"));
-}
-
 function parseChecklistRows() {
   const doc = readFileSync(COMPATIBILITY_DOC, "utf8");
   const sharedModelsSection = doc.split("## Shared Models")[1]?.split("\n## ")[0] ?? "";
@@ -123,8 +76,8 @@ function parseChecklistRows() {
 }
 
 test("Prisma schema compatibility checklist covers every shared model", () => {
-  const postgresModels = modelNames(POSTGRES_SCHEMA);
-  const sqliteModels = modelNames(SQLITE_SCHEMA);
+  const postgresModels = listPrismaModelNames(POSTGRES_SCHEMA);
+  const sqliteModels = listPrismaModelNames(SQLITE_SCHEMA);
   const sharedModels = postgresModels.filter((model) => sqliteModels.includes(model)).sort();
   const { doc, rows } = parseChecklistRows();
 
@@ -159,8 +112,8 @@ test("Prisma schema compatibility checklist is generated and indexed", () => {
 
 test("Prisma schema compatibility checklist documents PostgreSQL enum to SQLite string mappings", () => {
   const doc = readFileSync(COMPATIBILITY_DOC, "utf8");
-  const postgresEnums = enumDefinitions(POSTGRES_SCHEMA);
-  const enumReferences = enumFieldReferences(POSTGRES_SCHEMA, postgresEnums.keys());
+  const postgresEnums = listPrismaEnumDefinitions(POSTGRES_SCHEMA);
+  const enumReferences = listPrismaEnumFieldReferences(POSTGRES_SCHEMA, postgresEnums.keys());
 
   assert.match(doc, /## Provider Enum Mapping/);
   assert.equal(postgresEnums.size, 5);
@@ -193,7 +146,7 @@ test("Prisma schema compatibility checklist documents relation parent scopes and
     assert.match(doc, new RegExp(`\`${parentScope}\``), `${model} must document parent scope ${parentScope}`);
 
     for (const schemaPath of [POSTGRES_SCHEMA, SQLITE_SCHEMA]) {
-      for (const directive of modelDirectives(schemaPath, model)) {
+      for (const directive of listPrismaModelDirectives(schemaPath, model)) {
         assert.match(doc, new RegExp(`\`${directive.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\``));
       }
     }

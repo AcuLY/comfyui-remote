@@ -1,8 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import {
+  PRISMA_SCHEMA_PATHS,
+  prismaSchemaDeclaresModel,
+  readPrismaModelBlock,
+} from "./fixtures/prisma-schema-source";
 
-const schemaFiles = ["prisma/schema.prisma", "prisma/schema.sqlite.prisma"] as const;
+const schemaFiles = PRISMA_SCHEMA_PATHS;
 
 const expectedModels = [
   "ProjectPresetBinding",
@@ -49,11 +53,7 @@ const forbiddenPromptBlockFields = [
 ] as const;
 
 async function readSchemaModel(schemaFile: string, modelName: string) {
-  const schema = await readFile(schemaFile, "utf8");
-  const match = schema.match(new RegExp(`model ${modelName} \\{\\r?\\n([\\s\\S]*?)\\r?\\n\\}`));
-
-  assert.notEqual(match, null, `${modelName} exists in ${schemaFile}`);
-  return match![1];
+  return readPrismaModelBlock(schemaFile, modelName);
 }
 
 function assertModelDoesNotDeclareFields(modelSource: string, fieldNames: readonly string[]) {
@@ -125,9 +125,7 @@ for (const schemaFile of schemaFiles) {
   });
 
   test(`${schemaFile} removes editable legacy redundancy storage`, async () => {
-    const schema = await readFile(schemaFile, "utf8");
-
-    assert.equal(/model PromptBlock\s+\{/.test(schema), false, "PromptBlock model is removed");
+    assert.equal(prismaSchemaDeclaresModel(schemaFile, "PromptBlock"), false, "PromptBlock model is removed");
 
     for (const [modelName, fieldNames] of Object.entries(removedLegacyEditableFields)) {
       const modelSource = await readSchemaModel(schemaFile, modelName);

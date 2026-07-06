@@ -2,8 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  PRISMA_SCHEMA_PATHS,
+  prismaSchemaDeclaresModel,
+  readPrismaModelBlock,
+} from "./fixtures/prisma-schema-source";
 
-const schemaFiles = ["prisma/schema.prisma", "prisma/schema.sqlite.prisma"] as const;
+const schemaFiles = PRISMA_SCHEMA_PATHS;
 
 const legacySchemaFields = {
   PresetCategory: ["slotTemplate"],
@@ -42,11 +47,10 @@ const forbiddenSourcePatterns = [
 
 test("Prisma schemas do not declare editable legacy redundancy storage", async () => {
   for (const schemaFile of schemaFiles) {
-    const schema = await readFile(schemaFile, "utf8");
-    assert.equal(/model PromptBlock\s+\{/.test(schema), false, `${schemaFile} removes PromptBlock`);
+    assert.equal(prismaSchemaDeclaresModel(schemaFile, "PromptBlock"), false, `${schemaFile} removes PromptBlock`);
 
     for (const [modelName, fieldNames] of Object.entries(legacySchemaFields)) {
-      const modelSource = readModelSource(schema, modelName, schemaFile);
+      const modelSource = readPrismaModelBlock(schemaFile, modelName);
       for (const fieldName of fieldNames) {
         assert.equal(
           new RegExp(`^\\s*${fieldName}\\s+`, "m").test(modelSource),
@@ -83,12 +87,6 @@ test("section run parameter history does not select removed section loraConfig s
     "run parameter history must not select ProjectSection.loraConfig",
   );
 });
-
-function readModelSource(schema: string, modelName: string, schemaFile: string) {
-  const match = schema.match(new RegExp(`model ${modelName} \\{\\n([\\s\\S]*?)\\n\\}`));
-  assert.notEqual(match, null, `${modelName} exists in ${schemaFile}`);
-  return match![1];
-}
 
 async function collectSourceFiles(roots: readonly string[]) {
   const files: string[] = [];

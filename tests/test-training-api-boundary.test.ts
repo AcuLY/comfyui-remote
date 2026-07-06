@@ -2,6 +2,10 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 import test from "node:test";
+import {
+  PRISMA_SCHEMA_PATHS,
+  prismaSchemaDeclaresModel,
+} from "./fixtures/prisma-schema-source";
 
 const repoRoot = process.cwd();
 const textFileExtensions = new Set([
@@ -405,11 +409,6 @@ test("Training HTTP workflow keeps the agent-facing v2 operation spine", () => {
 });
 
 test("Training schema code uses Training-owned model names for dedicated resources", () => {
-  const schemaSources = listFiles(join(repoRoot, "prisma"), (path) => (
-    ["schema.prisma", "schema.sqlite.prisma"].includes(relative(join(repoRoot, "prisma"), path))
-  ))
-    .map((path) => readFileSync(path, "utf8"))
-    .join("\n");
   const requiredModels = [
     "TrainingSceneDescriptionPresetCategory",
     "TrainingSceneDescriptionPresetFolder",
@@ -420,6 +419,12 @@ test("Training schema code uses Training-owned model names for dedicated resourc
   ];
 
   for (const model of requiredModels) {
-    assert.match(schemaSources, new RegExp(`model\\s+${model}\\b`));
+    for (const schemaPath of PRISMA_SCHEMA_PATHS) {
+      assert.equal(
+        prismaSchemaDeclaresModel(schemaPath, model),
+        true,
+        `${schemaPath} declares ${model}`,
+      );
+    }
   }
 });

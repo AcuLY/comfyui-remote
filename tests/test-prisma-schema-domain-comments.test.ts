@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
-
-const SCHEMAS = ["prisma/schema.prisma", "prisma/schema.sqlite.prisma"] as const;
+import {
+  PRISMA_SCHEMA_PATHS,
+  readPrismaSchemaSource,
+} from "./fixtures/prisma-schema-source";
 
 test("Prisma schemas group models by the roadmap domain comments", () => {
-  for (const schemaPath of SCHEMAS) {
-    const source = readFileSync(schemaPath, "utf8");
+  for (const schemaPath of PRISMA_SCHEMA_PATHS) {
+    const source = readPrismaSchemaSource(schemaPath);
 
     for (const domain of [
       "Preset library",

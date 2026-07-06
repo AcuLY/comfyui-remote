@@ -1,27 +1,21 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
+import {
+  PRISMA_SCHEMA_PATHS,
+  readPrismaModelBlock,
+} from "./fixtures/prisma-schema-source";
 
 const execFileAsync = promisify(execFile);
 
-async function readSource(path: string) {
-  return await readFile(resolve(process.cwd(), path), "utf8");
-}
-
-function extractRunModel(schema: string) {
-  const match = schema.match(/model Run \{[\s\S]*?\n\}/);
-  assert.ok(match, "Run model should exist");
-  return match[0];
-}
-
 test("Run schemas no longer include latentFilePath", async () => {
-  for (const schemaPath of ["prisma/schema.prisma", "prisma/schema.sqlite.prisma"]) {
-    const runModel = extractRunModel(await readSource(schemaPath));
+  for (const schemaPath of PRISMA_SCHEMA_PATHS) {
+    const runModel = readPrismaModelBlock(schemaPath, "Run");
 
     assert.doesNotMatch(runModel, /latentFilePath/);
   }
