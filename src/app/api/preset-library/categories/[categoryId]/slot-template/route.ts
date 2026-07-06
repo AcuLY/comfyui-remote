@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { ok, fail } from "@/lib/api-response";
+import { failFromError, ok } from "@/lib/api-response";
 import { updateCategorySlotTemplate } from "@/lib/actions";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ categoryId: string }>;
@@ -10,11 +11,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const { categoryId } = await context.params;
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request) as { slotTemplate?: unknown };
     await updateCategorySlotTemplate(categoryId, body.slotTemplate);
     return ok({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
+    return failFromError(error, "Unknown error", 400);
   }
 }

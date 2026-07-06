@@ -195,6 +195,12 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/templates/[templateId]/import/route.ts",
     "src/app/api/templates/[templateId]/preset-replacements/route.ts",
     "src/app/api/templates/[templateId]/sections/[sectionId]/route.ts",
+    "src/app/api/preset-library/categories/route.ts",
+    "src/app/api/preset-library/categories/[categoryId]/route.ts",
+    "src/app/api/preset-library/categories/reorder/route.ts",
+    "src/app/api/preset-library/categories/[categoryId]/slot-template/route.ts",
+    "src/app/api/preset-library/categories/[categoryId]/sort-orders/route.ts",
+    "src/app/api/preset-library/categories/[categoryId]/groups/reorder/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -252,6 +258,24 @@ test("generation project mutations use shared raw JSON parsing", () => {
     "src/app/api/projects/[projectId]/apply-param/route.ts",
     "src/app/api/projects/[projectId]/preset-replacements/route.ts",
     "src/app/api/projects/[projectId]/sections/batch-delete/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+});
+
+test("preset library category mutations use shared raw JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/preset-library/categories/route.ts",
+    "src/app/api/preset-library/categories/[categoryId]/route.ts",
+    "src/app/api/preset-library/categories/reorder/route.ts",
+    "src/app/api/preset-library/categories/[categoryId]/slot-template/route.ts",
+    "src/app/api/preset-library/categories/[categoryId]/sort-orders/route.ts",
+    "src/app/api/preset-library/categories/[categoryId]/groups/reorder/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -383,6 +407,40 @@ test("generation template mutations preserve invalid JSON response envelope", as
     }),
     await templateSectionRoute.PATCH(makeRequest("not-json"), {
       params: Promise.resolve({ templateId: "template-1", sectionId: "section-1" }),
+    }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("preset library category mutations preserve invalid JSON response envelope", async () => {
+  const categoriesRoute = await import("../src/app/api/preset-library/categories/route");
+  const categoryRoute = await import("../src/app/api/preset-library/categories/[categoryId]/route");
+  const categoriesReorderRoute = await import("../src/app/api/preset-library/categories/reorder/route");
+  const categorySlotTemplateRoute = await import("../src/app/api/preset-library/categories/[categoryId]/slot-template/route");
+  const categorySortOrdersRoute = await import("../src/app/api/preset-library/categories/[categoryId]/sort-orders/route");
+  const categoryGroupsReorderRoute = await import("../src/app/api/preset-library/categories/[categoryId]/groups/reorder/route");
+
+  for (const response of [
+    await categoriesRoute.POST(makeRequest("not-json") as NextRequest),
+    await categoryRoute.PATCH(makeRequest("not-json") as NextRequest, {
+      params: Promise.resolve({ categoryId: "category-1" }),
+    }),
+    await categoriesReorderRoute.POST(makeRequest("not-json") as NextRequest),
+    await categorySlotTemplateRoute.PATCH(makeRequest("not-json") as NextRequest, {
+      params: Promise.resolve({ categoryId: "category-1" }),
+    }),
+    await categorySortOrdersRoute.PATCH(makeRequest("not-json") as NextRequest, {
+      params: Promise.resolve({ categoryId: "category-1" }),
+    }),
+    await categoryGroupsReorderRoute.POST(makeRequest("not-json") as NextRequest, {
+      params: Promise.resolve({ categoryId: "category-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);

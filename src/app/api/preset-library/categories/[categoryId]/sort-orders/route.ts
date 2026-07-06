@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { ok, fail } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { updateCategorySortOrders } from "@/lib/actions";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ categoryId: string }>;
@@ -17,7 +18,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   await context.params;
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request) as { dimension?: string; ids?: unknown };
     const { dimension, ids } = body;
 
     const mappedDimension = dimensionMap[dimension];
@@ -34,7 +35,6 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     );
     return ok({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
+    return failFromError(error, "Unknown error", 400);
   }
 }

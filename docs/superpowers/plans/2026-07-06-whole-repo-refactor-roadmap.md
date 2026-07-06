@@ -209,6 +209,8 @@
 - Phase 3 slice 12 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-project-section-delete-service.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 994 tests discovered, 993 pass, 0 fail, 1 skipped.
 - Phase 3 slice 13 migrated generation template import, preset-replacement, and section PATCH parsing in `src/app/api/templates/[templateId]/import/route.ts`, `src/app/api/templates/[templateId]/preset-replacements/route.ts`, and `src/app/api/templates/[templateId]/sections/[sectionId]/route.ts` to `readJsonBody`/`failFromError`.
 - Phase 3 slice 13 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-repo-inventory.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 996 tests discovered, 995 pass, 0 fail, 1 skipped.
+- Phase 3 slice 14 migrated preset-library category create/update/reorder/slot-template/sort-order/group-reorder parsing in `src/app/api/preset-library/categories/**/route.ts` to `readJsonBody`/`failFromError`, preserving route-level `ids` and `dimension` validation branches.
+- Phase 3 slice 14 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 998 tests discovered, 997 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
