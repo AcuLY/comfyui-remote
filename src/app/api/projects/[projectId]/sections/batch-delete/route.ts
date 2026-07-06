@@ -1,6 +1,6 @@
-import { fail, ok } from "@/lib/api-response";
-import { deleteSections } from "@/lib/actions";
-import { prisma } from "@/lib/prisma";
+import { fail, failFromError, ok } from "@/lib/api-response";
+import { readJsonBody } from "@/server/http/request-json";
+import { deleteProjectSections, mapProjectError } from "@/server/services/project-service";
 
 type RouteContext = {
   params: Promise<{ projectId: string }>;
@@ -11,38 +11,16 @@ export async function POST(request: Request, context: RouteContext) {
 
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
-  }
-
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
-    return fail("Request body must be an object", 400);
-  }
-
-  const sectionIds = (body as { sectionIds?: unknown }).sectionIds;
-  if (
-    !Array.isArray(sectionIds) ||
-    sectionIds.length === 0 ||
-    sectionIds.some((sectionId) => typeof sectionId !== "string" || !sectionId.trim())
-  ) {
-    return fail("sectionIds must be a non-empty string array", 400);
-  }
-
-  const uniqueSectionIds = [...new Set(sectionIds.map((sectionId) => sectionId.trim()))];
-  const sections = await prisma.projectSection.findMany({
-    where: { id: { in: uniqueSectionIds }, projectId },
-    select: { id: true },
-  });
-
-  if (sections.length !== uniqueSectionIds.length) {
-    return fail("One or more sections were not found in this project", 404);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {
-    await deleteSections(uniqueSectionIds);
-    return ok({ deletedCount: uniqueSectionIds.length });
+    const result = await deleteProjectSections(projectId, body);
+    return ok(result);
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Failed to delete sections", 500);
+    const mapped = mapProjectError(error);
+    return fail(mapped.message, mapped.status, mapped.details);
   }
 }

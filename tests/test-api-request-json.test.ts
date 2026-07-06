@@ -191,6 +191,7 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/projects/[projectId]/sections/[sectionId]/create-from-template/route.ts",
     "src/app/api/projects/[projectId]/apply-param/route.ts",
     "src/app/api/projects/[projectId]/preset-replacements/route.ts",
+    "src/app/api/projects/[projectId]/sections/batch-delete/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -232,6 +233,7 @@ test("generation project mutations use shared raw JSON parsing", () => {
     "src/app/api/projects/[projectId]/sections/[sectionId]/create-from-template/route.ts",
     "src/app/api/projects/[projectId]/apply-param/route.ts",
     "src/app/api/projects/[projectId]/preset-replacements/route.ts",
+    "src/app/api/projects/[projectId]/sections/batch-delete/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -240,6 +242,15 @@ test("generation project mutations use shared raw JSON parsing", () => {
     assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
     assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
   }
+});
+
+test("generation section batch delete route delegates destructive checks to project service", () => {
+  const source = readFileSync("src/app/api/projects/[projectId]/sections/batch-delete/route.ts", "utf8");
+
+  assert.match(source, /from ["']@\/server\/services\/project-service["']/, "batch delete route should import project-service");
+  assert.match(source, /\bdeleteProjectSections\(/, "batch delete route should delegate deletion through project-service");
+  assert.doesNotMatch(source, /from ["']@\/lib\/prisma["']/, "batch delete route should not import prisma directly");
+  assert.doesNotMatch(source, /projectSection\.findMany/, "batch delete route should not build section ownership queries");
 });
 
 test("image-review route maps invalid JSON through the shared error envelope", async () => {
@@ -274,6 +285,7 @@ test("generation project mutations preserve invalid JSON response envelope", asy
   const projectSectionCreateFromTemplateRoute = await import("../src/app/api/projects/[projectId]/sections/[sectionId]/create-from-template/route");
   const projectApplyParamRoute = await import("../src/app/api/projects/[projectId]/apply-param/route");
   const projectPresetReplacementsRoute = await import("../src/app/api/projects/[projectId]/preset-replacements/route");
+  const projectSectionsBatchDeleteRoute = await import("../src/app/api/projects/[projectId]/sections/batch-delete/route");
 
   for (const response of [
     await projectsRoute.POST(makeRequest("not-json")),
@@ -323,6 +335,9 @@ test("generation project mutations preserve invalid JSON response envelope", asy
       params: Promise.resolve({ projectId: "project-1" }),
     }),
     await projectPresetReplacementsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await projectSectionsBatchDeleteRoute.POST(makeRequest("not-json"), {
       params: Promise.resolve({ projectId: "project-1" }),
     }),
   ]) {

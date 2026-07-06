@@ -60,6 +60,7 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/projects/[projectId]/sections/[sectionId]/create-from-template/route.ts`
 - `src/app/api/projects/[projectId]/apply-param/route.ts`
 - `src/app/api/projects/[projectId]/preset-replacements/route.ts`
+- `src/app/api/projects/[projectId]/sections/batch-delete/route.ts`
 
 ## Compatibility Exceptions
 

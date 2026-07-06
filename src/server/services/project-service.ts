@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma";
 import { ActorType } from "@/lib/db-enums";
 import { createLogger } from "@/lib/logger";
+import { deleteSections as deleteSectionsAction } from "@/lib/actions/section";
 import { normalizeAspectRatioList, primaryAspectRatio } from "@/lib/aspect-ratio-utils";
 import {
   createProject as createProjectInRepository,
@@ -78,6 +79,15 @@ type UpdateProjectSectionRequestBody = {
   useTwoStageKSampler?: unknown;
   checkpointName?: unknown;
   loraConfig?: unknown;
+};
+
+type BatchDeleteProjectSectionsRequestBody = {
+  sectionIds?: unknown;
+};
+
+export type DeleteProjectSectionsDependencies = {
+  findProjectSections: (projectId: string, sectionIds: string[]) => Promise<Array<{ id: string }>>;
+  deleteSections: (sectionIds: string[]) => Promise<void>;
 };
 
 const PROJECT_CREATE_FIELDS = [
@@ -412,6 +422,56 @@ export function normalizeProjectUpdateBody(body: unknown) {
   );
 
   return input;
+}
+
+export function normalizeBatchDeleteProjectSectionsBody(body: unknown) {
+  const parsedBody = parseRequestBody<BatchDeleteProjectSectionsRequestBody>(body);
+  const sectionIds = parsedBody.sectionIds;
+
+  if (
+    !Array.isArray(sectionIds) ||
+    sectionIds.length === 0 ||
+    sectionIds.some((sectionId) => typeof sectionId !== "string" || !sectionId.trim())
+  ) {
+    throw new ProjectServiceError("sectionIds must be a non-empty string array", 400);
+  }
+
+  return [...new Set(sectionIds.map((sectionId) => sectionId.trim()))];
+}
+
+const deleteProjectSectionsDependencies: DeleteProjectSectionsDependencies = {
+  findProjectSections: (projectId, sectionIds) =>
+    prisma.projectSection.findMany({
+      where: {
+        id: { in: sectionIds },
+        projectId,
+        project: buildGenerationProjectWhere({ id: projectId }),
+      },
+      select: { id: true },
+    }),
+  deleteSections: deleteSectionsAction,
+};
+
+export async function deleteProjectSectionsWithDependencies(
+  projectId: string,
+  body: unknown,
+  deps: DeleteProjectSectionsDependencies,
+) {
+  const normalizedProjectId = normalizeRequiredId(projectId, "projectId");
+  const sectionIds = normalizeBatchDeleteProjectSectionsBody(body);
+  const sections = await deps.findProjectSections(normalizedProjectId, sectionIds);
+  const foundSectionIds = new Set(sections.map((section) => section.id));
+
+  if (sectionIds.some((sectionId) => !foundSectionIds.has(sectionId))) {
+    throw new ProjectServiceError("One or more sections were not found in this project", 404);
+  }
+
+  await deps.deleteSections(sectionIds);
+  return { deletedCount: sectionIds.length };
+}
+
+export async function deleteProjectSections(projectId: string, body: unknown) {
+  return deleteProjectSectionsWithDependencies(projectId, body, deleteProjectSectionsDependencies);
 }
 
 export async function updateProject(projectId: string, body: unknown, actorType: ActorType = ActorType.user) {
