@@ -71,7 +71,9 @@ test("resume-paused route uses the shared optional JSON parser", () => {
 test("low-risk required-body routes use the shared JSON parser", () => {
   for (const routePath of [
     "src/app/api/templates/route.ts",
+    "src/app/api/templates/[templateId]/route.ts",
     "src/app/api/preset-library/folders/route.ts",
+    "src/app/api/preset-library/folders/[folderId]/move/route.ts",
     "src/app/api/projects/[projectId]/save-as-template/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");

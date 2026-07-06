@@ -1,6 +1,7 @@
 import { fail, ok } from "@/lib/api-response";
 import { updateProjectTemplate, deleteProjectTemplate } from "@/lib/actions";
 import { getProjectTemplateDetail } from "@/lib/server-data";
+import { HttpRequestError, readJsonObject } from "@/server/http/request-json";
 
 type RouteContext = { params: Promise<{ templateId: string }> };
 
@@ -17,12 +18,14 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function PATCH(request: Request, context: RouteContext) {
   const { templateId } = await context.params;
-  let body;
-  try { body = await request.json(); } catch { return fail("Invalid JSON body", 400); }
   try {
-    await updateProjectTemplate({ id: templateId, ...body });
+    const body = await readJsonObject(request);
+    await updateProjectTemplate({ id: templateId, ...body } as Parameters<typeof updateProjectTemplate>[0]);
     return ok({ success: true });
   } catch (e: unknown) {
+    if (e instanceof HttpRequestError) {
+      return fail(e.message, e.status, e.details);
+    }
     return fail(e instanceof Error ? e.message : "Unknown error", 500);
   }
 }

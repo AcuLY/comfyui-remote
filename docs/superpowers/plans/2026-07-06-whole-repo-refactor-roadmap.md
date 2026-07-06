@@ -154,6 +154,8 @@
 - Batch 3 slice 1 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-queue-control-progress-stream.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 964 tests discovered, 963 pass, 0 fail, 1 skipped.
 - Batch 3 slice 2 migrated required-object parsing in `src/app/api/templates/route.ts`, `src/app/api/preset-library/folders/route.ts`, and `src/app/api/projects/[projectId]/save-as-template/route.ts` to `readJsonObject`.
 - Batch 3 slice 2 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-queue-control-progress-stream.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 966 tests discovered, 965 pass, 0 fail, 1 skipped.
+- Batch 3 slice 3 migrated required-object parsing in `src/app/api/templates/[templateId]/route.ts` and `src/app/api/preset-library/folders/[folderId]/move/route.ts` to `readJsonObject`.
+- Batch 3 slice 3 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 966 tests discovered, 965 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
