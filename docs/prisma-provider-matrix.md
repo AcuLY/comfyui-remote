@@ -20,6 +20,7 @@ This matrix is the current source of truth for choosing Prisma schema, generated
 - `src/generated/prisma/` and `src/generated/prisma-sqlite/` are generated code. Regenerate them; do not manually edit them.
 - Schema changes that affect shared models must update both schemas or document the provider-specific difference in the same batch.
 - Runtime deployment Prisma work must follow `agent-rules/deploy/prisma.md` and the deployment lock rules in `agent-rules/deploy/index.md`.
+- Local SQLite files such as `data/comfyui.db` and `prisma/data/comfyui.db` are runtime data, not fixtures. They are ignored by `.gitignore`; do not track, copy into docs, or retain them as source artifacts.
 
 ## Command Reference
 

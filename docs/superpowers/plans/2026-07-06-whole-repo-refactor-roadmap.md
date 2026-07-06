@@ -177,6 +177,8 @@
 - Batch 4 slice 10 added `tests/fixtures/sqlite-db.ts` as the shared `better-sqlite3` setup helper for temp DB creation, `file:` URL exposure, open/close wrapping, setup SQL execution, and temp cleanup.
 - Batch 4 slice 10 migrated the direct `better-sqlite3` setup in `tests/test-agent-preset-variant-flow-service.test.ts`, `tests/test-collapse-preset-group-bindings.test.ts`, `tests/test-preset-resource-scope.test.ts`, `tests/test-training-api-routes.test.ts`, `tests/test-training-preset-service-prisma-runtime.test.ts`, and `tests/test-zero-redundancy-write-paths.test.ts`; only `tests/fixtures/sqlite-db.ts` imports `better-sqlite3` now.
 - Batch 4 slice 10 verification passed: `node --import tsx --test tests/test-agent-preset-variant-flow-service.test.ts tests/test-collapse-preset-group-bindings.test.ts tests/test-preset-resource-scope.test.ts tests/test-training-api-routes.test.ts tests/test-training-preset-service-prisma-runtime.test.ts tests/test-zero-redundancy-write-paths.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 977 tests discovered, 976 pass, 0 fail, 1 skipped.
+- Batch 4 slice 11 confirmed `prisma/data/comfyui.db` is not tracked and is ignored by `.gitignore`'s `*.db` rule; `data/comfyui.db` remains ignored by `/data/`. `docs/prisma-provider-matrix.md` now classifies both paths as local runtime data, not fixtures, and says not to track them.
+- Batch 4 slice 11 verification passed: `node --import tsx --test tests/test-prisma-provider-matrix-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 978 tests discovered, 977 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -239,7 +241,7 @@
 - [x] Make `scripts/db/verify-zero-redundancy.ts` return machine-readable nonzero exit codes for mismatch classes.
 - [x] Make `scripts/db/collapse-preset-group-bindings.ts` use the same logging and dry-run conventions as zero-redundancy scripts.
 - [x] Move DB test setup helpers into a reusable test fixture module so DB tests do not each hand-roll `better-sqlite3` setup.
-- [ ] Keep `prisma/data/comfyui.db` classified as local runtime data; confirm whether it should be removed from tracking or explicitly retained as a fixture.
+- [x] Keep `prisma/data/comfyui.db` classified as local runtime data; confirm whether it should be removed from tracking or explicitly retained as a fixture.
 - [ ] Update tests that inspect schema text to use helper functions rather than repeated ad hoc `fs.readFileSync` scans.
 - [x] Add a provider matrix to docs: commands for PostgreSQL generate/migrate, SQLite generate/db push, and test-only in-memory/file DB.
 

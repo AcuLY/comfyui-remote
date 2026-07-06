@@ -52,3 +52,21 @@ test("Prisma provider scripts remain aligned with the provider matrix", () => {
   assert.equal(packageJson.scripts?.["prisma:migrate"], "prisma migrate dev");
   assert.equal(packageJson.scripts?.["prisma:db:push"], "prisma db push");
 });
+
+test("Prisma provider matrix classifies local SQLite DB files as runtime data", () => {
+  const doc = readFileSync(docPath, "utf8");
+  const gitignore = readFileSync(".gitignore", "utf8");
+
+  for (const required of [
+    "prisma/data/comfyui.db",
+    "data/comfyui.db",
+    "runtime data",
+    "not fixtures",
+    "do not track",
+  ]) {
+    assert.match(doc, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `${docPath} missing ${required}`);
+  }
+
+  assert.match(gitignore, /^\/data\//m);
+  assert.match(gitignore, /^\*\.db$/m);
+});
