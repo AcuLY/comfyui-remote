@@ -168,6 +168,8 @@
 - Batch 4 slice 5 verification passed: `node --import tsx --test tests/test-prisma-schema-compatibility-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, `npm run prisma:generate:all`, and `npm test` with 974 tests discovered, 973 pass, 0 fail, 1 skipped.
 - Batch 4 slice 6 added generated legacy compatibility field audit decisions for linked variant JSON, legacy section/template prompt storage, seed policy compatibility payloads, and training character LoRA prompt values.
 - Batch 4 slice 6 verification passed: `node --import tsx --test tests/test-prisma-schema-compatibility-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, `npm run prisma:generate:all`, and `npm test` with 975 tests discovered, 974 pass, 0 fail, 1 skipped.
+- Batch 4 slice 7 expanded the zero-redundancy migration CLI parser to expose `--source-db`, `--source-db-path`, `--provider`, `--verify`, and repeatable `--verifier-arg` options alongside existing dry-run/write/format arguments.
+- Batch 4 slice 7 verification passed: `node --import tsx --test tests/test-zero-redundancy-migration.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 975 tests discovered, 974 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -226,7 +228,7 @@
 - [x] Ensure every relation model has documented uniqueness and parent scope: `SectionPresetBinding`, `TemplateSectionPresetBinding`, project/template preset bindings, linked variants, manual LoRA entries.
 - [x] Audit legacy fields and compatibility fields: linked variant JSON, legacy prompt fields, deprecated seed policies, legacy character LoRA values.
 - [x] Decide which legacy fields are read-only compatibility surfaces and which can be removed after migration.
-- [ ] Make `scripts/db/migrate-zero-redundancy.ts` expose dry-run, write, source DB path, provider, and verifier arguments consistently.
+- [x] Make `scripts/db/migrate-zero-redundancy.ts` expose dry-run, write, source DB path, provider, and verifier arguments consistently.
 - [ ] Make `scripts/db/verify-zero-redundancy.ts` return machine-readable nonzero exit codes for mismatch classes.
 - [ ] Make `scripts/db/collapse-preset-group-bindings.ts` use the same logging and dry-run conventions as zero-redundancy scripts.
 - [ ] Move DB test setup helpers into a reusable test fixture module so DB tests do not each hand-roll `better-sqlite3` setup.

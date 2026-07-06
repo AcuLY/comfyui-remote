@@ -30,6 +30,7 @@ type LegacyPromptBlockRow = {
 };
 
 export type ZeroRedundancyMigrationFormat = "summary" | "json";
+export type ZeroRedundancyMigrationProvider = "current" | "postgresql" | "sqlite";
 
 export interface ZeroRedundancyMigrationArgs {
   dryRun: boolean;
@@ -37,6 +38,10 @@ export interface ZeroRedundancyMigrationArgs {
   write: boolean;
   batchSize: number;
   format: ZeroRedundancyMigrationFormat;
+  provider: ZeroRedundancyMigrationProvider;
+  sourceDbPath: string | null;
+  verify: boolean;
+  verifierArgs: string[];
 }
 
 export interface LegacyProjectRow {
@@ -359,6 +364,10 @@ export function parseZeroRedundancyMigrationArgs(
   let write = false;
   let batchSize = DEFAULT_BATCH_SIZE;
   let format: ZeroRedundancyMigrationFormat = "summary";
+  let provider: ZeroRedundancyMigrationProvider = "current";
+  let sourceDbPath: string | null = null;
+  let verify = false;
+  const verifierArgs: string[] = [];
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -376,6 +385,22 @@ export function parseZeroRedundancyMigrationArgs(
       format = parseMigrationFormat(requireValue(argv, (index += 1), "--format"));
     } else if (arg.startsWith("--format=")) {
       format = parseMigrationFormat(arg.slice("--format=".length));
+    } else if (arg === "--provider") {
+      provider = parseMigrationProvider(requireValue(argv, (index += 1), "--provider"));
+    } else if (arg.startsWith("--provider=")) {
+      provider = parseMigrationProvider(arg.slice("--provider=".length));
+    } else if (arg === "--source-db" || arg === "--source-db-path") {
+      sourceDbPath = requireValue(argv, (index += 1), arg);
+    } else if (arg.startsWith("--source-db=")) {
+      sourceDbPath = requireNonEmptyValue(arg.slice("--source-db=".length), "--source-db");
+    } else if (arg.startsWith("--source-db-path=")) {
+      sourceDbPath = requireNonEmptyValue(arg.slice("--source-db-path=".length), "--source-db-path");
+    } else if (arg === "--verify") {
+      verify = true;
+    } else if (arg === "--verifier-arg") {
+      verifierArgs.push(requireValue(argv, (index += 1), "--verifier-arg"));
+    } else if (arg.startsWith("--verifier-arg=")) {
+      verifierArgs.push(requireNonEmptyValue(arg.slice("--verifier-arg=".length), "--verifier-arg"));
     } else {
       throw new Error(`Unknown zero redundancy migration argument: ${arg}`);
     }
@@ -385,7 +410,7 @@ export function parseZeroRedundancyMigrationArgs(
     throw new Error("--write cannot be combined with --dry-run or --read-only");
   }
 
-  return { dryRun, readOnly, write, batchSize, format };
+  return { dryRun, readOnly, write, batchSize, format, provider, sourceDbPath, verify, verifierArgs };
 }
 
 export function buildZeroRedundancyMigrationPlan(
@@ -2275,8 +2300,18 @@ function parseMigrationFormat(value: string): ZeroRedundancyMigrationFormat {
   throw new Error(`Unsupported --format value: ${value}`);
 }
 
+function parseMigrationProvider(value: string): ZeroRedundancyMigrationProvider {
+  if (value === "current" || value === "postgresql" || value === "sqlite") return value;
+  throw new Error(`Unsupported --provider value: ${value}`);
+}
+
 function requireValue(argv: readonly string[], index: number, flag: string): string {
   const value = argv[index];
+  if (!value) throw new Error(`Missing value for ${flag}`);
+  return value;
+}
+
+function requireNonEmptyValue(value: string, flag: string): string {
   if (!value) throw new Error(`Missing value for ${flag}`);
   return value;
 }

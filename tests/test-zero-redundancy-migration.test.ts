@@ -1074,15 +1074,36 @@ test("migration and verifier CLIs parse safe write/read-only flags", () => {
     write: false,
     batchSize: 500,
     format: "summary",
+    provider: "current",
+    sourceDbPath: null,
+    verify: false,
+    verifierArgs: [],
   });
-  assert.deepEqual(parseZeroRedundancyMigrationArgs(["--write", "--batch-size", "25", "--format=json"]), {
+  assert.deepEqual(parseZeroRedundancyMigrationArgs([
+    "--write",
+    "--batch-size",
+    "25",
+    "--format=json",
+    "--source-db",
+    "prisma/data/comfyui.db",
+    "--provider=sqlite",
+    "--verify",
+    "--verifier-arg=--read-only",
+    "--verifier-arg",
+    "--format=json",
+  ]), {
     dryRun: false,
     readOnly: false,
     write: true,
     batchSize: 25,
     format: "json",
+    provider: "sqlite",
+    sourceDbPath: "prisma/data/comfyui.db",
+    verify: true,
+    verifierArgs: ["--read-only", "--format=json"],
   });
   assert.throws(() => parseZeroRedundancyMigrationArgs(["--write", "--read-only"]), /cannot be combined/i);
+  assert.throws(() => parseZeroRedundancyMigrationArgs(["--provider", "mysql"]), /Unsupported --provider/i);
   assert.deepEqual(parseZeroRedundancyVerifyArgs(["--read-only", "--format", "json", "--allow-mismatch"]), {
     readOnly: true,
     format: "json",
