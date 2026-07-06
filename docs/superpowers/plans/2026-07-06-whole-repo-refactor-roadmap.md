@@ -191,6 +191,8 @@
 - Phase 3 slice 3 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-proxy-dev-internal-paths.test.ts`, `npm run lint`, and `npm test` with 984 tests discovered, 983 pass, 0 fail, 1 skipped.
 - Phase 3 slice 4 added `tests/test-global-api-routes.test.ts` to lock `/api/health` as a minimal public/local probe and `/api/mcp` as a thin transport adapter over `src/server/mcp/server.ts`.
 - Phase 3 slice 4 verification passed: `node --import tsx --test tests/test-global-api-routes.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 986 tests discovered, 985 pass, 0 fail, 1 skipped.
+- Phase 3 slice 5 migrated top-level generation project mutation parsing in `src/app/api/projects/route.ts`, `src/app/api/projects/[projectId]/route.ts`, and `src/app/api/project-folders/route.ts` to `readJsonBody`/`failFromError` while preserving project-service and project-folder-service mapping behavior.
+- Phase 3 slice 5 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 988 tests discovered, 987 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 

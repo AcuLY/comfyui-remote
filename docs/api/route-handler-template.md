@@ -42,6 +42,9 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/projects/[projectId]/save-as-template/route.ts`
 - `src/app/api/queue/resume-paused/route.ts`
 - `src/app/api/image-review/route.ts`
+- `src/app/api/projects/route.ts`
+- `src/app/api/projects/[projectId]/route.ts`
+- `src/app/api/project-folders/route.ts`
 
 ## Compatibility Exceptions
 

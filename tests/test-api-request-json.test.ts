@@ -191,6 +191,21 @@ test("route-handler template adopters use shared caught-error mapping", () => {
   }
 });
 
+test("generation project mutations use shared raw JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/projects/route.ts",
+    "src/app/api/projects/[projectId]/route.ts",
+    "src/app/api/project-folders/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+});
+
 test("image-review route maps invalid JSON through the shared error envelope", async () => {
   const route = await import("../src/app/api/image-review/route");
 
@@ -202,6 +217,28 @@ test("image-review route maps invalid JSON through the shared error envelope", a
     },
     ok: false,
   });
+});
+
+test("generation project mutations preserve invalid JSON response envelope", async () => {
+  const projectsRoute = await import("../src/app/api/projects/route");
+  const projectDetailRoute = await import("../src/app/api/projects/[projectId]/route");
+  const projectFoldersRoute = await import("../src/app/api/project-folders/route");
+
+  for (const response of [
+    await projectsRoute.POST(makeRequest("not-json")),
+    await projectDetailRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await projectFoldersRoute.POST(makeRequest("not-json")),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
 });
 
 test("resume-paused route maps invalid JSON to the shared error envelope", async () => {

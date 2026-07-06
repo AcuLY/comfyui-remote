@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
+import { readJsonBody } from "@/server/http/request-json";
 import {
   createProjectFolder,
   listProjectFolders,
@@ -22,9 +23,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {
