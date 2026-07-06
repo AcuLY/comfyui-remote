@@ -37,6 +37,7 @@ test("Next output tracing excludes runtime data directories for all routes", () 
   const config = readFileSync("next.config.ts", "utf8");
 
   assert.match(config, /outputFileTracingExcludes:\s*{/);
-  assert.match(config, /["']\/\*["']:\s*\[[\s\S]*["']\.\/data\/\*\*\/\*["']/);
-  assert.match(config, /["']\/\*\*\/\*["']:\s*\[[\s\S]*["']\.\/data\/\*\*\/\*["']/);
+  assert.match(config, /const runtimeTraceExcludes = \[[\s\S]*["']\.\/data\/\*\*\/\*["']/);
+  assert.match(config, /["']\/\*["']:\s*runtimeTraceExcludes/);
+  assert.match(config, /["']\/\*\*\/\*["']:\s*runtimeTraceExcludes/);
 });

@@ -143,10 +143,9 @@
 - Batch 1 fixed the lint errors/warnings by deferring initial browser-only state sync, removing unused Training repository placeholder parameters, and removing unused Training preset wrapper functions. Final `npm run lint` passes.
 - Initial `npm test` failed 34 tests. The largest failure cluster was environment/tooling drift: generated Prisma clients did not include `useTwoStageKSampler`, even though both Prisma schemas and migrations did. Batch 1 made Prisma generate scripts explicit for PostgreSQL and SQLite, regenerated both providers, and verified the affected service/write-path tests.
 - `npm run prisma:generate`, `npm run prisma:generate:sqlite`, and `npm run prisma:generate:all` now pass and load `prisma/schema.prisma` plus `prisma/schema.sqlite.prisma` explicitly.
-- Final Batch 1 `npm test` result: 958 tests discovered, 946 pass, 11 fail, 1 skipped. Remaining failures are deterministic assertions, not ABI failures:
-  - `tests/test-runtime-data-path-source.test.ts`: Next output tracing source-contract pattern mismatch for `next.config.ts`.
-  - `tests/test-training-project-list-item.test.ts`: two source-contract assertions for project-list header action placement and new-project navigation.
-  - `tests/test-zero-redundancy-migration.test.ts`: eight resolver mismatch / assertion failures around migration planning and verification.
+- Final Batch 1 `npm test` result: 958 tests discovered, 946 pass, 11 fail, 1 skipped. Remaining failures were deterministic assertions, not ABI failures.
+- Batch 2 fixed the Next tracing source-contract test to validate the shared `runtimeTraceExcludes` owner, moved the Training project creation action into `PageHeader`, and verified `tests/test-runtime-data-path-source.test.ts` plus `tests/test-training-project-list-item.test.ts`.
+- Final Batch 2 `npm test` result: 958 tests discovered, 949 pass, 8 fail, 1 skipped. Remaining failures are all in `tests/test-zero-redundancy-migration.test.ts`, around resolver mismatch / migration planning and verification assertions.
 - Targeted verification passed: `tests/test-agent-preset-variant-flow-service.test.ts`, `tests/test-zero-redundancy-write-paths.test.ts`, `tests/test-preset-cascade-picker-overlay.test.ts`, `tests/test-training-api-routes.test.ts`, `tests/test-prisma-generate-scripts.test.ts`, and `src/app/design-demos/shell/app-shell.test.mjs`.
 
 ## Phase 1: Root Configuration And Tooling
