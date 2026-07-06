@@ -158,6 +158,8 @@
 - Batch 3 slice 3 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 966 tests discovered, 965 pass, 0 fail, 1 skipped.
 - Batch 4 slice 1 added `docs/prisma-provider-matrix.md` and linked it from `docs/index.md` so PostgreSQL, SQLite, and test-only DB commands have one current read-first source.
 - Batch 4 slice 1 verification passed: `node --import tsx --test tests/test-prisma-provider-matrix-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 969 tests discovered, 968 pass, 0 fail, 1 skipped.
+- Batch 4 slice 2 added generated `docs/prisma-schema-compatibility.md` plus `scripts/docs/generate-prisma-schema-compatibility.ts`, covering all 54 models shared by the PostgreSQL and SQLite Prisma schemas.
+- Batch 4 slice 2 verification passed: `node --import tsx --test tests/test-prisma-schema-compatibility-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 971 tests discovered, 970 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -210,7 +212,7 @@
 - `src/lib/db.ts`
 - `src/generated/prisma.ts`
 
-- [ ] Create a schema compatibility checklist for every model shared by `schema.prisma` and `schema.sqlite.prisma`.
+- [x] Create a schema compatibility checklist for every model shared by `schema.prisma` and `schema.sqlite.prisma`.
 - [ ] Group schema models by domain in comments: preset library, training, generation project/template, run/image/trash, censoring, assets, audit, locks.
 - [ ] Verify all enums exist where provider support allows; where SQLite differs, document the mapping.
 - [ ] Ensure every relation model has documented uniqueness and parent scope: `SectionPresetBinding`, `TemplateSectionPresetBinding`, project/template preset bindings, linked variants, manual LoRA entries.
