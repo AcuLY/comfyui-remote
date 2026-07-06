@@ -17,15 +17,16 @@ function assertJsonObject(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-export async function readJsonObject(request: Request): Promise<Record<string, unknown>> {
+export async function readJsonBody(request: Request): Promise<unknown> {
   try {
-    return assertJsonObject(await request.json());
-  } catch (error) {
-    if (error instanceof HttpRequestError) {
-      throw error;
-    }
+    return await request.json();
+  } catch {
     throw new HttpRequestError("Invalid JSON body", 400);
   }
+}
+
+export async function readJsonObject(request: Request): Promise<Record<string, unknown>> {
+  return assertJsonObject(await readJsonBody(request));
 }
 
 export async function readOptionalJsonObject(request: Request): Promise<Record<string, unknown>> {

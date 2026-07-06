@@ -42,3 +42,7 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/projects/[projectId]/save-as-template/route.ts`
 - `src/app/api/queue/resume-paused/route.ts`
 - `src/app/api/image-review/route.ts`
+
+## Compatibility Exceptions
+
+Some routes have intentionally legacy response shapes. `src/app/api/auth/verify/route.ts` keeps flat `{ error: string }` failures and `{ ok: true }` success because `src/app/login/page.tsx` consumes that contract. It still parses via `readJsonBody` and formats through `flatFail`/`okOnly`.

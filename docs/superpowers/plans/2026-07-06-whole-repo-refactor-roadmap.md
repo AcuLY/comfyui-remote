@@ -187,6 +187,8 @@
 - Phase 3 slice 1 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 980 tests discovered, 979 pass, 0 fail, 1 skipped.
 - Phase 3 slice 2 migrated `src/app/api/image-review/route.ts` to `readJsonObject` and `failFromError`, preserving the review API's shared error envelope and no-revalidation keep/trash behavior.
 - Phase 3 slice 2 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts`, `npm run lint`, and `npm test` with 981 tests discovered, 980 pass, 0 fail, 1 skipped.
+- Phase 3 slice 3 added `readJsonBody`, `flatFail`, and `okOnly` so `src/app/api/auth/verify/route.ts` can share parsing/formatting helpers while preserving its login-facing flat error payloads, `{ ok: true }` success body, cookie behavior, and no-token-logging rule.
+- Phase 3 slice 3 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-proxy-dev-internal-paths.test.ts`, `npm run lint`, and `npm test` with 984 tests discovered, 983 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -269,7 +271,7 @@
 - [x] Define a route-handler template: parse request, validate input, call service, return `ok(...)` or error envelope.
 - [ ] Move repeated response formatting into `src/lib/api-response.ts`.
 - [ ] Move repeated request parsing into route helpers under `src/server/http` or extend `src/server/services/validation-utils.ts`.
-- [ ] Keep `/api/auth/verify` compatible with UI auth verification and never log token values.
+- [x] Keep `/api/auth/verify` compatible with UI auth verification and never log token values.
 - [ ] Keep `/api/health` minimal and safe for public/local probes.
 - [ ] Route `/api/mcp` through `src/server/mcp/server.ts` only; avoid duplicating Agent API behavior in the route.
 

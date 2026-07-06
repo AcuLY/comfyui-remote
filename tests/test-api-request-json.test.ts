@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { NextRequest } from "next/server";
 
-import { failFromError } from "../src/lib/api-response";
-import { HttpRequestError, readJsonObject, readOptionalJsonObject } from "../src/server/http/request-json";
+import { failFromError, flatFail } from "../src/lib/api-response";
+import { HttpRequestError, readJsonBody, readJsonObject, readOptionalJsonObject } from "../src/server/http/request-json";
 
 function makeRequest(body?: string) {
   return new Request("http://localhost/api/test", {
@@ -61,6 +62,18 @@ test("readJsonObject requires a valid JSON object body", async () => {
   );
 });
 
+test("readJsonBody preserves non-object JSON while still normalizing invalid JSON errors", async () => {
+  assert.deepEqual(await readJsonBody(makeRequest("[1,2]")), [1, 2]);
+
+  await assert.rejects(
+    () => readJsonBody(makeRequest("not-json")),
+    (error) =>
+      error instanceof HttpRequestError &&
+      error.message === "Invalid JSON body" &&
+      error.status === 400,
+  );
+});
+
 test("failFromError preserves route parser status and details in the shared envelope", async () => {
   const response = failFromError(new HttpRequestError("Invalid JSON body", 422, { source: "request" }));
 
@@ -72,6 +85,67 @@ test("failFromError preserves route parser status and details in the shared enve
     },
     ok: false,
   });
+});
+
+test("flatFail preserves legacy flat error responses for compatibility routes", async () => {
+  const response = flatFail("Invalid token", 401);
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), {
+    error: "Invalid token",
+  });
+});
+
+test("auth verify route keeps flat error compatibility and does not log tokens", async () => {
+  const source = readFileSync("src/app/api/auth/verify/route.ts", "utf8");
+
+  assert.match(source, /from ["']@\/server\/http\/request-json["']/, "auth route should import request JSON helpers");
+  assert.match(source, /readJsonBody\(request\)/, "auth route should parse JSON through readJsonBody");
+  assert.match(source, /\bflatFail\(/, "auth route should use flatFail for legacy flat errors");
+  assert.doesNotMatch(source, /NextResponse\.json\(\{\s*error:/, "auth route should not format flat errors locally");
+  assert.doesNotMatch(source, /console\./, "auth route should not log token values");
+
+  const previousAuthToken = process.env.AUTH_TOKEN;
+  process.env.AUTH_TOKEN = "test-auth-token";
+
+  try {
+    const route = await import("../src/app/api/auth/verify/route");
+
+    const invalidJson = await route.POST(new NextRequest("http://localhost/api/auth/verify", {
+      body: "not-json",
+      method: "POST",
+    }));
+    assert.equal(invalidJson.status, 400);
+    assert.deepEqual(await invalidJson.json(), { error: "Invalid JSON body" });
+
+    const arrayBody = await route.POST(new NextRequest("http://localhost/api/auth/verify", {
+      body: "[]",
+      method: "POST",
+    }));
+    assert.equal(arrayBody.status, 400);
+    assert.deepEqual(await arrayBody.json(), { error: "token field is required" });
+
+    const invalidToken = await route.POST(new NextRequest("http://localhost/api/auth/verify", {
+      body: JSON.stringify({ token: "wrong-token" }),
+      method: "POST",
+    }));
+    assert.equal(invalidToken.status, 401);
+    assert.deepEqual(await invalidToken.json(), { error: "Invalid token" });
+
+    const success = await route.POST(new NextRequest("http://localhost/api/auth/verify", {
+      body: JSON.stringify({ token: process.env.AUTH_TOKEN }),
+      method: "POST",
+    }));
+    assert.equal(success.status, 200);
+    assert.deepEqual(await success.json(), { ok: true });
+    assert.match(success.headers.get("set-cookie") ?? "", /auth_token=/);
+  } finally {
+    if (previousAuthToken === undefined) {
+      delete process.env.AUTH_TOKEN;
+    } else {
+      process.env.AUTH_TOKEN = previousAuthToken;
+    }
+  }
 });
 
 test("resume-paused route uses the shared optional JSON parser", () => {

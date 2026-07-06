@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
+import { flatFail, okOnly } from "@/lib/api-response";
+import { readJsonBody } from "@/server/http/request-json";
 
 const COOKIE_NAME = "auth_token";
 const COOKIE_MAX_AGE = 30 * 24 * 60 * 60; // 30 days in seconds
@@ -36,28 +38,28 @@ export async function POST(request: NextRequest) {
 
   // If no AUTH_TOKEN configured, auth is disabled
   if (!authToken) {
-    return NextResponse.json({ error: "AUTH_TOKEN is not configured on the server" }, { status: 500 });
+    return flatFail("AUTH_TOKEN is not configured on the server", 500);
   }
 
   let body: unknown;
   try {
-    body = await request.json();
+    body = await readJsonBody(request);
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    return flatFail("Invalid JSON body", 400);
   }
 
   const token = typeof body === "object" && body !== null && "token" in body ? (body as { token: string }).token : null;
 
   if (!token || typeof token !== "string") {
-    return NextResponse.json({ error: "token field is required" }, { status: 400 });
+    return flatFail("token field is required", 400);
   }
 
   if (!safeTokenCompare(token, authToken)) {
-    return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    return flatFail("Invalid token", 401);
   }
 
   // Set cookie and redirect
-  const response = NextResponse.json({ ok: true });
+  const response = okOnly();
   response.cookies.set(COOKIE_NAME, token, {
     path: "/",
     httpOnly: true,
