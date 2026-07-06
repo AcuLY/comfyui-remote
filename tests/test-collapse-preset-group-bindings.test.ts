@@ -6,7 +6,11 @@ import path from "node:path";
 import { tmpdir } from "node:os";
 import Database from "better-sqlite3";
 
-import { collapsePresetGroupBindings } from "../scripts/db/collapse-preset-group-bindings";
+import {
+  collapsePresetGroupBindings,
+  formatCollapsePresetGroupBindingsSummary,
+  parseCollapsePresetGroupBindingsArgs,
+} from "../scripts/db/collapse-preset-group-bindings";
 
 function setupDb(dbPath: string) {
   const db = new Database(dbPath);
@@ -143,6 +147,67 @@ test("collapsePresetGroupBindings dry-run reports without writing", async () => 
   } finally {
     await rm(tempDir, { recursive: true, force: true });
   }
+});
+
+test("collapsePresetGroupBindings CLI parser and formatter match migration conventions", () => {
+  assert.deepEqual(parseCollapsePresetGroupBindingsArgs(["--dry-run"]), {
+    databaseUrl: null,
+    dryRun: true,
+    write: false,
+    format: "summary",
+  });
+  assert.deepEqual(parseCollapsePresetGroupBindingsArgs([
+    "--write",
+    "--format=json",
+    "--database-url",
+    "file:prisma/data/comfyui.db",
+  ]), {
+    databaseUrl: "file:prisma/data/comfyui.db",
+    dryRun: false,
+    write: true,
+    format: "json",
+  });
+  assert.deepEqual(parseCollapsePresetGroupBindingsArgs(["--json"]), {
+    databaseUrl: null,
+    dryRun: true,
+    write: false,
+    format: "json",
+  });
+  assert.throws(() => parseCollapsePresetGroupBindingsArgs(["--write", "--dry-run"]), /cannot be combined/i);
+  assert.throws(() => collapsePresetGroupBindings({ write: true, dryRun: true }), /cannot be combined/i);
+
+  const summary = {
+    dryRun: true,
+    databasePath: "/tmp/comfyui.db",
+    section: {
+      candidateGroups: 2,
+      collapsedGroups: 1,
+      skippedLegacyGroups: 1,
+      skippedMissingPresetGroups: 0,
+      updatedReferenceBindings: 1,
+      deletedBindings: 1,
+      keptPromptBlocks: 1,
+      deletedPromptBlocks: 1,
+      movedManualLoras: 1,
+    },
+    template: {
+      candidateGroups: 0,
+      collapsedGroups: 0,
+      skippedLegacyGroups: 0,
+      skippedMissingPresetGroups: 0,
+      updatedReferenceBindings: 0,
+      deletedBindings: 0,
+      keptPromptBlocks: 0,
+      deletedPromptBlocks: 0,
+      movedManualLoras: 0,
+    },
+  };
+
+  const formatted = formatCollapsePresetGroupBindingsSummary(summary, "summary");
+  assert.match(formatted, /^Preset Group Binding Collapse/);
+  assert.match(formatted, /dry run: true/);
+  assert.match(formatted, /section collapsed groups: 1/);
+  assert.equal(JSON.parse(formatCollapsePresetGroupBindingsSummary(summary, "json")).section.collapsedGroups, 1);
 });
 
 test("collapsePresetGroupBindings folds expanded section and template members into group references", async () => {

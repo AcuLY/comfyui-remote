@@ -6,10 +6,20 @@ import Database from "better-sqlite3";
 
 type BindingScope = "section" | "template";
 
+export type CollapsePresetGroupBindingsFormat = "summary" | "json";
+
 export interface CollapsePresetGroupBindingsOptions {
-  databaseUrl?: string;
+  databaseUrl?: string | null;
+  dryRun?: boolean;
   write?: boolean;
-  format?: "summary" | "json";
+  format?: CollapsePresetGroupBindingsFormat;
+}
+
+export interface CollapsePresetGroupBindingsArgs {
+  databaseUrl: string | null;
+  dryRun: boolean;
+  write: boolean;
+  format: CollapsePresetGroupBindingsFormat;
 }
 
 export interface CollapseScopeSummary {
@@ -100,45 +110,59 @@ function emptyScopeSummary(): CollapseScopeSummary {
   };
 }
 
-function parseArgs(argv: string[]): CollapsePresetGroupBindingsOptions {
-  const options: CollapsePresetGroupBindingsOptions = { write: false, format: "summary" };
+export function parseCollapsePresetGroupBindingsArgs(
+  argv: readonly string[],
+): CollapsePresetGroupBindingsArgs {
+  let databaseUrl: string | null = null;
+  let dryRun = false;
+  let write = false;
+  let format: CollapsePresetGroupBindingsFormat = "summary";
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--write") {
-      options.write = true;
+      write = true;
       continue;
     }
     if (arg === "--dry-run") {
-      options.write = false;
+      dryRun = true;
+      continue;
+    }
+    if (arg === "--format") {
+      format = parseFormat(requireValue(argv, (index += 1), "--format"));
+      continue;
+    }
+    if (arg.startsWith("--format=")) {
+      format = parseFormat(requireNonEmptyValue(arg.slice("--format=".length), "--format"));
       continue;
     }
     if (arg === "--json") {
-      options.format = "json";
+      format = "json";
       continue;
     }
     if (arg === "--summary") {
-      options.format = "summary";
+      format = "summary";
       continue;
     }
     if (arg === "--database-url") {
-      const value = argv[index + 1];
-      if (!value) throw new Error("--database-url requires a value");
-      options.databaseUrl = value;
-      index += 1;
+      databaseUrl = requireValue(argv, (index += 1), "--database-url");
       continue;
     }
     if (arg.startsWith("--database-url=")) {
-      options.databaseUrl = arg.slice("--database-url=".length);
+      databaseUrl = requireNonEmptyValue(arg.slice("--database-url=".length), "--database-url");
       continue;
     }
-    throw new Error(`Unknown argument: ${arg}`);
+    throw new Error(`Unknown collapse preset group bindings argument: ${arg}`);
   }
 
-  return options;
+  if (write && dryRun) {
+    throw new Error("--write cannot be combined with --dry-run");
+  }
+
+  return { databaseUrl, dryRun: !write, write, format };
 }
 
-function resolveSqlitePath(databaseUrl = process.env.DATABASE_URL) {
+function resolveSqlitePath(databaseUrl: string | null | undefined = process.env.DATABASE_URL) {
   if (!databaseUrl) throw new Error("DATABASE_URL is required");
   if (!databaseUrl.startsWith("file:")) {
     throw new Error("Only SQLite DATABASE_URL values starting with file: are supported");
@@ -422,6 +446,10 @@ function collapseScope(db: Database.Database, config: ScopeConfig, write: boolea
 }
 
 export function collapsePresetGroupBindings(options: CollapsePresetGroupBindingsOptions = {}) {
+  if (options.write === true && options.dryRun === true) {
+    throw new Error("--write cannot be combined with --dry-run");
+  }
+
   const databasePath = resolveSqlitePath(options.databaseUrl);
   const db = new Database(databasePath);
 
@@ -438,23 +466,55 @@ export function collapsePresetGroupBindings(options: CollapsePresetGroupBindings
   }
 }
 
-export function formatCollapsePresetGroupBindingsSummary(summary: CollapsePresetGroupBindingsSummary) {
+export function formatCollapsePresetGroupBindingsSummary(
+  summary: CollapsePresetGroupBindingsSummary,
+  format: CollapsePresetGroupBindingsFormat = "summary",
+) {
+  if (format === "json") {
+    return JSON.stringify(summary, null, 2);
+  }
+
   return [
-    `Preset group binding collapse ${summary.dryRun ? "dry-run" : "write"} complete`,
-    `Database: ${summary.databasePath}`,
-    `Section: collapsed=${summary.section.collapsedGroups}, deletedBindings=${summary.section.deletedBindings}, deletedPromptBlocks=${summary.section.deletedPromptBlocks}, movedManualLoras=${summary.section.movedManualLoras}, skippedLegacy=${summary.section.skippedLegacyGroups}, skippedMissingGroups=${summary.section.skippedMissingPresetGroups}`,
-    `Template: collapsed=${summary.template.collapsedGroups}, deletedBindings=${summary.template.deletedBindings}, deletedPromptBlocks=${summary.template.deletedPromptBlocks}, movedManualLoras=${summary.template.movedManualLoras}, skippedLegacy=${summary.template.skippedLegacyGroups}, skippedMissingGroups=${summary.template.skippedMissingPresetGroups}`,
+    "Preset Group Binding Collapse",
+    `dry run: ${summary.dryRun}`,
+    `database: ${summary.databasePath}`,
+    `section candidate groups: ${summary.section.candidateGroups}`,
+    `section collapsed groups: ${summary.section.collapsedGroups}`,
+    `section deleted bindings: ${summary.section.deletedBindings}`,
+    `section deleted prompt blocks: ${summary.section.deletedPromptBlocks}`,
+    `section moved manual loras: ${summary.section.movedManualLoras}`,
+    `section skipped legacy groups: ${summary.section.skippedLegacyGroups}`,
+    `section skipped missing groups: ${summary.section.skippedMissingPresetGroups}`,
+    `template candidate groups: ${summary.template.candidateGroups}`,
+    `template collapsed groups: ${summary.template.collapsedGroups}`,
+    `template deleted bindings: ${summary.template.deletedBindings}`,
+    `template deleted prompt blocks: ${summary.template.deletedPromptBlocks}`,
+    `template moved manual loras: ${summary.template.movedManualLoras}`,
+    `template skipped legacy groups: ${summary.template.skippedLegacyGroups}`,
+    `template skipped missing groups: ${summary.template.skippedMissingPresetGroups}`,
   ].join("\n");
 }
 
 async function main() {
-  const options = parseArgs(process.argv.slice(2));
-  const summary = collapsePresetGroupBindings(options);
-  if (options.format === "json") {
-    console.log(JSON.stringify(summary, null, 2));
-  } else {
-    console.log(formatCollapsePresetGroupBindingsSummary(summary));
-  }
+  const args = parseCollapsePresetGroupBindingsArgs(process.argv.slice(2));
+  const summary = collapsePresetGroupBindings(args);
+  console.log(formatCollapsePresetGroupBindingsSummary(summary, args.format));
+}
+
+function parseFormat(value: string): CollapsePresetGroupBindingsFormat {
+  if (value === "summary" || value === "json") return value;
+  throw new Error(`Unsupported --format value: ${value}`);
+}
+
+function requireValue(argv: readonly string[], index: number, flag: string): string {
+  const value = argv[index];
+  if (!value) throw new Error(`Missing value for ${flag}`);
+  return value;
+}
+
+function requireNonEmptyValue(value: string, flag: string): string {
+  if (!value) throw new Error(`Missing value for ${flag}`);
+  return value;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

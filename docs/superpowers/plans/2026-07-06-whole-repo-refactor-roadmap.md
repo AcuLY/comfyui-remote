@@ -172,6 +172,8 @@
 - Batch 4 slice 7 verification passed: `node --import tsx --test tests/test-zero-redundancy-migration.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 975 tests discovered, 974 pass, 0 fail, 1 skipped.
 - Batch 4 slice 8 made the zero-redundancy verifier return machine-readable failure classes and composable nonzero exit codes for invalid JSON, invalid references, and resolver mismatches.
 - Batch 4 slice 8 verification passed: `node --import tsx --test tests/test-zero-redundancy-migration.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 976 tests discovered, 975 pass, 0 fail, 1 skipped.
+- Batch 4 slice 9 aligned `scripts/db/collapse-preset-group-bindings.ts` with the zero-redundancy scripts' dry-run and logging conventions: exported parser, `--format` support, write/dry-run conflict rejection, JSON formatting through the shared formatter, and retained `--json`/`--summary` aliases.
+- Batch 4 slice 9 verification passed: `node --import tsx --test tests/test-collapse-preset-group-bindings.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 977 tests discovered, 976 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -232,7 +234,7 @@
 - [x] Decide which legacy fields are read-only compatibility surfaces and which can be removed after migration.
 - [x] Make `scripts/db/migrate-zero-redundancy.ts` expose dry-run, write, source DB path, provider, and verifier arguments consistently.
 - [x] Make `scripts/db/verify-zero-redundancy.ts` return machine-readable nonzero exit codes for mismatch classes.
-- [ ] Make `scripts/db/collapse-preset-group-bindings.ts` use the same logging and dry-run conventions as zero-redundancy scripts.
+- [x] Make `scripts/db/collapse-preset-group-bindings.ts` use the same logging and dry-run conventions as zero-redundancy scripts.
 - [ ] Move DB test setup helpers into a reusable test fixture module so DB tests do not each hand-roll `better-sqlite3` setup.
 - [ ] Keep `prisma/data/comfyui.db` classified as local runtime data; confirm whether it should be removed from tracking or explicitly retained as a fixture.
 - [ ] Update tests that inspect schema text to use helper functions rather than repeated ad hoc `fs.readFileSync` scans.
