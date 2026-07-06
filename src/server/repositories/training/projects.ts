@@ -1077,7 +1077,7 @@ export async function getTrainingCandidateImage(imageId: string) {
   return row ? mapCandidateImageRow(row) : null;
 }
 
-export async function listTrainingCandidateImages(projectId: string, _filters: unknown = {}) {
+export async function listTrainingCandidateImages(projectId: string) {
   const row = await getProjectRow(projectId);
   const rows = await prisma.trainingImageResult.findMany({
     where: {
@@ -1232,7 +1232,7 @@ export async function enqueueTrainingProductionSectionGenerationRun(sectionId: s
   return mapGenerationTaskRow(task);
 }
 
-export async function cancelTrainingProductionGenerationRun(taskId: string, _input: unknown = {}) {
+export async function cancelTrainingProductionGenerationRun(taskId: string) {
   const task = await prisma.trainingGenerationTask.update({
     where: { id: taskId },
     data: {
@@ -1271,7 +1271,7 @@ export async function getTrainingGenerationRun(taskId: string) {
   return task && !task.hiddenAt ? mapGenerationTaskRow(task) : null;
 }
 
-export async function freezeTrainingProductionDataset(projectId: string, _input: unknown = {}) {
+export async function freezeTrainingProductionDataset(projectId: string) {
   const row = await getProjectRow(projectId);
   const keptImages = await prisma.trainingImageResult.findMany({
     where: {
@@ -1417,7 +1417,7 @@ export async function enqueueTrainingProductionRun(revisionId: string, input: un
   return mapTrainingRunRow(run);
 }
 
-export async function cancelTrainingProductionRun(trainingRunId: string, _input: unknown = {}) {
+export async function cancelTrainingProductionRun(trainingRunId: string) {
   const run = await prisma.trainingRun.update({
     where: { id: trainingRunId },
     data: {

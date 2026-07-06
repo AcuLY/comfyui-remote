@@ -376,19 +376,9 @@ async function getTrainingPresetRow(presetId: string) {
   return getTrainingPresetRowFromRepository(presetId);
 }
 
-async function listTrainingSceneCategoryRows() {
-  await ensureDefaultTrainingPresets();
-  return listTrainingSceneCategoryRowsFromRepository();
-}
-
 async function getTrainingSceneCategoryRow(categoryId: string) {
   await ensureDefaultTrainingPresets();
   return getTrainingSceneCategoryRowFromRepository(categoryId);
-}
-
-async function listTrainingSceneFolderRows() {
-  await ensureDefaultTrainingPresets();
-  return listTrainingSceneFolderRowsFromRepository();
 }
 
 async function getTrainingSceneFolderRow(folderId: string) {

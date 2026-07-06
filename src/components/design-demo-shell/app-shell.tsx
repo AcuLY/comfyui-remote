@@ -402,15 +402,14 @@ export function DesignDemoShell({
       setSidebarLayoutReady(true);
     }
 
-    if (showsNavigationChrome) {
-      syncSidebarCollapse();
-      sidebarQuery.addEventListener("change", syncSidebarCollapse);
-    } else {
-      setSidebarCollapsed(false);
-      setSidebarLayoutReady(true);
-    }
-
     const frameId = window.requestAnimationFrame(() => {
+      if (showsNavigationChrome) {
+        syncSidebarCollapse();
+      } else {
+        setSidebarCollapsed(false);
+        setSidebarLayoutReady(true);
+      }
+
       const storedTheme = window.localStorage.getItem(resolvedThemePersistence.storageKey);
       const resolvedTheme = isDemoThemeValue(storedTheme) ? storedTheme : initialTheme;
 
@@ -420,6 +419,8 @@ export function DesignDemoShell({
       setSfwMode(isSfwEnabledValue(window.localStorage.getItem(DESIGN_DEMO_SFW_STORAGE_KEY)));
       setStoredWorkMode(readStoredWorkMode());
     });
+
+    if (showsNavigationChrome) sidebarQuery.addEventListener("change", syncSidebarCollapse);
 
     return () => {
       if (showsNavigationChrome) sidebarQuery.removeEventListener("change", syncSidebarCollapse);

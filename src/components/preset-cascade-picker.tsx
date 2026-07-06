@@ -117,7 +117,10 @@ export function PresetCascadePicker({
   }
 
   useEffect(() => {
-    setPortalTarget(document.body);
+    const frameId = window.requestAnimationFrame(() => {
+      setPortalTarget(document.body);
+    });
+    return () => window.cancelAnimationFrame(frameId);
   }, []);
 
   // Focus search after the dialog is mounted.
