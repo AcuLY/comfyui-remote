@@ -1,20 +1,12 @@
 import { fail, ok } from "@/lib/api-response";
 import { resumeAllRuns } from "@/lib/actions/run";
+import { HttpRequestError, readOptionalJsonObject } from "@/server/http/request-json";
 import {
   createQueueControlProgressStream,
   wantsQueueControlStream,
 } from "@/server/services/queue-control-stream";
 
 const QUEUE_API_PAUSE_SOURCE = "api-pause-active";
-
-async function readOptionalJsonBody(request: Request) {
-  const text = await request.text();
-  if (!text.trim()) {
-    return {};
-  }
-
-  return JSON.parse(text) as Record<string, unknown>;
-}
 
 function normalizeRunIds(value: unknown) {
   if (value === undefined) {
@@ -41,7 +33,7 @@ function normalizeBatchId(value: unknown) {
 
 export async function POST(request: Request) {
   try {
-    const body = await readOptionalJsonBody(request);
+    const body = await readOptionalJsonObject(request);
     const runIds = normalizeRunIds(body.runIds);
     const batchId = normalizeBatchId(body.batchId);
     if (wantsQueueControlStream(request)) {
@@ -77,6 +69,9 @@ export async function POST(request: Request) {
       batchId,
     });
   } catch (error) {
+    if (error instanceof HttpRequestError) {
+      return fail(error.message, error.status, error.details);
+    }
     return fail(error instanceof Error ? error.message : "Failed to resume paused runs", 500);
   }
 }

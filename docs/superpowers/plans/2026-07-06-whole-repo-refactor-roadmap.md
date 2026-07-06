@@ -150,6 +150,8 @@
 - Targeted verification passed: `tests/test-agent-preset-variant-flow-service.test.ts`, `tests/test-zero-redundancy-write-paths.test.ts`, `tests/test-preset-cascade-picker-overlay.test.ts`, `tests/test-training-api-routes.test.ts`, `tests/test-prisma-generate-scripts.test.ts`, and `src/app/design-demos/shell/app-shell.test.mjs`.
 - Inventory/docs classification added `docs/index.md`, generated `docs/repo-inventory.md`, and `scripts/docs/generate-repo-inventory.ts`. The inventory now covers all tracked files plus current inventory artifacts, has no `uncategorized` owner modules, and records one roadmap action per file.
 - Inventory/docs classification verification passed: `node --import tsx --test tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 960 tests discovered, 959 pass, 0 fail, 1 skipped.
+- Batch 3 slice 1 added `src/server/http/request-json.ts` as the shared route JSON parser and migrated `src/app/api/queue/resume-paused/route.ts` away from its local parser. Invalid JSON now returns the shared API error envelope before queue actions run.
+- Batch 3 slice 1 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-queue-control-progress-stream.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 964 tests discovered, 963 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 

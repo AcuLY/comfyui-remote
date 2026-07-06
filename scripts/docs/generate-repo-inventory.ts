@@ -92,6 +92,7 @@ function getArea(path: string): string {
   if (path.startsWith("src/server/repositories/")) return "src/server/repositories";
   if (path.startsWith("src/server/services/training/")) return "src/server/services/training";
   if (path.startsWith("src/server/services/")) return "src/server/services";
+  if (path.startsWith("src/server/http/")) return "src/server/http";
   if (path.startsWith("src/server/worker/")) return "src/server/worker";
   if (path.startsWith("src/server/quality/")) return "src/server/quality";
   if (path.startsWith("src/server/mcp/")) return "src/server/mcp";
@@ -134,6 +135,7 @@ function getOwnerModule(path: string, area: string): string {
   if (area.startsWith("src/app")) return "app-routes";
   if (area.startsWith("src/server/repositories")) return "repositories";
   if (area.startsWith("src/server/services")) return "services";
+  if (area === "src/server/http") return "server-http";
   if (area === "src/hooks") return "shared-hooks";
   if (path === "src/proxy.ts" || path.startsWith("src/instrumentation")) return "next-runtime";
   if (area === "src/scripts") return "seed-scripts";
@@ -195,6 +197,7 @@ function getCurrentRole(path: string, area: string, fileType: string): string {
   if (area.startsWith("src/features/training")) return "training frontend module";
   if (area.startsWith("src/server/repositories")) return "persistence repository";
   if (area.startsWith("src/server/services")) return "business service";
+  if (area === "src/server/http") return "HTTP request helper";
   if (area.startsWith("src/server/worker")) return "worker or scheduler module";
   if (area.startsWith("src/lib/actions")) return "server action boundary";
   if (area.startsWith("src/lib")) return "shared library helper";
@@ -214,6 +217,7 @@ function getTargetRole(path: string, area: string, fileType: string): string {
   if (area.startsWith("src/app/api")) return "thin route adapter over services and shared response helpers";
   if (area.startsWith("src/server/repositories")) return "query and persistence only";
   if (area.startsWith("src/server/services")) return "focused business workflow owner";
+  if (area === "src/server/http") return "shared HTTP boundary helper";
   if (area.startsWith("src/features/training")) return "training-owned frontend module";
   if (area.startsWith("src/components")) return "focused accessible reusable UI";
   if (area.startsWith("tests")) return "stable verification entrypoint";
