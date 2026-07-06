@@ -33,6 +33,45 @@ const RELATION_SCOPE_MODELS = [
     role: "template-section manual LoRA entry",
   },
 ] as const;
+const LEGACY_COMPATIBILITY_SURFACES = [
+  {
+    surface: "linked variant JSON",
+    ownerFields: "`PresetVariant.linkedVariants`",
+    replacement: "`PresetVariantLink` relation rows",
+    decision: "removed schema storage",
+    guard: "`tests/test-zero-redundancy-preset-resolver.test.ts` ignores legacy JSON in favor of relation rows",
+  },
+  {
+    surface: "legacy project section prompt fields",
+    ownerFields:
+      "`ProjectSection.positivePrompt`, `ProjectSection.negativePrompt`, `ProjectSection.promptBlocks`, `ProjectSection.loraConfig`",
+    replacement: "`SectionPromptBlock`, `SectionPresetBinding`, `SectionManualLoraEntry`, and immutable run snapshots",
+    decision: "removed schema storage",
+    guard: "`tests/test-zero-redundancy-no-legacy-fields.test.ts` blocks schema and runtime source reintroduction",
+  },
+  {
+    surface: "legacy template section prompt fields",
+    ownerFields: "`ProjectTemplateSection.promptBlocks`, `ProjectTemplateSection.loraConfig`",
+    replacement: "`TemplateSectionPromptBlock`, `TemplateSectionPresetBinding`, and `TemplateSectionManualLoraEntry`",
+    decision: "removed schema storage",
+    guard: "`tests/test-zero-redundancy-template-resolver.test.ts` keeps template saves relation-backed",
+  },
+  {
+    surface: "deprecated seed policy payload",
+    ownerFields: "`seedPolicy` singular in resolver/snapshot compatibility payloads",
+    replacement: "`seedPolicy1`, `seedPolicy2`",
+    decision: "read-only compatibility input",
+    guard: "`tests/test-zero-redundancy-section-resolver.test.ts` preserves two-stage seed policy output",
+  },
+  {
+    surface: "legacy character LoRA prompt values",
+    ownerFields:
+      "`TrainingCharacterProfile.loraUsagePrompt`, `TrainingCharacterProfile.characterDetailPrompt`, `TrainingGenerationTaskOutput.loraUsagePromptSnapshot`",
+    replacement: "`loraUsagePromptGenerationTaskId`, `characterDetailPromptGenerationTaskId`, and task output snapshots",
+    decision: "retained active training data",
+    guard: "training schema fields stay provider-compatible until the training data model is split in a later batch",
+  },
+] as const;
 
 function modelNames(schemaPath: string): string[] {
   return [...readFileSync(schemaPath, "utf8").matchAll(/^model\s+(\w+)\s*\{/gm)]
@@ -177,6 +216,15 @@ const enumRows = [...postgresEnums.entries()].map(([enumName, values]) =>
   ),
 );
 const relationScopeRows = RELATION_SCOPE_MODELS.map((entry) => relationScopeRow(entry));
+const legacyCompatibilityRows = LEGACY_COMPATIBILITY_SURFACES.map((entry) =>
+  [
+    entry.surface,
+    entry.ownerFields,
+    entry.replacement,
+    entry.decision,
+    entry.guard,
+  ].join(" | "),
+);
 
 const output = [
   "# Prisma Schema Compatibility Checklist",
@@ -200,6 +248,12 @@ const output = [
   "| relation model | role | parent scope | PostgreSQL constraints | SQLite constraints | compatibility action |",
   "| --- | --- | --- | --- | --- | --- |",
   ...relationScopeRows.map((row) => `| ${row} |`),
+  "",
+  "## Legacy Compatibility Field Audit",
+  "",
+  "| surface | owner fields | replacement or current owner | decision | guard |",
+  "| --- | --- | --- | --- | --- |",
+  ...legacyCompatibilityRows.map((row) => `| ${row} |`),
   "",
   "## Provider-Only Models",
   "",

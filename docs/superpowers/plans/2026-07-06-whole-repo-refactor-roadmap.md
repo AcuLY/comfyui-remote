@@ -166,6 +166,8 @@
 - Batch 4 slice 4 verification passed: `node --import tsx --test tests/test-prisma-schema-compatibility-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, `npm run prisma:generate:all`, and `npm test` with 973 tests discovered, 972 pass, 0 fail, 1 skipped.
 - Batch 4 slice 5 added generated relation scope and uniqueness documentation for preset binding, template binding, variant link, and manual LoRA relation models across both Prisma providers.
 - Batch 4 slice 5 verification passed: `node --import tsx --test tests/test-prisma-schema-compatibility-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, `npm run prisma:generate:all`, and `npm test` with 974 tests discovered, 973 pass, 0 fail, 1 skipped.
+- Batch 4 slice 6 added generated legacy compatibility field audit decisions for linked variant JSON, legacy section/template prompt storage, seed policy compatibility payloads, and training character LoRA prompt values.
+- Batch 4 slice 6 verification passed: `node --import tsx --test tests/test-prisma-schema-compatibility-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, `npm run prisma:generate:all`, and `npm test` with 975 tests discovered, 974 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -222,8 +224,8 @@
 - [x] Group schema models by domain in comments: preset library, training, generation project/template, run/image/trash, censoring, assets, audit, locks.
 - [x] Verify all enums exist where provider support allows; where SQLite differs, document the mapping.
 - [x] Ensure every relation model has documented uniqueness and parent scope: `SectionPresetBinding`, `TemplateSectionPresetBinding`, project/template preset bindings, linked variants, manual LoRA entries.
-- [ ] Audit legacy fields and compatibility fields: linked variant JSON, legacy prompt fields, deprecated seed policies, legacy character LoRA values.
-- [ ] Decide which legacy fields are read-only compatibility surfaces and which can be removed after migration.
+- [x] Audit legacy fields and compatibility fields: linked variant JSON, legacy prompt fields, deprecated seed policies, legacy character LoRA values.
+- [x] Decide which legacy fields are read-only compatibility surfaces and which can be removed after migration.
 - [ ] Make `scripts/db/migrate-zero-redundancy.ts` expose dry-run, write, source DB path, provider, and verifier arguments consistently.
 - [ ] Make `scripts/db/verify-zero-redundancy.ts` return machine-readable nonzero exit codes for mismatch classes.
 - [ ] Make `scripts/db/collapse-preset-group-bindings.ts` use the same logging and dry-run conventions as zero-redundancy scripts.

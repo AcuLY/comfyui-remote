@@ -14,6 +14,38 @@ const RELATION_SCOPE_MODELS = [
   { model: "SectionManualLoraEntry", parentScope: "projectSectionId" },
   { model: "TemplateSectionManualLoraEntry", parentScope: "projectTemplateSectionId" },
 ] as const;
+const LEGACY_COMPATIBILITY_SURFACES = [
+  {
+    surface: "linked variant JSON",
+    owner: "PresetVariant.linkedVariants",
+    replacement: "PresetVariantLink",
+    decision: "removed schema storage",
+  },
+  {
+    surface: "legacy project section prompt fields",
+    owner: "ProjectSection.positivePrompt",
+    replacement: "SectionPromptBlock",
+    decision: "removed schema storage",
+  },
+  {
+    surface: "legacy template section prompt fields",
+    owner: "ProjectTemplateSection.promptBlocks",
+    replacement: "TemplateSectionPromptBlock",
+    decision: "removed schema storage",
+  },
+  {
+    surface: "deprecated seed policy payload",
+    owner: "seedPolicy",
+    replacement: "seedPolicy1",
+    decision: "read-only compatibility input",
+  },
+  {
+    surface: "legacy character LoRA prompt values",
+    owner: "TrainingCharacterProfile.loraUsagePrompt",
+    replacement: "loraUsagePromptGenerationTaskId",
+    decision: "retained active training data",
+  },
+] as const;
 
 function modelNames(schemaPath: string) {
   return [...readFileSync(schemaPath, "utf8").matchAll(/^model\s+(\w+)\s*\{/gm)].map((match) => match[1]);
@@ -165,5 +197,18 @@ test("Prisma schema compatibility checklist documents relation parent scopes and
         assert.match(doc, new RegExp(`\`${directive.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\``));
       }
     }
+  }
+});
+
+test("Prisma schema compatibility checklist documents legacy field audit decisions", () => {
+  const doc = readFileSync(COMPATIBILITY_DOC, "utf8");
+
+  assert.match(doc, /## Legacy Compatibility Field Audit/);
+
+  for (const { surface, owner, replacement, decision } of LEGACY_COMPATIBILITY_SURFACES) {
+    assert.match(doc, new RegExp(`\\| ${surface} \\|`), `${surface} missing from legacy compatibility audit`);
+    assert.match(doc, new RegExp(owner.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `${owner} missing from audit`);
+    assert.match(doc, new RegExp(replacement.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `${replacement} missing from audit`);
+    assert.match(doc, new RegExp(decision, "i"), `${surface} must document decision ${decision}`);
   }
 });
