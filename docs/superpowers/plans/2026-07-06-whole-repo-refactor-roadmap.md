@@ -129,11 +129,11 @@
   - [x] `npm run prisma:generate:sqlite`.
   - [x] `npm run prisma:generate:all`.
 - [ ] Run `npx next build --webpack` only in an implementation batch that is allowed to perform build verification.
-- [ ] Create an inventory table for all tracked files with columns: path, area, owner module, file type, current role, target role, action.
-- [ ] Mark every file as one of: keep, move, split, rename, regenerate, archive, delete, or document-only.
-- [ ] Add a dependency-rule note: `src/app/api -> src/server/services -> src/server/repositories -> prisma` is the preferred request path; `src/features/*` and `src/components/*` must not import server-only modules.
-- [ ] Add a generated-code rule: `src/generated/**` is regenerated from Prisma and not manually edited.
-- [ ] Add a runtime-file rule: `.next/**`, `data/**`, `logs/**`, `.tmp/**`, `server-dev-*.log`, `server-prod-*.log`, `build-prod*.log`, `.deploy.lock/**`, and local DB files are runtime artifacts.
+- [x] Create an inventory table for all tracked files with columns: path, area, owner module, file type, current role, target role, action.
+- [x] Mark every file as one of: keep, move, split, rename, regenerate, archive, delete, or document-only.
+- [x] Add a dependency-rule note: `src/app/api -> src/server/services -> src/server/repositories -> prisma` is the preferred request path; `src/features/*` and `src/components/*` must not import server-only modules.
+- [x] Add a generated-code rule: `src/generated/**` is regenerated from Prisma and not manually edited.
+- [x] Add a runtime-file rule: `.next/**`, `data/**`, `logs/**`, `.tmp/**`, `server-dev-*.log`, `server-prod-*.log`, `build-prod*.log`, `.deploy.lock/**`, and local DB files are runtime artifacts.
 
 ### Phase 0 Baseline Notes - 2026-07-06
 
@@ -148,6 +148,8 @@
 - Final Batch 2 `npm test` result: 958 tests discovered, 949 pass, 8 fail, 1 skipped. Remaining failures are all in `tests/test-zero-redundancy-migration.test.ts`, around resolver mismatch / migration planning and verification assertions.
 - Batch 3 fixed the zero-redundancy migration verifier by preserving the `useTwoStageKSampler` default in the legacy verification snapshot. Final `npm test` result: 958 tests discovered, 957 pass, 0 fail, 1 skipped.
 - Targeted verification passed: `tests/test-agent-preset-variant-flow-service.test.ts`, `tests/test-zero-redundancy-write-paths.test.ts`, `tests/test-preset-cascade-picker-overlay.test.ts`, `tests/test-training-api-routes.test.ts`, `tests/test-prisma-generate-scripts.test.ts`, and `src/app/design-demos/shell/app-shell.test.mjs`.
+- Inventory/docs classification added `docs/index.md`, generated `docs/repo-inventory.md`, and `scripts/docs/generate-repo-inventory.ts`. The inventory now covers all tracked files plus current inventory artifacts, has no `uncategorized` owner modules, and records one roadmap action per file.
+- Inventory/docs classification verification passed: `node --import tsx --test tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 960 tests discovered, 959 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1069,7 +1071,7 @@
 ## Recommended Batch Order
 
 - [x] Batch 1: Baseline/tooling cleanup: fix `better-sqlite3` ABI, React hooks lint errors, unused warnings, and known migration assertions.
-- [ ] Batch 2: Inventory and docs classification: add owner/status table and doc index without moving runtime code.
+- [x] Batch 2: Inventory and docs classification: add owner/status table and doc index without moving runtime code.
 - [ ] Batch 3: API response/request helper standardization: `api-response`, validation helpers, route template applied to low-risk routes.
 - [ ] Batch 4: Prisma/schema/test fixture governance: shared DB setup, provider matrix, schema compatibility checks.
 - [ ] Batch 5: Queue/run/Comfy boundary split: protect deploy-sensitive semantics before broad UI work.
