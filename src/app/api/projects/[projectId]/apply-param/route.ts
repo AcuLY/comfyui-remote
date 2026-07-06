@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { applyParamToAllSections, type ApplyParamName } from "@/lib/actions/project";
+import { readJsonBody } from "@/server/http/request-json";
 
 const VALID_PARAMS: ApplyParamName[] = [
   "aspectRatio",
@@ -23,9 +24,9 @@ export async function POST(
 
     let body: unknown;
     try {
-      body = await request.json();
-    } catch {
-      return fail("Invalid JSON body", 400);
+      body = await readJsonBody(request);
+    } catch (error) {
+      return failFromError(error);
     }
 
     const { param, value } = body as { param: string; value: unknown };

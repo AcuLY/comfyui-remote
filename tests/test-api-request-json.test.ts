@@ -189,6 +189,8 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/projects/[projectId]/sections/[sectionId]/import-preset/route.ts",
     "src/app/api/projects/[projectId]/sections/[sectionId]/switch-variant/route.ts",
     "src/app/api/projects/[projectId]/sections/[sectionId]/create-from-template/route.ts",
+    "src/app/api/projects/[projectId]/apply-param/route.ts",
+    "src/app/api/projects/[projectId]/preset-replacements/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -228,6 +230,8 @@ test("generation project mutations use shared raw JSON parsing", () => {
     "src/app/api/projects/[projectId]/sections/[sectionId]/import-preset/route.ts",
     "src/app/api/projects/[projectId]/sections/[sectionId]/switch-variant/route.ts",
     "src/app/api/projects/[projectId]/sections/[sectionId]/create-from-template/route.ts",
+    "src/app/api/projects/[projectId]/apply-param/route.ts",
+    "src/app/api/projects/[projectId]/preset-replacements/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -268,6 +272,8 @@ test("generation project mutations preserve invalid JSON response envelope", asy
   const projectSectionImportPresetRoute = await import("../src/app/api/projects/[projectId]/sections/[sectionId]/import-preset/route");
   const projectSectionSwitchVariantRoute = await import("../src/app/api/projects/[projectId]/sections/[sectionId]/switch-variant/route");
   const projectSectionCreateFromTemplateRoute = await import("../src/app/api/projects/[projectId]/sections/[sectionId]/create-from-template/route");
+  const projectApplyParamRoute = await import("../src/app/api/projects/[projectId]/apply-param/route");
+  const projectPresetReplacementsRoute = await import("../src/app/api/projects/[projectId]/preset-replacements/route");
 
   for (const response of [
     await projectsRoute.POST(makeRequest("not-json")),
@@ -312,6 +318,12 @@ test("generation project mutations preserve invalid JSON response envelope", asy
     }),
     await projectSectionCreateFromTemplateRoute.POST(makeRequest("not-json"), {
       params: Promise.resolve({ projectId: "project-1", sectionId: "section-1" }),
+    }),
+    await projectApplyParamRoute.POST(makeRequest("not-json") as NextRequest, {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await projectPresetReplacementsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);
