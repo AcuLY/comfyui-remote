@@ -199,6 +199,9 @@ test("generation project mutations use shared raw JSON parsing", () => {
     "src/app/api/project-folders/[folderId]/route.ts",
     "src/app/api/project-folders/move/route.ts",
     "src/app/api/project-folders/reorder/route.ts",
+    "src/app/api/projects/[projectId]/sections/route.ts",
+    "src/app/api/projects/[projectId]/sections/[sectionId]/route.ts",
+    "src/app/api/projects/[projectId]/sections/reorder/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -229,6 +232,9 @@ test("generation project mutations preserve invalid JSON response envelope", asy
   const projectFolderDetailRoute = await import("../src/app/api/project-folders/[folderId]/route");
   const projectFolderMoveRoute = await import("../src/app/api/project-folders/move/route");
   const projectFolderReorderRoute = await import("../src/app/api/project-folders/reorder/route");
+  const projectSectionsRoute = await import("../src/app/api/projects/[projectId]/sections/route");
+  const projectSectionDetailRoute = await import("../src/app/api/projects/[projectId]/sections/[sectionId]/route");
+  const projectSectionsReorderRoute = await import("../src/app/api/projects/[projectId]/sections/reorder/route");
 
   for (const response of [
     await projectsRoute.POST(makeRequest("not-json")),
@@ -241,6 +247,15 @@ test("generation project mutations preserve invalid JSON response envelope", asy
     }),
     await projectFolderMoveRoute.POST(makeRequest("not-json")),
     await projectFolderReorderRoute.POST(makeRequest("not-json")),
+    await projectSectionsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await projectSectionDetailRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1", sectionId: "section-1" }),
+    }),
+    await projectSectionsReorderRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
   ]) {
     assert.equal(response.status, 400);
     assert.deepEqual(await response.json(), {

@@ -1,5 +1,6 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { addSection } from "@/lib/actions";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ projectId: string }>;
@@ -10,9 +11,9 @@ export async function POST(request: Request, context: RouteContext) {
 
   let body: Record<string, unknown> | null = null;
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request) as Record<string, unknown> | null;
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {

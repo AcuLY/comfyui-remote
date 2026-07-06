@@ -195,6 +195,8 @@
 - Phase 3 slice 5 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 988 tests discovered, 987 pass, 0 fail, 1 skipped.
 - Phase 3 slice 6 migrated project-folder rename, move, and reorder mutation parsing in `src/app/api/project-folders/[folderId]/route.ts`, `src/app/api/project-folders/move/route.ts`, and `src/app/api/project-folders/reorder/route.ts` to `readJsonBody`/`failFromError`.
 - Phase 3 slice 6 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 988 tests discovered, 987 pass, 0 fail, 1 skipped.
+- Phase 3 slice 7 migrated generation section add, update, and reorder route parsing in `src/app/api/projects/[projectId]/sections/route.ts`, `src/app/api/projects/[projectId]/sections/[sectionId]/route.ts`, and `src/app/api/projects/[projectId]/sections/reorder/route.ts` to `readJsonBody`/`failFromError`.
+- Phase 3 slice 7 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 988 tests discovered, 987 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 

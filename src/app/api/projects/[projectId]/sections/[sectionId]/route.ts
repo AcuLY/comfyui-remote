@@ -1,5 +1,6 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { deleteSection } from "@/lib/actions";
+import { readJsonBody } from "@/server/http/request-json";
 import { mapProjectError, updateProjectSection } from "@/server/services/project-service";
 
 type RouteContext = {
@@ -11,9 +12,9 @@ export async function PATCH(request: Request, context: RouteContext) {
 
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {
