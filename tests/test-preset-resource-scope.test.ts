@@ -1,10 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
-import { rm } from "node:fs/promises";
 import path from "node:path";
-import { tmpdir } from "node:os";
-import Database from "better-sqlite3";
+import { createBetterSqliteTestDatabase } from "./fixtures/sqlite-db";
 import type { prisma as PrismaClientSingleton } from "../src/lib/prisma";
 import type * as PresetCategoryActions from "../src/lib/actions/preset-category";
 import type * as PresetFolderActions from "../src/lib/actions/preset-folder";
@@ -20,13 +17,11 @@ import type * as TrainingPresetService from "../src/server/services/training/pre
 
 process.env.DB_PROVIDER = "sqlite";
 
-const tempDir = mkdtempSync(path.join(tmpdir(), "preset-resource-scope-"));
-const dbPath = path.join(tempDir, "preset-resource-scope.db");
-process.env.DATABASE_URL = `file:${dbPath}`;
-process.env.TRAINING_PRESET_FALLBACK_DIR = path.join(tempDir, "training-fallback");
+const db = createBetterSqliteTestDatabase("preset-resource-scope-", "preset-resource-scope.db");
+process.env.DATABASE_URL = db.databaseUrl;
+process.env.TRAINING_PRESET_FALLBACK_DIR = path.join(db.tempDir, "training-fallback");
 
-const setupDb = new Database(dbPath);
-setupDb.exec(`
+db.setup(`
   CREATE TABLE "PresetCategory" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
@@ -382,7 +377,7 @@ test.before(async () => {
 
 test.after(async () => {
   await prisma.$disconnect();
-  await rm(tempDir, { recursive: true, force: true });
+  await db.cleanup();
 });
 
 async function ignoreStaticRevalidateError<T>(callback: () => Promise<T>): Promise<T | undefined> {

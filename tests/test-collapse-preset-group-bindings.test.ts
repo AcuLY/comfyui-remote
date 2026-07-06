@@ -1,20 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import path from "node:path";
-import { tmpdir } from "node:os";
-import Database from "better-sqlite3";
 
 import {
   collapsePresetGroupBindings,
   formatCollapsePresetGroupBindingsSummary,
   parseCollapsePresetGroupBindingsArgs,
 } from "../scripts/db/collapse-preset-group-bindings";
+import {
+  createBetterSqliteTestDatabase,
+  withBetterSqliteDatabase,
+} from "./fixtures/sqlite-db";
 
 function setupDb(dbPath: string) {
-  const db = new Database(dbPath);
-  db.exec(`
+  withBetterSqliteDatabase(dbPath, (db) => {
+    db.exec(`
     CREATE TABLE "PresetGroup" (
       "id" TEXT NOT NULL PRIMARY KEY,
       "categoryId" TEXT NOT NULL,
@@ -122,30 +121,28 @@ function setupDb(dbPath: string) {
       VALUES
       ('template-lora-a', 'template-section-1', 'template-binding-b', 'lora2', 'b.safetensors', 'template-bind-b', 'b.safetensors');
   `);
-  db.close();
+  });
 }
 
 test("collapsePresetGroupBindings dry-run reports without writing", async () => {
-  const tempDir = mkdtempSync(path.join(tmpdir(), "collapse-preset-groups-dry-"));
-  const dbPath = path.join(tempDir, "test.db");
-  setupDb(dbPath);
+  const db = createBetterSqliteTestDatabase("collapse-preset-groups-dry-");
+  setupDb(db.dbPath);
 
   try {
-    const summary = collapsePresetGroupBindings({ databaseUrl: `file:${dbPath}` });
+    const summary = collapsePresetGroupBindings({ databaseUrl: db.databaseUrl });
     assert.equal(summary.dryRun, true);
     assert.equal(summary.section.collapsedGroups, 2);
     assert.equal(summary.section.skippedLegacyGroups, 1);
     assert.equal(summary.template.collapsedGroups, 1);
 
-    const db = new Database(dbPath, { readonly: true });
-    try {
-      const sectionRefs = db.prepare("SELECT COUNT(*) AS count FROM SectionPresetBinding WHERE presetGroupId IS NOT NULL").get() as { count: number };
+    withBetterSqliteDatabase(db.dbPath, { readonly: true }, (readonlyDb) => {
+      const sectionRefs = readonlyDb
+        .prepare("SELECT COUNT(*) AS count FROM SectionPresetBinding WHERE presetGroupId IS NOT NULL")
+        .get() as { count: number };
       assert.equal(sectionRefs.count, 2);
-    } finally {
-      db.close();
-    }
+    });
   } finally {
-    await rm(tempDir, { recursive: true, force: true });
+    await db.cleanup();
   }
 });
 
@@ -211,12 +208,11 @@ test("collapsePresetGroupBindings CLI parser and formatter match migration conve
 });
 
 test("collapsePresetGroupBindings folds expanded section and template members into group references", async () => {
-  const tempDir = mkdtempSync(path.join(tmpdir(), "collapse-preset-groups-write-"));
-  const dbPath = path.join(tempDir, "test.db");
-  setupDb(dbPath);
+  const db = createBetterSqliteTestDatabase("collapse-preset-groups-write-");
+  setupDb(db.dbPath);
 
   try {
-    const summary = collapsePresetGroupBindings({ databaseUrl: `file:${dbPath}`, write: true });
+    const summary = collapsePresetGroupBindings({ databaseUrl: db.databaseUrl, write: true });
     assert.equal(summary.dryRun, false);
     assert.equal(summary.section.collapsedGroups, 2);
     assert.equal(summary.section.deletedBindings, 2);
@@ -224,9 +220,8 @@ test("collapsePresetGroupBindings folds expanded section and template members in
     assert.equal(summary.section.movedManualLoras, 1);
     assert.equal(summary.template.collapsedGroups, 1);
 
-    const db = new Database(dbPath, { readonly: true });
-    try {
-      const sectionRows = db.prepare(`
+    withBetterSqliteDatabase(db.dbPath, { readonly: true }, (readonlyDb) => {
+      const sectionRows = readonlyDb.prepare(`
         SELECT id, bindingKey, categoryId, presetId, variantId, presetGroupId, groupBindingKey, sortOrder
         FROM SectionPresetBinding
         WHERE groupBindingKey = 'grp:group-1:instance-1'
@@ -245,7 +240,7 @@ test("collapsePresetGroupBindings folds expanded section and template members in
         },
       ]);
 
-      const trackedRows = db.prepare(`
+      const trackedRows = readonlyDb.prepare(`
         SELECT id, bindingKey, categoryId, presetId, variantId, presetGroupId, groupBindingKey, sortOrder
         FROM SectionPresetBinding
         WHERE groupBindingKey = 'grp:group-1:tracked-instance'
@@ -264,21 +259,29 @@ test("collapsePresetGroupBindings folds expanded section and template members in
         },
       ]);
 
-      const sectionPrompts = db.prepare("SELECT id, sectionBindingId, type, sortOrder FROM SectionPromptBlock WHERE projectSectionId = 'section-1' ORDER BY id").all();
+      const sectionPrompts = readonlyDb
+        .prepare(
+          "SELECT id, sectionBindingId, type, sortOrder FROM SectionPromptBlock WHERE projectSectionId = 'section-1' ORDER BY id",
+        )
+        .all();
       assert.deepEqual(sectionPrompts, [
         { id: "section-prompt-a", sectionBindingId: "section-binding-a", type: "preset", sortOrder: 10 },
       ]);
 
-      const sectionLora = db.prepare("SELECT sectionBindingId, detachedFromBindingKey FROM SectionManualLoraEntry WHERE id = 'section-lora-a'").get();
+      const sectionLora = readonlyDb
+        .prepare("SELECT sectionBindingId, detachedFromBindingKey FROM SectionManualLoraEntry WHERE id = 'section-lora-a'")
+        .get();
       assert.deepEqual(sectionLora, {
         sectionBindingId: "section-binding-a",
         detachedFromBindingKey: "bind-a",
       });
 
-      const legacyRows = db.prepare("SELECT COUNT(*) AS count FROM SectionPresetBinding WHERE groupBindingKey = 'legacy-instance'").get() as { count: number };
+      const legacyRows = readonlyDb
+        .prepare("SELECT COUNT(*) AS count FROM SectionPresetBinding WHERE groupBindingKey = 'legacy-instance'")
+        .get() as { count: number };
       assert.equal(legacyRows.count, 2);
 
-      const templateRows = db.prepare(`
+      const templateRows = readonlyDb.prepare(`
         SELECT id, categoryId, presetId, variantId, presetGroupId, groupBindingKey, sortOrder
         FROM TemplateSectionPresetBinding
         WHERE groupBindingKey = 'grp:group-1:template-instance'
@@ -295,15 +298,17 @@ test("collapsePresetGroupBindings folds expanded section and template members in
         },
       ]);
 
-      const templateLora = db.prepare("SELECT templateSectionBindingId, detachedFromBindingKey FROM TemplateSectionManualLoraEntry WHERE id = 'template-lora-a'").get();
+      const templateLora = readonlyDb
+        .prepare(
+          "SELECT templateSectionBindingId, detachedFromBindingKey FROM TemplateSectionManualLoraEntry WHERE id = 'template-lora-a'",
+        )
+        .get();
       assert.deepEqual(templateLora, {
         templateSectionBindingId: "template-binding-a",
         detachedFromBindingKey: "template-bind-a",
       });
-    } finally {
-      db.close();
-    }
+    });
   } finally {
-    await rm(tempDir, { recursive: true, force: true });
+    await db.cleanup();
   }
 });

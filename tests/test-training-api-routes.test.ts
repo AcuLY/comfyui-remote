@@ -4,8 +4,11 @@ import { readFileSync } from "node:fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import test from "node:test";
-import Database from "better-sqlite3";
 import { NextRequest } from "next/server";
+import {
+  type BetterSqliteDatabase,
+  withBetterSqliteDatabase,
+} from "./fixtures/sqlite-db";
 
 const TRAINING_API_TEST_DB_PATH = join(process.cwd(), "data", "test-training-api-routes.db");
 const TRAINING_API_TEST_DB_URL = "file:./data/test-training-api-routes.db";
@@ -69,16 +72,13 @@ async function prepareTrainingApiTestDatabase() {
   await rm(TRAINING_API_TEST_DB_PATH, { force: true });
   await rm(`${TRAINING_API_TEST_DB_PATH}-journal`, { force: true });
 
-  const db = new Database(TRAINING_API_TEST_DB_PATH);
-  try {
+  withBetterSqliteDatabase(TRAINING_API_TEST_DB_PATH, (db) => {
     db.exec(generateCurrentSqliteSchemaSql());
     seedTrainingApiTestDatabase(db);
-  } finally {
-    db.close();
-  }
+  });
 }
 
-function seedTrainingApiTestDatabase(db: Database.Database) {
+function seedTrainingApiTestDatabase(db: BetterSqliteDatabase) {
   const now = new Date().toISOString();
 
   db.transaction(() => {

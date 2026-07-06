@@ -1,10 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import path from "node:path";
-import { tmpdir } from "node:os";
-import Database from "better-sqlite3";
+import { createBetterSqliteTestDatabase } from "./fixtures/sqlite-db";
 import type { prisma as PrismaClientSingleton } from "../src/lib/prisma";
 import type * as PromptBlockActions from "../src/lib/actions/prompt-block";
 import type * as SectionActions from "../src/lib/actions/section";
@@ -21,12 +17,10 @@ import type * as TemplateViewRepository from "../src/server/repositories/templat
 
 process.env.DB_PROVIDER = "sqlite";
 
-const tempDir = mkdtempSync(path.join(tmpdir(), "zero-redundancy-write-paths-"));
-const dbPath = path.join(tempDir, "write-paths.db");
-process.env.DATABASE_URL = `file:${dbPath}`;
+const db = createBetterSqliteTestDatabase("zero-redundancy-write-paths-", "write-paths.db");
+process.env.DATABASE_URL = db.databaseUrl;
 
-const setupDb = new Database(dbPath);
-setupDb.exec(`
+db.setup(`
   CREATE TABLE "PresetCategory" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
@@ -368,7 +362,6 @@ setupDb.exec(`
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 `);
-setupDb.close();
 
 let prisma: typeof PrismaClientSingleton;
 let importPresetToSection: typeof PromptBlockActions.importPresetToSection;
@@ -1184,7 +1177,7 @@ async function ignoreStaticRevalidateError<T>(callback: () => Promise<T>): Promi
 
 test.after(async () => {
   await prisma.$disconnect();
-  await rm(tempDir, { recursive: true, force: true });
+  await db.cleanup();
 });
 
 test("importPresetToSection writes normalized binding rows without legacy expanded caches", async () => {

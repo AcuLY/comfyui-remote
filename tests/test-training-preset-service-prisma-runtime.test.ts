@@ -1,19 +1,16 @@
 import assert from "node:assert/strict";
-import { mkdtempSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
 import { after, test } from "node:test";
-import Database from "better-sqlite3";
+import { createBetterSqliteTestDatabase } from "./fixtures/sqlite-db";
 
 process.env.DB_PROVIDER = "sqlite";
 
-const tempDir = mkdtempSync(path.join(tmpdir(), "training-preset-prisma-runtime-"));
-const dbPath = path.join(tempDir, "training-preset-prisma-runtime.db");
-process.env.DATABASE_URL = `file:${dbPath}`;
+const db = createBetterSqliteTestDatabase(
+  "training-preset-prisma-runtime-",
+  "training-preset-prisma-runtime.db",
+);
+process.env.DATABASE_URL = db.databaseUrl;
 
-const setupDb = new Database(dbPath);
-setupDb.exec(`
+db.setup(`
   CREATE TABLE "TrainingSceneDescriptionPresetCategory" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
@@ -55,12 +52,11 @@ setupDb.exec(`
   CREATE INDEX "TrainingSceneDescriptionPreset_categoryId_folderId_sortOrder_idx" ON "TrainingSceneDescriptionPreset"("categoryId", "folderId", "sortOrder");
   CREATE INDEX "TrainingSceneDescriptionPreset_isActive_sortOrder_idx" ON "TrainingSceneDescriptionPreset"("isActive", "sortOrder");
 `);
-setupDb.close();
 
 after(async () => {
   const { prisma } = await import("../src/lib/prisma");
   await prisma.$disconnect();
-  await rm(tempDir, { force: true, recursive: true });
+  await db.cleanup();
 });
 
 test("training scene preset CRUD, cascade, sort, categories, and folders use Prisma tables", async () => {

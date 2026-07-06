@@ -1,21 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync } from "node:fs";
-import { rm } from "node:fs/promises";
-import path from "node:path";
-import { tmpdir } from "node:os";
-import Database from "better-sqlite3";
+import { readFileSync } from "node:fs";
+import { createBetterSqliteTestDatabase } from "./fixtures/sqlite-db";
 import type { prisma as PrismaClientSingleton } from "../src/lib/prisma";
 import type * as FlowService from "../src/server/services/agent-preset-variant-flow-service";
 
 process.env.DB_PROVIDER = "sqlite";
 
-const tempDir = mkdtempSync(path.join(tmpdir(), "agent-preset-variant-flow-"));
-const dbPath = path.join(tempDir, "flow.db");
-process.env.DATABASE_URL = `file:${dbPath}`;
+const db = createBetterSqliteTestDatabase("agent-preset-variant-flow-", "flow.db");
+process.env.DATABASE_URL = db.databaseUrl;
 
-const setupDb = new Database(dbPath);
-setupDb.exec(`
+db.setup(`
   CREATE TABLE "PresetCategory" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "name" TEXT NOT NULL,
@@ -185,7 +180,6 @@ setupDb.exec(`
   );
   CREATE INDEX "SectionChangeLog_projectSectionId_dimension_createdAt_idx" ON "SectionChangeLog"("projectSectionId", "dimension", "createdAt");
 `);
-setupDb.close();
 
 let prisma: typeof PrismaClientSingleton;
 let syncPresetVariantFlow: typeof FlowService.syncPresetVariantFlow;
@@ -208,7 +202,7 @@ test.before(async () => {
 
 test.after(async () => {
   await prisma?.$disconnect();
-  await rm(tempDir, { recursive: true, force: true });
+  await db.cleanup();
 });
 
 test("sync preset variant apply uses an explicit transaction wait budget", () => {
