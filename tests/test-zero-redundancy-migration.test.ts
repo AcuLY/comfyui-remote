@@ -14,6 +14,7 @@ import {
   collectZeroRedundancyVerification,
   formatZeroRedundancyVerification,
   parseZeroRedundancyVerifyArgs,
+  ZERO_REDUNDANCY_VERIFICATION_EXIT_CODES,
 } from "../scripts/db/verify-zero-redundancy";
 
 function rows(): ZeroRedundancyMigrationRows {
@@ -747,8 +748,10 @@ test("migration dry-run and verifier fail on invalid JSON even without resolver 
 
   assert.equal(report.summary.invalidJsonRowCount, 1);
   assert.equal(report.summary.invalidReferenceCount, 0);
-  assert.equal(report.exitCode, 1);
+  assert.deepEqual(report.failureClasses, ["invalid_json"]);
+  assert.equal(report.exitCode, ZERO_REDUNDANCY_VERIFICATION_EXIT_CODES.invalidJson);
   assert.match(formatZeroRedundancyVerification(report, "summary"), /invalid JSON rows: 1/);
+  assert.match(formatZeroRedundancyVerification(report, "summary"), /failure classes: invalid_json/);
 });
 
 test("write safety blocks malformed JSON before persistence", () => {
@@ -1061,10 +1064,27 @@ test("verifier reports structured diffs and honors allow-mismatch semantics", ()
   const allowed = collectZeroRedundancyVerification(tampered.comparisons, { allowMismatch: true });
 
   assert.equal(tampered.summary.mismatchCount, 1);
-  assert.equal(tampered.exitCode, 1);
+  assert.deepEqual(tampered.failureClasses, ["resolver_mismatch"]);
+  assert.equal(tampered.exitCode, ZERO_REDUNDANCY_VERIFICATION_EXIT_CODES.resolverMismatch);
   assert.equal(tampered.comparisons[0].diffs[0].category, "prompt");
+  assert.deepEqual(allowed.failureClasses, []);
   assert.equal(allowed.exitCode, 0);
   assert.match(formatZeroRedundancyVerification(tampered, "summary"), /mismatches: 1/);
+});
+
+test("verifier exit codes compose invalid JSON and invalid reference classes", () => {
+  const report = collectZeroRedundancyVerification([], {
+    invalidJsonRowCount: 1,
+    invalidReferenceCount: 1,
+  });
+
+  assert.deepEqual(report.failureClasses, ["invalid_json", "invalid_reference"]);
+  assert.equal(
+    report.exitCode,
+    ZERO_REDUNDANCY_VERIFICATION_EXIT_CODES.invalidJson |
+      ZERO_REDUNDANCY_VERIFICATION_EXIT_CODES.invalidReference,
+  );
+  assert.match(formatZeroRedundancyVerification(report, "summary"), /failure classes: invalid_json, invalid_reference/);
 });
 
 test("migration and verifier CLIs parse safe write/read-only flags", () => {

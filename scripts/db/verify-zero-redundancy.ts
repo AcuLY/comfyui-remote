@@ -20,6 +20,18 @@ export interface ZeroRedundancyVerificationComparison extends ZeroRedundancyVeri
   diffs: ResolvedSectionConfigDiff[];
 }
 
+export const ZERO_REDUNDANCY_VERIFICATION_EXIT_CODES = {
+  ok: 0,
+  invalidJson: 2,
+  invalidReference: 4,
+  resolverMismatch: 8,
+} as const;
+
+export type ZeroRedundancyVerificationFailureClass =
+  | "invalid_json"
+  | "invalid_reference"
+  | "resolver_mismatch";
+
 export interface ZeroRedundancyVerificationReport {
   readOnly: true;
   allowMismatch: boolean;
@@ -31,7 +43,8 @@ export interface ZeroRedundancyVerificationReport {
     invalidReferenceCount: number;
   };
   comparisons: ZeroRedundancyVerificationComparison[];
-  exitCode: 0 | 1;
+  failureClasses: ZeroRedundancyVerificationFailureClass[];
+  exitCode: number;
 }
 
 type VerificationInput = ZeroRedundancyVerificationPair | ZeroRedundancyVerificationComparison;
@@ -80,7 +93,21 @@ export function collectZeroRedundancyVerification(
   const allowMismatch = options.allowMismatch === true;
   const invalidJsonRowCount = options.invalidJsonRowCount ?? 0;
   const invalidReferenceCount = options.invalidReferenceCount ?? 0;
-  const hasInvalidLegacyData = invalidJsonRowCount > 0 || invalidReferenceCount > 0;
+  const failureClasses: ZeroRedundancyVerificationFailureClass[] = [];
+  let exitCode = ZERO_REDUNDANCY_VERIFICATION_EXIT_CODES.ok;
+
+  if (invalidJsonRowCount > 0) {
+    failureClasses.push("invalid_json");
+    exitCode |= ZERO_REDUNDANCY_VERIFICATION_EXIT_CODES.invalidJson;
+  }
+  if (invalidReferenceCount > 0) {
+    failureClasses.push("invalid_reference");
+    exitCode |= ZERO_REDUNDANCY_VERIFICATION_EXIT_CODES.invalidReference;
+  }
+  if (mismatchCount > 0 && !allowMismatch) {
+    failureClasses.push("resolver_mismatch");
+    exitCode |= ZERO_REDUNDANCY_VERIFICATION_EXIT_CODES.resolverMismatch;
+  }
 
   return {
     readOnly: true,
@@ -93,7 +120,8 @@ export function collectZeroRedundancyVerification(
       invalidReferenceCount,
     },
     comparisons,
-    exitCode: hasInvalidLegacyData || (mismatchCount > 0 && !allowMismatch) ? 1 : 0,
+    failureClasses,
+    exitCode,
   };
 }
 
@@ -113,6 +141,7 @@ export function formatZeroRedundancyVerification(
     `diffs: ${report.summary.diffCount}`,
     `invalid JSON rows: ${report.summary.invalidJsonRowCount}`,
     `invalid references: ${report.summary.invalidReferenceCount}`,
+    `failure classes: ${report.failureClasses.length > 0 ? report.failureClasses.join(", ") : "none"}`,
     `allow mismatch: ${report.allowMismatch}`,
   ];
 
