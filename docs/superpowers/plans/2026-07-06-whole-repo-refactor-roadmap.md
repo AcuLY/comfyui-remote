@@ -182,6 +182,9 @@
 - Batch 4 slice 12 added `tests/fixtures/prisma-schema-source.ts` as the shared Prisma schema source helper for cached schema reads, model blocks, model names, enum definitions, enum field references, and model directives.
 - Batch 4 slice 12 migrated Prisma schema-text assertions in `tests/test-zero-redundancy-schema-shape.test.ts`, `tests/test-zero-redundancy-no-legacy-fields.test.ts`, `tests/test-latent-schema-cleanup.test.ts`, `tests/test-model-civitai-info-panel.test.ts`, `tests/test-prisma-schema-domain-comments.test.ts`, `tests/test-prisma-schema-compatibility-doc.test.ts`, and `tests/test-training-api-boundary.test.ts` to the shared helper.
 - Batch 4 slice 12 verification passed: `node --import tsx --test tests/test-zero-redundancy-schema-shape.test.ts tests/test-zero-redundancy-no-legacy-fields.test.ts tests/test-latent-schema-cleanup.test.ts tests/test-model-civitai-info-panel.test.ts tests/test-prisma-schema-domain-comments.test.ts tests/test-prisma-schema-compatibility-doc.test.ts tests/test-training-api-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 978 tests discovered, 977 pass, 0 fail, 1 skipped.
+- Phase 3 slice 1 added `docs/api/route-handler-template.md` as the explicit route-handler template and linked it from `docs/index.md`.
+- Phase 3 slice 1 added `failFromError` to `src/lib/api-response.ts` and migrated the low-risk `request-json` adopters to shared caught-error mapping while preserving route-specific validation branches.
+- Phase 3 slice 1 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 980 tests discovered, 979 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -261,7 +264,7 @@
 - `src/app/api/mcp/route.ts`
 - `src/app/api/image-review/route.ts`
 
-- [ ] Define a route-handler template: parse request, validate input, call service, return `ok(...)` or error envelope.
+- [x] Define a route-handler template: parse request, validate input, call service, return `ok(...)` or error envelope.
 - [ ] Move repeated response formatting into `src/lib/api-response.ts`.
 - [ ] Move repeated request parsing into route helpers under `src/server/http` or extend `src/server/services/validation-utils.ts`.
 - [ ] Keep `/api/auth/verify` compatible with UI auth verification and never log token values.

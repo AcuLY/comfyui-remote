@@ -1,6 +1,6 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { resumeAllRuns } from "@/lib/actions/run";
-import { HttpRequestError, readOptionalJsonObject } from "@/server/http/request-json";
+import { readOptionalJsonObject } from "@/server/http/request-json";
 import {
   createQueueControlProgressStream,
   wantsQueueControlStream,
@@ -69,9 +69,6 @@ export async function POST(request: Request) {
       batchId,
     });
   } catch (error) {
-    if (error instanceof HttpRequestError) {
-      return fail(error.message, error.status, error.details);
-    }
-    return fail(error instanceof Error ? error.message : "Failed to resume paused runs", 500);
+    return failFromError(error, "Failed to resume paused runs");
   }
 }

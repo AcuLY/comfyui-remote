@@ -1,7 +1,7 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { createPresetFolder } from "@/lib/actions";
 import { getPresetFolders } from "@/lib/server-data";
-import { HttpRequestError, readJsonObject } from "@/server/http/request-json";
+import { readJsonObject } from "@/server/http/request-json";
 
 export async function GET(request: Request) {
   try {
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     });
     return ok(folders);
   } catch (e: unknown) {
-    return fail(e instanceof Error ? e.message : "Unknown error", 500);
+    return failFromError(e);
   }
 }
 
@@ -30,9 +30,6 @@ export async function POST(request: Request) {
     const result = await createPresetFolder(categoryId, parentId, name);
     return ok(result);
   } catch (e: unknown) {
-    if (e instanceof HttpRequestError) {
-      return fail(e.message, e.status, e.details);
-    }
-    return fail(e instanceof Error ? e.message : "Unknown error", 500);
+    return failFromError(e);
   }
 }

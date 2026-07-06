@@ -60,6 +60,7 @@ function getArea(path: string): string {
   if (path.startsWith("docs/plans/")) return "docs/plans";
   if (path.startsWith("docs/superpowers/")) return "docs/superpowers";
   if (path.startsWith("docs/analysis/")) return "docs/analysis";
+  if (path.startsWith("docs/api/")) return "docs/api";
   if (path.startsWith("docs/")) return "docs";
   if (path.startsWith("prisma/migrations-sqlite/")) return "prisma/migrations-sqlite";
   if (path.startsWith("prisma/migrations/")) return "prisma/migrations";
@@ -109,7 +110,13 @@ function getOwnerModule(path: string, area: string): string {
   if (path === "README.md" || path === "package.json" || path === "package-lock.json") return "root-project";
   if (path === "DESIGN.md" || path.includes("design") || path.includes("shadcn")) return "ui-design-system";
   if (path === "docs/index.md" || path === INVENTORY_PATH || area === "scripts/docs") return "documentation-system";
-  if (path === "docs/agent-api.md" || path === "docs/workflow.api.json" || area === "src/app/api/agent" || area === "src/server/mcp") return "agent-api";
+  if (
+    path === "docs/agent-api.md" ||
+    path === "docs/workflow.api.json" ||
+    area === "docs/api" ||
+    area === "src/app/api/agent" ||
+    area === "src/server/mcp"
+  ) return "agent-api";
   if (path.includes("training") || area.includes("training")) return "training";
   if (path.includes("queue") || path.includes("worker") || area.includes("queue-worker")) return "queue-worker";
   if (path.includes("comfy")) return "comfy-runtime";
@@ -169,7 +176,7 @@ function getFileType(path: string, area: string): string {
 function getDocClassification(path: string): string {
   if (path === "docs/index.md") return "current documentation index";
   if (path === INVENTORY_PATH) return "generated artifact";
-  if (path === "docs/agent-api.md" || path === "docs/workflow.api.json") return "API contract";
+  if (path === "docs/agent-api.md" || path === "docs/workflow.api.json" || path.startsWith("docs/api/")) return "API contract";
   if (path === "docs/local-verification.md" || path.includes("QUICK_REFERENCE") || path.includes("quick-reference")) return "runbook";
   if (path.includes("DESIGN") || path.includes("design") || path.includes("shadcn")) return "product/design reference";
   if (path.startsWith("docs/prototypes/")) return "prototype";

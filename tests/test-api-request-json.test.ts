@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { failFromError } from "../src/lib/api-response";
 import { HttpRequestError, readJsonObject, readOptionalJsonObject } from "../src/server/http/request-json";
 
 function makeRequest(body?: string) {
@@ -60,6 +61,19 @@ test("readJsonObject requires a valid JSON object body", async () => {
   );
 });
 
+test("failFromError preserves route parser status and details in the shared envelope", async () => {
+  const response = failFromError(new HttpRequestError("Invalid JSON body", 422, { source: "request" }));
+
+  assert.equal(response.status, 422);
+  assert.deepEqual(await response.json(), {
+    error: {
+      details: { source: "request" },
+      message: "Invalid JSON body",
+    },
+    ok: false,
+  });
+});
+
 test("resume-paused route uses the shared optional JSON parser", () => {
   const source = readFileSync("src/app/api/queue/resume-paused/route.ts", "utf8");
 
@@ -81,6 +95,23 @@ test("low-risk required-body routes use the shared JSON parser", () => {
     assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
     assert.match(source, /readJsonObject\(request\)/, `${routePath} should parse through readJsonObject`);
     assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+});
+
+test("route-handler template adopters use shared caught-error mapping", () => {
+  for (const routePath of [
+    "src/app/api/templates/route.ts",
+    "src/app/api/templates/[templateId]/route.ts",
+    "src/app/api/preset-library/folders/route.ts",
+    "src/app/api/preset-library/folders/[folderId]/move/route.ts",
+    "src/app/api/projects/[projectId]/save-as-template/route.ts",
+    "src/app/api/queue/resume-paused/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/lib\/api-response["']/, `${routePath} should import response helpers`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should use failFromError for caught errors`);
+    assert.doesNotMatch(source, /instanceof HttpRequestError/, `${routePath} should not map parser errors locally`);
   }
 });
 
