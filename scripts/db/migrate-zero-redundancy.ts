@@ -1443,6 +1443,7 @@ function legacyResolvedSectionConfig(
       seedPolicy1: section.seedPolicy1 ?? null,
       seedPolicy2: section.seedPolicy2 ?? null,
       upscaleFactor: section.upscaleFactor ?? null,
+      useTwoStageKSampler: section.useTwoStageKSampler ?? true,
       checkpointName: section.checkpointName ?? null,
     },
     ksampler1: section.ksampler1 ?? null,

@@ -108,7 +108,7 @@
 - [ ] Documentation areas: `docs/analysis`, `docs/plans`, `docs/prd`, `docs/prototypes`, `docs/superpowers`, top-level design and verification docs.
 - [ ] Operational areas: `agent-rules/`, `scripts/`, `config/`, `prisma/`, `public/`, legacy static demos under `design-demos/`.
 - [x] Baseline check: `better-sqlite3` ABI failure was not reproduced on Node v20.20.0 in this workspace after current dependency install.
-- [ ] Known baseline issue: `npm test` still has deterministic source-contract and `test-zero-redundancy-migration` assertion failures listed in the Phase 0 notes.
+- [x] Resolved baseline issue: `npm test` no longer has deterministic source-contract or `test-zero-redundancy-migration` assertion failures after Batch 3.
 - [x] Resolved baseline issue: `npm run lint` no longer reports the React hooks `set-state-in-effect` errors or unused training warnings after Batch 1.
 
 ## Phase 0: Baseline, Ownership Map, And Safety Rails
@@ -146,6 +146,7 @@
 - Final Batch 1 `npm test` result: 958 tests discovered, 946 pass, 11 fail, 1 skipped. Remaining failures were deterministic assertions, not ABI failures.
 - Batch 2 fixed the Next tracing source-contract test to validate the shared `runtimeTraceExcludes` owner, moved the Training project creation action into `PageHeader`, and verified `tests/test-runtime-data-path-source.test.ts` plus `tests/test-training-project-list-item.test.ts`.
 - Final Batch 2 `npm test` result: 958 tests discovered, 949 pass, 8 fail, 1 skipped. Remaining failures are all in `tests/test-zero-redundancy-migration.test.ts`, around resolver mismatch / migration planning and verification assertions.
+- Batch 3 fixed the zero-redundancy migration verifier by preserving the `useTwoStageKSampler` default in the legacy verification snapshot. Final `npm test` result: 958 tests discovered, 957 pass, 0 fail, 1 skipped.
 - Targeted verification passed: `tests/test-agent-preset-variant-flow-service.test.ts`, `tests/test-zero-redundancy-write-paths.test.ts`, `tests/test-preset-cascade-picker-overlay.test.ts`, `tests/test-training-api-routes.test.ts`, `tests/test-prisma-generate-scripts.test.ts`, and `src/app/design-demos/shell/app-shell.test.mjs`.
 
 ## Phase 1: Root Configuration And Tooling
@@ -1067,7 +1068,7 @@
 
 ## Recommended Batch Order
 
-- [ ] Batch 1: Baseline/tooling cleanup: fix `better-sqlite3` ABI, React hooks lint errors, unused warnings, and known migration assertions.
+- [x] Batch 1: Baseline/tooling cleanup: fix `better-sqlite3` ABI, React hooks lint errors, unused warnings, and known migration assertions.
 - [ ] Batch 2: Inventory and docs classification: add owner/status table and doc index without moving runtime code.
 - [ ] Batch 3: API response/request helper standardization: `api-response`, validation helpers, route template applied to low-risk routes.
 - [ ] Batch 4: Prisma/schema/test fixture governance: shared DB setup, provider matrix, schema compatibility checks.
