@@ -156,6 +156,8 @@
 - Batch 3 slice 2 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-queue-control-progress-stream.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 966 tests discovered, 965 pass, 0 fail, 1 skipped.
 - Batch 3 slice 3 migrated required-object parsing in `src/app/api/templates/[templateId]/route.ts` and `src/app/api/preset-library/folders/[folderId]/move/route.ts` to `readJsonObject`.
 - Batch 3 slice 3 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 966 tests discovered, 965 pass, 0 fail, 1 skipped.
+- Batch 4 slice 1 added `docs/prisma-provider-matrix.md` and linked it from `docs/index.md` so PostgreSQL, SQLite, and test-only DB commands have one current read-first source.
+- Batch 4 slice 1 verification passed: `node --import tsx --test tests/test-prisma-provider-matrix-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 969 tests discovered, 968 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -220,7 +222,7 @@
 - [ ] Move DB test setup helpers into a reusable test fixture module so DB tests do not each hand-roll `better-sqlite3` setup.
 - [ ] Keep `prisma/data/comfyui.db` classified as local runtime data; confirm whether it should be removed from tracking or explicitly retained as a fixture.
 - [ ] Update tests that inspect schema text to use helper functions rather than repeated ad hoc `fs.readFileSync` scans.
-- [ ] Add a provider matrix to docs: commands for PostgreSQL generate/migrate, SQLite generate/db push, and test-only in-memory/file DB.
+- [x] Add a provider matrix to docs: commands for PostgreSQL generate/migrate, SQLite generate/db push, and test-only in-memory/file DB.
 
 ## Phase 3: API Route Handler Thin Layer
 
@@ -1078,7 +1080,7 @@
 
 - [x] Batch 1: Baseline/tooling cleanup: fix `better-sqlite3` ABI, React hooks lint errors, unused warnings, and known migration assertions.
 - [x] Batch 2: Inventory and docs classification: add owner/status table and doc index without moving runtime code.
-- [ ] Batch 3: API response/request helper standardization: `api-response`, validation helpers, route template applied to low-risk routes.
+- [x] Batch 3: API response/request helper standardization: `api-response`, validation helpers, route template applied to low-risk routes.
 - [ ] Batch 4: Prisma/schema/test fixture governance: shared DB setup, provider matrix, schema compatibility checks.
 - [ ] Batch 5: Queue/run/Comfy boundary split: protect deploy-sensitive semantics before broad UI work.
 - [ ] Batch 6: Preset/project/template generation domain split: services, repositories, actions, and route handlers.

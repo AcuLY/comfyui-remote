@@ -8,6 +8,7 @@ This is the read-first map for agents working in this repository. Detailed file 
 | --- | --- | --- | --- | --- | --- |
 | architecture | `docs/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md` | current execution plan | documentation-system | module boundaries, dependency rules, or refactor scope change | `npm test` and inventory check |
 | local development | `docs/local-verification.md` | runbook | agent-workflow | local auth, dev service, or verification command changes | local command named in the runbook |
+| database/Prisma | `docs/prisma-provider-matrix.md`, `prisma.config.ts`, `prisma/schema.prisma`, `prisma/schema.sqlite.prisma` | runbook plus current schema source | data-model | Prisma provider, schema, migration, generated client, or DB bootstrap changes | Prisma generate and schema compatibility tests |
 | deployment | `AGENTS.md`, `agent-rules/deploy/index.md`, `agent-rules/git.md` | runbook | agent-workflow | deploy, queue, git, lock, build, or restart workflow changes | deploy-rule review and runtime status gate |
 | API contracts | `docs/agent-api.md`, `docs/workflow.api.json`, `src/server/mcp/server.ts` | API contract | agent-api | Agent API, MCP, workflow schema, or response envelope changes | route and MCP contract tests |
 | UI design | `DESIGN.md`, `docs/frontend-design-guide.md`, `docs/design-demos-frontend-parity.md` | product/design reference | ui-design-system | shared shell, page pattern, token, accessibility, or design-demo changes | UI/source-contract tests |
