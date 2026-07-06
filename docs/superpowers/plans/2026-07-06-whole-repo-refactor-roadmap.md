@@ -162,6 +162,8 @@
 - Batch 4 slice 2 verification passed: `node --import tsx --test tests/test-prisma-schema-compatibility-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 971 tests discovered, 970 pass, 0 fail, 1 skipped.
 - Batch 4 slice 3 clarified Prisma schema domain comments in both PostgreSQL and SQLite schemas without changing model fields, relations, indexes, or enums.
 - Batch 4 slice 3 verification passed: `node --import tsx --test tests/test-prisma-schema-domain-comments.test.ts tests/test-prisma-schema-compatibility-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, `npm run prisma:generate:all`, and `npm test` with 972 tests discovered, 971 pass, 0 fail, 1 skipped.
+- Batch 4 slice 4 added generated provider enum mapping documentation for PostgreSQL Prisma enums and the corresponding SQLite string fields/defaults.
+- Batch 4 slice 4 verification passed: `node --import tsx --test tests/test-prisma-schema-compatibility-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, `npm run prisma:generate:all`, and `npm test` with 973 tests discovered, 972 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -216,7 +218,7 @@
 
 - [x] Create a schema compatibility checklist for every model shared by `schema.prisma` and `schema.sqlite.prisma`.
 - [x] Group schema models by domain in comments: preset library, training, generation project/template, run/image/trash, censoring, assets, audit, locks.
-- [ ] Verify all enums exist where provider support allows; where SQLite differs, document the mapping.
+- [x] Verify all enums exist where provider support allows; where SQLite differs, document the mapping.
 - [ ] Ensure every relation model has documented uniqueness and parent scope: `SectionPresetBinding`, `TemplateSectionPresetBinding`, project/template preset bindings, linked variants, manual LoRA entries.
 - [ ] Audit legacy fields and compatibility fields: linked variant JSON, legacy prompt fields, deprecated seed policies, legacy character LoRA values.
 - [ ] Decide which legacy fields are read-only compatibility surfaces and which can be removed after migration.

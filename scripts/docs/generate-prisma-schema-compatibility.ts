@@ -5,10 +5,55 @@ const POSTGRES_SCHEMA = "prisma/schema.prisma";
 const SQLITE_SCHEMA = "prisma/schema.sqlite.prisma";
 const OUTPUT_PATH = "docs/prisma-schema-compatibility.md";
 
+type FieldReference = {
+  model: string;
+  field: string;
+  type: string;
+  attributes: string;
+};
+
 function modelNames(schemaPath: string): string[] {
   return [...readFileSync(schemaPath, "utf8").matchAll(/^model\s+(\w+)\s*\{/gm)]
     .map((match) => match[1])
     .sort((a, b) => a.localeCompare(b));
+}
+
+function enumDefinitions(schemaPath: string): Map<string, string[]> {
+  const source = readFileSync(schemaPath, "utf8");
+  const enums = new Map<string, string[]>();
+
+  for (const match of source.matchAll(/^enum\s+(\w+)\s*\{([\s\S]*?)^}/gm)) {
+    const values = match[2]
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("//"));
+    enums.set(match[1], values);
+  }
+
+  return enums;
+}
+
+function modelFields(schemaPath: string): FieldReference[] {
+  const source = readFileSync(schemaPath, "utf8");
+  const fields: FieldReference[] = [];
+
+  for (const modelMatch of source.matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^}/gm)) {
+    const model = modelMatch[1];
+    for (const line of modelMatch[2].split("\n")) {
+      const fieldMatch = line.trim().match(/^(\w+)\s+(\w+\??)\b(.*)$/);
+      if (!fieldMatch) {
+        continue;
+      }
+      fields.push({
+        model,
+        field: fieldMatch[1],
+        type: fieldMatch[2],
+        attributes: fieldMatch[3].trim(),
+      });
+    }
+  }
+
+  return fields;
 }
 
 function ownerDomain(model: string): string {
@@ -33,11 +78,50 @@ function row(model: string): string {
   ].join(" | ");
 }
 
+function enumMappingRow(
+  enumName: string,
+  values: string[],
+  postgresFields: FieldReference[],
+  sqliteFields: Map<string, FieldReference>,
+): string {
+  const postgresFieldNames = postgresFields.map((field) => `\`${field.model}.${field.field}\``).join(", ");
+  const sqliteFieldNames = postgresFields
+    .map((field) => {
+      const sqliteField = sqliteFields.get(`${field.model}.${field.field}`);
+      if (!sqliteField) {
+        return `\`${field.model}.${field.field}: missing\``;
+      }
+      const defaultMatch = sqliteField.attributes.match(/@default\(([^)]+)\)/);
+      const defaultText = defaultMatch ? ` @default(${defaultMatch[1]})` : "";
+      return `\`${field.model}.${field.field}: ${sqliteField.type}${defaultText}\``;
+    })
+    .join(", ");
+
+  return [
+    `\`${enumName}\``,
+    values.map((value) => `\`${value}\``).join(", "),
+    postgresFieldNames,
+    sqliteFieldNames,
+    "PostgreSQL uses Prisma enum columns; SQLite stores equivalent strings and must keep values/defaults synchronized.",
+  ].join(" | ");
+}
+
 const postgresModels = modelNames(POSTGRES_SCHEMA);
 const sqliteModels = modelNames(SQLITE_SCHEMA);
 const sharedModels = postgresModels.filter((model) => sqliteModels.includes(model));
 const postgresOnlyModels = postgresModels.filter((model) => !sqliteModels.includes(model));
 const sqliteOnlyModels = sqliteModels.filter((model) => !postgresModels.includes(model));
+const postgresEnums = enumDefinitions(POSTGRES_SCHEMA);
+const postgresFields = modelFields(POSTGRES_SCHEMA);
+const sqliteFields = new Map(modelFields(SQLITE_SCHEMA).map((field) => [`${field.model}.${field.field}`, field]));
+const enumRows = [...postgresEnums.entries()].map(([enumName, values]) =>
+  enumMappingRow(
+    enumName,
+    values,
+    postgresFields.filter((field) => field.type === enumName),
+    sqliteFields,
+  ),
+);
 
 const output = [
   "# Prisma Schema Compatibility Checklist",
@@ -49,6 +133,12 @@ const output = [
   "| model | owner domain | PostgreSQL schema | SQLite schema | compatibility status | action |",
   "| --- | --- | --- | --- | --- | --- |",
   ...sharedModels.map((model) => `| ${row(model)} |`),
+  "",
+  "## Provider Enum Mapping",
+  "",
+  "| enum | PostgreSQL values | PostgreSQL fields | SQLite fields | compatibility action |",
+  "| --- | --- | --- | --- | --- |",
+  ...enumRows.map((row) => `| ${row} |`),
   "",
   "## Provider-Only Models",
   "",
