@@ -185,6 +185,8 @@
 - Phase 3 slice 1 added `docs/api/route-handler-template.md` as the explicit route-handler template and linked it from `docs/index.md`.
 - Phase 3 slice 1 added `failFromError` to `src/lib/api-response.ts` and migrated the low-risk `request-json` adopters to shared caught-error mapping while preserving route-specific validation branches.
 - Phase 3 slice 1 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 980 tests discovered, 979 pass, 0 fail, 1 skipped.
+- Phase 3 slice 2 migrated `src/app/api/image-review/route.ts` to `readJsonObject` and `failFromError`, preserving the review API's shared error envelope and no-revalidation keep/trash behavior.
+- Phase 3 slice 2 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts`, `npm run lint`, and `npm test` with 981 tests discovered, 980 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 

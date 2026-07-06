@@ -89,6 +89,7 @@ test("low-risk required-body routes use the shared JSON parser", () => {
     "src/app/api/preset-library/folders/route.ts",
     "src/app/api/preset-library/folders/[folderId]/move/route.ts",
     "src/app/api/projects/[projectId]/save-as-template/route.ts",
+    "src/app/api/image-review/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -106,6 +107,7 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/preset-library/folders/[folderId]/move/route.ts",
     "src/app/api/projects/[projectId]/save-as-template/route.ts",
     "src/app/api/queue/resume-paused/route.ts",
+    "src/app/api/image-review/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -113,6 +115,19 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     assert.match(source, /\bfailFromError\(/, `${routePath} should use failFromError for caught errors`);
     assert.doesNotMatch(source, /instanceof HttpRequestError/, `${routePath} should not map parser errors locally`);
   }
+});
+
+test("image-review route maps invalid JSON through the shared error envelope", async () => {
+  const route = await import("../src/app/api/image-review/route");
+
+  const response = await route.POST(makeRequest("not-json"));
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), {
+    error: {
+      message: "Invalid JSON body",
+    },
+    ok: false,
+  });
 });
 
 test("resume-paused route maps invalid JSON to the shared error envelope", async () => {

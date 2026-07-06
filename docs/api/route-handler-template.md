@@ -41,3 +41,4 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/preset-library/folders/[folderId]/move/route.ts`
 - `src/app/api/projects/[projectId]/save-as-template/route.ts`
 - `src/app/api/queue/resume-paused/route.ts`
+- `src/app/api/image-review/route.ts`

@@ -1,6 +1,6 @@
-import { type NextRequest } from "next/server";
-import { ok, fail } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { keepImages, trashImages } from "@/lib/actions/image-review";
+import { readJsonObject } from "@/server/http/request-json";
 
 type ReviewAction = "keep" | "trash";
 
@@ -13,16 +13,15 @@ function normalizeAction(value: unknown): ReviewAction | null {
   return value === "keep" || value === "trash" ? value : null;
 }
 
-export async function POST(request: NextRequest) {
-  let body: unknown;
+export async function POST(request: Request) {
+  let payload: Record<string, unknown>;
 
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    payload = await readJsonObject(request);
+  } catch (error) {
+    return failFromError(error, "Review action failed");
   }
 
-  const payload = body && typeof body === "object" ? body as Record<string, unknown> : {};
   const action = normalizeAction(payload.action);
   const imageIds = normalizeImageIds(payload.imageIds);
 
@@ -43,9 +42,6 @@ export async function POST(request: NextRequest) {
     const result = await trashImages(imageIds, { revalidate: false });
     return ok({ action, count: result.count, imageIds: result.imageIds });
   } catch (error) {
-    return fail(
-      error instanceof Error ? error.message : "Review action failed",
-      500,
-    );
+    return failFromError(error, "Review action failed");
   }
 }
