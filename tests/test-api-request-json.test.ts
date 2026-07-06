@@ -184,6 +184,8 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/image-review/route.ts",
     "src/app/api/projects/[projectId]/run/route.ts",
     "src/app/api/projects/[projectId]/sections/[sectionId]/run/route.ts",
+    "src/app/api/projects/[projectId]/sections/[sectionId]/blocks/route.ts",
+    "src/app/api/projects/[projectId]/sections/[sectionId]/blocks/[blockId]/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -218,6 +220,8 @@ test("generation project mutations use shared raw JSON parsing", () => {
     "src/app/api/projects/[projectId]/sections/route.ts",
     "src/app/api/projects/[projectId]/sections/[sectionId]/route.ts",
     "src/app/api/projects/[projectId]/sections/reorder/route.ts",
+    "src/app/api/projects/[projectId]/sections/[sectionId]/blocks/route.ts",
+    "src/app/api/projects/[projectId]/sections/[sectionId]/blocks/[blockId]/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -253,6 +257,8 @@ test("generation project mutations preserve invalid JSON response envelope", asy
   const projectSectionsReorderRoute = await import("../src/app/api/projects/[projectId]/sections/reorder/route");
   const projectRunRoute = await import("../src/app/api/projects/[projectId]/run/route");
   const projectSectionRunRoute = await import("../src/app/api/projects/[projectId]/sections/[sectionId]/run/route");
+  const projectSectionBlocksRoute = await import("../src/app/api/projects/[projectId]/sections/[sectionId]/blocks/route");
+  const projectSectionBlockDetailRoute = await import("../src/app/api/projects/[projectId]/sections/[sectionId]/blocks/[blockId]/route");
 
   for (const response of [
     await projectsRoute.POST(makeRequest("not-json")),
@@ -279,6 +285,12 @@ test("generation project mutations preserve invalid JSON response envelope", asy
     }),
     await projectSectionRunRoute.POST(makeRequest("not-json"), {
       params: Promise.resolve({ projectId: "project-1", sectionId: "section-1" }),
+    }),
+    await projectSectionBlocksRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1", sectionId: "section-1" }),
+    }),
+    await projectSectionBlockDetailRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1", sectionId: "section-1", blockId: "block-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);
