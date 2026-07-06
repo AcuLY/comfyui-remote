@@ -55,6 +55,9 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/projects/[projectId]/sections/[sectionId]/run/route.ts`
 - `src/app/api/projects/[projectId]/sections/[sectionId]/blocks/route.ts`
 - `src/app/api/projects/[projectId]/sections/[sectionId]/blocks/[blockId]/route.ts`
+- `src/app/api/projects/[projectId]/sections/[sectionId]/import-preset/route.ts`
+- `src/app/api/projects/[projectId]/sections/[sectionId]/switch-variant/route.ts`
+- `src/app/api/projects/[projectId]/sections/[sectionId]/create-from-template/route.ts`
 
 ## Compatibility Exceptions
 

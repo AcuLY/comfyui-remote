@@ -1,5 +1,6 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { importPresetToSection, removeImportedPresetFromSection } from "@/lib/actions";
+import { readJsonBody } from "@/server/http/request-json";
 import { assertSectionBelongsToProject, mapPromptBlockError } from "@/server/services/prompt-block-service";
 
 type RouteContext = {
@@ -11,9 +12,9 @@ export async function POST(request: Request, context: RouteContext) {
 
   let body: Record<string, unknown> | null = null;
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request) as Record<string, unknown> | null;
+  } catch (error) {
+    return failFromError(error);
   }
 
   const presetId = body?.presetId;
@@ -46,9 +47,9 @@ export async function DELETE(request: Request, context: RouteContext) {
 
   let body: Record<string, unknown> | null = null;
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request) as Record<string, unknown> | null;
+  } catch (error) {
+    return failFromError(error);
   }
 
   const bindingId = body?.bindingId;
