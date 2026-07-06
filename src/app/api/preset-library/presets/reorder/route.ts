@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
-import { ok, fail } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { reorderPresets } from "@/lib/actions";
+import { readJsonBody } from "@/server/http/request-json";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request) as { categoryId?: unknown; ids?: unknown };
     const { categoryId, ids } = body;
     if (!categoryId || typeof categoryId !== "string") {
       return fail("categoryId is required", 400);
@@ -15,7 +16,6 @@ export async function POST(request: NextRequest) {
     await reorderPresets(categoryId, ids);
     return ok({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
+    return failFromError(error, "Unknown error", 400);
   }
 }

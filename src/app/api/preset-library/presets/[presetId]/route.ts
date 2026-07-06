@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
-import { ok, fail } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { updatePreset, deletePreset } from "@/lib/actions";
 import { getPresetById } from "@/server/services/preset-query-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ presetId: string }>;
@@ -16,8 +17,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     if (!preset) return fail("Preset not found", 404);
     return ok(preset);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 500);
+    return failFromError(error);
   }
 }
 
@@ -25,12 +25,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const { presetId } = await context.params;
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request);
     const result = await updatePreset(presetId, body);
     return ok(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
+    return failFromError(error, "Unknown error", 400);
   }
 }
 
@@ -41,7 +40,6 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     await deletePreset(presetId);
     return ok({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
+    return failFromError(error, "Unknown error", 400);
   }
 }

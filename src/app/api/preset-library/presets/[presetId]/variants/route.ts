@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { ok, fail } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { createPresetVariant, resolveVariantContent } from "@/lib/actions";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ presetId: string }>;
@@ -10,7 +11,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const { presetId } = await context.params;
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request) as {
+      action?: string;
+      presetId?: unknown;
+      variantId?: string;
+      [key: string]: unknown;
+    };
 
     if (body.action === "resolve") {
       const variantId = body.variantId ?? presetId;
@@ -28,7 +34,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     return fail('action must be "create" or "resolve"', 400);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
+    return failFromError(error, "Unknown error", 400);
   }
 }

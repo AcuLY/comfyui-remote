@@ -76,6 +76,12 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/preset-library/groups/[groupId]/route.ts`
 - `src/app/api/preset-library/groups/[groupId]/members/route.ts`
 - `src/app/api/preset-library/groups/[groupId]/members/reorder/route.ts`
+- `src/app/api/preset-library/presets/route.ts`
+- `src/app/api/preset-library/presets/reorder/route.ts`
+- `src/app/api/preset-library/presets/[presetId]/route.ts`
+- `src/app/api/preset-library/presets/[presetId]/variants/route.ts`
+- `src/app/api/preset-library/presets/[presetId]/variants/reorder/route.ts`
+- `src/app/api/preset-library/variants/[variantId]/route.ts`
 
 ## Compatibility Exceptions
 

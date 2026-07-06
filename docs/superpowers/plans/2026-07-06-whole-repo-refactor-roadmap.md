@@ -213,6 +213,8 @@
 - Phase 3 slice 14 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 998 tests discovered, 997 pass, 0 fail, 1 skipped.
 - Phase 3 slice 15 migrated preset-library folder rename/reorder and group create/update/member/reorder parsing in `src/app/api/preset-library/folders/**/route.ts` and `src/app/api/preset-library/groups/**/route.ts` to `readJsonBody`/`failFromError`, preserving route-level `categoryId` and `ids` validation branches.
 - Phase 3 slice 15 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 1000 tests discovered, 999 pass, 0 fail, 1 skipped.
+- Phase 3 slice 16 migrated preset-library preset create/update/reorder and variant create/update/reorder parsing in `src/app/api/preset-library/presets/**/route.ts` and `src/app/api/preset-library/variants/[variantId]/route.ts` to `readJsonBody`/`failFromError`, preserving route-level `categoryId`, `ids`, and variant `action` validation branches.
+- Phase 3 slice 16 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, `node --import tsx --test tests/test-auto-censor-runner.test.ts` after an initial non-reproducible timeout-harness failure, and `npm test` with 1002 tests discovered, 1001 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
