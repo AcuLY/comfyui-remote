@@ -70,6 +70,12 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/preset-library/categories/[categoryId]/slot-template/route.ts`
 - `src/app/api/preset-library/categories/[categoryId]/sort-orders/route.ts`
 - `src/app/api/preset-library/categories/[categoryId]/groups/reorder/route.ts`
+- `src/app/api/preset-library/folders/[folderId]/route.ts`
+- `src/app/api/preset-library/folders/reorder/route.ts`
+- `src/app/api/preset-library/groups/route.ts`
+- `src/app/api/preset-library/groups/[groupId]/route.ts`
+- `src/app/api/preset-library/groups/[groupId]/members/route.ts`
+- `src/app/api/preset-library/groups/[groupId]/members/reorder/route.ts`
 
 ## Compatibility Exceptions
 

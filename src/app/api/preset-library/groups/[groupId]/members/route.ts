@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
-import { ok, fail } from "@/lib/api-response";
+import { failFromError, ok } from "@/lib/api-response";
 import { addGroupMember } from "@/lib/actions";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ groupId: string }>;
@@ -10,12 +11,11 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const { groupId } = await context.params;
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request) as Record<string, unknown>;
     // Use URL param to ensure route integrity
     const result = await addGroupMember({ ...body, groupId });
     return ok(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
+    return failFromError(error, "Unknown error", 400);
   }
 }

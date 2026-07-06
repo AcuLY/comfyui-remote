@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
-import { ok, fail } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { updatePresetGroup, deletePresetGroup } from "@/lib/actions";
 import { getPresetGroup } from "@/lib/server-data";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ groupId: string }>;
@@ -15,8 +16,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
     if (!group) return fail("Group not found", 404);
     return ok(group);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 500);
+    return failFromError(error);
   }
 }
 
@@ -24,12 +24,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const { groupId } = await context.params;
 
   try {
-    const body = await request.json();
+    const body = await readJsonBody(request);
     const result = await updatePresetGroup(groupId, body);
     return ok(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
+    return failFromError(error, "Unknown error", 400);
   }
 }
 
@@ -40,7 +39,6 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     await deletePresetGroup(groupId);
     return ok({ success: true });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
+    return failFromError(error, "Unknown error", 400);
   }
 }

@@ -201,6 +201,12 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/preset-library/categories/[categoryId]/slot-template/route.ts",
     "src/app/api/preset-library/categories/[categoryId]/sort-orders/route.ts",
     "src/app/api/preset-library/categories/[categoryId]/groups/reorder/route.ts",
+    "src/app/api/preset-library/folders/[folderId]/route.ts",
+    "src/app/api/preset-library/folders/reorder/route.ts",
+    "src/app/api/preset-library/groups/route.ts",
+    "src/app/api/preset-library/groups/[groupId]/route.ts",
+    "src/app/api/preset-library/groups/[groupId]/members/route.ts",
+    "src/app/api/preset-library/groups/[groupId]/members/reorder/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -276,6 +282,24 @@ test("preset library category mutations use shared raw JSON parsing", () => {
     "src/app/api/preset-library/categories/[categoryId]/slot-template/route.ts",
     "src/app/api/preset-library/categories/[categoryId]/sort-orders/route.ts",
     "src/app/api/preset-library/categories/[categoryId]/groups/reorder/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+});
+
+test("preset library folder and group mutations use shared raw JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/preset-library/folders/[folderId]/route.ts",
+    "src/app/api/preset-library/folders/reorder/route.ts",
+    "src/app/api/preset-library/groups/route.ts",
+    "src/app/api/preset-library/groups/[groupId]/route.ts",
+    "src/app/api/preset-library/groups/[groupId]/members/route.ts",
+    "src/app/api/preset-library/groups/[groupId]/members/reorder/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -441,6 +465,40 @@ test("preset library category mutations preserve invalid JSON response envelope"
     }),
     await categoryGroupsReorderRoute.POST(makeRequest("not-json") as NextRequest, {
       params: Promise.resolve({ categoryId: "category-1" }),
+    }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("preset library folder and group mutations preserve invalid JSON response envelope", async () => {
+  const folderRoute = await import("../src/app/api/preset-library/folders/[folderId]/route");
+  const foldersReorderRoute = await import("../src/app/api/preset-library/folders/reorder/route");
+  const groupsRoute = await import("../src/app/api/preset-library/groups/route");
+  const groupRoute = await import("../src/app/api/preset-library/groups/[groupId]/route");
+  const groupMembersRoute = await import("../src/app/api/preset-library/groups/[groupId]/members/route");
+  const groupMembersReorderRoute = await import("../src/app/api/preset-library/groups/[groupId]/members/reorder/route");
+
+  for (const response of [
+    await folderRoute.PATCH(makeRequest("not-json") as NextRequest, {
+      params: Promise.resolve({ folderId: "folder-1" }),
+    }),
+    await foldersReorderRoute.POST(makeRequest("not-json") as NextRequest),
+    await groupsRoute.POST(makeRequest("not-json") as NextRequest),
+    await groupRoute.PATCH(makeRequest("not-json") as NextRequest, {
+      params: Promise.resolve({ groupId: "group-1" }),
+    }),
+    await groupMembersRoute.POST(makeRequest("not-json") as NextRequest, {
+      params: Promise.resolve({ groupId: "group-1" }),
+    }),
+    await groupMembersReorderRoute.POST(makeRequest("not-json") as NextRequest, {
+      params: Promise.resolve({ groupId: "group-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);
