@@ -51,6 +51,8 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/projects/[projectId]/sections/route.ts`
 - `src/app/api/projects/[projectId]/sections/[sectionId]/route.ts`
 - `src/app/api/projects/[projectId]/sections/reorder/route.ts`
+- `src/app/api/projects/[projectId]/run/route.ts`
+- `src/app/api/projects/[projectId]/sections/[sectionId]/run/route.ts`
 
 ## Compatibility Exceptions
 

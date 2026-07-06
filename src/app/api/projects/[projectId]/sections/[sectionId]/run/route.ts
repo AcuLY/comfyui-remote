@@ -1,4 +1,5 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
+import { readOptionalJsonObject } from "@/server/http/request-json";
 import { enqueueProjectSectionRun, mapProjectError } from "@/server/services/project-service";
 
 type RouteContext = {
@@ -10,12 +11,12 @@ export async function POST(request: Request, context: RouteContext) {
 
   let overrideBatchSize: number | undefined;
   try {
-    const body = await request.json().catch(() => null);
-    if (body && typeof body.batchSize === "number" && Number.isInteger(body.batchSize) && body.batchSize >= 1) {
+    const body = await readOptionalJsonObject(request);
+    if (typeof body.batchSize === "number" && Number.isInteger(body.batchSize) && body.batchSize >= 1) {
       overrideBatchSize = body.batchSize;
     }
-  } catch {
-    // no body is fine
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {

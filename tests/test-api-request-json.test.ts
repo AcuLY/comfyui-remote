@@ -182,12 +182,28 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/projects/[projectId]/save-as-template/route.ts",
     "src/app/api/queue/resume-paused/route.ts",
     "src/app/api/image-review/route.ts",
+    "src/app/api/projects/[projectId]/run/route.ts",
+    "src/app/api/projects/[projectId]/sections/[sectionId]/run/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
     assert.match(source, /from ["']@\/lib\/api-response["']/, `${routePath} should import response helpers`);
     assert.match(source, /\bfailFromError\(/, `${routePath} should use failFromError for caught errors`);
     assert.doesNotMatch(source, /instanceof HttpRequestError/, `${routePath} should not map parser errors locally`);
+  }
+});
+
+test("generation project run routes use shared optional JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/projects/[projectId]/run/route.ts",
+    "src/app/api/projects/[projectId]/sections/[sectionId]/run/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readOptionalJsonObject\(request\)/, `${routePath} should parse through readOptionalJsonObject`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
   }
 });
 
@@ -235,6 +251,8 @@ test("generation project mutations preserve invalid JSON response envelope", asy
   const projectSectionsRoute = await import("../src/app/api/projects/[projectId]/sections/route");
   const projectSectionDetailRoute = await import("../src/app/api/projects/[projectId]/sections/[sectionId]/route");
   const projectSectionsReorderRoute = await import("../src/app/api/projects/[projectId]/sections/reorder/route");
+  const projectRunRoute = await import("../src/app/api/projects/[projectId]/run/route");
+  const projectSectionRunRoute = await import("../src/app/api/projects/[projectId]/sections/[sectionId]/run/route");
 
   for (const response of [
     await projectsRoute.POST(makeRequest("not-json")),
@@ -255,6 +273,12 @@ test("generation project mutations preserve invalid JSON response envelope", asy
     }),
     await projectSectionsReorderRoute.POST(makeRequest("not-json"), {
       params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await projectRunRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await projectSectionRunRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1", sectionId: "section-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);

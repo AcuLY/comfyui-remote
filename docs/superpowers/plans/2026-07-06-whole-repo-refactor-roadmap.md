@@ -197,6 +197,8 @@
 - Phase 3 slice 6 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 988 tests discovered, 987 pass, 0 fail, 1 skipped.
 - Phase 3 slice 7 migrated generation section add, update, and reorder route parsing in `src/app/api/projects/[projectId]/sections/route.ts`, `src/app/api/projects/[projectId]/sections/[sectionId]/route.ts`, and `src/app/api/projects/[projectId]/sections/reorder/route.ts` to `readJsonBody`/`failFromError`.
 - Phase 3 slice 7 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 988 tests discovered, 987 pass, 0 fail, 1 skipped.
+- Phase 3 slice 8 migrated optional-body generation run trigger parsing in `src/app/api/projects/[projectId]/run/route.ts` and `src/app/api/projects/[projectId]/sections/[sectionId]/run/route.ts` to `readOptionalJsonObject`/`failFromError`, keeping `batchSize` optional while rejecting malformed JSON before service calls.
+- Phase 3 slice 8 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 989 tests discovered, 988 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
