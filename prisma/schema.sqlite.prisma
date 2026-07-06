@@ -10,7 +10,7 @@ datasource db {
 // Note: SQLite does not enforce enum values at the database level.
 // Prisma handles validation at the application layer.
 
-// ── Preset system ──
+// ── Preset library ──
 
 model PresetCategory {
   id                      String                         @id @default(cuid())
@@ -722,7 +722,7 @@ model TrainingTextRevision {
   @@index([sourceRunId])
 }
 
-// ── Project Templates ──
+// ── Generation project templates ──
 
 model ProjectTemplate {
   id                String                         @id @default(cuid())
@@ -875,7 +875,7 @@ model ProjectTemplateSectionFolder {
   @@index([projectTemplateId, parentId, sortOrder])
 }
 
-// ── Core models ──
+// ── Generation projects and sections ──
 
 model Project {
   id                    String                 @id @default(cuid())
@@ -1071,6 +1071,8 @@ model SectionChangeLog {
   @@index([projectSectionId, dimension, createdAt])
 }
 
+// ── Runs, Images, Trash, and Censoring ──
+
 model Run {
   id                     String         @id @default(cuid())
   projectId              String
@@ -1153,6 +1155,8 @@ model CensoringTask {
   @@index([status, createdAt])
 }
 
+// ── Assets ──
+
 model LoraAsset {
   id           String   @id @default(cuid())
   name         String
@@ -1169,6 +1173,8 @@ model LoraAsset {
   uploadedAt   DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
+
+// ── Audit and Locks ──
 
 model AuditLog {
   id         String   @id @default(cuid())

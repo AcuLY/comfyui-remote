@@ -160,6 +160,8 @@
 - Batch 4 slice 1 verification passed: `node --import tsx --test tests/test-prisma-provider-matrix-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 969 tests discovered, 968 pass, 0 fail, 1 skipped.
 - Batch 4 slice 2 added generated `docs/prisma-schema-compatibility.md` plus `scripts/docs/generate-prisma-schema-compatibility.ts`, covering all 54 models shared by the PostgreSQL and SQLite Prisma schemas.
 - Batch 4 slice 2 verification passed: `node --import tsx --test tests/test-prisma-schema-compatibility-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 971 tests discovered, 970 pass, 0 fail, 1 skipped.
+- Batch 4 slice 3 clarified Prisma schema domain comments in both PostgreSQL and SQLite schemas without changing model fields, relations, indexes, or enums.
+- Batch 4 slice 3 verification passed: `node --import tsx --test tests/test-prisma-schema-domain-comments.test.ts tests/test-prisma-schema-compatibility-doc.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, `npm run prisma:generate:all`, and `npm test` with 972 tests discovered, 971 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -213,7 +215,7 @@
 - `src/generated/prisma.ts`
 
 - [x] Create a schema compatibility checklist for every model shared by `schema.prisma` and `schema.sqlite.prisma`.
-- [ ] Group schema models by domain in comments: preset library, training, generation project/template, run/image/trash, censoring, assets, audit, locks.
+- [x] Group schema models by domain in comments: preset library, training, generation project/template, run/image/trash, censoring, assets, audit, locks.
 - [ ] Verify all enums exist where provider support allows; where SQLite differs, document the mapping.
 - [ ] Ensure every relation model has documented uniqueness and parent scope: `SectionPresetBinding`, `TemplateSectionPresetBinding`, project/template preset bindings, linked variants, manual LoRA entries.
 - [ ] Audit legacy fields and compatibility fields: linked variant JSON, legacy prompt fields, deprecated seed policies, legacy character LoRA values.
