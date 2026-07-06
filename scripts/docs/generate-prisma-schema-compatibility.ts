@@ -12,6 +12,28 @@ type FieldReference = {
   attributes: string;
 };
 
+const RELATION_SCOPE_MODELS = [
+  { model: "PresetVariantLink", parentScope: "sourceVariantId", role: "linked preset variant edge" },
+  { model: "ProjectPresetBinding", parentScope: "projectId", role: "project-level preset binding" },
+  {
+    model: "ProjectTemplatePresetBinding",
+    parentScope: "projectTemplateId",
+    role: "template-level preset binding",
+  },
+  { model: "SectionPresetBinding", parentScope: "projectSectionId", role: "section preset binding" },
+  {
+    model: "TemplateSectionPresetBinding",
+    parentScope: "projectTemplateSectionId",
+    role: "template-section preset binding",
+  },
+  { model: "SectionManualLoraEntry", parentScope: "projectSectionId", role: "section manual LoRA entry" },
+  {
+    model: "TemplateSectionManualLoraEntry",
+    parentScope: "projectTemplateSectionId",
+    role: "template-section manual LoRA entry",
+  },
+] as const;
+
 function modelNames(schemaPath: string): string[] {
   return [...readFileSync(schemaPath, "utf8").matchAll(/^model\s+(\w+)\s*\{/gm)]
     .map((match) => match[1])
@@ -54,6 +76,22 @@ function modelFields(schemaPath: string): FieldReference[] {
   }
 
   return fields;
+}
+
+function modelBlock(schemaPath: string, model: string): string {
+  const source = readFileSync(schemaPath, "utf8");
+  const match = source.match(new RegExp(`^model\\s+${model}\\s*\\{([\\s\\S]*?)^}`, "m"));
+  if (!match) {
+    throw new Error(`${schemaPath} missing model ${model}`);
+  }
+  return match[1];
+}
+
+function modelDirectives(schemaPath: string, model: string): string[] {
+  return modelBlock(schemaPath, model)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("@@unique") || line.startsWith("@@index"));
 }
 
 function ownerDomain(model: string): string {
@@ -106,6 +144,22 @@ function enumMappingRow(
   ].join(" | ");
 }
 
+function relationScopeRow(entry: (typeof RELATION_SCOPE_MODELS)[number]): string {
+  const postgresDirectives = modelDirectives(POSTGRES_SCHEMA, entry.model);
+  const sqliteDirectives = modelDirectives(SQLITE_SCHEMA, entry.model);
+  const formatDirectives = (directives: string[]) =>
+    directives.length === 0 ? "row id only" : directives.map((directive) => `\`${directive}\``).join(", ");
+
+  return [
+    `\`${entry.model}\``,
+    entry.role,
+    `\`${entry.parentScope}\``,
+    formatDirectives(postgresDirectives),
+    formatDirectives(sqliteDirectives),
+    "Keep parent-scoped uniqueness and lookup indexes synchronized across providers.",
+  ].join(" | ");
+}
+
 const postgresModels = modelNames(POSTGRES_SCHEMA);
 const sqliteModels = modelNames(SQLITE_SCHEMA);
 const sharedModels = postgresModels.filter((model) => sqliteModels.includes(model));
@@ -122,6 +176,7 @@ const enumRows = [...postgresEnums.entries()].map(([enumName, values]) =>
     sqliteFields,
   ),
 );
+const relationScopeRows = RELATION_SCOPE_MODELS.map((entry) => relationScopeRow(entry));
 
 const output = [
   "# Prisma Schema Compatibility Checklist",
@@ -139,6 +194,12 @@ const output = [
   "| enum | PostgreSQL values | PostgreSQL fields | SQLite fields | compatibility action |",
   "| --- | --- | --- | --- | --- |",
   ...enumRows.map((row) => `| ${row} |`),
+  "",
+  "## Relation Scope And Uniqueness",
+  "",
+  "| relation model | role | parent scope | PostgreSQL constraints | SQLite constraints | compatibility action |",
+  "| --- | --- | --- | --- | --- | --- |",
+  ...relationScopeRows.map((row) => `| ${row} |`),
   "",
   "## Provider-Only Models",
   "",

@@ -5,6 +5,15 @@ import test from "node:test";
 const POSTGRES_SCHEMA = "prisma/schema.prisma";
 const SQLITE_SCHEMA = "prisma/schema.sqlite.prisma";
 const COMPATIBILITY_DOC = "docs/prisma-schema-compatibility.md";
+const RELATION_SCOPE_MODELS = [
+  { model: "PresetVariantLink", parentScope: "sourceVariantId" },
+  { model: "ProjectPresetBinding", parentScope: "projectId" },
+  { model: "ProjectTemplatePresetBinding", parentScope: "projectTemplateId" },
+  { model: "SectionPresetBinding", parentScope: "projectSectionId" },
+  { model: "TemplateSectionPresetBinding", parentScope: "projectTemplateSectionId" },
+  { model: "SectionManualLoraEntry", parentScope: "projectSectionId" },
+  { model: "TemplateSectionManualLoraEntry", parentScope: "projectTemplateSectionId" },
+] as const;
 
 function modelNames(schemaPath: string) {
   return [...readFileSync(schemaPath, "utf8").matchAll(/^model\s+(\w+)\s*\{/gm)].map((match) => match[1]);
@@ -45,11 +54,26 @@ function enumFieldReferences(schemaPath: string, enumNames: Iterable<string>) {
   return references;
 }
 
+function modelBlock(schemaPath: string, model: string): string {
+  const source = readFileSync(schemaPath, "utf8");
+  const match = source.match(new RegExp(`^model\\s+${model}\\s*\\{([\\s\\S]*?)^}`, "m"));
+  assert.ok(match, `${schemaPath} missing model ${model}`);
+  return match[1];
+}
+
+function modelDirectives(schemaPath: string, model: string) {
+  return modelBlock(schemaPath, model)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("@@unique") || line.startsWith("@@index"));
+}
+
 function parseChecklistRows() {
   const doc = readFileSync(COMPATIBILITY_DOC, "utf8");
+  const sharedModelsSection = doc.split("## Shared Models")[1]?.split("\n## ")[0] ?? "";
   const rows = new Map<string, string[]>();
 
-  for (const line of doc.split("\n")) {
+  for (const line of sharedModelsSection.split("\n")) {
     if (!line.startsWith("| `")) {
       continue;
     }
@@ -123,6 +147,23 @@ test("Prisma schema compatibility checklist documents PostgreSQL enum to SQLite 
         new RegExp(`\`${fieldReference}: String`),
         `${fieldReference} must document its SQLite String storage mapping`,
       );
+    }
+  }
+});
+
+test("Prisma schema compatibility checklist documents relation parent scopes and uniqueness", () => {
+  const doc = readFileSync(COMPATIBILITY_DOC, "utf8");
+
+  assert.match(doc, /## Relation Scope And Uniqueness/);
+
+  for (const { model, parentScope } of RELATION_SCOPE_MODELS) {
+    assert.match(doc, new RegExp(`\\| \`${model}\` \\|`), `${model} missing from relation scope table`);
+    assert.match(doc, new RegExp(`\`${parentScope}\``), `${model} must document parent scope ${parentScope}`);
+
+    for (const schemaPath of [POSTGRES_SCHEMA, SQLITE_SCHEMA]) {
+      for (const directive of modelDirectives(schemaPath, model)) {
+        assert.match(doc, new RegExp(`\`${directive.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\``));
+      }
     }
   }
 });
