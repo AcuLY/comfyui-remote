@@ -82,6 +82,9 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/preset-library/presets/[presetId]/variants/route.ts`
 - `src/app/api/preset-library/presets/[presetId]/variants/reorder/route.ts`
 - `src/app/api/preset-library/variants/[variantId]/route.ts`
+- `src/app/api/runs/[runId]/review/keep/route.ts`
+- `src/app/api/runs/[runId]/review/trash/route.ts`
+- `src/app/api/images/[imageId]/cover/route.ts`
 
 ## Compatibility Exceptions
 

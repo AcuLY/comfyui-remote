@@ -213,6 +213,9 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/preset-library/presets/[presetId]/variants/route.ts",
     "src/app/api/preset-library/presets/[presetId]/variants/reorder/route.ts",
     "src/app/api/preset-library/variants/[variantId]/route.ts",
+    "src/app/api/runs/[runId]/review/keep/route.ts",
+    "src/app/api/runs/[runId]/review/trash/route.ts",
+    "src/app/api/images/[imageId]/cover/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -332,6 +335,26 @@ test("preset library preset and variant mutations use shared raw JSON parsing", 
     assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
     assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
   }
+});
+
+test("review and image mutations use shared JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/runs/[runId]/review/keep/route.ts",
+    "src/app/api/runs/[runId]/review/trash/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+
+  const coverRouteSource = readFileSync("src/app/api/images/[imageId]/cover/route.ts", "utf8");
+  assert.match(coverRouteSource, /from ["']@\/server\/http\/request-json["']/, "cover route should import request JSON helpers");
+  assert.match(coverRouteSource, /readOptionalJsonObject\(request\)/, "cover route should parse through readOptionalJsonObject");
+  assert.match(coverRouteSource, /\bfailFromError\(/, "cover route should map parser errors through failFromError");
+  assert.doesNotMatch(coverRouteSource, /request\.json\(\)/, "cover route should not parse JSON directly");
 });
 
 test("generation section batch delete route delegates destructive checks to project service", () => {
@@ -557,6 +580,32 @@ test("preset library preset and variant mutations preserve invalid JSON response
     }),
     await variantRoute.PATCH(makeRequest("not-json") as NextRequest, {
       params: Promise.resolve({ variantId: "variant-1" }),
+    }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("review and image mutations preserve invalid JSON response envelope", async () => {
+  const keepRoute = await import("../src/app/api/runs/[runId]/review/keep/route");
+  const trashRoute = await import("../src/app/api/runs/[runId]/review/trash/route");
+  const coverRoute = await import("../src/app/api/images/[imageId]/cover/route");
+
+  for (const response of [
+    await keepRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ runId: "run-1" }),
+    }),
+    await trashRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ runId: "run-1" }),
+    }),
+    await coverRoute.POST(makeRequest("not-json") as NextRequest, {
+      params: Promise.resolve({ imageId: "image-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);

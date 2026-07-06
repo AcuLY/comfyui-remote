@@ -1,8 +1,9 @@
 import { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
+import { readOptionalJsonObject } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ imageId: string }>;
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const { imageId } = await context.params;
 
   try {
-    const body = (await request.json().catch(() => ({}))) as { cover?: unknown };
+    const body = await readOptionalJsonObject(request) as { cover?: unknown };
 
     if (body.cover === false) {
       return fail("封面只能通过选择另一张图片覆盖", 400);
@@ -64,7 +65,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
       reviewStatus: keptImage.reviewStatus,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
+    return failFromError(error, "Unknown error", 400);
   }
 }
