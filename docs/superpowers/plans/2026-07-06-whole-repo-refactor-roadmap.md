@@ -265,6 +265,8 @@
 - Phase 3 slice 40 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, client change-history server-type import scan, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-work-mode-resource-boundary.test.ts`, and `npm test` with 1033 tests discovered, 1032 pass, 0 fail, 1 skipped.
 - Phase 3 slice 41 removed the unused `src/app/queue/[runId]/review-actions.ts` server action stub and added a source-contract guard so non-API app page containers keep `@/server` imports behind explicit API routes or action entrypoints.
 - Phase 3 slice 41 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, app server-import scans, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-work-mode-resource-boundary.test.ts`, and `npm test` with 1034 tests discovered, 1033 pass, 0 fail, 1 skipped.
+- Phase 3 slice 42 moved Training route data loading from `src/features/training/load-route-data.ts` into `src/server/services/training/route-data-service.ts`, exposed it through the app-local `src/app/training/server-data.ts` facade, and added a source-contract guard keeping `src/features`, `src/components`, and `src/hooks` free of direct `@/server` imports.
+- Phase 3 slice 42 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-training-api-boundary.test.ts tests/test-training-route-data-source.test.ts tests/test-training-route-data-loading.test.ts tests/test-work-mode-resource-boundary.test.ts`, feature/component/hook server-import scan, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-training-api-boundary.test.ts tests/test-training-route-data-source.test.ts tests/test-training-route-data-loading.test.ts tests/test-work-mode-resource-boundary.test.ts`, and `npm test` with 1035 tests discovered, 1034 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -825,7 +827,6 @@
 - `src/features/training/app.tsx`
 - `src/features/training/build.ts`
 - `src/features/training/data.ts`
-- `src/features/training/load-route-data.ts`
 - `src/features/training/routes.ts`
 - `src/features/training/runtime.ts`
 - `src/features/training/shell.tsx`

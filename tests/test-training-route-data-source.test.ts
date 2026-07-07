@@ -8,8 +8,11 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const trainingPageSource = readFileSync(resolve(testDir, "../src/app/training/[[...route]]/page.tsx"), "utf8");
 const trainingRouteDataPath = resolve(testDir, "../src/app/training/load-training-route-data.ts");
 const trainingRouteDataSource = existsSync(trainingRouteDataPath) ? readFileSync(trainingRouteDataPath, "utf8") : "";
-const trainingRouteLoaderPath = resolve(testDir, "../src/features/training/load-route-data.ts");
+const trainingRouteServerDataPath = resolve(testDir, "../src/app/training/server-data.ts");
+const trainingRouteServerDataSource = existsSync(trainingRouteServerDataPath) ? readFileSync(trainingRouteServerDataPath, "utf8") : "";
+const trainingRouteLoaderPath = resolve(testDir, "../src/server/services/training/route-data-service.ts");
 const trainingRouteLoaderSource = existsSync(trainingRouteLoaderPath) ? readFileSync(trainingRouteLoaderPath, "utf8") : "";
+const legacyTrainingRouteLoaderPath = resolve(testDir, "../src/features/training/load-route-data.ts");
 const trainingSnapshotServicePath = resolve(testDir, "../src/server/services/training/snapshot-service.ts");
 const trainingSnapshotServiceSource = existsSync(trainingSnapshotServicePath) ? readFileSync(trainingSnapshotServicePath, "utf8") : "";
 const trainingSnapshotRepositoryPath = resolve(testDir, "../src/server/repositories/training/snapshot.ts");
@@ -195,8 +198,18 @@ test("production training data model uses Training names instead of demo compati
 test("production training route loader delegates snapshot assembly to a dedicated training service", () => {
   assert.match(
     trainingRouteDataSource,
-    /export \{ loadTrainingRouteData \} from "@\/features\/training\/load-route-data";/,
-    "app-layer route loader should re-export the dedicated server-only training route loader",
+    /export \{ loadTrainingRouteData \} from "\.\/server-data";/,
+    "app-layer route loader should re-export the dedicated server-only training route loader through the app-local data facade",
+  );
+  assert.match(
+    trainingRouteServerDataSource,
+    /@\/server\/services\/training\/route-data-service/,
+    "app-local training server-data facade should own the server-only Training route-data import.",
+  );
+  assert.equal(
+    existsSync(legacyTrainingRouteLoaderPath),
+    false,
+    "feature-layer training route loader should not remain as a server-only import island",
   );
   assert.match(
     trainingRouteLoaderSource,

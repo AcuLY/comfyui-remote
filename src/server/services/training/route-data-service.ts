@@ -11,9 +11,9 @@ import {
   loadTrainingRunsRouteData,
   loadTrainingTemplatesRouteData,
 } from "@/server/services/training/snapshot-service";
-import { buildTrainingShellData } from "./data";
-import type { TrainingAppData, TrainingModelOption } from "./data";
-import { matchRoute } from "./routes";
+import { buildTrainingShellData } from "@/features/training/data";
+import type { TrainingAppData, TrainingModelOption } from "@/features/training/data";
+import { matchRoute } from "@/features/training/routes";
 
 function shouldReturnEmptyModelList(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);

@@ -1,1 +1,1 @@
-export { loadTrainingRouteData } from "@/features/training/load-route-data";
+export { loadTrainingRouteData } from "./server-data";

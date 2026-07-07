@@ -9,7 +9,7 @@ const repoRoot = resolve(testDir, "..");
 
 const nextConfigSource = readFileSync(resolve(repoRoot, "next.config.ts"), "utf8");
 const trainingPageSource = readFileSync(resolve(repoRoot, "src/app/training/[[...route]]/page.tsx"), "utf8");
-const trainingRouteLoaderSource = readFileSync(resolve(repoRoot, "src/features/training/load-route-data.ts"), "utf8");
+const trainingRouteLoaderSource = readFileSync(resolve(repoRoot, "src/server/services/training/route-data-service.ts"), "utf8");
 const trainingSnapshotServiceSource = readFileSync(resolve(repoRoot, "src/server/services/training/snapshot-service.ts"), "utf8");
 const trainingFeatureDataSource = readFileSync(resolve(repoRoot, "src/features/training/data.ts"), "utf8");
 const trainingHeaderSpecsSource = readFileSync(resolve(repoRoot, "src/features/training/header-specs.ts"), "utf8");

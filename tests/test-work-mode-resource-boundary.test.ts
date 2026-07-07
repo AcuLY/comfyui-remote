@@ -386,13 +386,23 @@ test("app page containers keep server imports behind API routes or action entryp
   const appPageFiles = sourceFilesFromRoots("src/app").filter((path) => {
     const relativePath = path.replace(`${repoRoot}/`, "");
     if (relativePath.startsWith("src/app/api/")) return false;
-    return !/\/actions(?:-[a-z]+)?\.ts$/.test(relativePath);
+    return !/\/(?:actions(?:-[a-z]+)?|server-data)\.ts$/.test(relativePath);
   });
 
   assert.deepEqual(
     findMatchingSources(appPageFiles, /from ["']@\/server|import\(["']@\/server/),
     [],
-    "App page containers should delegate server-only imports through API routes, services, or explicit action entrypoints.",
+    "App page containers should delegate server-only imports through API routes, services, explicit action entrypoints, or app-local server-data entrypoints.",
+  );
+});
+
+test("frontend feature, component, and hook layers do not import server-only modules", () => {
+  const frontendModuleFiles = sourceFilesFromRoots("src/components", "src/features", "src/hooks");
+
+  assert.deepEqual(
+    findMatchingSources(frontendModuleFiles, /from ["']@\/server|import\(["']@\/server/),
+    [],
+    "Frontend feature, component, and hook modules should receive server data through app/server facades instead of importing server-only modules.",
   );
 });
 
