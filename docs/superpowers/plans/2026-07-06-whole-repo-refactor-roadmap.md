@@ -371,6 +371,8 @@
 - Phase 7 slice 51 verification passed: `node --import tsx --test tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts` with 33 tests discovered, 33 pass, 0 fail.
 - Phase 7 slice 52 added `src/app/projects/project-loading-skeletons.tsx` as the shared project loading primitive module while keeping the four project route `loading.tsx` files colocated with their route segments. Project detail, project results, section edit, and section results loading states now compose shared action-bar, block, grid, and sidebar skeleton primitives.
 - Phase 7 slice 52 verification passed: red `node --import tsx --test tests/test-project-loading-skeletons.test.ts`, then green `node --import tsx --test tests/test-project-loading-skeletons.test.ts`, `node --import tsx --test tests/test-project-loading-skeletons.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1091 tests discovered, 1090 pass, 0 fail, 1 skipped.
+- Phase 7 slice 53 moved model/LoRA file-manager browse helpers into `src/app/assets/model-file-manager-shared.ts`. `model-file-manager.tsx` and the legacy `lora-file-manager.tsx` now share the browse item/result types, file-size formatter, and path-segment helper while keeping resource-specific API endpoints, metadata UI, and upload/move behavior in their own managers.
+- Phase 7 slice 53 verification passed: red `node --import tsx --test tests/test-asset-file-manager-shared.test.ts`, then green `node --import tsx --test tests/test-asset-file-manager-shared.test.ts`, `node --import tsx --test tests/test-asset-file-manager-shared.test.ts tests/test-lora-model-navigation.test.ts tests/test-model-civitai-info-panel.test.ts tests/test-model-search-filter.test.ts tests/text-editor-mobile-height.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1092 tests discovered, 1091 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -916,7 +918,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/app/assets/templates/[templateId]/sections/[sectionIndex]/section-detail-client.tsx`
 
 - [ ] Split asset pages by resource type: model files, LoRA files, preset library, preset groups, templates.
-- [ ] Keep file manager code shared between models and LoRAs where behavior is actually the same.
+- [x] Keep file manager code shared between models and LoRAs where behavior is actually the same.
 - [ ] Split `preset-form.tsx` into variant list, variant editor, save queue hook, bulk apply utilities, and action footer.
 - [ ] Keep "apply to all variants" behavior tested for copy loop and save queue separately.
 - [ ] Keep preset group slot ordering owned by category slot template logic.

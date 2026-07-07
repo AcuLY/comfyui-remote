@@ -16,41 +16,12 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type BrowseItem = {
-  name: string;
-  type: "directory" | "file";
-  path: string;
-  size?: number;
-  notes?: string;
-  triggerWords?: string;
-};
-
-type BrowseResult = {
-  currentPath: string;
-  parentPath: string | null;
-  items: BrowseItem[];
-};
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-}
-
-function pathSegments(p: string): string[] {
-  if (!p) return [];
-  return p.split("/").filter(Boolean);
-}
+import {
+  assetPathSegments,
+  formatAssetFileSize,
+  type AssetBrowseItem,
+  type AssetBrowseResult,
+} from "../model-file-manager-shared";
 
 // ---------------------------------------------------------------------------
 // Move Target Picker (bottom sheet to choose target directory)
@@ -66,7 +37,7 @@ function MoveTargetPicker({
   onCancel: () => void;
 }) {
   const [browsePath, setBrowsePath] = useState("");
-  const [items, setItems] = useState<BrowseItem[]>([]);
+  const [items, setItems] = useState<AssetBrowseItem[]>([]);
   const [parentPath, setParentPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -78,7 +49,7 @@ function MoveTargetPicker({
       if (dirPath) params.set("path", dirPath);
       const res = await fetch(`/api/loras/browse?${params.toString()}`);
       if (!res.ok) throw new Error();
-      const data: BrowseResult = (await res.json()).data;
+      const data: AssetBrowseResult = (await res.json()).data;
       setItems(data.items.filter((i) => i.type === "directory"));
       setParentPath(data.parentPath);
       setBrowsePath(data.currentPath);
@@ -101,7 +72,7 @@ function MoveTargetPicker({
     return () => document.removeEventListener("keydown", handleKey);
   }, [onCancel]);
 
-  const segments = pathSegments(browsePath);
+  const segments = assetPathSegments(browsePath);
 
   return (
     <div
@@ -207,7 +178,7 @@ function MoveTargetPicker({
 
 export function LoraFileManager() {
   const [currentPath, setCurrentPath] = useState("");
-  const [items, setItems] = useState<BrowseItem[]>([]);
+  const [items, setItems] = useState<AssetBrowseItem[]>([]);
   const [parentPath, setParentPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -240,7 +211,7 @@ export function LoraFileManager() {
         const body = await res.json().catch(() => null);
         throw new Error(body?.error?.message ?? `HTTP ${res.status}`);
       }
-      const data: BrowseResult = (await res.json()).data;
+      const data: AssetBrowseResult = (await res.json()).data;
       setItems(data.items);
       setParentPath(data.parentPath);
       setCurrentPath(data.currentPath);
@@ -331,7 +302,7 @@ export function LoraFileManager() {
     setMovingFile(null);
   }
 
-  function handleEditNotes(item: BrowseItem) {
+  function handleEditNotes(item: AssetBrowseItem) {
     if (editingNotesPath === item.path) {
       // Toggle off
       setEditingNotesPath(null);
@@ -374,7 +345,7 @@ export function LoraFileManager() {
     }
   }
 
-  const segments = pathSegments(currentPath);
+  const segments = assetPathSegments(currentPath);
   const fileCount = items.filter((i) => i.type === "file").length;
   const dirCount = items.filter((i) => i.type === "directory").length;
 
@@ -477,7 +448,7 @@ export function LoraFileManager() {
                     </div>
                     {item.size != null && (
                       <span className="shrink-0 text-[10px] text-zinc-600">
-                        {formatSize(item.size)}
+                        {formatAssetFileSize(item.size)}
                       </span>
                     )}
                     {/* Notes button */}

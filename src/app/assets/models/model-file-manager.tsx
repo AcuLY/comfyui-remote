@@ -24,41 +24,19 @@ import {
 import { toast } from "sonner";
 import type { ModelKind } from "@/lib/model-constants";
 import { modelSelectionDirectory } from "@/lib/model-asset-navigation";
+import {
+  assetPathSegments,
+  formatAssetFileSize,
+  type AssetBrowseItem,
+  type AssetBrowseResult,
+} from "../model-file-manager-shared";
 
-type BrowseItem = {
-  name: string;
-  type: "directory" | "file";
-  path: string;
-  size?: number;
-  notes?: string;
-  triggerWords?: string;
-  civitaiLink?: string;
-};
-
-type BrowseResult = {
-  currentPath: string;
-  parentPath: string | null;
-  items: BrowseItem[];
-};
-
-type RootEntry = BrowseItem & { pseudo?: "checkpoints" };
+type RootEntry = AssetBrowseItem & { pseudo?: "checkpoints" };
 
 const KIND_LABEL: Record<ModelKind, string> = {
   lora: "LoRA",
   checkpoint: "checkpoints",
 };
-
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
-}
-
-function pathSegments(p: string): string[] {
-  if (!p) return [];
-  return p.split("/").filter(Boolean);
-}
 
 function buildModelUrl(endpoint: string, kind: ModelKind, params?: URLSearchParams) {
   const query = params ?? new URLSearchParams();
@@ -84,7 +62,7 @@ function normalizeCivitaiLink(rawValue: string) {
   return parsed.toString();
 }
 
-function isFileItem(item: BrowseItem): item is BrowseItem & { type: "file" } {
+function isFileItem(item: AssetBrowseItem): item is AssetBrowseItem & { type: "file" } {
   return item.type === "file";
 }
 
@@ -93,7 +71,7 @@ function parentDirectory(filePath: string) {
   return index === -1 ? "根目录" : filePath.slice(0, index);
 }
 
-function matchesModelSearch(item: BrowseItem, query: string) {
+function matchesModelSearch(item: AssetBrowseItem, query: string) {
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery) return true;
 
@@ -122,7 +100,7 @@ function ModelInfoDetails({
   onMove,
   compact = false,
 }: {
-  item: BrowseItem & { type: "file" };
+  item: AssetBrowseItem & { type: "file" };
   kind: ModelKind;
   onEdit: () => void;
   onMove: () => void;
@@ -138,7 +116,7 @@ function ModelInfoDetails({
       </ModelInfoRow>
       <div className="grid grid-cols-2 gap-3">
         <ModelInfoRow label="类型">{KIND_LABEL[kind]}</ModelInfoRow>
-        <ModelInfoRow label="大小">{item.size != null ? formatSize(item.size) : "未知"}</ModelInfoRow>
+        <ModelInfoRow label="大小">{item.size != null ? formatAssetFileSize(item.size) : "未知"}</ModelInfoRow>
       </div>
       <ModelInfoRow label="所在目录">
         <span className="break-all text-zinc-400">{parentDirectory(item.path)}</span>
@@ -198,10 +176,10 @@ function ModelInfoPanel({
   onEdit,
   onMove,
 }: {
-  item: (BrowseItem & { type: "file" }) | null;
+  item: (AssetBrowseItem & { type: "file" }) | null;
   kind: ModelKind;
-  onEdit: (item: BrowseItem & { type: "file" }) => void;
-  onMove: (item: BrowseItem & { type: "file" }) => void;
+  onEdit: (item: AssetBrowseItem & { type: "file" }) => void;
+  onMove: (item: AssetBrowseItem & { type: "file" }) => void;
 }) {
   return (
     <aside className="hidden min-h-[26rem] flex-col rounded-xl border border-white/10 bg-white/[0.02] lg:flex">
@@ -235,7 +213,7 @@ function MoveTargetPicker({
   onCancel: () => void;
 }) {
   const [browsePath, setBrowsePath] = useState("");
-  const [items, setItems] = useState<BrowseItem[]>([]);
+  const [items, setItems] = useState<AssetBrowseItem[]>([]);
   const [parentPath, setParentPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const backdropRef = useRef<HTMLDivElement>(null);
@@ -247,7 +225,7 @@ function MoveTargetPicker({
       if (dirPath) params.set("path", dirPath);
       const res = await fetch(buildModelUrl("browse", kind, params));
       if (!res.ok) throw new Error();
-      const data: BrowseResult = (await res.json()).data;
+      const data: AssetBrowseResult = (await res.json()).data;
       setItems(data.items.filter((item) => item.type === "directory"));
       setParentPath(data.parentPath);
       setBrowsePath(data.currentPath);
@@ -270,7 +248,7 @@ function MoveTargetPicker({
     return () => document.removeEventListener("keydown", handleKey);
   }, [onCancel]);
 
-  const segments = pathSegments(browsePath);
+  const segments = assetPathSegments(browsePath);
 
   return (
     <div
@@ -365,12 +343,12 @@ export function ModelFileManager({
 }) {
   const [kind, setKind] = useState<ModelKind>(initialKind);
   const [currentPath, setCurrentPath] = useState("");
-  const [items, setItems] = useState<BrowseItem[]>([]);
+  const [items, setItems] = useState<AssetBrowseItem[]>([]);
   const [parentPath, setParentPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchItems, setSearchItems] = useState<BrowseItem[]>([]);
+  const [searchItems, setSearchItems] = useState<AssetBrowseItem[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [searchRefreshKey, setSearchRefreshKey] = useState(0);
@@ -405,9 +383,9 @@ export function ModelFileManager({
       if (!res.ok || !result?.ok) {
         throw new Error(result?.error?.message ?? `HTTP ${res.status}`);
       }
-      const data: BrowseResult = result.data;
+      const data: AssetBrowseResult = result.data;
       const preferredFile = preferredSelectedPath
-        ? data.items.find((item): item is BrowseItem & { type: "file" } => item.type === "file" && item.path === preferredSelectedPath)
+        ? data.items.find((item): item is AssetBrowseItem & { type: "file" } => item.type === "file" && item.path === preferredSelectedPath)
         : null;
       setKind(nextKind);
       setItems(data.items);
@@ -457,7 +435,7 @@ export function ModelFileManager({
           throw new Error(result?.error?.message ?? `HTTP ${res.status}`);
         }
 
-        const data: BrowseResult = result.data;
+        const data: AssetBrowseResult = result.data;
         const matchedItems = data.items
           .filter(isFileItem)
           .filter((item) => matchesModelSearch(item, normalizedSearchQuery));
@@ -493,7 +471,7 @@ export function ModelFileManager({
     fetchDir("lora", "");
   }
 
-  function handleOpenDirectory(item: BrowseItem | RootEntry) {
+  function handleOpenDirectory(item: AssetBrowseItem | RootEntry) {
     if ("pseudo" in item && item.pseudo === "checkpoints") {
       openCheckpointsRoot();
       return;
@@ -501,7 +479,7 @@ export function ModelFileManager({
     fetchDir(kind, item.path);
   }
 
-  function handleSelectFile(item: BrowseItem & { type: "file" }) {
+  function handleSelectFile(item: AssetBrowseItem & { type: "file" }) {
     setSelectedFilePath(item.path);
     setExpandedFilePath((current) => (current === item.path ? null : item.path));
   }
@@ -579,7 +557,7 @@ export function ModelFileManager({
     setMovingFile(null);
   }
 
-  function handleEditNotes(item: BrowseItem) {
+  function handleEditNotes(item: AssetBrowseItem) {
     if (editingNotesPath === item.path) {
       setEditingNotesPath(null);
       return;
@@ -617,7 +595,7 @@ export function ModelFileManager({
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.ok) {
-        const updateMetadata = (prev: BrowseItem[]) =>
+        const updateMetadata = (prev: AssetBrowseItem[]) =>
           prev.map((item) =>
             item.path === editingNotesPath
               ? {
@@ -645,7 +623,7 @@ export function ModelFileManager({
     }
   }
 
-  const segments = pathSegments(currentPath);
+  const segments = assetPathSegments(currentPath);
   const isSearchActive = normalizedSearchQuery.length > 0;
   const displayItems = isSearchActive ? searchItems : items;
   const displayLoading = isSearchActive ? searchLoading : loading;
@@ -654,7 +632,7 @@ export function ModelFileManager({
   const dirCount = displayItems.filter((item) => item.type === "directory").length;
   const showRootCheckpoint = kind === "lora" && currentPath === "" && !isSearchActive;
   const selectedFile = selectedFilePath
-    ? displayItems.find((item): item is BrowseItem & { type: "file" } => item.type === "file" && item.path === selectedFilePath) ?? null
+    ? displayItems.find((item): item is AssetBrowseItem & { type: "file" } => item.type === "file" && item.path === selectedFilePath) ?? null
     : null;
   const rootCheckpointEntry: RootEntry = {
     name: "checkpoints",
@@ -837,7 +815,7 @@ export function ModelFileManager({
                           </span>
                         )}
                       </div>
-                      {fileItem.size != null && <span className="hidden shrink-0 text-[10px] text-zinc-600 sm:inline">{formatSize(fileItem.size)}</span>}
+                      {fileItem.size != null && <span className="hidden shrink-0 text-[10px] text-zinc-600 sm:inline">{formatAssetFileSize(fileItem.size)}</span>}
                       <ChevronDown className={`size-3.5 shrink-0 text-zinc-600 transition md:hidden ${isExpanded ? "rotate-180" : ""}`} />
                     </button>
                     <button

@@ -35,8 +35,9 @@ test("model notes endpoint accepts and persists the Civitai link", () => {
 
 test("model file manager exposes desktop detail and mobile accordion model info", () => {
   const source = readSource("src/app/assets/models/model-file-manager.tsx");
+  const sharedSource = readSource("src/app/assets/model-file-manager-shared.ts");
 
-  assert.match(source, /civitaiLink\?:\s*string/, "browse item includes civitaiLink");
+  assert.match(sharedSource, /civitaiLink\?:\s*string/, "browse item includes civitaiLink");
   assert.match(source, /selectedFilePath/, "desktop model info panel tracks selected file");
   assert.match(source, /<aside[\s\S]*模型信息/, "desktop side panel renders model information");
   assert.match(source, /aria-expanded=\{expandedFilePath === (?:item|fileItem)\.path\}/, "mobile file cards expose accordion state");
