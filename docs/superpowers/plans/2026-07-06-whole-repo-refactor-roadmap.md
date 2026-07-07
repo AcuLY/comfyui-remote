@@ -397,6 +397,8 @@
 - Phase 7 slice 64 verification passed: red `node --import tsx --test tests/test-template-section-detail-split.test.ts`, then green `node --import tsx --test tests/test-template-section-detail-split.test.ts`, green `node --import tsx --test tests/test-template-section-detail-split.test.ts tests/test-template-ui-action-imports.test.ts tests/test-section-preset-detail-links.test.ts tests/test-shared-neighbor-navigation-usage.test.ts tests/text-editor-mobile-height.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1111 tests discovered, 1110 pass, 0 fail, 1 skipped.
 - Phase 7 slice 65 moved template section navigation rendering into `src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-navigation.tsx`. `section-detail-client.tsx` now stays below the broad-client review threshold as the route/state orchestration container, and the template section route has no change-history surface to extract.
 - Phase 7 slice 65 verification passed: red `node --import tsx --test tests/test-template-section-detail-split.test.ts`, then green `node --import tsx --test tests/test-template-section-detail-split.test.ts`, green `node --import tsx --test tests/test-template-section-detail-split.test.ts tests/test-template-ui-action-imports.test.ts tests/test-section-preset-detail-links.test.ts tests/test-shared-neighbor-navigation-usage.test.ts tests/text-editor-mobile-height.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1113 tests discovered, 1112 pass, 0 fail, 1 skipped.
+- Phase 7 slice 66 locked the preset sort-rules boundary with a source contract: `src/app/assets/presets/sort-rules/sort-rules-editor.tsx` owns its local dimension order state and `updateCategorySortOrders`, while `preset-form.tsx` and `[presetId]/preset-edit-client.tsx` stay limited to preset/variant editing state.
+- Phase 7 slice 66 verification passed: green `node --import tsx --test tests/test-preset-form-split.test.ts`, green `node --import tsx --test tests/test-preset-form-split.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1114 tests discovered, 1113 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -970,7 +972,7 @@ Loading states remain colocated under their route segments for now; the later lo
   - [x] Section form rendering extracted to `src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-form.tsx` and covered by `tests/test-template-section-detail-split.test.ts`.
   - [x] Navigation/header rendering extracted to `src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-navigation.tsx` and covered by `tests/test-template-section-detail-split.test.ts`.
   - [x] `section-detail-client.tsx` is now the route/state orchestration container; no template section change-history surface is present to extract.
-- [ ] Keep sort rules editor isolated from preset edit form state.
+- [x] Keep sort rules editor isolated from preset edit form state.
 
 **Queue and settings pages:**
 - `src/app/queue/page.tsx`
