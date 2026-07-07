@@ -21,9 +21,11 @@ test("worker boundary doc records generation payload and repository ownership", 
   assert.match(doc, /src\/server\/worker\/repository\.ts[\s\S]*owns generation run persistence/);
   assert.match(doc, /src\/server\/worker\/fallback-prompt-builder\.ts[\s\S]*last resort only/);
   assert.match(doc, /src\/server\/worker\/training\/task-id\.ts[\s\S]*owns training worker task ID parsing/);
+  assert.match(doc, /src\/server\/worker\/training\/target-discovery\.ts[\s\S]*owns training worker target discovery/);
   assert.match(doc, /docs\/workflow\.api\.json[\s\S]*default standard workflow/);
   assert.match(doc, /Do not let repositories import payload builders/);
   assert.match(doc, /Do not reintroduce worker task ID prefix parsing into task-api/);
+  assert.match(doc, /Do not reintroduce target discovery queries into task-api/);
   assert.match(doc, /Do not call the fallback prompt builder from run-executor/);
   assert.match(docsIndex, /docs\/worker-boundaries\.md/, "documentation index should point agents to worker boundaries");
 });
@@ -116,4 +118,60 @@ test("training worker task id parsing lives in a dedicated boundary", async () =
   assert.equal(mod.parseWorkerTaskId("unknown-run-1"), null);
   assert.equal(mod.workerTypeForTargetType("trainingRun"), "training");
   assert.equal(mod.workerTypeForTargetType("unsupported"), null);
+});
+
+test("training worker target discovery lives in a dedicated boundary", async () => {
+  const targetDiscoveryPath = "src/server/worker/training/target-discovery.ts";
+  assert.ok(existsSync(join(repoRoot, targetDiscoveryPath)), `${targetDiscoveryPath} should own worker target discovery`);
+
+  const taskApi = readSource("src/server/worker/training/task-api.ts");
+  const targetDiscoverySource = readSource(targetDiscoveryPath);
+  assert.match(taskApi, /from "@\/server\/worker\/training\/target-discovery"/);
+  assert.doesNotMatch(taskApi, /function mapGenerationTaskToTarget/);
+  assert.doesNotMatch(taskApi, /async function countWorkerTargets/);
+  assert.doesNotMatch(taskApi, /async function findQueuedWorkerTarget/);
+  assert.doesNotMatch(taskApi, /async function findWorkerTargetByTaskId/);
+  assert.match(targetDiscoverySource, /export function mapGenerationTaskToTarget/);
+  assert.match(targetDiscoverySource, /export async function countWorkerTargets/);
+  assert.match(targetDiscoverySource, /export async function findRunningWorkerTarget/);
+  assert.match(targetDiscoverySource, /export async function findQueuedWorkerTarget/);
+  assert.match(targetDiscoverySource, /export async function findWorkerTargetByTaskId/);
+
+  const targetDiscoveryUrl = new URL(pathToFileURL(join(repoRoot, targetDiscoveryPath)));
+  targetDiscoveryUrl.searchParams.set("testImport", String(Date.now()));
+  const mod = await import(targetDiscoveryUrl.href);
+
+  assert.deepEqual(mod.mapGenerationTaskToTarget({
+    id: "gen-1",
+    status: "queued",
+    trainingProjectId: "project-1",
+  }), {
+    id: "gen-1",
+    projectId: "project-1",
+    status: "queued",
+    targetType: "generationRun",
+    workerType: "image_generation",
+  });
+  assert.deepEqual(mod.mapDatasetRevisionToTarget({
+    id: "revision-1",
+    status: "draft",
+    trainingProjectId: "project-1",
+  }), {
+    id: "revision-1",
+    projectId: "project-1",
+    status: "draft",
+    targetType: "datasetRevision",
+    workerType: "dataset_freeze",
+  });
+  assert.deepEqual(mod.mapTrainingRunToTarget({
+    id: "run-1",
+    status: "running",
+    trainingProjectId: "project-1",
+  }), {
+    id: "run-1",
+    projectId: "project-1",
+    status: "running",
+    targetType: "trainingRun",
+    workerType: "training",
+  });
 });

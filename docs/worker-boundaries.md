@@ -30,9 +30,11 @@ Do not call the fallback prompt builder from run-executor, repositories, route h
 
 `src/server/worker/training/task-id.ts` owns training worker task ID parsing. It maps the generation, dataset freeze, and training run task prefixes to target IDs, target types, and worker types, and it builds the serialized worker task IDs returned by `src/server/worker/training/task-api.ts`.
 
+`src/server/worker/training/target-discovery.ts` owns training worker target discovery. It maps database rows into `WorkerTarget` values, counts queued/running work by worker type, finds queued or running targets, and resolves a serialized worker task ID back to its backing generation task, dataset revision, or training run.
+
 `src/server/worker/training/task-api.ts` remains the compatibility boundary for existing route handlers while the larger split continues. It may compose target discovery, leasing, heartbeat, completion, failure, and scheduler helpers, but it should not own pure task ID prefix parsing.
 
-Do not reintroduce worker task ID prefix parsing into task-api, route handlers, or CLI worker scripts. New worker task kinds should first extend the task ID boundary, then add route/service tests for lease, heartbeat, complete, and fail behavior.
+Do not reintroduce worker task ID prefix parsing into task-api, route handlers, or CLI worker scripts. Do not reintroduce target discovery queries into task-api; leasing may call discovery helpers, but discovery should stay isolated from state transitions. New worker task kinds should first extend the task ID and discovery boundaries, then add route/service tests for lease, heartbeat, complete, and fail behavior.
 
 ## Verification
 
