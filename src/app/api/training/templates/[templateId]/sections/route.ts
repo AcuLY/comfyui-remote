@@ -1,9 +1,10 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   createTrainingTemplateSection,
   getTrainingTemplate,
   mapTrainingTemplateError,
 } from "@/server/services/training/template-service";
+import { readOptionalJsonObject } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -25,11 +26,12 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ templateId: string }> },
 ) {
-  let body: unknown;
+  let body: Record<string, unknown>;
+
   try {
-    body = await request.json();
-  } catch {
-    body = {};
+    body = await readOptionalJsonObject(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {

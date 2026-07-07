@@ -249,6 +249,16 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/training/image-results/[imageResultId]/review/route.ts",
     "src/app/api/training/image-results/[imageResultId]/caption/route.ts",
     "src/app/api/training/generation-outputs/[outputId]/apply/route.ts",
+    "src/app/api/training/templates/route.ts",
+    "src/app/api/training/templates/reorder/route.ts",
+    "src/app/api/training/templates/[templateId]/route.ts",
+    "src/app/api/training/templates/[templateId]/projects/route.ts",
+    "src/app/api/training/templates/[templateId]/sections/route.ts",
+    "src/app/api/training/templates/[templateId]/sections/[sectionId]/route.ts",
+    "src/app/api/training/templates/[templateId]/sections/reorder/route.ts",
+    "src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/route.ts",
+    "src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/reorder/route.ts",
+    "src/app/api/training/templates/[templateId]/blocks/[blockId]/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -516,6 +526,33 @@ test("training image asset mutations use shared JSON parsing", () => {
   assert.match(addToResultsSource, /\bfailFromError\(/, "add-to-results route should map parser errors through failFromError");
   assert.doesNotMatch(addToResultsSource, /request\.json\(\)/, "add-to-results route should not parse JSON directly");
   assert.doesNotMatch(addToResultsSource, /JSON\.parse\(/, "add-to-results route should not parse request text locally");
+});
+
+test("training template mutations use shared JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/training/templates/route.ts",
+    "src/app/api/training/templates/reorder/route.ts",
+    "src/app/api/training/templates/[templateId]/route.ts",
+    "src/app/api/training/templates/[templateId]/projects/route.ts",
+    "src/app/api/training/templates/[templateId]/sections/[sectionId]/route.ts",
+    "src/app/api/training/templates/[templateId]/sections/reorder/route.ts",
+    "src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/route.ts",
+    "src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/reorder/route.ts",
+    "src/app/api/training/templates/[templateId]/blocks/[blockId]/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+
+  const templateSectionsSource = readFileSync("src/app/api/training/templates/[templateId]/sections/route.ts", "utf8");
+  assert.match(templateSectionsSource, /from ["']@\/server\/http\/request-json["']/, "template sections route should import request JSON helpers");
+  assert.match(templateSectionsSource, /readOptionalJsonObject\(request\)/, "template sections route should parse through readOptionalJsonObject");
+  assert.match(templateSectionsSource, /\bfailFromError\(/, "template sections route should map parser errors through failFromError");
+  assert.doesNotMatch(templateSectionsSource, /await request\.json\(\)/, "template sections route should not parse JSON directly");
 });
 
 test("generation section batch delete route delegates destructive checks to project service", () => {
@@ -969,6 +1006,56 @@ test("training image asset mutations preserve invalid JSON response envelope", a
     }),
     await applyGenerationOutputRoute.POST(makeRequest("not-json"), {
       params: Promise.resolve({ outputId: "output-1" }),
+    }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("training template mutations preserve invalid JSON response envelope", async () => {
+  const templatesRoute = await import("../src/app/api/training/templates/route");
+  const templatesReorderRoute = await import("../src/app/api/training/templates/reorder/route");
+  const templateRoute = await import("../src/app/api/training/templates/[templateId]/route");
+  const templateProjectsRoute = await import("../src/app/api/training/templates/[templateId]/projects/route");
+  const templateSectionsRoute = await import("../src/app/api/training/templates/[templateId]/sections/route");
+  const templateSectionRoute = await import("../src/app/api/training/templates/[templateId]/sections/[sectionId]/route");
+  const templateSectionsReorderRoute = await import("../src/app/api/training/templates/[templateId]/sections/reorder/route");
+  const templateSectionBlocksRoute = await import("../src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/route");
+  const templateSectionBlocksReorderRoute = await import("../src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/reorder/route");
+  const templateBlockRoute = await import("../src/app/api/training/templates/[templateId]/blocks/[blockId]/route");
+
+  for (const response of [
+    await templatesRoute.POST(makeRequest("not-json")),
+    await templatesReorderRoute.POST(makeRequest("not-json")),
+    await templateRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ templateId: "template-1" }),
+    }),
+    await templateProjectsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ templateId: "template-1" }),
+    }),
+    await templateSectionsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ templateId: "template-1" }),
+    }),
+    await templateSectionRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ sectionId: "section-1", templateId: "template-1" }),
+    }),
+    await templateSectionsReorderRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ templateId: "template-1" }),
+    }),
+    await templateSectionBlocksRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ sectionId: "section-1", templateId: "template-1" }),
+    }),
+    await templateSectionBlocksReorderRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ sectionId: "section-1", templateId: "template-1" }),
+    }),
+    await templateBlockRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ blockId: "block-1", templateId: "template-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);

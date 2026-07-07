@@ -118,6 +118,16 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/training/image-results/[imageResultId]/review/route.ts`
 - `src/app/api/training/image-results/[imageResultId]/caption/route.ts`
 - `src/app/api/training/generation-outputs/[outputId]/apply/route.ts`
+- `src/app/api/training/templates/route.ts`
+- `src/app/api/training/templates/reorder/route.ts`
+- `src/app/api/training/templates/[templateId]/route.ts`
+- `src/app/api/training/templates/[templateId]/projects/route.ts`
+- `src/app/api/training/templates/[templateId]/sections/route.ts`
+- `src/app/api/training/templates/[templateId]/sections/[sectionId]/route.ts`
+- `src/app/api/training/templates/[templateId]/sections/reorder/route.ts`
+- `src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/route.ts`
+- `src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/reorder/route.ts`
+- `src/app/api/training/templates/[templateId]/blocks/[blockId]/route.ts`
 
 ## Compatibility Exceptions
 
