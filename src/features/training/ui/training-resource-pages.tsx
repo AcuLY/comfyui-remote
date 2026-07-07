@@ -1,11 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, CheckSquare, CopyPlus, Edit3, GripVertical, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, CheckSquare, CopyPlus, Edit3, Plus, Save, Trash2 } from "lucide-react";
 
-import { useRouteHref } from "@/components/design-demo-routing";
 import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import { useDemoFeedback } from "@/components/design-demo-ui/feedback/context";
 import { OperationStateStrip } from "@/components/design-demo-ui/feedback/operation-state-strip";
@@ -16,7 +14,7 @@ import { FloatingSelect } from "@/components/design-demo-ui/primitives/floating-
 import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
 import { Panel } from "@/components/design-demo-ui/primitives/panel";
 import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
-import { SortableList, useDemoSortable } from "@/components/design-demo-ui/primitives/sortable";
+import { SortableList } from "@/components/design-demo-ui/primitives/sortable";
 import { EditorBlock, FolderBreadcrumb, FolderRow, SelectionBatchBar, UnitRowShell, WorkbenchSurface } from "@/components/design-demo-ui/patterns";
 import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData } from "@/features/training/data";
@@ -35,6 +33,7 @@ import {
 import { TrainingPresetCategoryRailItem, TrainingPresetLibraryItemRow, presetStatus } from "./training-preset-library-primitives";
 import { TrainingPresetSortPanel, orderTrainingPresetSortItems, type TrainingPresetSortItem } from "./training-preset-sort-panel";
 import { TrainingTemplateListItem, readAndClearTrainingTemplateListAnchor } from "./training-template-list-primitives";
+import { TemplateEditorSectionRow, type LoraTrainingTemplateSection } from "./training-template-section-row";
 import { useResourceUrlSearch } from "./use-resource-url-search";
 import s from "./training-resource-pages.module.css";
 
@@ -938,58 +937,6 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: TrainingAppDat
           </dl>
         </EditorBlock>
       ) : null}
-    </div>
-  );
-}
-
-type LoraTrainingTemplateSection = LoraTrainingTemplate["sections"][number];
-
-function TemplateEditorSectionRow({
-  index,
-  onCopy,
-  onDelete,
-  section,
-  templateId,
-}: {
-  index: number;
-  onCopy?: (section: LoraTrainingTemplateSection) => void;
-  onDelete?: (sectionId: string) => void;
-  section: LoraTrainingTemplateSection;
-  templateId?: string;
-}) {
-  const hrefForRoute = useRouteHref();
-  const href = templateId ? `/training/templates/${templateId}/sections/${index}` : "/training/templates/new";
-  const { ref, style, handleProps } = useDemoSortable(section.id);
-
-  return (
-    <div ref={ref} style={style}>
-      <article className={s.trainingTemplateSectionRow}>
-        <button
-          type="button"
-          className={s.trainingTemplateSectionHandle}
-          aria-label={`拖拽排序模板小节：${section.title}`}
-          {...handleProps}
-        >
-          <GripVertical aria-hidden="true" />
-        </button>
-        <Link className={s.trainingTemplateSectionMain} href={hrefForRoute(href)}>
-          <span className={s.trainingTemplateSectionTitleLine}>
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <strong>{section.title}</strong>
-          </span>
-          <p>{section.scenePreview}</p>
-          <div className={s.trainingTemplateSectionMeta}>
-            <span>{section.blockCount} 个场景块</span>
-            <span>{section.enabled ? "启用" : "停用"}</span>
-            <span>创建后独立</span>
-          </div>
-        </Link>
-        <div className={s.trainingTemplateSectionActions}>
-          <ButtonLink href={href} icon={Edit3} ariaLabel={`编辑训练模板小节：${section.title}`}>编辑</ButtonLink>
-          <Button tone="subtle" icon={CopyPlus} ariaLabel={`复制训练模板小节：${section.title}`} onClick={() => onCopy?.(section)} feedback={{ title: "训练模板小节已复制", detail: section.title }}>复制</Button>
-          <Button tone="danger" icon={Trash2} ariaLabel={`删除训练模板小节：${section.title}`} onClick={() => onDelete?.(section.id)} feedback={{ tone: "warning", title: "训练模板小节已从草稿移除", detail: section.title }}>删除</Button>
-        </div>
-      </article>
     </div>
   );
 }
