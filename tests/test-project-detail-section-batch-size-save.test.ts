@@ -98,3 +98,12 @@ test("project detail batch create client imports section actions from focused mo
   assert.match(batchCreateClient, /from "@\/lib\/actions\/section";/);
   assert.doesNotMatch(batchCreateClient, /from "@\/lib\/actions";/);
 });
+
+test("project section edit page imports server action contracts from focused modules", () => {
+  const sectionEditPage = readSource("src/app/projects/[projectId]/sections/[sectionId]/page.tsx");
+
+  assert.match(sectionEditPage, /from "@\/lib\/actions\/prompt-block";/);
+  assert.match(sectionEditPage, /import\("@\/lib\/actions\/section"\)/);
+  assert.doesNotMatch(sectionEditPage, /from "@\/lib\/actions";/);
+  assert.doesNotMatch(sectionEditPage, /import\("@\/lib\/actions"\)/);
+});

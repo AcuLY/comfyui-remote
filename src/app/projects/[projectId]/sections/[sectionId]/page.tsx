@@ -10,7 +10,7 @@ import { SectionEditor } from "@/components/section-editor";
 import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
 import { SectionRunButton } from "@/app/projects/[projectId]/project-detail-actions";
-import type { PromptBlockData } from "@/lib/actions";
+import type { PromptBlockData } from "@/lib/actions/prompt-block";
 import { getProjectSectionEditPageData } from "@/lib/server-data";
 import type { SectionLoraConfig } from "@/lib/lora-types";
 import { SectionChangeHistory } from "./section-change-history";
@@ -311,7 +311,7 @@ export default async function SectionEditPage({
                 onLoraChange={handleLoraChange}
                 onRename={async (name: string) => {
                   "use server";
-                  const { renameSection } = await import("@/lib/actions");
+                  const { renameSection } = await import("@/lib/actions/section");
                   await renameSection(sectionId, name);
                 }}
               />
