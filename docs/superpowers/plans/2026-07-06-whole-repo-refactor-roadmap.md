@@ -560,6 +560,8 @@
 - Phase 11 slice 145 verification passed: red `node --import tsx --test --test-name-pattern "training launcher worker keeps runtime behavior" tests/test-training-worker-entrypoints.test.ts`, green `node --import tsx --test --test-name-pattern "training launcher worker keeps runtime behavior|training worker dry-run mock-complete uses Training task lifecycle routes|training worker reports local_wsl_sd_scripts readiness errors when runner config is missing|training worker local_wsl_sd_scripts adapter completes a configured real runner" tests/test-training-worker-entrypoints.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-worker-entrypoints.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1198 tests discovered, 1197 pass, 0 fail, 1 skipped.
 - Phase 11 slice 146 extracted `scripts/training/image-worker-runtime.ts` from `scripts/training/image-worker.ts` so the image worker CLI stays a thin entrypoint while provider selection, Codex bridge checks, Prisma generation task reads, prompt/input resolution, runner execution, image metadata shaping, and mock-local output live in an importable runtime module.
 - Phase 11 slice 146 verification passed: red `node --import tsx --test --test-name-pattern "training image worker keeps provider runtime behavior" tests/test-training-worker-entrypoints.test.ts`, green `node --import tsx --test --test-name-pattern "training image worker keeps provider runtime behavior|training worker entrypoint help commands run under tsx without legacy labels|training worker supervisor launches Training-named worker scripts" tests/test-training-worker-entrypoints.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-worker-entrypoints.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1199 tests discovered, 1198 pass, 0 fail, 1 skipped.
+- Phase 11 slice 147 extracted `scripts/training/worker-queue-runtime.ts` from `scripts/training/worker-queue.ts` so the queue supervisor CLI stays a thin entrypoint while worker spec building, child process spawning, restart handling, shutdown handling, and prefixed child log piping live in an importable runtime module. This also closed the deterministic worker flags checkpoint: `training:workers:mock` still routes `--mock-image --dry-run-training --mock-complete-training`, and the runtime enforces `--mock-complete-training` only with `--dry-run-training`.
+- Phase 11 slice 147 verification passed: red `node --import tsx --test --test-name-pattern "training worker queue keeps process supervision" tests/test-training-worker-entrypoints.test.ts`, green `node --import tsx --test --test-name-pattern "training worker queue keeps process supervision|training worker supervisor launches Training-named worker scripts|training worker supervisor has Training-named npm entrypoints|training worker entrypoint help commands run under tsx without legacy labels" tests/test-training-worker-entrypoints.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-worker-entrypoints.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1200 tests discovered, 1199 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1352,6 +1354,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/server/worker/training/task-json.ts`
 - `src/server/worker/training/task-serialization.ts`
 - `scripts/training/worker-queue.ts`
+- `scripts/training/worker-queue-runtime.ts`
 - `scripts/training/worker-common.ts`
 - `scripts/training/image-worker.ts`
 - `scripts/training/image-worker-runtime.ts`
@@ -1366,8 +1369,8 @@ Loading states remain colocated under their route segments for now; the later lo
 - [x] Split generation worker payload creation from run repository fetch/update behavior.
 - [x] Keep fallback prompt builder as last resort only; document when it is allowed.
 - [x] Split training `task-api.ts` into task ID parsing, target discovery, leasing, heartbeat, completion, failure mapping, and scheduler tick modules.
-- [ ] Keep worker scripts as CLI entrypoints that call shared worker functions.
-- [ ] Add dry-run or mock flags to worker scripts where tests need deterministic behavior.
+- [x] Keep worker scripts as CLI entrypoints that call shared worker functions.
+- [x] Add dry-run or mock flags to worker scripts where tests need deterministic behavior.
 - [ ] Ensure heartbeat, lease ownership, failure summary, and provider error payloads are schema-validated.
 - [ ] Keep ComfyUI cancellation semantics strict: HTTP failures must fail current batch and stop later batches.
 

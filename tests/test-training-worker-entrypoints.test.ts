@@ -26,9 +26,13 @@ test("training worker supervisor has Training-named npm entrypoints", () => {
 
 test("training worker supervisor does not expose legacy-only workers by default", () => {
   const workerQueuePath = join(process.cwd(), "scripts/training/worker-queue.ts");
+  const workerQueueRuntimePath = join(process.cwd(), "scripts/training/worker-queue-runtime.ts");
   assert.equal(existsSync(workerQueuePath), true, "scripts/training/worker-queue.ts should exist");
 
-  const source = readFileSync(workerQueuePath, "utf8");
+  const source = [
+    readFileSync(workerQueuePath, "utf8"),
+    existsSync(workerQueueRuntimePath) ? readFileSync(workerQueueRuntimePath, "utf8") : "",
+  ].join("\n");
   assert.match(source, /LoRA training worker queue supervisor/);
   assert.match(source, /workerOwner:\s*"training-queue"/);
   assert.match(source, /script:\s*"image-worker\.ts"/);
@@ -41,6 +45,7 @@ test("training worker supervisor does not expose legacy-only workers by default"
 
 test("training worker supervisor launches Training-named worker scripts", () => {
   const workerQueuePath = join(process.cwd(), "scripts/training/worker-queue.ts");
+  const workerQueueRuntimePath = join(process.cwd(), "scripts/training/worker-queue-runtime.ts");
   const requiredEntrypoints = [
     "scripts/training/image-worker.ts",
     "scripts/training/dataset-freeze-worker.ts",
@@ -53,18 +58,20 @@ test("training worker supervisor launches Training-named worker scripts", () => 
   }
 
   const source = readFileSync(workerQueuePath, "utf8");
+  const runtimeSource = existsSync(workerQueueRuntimePath) ? readFileSync(workerQueueRuntimePath, "utf8") : "";
+  const supervisorSource = `${source}\n${runtimeSource}`;
   assert.match(
-    source,
+    supervisorSource,
     /path\.join\("scripts",\s*"training",\s*spec\.script\)/,
     "training supervisor should spawn Training-owned worker entrypoints",
   );
   assert.match(
-    source,
+    supervisorSource,
     /from "\.\/worker-common"/,
     "training supervisor should import Training-owned worker CLI helpers",
   );
   assert.doesNotMatch(
-    source,
+    supervisorSource,
     new RegExp(retiredRouteSlug),
     "training supervisor should not directly launch or import legacy Character LoRA scripts",
   );
@@ -107,13 +114,35 @@ test("training image worker keeps provider runtime behavior in an importable mod
   assert.match(runtimeSource, /createMockImageOutput/);
 });
 
+test("training worker queue keeps process supervision in an importable runtime", () => {
+  const entrypointPath = join(process.cwd(), "scripts/training/worker-queue.ts");
+  const runtimePath = join(process.cwd(), "scripts/training/worker-queue-runtime.ts");
+  assert.equal(existsSync(runtimePath), true, "training worker queue runtime module should exist");
+
+  const entrypointSource = readFileSync(entrypointPath, "utf8");
+  const runtimeSource = readFileSync(runtimePath, "utf8");
+  assert.match(entrypointSource, /from "\.\/worker-queue-runtime"/);
+  assert.match(entrypointSource, /runTrainingWorkerQueue/);
+  assert.doesNotMatch(entrypointSource, /from "node:child_process"/);
+  assert.doesNotMatch(entrypointSource, /function buildWorkerSpecs/);
+  assert.doesNotMatch(entrypointSource, /function pipeWithPrefix/);
+  assert.match(runtimeSource, /export async function runTrainingWorkerQueue/);
+  assert.match(runtimeSource, /export function buildWorkerSpecs/);
+  assert.match(runtimeSource, /--mock-image/);
+  assert.match(runtimeSource, /--dry-run-training/);
+  assert.match(runtimeSource, /--mock-complete-training requires --dry-run-training/);
+});
+
 test("training worker scripts are independent from removed legacy modules", () => {
   const trainingScriptPaths = [
     "scripts/training/image-worker.ts",
+    "scripts/training/image-worker-runtime.ts",
     "scripts/training/dataset-freeze-worker.ts",
     "scripts/training/training-worker.ts",
+    "scripts/training/training-worker-runtime.ts",
     "scripts/training/worker-common.ts",
     "scripts/training/worker-queue.ts",
+    "scripts/training/worker-queue-runtime.ts",
   ];
 
   for (const scriptPath of trainingScriptPaths) {
@@ -472,6 +501,7 @@ test("training worker local_wsl_sd_scripts adapter completes a configured real r
 
 test("training worker supervisor targets Training-named worker task HTTP routes", async () => {
   const workerQueuePath = join(process.cwd(), "scripts/training/worker-queue.ts");
+  const workerQueueRuntimePath = join(process.cwd(), "scripts/training/worker-queue-runtime.ts");
   const workerCommonPath = join(process.cwd(), "scripts/training/worker-common.ts");
   const requiredRouteFiles = [
     "src/app/api/training/worker/status/route.ts",
@@ -485,7 +515,10 @@ test("training worker supervisor targets Training-named worker task HTTP routes"
     assert.equal(existsSync(join(process.cwd(), routeFile)), true, `${routeFile} should exist`);
   }
 
-  const workerQueueSource = readFileSync(workerQueuePath, "utf8");
+  const workerQueueSource = [
+    readFileSync(workerQueuePath, "utf8"),
+    readFileSync(workerQueueRuntimePath, "utf8"),
+  ].join("\n");
   const workerCommonSource = readFileSync(workerCommonPath, "utf8");
   assert.match(
     workerQueueSource,
