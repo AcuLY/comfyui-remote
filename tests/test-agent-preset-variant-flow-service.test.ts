@@ -230,6 +230,21 @@ test("sync preset variant apply uses an explicit transaction wait budget", () =>
   );
 });
 
+test("agent preset variant service imports switch action from focused prompt-block module", () => {
+  const source = readFileSync("src/server/services/agent-preset-variant-service.ts", "utf8");
+
+  assert.match(
+    source,
+    /from ["']@\/lib\/actions\/prompt-block["']/,
+    "agent preset variant service should import switchBindingVariant from the focused prompt-block module",
+  );
+  assert.doesNotMatch(
+    source,
+    /from ["']@\/lib\/actions["']/,
+    "agent preset variant service should not import the full actions barrel",
+  );
+});
+
 async function seedPresetVariantFlowFixture() {
   const characterCategory = await prisma.presetCategory.create({
     data: {
