@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -7,6 +7,10 @@ import { fileURLToPath } from "node:url";
 const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const pageSource = readFileSync(resolve(featureUiDir, "training-resource-pages.tsx"), "utf8");
+const resourceUrlSearchHookPath = resolve(featureUiDir, "use-resource-url-search.ts");
+const resourceUrlSearchHookSource = existsSync(resourceUrlSearchHookPath)
+  ? readFileSync(resourceUrlSearchHookPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
 const headerSpecsSource = readFileSync(resolve(testDir, "../src/features/training/header-specs.ts"), "utf8");
 const legacyPageSource = readFileSync(resolve(testDir, "../src/app/design-demos/features/lora-training/training-resource-pages.tsx"), "utf8");
@@ -72,9 +76,13 @@ test("training resource route helpers do not replace invalid route ids with firs
 });
 
 test("training resource query hints use Next search params instead of a manual location store", () => {
-  assert.match(pageSource, /import \{[^}]*useSearchParams[^}]*\} from "next\/navigation";/, "resource pages should subscribe to Next-managed query changes");
-  assert.match(pageSource, /const searchParams = useSearchParams\(\)/, "resource pages should read current query params through Next navigation state");
-  assert.match(pageSource, /searchParams\.toString\(\)/, "resource pages should pass the live query string into hint parsers");
+  assert.match(resourceUrlSearchHookSource, /function useResourceUrlSearch\b/, "resource URL search hook should live in a focused hook module");
+  assert.match(resourceUrlSearchHookSource, /import \{[^}]*useSearchParams[^}]*\} from "next\/navigation";/, "resource URL search hook should subscribe to Next-managed query changes");
+  assert.match(resourceUrlSearchHookSource, /const searchParams = useSearchParams\(\)/, "resource URL search hook should read current query params through Next navigation state");
+  assert.match(resourceUrlSearchHookSource, /searchParams\.toString\(\)/, "resource URL search hook should pass the live query string into hint parsers");
+  assert.match(pageSource, /from "\.\/use-resource-url-search"/, "resource pages should import the focused URL search hook");
+  assert.doesNotMatch(pageSource, /import \{[^}]*useSearchParams[^}]*\} from "next\/navigation";/, "resource pages should not import Next search params directly");
+  assert.doesNotMatch(pageSource, /\nfunction useUrlSearch\b/, "resource pages should not keep the URL search hook inline");
   assert.doesNotMatch(pageSource, /useSyncExternalStore/, "resource query hints should not depend on a manual window.location.search store");
   assert.doesNotMatch(pageSource, /window\.location\.search/, "resource query hints should not read location.search during render");
 });

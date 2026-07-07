@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, CheckSquare, CopyPlus, Edit3, GripVertical, Plus, Save, Trash2 } from "lucide-react";
 
@@ -22,6 +22,7 @@ import { EditorBlock, FolderBreadcrumb, FolderRow, SelectionBatchBar, SortableRo
 import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData } from "@/features/training/data";
 import type { LoraTrainingPreset, LoraTrainingProject, LoraTrainingSectionBlock, LoraTrainingTemplate } from "@/features/training/types";
+import { useResourceUrlSearch } from "./use-resource-url-search";
 import s from "./training-resource-pages.module.css";
 
 type TemplateSceneBlockPatch = Partial<Pick<LoraTrainingSectionBlock, "text" | "title">>;
@@ -136,11 +137,6 @@ function buildTemplateSectionsFromProject(project: LoraTrainingProject): LoraTra
 function presetUsageLabel(preset: LoraTrainingPreset) {
   const usageCount = preset.projectUsage.length + preset.templateUsage.length;
   return usageCount > 0 ? `${usageCount} 处引用` : "未引用";
-}
-
-function useUrlSearch() {
-  const searchParams = useSearchParams();
-  return searchParams.toString();
 }
 
 function isProductionTrainingPath(pathname: string | null | undefined) {
@@ -712,7 +708,7 @@ export function LoraTrainingPresetsPage({ data }: { data: TrainingAppData }) {
 }
 
 export function LoraTrainingPresetDetailPage({ data, mode = "edit", presetId }: { data: TrainingAppData; mode?: "new" | "edit"; presetId?: string }) {
-  const urlSearch = useUrlSearch();
+  const urlSearch = useResourceUrlSearch();
   const newPresetHints = mode === "new" ? readNewPresetHints(urlSearch) : { artifact: "", category: "", folder: "", project: "", sourceRun: "" };
   const preset = mode === "new" ? createDraftTrainingPreset(newPresetHints) : findPreset(data, presetId);
   if (!preset) return <EmptyPage title="没有训练预制数据" />;
@@ -1595,7 +1591,7 @@ export function LoraTrainingTemplateFormPage({ data, mode, templateId }: { data:
   const router = useRouter();
   const { pushToast } = useDemoFeedback();
   const training = buildLoraTrainingData(data);
-  const urlSearch = useUrlSearch();
+  const urlSearch = useResourceUrlSearch();
   const newTemplateHints = mode === "new" ? readNewTemplateHints(urlSearch) : { projectId: "", sections: "", sourceProject: "" };
   const template = mode === "edit" ? findTemplate(data, templateId) : undefined;
   const sourceProject = mode === "new"
