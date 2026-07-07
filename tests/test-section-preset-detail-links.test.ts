@@ -6,6 +6,7 @@ import { join } from "node:path";
 const rootDir = process.cwd();
 
 const projectSectionEditorFile = "src/components/section-editor.tsx";
+const promptBlockEditorFile = "src/components/prompt-block-editor.tsx";
 const templateSectionEditorFile = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/section-detail-client.tsx";
 
 function readSource(path: string) {
@@ -90,6 +91,16 @@ test("project section preset variant selector stays outside the card detail link
   assert.match(cardLink, /\{rowSummary\}/, "card detail link should render the non-interactive row summary");
   assert.doesNotMatch(rowSummary, /<select\b/, "variant selector should not be part of the row summary rendered inside the card detail link");
   assert.doesNotMatch(cardLink, /<select\b/, "variant selector should not be nested in the card detail link");
+});
+
+test("project section editors import prompt block actions from focused module", () => {
+  const sectionEditor = readSource(projectSectionEditorFile);
+  const promptBlockEditor = readSource(promptBlockEditorFile);
+
+  assert.match(sectionEditor, /from "@\/lib\/actions\/prompt-block";/);
+  assert.match(promptBlockEditor, /from "@\/lib\/actions\/prompt-block";/);
+  assert.doesNotMatch(sectionEditor, /from "@\/lib\/actions";/);
+  assert.doesNotMatch(promptBlockEditor, /from "@\/lib\/actions";/);
 });
 
 test("template section preset binding detail links still use the shared manager target in the same tab", () => {

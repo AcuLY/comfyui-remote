@@ -36,7 +36,7 @@ import {
   deleteSectionBlock,
   reorderSectionBlocks,
   type PromptBlockData,
-} from "@/lib/actions";
+} from "@/lib/actions/prompt-block";
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------

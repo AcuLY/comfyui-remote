@@ -12,14 +12,14 @@ import {
   getSectionPresetBindingGroupName,
   getSectionPresetRowCardHref,
 } from "@/components/section-editor-binding-rules";
-import type { PromptBlockData } from "@/lib/actions";
 import {
   deleteSectionBlock,
   importPresetGroupToSection,
   importPresetToSection,
   removeImportedPresetFromSection,
   switchBindingVariant,
-} from "@/lib/actions";
+  type PromptBlockData,
+} from "@/lib/actions/prompt-block";
 import { isSuppressedLoraEntry, type LoraEntry } from "@/lib/lora-types";
 import type { PresetLibraryV2 } from "@/components/prompt-block-editor";
 
