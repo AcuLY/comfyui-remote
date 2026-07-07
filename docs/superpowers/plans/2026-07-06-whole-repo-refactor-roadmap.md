@@ -419,6 +419,8 @@
 - Phase 7 slice 75 verification passed: red `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, then green `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, green `node --import tsx --test tests/test-queue-review-grid-split.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1123 tests discovered, 1122 pass, 0 fail, 1 skipped.
 - Phase 7 slice 76 added `tests/test-settings-operational-dashboards.test.ts` to guard production settings pages as operational dashboards: the entry page stays limited to SFW/monitor/logs, settings pages avoid generation/training business imports, logs only poll `/api/logs`, and monitor only calls Comfy operational endpoints.
 - Phase 7 slice 76 verification passed: green `node --import tsx --test tests/test-settings-operational-dashboards.test.ts`, green `node --import tsx --test tests/test-settings-operational-dashboards.test.ts tests/test-training-prod-route-shell.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1127 tests discovered, 1126 pass, 0 fail, 1 skipped.
+- Phase 8 slice 77 added `tests/test-training-feature-entry-boundaries.test.ts` to guard the Training frontend entry/runtime boundary: the app route page stays server-only and route-entry focused, `training-app-client.tsx` remains a thin re-export until it owns client state, `app.tsx` owns route matching and page dispatch, `routes.ts` resolves known production paths with runtime tests, `runtime.ts` exports only primitives, and `shell.tsx` keeps Training chrome while disabling inherited demo sidebar behavior.
+- Phase 8 slice 77 verification passed: green `node --import tsx --test tests/test-training-feature-entry-boundaries.test.ts`, green `node --import tsx --test tests/test-training-feature-entry-boundaries.test.ts tests/test-training-prod-route-shell.test.ts tests/test-training-route-data-source.test.ts tests/test-training-route-data-loading.test.ts tests/test-training-list-layout.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1133 tests discovered, 1132 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1050,11 +1052,11 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/features/training/ui/training-runs-page.tsx`
 - `src/features/training/ui/training-runs-page.module.css`
 
-- [ ] Keep `src/app/training/[[...route]]/page.tsx` as the route entry only.
-- [ ] Keep `training-app-client.tsx` as the client hydration boundary only if it truly needs client state.
-- [ ] Keep `app.tsx` responsible for route matching to page components, not page internals.
-- [ ] Keep `routes.ts` and `runtime.ts` as routing primitives with tests for known paths.
-- [ ] Keep `shell.tsx` as the only training shell owner; do not reintroduce `DesignDemoShell` sidebar behavior.
+- [x] Keep `src/app/training/[[...route]]/page.tsx` as the route entry only.
+- [x] Keep `training-app-client.tsx` as the client hydration boundary only if it truly needs client state.
+- [x] Keep `app.tsx` responsible for route matching to page components, not page internals.
+- [x] Keep `routes.ts` and `runtime.ts` as routing primitives with tests for known paths.
+- [x] Keep `shell.tsx` as the only training shell owner; do not reintroduce `DesignDemoShell` sidebar behavior.
 - [ ] Split `training-project-pages.tsx` by page:
   - [ ] Project form page and upload reference image workflow.
   - [ ] Project detail overview.
