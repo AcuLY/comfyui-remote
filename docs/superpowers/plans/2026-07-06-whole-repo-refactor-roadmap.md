@@ -568,6 +568,8 @@
 - Phase 11 slice 149 verification passed: red `node --import tsx --test --test-name-pattern "worker boundary doc records generation payload and repository ownership|confirmation HTTP failure fails the current batch" tests/test-worker-boundary-governance.test.ts tests/test-comfy-queue-cancellation.test.ts`, green same command after the doc update, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts tests/test-comfy-queue-cancellation.test.ts tests/test-clear-active-runs-responsiveness.test.ts tests/test-run-submission-deferral.test.ts tests/test-run-recovery-poller-cap.test.ts tests/test-repo-inventory.test.ts` with 32 tests passed, `npm run lint`, and `npm test` with 1202 tests discovered, 1201 pass, 0 fail, 1 skipped.
 - Phase 12 slice 150 added `docs/script-maintenance.md` as the script maintenance matrix for every tracked file under `scripts/**` and `src/scripts/**`. The matrix records owner, purpose, inputs, outputs, dry-run or preview behavior, and exit-code behavior, and `docs/index.md` now points agents to it as the read-first script maintenance source.
 - Phase 12 slice 150 verification passed: red `node --import tsx --test tests/test-script-maintenance-doc.test.ts`, green same command after adding the matrix and index link, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-script-maintenance-doc.test.ts tests/test-repo-inventory.test.ts` with 5 tests passed, `npm run lint`, and `npm test` with 1204 tests discovered, 1203 pass, 0 fail, 1 skipped.
+- Phase 12 slice 151 documented Python script environment boundaries in `docs/script-maintenance.md`: Python CLIs stay separate from Node/tsx scripts, auto-censor runs through `AUTO_CENSOR_PYTHON_CMD` with `ultralytics`, `opencv-python`, and `pillow`, and the legacy preset fixer is standard-library-only. The slice also reverified the auto-censor `--help` path that must not import heavy model dependencies.
+- Phase 12 slice 151 verification passed: red `node --import tsx --test --test-name-pattern "Python script environment" tests/test-script-maintenance-doc.test.ts`, green `node --import tsx --test --test-name-pattern "Python script environment|auto-censor Python runner help documents" tests/test-script-maintenance-doc.test.ts tests/test-auto-censor-python-script.test.ts`, green `node --import tsx --test tests/test-script-maintenance-doc.test.ts tests/test-auto-censor-python-script.test.ts` with 8 tests passed, `npm run lint`, and `npm test` with 1205 tests discovered, 1204 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1399,8 +1401,8 @@ Loading states remain colocated under their route segments for now; the later lo
 - `docs/plans/auto-review-analysis/**`
 
 - [x] Give every script a documented purpose, input, output, dry-run behavior, and exit code behavior.
-- [ ] Keep Python scripts separate from Node scripts and document their required Python environment.
-- [ ] Ensure auto-censor Python CLI can show help without loading heavy model dependencies.
+- [x] Keep Python scripts separate from Node scripts and document their required Python environment.
+- [x] Ensure auto-censor Python CLI can show help without loading heavy model dependencies.
 - [ ] Make cleanup scripts print exactly what they will delete before deleting.
 - [ ] Keep quality scripts using shared CSV utilities and typed result objects.
 - [ ] Ensure quality analysis data files are either regenerated artifacts or checked-in benchmark fixtures with owners.

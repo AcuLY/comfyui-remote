@@ -31,6 +31,13 @@ This is the maintained owner map for repeatable repository scripts. Update it wh
 | `src/scripts/backfill-comfy-output-subfolder.ts` | comfy-runtime | Backfills `Run.comfyOutputSubfolder` from submitted ComfyUI SaveImage prompt snapshots. | Current database connection through `src/lib/db`. | Updated run rows plus console counts for found, backfilled, and skipped rows. | dry-run is not supported, so inspect DB state or run against a copy before production use. | exits 0 if the script completes, non-zero if the top-level promise rejects. |
 | `src/scripts/seed.mts` | seed-scripts | Seeds development data and placeholder image files for local generation review flows. | `DATABASE_URL`, optional `DB_PROVIDER`, generated Prisma clients, and local filesystem access. | Seeded database rows and placeholder files under `data/images/**`. | dry-run is not supported, so use a disposable or local development database. | exits 0 if seeding completes, non-zero on Prisma, adapter, or filesystem errors. |
 
+## Python Environments
+
+Keep Python scripts separate from Node scripts. Node services may spawn Python CLIs through explicit command env vars, but Python dependencies should stay in the selected Python or virtualenv instead of being imported by Node or bundled with `tsx` scripts.
+
+- `scripts/auto-censor-mosaic.py` runs with `python3` by default through `AUTO_CENSOR_PYTHON_CMD` in the Node wrapper. Its Python environment must install `ultralytics`, `opencv-python`, and `pillow`, and `AUTO_CENSOR_MODEL_PATH` must point to the YOLO `.pt` model. The CLI help path must stay lightweight so `--help` works without importing heavy model dependencies.
+- `scripts/fix-position-presets.py` is a legacy one-off formatter for `position_presets.md`. It is standard library only and should continue to run with the repository machine's `python3` unless it is replaced by a maintained Node or TypeScript script.
+
 ## Maintenance Rules
 
 - Keep destructive scripts explicit about whether dry-run exists. If dry-run is absent, this document must say so.

@@ -23,6 +23,10 @@ function listTrackedScriptPaths() {
     .sort((a, b) => a.localeCompare(b));
 }
 
+function listTrackedPythonScriptPaths() {
+  return listTrackedScriptPaths().filter((script) => script.endsWith(".py"));
+}
+
 function parseScriptRows() {
   assert.ok(existsSync(SCRIPT_DOC_PATH), `${SCRIPT_DOC_PATH} must exist`);
   const source = readFileSync(SCRIPT_DOC_PATH, "utf8");
@@ -79,4 +83,21 @@ test("documentation index points agents to the script maintenance matrix", () =>
   const index = readFileSync(DOC_INDEX_PATH, "utf8");
   assert.match(index, /script maintenance/i);
   assert.match(index, /docs\/script-maintenance\.md/);
+});
+
+test("script maintenance doc records Python script environment boundaries", () => {
+  assert.ok(existsSync(SCRIPT_DOC_PATH), `${SCRIPT_DOC_PATH} must exist`);
+  const source = readFileSync(SCRIPT_DOC_PATH, "utf8");
+
+  assert.match(source, /## Python Environments/);
+  assert.match(source, /python3/);
+  assert.match(source, /AUTO_CENSOR_PYTHON_CMD/);
+  assert.match(source, /ultralytics/);
+  assert.match(source, /opencv-python/);
+  assert.match(source, /pillow/);
+  assert.match(source, /standard library only/i);
+
+  for (const script of listTrackedPythonScriptPaths()) {
+    assert.match(source, new RegExp(script.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `${script} must be named in the Python environment section`);
+  }
 });
