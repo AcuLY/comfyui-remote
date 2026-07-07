@@ -221,3 +221,11 @@ test("preset and group detail back links restore folder context in the preset li
     "group folder navigation should keep the URL query in sync",
   );
 });
+
+test("group detail editor imports server actions from focused modules", () => {
+  const source = readSource("src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx");
+
+  assert.match(source, /from "@\/lib\/actions\/preset-group";/);
+  assert.match(source, /from "@\/lib\/actions\/preset-category";/);
+  assert.doesNotMatch(source, /from "@\/lib\/actions";/);
+});

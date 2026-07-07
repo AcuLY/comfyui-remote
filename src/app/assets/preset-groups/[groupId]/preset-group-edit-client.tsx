@@ -25,14 +25,14 @@ import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import type { PresetCategoryFull, PresetGroupItem, PresetVariantItem } from "@/lib/server-data";
 import { buildPresetGroupMemberLayout } from "@/lib/preset-group-slot-layout";
+import { updateCategorySlotTemplate } from "@/lib/actions/preset-category";
 import {
   addGroupMember,
   deletePresetGroup,
   removeGroupMember,
-  updateCategorySlotTemplate,
   updateGroupMember,
   updatePresetGroup,
-} from "@/lib/actions";
+} from "@/lib/actions/preset-group";
 import { AddGroupMemberForm } from "../../presets/add-group-member-form";
 import { PresetChangeHistoryPanel } from "../../presets/change-history-panel";
 import { GROUP_HISTORY_TABS } from "../../presets/preset-types";
