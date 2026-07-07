@@ -8,6 +8,8 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const featureRoot = resolve(testDir, "../src/features/training");
 const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
+const projectFormPagePath = resolve(featureUiDir, "training-project-form-page.tsx");
+const projectFormPageSource = existsSync(projectFormPagePath) ? readFileSync(projectFormPagePath, "utf8") : "";
 const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
 const referencePickerPath = resolve(featureUiDir, "reference-picker.tsx");
 const referencePickerSource = existsSync(referencePickerPath) ? readFileSync(referencePickerPath, "utf8") : "";
@@ -80,6 +82,12 @@ test("training project page implementation is owned by the training feature laye
     /from "@\/features\/training\/ui\/training-project-pages"/,
     "design-demos project pages file should re-export the feature-layer project pages",
   );
+});
+
+test("training project form page lives in a focused page module", () => {
+  assert.match(projectFormPageSource, /export function LoraTrainingProjectFormPage/, "project form page implementation should live in its own module");
+  assert.match(pagesSource, /export \{ LoraTrainingProjectFormPage \} from "\.\/training-project-form-page";/, "broad project pages module should retain a compatibility re-export");
+  assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectFormPage/, "broad project pages module should not keep the form page implementation inline");
 });
 
 test("training project fixtures model reference images, result pool captions, and dataset snapshots", () => {
@@ -198,7 +206,7 @@ test("training project page pure display and dataset helpers live in the utility
 test("training project page URL search hook lives in a focused hook module", () => {
   assert.match(urlSearchHookSource, /function useUrlSearch\b/, "URL search hook should live in use-url-search.ts");
   assert.match(urlSearchHookSource, /useSearchParams/, "URL search hook should own the Next search params dependency");
-  assert.match(pagesSource, /from "\.\/use-url-search"/, "project pages should import the focused URL search hook");
+  assert.match(projectFormPageSource, /from "\.\/use-url-search"/, "project form page should import the focused URL search hook");
   assert.doesNotMatch(pagesSource, /\nfunction useUrlSearch\b/, "URL search hook should not stay inline in the broad project pages file");
 });
 
@@ -206,7 +214,7 @@ test("training project page reference upload draft previews live in a focused ho
   assert.match(projectReferenceUploadHookSource, /function useProjectReferenceUploadDrafts\b/, "project reference upload draft state should live in a focused hook");
   assert.match(projectReferenceUploadHookSource, /buildProjectReferenceUploadPreview/, "project reference upload hook should build staged preview references");
   assert.match(projectReferenceUploadHookSource, /type ProjectReferenceUploadDraft\b/, "project reference upload draft typing should move with the hook");
-  assert.match(pagesSource, /from "\.\/use-project-reference-upload-drafts"/, "project create page should import the focused reference upload hook");
+  assert.match(projectFormPageSource, /from "\.\/use-project-reference-upload-drafts"/, "project create page should import the focused reference upload hook");
   assert.doesNotMatch(pagesSource, /\nconst \[projectReferenceUploadState, setProjectReferenceUploadState\]/, "project create page should not keep staged upload state inline");
   assert.doesNotMatch(pagesSource, /\ntype ProjectReferenceUploadDraft\b/, "project create page should not keep reference upload draft typing inline");
   assert.doesNotMatch(pagesSource, /buildProjectReferenceUploadPreview/, "project create page should not build upload previews inline");
@@ -217,7 +225,7 @@ test("training project page create reference picker state lives in a focused hoo
   assert.match(projectReferenceSelectionHookSource, /selectedReferenceIds/, "project reference selection hook should own selected reference ids");
   assert.match(projectReferenceSelectionHookSource, /previewReference/, "project reference selection hook should own the preview reference");
   assert.match(projectReferenceSelectionHookSource, /templateContextId/, "project reference selection hook should remain template-context scoped");
-  assert.match(pagesSource, /from "\.\/use-project-reference-selection"/, "project create page should import the focused reference selection hook");
+  assert.match(projectFormPageSource, /from "\.\/use-project-reference-selection"/, "project create page should import the focused reference selection hook");
   assert.doesNotMatch(pagesSource, /\nconst \[projectReferenceSelectionState, setProjectReferenceSelectionState\]/, "project create page should not keep reference selection state inline");
   assert.doesNotMatch(pagesSource, /\nfunction setSelectedReferenceIds\b/, "project create page should not keep reference id selection updater inline");
 });
@@ -329,7 +337,7 @@ test("training project query hints use Next search params instead of a manual lo
   assert.match(urlSearchHookSource, /import \{[^}]*useSearchParams[^}]*\} from "next\/navigation";/, "project URL hook should subscribe to Next-managed query changes");
   assert.match(urlSearchHookSource, /const searchParams = useSearchParams\(\)/, "project URL hook should read current query params through Next navigation state");
   assert.match(urlSearchHookSource, /searchParams\.toString\(\)/, "project URL hook should pass the live query string into hint parsers");
-  assert.match(pagesSource, /useUrlSearch\(\)/, "project pages should consume the focused URL search hook");
+  assert.match(projectFormPageSource, /useUrlSearch\(\)/, "project form page should consume the focused URL search hook");
   assert.doesNotMatch(pagesSource, /useSyncExternalStore/, "project query hints should not depend on a manual window.location.search store");
   assert.doesNotMatch(pagesSource, /window\.location\.search/, "project query hints should not read location.search during render");
 });
@@ -769,7 +777,6 @@ test("training project repeated object actions include the acted-on object name"
   const gridEnd = pagesSource.indexOf("function ProjectRunFailureBlock");
   const runRowsStart = pagesSource.indexOf("function RunRows");
   const runRowsEnd = pagesSource.indexOf("function TrainingSectionRail");
-  const newProjectStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const projectDetailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
   const projectProfileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
@@ -777,14 +784,13 @@ test("training project repeated object actions include the acted-on object name"
   assert.notEqual(gridEnd, -1);
   assert.notEqual(runRowsStart, -1);
   assert.notEqual(runRowsEnd, -1);
-  assert.notEqual(newProjectStart, -1);
   assert.notEqual(projectDetailStart, -1);
   assert.notEqual(projectProfileStart, -1);
   assert.notEqual(scopedPageStart, -1);
 
   const gridSource = pagesSource.slice(gridStart, gridEnd);
   const runRowsSource = pagesSource.slice(runRowsStart, runRowsEnd);
-  const newProjectSource = pagesSource.slice(newProjectStart, projectDetailStart);
+  const newProjectSource = projectFormPageSource;
   const projectDetailSource = pagesSource.slice(projectDetailStart, projectProfileStart);
   const scopedPageSource = pagesSource.slice(scopedPageStart);
 
@@ -1226,12 +1232,7 @@ test("project-scoped failed run errors inherit the generated-run clamp and copy 
 });
 
 test("training project create page is a full form workspace with training seed controls", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(formSource, /referenceSourceTree/, "project creation should offer explicit reference sources");
   assert.match(formSource, /ReferencePicker/, "project creation should preview references before adding them");
@@ -1273,12 +1274,7 @@ test("training project create reference candidates expand like managed list card
 });
 
 test("training project create page manages initial section seeds locally", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(formSource, /useProjectSectionSeeds/, "project creation should delegate section seed state to the focused hook");
   assert.match(projectSectionSeedsHookSource, /sectionSeedState/, "section seed hook should store seeds with template context");
@@ -1295,12 +1291,7 @@ test("training project create page manages initial section seeds locally", () =>
 });
 
 test("training project create seed copies scan existing copy ids instead of counting current matches", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(projectPageUtilsSource, /function nextSeedSectionCopyNumber/, "seed section copies should share an id ordinal helper");
   assert.match(formSource, /nextSeedSectionCopyNumber\(current, section\.id\)/, "seed copy ids should scan existing copies for that source id");
@@ -1308,12 +1299,7 @@ test("training project create seed copies scan existing copy ids instead of coun
 });
 
 test("training project create page reads template context from project-create links", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(projectPageUtilsSource, /type NewProjectTemplateHints/, "project creation should define template-link hints");
   assert.match(projectPageUtilsSource, /function readNewProjectTemplateHints/, "project creation should read template context query params");
@@ -1325,12 +1311,7 @@ test("training project create page reads template context from project-create li
 });
 
 test("training project create page does not silently apply the first template", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(formSource, /const initialTemplate = sourceTemplate;/, "direct project creation should start without an implicit source template");
   assert.match(formSource, /const initialSectionSeeds = sourceTemplate\?\.sections \?\? \[\];/, "seed sections should be empty until a template is hinted or chosen");
@@ -1341,12 +1322,7 @@ test("training project create page does not silently apply the first template", 
 });
 
 test("training project create page keeps source template ids out of visible copy", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
   const sourceFieldStart = formSource.indexOf('label="来源训练模板"');
   const nextFieldStart = formSource.indexOf('<FloatingSelect label="基础模型"', sourceFieldStart);
   assert.notEqual(sourceFieldStart, -1);
@@ -1360,12 +1336,7 @@ test("training project create page keeps source template ids out of visible copy
 });
 
 test("training project create page toggles initial section enabled state locally", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(formSource, /handleToggleSeedSection/, "initial section seeds should expose an enable toggle handler");
   assert.match(formSource, /enabled:\s*!section\.enabled/, "toggle handler should flip the section enabled state");
@@ -1375,12 +1346,7 @@ test("training project create page toggles initial section enabled state locally
 });
 
 test("training project create page creates a local front-end draft instead of previewing a backend placeholder", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(formSource, /useProjectCreatedDraft/, "project creation should delegate created draft storage to the focused hook");
   assert.match(projectCreatedDraftHookSource, /CreatedProjectDraft/, "created draft hook should own the visible draft summary shape");
@@ -1396,12 +1362,7 @@ test("training project create page creates a local front-end draft instead of pr
 });
 
 test("training project create page posts through the formal HTTP API on production routes", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(formSource, /useRouter/, "project creation should be able to navigate to the created training project on production routes");
   assert.match(formSource, /usePathname/, "project creation should detect whether it is running under production \\/training routes");
@@ -1429,12 +1390,7 @@ test("training project create page posts through the formal HTTP API on producti
 });
 
 test("training project create page stages local uploaded references and syncs them through formal HTTP APIs", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(formSource, /projectReferenceUploadInputRef/, "project create page should keep a file input ref for staged reference uploads");
   assert.match(formSource, /handleUploadProjectReference/, "project create page should expose an explicit upload entrypoint");
@@ -1448,24 +1404,14 @@ test("training project create page stages local uploaded references and syncs th
 });
 
 test("training project create page hides the demo local image library on production routes", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(formSource, /const isProductionTrainingRoute = pathname === "\/training" \|\| pathname\.startsWith\("\/training\/"\)/, "project create page should detect real training routes before building reference sources");
   assert.match(formSource, /items: isProductionTrainingRoute \? \[\] : data\.images\.slice\(0, 4\)/, "demo local image candidates should be disabled on real training routes");
 });
 
 test("training project create page carries selected references into the local draft", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(formSource, /useProjectReferenceSelection/, "project creation should use the focused reference selection hook");
   assert.match(projectReferenceSelectionHookSource, /selectedReferenceIds/, "project reference selection hook should own selected reference state");
@@ -1479,12 +1425,7 @@ test("training project create page carries selected references into the local dr
 });
 
 test("training project create reference and draft state stay scoped to the selected template context", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(projectReferenceSelectionHookSource, /projectReferenceSelectionState/, "project create reference state should be stored with template context");
   assert.match(projectCreatedDraftHookSource, /createdProjectDraftState/, "created project draft should be stored with template context");
@@ -1498,12 +1439,7 @@ test("training project create reference and draft state stay scoped to the selec
 });
 
 test("training project create form fields and training defaults stay scoped to the selected template context", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
   const scopedCreateStateSource = [
     projectCreateFormHookSource,
     projectCreateTrainingDefaultsHookSource,
@@ -1526,12 +1462,7 @@ test("training project create form fields and training defaults stay scoped to t
 });
 
 test("training project create page training default switches feed into the local draft", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(formSource, /trainingDefaults/, "project creation should track training defaults locally");
   assert.match(formSource, /setTrainingDefaults/, "training default switches should update local state");
@@ -1548,12 +1479,7 @@ test("training project create page training default switches feed into the local
 });
 
 test("training project create page saves editable form fields into the local draft", () => {
-  const formStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
-  const detailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  assert.notEqual(formStart, -1);
-  assert.notEqual(detailStart, -1);
-
-  const formSource = pagesSource.slice(formStart, detailStart);
+  const formSource = projectFormPageSource;
 
   assert.match(formSource, /projectForm/, "project creation should track editable form fields in local state");
   assert.match(formSource, /handleUpdateProjectForm/, "project creation should expose a form update handler");

@@ -270,7 +270,7 @@ test("training section detail exposes full scene-block management controls", () 
     "export function LoraTrainingProjectSectionDetailPage",
     "export function LoraTrainingGenerationComposePage",
   );
-  const sceneBlockCard = sourceBetween("function SceneBlockCard", "export function LoraTrainingProjectFormPage");
+  const sceneBlockCard = sourceBetween("function SceneBlockCard", "export function LoraTrainingProjectDetailPage");
 
   for (const label of ["选择预制", "导入所选", "添加本地块"]) {
     assert.match(detailPage, new RegExp(label), `section detail should include ${label}`);
@@ -301,7 +301,7 @@ test("training section detail puts results first and uses the page scroll", () =
 });
 
 test("training scene-block cards mirror the compact prompt-block row pattern", () => {
-  const sceneBlockCard = sourceBetween("function SceneBlockCard", "export function LoraTrainingProjectFormPage");
+  const sceneBlockCard = sourceBetween("function SceneBlockCard", "export function LoraTrainingProjectDetailPage");
   const sceneBlockCardRule = cssRule("sceneBlockCard");
 
   assert.match(sceneBlockCard, /className=\{s\.sceneBlockTitleRow\}/, "scene block title and source should share a stable title row");
@@ -326,7 +326,7 @@ test("training section detail scene-block actions update local front-end state",
     "export function LoraTrainingProjectSectionDetailPage",
     "export function LoraTrainingGenerationComposePage",
   );
-  const sceneBlockCard = sourceBetween("function SceneBlockCard", "export function LoraTrainingProjectFormPage");
+  const sceneBlockCard = sourceBetween("function SceneBlockCard", "export function LoraTrainingProjectDetailPage");
 
   assert.match(detailPage, /useProjectSectionSceneBlocks/, "section detail should delegate scene-block state to the focused hook");
   assert.match(projectSectionSceneBlocksHookSource, /sectionSceneBlocksByKey/, "section detail block actions should update keyed local state");

@@ -461,6 +461,8 @@
 - Phase 8 slice 96 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1145 tests discovered, 1144 pass, 0 fail, 1 skipped.
 - Phase 8 slice 97 moved shared reference picker rendering into `src/features/training/ui/reference-picker.tsx`. The component module owns the source-group type, preview/add/remove rendering, local uncontrolled selected-reference fallback, and selected-reference remove UI; the project form and generation compose pages still own source-tree construction, route-scoped selected IDs, upload/API flows, toasts, and navigation.
 - Phase 8 slice 97 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-repo-inventory.test.ts`, initial `npm test` found stale `tests/test-training-section-workflow.test.ts` source markers for the moved picker, then green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts`, `npm run lint`, and `npm test` with 1145 tests discovered, 1144 pass, 0 fail, 1 skipped.
+- Phase 8 slice 98 moved the project form page and reference upload workflow into `src/features/training/ui/training-project-form-page.tsx`. The focused page module owns new-project template hints, reference source construction, staged reference upload sync, form submit/local-draft behavior, training defaults, section seed controls, production create-project API calls, toasts, and navigation; `training-project-pages.tsx` now keeps a compatibility re-export while the remaining project pages stay inline for later page splits.
+- Phase 8 slice 98 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, initial `npm test` found stale form-page import assertions in `tests/test-training-project-pages.test.ts`, then green `node --import tsx --test tests/test-training-project-pages.test.ts`, green `npm test` with 1146 tests discovered, 1145 pass, 0 fail, 1 skipped, and final `npm run lint`.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1098,7 +1100,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - [x] Keep `routes.ts` and `runtime.ts` as routing primitives with tests for known paths.
 - [x] Keep `shell.tsx` as the only training shell owner; do not reintroduce `DesignDemoShell` sidebar behavior.
 - [ ] Split `training-project-pages.tsx` by page:
-  - [ ] Project form page and upload reference image workflow.
+  - [x] Project form page and upload reference image workflow.
   - [ ] Project detail overview.
   - [ ] Profile page and text revision UI.
   - [ ] Sections list page.
