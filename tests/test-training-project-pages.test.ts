@@ -8,6 +8,7 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const featureRoot = resolve(testDir, "../src/features/training");
 const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
+const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
@@ -89,22 +90,18 @@ test("training project pages keep backend wiring notes out of user-facing copy",
 });
 
 test("training project route helpers do not replace invalid route ids with first fixtures", () => {
-  const helperStart = pagesSource.indexOf("function findProject");
-  const moveStart = pagesSource.indexOf("function moveSceneBlock");
   const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
   const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
-  assert.notEqual(helperStart, -1);
-  assert.notEqual(moveStart, -1);
   assert.notEqual(sectionDetailStart, -1);
   assert.notEqual(composeStart, -1);
 
-  const helperSource = pagesSource.slice(helperStart, moveStart);
   const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
 
-  assert.match(helperSource, /if \(!projectId\) return undefined;/, "project routes without a project id should resolve to the empty state");
-  assert.match(helperSource, /if \(!project \|\| !sectionId\) return undefined;/, "section routes without a section id should resolve to the empty state");
-  assert.doesNotMatch(helperSource, /training\.projects\[0\]/, "invalid project ids should not silently render the first project");
-  assert.doesNotMatch(helperSource, /project\?\.sections\[0\]/, "invalid section ids should not silently render the first section");
+  assert.match(projectPageUtilsSource, /function findProject/, "project route helpers should live in the project page utility module");
+  assert.match(projectPageUtilsSource, /if \(!projectId\) return undefined;/, "project routes without a project id should resolve to the empty state");
+  assert.match(projectPageUtilsSource, /if \(!project \|\| !sectionId\) return undefined;/, "section routes without a section id should resolve to the empty state");
+  assert.doesNotMatch(projectPageUtilsSource, /training\.projects\[0\]/, "invalid project ids should not silently render the first project");
+  assert.doesNotMatch(projectPageUtilsSource, /project\?\.sections\[0\]/, "invalid section ids should not silently render the first section");
   assert.doesNotMatch(sectionDetailSource, /training\.projects\.find\(\(item\) => item\.id === projectId\) \?\? training\.projects\[0\]/, "section detail should use the route helper instead of its own first-project fallback");
 });
 
@@ -1079,7 +1076,7 @@ test("training project create seed copies scan existing copy ids instead of coun
 
   const formSource = pagesSource.slice(formStart, detailStart);
 
-  assert.match(pagesSource, /function nextSeedSectionCopyNumber/, "seed section copies should share an id ordinal helper");
+  assert.match(projectPageUtilsSource, /function nextSeedSectionCopyNumber/, "seed section copies should share an id ordinal helper");
   assert.match(formSource, /nextSeedSectionCopyNumber\(current, section\.id\)/, "seed copy ids should scan existing copies for that source id");
   assert.doesNotMatch(formSource, /current\.filter\(\(item\) => item\.id === section\.id \|\| item\.id\.startsWith\(`\$\{section\.id\}-copy-`\)\)\.length/, "copy ids should not be based on the current match count");
 });
@@ -1092,9 +1089,9 @@ test("training project create page reads template context from project-create li
 
   const formSource = pagesSource.slice(formStart, detailStart);
 
-  assert.match(pagesSource, /type NewProjectTemplateHints/, "project creation should define template-link hints");
-  assert.match(pagesSource, /function readNewProjectTemplateHints/, "project creation should read template context query params");
-  assert.match(pagesSource, /templateId:\s*searchParams\.get\("templateId"\)/, "project creation should read the source template id");
+  assert.match(projectPageUtilsSource, /type NewProjectTemplateHints/, "project creation should define template-link hints");
+  assert.match(projectPageUtilsSource, /function readNewProjectTemplateHints/, "project creation should read template context query params");
+  assert.match(projectPageUtilsSource, /templateId:\s*searchParams\.get\("templateId"\)/, "project creation should read the source template id");
   assert.match(formSource, /newProjectTemplateHints/, "project form should derive template hints");
   assert.match(formSource, /sourceTemplate/, "project form should resolve the hinted source template");
   assert.match(formSource, /来源训练模板/, "project form should show the source template context when present");

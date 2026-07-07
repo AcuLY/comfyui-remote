@@ -49,7 +49,23 @@ import { SelectionBatchBar } from "@/components/design-demo-ui/patterns";
 import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData, TrainingModelOption } from "@/features/training/data";
 import { TRAINING_PROJECT_SECTION_ADD_EVENT } from "@/features/training/header-action-slots";
-import type { TrainingImage, LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus, LoraTrainingTemplate } from "@/features/training/types";
+import type { TrainingImage, LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus } from "@/features/training/types";
+import {
+  buildProjectSectionStateKey,
+  buildSeedSectionCopy,
+  buildTrainingProjectTriggerToken,
+  findProject,
+  findSection,
+  isProductionTrainingPath,
+  moveSceneBlock,
+  nextProjectSectionCopyNumber,
+  nextProjectSectionDraftNumber,
+  nextSceneBlockOrdinal,
+  nextSeedSectionCopyNumber,
+  readNewProjectTemplateHints,
+  type LoraTrainingTemplateSeedSection,
+  type ProjectSectionDraftState,
+} from "./project-page-utils";
 import s from "./training-project-pages.module.css";
 
 const PROJECT_TABS = [
@@ -77,23 +93,12 @@ const RESULT_FILTER_ITEMS = [
 ] as const;
 
 type TrainingResultFilter = (typeof RESULT_FILTER_ITEMS)[number]["value"];
-type LoraTrainingTemplateSeedSection = LoraTrainingTemplate["sections"][number];
 type SceneBlockPatch = Partial<Pick<LoraTrainingSectionBlock, "text" | "title">>;
 type ProjectReferenceUploadDraft = {
   file: File;
   id: string;
   previewReference: ReferenceCandidate;
   title: string;
-};
-type ProjectSectionDraftState = {
-  blockCount: number;
-  firstBlock: string;
-  imagePrompt: string;
-  projectTitle: string;
-  projectId: string;
-  scenePreview: string;
-  sectionId: string;
-  sectionTitle: string;
 };
 const DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT = "保持角色正面可训练，避免复杂遮挡和多人构图。";
 const PROJECT_RUN_ERROR_CLAMP_LINES = 3;
@@ -127,12 +132,6 @@ const PROFILE_REVISION_REASON_LABELS: Record<string, string> = {
   run_snapshot: "任务快照",
   dataset_freeze: "冻结数据集",
   start_training: "开始训练",
-};
-
-type NewProjectTemplateHints = {
-  sections: string;
-  templateId: string;
-  templateTitle: string;
 };
 
 function useTraining(data: TrainingAppData) {
@@ -172,95 +171,9 @@ function formatProfileRevisionTime(value: string) {
   }).format(date);
 }
 
-function findProject(data: TrainingAppData, projectId?: string) {
-  if (!projectId) return undefined;
-  const training = buildLoraTrainingData(data);
-  return training.projects.find((project) => project.id === projectId);
-}
-
-function findSection(project: LoraTrainingProject | undefined, sectionId?: string) {
-  if (!project || !sectionId) return undefined;
-  return project.sections.find((section) => section.id === sectionId);
-}
-
-function buildProjectSectionStateKey(projectId: string, sectionId: string) {
-  return `${projectId}:${sectionId}`;
-}
-
-function moveSceneBlock(blocks: LoraTrainingSectionBlock[], index: number, direction: -1 | 1) {
-  const targetIndex = index + direction;
-  if (targetIndex < 0 || targetIndex >= blocks.length) return blocks;
-  const nextBlocks = [...blocks];
-  [nextBlocks[index], nextBlocks[targetIndex]] = [nextBlocks[targetIndex], nextBlocks[index]];
-  return nextBlocks;
-}
-
-function nextSceneBlockOrdinal(blocks: LoraTrainingSectionBlock[], prefix: string) {
-  const ordinals = blocks
-    .map((block) => (block.id.startsWith(prefix) ? Number(block.id.slice(prefix.length)) : Number.NaN))
-    .filter((value) => Number.isFinite(value));
-  return ordinals.length ? Math.max(...ordinals) + 1 : 1;
-}
-
-function buildSeedSectionCopy(section: LoraTrainingTemplateSeedSection, copyNumber: number): LoraTrainingTemplateSeedSection {
-  return {
-    ...section,
-    id: `${section.id}-copy-${copyNumber}`,
-    title: `${section.title} 副本 ${copyNumber}`,
-  };
-}
-
-function nextSeedSectionCopyNumber(sections: LoraTrainingTemplateSeedSection[], sourceId: string) {
-  const copyPrefix = `${sourceId}-copy-`;
-  const ordinals = sections
-    .map((section) => {
-      if (section.id === sourceId) return 0;
-      return section.id.startsWith(copyPrefix) ? Number(section.id.slice(copyPrefix.length)) : Number.NaN;
-    })
-    .filter((value) => Number.isFinite(value));
-  return ordinals.length ? Math.max(...ordinals) + 1 : 1;
-}
-
-function nextProjectSectionCopyNumber(sections: LoraTrainingSection[], sourceId: string) {
-  const copyPrefix = `${sourceId}-copy-`;
-  const ordinals = sections
-    .map((section) => {
-      if (section.id === sourceId) return 0;
-      return section.id.startsWith(copyPrefix) ? Number(section.id.slice(copyPrefix.length)) : Number.NaN;
-    })
-    .filter((value) => Number.isFinite(value));
-  return ordinals.length ? Math.max(...ordinals) + 1 : 1;
-}
-
-function nextProjectSectionDraftNumber(sections: LoraTrainingSection[]) {
-  const draftPrefix = "new-section-";
-  const ordinals = sections
-    .map((section) => (section.id.startsWith(draftPrefix) ? Number(section.id.slice(draftPrefix.length)) : Number.NaN))
-    .filter((value) => Number.isFinite(value));
-  return ordinals.length ? Math.max(...ordinals) + 1 : 1;
-}
-
 function useUrlSearch() {
   const searchParams = useSearchParams();
   return searchParams.toString();
-}
-
-function readNewProjectTemplateHints(search: string): NewProjectTemplateHints {
-  const searchParams = new URLSearchParams(search);
-  return {
-    sections: searchParams.get("sections") ?? "",
-    templateId: searchParams.get("templateId") ?? "",
-    templateTitle: searchParams.get("template") ?? "",
-  };
-}
-
-function isProductionTrainingPath(pathname: string | null | undefined) {
-  return pathname === "/training" || pathname?.startsWith("/training/") === true;
-}
-
-function buildTrainingProjectTriggerToken(title: string) {
-  const normalized = title.trim().replace(/\s+/g, "_");
-  return normalized || "training_project";
 }
 
 function buildProjectReferenceUploadPreview(file: File, draftId: string): ReferenceCandidate {

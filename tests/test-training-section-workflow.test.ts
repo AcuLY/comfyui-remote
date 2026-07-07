@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
+const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 
 function sourceBetween(startMarker: string, endMarker: string) {
@@ -230,8 +231,8 @@ test("training section list scans existing section ids for local copy and draft 
     "export function LoraTrainingProjectSectionDetailPage",
   );
 
-  assert.match(pagesSource, /function nextProjectSectionCopyNumber/, "section copy ids should use a shared ordinal helper");
-  assert.match(pagesSource, /function nextProjectSectionDraftNumber/, "new section draft ids should use a shared ordinal helper");
+  assert.match(projectPageUtilsSource, /function nextProjectSectionCopyNumber/, "section copy ids should use a shared ordinal helper");
+  assert.match(projectPageUtilsSource, /function nextProjectSectionDraftNumber/, "new section draft ids should use a shared ordinal helper");
   assert.match(sectionsPage, /nextProjectSectionCopyNumber\(localSections, section\.id\)/, "copy ids should scan existing copied section ids");
   assert.match(sectionsPage, /nextProjectSectionDraftNumber\(localSections\)/, "new section ids should scan existing draft section ids");
   assert.doesNotMatch(sectionsPage, /copyId = `\$\{section\.id\}-copy-\$\{Date\.now\(\)\}`/, "copy ids should not depend on Date.now");
@@ -363,7 +364,7 @@ test("training section detail generates scene block ids from existing ids instea
     "export function LoraTrainingGenerationComposePage",
   );
 
-  assert.match(pagesSource, /function nextSceneBlockOrdinal/, "section block id generation should use a shared ordinal helper");
+  assert.match(projectPageUtilsSource, /function nextSceneBlockOrdinal/, "section block id generation should use a shared ordinal helper");
   assert.match(detailPage, /nextSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-local-block-`\)/, "local block ids should scan existing local ids");
   assert.match(detailPage, /nextSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-preset-block-\$\{preset\.id\}-`\)/, "imported preset block ids should scan existing imported ids");
   assert.doesNotMatch(detailPage, /id:\s*`\$\{activeSection\.id\}-local-block-\$\{current\.length \+ 1\}`/, "local block ids should not reuse ids after deleting earlier blocks");
@@ -424,8 +425,8 @@ test("training section detail state stays scoped to the active project section",
     "scene-block updates should write only the active keyed state",
   );
   assert.match(detailPage, /projectId:\s*activeProject\.id/, "scene-block updates and saved drafts should store the active project id");
-  assert.match(pagesSource, /type ProjectSectionDraftState = \{[\s\S]*?projectId:\s*string;/, "saved section drafts should be typed with the parent project id");
-  assert.match(pagesSource, /type ProjectSectionDraftState = \{[\s\S]*?sectionId:\s*string;/, "saved section drafts should be typed with the active section id");
+  assert.match(projectPageUtilsSource, /type ProjectSectionDraftState = \{[\s\S]*?projectId:\s*string;/, "saved section drafts should be typed with the parent project id");
+  assert.match(projectPageUtilsSource, /type ProjectSectionDraftState = \{[\s\S]*?sectionId:\s*string;/, "saved section drafts should be typed with the active section id");
   assert.match(detailPage, /editingSceneBlockState/, "editing scene-block state should be stored with route context");
   assert.match(
     detailPage,
