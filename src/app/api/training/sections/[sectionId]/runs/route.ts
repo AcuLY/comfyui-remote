@@ -1,4 +1,4 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import type { LoraTrainingRun } from "@/features/training/types";
 import {
   enqueueTrainingSectionGenerationRun,
@@ -6,6 +6,7 @@ import {
 } from "@/server/services/training/project-actions-service";
 import { listTrainingGenerationTaskRuns } from "@/server/services/training/generation-task-draft-service";
 import { listTrainingRuns, mapTrainingReadError } from "@/server/services/training/read-service";
+import { readOptionalJsonObject } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -33,22 +34,20 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ sectionId: string }> },
 ) {
-  let body: unknown = {};
+  let body: Record<string, unknown>;
 
   try {
-    const rawBody = await request.text();
-    body = rawBody.trim() ? JSON.parse(rawBody) : {};
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readOptionalJsonObject(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {
     const { sectionId } = await params;
-    const payload = body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {};
     const queryProjectId = new URL(request.url).searchParams.get("projectId");
     const data = await enqueueTrainingSectionGenerationRun(sectionId, {
-      ...payload,
-      projectId: typeof payload.projectId === "string" ? payload.projectId : queryProjectId ?? undefined,
+      ...body,
+      projectId: typeof body.projectId === "string" ? body.projectId : queryProjectId ?? undefined,
     });
     return ok(data, { status: 201 });
   } catch (error) {

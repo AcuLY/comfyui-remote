@@ -221,6 +221,8 @@
 - Phase 3 slice 18 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 1006 tests discovered, 1005 pass, 0 fail, 1 skipped.
 - Phase 3 slice 19 migrated Training project create/update/reorder/profile/save-as-template route parsing in `src/app/api/training/projects/**/route.ts` to `readJsonBody`/`failFromError`, preserving each route's existing Training project error mapper.
 - Phase 3 slice 19 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts`, `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 1008 tests discovered, 1007 pass, 0 fail, 1 skipped.
+- Phase 3 slice 20 migrated Training section, block, detach, and section-run route parsing in `src/app/api/training/projects/[projectId]/sections/**/route.ts`, `src/app/api/training/sections/[sectionId]/**/route.ts`, and `src/app/api/training/blocks/[blockId]/**/route.ts` to `readJsonBody` or `readOptionalJsonObject` with `failFromError`, preserving each route's existing Training section/block error mapper.
+- Phase 3 slice 20 verification passed: red `node --import tsx --test tests/test-api-request-json.test.ts`, then green `node --import tsx --test tests/test-api-request-json.test.ts`, `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 1010 tests discovered, 1009 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 

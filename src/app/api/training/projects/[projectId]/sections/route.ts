@@ -1,10 +1,11 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   copyTrainingProjectSection,
   createTrainingProjectSection,
   listTrainingProjectSections,
   mapTrainingProjectSectionError,
 } from "@/server/services/training/project-section-service";
+import { readOptionalJsonObject } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -26,17 +27,18 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
-  let body: unknown;
+  let body: Record<string, unknown>;
+
   try {
-    body = await request.json();
-  } catch {
-    body = {};
+    body = await readOptionalJsonObject(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {
     const { projectId } = await params;
-    const sourceSectionId = body && typeof body === "object" && !Array.isArray(body) && typeof (body as { sourceSectionId?: unknown }).sourceSectionId === "string"
-      ? (body as { sourceSectionId: string }).sourceSectionId
+    const sourceSectionId = typeof body.sourceSectionId === "string"
+      ? body.sourceSectionId
       : null;
     const data = sourceSectionId
       ? await copyTrainingProjectSection(projectId, sourceSectionId)

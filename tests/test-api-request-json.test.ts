@@ -226,6 +226,15 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/training/projects/reorder/route.ts",
     "src/app/api/training/projects/[projectId]/profile/route.ts",
     "src/app/api/training/projects/[projectId]/save-as-template/route.ts",
+    "src/app/api/training/projects/[projectId]/sections/route.ts",
+    "src/app/api/training/projects/[projectId]/sections/[sectionId]/route.ts",
+    "src/app/api/training/projects/[projectId]/sections/reorder/route.ts",
+    "src/app/api/training/sections/[sectionId]/route.ts",
+    "src/app/api/training/sections/[sectionId]/blocks/route.ts",
+    "src/app/api/training/sections/[sectionId]/blocks/reorder/route.ts",
+    "src/app/api/training/sections/[sectionId]/runs/route.ts",
+    "src/app/api/training/blocks/[blockId]/route.ts",
+    "src/app/api/training/blocks/[blockId]/detach/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -398,6 +407,38 @@ test("training project mutations use shared raw JSON parsing", () => {
     assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
     assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
     assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+});
+
+test("training section and block mutations use shared JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/training/projects/[projectId]/sections/[sectionId]/route.ts",
+    "src/app/api/training/projects/[projectId]/sections/reorder/route.ts",
+    "src/app/api/training/sections/[sectionId]/route.ts",
+    "src/app/api/training/sections/[sectionId]/blocks/route.ts",
+    "src/app/api/training/sections/[sectionId]/blocks/reorder/route.ts",
+    "src/app/api/training/blocks/[blockId]/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+
+  for (const routePath of [
+    "src/app/api/training/projects/[projectId]/sections/route.ts",
+    "src/app/api/training/sections/[sectionId]/runs/route.ts",
+    "src/app/api/training/blocks/[blockId]/detach/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readOptionalJsonObject\(request\)/, `${routePath} should parse through readOptionalJsonObject`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /request\.json\(\)/, `${routePath} should not parse JSON directly`);
+    assert.doesNotMatch(source, /JSON\.parse\(/, `${routePath} should not parse request text locally`);
   }
 });
 
@@ -712,6 +753,56 @@ test("training project mutations preserve invalid JSON response envelope", async
     }),
     await saveAsTemplateRoute.POST(makeRequest("not-json"), {
       params: Promise.resolve({ projectId: "project-1" }),
+    }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("training section and block mutations preserve invalid JSON response envelope", async () => {
+  const projectSectionsRoute = await import("../src/app/api/training/projects/[projectId]/sections/route");
+  const projectSectionRoute = await import("../src/app/api/training/projects/[projectId]/sections/[sectionId]/route");
+  const projectSectionsReorderRoute = await import("../src/app/api/training/projects/[projectId]/sections/reorder/route");
+  const trainingSectionRoute = await import("../src/app/api/training/sections/[sectionId]/route");
+  const sectionBlocksRoute = await import("../src/app/api/training/sections/[sectionId]/blocks/route");
+  const sectionBlocksReorderRoute = await import("../src/app/api/training/sections/[sectionId]/blocks/reorder/route");
+  const sectionRunsRoute = await import("../src/app/api/training/sections/[sectionId]/runs/route");
+  const blockRoute = await import("../src/app/api/training/blocks/[blockId]/route");
+  const blockDetachRoute = await import("../src/app/api/training/blocks/[blockId]/detach/route");
+
+  for (const response of [
+    await projectSectionsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await projectSectionRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1", sectionId: "section-1" }),
+    }),
+    await projectSectionsReorderRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await trainingSectionRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ sectionId: "section-1" }),
+    }),
+    await sectionBlocksRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ sectionId: "section-1" }),
+    }),
+    await sectionBlocksReorderRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ sectionId: "section-1" }),
+    }),
+    await sectionRunsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ sectionId: "section-1" }),
+    }),
+    await blockRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ blockId: "block-1" }),
+    }),
+    await blockDetachRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ blockId: "block-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);

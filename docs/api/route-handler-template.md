@@ -95,6 +95,15 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/training/projects/reorder/route.ts`
 - `src/app/api/training/projects/[projectId]/profile/route.ts`
 - `src/app/api/training/projects/[projectId]/save-as-template/route.ts`
+- `src/app/api/training/projects/[projectId]/sections/route.ts`
+- `src/app/api/training/projects/[projectId]/sections/[sectionId]/route.ts`
+- `src/app/api/training/projects/[projectId]/sections/reorder/route.ts`
+- `src/app/api/training/sections/[sectionId]/route.ts`
+- `src/app/api/training/sections/[sectionId]/blocks/route.ts`
+- `src/app/api/training/sections/[sectionId]/blocks/reorder/route.ts`
+- `src/app/api/training/sections/[sectionId]/runs/route.ts`
+- `src/app/api/training/blocks/[blockId]/route.ts`
+- `src/app/api/training/blocks/[blockId]/detach/route.ts`
 
 ## Compatibility Exceptions
 

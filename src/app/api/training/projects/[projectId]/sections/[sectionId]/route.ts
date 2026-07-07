@@ -1,10 +1,11 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   deleteTrainingProjectSection,
   getTrainingProjectSection,
   mapTrainingProjectSectionError,
   upsertTrainingProjectSection,
 } from "@/server/services/training/project-section-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ projectId: string; sectionId: string }>;
@@ -25,10 +26,11 @@ export async function GET(_request: Request, context: RouteContext) {
 
 export async function PATCH(request: Request, context: RouteContext) {
   let body: unknown;
+
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {
