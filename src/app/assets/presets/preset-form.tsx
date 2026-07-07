@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useMemo, useId, useSyncExternalStore, useRef } from "react";
+import { useState, useEffect, useTransition, useMemo, useId, useSyncExternalStore } from "react";
 import {
   DndContext,
   closestCenter,
@@ -45,6 +45,7 @@ import { PRESET_HISTORY_TABS } from "./preset-types";
 import { PresetChangeHistoryPanel } from "./change-history-panel";
 import { PresetVariantBulkEditDialog } from "./preset-variant-bulk-edit-dialog";
 import { toSlug } from "./group-utils";
+import { usePresetSaveQueue } from "./use-preset-save-queue";
 
 function uniqueSlug(base: string, usedSlugs: Set<string>) {
   let slug = base;
@@ -362,12 +363,6 @@ type SavePayload = {
   variantDrafts: VariantDraft[];
 };
 
-type SaveStatus = "idle" | "saving" | "queued" | "saved" | "error";
-
-function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "保存失败";
-}
-
 export function PresetForm({
   categoryId,
   folderId,
@@ -393,11 +388,17 @@ export function PresetForm({
   embedded?: boolean;
 }) {
   const [, startVariantTransition] = useTransition();
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>(preset ? "saved" : "idle");
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const saveInFlightRef = useRef(false);
-  const queuedSaveRef = useRef<SavePayload | null>(null);
-  const failedSaveRef = useRef<SavePayload | null>(null);
+  const {
+    saveStatus,
+    saveError,
+    requestSave,
+    retryFailedSave,
+  } = usePresetSaveQueue<SavePayload>({
+    initialStatus: preset ? "saved" : "idle",
+    onSave: async (payload) => {
+      await onSave(payload.data, payload.variantDrafts);
+    },
+  });
 
   // Preset-level fields
   const [name, setName] = useState(preset?.name ?? "");
@@ -501,55 +502,6 @@ export function PresetForm({
       data: buildPresetData(nextCivitaiLinks),
       variantDrafts: withSystemVariantSlugs(nextVariants),
     };
-  }
-
-  async function flushSaveQueue() {
-    if (saveInFlightRef.current) return;
-    saveInFlightRef.current = true;
-
-    try {
-      while (queuedSaveRef.current) {
-        const payload = queuedSaveRef.current;
-        queuedSaveRef.current = null;
-        setSaveStatus("saving");
-        setSaveError(null);
-
-        try {
-          await onSave(payload.data, payload.variantDrafts);
-          failedSaveRef.current = null;
-        } catch (error: unknown) {
-          failedSaveRef.current = payload;
-          setSaveStatus("error");
-          setSaveError(errorMessage(error));
-          return;
-        }
-      }
-
-      setSaveStatus("saved");
-    } finally {
-      saveInFlightRef.current = false;
-      if (queuedSaveRef.current) {
-        void flushSaveQueue();
-      }
-    }
-  }
-
-  function requestSave(payload: SavePayload) {
-    failedSaveRef.current = null;
-    queuedSaveRef.current = payload;
-    setSaveStatus(saveInFlightRef.current ? "queued" : "saving");
-    setSaveError(null);
-    void flushSaveQueue();
-  }
-
-  function retryFailedSave() {
-    const payload = queuedSaveRef.current ?? failedSaveRef.current;
-    if (!payload) return;
-    failedSaveRef.current = null;
-    queuedSaveRef.current = payload;
-    setSaveStatus("saving");
-    setSaveError(null);
-    void flushSaveQueue();
   }
 
   function saveDrafts(nextVariants: VariantDraft[] = variants, nextCivitaiLinks = civitaiLinks) {

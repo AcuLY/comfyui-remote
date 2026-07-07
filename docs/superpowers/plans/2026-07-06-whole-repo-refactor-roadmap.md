@@ -375,6 +375,8 @@
 - Phase 7 slice 53 verification passed: red `node --import tsx --test tests/test-asset-file-manager-shared.test.ts`, then green `node --import tsx --test tests/test-asset-file-manager-shared.test.ts`, `node --import tsx --test tests/test-asset-file-manager-shared.test.ts tests/test-lora-model-navigation.test.ts tests/test-model-civitai-info-panel.test.ts tests/test-model-search-filter.test.ts tests/text-editor-mobile-height.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1092 tests discovered, 1091 pass, 0 fail, 1 skipped.
 - Phase 7 slice 54 documented the asset page resource-type split in the Asset Page Boundary Map. Model files, LoRA files, preset library, preset groups, and templates now have explicit route/container boundaries, UI/state owners, and follow-up split checkpoints backed by `tests/test-asset-page-boundaries.test.ts`.
 - Phase 7 slice 54 verification passed: red `node --import tsx --test tests/test-asset-page-boundaries.test.ts`, then green `node --import tsx --test tests/test-asset-page-boundaries.test.ts`, `node --import tsx --test tests/test-asset-page-boundaries.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1093 tests discovered, 1092 pass, 0 fail, 1 skipped.
+- Phase 7 slice 55 moved `preset-form.tsx` autosave queue state into `src/app/assets/presets/use-preset-save-queue.ts`. The form still owns preset/variant field state and rendering, while the hook now owns save status, queued latest-payload behavior, explicit retry of failed payloads, and React 19-safe external-store subscription.
+- Phase 7 slice 55 verification passed: red `node --import tsx --test tests/test-preset-save-queue.test.ts`, red `node --import tsx --test tests/test-repo-inventory.test.ts` for preset-owned queue inventory classification, then green `node --import tsx --test tests/test-preset-save-queue.test.ts tests/test-preset-variant-save-optimization.test.ts`, green `node --import tsx --test tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1098 tests discovered, 1097 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -932,7 +934,11 @@ Loading states remain colocated under their route segments for now; the later lo
 - [x] Split asset pages by resource type: model files, LoRA files, preset library, preset groups, templates.
 - [x] Keep file manager code shared between models and LoRAs where behavior is actually the same.
 - [ ] Split `preset-form.tsx` into variant list, variant editor, save queue hook, bulk apply utilities, and action footer.
+  - [x] Save queue hook extracted to `src/app/assets/presets/use-preset-save-queue.ts` and covered by `tests/test-preset-save-queue.test.ts`.
+  - [ ] Variant list, variant editor, bulk apply utilities, and action footer remain in `preset-form.tsx`.
 - [ ] Keep "apply to all variants" behavior tested for copy loop and save queue separately.
+  - [x] Save queue behavior is tested separately for latest-payload coalescing, retry, handler refresh, and falsy payloads.
+  - [ ] Copy-loop/apply-to-all behavior still needs focused utility tests before the bulk apply split is marked complete.
 - [ ] Keep preset group slot ordering owned by category slot template logic.
 - [ ] Split template section detail client into route container, section form, preset binding editor, prompt blocks, LoRA editor, and change history.
 - [ ] Keep sort rules editor isolated from preset edit form state.

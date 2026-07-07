@@ -118,10 +118,10 @@ function getOwnerModule(path: string, area: string): string {
     area === "src/server/mcp"
   ) return "agent-api";
   if (path.includes("training") || area.includes("training")) return "training";
-  if (path.includes("queue") || path.includes("worker") || area.includes("queue-worker")) return "queue-worker";
-  if (path.includes("comfy")) return "comfy-runtime";
   if (path.includes("preset")) return "preset-library";
   if (path.includes("template")) return "template-library";
+  if (path.includes("queue") || path.includes("worker") || area.includes("queue-worker")) return "queue-worker";
+  if (path.includes("comfy")) return "comfy-runtime";
   if (path.includes("project")) return "generation-projects";
   if (path.includes("lora") || path.includes("model")) return "asset-library";
   if (path.includes("censor")) return "censoring";

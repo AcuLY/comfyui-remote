@@ -94,6 +94,17 @@ test("repo inventory classifies every tracked file with the roadmap columns and 
   }
 });
 
+test("repo inventory keeps preset save queue helpers under the preset library owner", () => {
+  const rows = parseInventoryRows();
+
+  for (const path of [
+    "src/app/assets/presets/use-preset-save-queue.ts",
+    "tests/test-preset-save-queue.test.ts",
+  ]) {
+    assert.equal(rows.get(path)?.["owner module"], "preset-library", `${path} should remain preset-owned`);
+  }
+});
+
 test("documentation index records dependency, generated-code, runtime-file, and read-first rules", () => {
   assert.ok(existsSync(DOC_INDEX_PATH), `${DOC_INDEX_PATH} must exist`);
   assert.ok(existsSync(GENERATOR_PATH), `${GENERATOR_PATH} must exist`);
