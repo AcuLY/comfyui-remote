@@ -22,6 +22,7 @@ const trainingNotFoundSource = readFileSync(resolve(repoRoot, "src/features/trai
 const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/training/route.ts"), "utf8");
 const generationProjectDetailSource = readFileSync(resolve(repoRoot, "src/server/repositories/project-view-repository/detail-view.ts"), "utf8");
 const generationSectionEditPageSource = readFileSync(resolve(repoRoot, "src/app/projects/[projectId]/sections/[sectionId]/page.tsx"), "utf8");
+const generationSectionEditActionSource = readOptionalSource("src/app/projects/[projectId]/sections/[sectionId]/actions.ts");
 const generationQueuePageSource = readFileSync(resolve(repoRoot, "src/app/queue/page.tsx"), "utf8");
 const generationQueueDataRouteSource = readFileSync(resolve(repoRoot, "src/app/api/queue-data/route.ts"), "utf8");
 const generationQueueDataRepositorySource = readFileSync(resolve(repoRoot, "src/server/repositories/queue-data-repository.ts"), "utf8");
@@ -52,6 +53,7 @@ const generationProjectExportServiceSource = readFileSync(resolve(repoRoot, "src
 const generationProjectArchiveServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-archive-service.ts"), "utf8");
 const generationProjectFolderServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-folder-service.ts"), "utf8");
 const generationProjectServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-service.ts"), "utf8");
+const generationSectionEditPageServiceSource = readOptionalSource("src/server/services/section-edit-page-service.ts");
 const generationSectionLoraServiceSource = readOptionalSource("src/server/services/section-lora-service.ts");
 const generationImageReviewActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/image-review.ts"), "utf8");
 const generationCensoringActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/censoring.ts"), "utf8");
@@ -397,7 +399,7 @@ test("generation preset sort rules page delegates ordinary category reads", () =
 test("generation section edit page delegates data reads and LoRA writes", () => {
   assert.match(
     generationSectionEditPageSource,
-    /getProjectSectionEditData/,
+    /getProjectSectionEditPageData/,
     "Generation section edit page should delegate its section, sibling, and resolved-config reads below the page layer.",
   );
   assert.match(
@@ -407,8 +409,8 @@ test("generation section edit page delegates data reads and LoRA writes", () => 
   );
   assert.doesNotMatch(
     generationSectionEditPageSource,
-    /@\/lib\/prisma|prisma\.projectSection|sectionPresetBinding\.findMany|sectionManualLoraEntry|\$transaction/,
-    "Generation section edit page should not own Prisma queries or manual LoRA transactions.",
+    /@\/lib\/prisma|@\/server|prisma\.projectSection|sectionPresetBinding\.findMany|sectionManualLoraEntry|\$transaction|revalidatePath/,
+    "Generation section edit page should not own Prisma queries, server-service imports, revalidation, or manual LoRA transactions.",
   );
   assert.match(
     generationProjectDetailSource,
@@ -424,6 +426,16 @@ test("generation section edit page delegates data reads and LoRA writes", () => 
     generationSectionLoraServiceSource,
     /saveSectionLoraConfig[\s\S]*recordSectionChange/,
     "Generation section LoRA service should keep LoRA change history with the mutation.",
+  );
+  assert.match(
+    generationSectionEditPageServiceSource,
+    /getProjectSectionEditPageData[\s\S]*getProjectSectionEditData[\s\S]*getPresetLibraryV2[\s\S]*getSectionChangeHistory/,
+    "Generation section edit page-data service should compose repository data, preset library data, and change history.",
+  );
+  assert.match(
+    generationSectionEditActionSource,
+    /saveSectionLoraConfigAction[\s\S]*saveSectionLoraConfig[\s\S]*revalidatePath/,
+    "Generation section edit action should own LoRA revalidation after service persistence.",
   );
 });
 

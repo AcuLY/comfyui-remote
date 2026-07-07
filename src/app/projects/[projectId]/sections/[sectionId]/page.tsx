@@ -11,13 +11,11 @@ import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
 import { SectionRunButton } from "@/app/projects/[projectId]/project-detail-actions";
 import type { PromptBlockData } from "@/lib/actions";
-import { getPresetLibraryV2, getProjectSectionEditData } from "@/lib/server-data";
+import { getProjectSectionEditPageData } from "@/lib/server-data";
 import type { SectionLoraConfig } from "@/lib/lora-types";
-import { revalidatePath } from "next/cache";
-import { getSectionChangeHistory } from "@/server/services/section-change-history-service";
 import { SectionChangeHistory } from "./section-change-history";
 import { SectionSwitchHeaderLink, SectionSwitchScrollRestorer, SectionKeyboardShortcuts } from "./section-switch-navigation";
-import { saveSectionLoraConfig } from "@/server/services/section-lora-service";
+import { saveSectionLoraConfigAction } from "./actions";
 
 const RESOLVED_ONLY_BLOCK_ID_PREFIX = "resolved:";
 
@@ -28,16 +26,13 @@ export default async function SectionEditPage({
 }) {
   const { projectId, sectionId } = await params;
 
-  const [sectionEditData, libraryV2] = await Promise.all([
-    getProjectSectionEditData(projectId, sectionId),
-    getPresetLibraryV2(),
-  ]);
+  const sectionEditData = await getProjectSectionEditPageData(projectId, sectionId);
 
   if (!sectionEditData) {
     notFound();
   }
 
-  const { section: pos, resolvedConfig, siblingFolders, siblingSections } = sectionEditData;
+  const { section: pos, resolvedConfig, siblingFolders, siblingSections, libraryV2, changeHistory } = sectionEditData;
   const orderedSiblingSections = buildFolderScopedItemOrder(siblingFolders, siblingSections);
   const sectionIdx = orderedSiblingSections.findIndex((s) => s.id === sectionId);
   const prevSection = sectionIdx > 0 ? orderedSiblingSections[sectionIdx - 1] : null;
@@ -183,11 +178,8 @@ export default async function SectionEditPage({
   // Server action to save LoRA config (2-partition: lora1, lora2)
   async function handleLoraChange(config: SectionLoraConfig) {
     "use server";
-    await saveSectionLoraConfig(sectionId, config);
-    revalidatePath(`/projects/${projectId}/sections/${sectionId}`);
+    await saveSectionLoraConfigAction(projectId, sectionId, config);
   }
-
-  const changeHistory = await getSectionChangeHistory(sectionId);
 
   return (
     <div className="-mx-5 -mt-4 min-h-[calc(100dvh-5rem)] bg-[var(--panel)] px-5 pt-4 sm:-mx-6 sm:px-6">

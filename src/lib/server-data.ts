@@ -20,6 +20,7 @@ export {
 // Project view data
 export { listProjects, listProjectFolders, getProjectDetail, getProjectSectionEditData, getProjectResults, getSectionResults, getProjectFormOptions, getProjectEditData } from "@/server/repositories/project-view-repository";
 export type { ProjectDetailSection, ProjectDetail, ProjectSectionFolderItem, ProjectResultsData, SectionResultsData, ProjectFormCategory, ProjectFormOptions, PresetBinding, ProjectEditData, SectionBlockSummary } from "@/server/repositories/project-view-repository";
+export { getProjectSectionEditPageData } from "@/server/services/section-edit-page-service";
 export { listSectionTrashItems as getSectionTrashItems, listTrashItems as getTrashItems } from "@/server/repositories/trash-repository";
 
 // Preset view data
