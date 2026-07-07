@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
-const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
 const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
 const projectSectionsPagePath = resolve(featureUiDir, "training-project-sections-page.tsx");
 const projectSectionsPageSource = existsSync(projectSectionsPagePath)
@@ -15,6 +14,10 @@ const projectSectionsPageSource = existsSync(projectSectionsPagePath)
 const projectSectionDetailPagePath = resolve(featureUiDir, "training-project-section-detail-page.tsx");
 const projectSectionDetailPageSource = existsSync(projectSectionDetailPagePath)
   ? readFileSync(projectSectionDetailPagePath, "utf8")
+  : "";
+const generationComposePagePath = resolve(featureUiDir, "training-generation-compose-page.tsx");
+const generationComposePageSource = existsSync(generationComposePagePath)
+  ? readFileSync(generationComposePagePath, "utf8")
   : "";
 const sectionWorkspacePath = resolve(featureUiDir, "training-section-workspace.tsx");
 const sectionWorkspaceSource = existsSync(sectionWorkspacePath)
@@ -56,10 +59,6 @@ function sourceBetweenIn(source: string, startMarker: string, endMarker: string)
   return source.slice(start, end);
 }
 
-function sourceBetween(startMarker: string, endMarker: string) {
-  return sourceBetweenIn(pagesSource, startMarker, endMarker);
-}
-
 function sectionCardSource() {
   return sourceBetweenIn(projectSectionsPageSource, "function SectionCard", "export function LoraTrainingProjectSectionsPage");
 }
@@ -74,6 +73,10 @@ function sceneBlockCardSource() {
 
 function projectSectionDetailPageBody() {
   return projectSectionDetailPageSource;
+}
+
+function generationComposePageBody() {
+  return generationComposePageSource;
 }
 
 function cssRule(className: string) {
@@ -468,10 +471,7 @@ test("training section detail state stays scoped to the active project section",
 });
 
 test("generation compose uses an explicit reference source tree with preview then add", () => {
-  const composePage = sourceBetween(
-    "export function LoraTrainingGenerationComposePage",
-    "export function LoraTrainingProjectResultsPage",
-  );
+  const composePage = generationComposePageBody();
 
   assert.match(composePage, /ReferencePicker/, "compose page should delegate reference selection to a source-tree picker");
   assert.match(composePage, /referenceSourceTree/, "reference picker should render an explicit source tree");
@@ -480,10 +480,7 @@ test("generation compose uses an explicit reference source tree with preview the
 });
 
 test("generation compose queues a local generation task draft instead of only showing a toast", () => {
-  const composePage = sourceBetween(
-    "export function LoraTrainingGenerationComposePage",
-    "export function LoraTrainingProjectResultsPage",
-  );
+  const composePage = generationComposePageBody();
 
   assert.match(composePage, /generationTaskDraft/, "compose page should expose a local generated task draft");
   assert.match(composePage, /setGenerationTaskDraft/, "run action should update local generation task state");
@@ -496,10 +493,7 @@ test("generation compose queues a local generation task draft instead of only sh
 });
 
 test("generation compose posts through the formal HTTP API on production routes", () => {
-  const composePage = sourceBetween(
-    "export function LoraTrainingGenerationComposePage",
-    "export function LoraTrainingProjectResultsPage",
-  );
+  const composePage = generationComposePageBody();
 
   assert.match(composePage, /usePathname/, "generation compose should detect whether it is running under production \\/training routes");
   assert.match(composePage, /useRouter/, "generation compose should be able to navigate to the queued generation run on production routes");
@@ -517,10 +511,7 @@ test("generation compose posts through the formal HTTP API on production routes"
 });
 
 test("generation compose saves editable task fields into final input and draft", () => {
-  const composePage = sourceBetween(
-    "export function LoraTrainingGenerationComposePage",
-    "export function LoraTrainingProjectResultsPage",
-  );
+  const composePage = generationComposePageBody();
 
   assert.match(composePage, /useGenerationComposeForm/, "compose page should delegate editable task fields to the focused hook");
   assert.match(generationComposeFormHookSource, /generationFormState/, "generation compose form hook should track editable task fields in local state");
@@ -535,10 +526,7 @@ test("generation compose saves editable task fields into final input and draft",
 });
 
 test("generation compose manages supplemental image attachments in local state", () => {
-  const composePage = sourceBetween(
-    "export function LoraTrainingGenerationComposePage",
-    "export function LoraTrainingProjectResultsPage",
-  );
+  const composePage = generationComposePageBody();
 
   assert.match(composePage, /useGenerationSupplementalImages/, "compose page should delegate supplemental image attachments to the focused hook");
   assert.match(generationSupplementalImagesHookSource, /supplementalImageAttachmentState/, "generation supplemental image hook should keep supplemental image attachments in local state");
@@ -556,10 +544,7 @@ test("generation compose manages supplemental image attachments in local state",
 });
 
 test("generation compose uploads supplemental images through the formal HTTP API on production routes", () => {
-  const composePage = sourceBetween(
-    "export function LoraTrainingGenerationComposePage",
-    "export function LoraTrainingProjectResultsPage",
-  );
+  const composePage = generationComposePageBody();
 
   assert.match(composePage, /supplementalImageInputRef/, "compose page should keep a ref to the supplemental image input");
   assert.match(composePage, /handleUploadSupplementalImage/, "compose page should expose an explicit upload entrypoint");
@@ -572,10 +557,7 @@ test("generation compose uploads supplemental images through the formal HTTP API
 });
 
 test("generation compose removes uploaded supplemental images through the formal HTTP API on production routes", () => {
-  const composePage = sourceBetween(
-    "export function LoraTrainingGenerationComposePage",
-    "export function LoraTrainingProjectResultsPage",
-  );
+  const composePage = generationComposePageBody();
   const removeHandler = composePage.slice(
     composePage.indexOf("async function handleRemoveSupplementalImage"),
     composePage.indexOf("\n  function handleUploadSupplementalImage"),
@@ -590,10 +572,7 @@ test("generation compose removes uploaded supplemental images through the formal
 });
 
 test("generation compose does not post uploaded supplemental images as ordinary reference inputs", () => {
-  const composePage = sourceBetween(
-    "export function LoraTrainingGenerationComposePage",
-    "export function LoraTrainingProjectResultsPage",
-  );
+  const composePage = generationComposePageBody();
 
   assert.match(composePage, /attachment\.source !== "上传"/, "uploaded supplemental images should be excluded from draft reference-input posting");
   assert.match(composePage, /supplementalDraftReferenceIds/, "compose page should derive queue-time supplemental references separately");
@@ -601,10 +580,7 @@ test("generation compose does not post uploaded supplemental images as ordinary 
 });
 
 test("generation compose task draft stays scoped to the active project section", () => {
-  const composePage = sourceBetween(
-    "export function LoraTrainingGenerationComposePage",
-    "export function LoraTrainingProjectResultsPage",
-  );
+  const composePage = generationComposePageBody();
 
   assert.match(composePage, /useGenerationTaskDraft/, "compose page should delegate generation task draft state to the focused hook");
   assert.match(generationTaskDraftHookSource, /projectId:\s*string;/, "generation task draft should remember its project");
@@ -634,10 +610,7 @@ test("reference picker disables references that have already been added", () => 
 
 test("reference picker can remove explicitly added references", () => {
   const pickerSource = referencePickerSource;
-  const composePage = sourceBetween(
-    "export function LoraTrainingGenerationComposePage",
-    "export function LoraTrainingProjectResultsPage",
-  );
+  const composePage = generationComposePageBody();
 
   assert.match(pickerSource, /onRemoveReference/, "reference picker should accept a remove callback");
   assert.match(pickerSource, /handleRemoveReference/, "reference picker should expose an explicit remove handler");
@@ -649,10 +622,7 @@ test("reference picker can remove explicitly added references", () => {
 });
 
 test("generation compose carries explicitly added references into the task draft", () => {
-  const composePage = sourceBetween(
-    "export function LoraTrainingGenerationComposePage",
-    "export function LoraTrainingProjectResultsPage",
-  );
+  const composePage = generationComposePageBody();
 
   assert.match(composePage, /selectedReferenceIds/, "compose page should consume selected reference state");
   assert.match(generationComposeReferenceSelectionHookSource, /setReferenceSelectionState/, "generation compose reference hook should update selected references locally");
@@ -665,10 +635,7 @@ test("generation compose carries explicitly added references into the task draft
 });
 
 test("generation compose keeps reference selection scoped to the active project section", () => {
-  const composePage = sourceBetween(
-    "export function LoraTrainingGenerationComposePage",
-    "export function LoraTrainingProjectResultsPage",
-  );
+  const composePage = generationComposePageBody();
 
   assert.match(composePage, /useGenerationComposeReferenceSelection/, "compose reference selection should be delegated to a route-scoped hook");
   assert.match(generationComposeReferenceSelectionHookSource, /projectId:\s*projectId/, "reference selection should remember the source project id");

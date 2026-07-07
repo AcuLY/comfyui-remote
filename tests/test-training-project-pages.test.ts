@@ -20,6 +20,10 @@ const projectSectionDetailPagePath = resolve(featureUiDir, "training-project-sec
 const projectSectionDetailPageSource = existsSync(projectSectionDetailPagePath)
   ? readFileSync(projectSectionDetailPagePath, "utf8")
   : "";
+const generationComposePagePath = resolve(featureUiDir, "training-generation-compose-page.tsx");
+const generationComposePageSource = existsSync(generationComposePagePath)
+  ? readFileSync(generationComposePagePath, "utf8")
+  : "";
 const projectPageShellPath = resolve(featureUiDir, "project-page-shell.tsx");
 const projectPageShellSource = existsSync(projectPageShellPath) ? readFileSync(projectPageShellPath, "utf8") : "";
 const trainingResultGridPath = resolve(featureUiDir, "training-result-grid.tsx");
@@ -132,6 +136,13 @@ test("training project section detail page lives in a focused page module", () =
   assert.match(pagesSource, /export \{ LoraTrainingProjectSectionDetailPage \} from "\.\/training-project-section-detail-page";/, "broad project pages module should retain a compatibility re-export");
   assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectSectionDetailPage/, "broad project pages module should not keep the section detail implementation inline");
   assert.doesNotMatch(pagesSource, /\nfunction SceneBlockCard\b/, "broad project pages module should not keep scene-block cards inline");
+});
+
+test("training generation compose page lives in a focused page module", () => {
+  assert.match(generationComposePageSource, /export function LoraTrainingGenerationComposePage/, "generation compose implementation should live in its own module");
+  assert.match(generationComposePageSource, /ensureGenerationDraftTaskId/, "generation compose draft transport should move with the page");
+  assert.match(pagesSource, /export \{ LoraTrainingGenerationComposePage \} from "\.\/training-generation-compose-page";/, "broad project pages module should retain a compatibility re-export");
+  assert.doesNotMatch(pagesSource, /export function LoraTrainingGenerationComposePage/, "broad project pages module should not keep the generation compose implementation inline");
 });
 
 test("training project page shell lives in a focused component module", () => {
@@ -308,9 +319,9 @@ test("training generation compose reference selection lives in a focused hook mo
   assert.match(generationComposeReferenceSelectionHookSource, /selectedReferenceIds/, "generation compose reference hook should own selected reference ids");
   assert.match(generationComposeReferenceSelectionHookSource, /projectId/, "generation compose reference hook should keep project route context");
   assert.match(generationComposeReferenceSelectionHookSource, /sectionId/, "generation compose reference hook should keep section route context");
-  assert.match(pagesSource, /from "\.\/use-generation-compose-reference-selection"/, "generation compose page should import the focused reference selection hook");
-  assert.doesNotMatch(pagesSource, /\n  const \[referenceSelectionState, setReferenceSelectionState\]/, "generation compose page should not keep reference selection state inline");
-  assert.doesNotMatch(pagesSource, /setReferenceSelectionState/, "generation compose page should not update reference selection state inline");
+  assert.match(generationComposePageSource, /from "\.\/use-generation-compose-reference-selection"/, "generation compose page should import the focused reference selection hook");
+  assert.doesNotMatch(generationComposePageSource, /\n  const \[referenceSelectionState, setReferenceSelectionState\]/, "generation compose page should not keep reference selection state inline");
+  assert.doesNotMatch(generationComposePageSource, /setReferenceSelectionState/, "generation compose page should not update reference selection state inline");
 });
 
 test("training generation compose form state lives in a focused hook module", () => {
@@ -318,9 +329,9 @@ test("training generation compose form state lives in a focused hook module", ()
   assert.match(generationComposeFormHookSource, /DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT/, "generation compose form hook should own the default supplemental prompt");
   assert.match(generationComposeFormHookSource, /generationFormState/, "generation compose form hook should own route-scoped form state");
   assert.match(generationComposeFormHookSource, /handleUpdateGenerationForm/, "generation compose form hook should expose the form update handler");
-  assert.match(pagesSource, /from "\.\/use-generation-compose-form"/, "generation compose page should import the focused form hook");
-  assert.doesNotMatch(pagesSource, /\nconst DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT\b/, "generation compose page should not own form defaults");
-  assert.doesNotMatch(pagesSource, /\n  const \[generationFormState, setGenerationForm\]/, "generation compose page should not keep form state inline");
+  assert.match(generationComposePageSource, /from "\.\/use-generation-compose-form"/, "generation compose page should import the focused form hook");
+  assert.doesNotMatch(generationComposePageSource, /\nconst DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT\b/, "generation compose page should not own form defaults");
+  assert.doesNotMatch(generationComposePageSource, /\n  const \[generationFormState, setGenerationForm\]/, "generation compose page should not keep form state inline");
 });
 
 test("training generation supplemental image state lives in a focused hook module", () => {
@@ -329,9 +340,9 @@ test("training generation supplemental image state lives in a focused hook modul
   assert.match(generationSupplementalImagesHookSource, /supplementalImageAttachmentState/, "generation supplemental image hook should own route-scoped attachment state");
   assert.match(generationSupplementalImagesHookSource, /addSupplementalImage/, "generation supplemental image hook should expose an explicit add action");
   assert.match(generationSupplementalImagesHookSource, /removeLocalSupplementalImage/, "generation supplemental image hook should expose local remove behavior");
-  assert.match(pagesSource, /from "\.\/use-generation-supplemental-images"/, "generation compose page should import the focused supplemental image hook");
-  assert.doesNotMatch(pagesSource, /\n  const \[supplementalImageAttachmentState, setSupplementalImageAttachments\]/, "generation compose page should not keep supplemental image state inline");
-  assert.doesNotMatch(pagesSource, /setSupplementalImageAttachments/, "generation compose page should not update supplemental image state inline");
+  assert.match(generationComposePageSource, /from "\.\/use-generation-supplemental-images"/, "generation compose page should import the focused supplemental image hook");
+  assert.doesNotMatch(generationComposePageSource, /\n  const \[supplementalImageAttachmentState, setSupplementalImageAttachments\]/, "generation compose page should not keep supplemental image state inline");
+  assert.doesNotMatch(generationComposePageSource, /setSupplementalImageAttachments/, "generation compose page should not update supplemental image state inline");
 });
 
 test("training generation task draft state lives in a focused hook module", () => {
@@ -340,9 +351,9 @@ test("training generation task draft state lives in a focused hook module", () =
   assert.match(generationTaskDraftHookSource, /generationTaskDraftTransportState/, "generation task draft hook should own transport task id state");
   assert.match(generationTaskDraftHookSource, /visibleGenerationTaskDraft/, "generation task draft hook should expose the active visible draft");
   assert.match(generationTaskDraftHookSource, /rememberGenerationDraftTaskId/, "generation task draft hook should expose an explicit task id setter");
-  assert.match(pagesSource, /from "\.\/use-generation-task-draft"/, "generation compose page should import the focused task draft hook");
-  assert.doesNotMatch(pagesSource, /\n  const \[generationTaskDraftTransportState, setGenerationTaskDraftTransportState\]/, "generation compose page should not keep draft transport state inline");
-  assert.doesNotMatch(pagesSource, /\n  const \[generationTaskDraft, setGenerationTaskDraft\]/, "generation compose page should not keep visible draft state inline");
+  assert.match(generationComposePageSource, /from "\.\/use-generation-task-draft"/, "generation compose page should import the focused task draft hook");
+  assert.doesNotMatch(generationComposePageSource, /\n  const \[generationTaskDraftTransportState, setGenerationTaskDraftTransportState\]/, "generation compose page should not keep draft transport state inline");
+  assert.doesNotMatch(generationComposePageSource, /\n  const \[generationTaskDraft, setGenerationTaskDraft\]/, "generation compose page should not keep visible draft state inline");
 });
 
 test("training project page upload preview helpers live in the utility module", () => {
