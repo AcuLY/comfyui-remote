@@ -401,6 +401,8 @@
 - Phase 7 slice 66 verification passed: green `node --import tsx --test tests/test-preset-form-split.test.ts`, green `node --import tsx --test tests/test-preset-form-split.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1114 tests discovered, 1113 pass, 0 fail, 1 skipped.
 - Phase 7 slice 67 moved pending queue review-group rendering and pagination links into `src/app/queue/queue-pending-tab.tsx`. `queue-page-client.tsx` still owns tab state, polling, running controls, censoring, failed runs, and trash/restore until the remaining queue split subchecks are handled.
 - Phase 7 slice 67 verification passed: red `node --import tsx --test tests/test-queue-page-client-split.test.ts`, then green `node --import tsx --test tests/test-queue-page-client-split.test.ts`, green `node --import tsx --test tests/test-queue-page-client-split.test.ts tests/test-queue-autopoll-no-router-refresh.test.ts tests/test-queue-trash-restore.test.ts tests/test-queue-control-progress-stream.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-run-submission-deferral.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1115 tests discovered, 1114 pass, 0 fail, 1 skipped.
+- Phase 7 slice 68 moved active running-run rendering, progress bars, and per-run/bulk control buttons into `src/app/queue/queue-running-tab.tsx`, with reusable censoring progress cards in `src/app/queue/queue-censoring-progress-card.tsx`. `queue-page-client.tsx` now passes queue-control callbacks into the focused running tab while keeping the actual API/action coordination local.
+- Phase 7 slice 68 verification passed: red `node --import tsx --test tests/test-queue-page-client-split.test.ts`, then green `node --import tsx --test tests/test-queue-page-client-split.test.ts`, green `node --import tsx --test tests/test-queue-page-client-split.test.ts tests/test-queue-autopoll-no-router-refresh.test.ts tests/test-queue-trash-restore.test.ts tests/test-queue-control-progress-stream.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-run-submission-deferral.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1116 tests discovered, 1115 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -987,7 +989,7 @@ Loading states remain colocated under their route segments for now; the later lo
 
 - [ ] Keep queue list, active progress, review group pagination, and trash/restore state separate.
   - [x] Pending review-group list and pagination extracted to `src/app/queue/queue-pending-tab.tsx` and covered by `tests/test-queue-page-client-split.test.ts`.
-  - [ ] Active run progress and controls extracted from `queue-page-client.tsx`.
+  - [x] Active run progress and controls extracted to `src/app/queue/queue-running-tab.tsx` and covered by `tests/test-queue-page-client-split.test.ts`.
   - [ ] Trash/restore list, pagination, and local restore state extracted from `queue-page-client.tsx`.
 - [ ] Keep queue page autopoll behavior from causing `router.refresh` loops.
 - [ ] Keep review grid selection, action strip, keyboard shortcuts, and image labeling split into focused components.
