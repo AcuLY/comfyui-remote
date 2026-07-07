@@ -1,5 +1,9 @@
 /**
- * Logger Module
+ * Server-only logger module.
+ *
+ * Value imports from this file belong in server actions, route handlers, instrumentation,
+ * and server-only services. Browser/client modules must not import it because file logging
+ * uses Node fs/path APIs.
  *
  * A comprehensive logging system for the backend with:
  * - Multiple log levels (debug, info, warn, error)
@@ -429,4 +433,3 @@ export function createLogger(options: LoggerOptions = {}): Logger {
  * logger.info("Application started");
  */
 export const logger = new Logger();
-

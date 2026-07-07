@@ -80,6 +80,7 @@ const generationTemplateImportSource = readFileSync(resolve(repoRoot, "src/lib/a
 const generationPresetReplacementSource = readFileSync(resolve(repoRoot, "src/server/services/preset-section-replacement-service.ts"), "utf8");
 const generationActionsBarrelSource = readFileSync(resolve(repoRoot, "src/lib/actions.ts"), "utf8");
 const serverDataFacadeSource = readFileSync(resolve(repoRoot, "src/lib/server-data.ts"), "utf8");
+const loggerSource = readFileSync(resolve(repoRoot, "src/lib/logger.ts"), "utf8");
 
 const MODULE_OWNED_RESOURCE_KEYS = ["runs", "projects", "presets", "templates"] as const;
 const SHARED_RESOURCE_KEYS = ["models", "settings"] as const;
@@ -125,12 +126,25 @@ function hasUseClientDirective(source: string) {
   return /^\s*["']use client["'];?/.test(source);
 }
 
-function hasServerDataValueImport(source: string) {
+function hasValueImportFrom(source: string, modulePathPattern: RegExp) {
   const importStatements = source.match(/import[\s\S]*?from\s+["'][^"']+["'];?/g) ?? [];
 
-  return importStatements.some((statement) =>
-    /from\s+["']@\/lib\/server-data["']/.test(statement) && !/^import\s+type\b/.test(statement.trim()),
-  );
+  return importStatements.some((statement) => {
+    const fromMatch = statement.match(/from\s+["']([^"']+)["']/);
+    return Boolean(
+      fromMatch &&
+        modulePathPattern.test(fromMatch[1]) &&
+        !/^import\s+type\b/.test(statement.trim()),
+    );
+  });
+}
+
+function hasServerDataValueImport(source: string) {
+  return hasValueImportFrom(source, /^@\/lib\/server-data$/);
+}
+
+function hasLoggerValueImport(source: string) {
+  return hasValueImportFrom(source, /^(?:@\/lib\/logger|(?:\.\.?\/)+(?:.*\/)?logger)$/);
 }
 
 test("full actions barrel is compatibility-only and unused by source callers", () => {
@@ -165,6 +179,25 @@ test("server data facade is documented as RSC-only and not value-imported by cli
     findSourcesWithPredicate(clientLayerFiles, hasServerDataValueImport),
     [],
     "Client layers may import server-data types only; value imports must stay in RSC pages, route handlers, or server-only services.",
+  );
+});
+
+test("logger module is documented as server-only and not value-imported by client layers", () => {
+  assert.match(
+    loggerSource,
+    /Server-only logger module/,
+    "src/lib/logger.ts should document that its value exports are for server contexts.",
+  );
+
+  const clientLayerFiles = [
+    ...sourceFilesFromRoots("src/components", "src/features", "src/hooks"),
+    ...sourceFilesFromRoots("src/app").filter((path) => hasUseClientDirective(readFileSync(path, "utf8"))),
+  ];
+
+  assert.deepEqual(
+    findSourcesWithPredicate(clientLayerFiles, hasLoggerValueImport),
+    [],
+    "Client layers must not value-import the Node-backed logger module.",
   );
 });
 

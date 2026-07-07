@@ -331,6 +331,8 @@
 - Phase 6 slice 31 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, staged `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts tests/test-preset-resource-scope.test.ts`, and `npm test` with 1066 tests discovered, 1065 pass, 0 fail, 1 skipped.
 - Phase 6 slice 32 documented `src/lib/server-data.ts` as an RSC-only server data facade and added a source-contract guard that allows client layers to import its types only, keeping value imports in RSC pages, route handlers, and server-only services.
 - Phase 6 slice 32 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, reran the known flaky auto-censor timeout subtest after one full-suite empty-stdout JSON parse failure, and clean `npm test` with 1067 tests discovered, 1066 pass, 0 fail, 1 skipped.
+- Phase 6 slice 33 documented `src/lib/logger.ts` as a server-only logger module and added a source-contract guard keeping client-capable layers from value-importing the Node-backed logger.
+- Phase 6 slice 33 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1068 tests discovered, 1067 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -754,7 +756,7 @@
 
 - [ ] Mark each file as client-safe, server-only, or universal.
 - [x] Move server-only re-export layer `server-data.ts` into a clearer server namespace or document it as RSC-only.
-- [ ] Keep `logger.ts` server-safe and avoid importing it into browser components.
+- [x] Keep `logger.ts` server-safe and avoid importing it into browser components.
 - [ ] Consolidate UI error extraction helpers for preset replacement and sync preset variant flow if their payload shape is the same.
 - [ ] Keep route fallback tests aligned with work-mode route behavior.
 - [ ] Keep character LoRA compatibility helpers until migration docs explicitly retire old forms/API clients.
