@@ -529,6 +529,8 @@
 - Phase 8 slice 130 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-frontend-api-contract.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1173 tests discovered, 1172 pass, 0 fail, 1 skipped.
 - Phase 9 slice 131 moved the shared section import preset panel into `src/components/section-import-preset-panel.tsx`. The focused component owns import categories, folder/search navigation, preset/variant/group rows, and import callbacks while `section-editor.tsx` now stays under 800 lines and template section bindings import the shared panel directly instead of depending on the broad section editor module.
 - Phase 9 slice 131 verification passed: red `node --import tsx --test tests/test-section-preset-detail-links.test.ts tests/test-template-section-detail-split.test.ts`, green `node --import tsx --test tests/test-section-preset-detail-links.test.ts tests/test-template-section-detail-split.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-section-preset-detail-links.test.ts tests/test-template-section-detail-split.test.ts tests/test-section-editor-binding-rules.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1174 tests discovered, 1173 pass, 0 fail, 1 skipped.
+- Phase 9 slice 132 added `docs/ui/component-boundaries.md` and `tests/test-ui-component-boundaries.test.ts` to classify production-supported shadcn local primitives, document `design-demo-ui` as not the default production primitive layer, and guard training shell files from direct `@/components/ui/sidebar` imports.
+- Phase 9 slice 132 verification passed: red `node --import tsx --test tests/test-ui-component-boundaries.test.ts`, green `node --import tsx --test tests/test-ui-component-boundaries.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-ui-component-boundaries.test.ts src/components/design-demo-ui/media/image-accessibility.test.ts src/components/design-demo-ui/primitives/controls-interaction.test.mjs src/components/design-demo-ui/primitives/field/field.test.ts src/components/design-demo-ui/feedback/provider-theme.test.mjs tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1176 tests discovered, 1175 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1226,12 +1228,12 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/components/upscale-factor-quick-fill.tsx`
 - `src/components/stat-chip.tsx`
 
-- [ ] Split complex editors into primitives, hooks, and domain-specific adapters.
+- [x] Split complex editors into primitives, hooks, and domain-specific adapters.
 - [x] Fix React hooks lint errors in `design-demo-shell/app-shell.tsx` and `preset-cascade-picker.tsx` before using lint as a gate.
 - [ ] Ensure every dialog/cascade picker has accessible labels and stable portal handling.
 - [x] Keep section editor binding rules as pure functions with tests.
 - [ ] Keep copy buttons and toast text behavior tested.
-- [ ] Avoid moving production components into design-demo namespaces.
+- [x] Avoid moving production components into design-demo namespaces.
 
 **UI primitives and design-demo component system:**
 - `src/components/ui/button.tsx`
@@ -1246,11 +1248,11 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/components/design-demo-routing/**`
 - `src/components/design-demo-ui/**`
 
-- [ ] Decide which `components/ui` primitives are production-supported and which are shadcn-generated local copies.
-- [ ] Keep `components/ui/sidebar.tsx` from leaking into training shell unless the module intentionally opts into it.
-- [ ] Move design-demo-only primitives under `src/components/design-demo-ui` and document that they are not production defaults.
-- [ ] Keep design-demo media accessibility tests green.
-- [ ] Align design-demo shell React hook behavior with React 19 lint rules.
+- [x] Decide which `components/ui` primitives are production-supported and which are shadcn-generated local copies.
+- [x] Keep `components/ui/sidebar.tsx` from leaking into training shell unless the module intentionally opts into it.
+- [x] Move design-demo-only primitives under `src/components/design-demo-ui` and document that they are not production defaults.
+- [x] Keep design-demo media accessibility tests green.
+- [x] Align design-demo shell React hook behavior with React 19 lint rules.
 
 ## Phase 10: Design Demos, Static Prototypes, And Visual Docs
 
