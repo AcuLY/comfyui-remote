@@ -94,6 +94,7 @@ import { useGenerationComposeForm } from "./use-generation-compose-form";
 import { useGenerationComposeReferenceSelection } from "./use-generation-compose-reference-selection";
 import { useGenerationSupplementalImages } from "./use-generation-supplemental-images";
 import { useGenerationTaskDraft } from "./use-generation-task-draft";
+import { useProjectArchiveState } from "./use-project-archive-state";
 import { useProjectSectionResults } from "./use-project-section-results";
 import { useProjectSectionSceneBlocks } from "./use-project-section-scene-blocks";
 import { useProjectSectionDraft } from "./use-project-section-draft";
@@ -1227,15 +1228,11 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: Train
   const { pushToast } = useDemoFeedback();
   const training = useTraining(data);
   const project = findProject(data, projectId);
-  const [projectArchiveState, setProjectArchiveState] = useState(() => ({
-    archived: project?.status === "archived",
-    projectId: project?.id ?? null,
-  }));
+  const { isProjectArchived, setProjectArchived } = useProjectArchiveState(project?.id ?? null, project?.status === "archived");
   const [isUpdatingProjectArchive, setIsUpdatingProjectArchive] = useState(false);
   if (!project) return <EmptyPage title="没有训练项目数据" />;
   const sourceProject = project;
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
-  const isProjectArchived = projectArchiveState.projectId === sourceProject.id ? projectArchiveState.archived : sourceProject.status === "archived";
   const activeProject: LoraTrainingProject = isProjectArchived
     ? { ...sourceProject, status: "archived" }
     : sourceProject.status === "archived"
@@ -1246,14 +1243,11 @@ export function LoraTrainingProjectDetailPage({ data, projectId }: { data: Train
   const latestRevision = sourceProject.datasetRevisions[0];
 
   async function handleToggleProjectArchive() {
-    const currentArchived = projectArchiveState.projectId === sourceProject.id ? projectArchiveState.archived : sourceProject.status === "archived";
+    const currentArchived = isProjectArchived;
     const nextArchived = !currentArchived;
 
     const applyLocalArchiveState = () => {
-      setProjectArchiveState({
-        archived: nextArchived,
-        projectId: sourceProject.id,
-      });
+      setProjectArchived(nextArchived);
     };
 
     if (!isProductionTrainingRoute) {

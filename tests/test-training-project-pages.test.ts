@@ -19,6 +19,10 @@ const projectReferenceSelectionHookPath = resolve(featureUiDir, "use-project-ref
 const projectReferenceSelectionHookSource = existsSync(projectReferenceSelectionHookPath)
   ? readFileSync(projectReferenceSelectionHookPath, "utf8")
   : "";
+const projectArchiveStateHookPath = resolve(featureUiDir, "use-project-archive-state.ts");
+const projectArchiveStateHookSource = existsSync(projectArchiveStateHookPath)
+  ? readFileSync(projectArchiveStateHookPath, "utf8")
+  : "";
 const projectSectionDraftHookPath = resolve(featureUiDir, "use-project-section-draft.ts");
 const projectSectionDraftHookSource = existsSync(projectSectionDraftHookPath)
   ? readFileSync(projectSectionDraftHookPath, "utf8")
@@ -361,13 +365,16 @@ test("training project overview archives and restores the project locally", () =
 
   const overviewSource = pagesSource.slice(overviewStart, profileStart);
 
-  assert.match(overviewSource, /projectArchiveState/, "overview should keep local archive state for the current project");
-  assert.match(overviewSource, /setProjectArchiveState/, "archive action should update local state");
+  assert.match(projectArchiveStateHookSource, /function useProjectArchiveState\b/, "overview archive state should live in a focused hook");
+  assert.match(projectArchiveStateHookSource, /projectArchiveState/, "overview should keep local archive state for the current project");
+  assert.match(projectArchiveStateHookSource, /setProjectArchived/, "archive action should update local state through the focused hook");
+  assert.match(overviewSource, /useProjectArchiveState/, "overview should delegate archive state to the focused hook");
   assert.match(overviewSource, /handleToggleProjectArchive/, "overview should define an archive/restore handler");
   assert.match(overviewSource, /activeProject/, "overview should pass the locally updated project into shared header/navigation");
   assert.match(overviewSource, /project=\{activeProject\}/, "ProjectHeader should receive the local archived status");
   assert.match(overviewSource, /onClick=\{handleToggleProjectArchive\}/, "archive button should call the local archive handler");
   assert.match(overviewSource, /isProjectArchived \? "恢复" : "归档"/, "archive action should visibly toggle between archive and restore");
+  assert.doesNotMatch(overviewSource, /\n  const \[projectArchiveState, setProjectArchiveState\]/, "overview should not keep archive state inline");
   assert.doesNotMatch(overviewSource, /归档项目需要确认/, "archive action should not stay as a confirmation-only placeholder");
 });
 
