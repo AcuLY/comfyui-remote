@@ -1,9 +1,8 @@
 "use client";
 
-import { useMemo, useState, useTransition, useId } from "react";
+import { useState, useTransition, useId } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   closestCenter,
   DndContext,
@@ -30,7 +29,6 @@ import {
   renameProjectFolder,
   reorderProjectFolders,
 } from "@/lib/actions/project-folder";
-import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import type { ProjectCard as ProjectCardData, ProjectFolderItem } from "@/lib/types";
 import {
   BatchActionBar,
@@ -41,6 +39,7 @@ import {
 } from "@/app/assets/presets/folder-components";
 import { ProjectArchiveButton } from "./project-archive-button";
 import { ProjectDeleteButton } from "./project-delete-button";
+import { useProjectListViewState } from "./use-project-list-view-state";
 
 export function ProjectsClient({
   initialProjects,
@@ -51,58 +50,31 @@ export function ProjectsClient({
   folders: ProjectFolderItem[];
   initialFolderId: string | null;
 }) {
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(initialFolderId);
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [showArchived, setShowArchived] = useState(false);
-
-  const visibleFolders = useMemo(
-    () => folders.filter((folder) => (folder.parentId ?? null) === currentFolderId),
-    [folders, currentFolderId],
-  );
-  const folderProjects = useMemo(
-    () => initialProjects.filter((project) => (project.folderId ?? null) === currentFolderId),
-    [initialProjects, currentFolderId],
-  );
-  const visibleProjects = useMemo(
-    () => folderProjects.filter((project) => showArchived || !project.archivedAt),
-    [folderProjects, showArchived],
-  );
-  const countableProjects = useMemo(
-    () => showArchived ? initialProjects : initialProjects.filter((project) => !project.archivedAt),
-    [initialProjects, showArchived],
-  );
-  const archivedProjectCount = folderProjects.filter((project) => project.archivedAt).length;
-  const breadcrumb = useMemo(() => {
-    const path: ProjectFolderItem[] = [];
-    let folderId = currentFolderId;
-    while (folderId) {
-      const folder = folders.find((item) => item.id === folderId);
-      if (!folder) break;
-      path.unshift(folder);
-      folderId = folder.parentId;
-    }
-    return path;
-  }, [currentFolderId, folders]);
+  const {
+    currentFolderId,
+    visibleFolders,
+    visibleProjects,
+    countableProjects,
+    archivedProjectCount,
+    breadcrumb,
+    selectedIds,
+    showArchived,
+    setShowArchived,
+    navigateFolder,
+    toggleProjectSelection,
+    selectAllVisibleProjects,
+    clearProjectSelection,
+    refreshProjectList: refresh,
+  } = useProjectListViewState({ initialProjects, folders, initialFolderId });
 
   const folderDndId = useId();
   const folderSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-
-  function navigateFolder(folderId: string | null) {
-    setCurrentFolderId(folderId);
-    setSelectedIds(new Set());
-    router.replace(hrefWithFolderQuery("/projects", "folder", folderId), { scroll: false });
-  }
-
-  function refresh() {
-    router.refresh();
-  }
 
   function handleCreateFolder() {
     const name = newFolderName.trim();
@@ -137,15 +109,6 @@ export function ProjectsClient({
     });
   }
 
-  function toggleProjectSelection(projectId: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(projectId)) next.delete(projectId);
-      else next.add(projectId);
-      return next;
-    });
-  }
-
   function handleMoveProjects(projectIds: string[], folderId: string | null) {
     if (projectIds.length === 0) return;
     startTransition(async () => {
@@ -153,7 +116,7 @@ export function ProjectsClient({
         for (const projectId of projectIds) {
           await moveProjectToFolder(projectId, folderId);
         }
-        setSelectedIds(new Set());
+        clearProjectSelection();
         toast.success(`已移动 ${projectIds.length} 个项目`);
         refresh();
       } catch (error) {
@@ -193,10 +156,7 @@ export function ProjectsClient({
                 <input
                   type="checkbox"
                   checked={showArchived}
-                  onChange={(event) => {
-                    setShowArchived(event.currentTarget.checked);
-                    setSelectedIds(new Set());
-                  }}
+                  onChange={(event) => setShowArchived(event.currentTarget.checked)}
                   className="size-3 accent-sky-500"
                 />
                 显示归档
@@ -217,8 +177,8 @@ export function ProjectsClient({
             totalCount={visibleProjects.length}
             folders={folders}
             onMoveToFolder={(folderId) => handleMoveProjects(Array.from(selectedIds), folderId)}
-            onSelectAll={() => setSelectedIds(new Set(visibleProjects.map((project) => project.id)))}
-            onClearSelection={() => setSelectedIds(new Set())}
+            onSelectAll={selectAllVisibleProjects}
+            onClearSelection={clearProjectSelection}
           />
 
           {isCreatingFolder && (

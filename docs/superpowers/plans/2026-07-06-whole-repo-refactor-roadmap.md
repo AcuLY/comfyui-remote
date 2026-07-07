@@ -351,6 +351,8 @@
 - Phase 7 slice 41 verification passed: red `node --import tsx --test tests/test-global-css-design-tokens.test.ts`, then green `node --import tsx --test tests/test-global-css-design-tokens.test.ts`, `node --import tsx --test tests/test-global-css-design-tokens.test.ts tests/test-next16-build-compat-source.test.ts tests/text-editor-mobile-height.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1080 tests discovered, 1079 pass, 0 fail, 1 skipped.
 - Phase 7 slice 42 defined project page route/container boundaries for list, create, detail, edit, batch-create, section edit, section results, and project results after inspecting the current route files and broad client modules. The boundary map records which files own data loading, search-param validation, state, rendering, lightbox/review behavior, and the later split checkpoints before project UI modules are moved.
 - Phase 7 slice 42 verification passed: red `node --import tsx --test tests/test-project-page-boundaries.test.ts`, then green `node --import tsx --test tests/test-project-page-boundaries.test.ts`, `node --import tsx --test tests/test-project-page-boundaries.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1081 tests discovered, 1080 pass, 0 fail, 1 skipped.
+- Phase 7 slice 43 moved project list filtering, archive visibility, folder breadcrumb derivation, and selection state into `src/app/projects/project-list-view-model.ts` and `src/app/projects/use-project-list-view-state.ts`. `src/app/projects/projects-client.tsx` now consumes the hook and keeps folder mutations/rendering local until the later project UI splits.
+- Phase 7 slice 43 verification passed: red `node --import tsx --test tests/test-project-list-view-state.test.ts`, then green `node --import tsx --test tests/test-project-list-view-state.test.ts`, `node --import tsx --test tests/test-project-list-view-state.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1083 tests discovered, 1082 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -851,7 +853,7 @@
 Loading states remain colocated under their route segments for now; the later loading-state checkpoint should extract shared skeleton pieces without moving route-specific fallback ownership.
 
 - [x] Define project page boundaries: list, create, detail, edit, batch-create, section edit, section results, project results.
-- [ ] Move project list filtering/sorting state into hooks under a project UI module.
+- [x] Move project list filtering/sorting state into hooks under a project UI module.
 - [ ] Move section card rendering into shared project components with typed props.
 - [ ] Keep result lightbox state in `src/lib/review-lightbox-state.ts` or a focused hook.
 - [ ] Split `project-results-client.tsx` into route container, toolbar/filter state, gallery/list component, lightbox adapter, mutation adapter.
