@@ -97,6 +97,7 @@ import { useGenerationTaskDraft } from "./use-generation-task-draft";
 import { useProjectArchiveState } from "./use-project-archive-state";
 import { useProjectCreateForm } from "./use-project-create-form";
 import { useProjectCreateTrainingDefaults } from "./use-project-create-training-defaults";
+import { useProjectCreatedDraft } from "./use-project-created-draft";
 import { useProjectSectionResults } from "./use-project-section-results";
 import { useProjectSectionSceneBlocks } from "./use-project-section-scene-blocks";
 import { useProjectSectionDraft } from "./use-project-section-draft";
@@ -773,30 +774,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
   }));
   const sectionSeeds = sectionSeedState.templateContextId === projectTemplateContextId ? sectionSeedState.sections : initialSectionSeeds;
   const { setTrainingDefaults, trainingDefaults } = useProjectCreateTrainingDefaults(projectTemplateContextId);
-  type CreatedProjectDraft = {
-    autoFreezeDataset: boolean;
-    autoGenerateSamples: boolean;
-    baseModel: string;
-    captionStrategy: string;
-    detailPrompt: string;
-    enabledSectionCount: number;
-    perSectionImageCount: string;
-    selectedReferenceCount: number;
-    selectedReferenceTitles: string[];
-    sectionCount: number;
-    templateTitle: string;
-    title: string;
-    trainingSteps: string;
-    usagePrompt: string;
-  };
-  const [createdProjectDraftState, setCreatedProjectDraftState] = useState<{
-    draft: CreatedProjectDraft | null;
-    templateContextId: string;
-  }>(() => ({
-    draft: null,
-    templateContextId: projectTemplateContextId,
-  }));
-  const createdProjectDraft = createdProjectDraftState.templateContextId === projectTemplateContextId ? createdProjectDraftState.draft : null;
+  const { createdProjectDraft, setCreatedProjectDraft } = useProjectCreatedDraft(projectTemplateContextId);
   const selectedProjectReferences = referenceSourceTree
     .flatMap((group) => group.items)
     .filter((candidate) => selectedReferenceIds.has(candidate.id));
@@ -845,13 +823,6 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
         sections: nextSections,
         templateContextId: projectTemplateContextId,
       };
-    });
-  }
-
-  function setCreatedProjectDraft(draft: CreatedProjectDraft) {
-    setCreatedProjectDraftState({
-      draft,
-      templateContextId: projectTemplateContextId,
     });
   }
 

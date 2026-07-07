@@ -31,6 +31,10 @@ const projectCreateTrainingDefaultsHookPath = resolve(featureUiDir, "use-project
 const projectCreateTrainingDefaultsHookSource = existsSync(projectCreateTrainingDefaultsHookPath)
   ? readFileSync(projectCreateTrainingDefaultsHookPath, "utf8")
   : "";
+const projectCreatedDraftHookPath = resolve(featureUiDir, "use-project-created-draft.ts");
+const projectCreatedDraftHookSource = existsSync(projectCreatedDraftHookPath)
+  ? readFileSync(projectCreatedDraftHookPath, "utf8")
+  : "";
 const projectSectionDraftHookPath = resolve(featureUiDir, "use-project-section-draft.ts");
 const projectSectionDraftHookSource = existsSync(projectSectionDraftHookPath)
   ? readFileSync(projectSectionDraftHookPath, "utf8")
@@ -1364,8 +1368,11 @@ test("training project create page creates a local front-end draft instead of pr
 
   const formSource = pagesSource.slice(formStart, detailStart);
 
+  assert.match(formSource, /useProjectCreatedDraft/, "project creation should delegate created draft storage to the focused hook");
+  assert.match(projectCreatedDraftHookSource, /CreatedProjectDraft/, "created draft hook should own the visible draft summary shape");
   assert.match(formSource, /createdProjectDraft/, "project creation should expose a local created draft summary");
   assert.match(formSource, /setCreatedProjectDraft/, "project creation should update local state when created");
+  assert.match(projectCreatedDraftHookSource, /setCreatedProjectDraft/, "created draft hook should expose the draft update action");
   assert.match(formSource, /handleCreateProjectDraft/, "project creation should define a local create handler");
   assert.match(formSource, /onClick=\{handleCreateProjectDraft\}/, "create button should call the local create handler");
   assert.match(formSource, /createdProjectDraft \? "更新项目草稿" : "创建项目"/, "create action should visibly switch to updating the local draft");
@@ -1466,12 +1473,13 @@ test("training project create reference and draft state stay scoped to the selec
   const formSource = pagesSource.slice(formStart, detailStart);
 
   assert.match(projectReferenceSelectionHookSource, /projectReferenceSelectionState/, "project create reference state should be stored with template context");
-  assert.match(formSource, /createdProjectDraftState/, "created project draft should be stored with template context");
+  assert.match(projectCreatedDraftHookSource, /createdProjectDraftState/, "created project draft should be stored with template context");
   assert.match(projectReferenceSelectionHookSource, /projectReferenceSelectionState\.templateContextId === templateContextId \? projectReferenceSelectionState :/, "project references should fall back after template context changes");
-  assert.match(formSource, /createdProjectDraftState\.templateContextId === projectTemplateContextId \? createdProjectDraftState\.draft : null/, "created draft should reset after template context changes");
+  assert.match(projectCreatedDraftHookSource, /createdProjectDraftState\.templateContextId === projectTemplateContextId \? createdProjectDraftState\.draft : null/, "created draft should reset after template context changes");
   assert.match(projectReferenceSelectionHookSource, /selectedReferenceIds:\s*new Set<string>\(\)/, "a new template context should start with no selected references");
   assert.doesNotMatch(formSource, /const \[previewReference, setPreviewReference\] = useState<ReferenceCandidate \| null>/, "project reference preview should not be stored without template context");
   assert.doesNotMatch(formSource, /const \[selectedReferenceIds, setSelectedReferenceIds\] = useState<Set<string>>\(new Set\(\)\)/, "project selected references should not be stored without template context");
+  assert.doesNotMatch(formSource, /\n  const \[createdProjectDraftState, setCreatedProjectDraftState\]/, "project create page should not keep created draft state inline");
   assert.doesNotMatch(formSource, /const \[createdProjectDraft, setCreatedProjectDraft\] = useState</, "created project draft should not be stored without template context");
 });
 
