@@ -40,7 +40,7 @@ test("image-heavy production pages use document navigation for primary route exi
     ["src/app/projects/[projectId]/sections/[sectionId]/page.tsx", "href={returnHref}"],
     ["src/app/projects/[projectId]/sections/[sectionId]/page.tsx", "href={`/projects/${projectId}/sections/${sectionId}/results`}"],
     ["src/app/projects/[projectId]/results/project-results-client.tsx", "href={`/projects/${project.id}`}"],
-    ["src/app/projects/[projectId]/results/project-results-client.tsx", "href={`/projects/${projectId}/sections/${section.id}/results`}"],
+    ["src/app/projects/[projectId]/results/project-results-gallery.tsx", "href={`/projects/${projectId}/sections/${section.id}/results`}"],
     ["src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx", "href={returnHref}"],
     ["src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx", "href={`/projects/${projectId}/sections/${sectionId}`}"],
     ["src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx", "href={`/projects/${projectId}/results`}"],
