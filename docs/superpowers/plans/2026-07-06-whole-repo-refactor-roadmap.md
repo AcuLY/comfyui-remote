@@ -540,6 +540,8 @@
 - Phase 10 slice 135 verification passed: red `node --import tsx --test tests/test-legacy-static-design-demos.test.ts`, green `node --import tsx --test tests/test-legacy-static-design-demos.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-legacy-static-design-demos.test.ts tests/test-design-demo-governance.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1184 tests discovered, 1183 pass, 0 fail, 1 skipped.
 - Phase 10 slice 136 added `docs/prototypes/README.md` and `tests/test-training-prototype-governance.test.ts` to classify `docs/prototypes/**` as training prototype intent only, map every LoRA training HTML prototype to its production `/training` route and `src/features/training` owner, and guard `lora-training-shared.css`/`.js` plus prototype images/fonts as prototype-only assets that production `src/**` must not import.
 - Phase 10 slice 136 verification passed: red `node --import tsx --test tests/test-training-prototype-governance.test.ts`, green `node --import tsx --test tests/test-training-prototype-governance.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-prototype-governance.test.ts tests/test-design-demo-governance.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1186 tests discovered, 1185 pass, 0 fail, 1 skipped.
+- Phase 11 slice 137 added `docs/worker-boundaries.md` and `tests/test-worker-boundary-governance.test.ts` to codify the generation worker split: `payload-builder.ts` owns prompt draft normalization, `repository.ts` owns run persistence, `run-executor.ts` orchestrates both, and `fallback-prompt-builder.ts` remains a ComfyUI validation last resort behind explicit prompts and the standard `docs/workflow.api.json` path.
+- Phase 11 slice 137 verification passed: red `node --import tsx --test tests/test-worker-boundary-governance.test.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts tests/test-run-submission-deferral.test.ts tests/test-run-recovery-poller-cap.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1189 tests discovered, 1188 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1331,8 +1333,8 @@ Loading states remain colocated under their route segments for now; the later lo
 - `tests/test-run-recovery-poller-cap.test.ts`
 - `tests/test-comfy-queue-cancellation.test.ts`
 
-- [ ] Split generation worker payload creation from run repository fetch/update behavior.
-- [ ] Keep fallback prompt builder as last resort only; document when it is allowed.
+- [x] Split generation worker payload creation from run repository fetch/update behavior.
+- [x] Keep fallback prompt builder as last resort only; document when it is allowed.
 - [ ] Split training `task-api.ts` into task ID parsing, target discovery, leasing, heartbeat, completion, failure mapping, and scheduler tick modules.
 - [ ] Keep worker scripts as CLI entrypoints that call shared worker functions.
 - [ ] Add dry-run or mock flags to worker scripts where tests need deterministic behavior.
