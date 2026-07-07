@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,10 @@ const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
 const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
 const projectSectionDraftHookSource = readFileSync(resolve(featureUiDir, "use-project-section-draft.ts"), "utf8");
+const generationComposeReferenceSelectionHookPath = resolve(featureUiDir, "use-generation-compose-reference-selection.ts");
+const generationComposeReferenceSelectionHookSource = existsSync(generationComposeReferenceSelectionHookPath)
+  ? readFileSync(generationComposeReferenceSelectionHookPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 
 function sourceBetween(startMarker: string, endMarker: string) {
@@ -643,8 +647,8 @@ test("generation compose carries explicitly added references into the task draft
     "export function LoraTrainingProjectResultsPage",
   );
 
-  assert.match(composePage, /selectedReferenceIds/, "compose page should own the selected reference state");
-  assert.match(composePage, /setReferenceSelectionState/, "compose page should update selected references locally");
+  assert.match(composePage, /selectedReferenceIds/, "compose page should consume selected reference state");
+  assert.match(generationComposeReferenceSelectionHookSource, /setReferenceSelectionState/, "generation compose reference hook should update selected references locally");
   assert.match(composePage, /selectedReferences/, "compose page should resolve selected reference objects");
   assert.match(composePage, /selectedReferenceTitles/, "task draft should store the selected reference titles");
   assert.match(composePage, /selectedReferenceDetails/, "final input should include selected reference details");
@@ -659,11 +663,12 @@ test("generation compose keeps reference selection scoped to the active project 
     "export function LoraTrainingProjectResultsPage",
   );
 
-  assert.match(composePage, /referenceSelectionState/, "compose reference selection should be stored with route context");
-  assert.match(composePage, /projectId:\s*project\?\.id \?\? null/, "reference selection should remember the source project id");
-  assert.match(composePage, /sectionId:\s*section\?\.id \?\? null/, "reference selection should remember the source section id");
-  assert.match(composePage, /referenceSelectionState\.projectId === activeProject\.id && referenceSelectionState\.sectionId === activeSection\.id/, "reference selection should fall back after project or section changes");
-  assert.match(composePage, /selectedReferenceIds:\s*new Set<string>\(\)/, "a new project section should start with an empty explicit reference selection");
+  assert.match(composePage, /useGenerationComposeReferenceSelection/, "compose reference selection should be delegated to a route-scoped hook");
+  assert.match(generationComposeReferenceSelectionHookSource, /projectId:\s*projectId/, "reference selection should remember the source project id");
+  assert.match(generationComposeReferenceSelectionHookSource, /sectionId:\s*sectionId/, "reference selection should remember the source section id");
+  assert.match(generationComposeReferenceSelectionHookSource, /referenceSelectionState\.projectId === projectId && referenceSelectionState\.sectionId === sectionId/, "reference selection should fall back after project or section changes");
+  assert.match(generationComposeReferenceSelectionHookSource, /selectedReferenceIds:\s*new Set<string>\(\)/, "a new project section should start with an empty explicit reference selection");
+  assert.doesNotMatch(composePage, /setReferenceSelectionState/, "compose page should not update reference selection state inline");
   assert.doesNotMatch(composePage, /const \[previewReference, setPreviewReference\] = useState<ReferenceCandidate \| null>/, "preview state should not be stored without route context");
   assert.doesNotMatch(composePage, /const \[selectedReferenceIds, setSelectedReferenceIds\] = useState<Set<string>>\(new Set\(\)\)/, "selected references should not be stored without route context");
 });

@@ -90,6 +90,7 @@ import {
   type TrainingTextRevisionItem,
 } from "./project-page-utils";
 import s from "./training-project-pages.module.css";
+import { useGenerationComposeReferenceSelection } from "./use-generation-compose-reference-selection";
 import { useProjectSectionDraft } from "./use-project-section-draft";
 import { useProjectReferenceUploadDrafts } from "./use-project-reference-upload-drafts";
 import { useProjectReferenceSelection } from "./use-project-reference-selection";
@@ -3146,12 +3147,14 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
       })),
     },
   ] : [];
-  const [referenceSelectionState, setReferenceSelectionState] = useState(() => ({
-    previewReference: referenceSourceTree[0]?.items[0] ?? null,
-    projectId: project?.id ?? null,
-    sectionId: section?.id ?? null,
-    selectedReferenceIds: new Set<string>(),
-  }));
+  const fallbackTaskReference = referenceSourceTree[0]?.items[0] ?? null;
+  const {
+    activePreviewReference,
+    addTaskReference: handleAddTaskReference,
+    previewTaskReference: handlePreviewTaskReference,
+    removeTaskReference: handleRemoveTaskReference,
+    selectedReferenceIds,
+  } = useGenerationComposeReferenceSelection(project?.id ?? null, section?.id ?? null, fallbackTaskReference);
   const [generationFormState, setGenerationForm] = useState(() => ({
     projectId: project?.id ?? null,
     sectionId: section?.id ?? null,
@@ -3187,14 +3190,6 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
   if (!project || !section) return <EmptyPage title="没有生成任务上下文" />;
   const activeProject = project;
   const activeSection = section;
-  const referenceSelection = referenceSelectionState.projectId === activeProject.id && referenceSelectionState.sectionId === activeSection.id ? referenceSelectionState : {
-    previewReference: referenceSourceTree[0]?.items[0] ?? null,
-    projectId: activeProject.id,
-    sectionId: activeSection.id,
-    selectedReferenceIds: new Set<string>(),
-  };
-  const activePreviewReference = referenceSelection.previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
-  const selectedReferenceIds = referenceSelection.selectedReferenceIds;
   const generationForm = generationFormState.projectId === activeProject.id && generationFormState.sectionId === activeSection.id ? generationFormState : {
     projectId: activeProject.id,
     sectionId: activeSection.id,
@@ -3297,46 +3292,6 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
       taskId: nextTaskId,
     });
     return nextTaskId;
-  }
-
-  function handlePreviewTaskReference(candidate: ReferenceCandidate) {
-    setReferenceSelectionState((current) => {
-      const selectedReferenceIds = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.selectedReferenceIds : new Set<string>();
-      return {
-        previewReference: candidate,
-        projectId: activeProject.id,
-        sectionId: activeSection.id,
-        selectedReferenceIds,
-      };
-    });
-  }
-
-  function handleAddTaskReference(candidate: ReferenceCandidate) {
-    setReferenceSelectionState((current) => {
-      const selectedReferenceIds = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.selectedReferenceIds : new Set<string>();
-      return {
-        previewReference: candidate,
-        projectId: activeProject.id,
-        sectionId: activeSection.id,
-        selectedReferenceIds: new Set([...selectedReferenceIds, candidate.id]),
-      };
-    });
-  }
-
-  function handleRemoveTaskReference(candidate: ReferenceCandidate) {
-    setReferenceSelectionState((current) => {
-      const selectedReferenceIds = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.selectedReferenceIds : new Set<string>();
-      const nextSelectedReferenceIds = new Set(selectedReferenceIds);
-      nextSelectedReferenceIds.delete(candidate.id);
-      return {
-        previewReference: current.projectId === activeProject.id && current.sectionId === activeSection.id
-          ? current.previewReference
-          : activePreviewReference,
-        projectId: activeProject.id,
-        sectionId: activeSection.id,
-        selectedReferenceIds: nextSelectedReferenceIds,
-      };
-    });
   }
 
   function handleAddSupplementalImage(candidate: SupplementalImageAttachment) {

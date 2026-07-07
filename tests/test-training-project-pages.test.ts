@@ -23,6 +23,10 @@ const projectSectionDraftHookPath = resolve(featureUiDir, "use-project-section-d
 const projectSectionDraftHookSource = existsSync(projectSectionDraftHookPath)
   ? readFileSync(projectSectionDraftHookPath, "utf8")
   : "";
+const generationComposeReferenceSelectionHookPath = resolve(featureUiDir, "use-generation-compose-reference-selection.ts");
+const generationComposeReferenceSelectionHookSource = existsSync(generationComposeReferenceSelectionHookPath)
+  ? readFileSync(generationComposeReferenceSelectionHookPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
@@ -184,6 +188,16 @@ test("training project section draft state lives in a focused hook module", () =
   assert.match(pagesSource, /from "\.\/use-project-section-draft"/, "section detail page should import the focused section draft hook");
   assert.doesNotMatch(pagesSource, /\nconst \[sectionDraftsByKey, setSectionDraftsByKey\]/, "section detail page should not keep section draft state inline");
   assert.doesNotMatch(pagesSource, /type ProjectSectionDraftState/, "section detail page should not import section draft state typing directly");
+});
+
+test("training generation compose reference selection lives in a focused hook module", () => {
+  assert.match(generationComposeReferenceSelectionHookSource, /function useGenerationComposeReferenceSelection\b/, "generation compose reference selection should live in a focused hook");
+  assert.match(generationComposeReferenceSelectionHookSource, /selectedReferenceIds/, "generation compose reference hook should own selected reference ids");
+  assert.match(generationComposeReferenceSelectionHookSource, /projectId/, "generation compose reference hook should keep project route context");
+  assert.match(generationComposeReferenceSelectionHookSource, /sectionId/, "generation compose reference hook should keep section route context");
+  assert.match(pagesSource, /from "\.\/use-generation-compose-reference-selection"/, "generation compose page should import the focused reference selection hook");
+  assert.doesNotMatch(pagesSource, /\n  const \[referenceSelectionState, setReferenceSelectionState\]/, "generation compose page should not keep reference selection state inline");
+  assert.doesNotMatch(pagesSource, /setReferenceSelectionState/, "generation compose page should not update reference selection state inline");
 });
 
 test("training project page upload preview helpers live in the utility module", () => {
