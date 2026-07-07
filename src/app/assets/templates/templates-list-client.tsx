@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { Trash2, Layers } from "lucide-react";
-import { deleteProjectTemplate } from "@/lib/actions";
+import { deleteProjectTemplate } from "@/lib/actions/template-crud";
 import { toast } from "sonner";
 import type { ProjectTemplateListItem } from "@/lib/server-data";
 
