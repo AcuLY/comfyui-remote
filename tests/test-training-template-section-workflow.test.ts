@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -9,22 +9,23 @@ const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const featureRoot = resolve(testDir, "../src/features/training");
 const resourceSource = readFileSync(resolve(featureUiDir, "training-resource-pages.tsx"), "utf8");
 const templatePageUtilsSource = readFileSync(resolve(featureUiDir, "training-template-page-utils.ts"), "utf8");
+const templateSceneBlockCardPath = resolve(featureUiDir, "training-template-scene-block-card.tsx");
+const templateSceneBlockCardSource = existsSync(templateSceneBlockCardPath)
+  ? readFileSync(templateSceneBlockCardPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
-
-function sourceBetween(startMarker: string, endMarker: string) {
-  const start = resourceSource.indexOf(startMarker);
-  const end = resourceSource.indexOf(endMarker, start + startMarker.length);
-  assert.notEqual(start, -1, `${startMarker} should exist`);
-  assert.notEqual(end, -1, `${endMarker} should exist after ${startMarker}`);
-  return resourceSource.slice(start, end);
-}
 
 function sourceFrom(startMarker: string) {
   const start = resourceSource.indexOf(startMarker);
   assert.notEqual(start, -1, `${startMarker} should exist`);
   return resourceSource.slice(start);
+}
+
+function templateSceneBlockCardBody() {
+  assert.match(templateSceneBlockCardSource, /export function TemplateSceneBlockCard\b/, "template scene block card should live in its focused module");
+  return templateSceneBlockCardSource;
 }
 
 test("training template fixtures expose scene blocks instead of only block counts", () => {
@@ -41,7 +42,7 @@ test("training template fixtures expose scene blocks instead of only block count
 
 test("training template section page uses the project-section scene-block action model", () => {
   const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
-  const blockCard = sourceBetween("function TemplateSceneBlockCard", "export function LoraTrainingPresetsPage");
+  const blockCard = templateSceneBlockCardBody();
 
   for (const label of ["选择预制", "导入所选", "添加本地块"]) {
     assert.match(templateSectionPage, new RegExp(label), `template section should include ${label}`);
@@ -56,7 +57,7 @@ test("training template section page uses the project-section scene-block action
 
 test("training template section scene-block actions update local front-end state", () => {
   const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
-  const blockCard = sourceBetween("function TemplateSceneBlockCard", "export function LoraTrainingPresetsPage");
+  const blockCard = templateSceneBlockCardBody();
 
   assert.match(templateSectionPage, /sceneBlocks/, "template section should render from a local editable block list");
   assert.match(templateSectionPage, /setTemplateSectionSceneBlocksByKey/, "template section block actions should update keyed local state");

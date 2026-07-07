@@ -35,6 +35,10 @@ const templatePageUtilsPath = resolve(featureUiDir, "training-template-page-util
 const templatePageUtilsSource = existsSync(templatePageUtilsPath)
   ? readFileSync(templatePageUtilsPath, "utf8")
   : "";
+const templateSceneBlockCardPath = resolve(featureUiDir, "training-template-scene-block-card.tsx");
+const templateSceneBlockCardSource = existsSync(templateSceneBlockCardPath)
+  ? readFileSync(templateSceneBlockCardPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
 const headerSpecsSource = readFileSync(resolve(testDir, "../src/features/training/header-specs.ts"), "utf8");
 const legacyPageSource = readFileSync(resolve(testDir, "../src/app/design-demos/features/lora-training/training-resource-pages.tsx"), "utf8");
@@ -158,6 +162,13 @@ test("training template page pure helpers live in a focused module", () => {
     assert.doesNotMatch(pageSource, new RegExp(`function ${helperName}\\b`), `${helperName} should not stay inline in the broad resource pages file`);
   }
   assert.match(pageSource, /from "\.\/training-template-page-utils"/, "resource pages should import focused template page helpers");
+});
+
+test("training template scene block card lives in a focused module", () => {
+  assert.match(templateSceneBlockCardSource, /export function TemplateSceneBlockCard\b/, "template scene block card should live in training-template-scene-block-card.tsx");
+  assert.match(templateSceneBlockCardSource, /export type TemplateSceneBlockPatch\b/, "template scene block patch type should live beside the card");
+  assert.doesNotMatch(pageSource, /\nfunction TemplateSceneBlockCard\b/, "template scene block card should not stay inline in the broad resource pages file");
+  assert.match(pageSource, /from "\.\/training-template-scene-block-card"/, "resource pages should import the focused template scene block card");
 });
 
 test("training resource route helpers do not replace invalid route ids with first fixtures", () => {
@@ -449,7 +460,7 @@ test("training preset new form keeps source run ids out of visible copy", () => 
 
 test("training preset direct creation stays neutral instead of inheriting the first preset", () => {
   const draftStart = pageSource.indexOf("function createDraftTrainingPreset");
-  const sceneBlockStart = pageSource.indexOf("function TemplateSceneBlockCard");
+  const sceneBlockStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
   assert.notEqual(draftStart, -1);
   assert.notEqual(sceneBlockStart, -1);
 
