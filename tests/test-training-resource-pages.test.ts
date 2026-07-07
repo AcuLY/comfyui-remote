@@ -27,6 +27,10 @@ const trainingPresetsPagePath = resolve(featureUiDir, "training-presets-page.tsx
 const trainingPresetsPageSource = existsSync(trainingPresetsPagePath)
   ? readFileSync(trainingPresetsPagePath, "utf8")
   : "";
+const trainingPresetDetailPagePath = resolve(featureUiDir, "training-preset-detail-page.tsx");
+const trainingPresetDetailPageSource = existsSync(trainingPresetDetailPagePath)
+  ? readFileSync(trainingPresetDetailPagePath, "utf8")
+  : "";
 const presetLibraryPrimitivesPath = resolve(featureUiDir, "training-preset-library-primitives.tsx");
 const presetLibraryPrimitivesSource = existsSync(presetLibraryPrimitivesPath)
   ? readFileSync(presetLibraryPrimitivesPath, "utf8")
@@ -118,14 +122,24 @@ test("training resource route and query helpers live in a focused utility module
   }
   assert.match(resourcePageUtilsSource, /type NewPresetHints\b/, "new preset hint typing should move with the hint parser");
   assert.match(resourcePageUtilsSource, /type NewTemplateHints\b/, "new template hint typing should move with the hint parser");
-  assert.match(pageSource, /from "\.\/training-resource-page-utils"/, "resource pages should import focused route and query helpers");
+  assert.match(
+    [
+      trainingPresetsPageSource,
+      trainingPresetDetailPageSource,
+      trainingTemplatesPageSource,
+      trainingTemplateFormPageSource,
+      trainingTemplateSectionPageSource,
+    ].join("\n"),
+    /from "\.\/training-resource-page-utils"/,
+    "focused resource pages should import focused route and query helpers",
+  );
   assert.match(trainingPresetsPageSource, /orderTrainingPresetsByIds\(training\.presets, orderedPresetIds\)/, "preset list ordering should use the focused id-order helper");
 });
 
 test("training preset draft factory lives in the resource page utility module", () => {
   assert.match(resourcePageUtilsSource, /function createDraftTrainingPreset\b/, "new preset draft creation should live in training-resource-page-utils.ts");
   assert.doesNotMatch(pageSource, /\nfunction createDraftTrainingPreset\b/, "new preset draft creation should not stay inline in the broad resource pages file");
-  assert.match(pageSource, /createDraftTrainingPreset/, "resource pages should import the focused preset draft factory");
+  assert.match(trainingPresetDetailPageSource, /createDraftTrainingPreset/, "preset detail page should import the focused preset draft factory");
 });
 
 test("training preset sort panel primitives live in a focused module", () => {
@@ -156,6 +170,12 @@ test("training presets page lives in a focused module", () => {
   assert.match(pageSource, /from "\.\/training-presets-page"/, "resource pages should re-export the focused presets page");
 });
 
+test("training preset detail page lives in a focused module", () => {
+  assert.match(trainingPresetDetailPageSource, /export function LoraTrainingPresetDetailPage\b/, "training preset detail page should live in training-preset-detail-page.tsx");
+  assert.doesNotMatch(pageSource, /\nexport function LoraTrainingPresetDetailPage\b/, "training preset detail page should not stay inline in the broad resource pages file");
+  assert.match(pageSource, /from "\.\/training-preset-detail-page"/, "resource pages should re-export the focused preset detail page");
+});
+
 test("training preset library row primitives live in a focused module", () => {
   for (const helperName of [
     "presetStatus",
@@ -166,7 +186,8 @@ test("training preset library row primitives live in a focused module", () => {
     assert.match(presetLibraryPrimitivesSource, new RegExp(`function ${helperName}\\b`), `${helperName} should live in training-preset-library-primitives.tsx`);
     assert.doesNotMatch(pageSource, new RegExp(`function ${helperName}\\b`), `${helperName} should not stay inline in the broad resource pages file`);
   }
-  assert.match(pageSource, /from "\.\/training-preset-library-primitives"/, "resource pages should import focused preset library primitives");
+  assert.match(`${trainingPresetsPageSource}\n${trainingPresetDetailPageSource}`, /from "\.\/training-preset-library-primitives"/, "focused preset pages should import focused preset library primitives");
+  assert.doesNotMatch(pageSource, /from "\.\/training-preset-library-primitives"/, "resource pages should leave preset library primitive wiring to focused preset pages");
 });
 
 test("training template list primitives live in a focused module", () => {
@@ -238,10 +259,12 @@ test("training template scene block card lives in a focused module", () => {
 });
 
 test("training resource route helpers do not replace invalid route ids with first fixtures", () => {
+  assert.match(trainingPresetDetailPageSource, /export function LoraTrainingPresetDetailPage\b/, "training preset detail source should be readable");
   assert.match(trainingTemplateFormPageSource, /export function LoraTrainingTemplateFormPage\b/, "training template form source should be readable");
   assert.match(trainingTemplateSectionPageSource, /export function LoraTrainingTemplateSectionPage\b/, "training template section source should be readable");
 
   const helperSource = resourcePageUtilsSource;
+  const presetDetailSource = trainingPresetDetailPageSource;
   const templateFormSource = trainingTemplateFormPageSource;
   const templateSectionSource = trainingTemplateSectionPageSource;
 
@@ -249,6 +272,7 @@ test("training resource route helpers do not replace invalid route ids with firs
   assert.match(helperSource, /if \(!templateId\) return undefined;/, "template routes without a template id should resolve to the empty state");
   assert.doesNotMatch(helperSource, /training\.presets\[0\]/, "invalid preset ids should not silently render the first preset");
   assert.doesNotMatch(helperSource, /training\.templates\[0\]/, "invalid template ids should not silently render the first template");
+  assert.match(presetDetailSource, /if \(!preset\) return <EmptyPage title="没有训练预制数据" \/>;/, "invalid preset edit routes should show the empty state");
   assert.match(templateFormSource, /if \(mode === "edit" && !template\) return <EmptyPage title="没有训练模板数据" \/>;/, "invalid template edit routes should show the empty state");
   assert.doesNotMatch(templateSectionSource, /template\?\.sections\[0\]/, "invalid template section indexes should not silently render the first section");
 });
@@ -258,7 +282,8 @@ test("training resource query hints use Next search params instead of a manual l
   assert.match(resourceUrlSearchHookSource, /import \{[^}]*useSearchParams[^}]*\} from "next\/navigation";/, "resource URL search hook should subscribe to Next-managed query changes");
   assert.match(resourceUrlSearchHookSource, /const searchParams = useSearchParams\(\)/, "resource URL search hook should read current query params through Next navigation state");
   assert.match(resourceUrlSearchHookSource, /searchParams\.toString\(\)/, "resource URL search hook should pass the live query string into hint parsers");
-  assert.match(pageSource, /from "\.\/use-resource-url-search"/, "resource pages should import the focused URL search hook");
+  assert.match(trainingPresetDetailPageSource, /from "\.\/use-resource-url-search"/, "preset detail page should import the focused URL search hook");
+  assert.doesNotMatch(pageSource, /from "\.\/use-resource-url-search"/, "resource pages should leave URL search hook wiring to focused pages");
   assert.doesNotMatch(pageSource, /import \{[^}]*useSearchParams[^}]*\} from "next\/navigation";/, "resource pages should not import Next search params directly");
   assert.doesNotMatch(pageSource, /\nfunction useUrlSearch\b/, "resource pages should not keep the URL search hook inline");
   assert.doesNotMatch(pageSource, /useSyncExternalStore/, "resource query hints should not depend on a manual window.location.search store");
@@ -268,6 +293,7 @@ test("training resource query hints use Next search params instead of a manual l
 test("training resource delete actions describe local removal instead of confirmation placeholders", () => {
   const deleteActionSource = [
     trainingPresetsPageSource,
+    trainingPresetDetailPageSource,
     pageSource,
     trainingTemplateFormPageSource,
   ].join("\n");
@@ -289,10 +315,8 @@ test("training preset library deletes through the formal HTTP API on production 
 });
 
 test("training resource pages use product-facing copy instead of internal prompt schema terms", () => {
-  const presetDetailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-
-  assert.notEqual(presetDetailStart, -1);
   assert.match(trainingPresetsPageSource, /export function LoraTrainingPresetsPage\b/, "training presets source should be readable");
+  assert.match(trainingPresetDetailPageSource, /export function LoraTrainingPresetDetailPage\b/, "training preset detail source should be readable");
   assert.match(presetSortRulesPageSource, /export function LoraTrainingPresetSortRulesPage\b/, "preset sort rules source should be readable");
   assert.match(trainingTemplatesPageSource, /export function LoraTrainingTemplatesPage\b/, "training templates source should be readable");
   assert.match(trainingTemplateFormPageSource, /export function LoraTrainingTemplateFormPage\b/, "training template form source should be readable");
@@ -300,7 +324,7 @@ test("training resource pages use product-facing copy instead of internal prompt
 
   const visibleResourceCopy = [
     trainingPresetsPageSource,
-    pageSource.slice(presetDetailStart),
+    trainingPresetDetailPageSource,
     presetSortRulesPageSource,
     trainingTemplatesPageSource,
     templateListPrimitivesSource,
@@ -436,11 +460,8 @@ test("training preset category rail drag handles reorder categories locally", ()
 });
 
 test("training preset new actions route into a real new-preset form", () => {
-  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  assert.notEqual(detailStart, -1);
-
   const presetsSource = trainingPresetsPageSource;
-  const detailSource = pageSource.slice(detailStart);
+  const detailSource = trainingPresetDetailPageSource;
 
   assert.match(headerSpecsSource, /headerAction\("新建预制",\s*Plus,\s*"primary",\s*"\/training\/presets\/new"\)/, "global new action should live in the route header and navigate to the new training preset route");
   assert.match(presetsSource, /newPresetInCategoryHref/, "category-scoped new action should preserve the active category");
@@ -453,10 +474,7 @@ test("training preset new actions route into a real new-preset form", () => {
 });
 
 test("training preset new form carries source training artifact context", () => {
-  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  assert.notEqual(detailStart, -1);
-
-  const detailSource = pageSource.slice(detailStart);
+  const detailSource = trainingPresetDetailPageSource;
 
   assert.match(resourcePageUtilsSource, /sourceRun:\s*searchParams\.get\("sourceRun"\)/, "new preset hints should read source training run id");
   assert.match(resourcePageUtilsSource, /artifact:\s*searchParams\.get\("artifact"\)/, "new preset hints should read source artifact name");
@@ -466,10 +484,7 @@ test("training preset new form carries source training artifact context", () => 
 });
 
 test("training preset new form keeps source run ids out of visible copy", () => {
-  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  assert.notEqual(detailStart, -1);
-
-  const detailSource = pageSource.slice(detailStart);
+  const detailSource = trainingPresetDetailPageSource;
   const sourceFieldStart = detailSource.indexOf('label="来源训练产物"');
   const nextFieldStart = detailSource.indexOf('<Field multiline', sourceFieldStart);
   assert.notEqual(sourceFieldStart, -1);
@@ -498,10 +513,7 @@ test("training preset direct creation stays neutral instead of inheriting the fi
 });
 
 test("training preset detail saves a visible local preset draft instead of only showing feedback", () => {
-  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  assert.notEqual(detailStart, -1);
-
-  const detailSource = pageSource.slice(detailStart);
+  const detailSource = trainingPresetDetailPageSource;
 
   assert.match(detailSource, /presetForm/, "preset detail should keep editable form fields in local state");
   assert.match(detailSource, /setPresetForm/, "preset field edits should update local form state");
@@ -518,10 +530,7 @@ test("training preset detail saves a visible local preset draft instead of only 
 });
 
 test("training preset detail state stays scoped to the active preset context", () => {
-  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  assert.notEqual(detailStart, -1);
-
-  const detailSource = pageSource.slice(detailStart);
+  const detailSource = trainingPresetDetailPageSource;
 
   assert.match(detailSource, /presetFormContextId/, "preset detail should derive a route/query context id");
   assert.match(detailSource, /presetFormState/, "preset form fields should be stored with preset context");
@@ -535,10 +544,7 @@ test("training preset detail state stays scoped to the active preset context", (
 });
 
 test("training preset detail saves through the formal HTTP API on production routes", () => {
-  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  assert.notEqual(detailStart, -1);
-
-  const detailSource = pageSource.slice(detailStart);
+  const detailSource = trainingPresetDetailPageSource;
 
   assert.match(detailSource, /usePathname/, "preset detail should detect whether it is running under production \\/training routes");
   assert.match(detailSource, /fetch\(isNew \? "\/api\/training\/presets" : `\/api\/training\/presets\/\$\{preset\.id\}`/, "preset detail should save through the formal training preset API");
@@ -549,10 +555,7 @@ test("training preset detail saves through the formal HTTP API on production rou
 });
 
 test("training preset detail deletes through the formal cascade API on production routes", () => {
-  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  assert.notEqual(detailStart, -1);
-
-  const detailSource = pageSource.slice(detailStart);
+  const detailSource = trainingPresetDetailPageSource;
 
   assert.match(detailSource, /isDeletingPreset/, "preset detail should track delete request state");
   assert.match(detailSource, /handleDeletePreset/, "preset detail should define a delete handler");
@@ -885,10 +888,7 @@ test("training template list persists reorder through the formal HTTP API on pro
 });
 
 test("training preset detail and sort rules reuse editor/sort shells without regular preset dimensions", () => {
-  const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  assert.notEqual(detailStart, -1);
-
-  const detailSource = pageSource.slice(detailStart);
+  const detailSource = trainingPresetDetailPageSource;
   const sortSource = presetSortRulesPageSource;
   const sortWithPanelSource = presetSortPanelSource;
 
