@@ -111,6 +111,7 @@ test("training preset draft factory lives in the resource page utility module", 
 test("training preset sort panel primitives live in a focused module", () => {
   for (const helperName of [
     "orderTrainingPresetSortItems",
+    "buildTrainingPresetSortRulesDraft",
     "TrainingPresetSortPanel",
     "TrainingPresetSortableSortRow",
   ]) {
@@ -118,6 +119,7 @@ test("training preset sort panel primitives live in a focused module", () => {
     assert.doesNotMatch(pageSource, new RegExp(`function ${helperName}\\b`), `${helperName} should not stay inline in the broad resource pages file`);
   }
   assert.match(presetSortPanelSource, /type TrainingPresetSortItem\b/, "training preset sort item typing should move with the sort panel");
+  assert.match(presetSortPanelSource, /type TrainingPresetSortRulesDraft\b/, "training preset sort draft typing should move with the sort panel helper");
   assert.match(pageSource, /from "\.\/training-preset-sort-panel"/, "resource pages should import focused preset sort panel primitives");
 });
 
@@ -1021,6 +1023,7 @@ test("training preset sort rules keep local order state and save a visible draft
   assert.match(sortSource, /setOrderedPresetIds/, "preset reorder should update local state");
   assert.match(sortSource, /sortRulesDraft/, "save all should expose a local sort draft");
   assert.match(sortSource, /setSortRulesDraft/, "save all should update the visible sort draft");
+  assert.match(sortSource, /buildTrainingPresetSortRulesDraft/, "sort page should build visible sort drafts through the focused helper");
   assert.match(sortSource, /handleSaveSortRules/, "sort page should define a save-all handler");
   assert.match(sortSource, /onClick=\{handleSaveSortRules\}/, "save-all action should call the local save handler");
   assert.match(sortSource, /排序保存草稿/, "sort page should render the visible saved draft panel");

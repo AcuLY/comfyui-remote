@@ -33,7 +33,7 @@ import {
   uniquePresetFolders,
 } from "./training-resource-page-utils";
 import { TrainingPresetCategoryRailItem, TrainingPresetLibraryItemRow, presetStatus } from "./training-preset-library-primitives";
-import { TrainingPresetSortPanel, orderTrainingPresetSortItems, type TrainingPresetSortItem } from "./training-preset-sort-panel";
+import { TrainingPresetSortPanel, buildTrainingPresetSortRulesDraft, orderTrainingPresetSortItems, type TrainingPresetSortItem, type TrainingPresetSortRulesDraft } from "./training-preset-sort-panel";
 import { TemplateSceneBlockCard, type TemplateSceneBlockPatch } from "./training-template-scene-block-card";
 import {
   buildTemplateSectionStateKey,
@@ -656,26 +656,20 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: TrainingAppDat
   }));
   const [orderedCategoryIds, setOrderedCategoryIds] = useState(() => categoryItems.map((item) => item.id));
   const [orderedPresetIds, setOrderedPresetIds] = useState(() => presetItems.map((item) => item.id));
-  const [sortRulesDraft, setSortRulesDraft] = useState<{
-    categoryCount: number;
-    firstCategory: string;
-    firstPreset: string;
-    presetCount: number;
-    scope: string;
-  } | null>(null);
+  const [sortRulesDraft, setSortRulesDraft] = useState<TrainingPresetSortRulesDraft | null>(null);
   const [isSavingSortRules, setIsSavingSortRules] = useState(false);
   const orderedCategoryItems = orderTrainingPresetSortItems(categoryItems, orderedCategoryIds);
   const orderedPresetItems = orderTrainingPresetSortItems(presetItems, orderedPresetIds);
   const isProductionTrainingRoute = isProductionTrainingPath(pathname);
 
   function buildSortRulesDraft(scope: string) {
-    return {
-      categoryCount: orderedCategoryIds.length,
-      firstCategory: orderedCategoryItems[0]?.title ?? "无",
-      firstPreset: orderedPresetItems[0]?.title ?? "无",
-      presetCount: orderedPresetIds.length,
+    return buildTrainingPresetSortRulesDraft({
+      categoryIds: orderedCategoryIds,
+      categoryItems: orderedCategoryItems,
+      presetIds: orderedPresetIds,
+      presetItems: orderedPresetItems,
       scope,
-    };
+    });
   }
 
   async function persistTrainingPresetSortRules(scope: string) {
@@ -737,13 +731,13 @@ export function LoraTrainingPresetSortRulesPage({ data }: { data: TrainingAppDat
 
   async function handleSaveSortGroup(scope: string, ids: string[], items: TrainingPresetSortItem[]) {
     const orderedItems = orderTrainingPresetSortItems(items, ids);
-    const nextDraft = {
-      categoryCount: scope === "合成顺序" ? ids.length : orderedCategoryIds.length,
-      firstCategory: scope === "合成顺序" ? orderedItems[0]?.title ?? "无" : orderedCategoryItems[0]?.title ?? "无",
-      firstPreset: scope === "分类内顺序" ? orderedItems[0]?.title ?? "无" : orderedPresetItems[0]?.title ?? "无",
-      presetCount: scope === "分类内顺序" ? ids.length : orderedPresetIds.length,
+    const nextDraft = buildTrainingPresetSortRulesDraft({
+      categoryIds: scope === "合成顺序" ? ids : orderedCategoryIds,
+      categoryItems: scope === "合成顺序" ? orderedItems : orderedCategoryItems,
+      presetIds: scope === "分类内顺序" ? ids : orderedPresetIds,
+      presetItems: scope === "分类内顺序" ? orderedItems : orderedPresetItems,
       scope,
-    };
+    });
 
     if (!isProductionTrainingRoute) {
       setSortRulesDraft(nextDraft);

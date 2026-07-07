@@ -10,11 +10,41 @@ import s from "./training-resource-pages.module.css";
 
 export type TrainingPresetSortItem = { id: string; meta: string; title: string };
 
+export type TrainingPresetSortRulesDraft = {
+  categoryCount: number;
+  firstCategory: string;
+  firstPreset: string;
+  presetCount: number;
+  scope: string;
+};
+
 export function orderTrainingPresetSortItems(items: TrainingPresetSortItem[], orderedIds: string[]) {
   const itemMap = Object.fromEntries(items.map((item) => [item.id, item]));
   const orderedItems = orderedIds.map((id) => itemMap[id]).filter((item): item is TrainingPresetSortItem => Boolean(item));
   const missingItems = items.filter((item) => !orderedIds.includes(item.id));
   return [...orderedItems, ...missingItems];
+}
+
+export function buildTrainingPresetSortRulesDraft({
+  categoryIds,
+  categoryItems,
+  presetIds,
+  presetItems,
+  scope,
+}: {
+  categoryIds: string[];
+  categoryItems: TrainingPresetSortItem[];
+  presetIds: string[];
+  presetItems: TrainingPresetSortItem[];
+  scope: string;
+}): TrainingPresetSortRulesDraft {
+  return {
+    categoryCount: categoryIds.length,
+    firstCategory: categoryItems[0]?.title ?? "无",
+    firstPreset: presetItems[0]?.title ?? "无",
+    presetCount: presetIds.length,
+    scope,
+  };
 }
 
 export function TrainingPresetSortPanel({
