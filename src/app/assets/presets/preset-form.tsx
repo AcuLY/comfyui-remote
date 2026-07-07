@@ -1,26 +1,9 @@
 "use client";
 
-import { useState, useEffect, useTransition, useMemo, useId, useSyncExternalStore } from "react";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  rectSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { useState, useEffect, useTransition, useMemo } from "react";
 import {
   Plus,
-  Trash2,
   X,
-  GripVertical,
   ChevronUp,
   ChevronDown,
   ExternalLink,
@@ -46,6 +29,7 @@ import { PresetChangeHistoryPanel } from "./change-history-panel";
 import { PresetVariantBulkEditDialog } from "./preset-variant-bulk-edit-dialog";
 import { toSlug } from "./group-utils";
 import { usePresetSaveQueue } from "./use-preset-save-queue";
+import { PresetVariantList } from "./preset-variant-list";
 
 function uniqueSlug(base: string, usedSlugs: Set<string>) {
   let slug = base;
@@ -272,57 +256,6 @@ function LinkedVariantsEditor({
 }
 
 // ---------------------------------------------------------------------------
-// SortableVariantBar — draggable bar for a single variant in PresetForm
-// ---------------------------------------------------------------------------
-
-function SortableVariantBar({
-  sortId,
-  name,
-  isSelected,
-  onSelect,
-}: {
-  sortId: string;
-  name: string;
-  isSelected: boolean;
-  onSelect: () => void;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: sortId });
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      role="button"
-      tabIndex={0}
-      onClick={onSelect}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") onSelect();
-      }}
-      className={`flex min-w-0 items-center gap-1.5 rounded-lg border p-2 cursor-pointer transition ${
-        isSelected
-          ? "border-sky-500/30 bg-sky-500/10"
-          : "border-white/5 bg-white/[0.02] hover:border-white/10"
-      }`}
-    >
-      <button
-        type="button"
-        className="cursor-grab touch-none text-zinc-600 hover:text-zinc-400"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVertical className="size-3" />
-      </button>
-      <div className="flex-1 min-w-0 truncate text-xs text-zinc-300">{name || "未命名变体"}</div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // PresetForm — create/edit form for a preset with inline variant editing
 // ---------------------------------------------------------------------------
 
@@ -426,21 +359,6 @@ export function PresetForm({
   });
   const [currentIdx, setCurrentIdx] = useState(0);
 
-  // DnD for variant reordering
-  const dndId = useId();
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  );
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false,
-  );
-
-  const variantIds = useMemo(
-    () => variants.map((variant, index) => variant.clientId ?? variant.id ?? `draft-${index}`),
-    [variants],
-  );
   const variantDbIds = variants.map((variant) => variant.id ?? "").join("\u0001");
   const current = variants[currentIdx];
   const totalVariants = variants.length;
@@ -655,15 +573,7 @@ export function PresetForm({
     onVariantChange?.(updated[nextIdx]?.id ?? null);
   }
 
-  function handleVariantDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIdx = variantIds.indexOf(active.id as string);
-    const newIdx = variantIds.indexOf(over.id as string);
-    if (oldIdx === -1 || newIdx === -1) return;
-
-    const reordered = arrayMove(variants, oldIdx, newIdx);
+  function handleVariantReorder(reordered: VariantDraft[], oldIdx: number, newIdx: number) {
     setVariants(reordered);
 
     // Follow the selected variant if it moved
@@ -871,60 +781,15 @@ export function PresetForm({
         <span className="text-[11px] font-medium text-zinc-500">变体列表</span>
       </div>
       <div className="space-y-2">
-        {/* Sortable variant list */}
-        <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-          {mounted ? (
-            <DndContext
-              id={dndId}
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleVariantDragEnd}
-            >
-              <SortableContext items={variantIds} strategy={rectSortingStrategy}>
-                {variants.map((v, i) => (
-                  <SortableVariantBar
-                    key={variantIds[i]}
-                    sortId={variantIds[i]}
-                    name={v.name}
-                    isSelected={i === currentIdx}
-                    onSelect={() => selectVariant(i)}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          ) : (
-            variants.map((v, i) => (
-              <div
-                key={i}
-                className="flex min-w-0 items-center gap-1.5 rounded-lg border border-white/5 bg-white/[0.02] p-2"
-              >
-                <GripVertical className="size-3 text-zinc-600" />
-                <div className="flex-1 min-w-0 truncate text-xs text-zinc-300">{v.name || "未命名变体"}</div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Add / Delete buttons */}
-        <div className="space-y-1">
-          <button
-            type="button"
-            onClick={addVariant}
-            className="w-full rounded-lg border border-dashed border-white/10 px-2 py-1.5 text-xs text-zinc-500 hover:border-white/20 hover:text-zinc-300 transition"
-          >
-            <Plus className="size-3 inline-block mr-1 -mt-0.5" />添加变体
-          </button>
-          {totalVariants > 1 && (
-            <button
-              type="button"
-              onClick={removeCurrentVariant}
-              className="w-full rounded-lg bg-red-500/10 px-2 py-1.5 text-xs text-red-400 hover:bg-red-500/20 transition"
-            >
-              <Trash2 className="size-3 inline-block mr-1 -mt-0.5" />删除变体
-            </button>
-          )}
-        </div>
-
+        <PresetVariantList
+          variants={variants}
+          currentIndex={currentIdx}
+          canRemove={totalVariants > 1}
+          onSelect={selectVariant}
+          onAdd={addVariant}
+          onRemove={removeCurrentVariant}
+          onReorder={handleVariantReorder}
+        />
 
         {/* Variant name */}
         <div className="grid grid-cols-1 gap-2">
