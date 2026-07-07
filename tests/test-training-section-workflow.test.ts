@@ -8,6 +8,7 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
 const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
+const projectSectionDraftHookSource = readFileSync(resolve(featureUiDir, "use-project-section-draft.ts"), "utf8");
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 
 function sourceBetween(startMarker: string, endMarker: string) {
@@ -377,8 +378,9 @@ test("training section detail saves a visible local section draft", () => {
     "export function LoraTrainingGenerationComposePage",
   );
 
-  assert.match(detailPage, /sectionDraft/, "section detail should expose a saved local section draft");
-  assert.match(detailPage, /setSectionDraftsByKey/, "section save should update keyed local draft state");
+  assert.match(detailPage, /visibleSectionDraft/, "section detail should expose a saved local section draft");
+  assert.match(detailPage, /saveSectionDraft\(nextDraft\)/, "section save should update the local draft hook");
+  assert.match(projectSectionDraftHookSource, /setSectionDraftsByKey/, "section save hook should update keyed local draft state");
   assert.match(detailPage, /handleSaveSection/, "section detail should define a save handler");
   assert.match(detailPage, /onClick=\{handleSaveSection\}/, "section save action should call the local save handler");
   assert.match(detailPage, /sceneBlocks\.length/, "saved section draft should include current scene block count");
@@ -399,10 +401,11 @@ test("training section detail keeps local edits keyed by project and section", (
   assert.match(detailPage, /setSectionSceneBlocksByKey/, "scene-block actions should update keyed local state");
   assert.match(detailPage, /sectionResultsByProjectKey/, "result review changes should be stored per project");
   assert.match(detailPage, /setSectionResultsByProjectKey/, "result review actions should update keyed local results");
-  assert.match(detailPage, /sectionDraftsByKey/, "saved section drafts should be stored per project section");
-  assert.match(detailPage, /setSectionDraftsByKey/, "save action should update keyed local drafts");
+  assert.match(detailPage, /useProjectSectionDraft\(initialProjectSectionStateKey\)/, "saved section drafts should be delegated to the focused hook");
+  assert.match(projectSectionDraftHookSource, /sectionDraftsByKey/, "saved section drafts should be stored per project section");
+  assert.match(projectSectionDraftHookSource, /setSectionDraftsByKey/, "save action should update keyed local drafts");
   assert.match(detailPage, /sectionSceneBlocksByKey\[projectSectionStateKey\] \?\? activeSection\.blocks/, "scene blocks should read the active section key before falling back to fixtures");
-  assert.match(detailPage, /sectionDraftsByKey\[projectSectionStateKey\] \?\? null/, "saved drafts should read the active section key before falling back to empty state");
+  assert.match(projectSectionDraftHookSource, /sectionDraftsByKey\[projectSectionStateKey\] \?\? null/, "saved drafts should read the active section key before falling back to empty state");
   assert.doesNotMatch(detailPage, /sceneBlockState/, "section detail should not use a single mutable slot for scene blocks");
   assert.doesNotMatch(detailPage, /sectionDraft\?\.projectId/, "section detail should not filter a single mutable draft slot");
 });
@@ -435,8 +438,8 @@ test("training section detail state stays scoped to the active project section",
   );
   assert.match(detailPage, /isEditing=\{visibleEditingSceneBlockId === block\.id\}/, "scene block cards should only receive scoped edit state");
   assert.match(
-    detailPage,
-    /const visibleSectionDraft = sectionDraftsByKey\[projectSectionStateKey\] \?\? null/,
+    projectSectionDraftHookSource,
+    /const visibleSectionDraft = projectSectionStateKey \? sectionDraftsByKey\[projectSectionStateKey\] \?\? null : null/,
     "saved section drafts should read only the active keyed draft",
   );
   assert.doesNotMatch(

@@ -19,6 +19,10 @@ const projectReferenceSelectionHookPath = resolve(featureUiDir, "use-project-ref
 const projectReferenceSelectionHookSource = existsSync(projectReferenceSelectionHookPath)
   ? readFileSync(projectReferenceSelectionHookPath, "utf8")
   : "";
+const projectSectionDraftHookPath = resolve(featureUiDir, "use-project-section-draft.ts");
+const projectSectionDraftHookSource = existsSync(projectSectionDraftHookPath)
+  ? readFileSync(projectSectionDraftHookPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
@@ -170,6 +174,16 @@ test("training project page create reference picker state lives in a focused hoo
   assert.match(pagesSource, /from "\.\/use-project-reference-selection"/, "project create page should import the focused reference selection hook");
   assert.doesNotMatch(pagesSource, /\nconst \[projectReferenceSelectionState, setProjectReferenceSelectionState\]/, "project create page should not keep reference selection state inline");
   assert.doesNotMatch(pagesSource, /\nfunction setSelectedReferenceIds\b/, "project create page should not keep reference id selection updater inline");
+});
+
+test("training project section draft state lives in a focused hook module", () => {
+  assert.match(projectSectionDraftHookSource, /function useProjectSectionDraft\b/, "project section draft state should live in a focused hook");
+  assert.match(projectSectionDraftHookSource, /sectionDraftsByKey/, "project section draft hook should own keyed draft storage");
+  assert.match(projectSectionDraftHookSource, /ProjectSectionDraftState/, "project section draft typing should move with the hook");
+  assert.match(projectSectionDraftHookSource, /visibleSectionDraft/, "project section draft hook should expose the active visible draft");
+  assert.match(pagesSource, /from "\.\/use-project-section-draft"/, "section detail page should import the focused section draft hook");
+  assert.doesNotMatch(pagesSource, /\nconst \[sectionDraftsByKey, setSectionDraftsByKey\]/, "section detail page should not keep section draft state inline");
+  assert.doesNotMatch(pagesSource, /type ProjectSectionDraftState/, "section detail page should not import section draft state typing directly");
 });
 
 test("training project page upload preview helpers live in the utility module", () => {

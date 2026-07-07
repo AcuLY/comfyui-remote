@@ -88,9 +88,9 @@ import {
   type SupplementalImageAttachment,
   type TrainingProfileRevisionField,
   type TrainingTextRevisionItem,
-  type ProjectSectionDraftState,
 } from "./project-page-utils";
 import s from "./training-project-pages.module.css";
+import { useProjectSectionDraft } from "./use-project-section-draft";
 import { useProjectReferenceUploadDrafts } from "./use-project-reference-upload-drafts";
 import { useProjectReferenceSelection } from "./use-project-reference-selection";
 import { useUrlSearch } from "./use-url-search";
@@ -2555,6 +2555,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   const training = buildLoraTrainingData(data);
   const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
+  const initialProjectSectionStateKey = project && section ? buildProjectSectionStateKey(project.id, section.id) : null;
   const [sectionSceneBlocksByKey, setSectionSceneBlocksByKey] = useState<Record<string, LoraTrainingSectionBlock[]>>(() => (
     project && section ? { [buildProjectSectionStateKey(project.id, section.id)]: section.blocks } : {}
   ));
@@ -2568,7 +2569,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   }));
   const [presetImportOpen, setPresetImportOpen] = useState(false);
   const [selectedTrainingPresetId, setSelectedTrainingPresetId] = useState<string | null>(null);
-  const [sectionDraftsByKey, setSectionDraftsByKey] = useState<Record<string, ProjectSectionDraftState>>({});
+  const { saveSectionDraft, visibleSectionDraft } = useProjectSectionDraft(initialProjectSectionStateKey);
   const [isReviewingSectionResult, setIsReviewingSectionResult] = useState(false);
   const [isSavingSection, setIsSavingSection] = useState(false);
   const [isMutatingSceneBlocks, setIsMutatingSceneBlocks] = useState(false);
@@ -2577,11 +2578,10 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
 
   const activeProject = project;
   const activeSection = section;
-  const projectSectionStateKey = buildProjectSectionStateKey(activeProject.id, activeSection.id);
+  const projectSectionStateKey = initialProjectSectionStateKey ?? buildProjectSectionStateKey(activeProject.id, activeSection.id);
   const sceneBlocks = sectionSceneBlocksByKey[projectSectionStateKey] ?? activeSection.blocks;
   const sectionResults = (sectionResultsByProjectKey[activeProject.id] ?? activeProject.resultPool)
     .filter((result) => result.sectionId === activeSection.id);
-  const visibleSectionDraft = sectionDraftsByKey[projectSectionStateKey] ?? null;
   const visibleEditingSceneBlockId = editingSceneBlockState.projectId === activeProject.id && editingSceneBlockState.sectionId === activeSection.id ? editingSceneBlockState.blockId : null;
   const selectedTrainingPreset = training.presets.find((preset) => preset.id === selectedTrainingPresetId) ?? null;
   const scenePreview = sceneBlocks.map((block) => block.text).join("\n\n");
@@ -2922,10 +2922,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     };
 
     if (!isProductionTrainingRoute) {
-      setSectionDraftsByKey((current) => ({
-        ...current,
-        [projectSectionStateKey]: nextDraft,
-      }));
+      saveSectionDraft(nextDraft);
       pushToast({
         tone: "success",
         title: visibleSectionDraft ? "小节保存草稿已更新" : "小节保存草稿已记录",
@@ -2960,10 +2957,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
         return;
       }
 
-      setSectionDraftsByKey((current) => ({
-        ...current,
-        [projectSectionStateKey]: nextDraft,
-      }));
+      saveSectionDraft(nextDraft);
       pushToast({
         tone: "success",
         title: "训练小节已保存",
