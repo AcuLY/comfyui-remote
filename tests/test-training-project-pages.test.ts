@@ -27,6 +27,10 @@ const projectSectionSceneBlocksHookPath = resolve(featureUiDir, "use-project-sec
 const projectSectionSceneBlocksHookSource = existsSync(projectSectionSceneBlocksHookPath)
   ? readFileSync(projectSectionSceneBlocksHookPath, "utf8")
   : "";
+const projectSectionResultsHookPath = resolve(featureUiDir, "use-project-section-results.ts");
+const projectSectionResultsHookSource = existsSync(projectSectionResultsHookPath)
+  ? readFileSync(projectSectionResultsHookPath, "utf8")
+  : "";
 const generationComposeReferenceSelectionHookPath = resolve(featureUiDir, "use-generation-compose-reference-selection.ts");
 const generationComposeReferenceSelectionHookSource = existsSync(generationComposeReferenceSelectionHookPath)
   ? readFileSync(generationComposeReferenceSelectionHookPath, "utf8")
@@ -215,6 +219,16 @@ test("training project section scene-block state lives in a focused hook module"
   assert.match(pagesSource, /from "\.\/use-project-section-scene-blocks"/, "section detail page should import the focused scene-block hook");
   assert.doesNotMatch(pagesSource, /\n  const \[sectionSceneBlocksByKey, setSectionSceneBlocksByKey\]/, "section detail page should not keep scene-block state inline");
   assert.doesNotMatch(pagesSource, /\n  const \[editingSceneBlockState, setEditingSceneBlockState\]/, "section detail page should not keep scene-block edit state inline");
+});
+
+test("training project section result review state lives in a focused hook module", () => {
+  assert.match(projectSectionResultsHookSource, /function useProjectSectionResults\b/, "project section result state should live in a focused hook");
+  assert.match(projectSectionResultsHookSource, /sectionResultsByProjectKey/, "project section result hook should own project-keyed result storage");
+  assert.match(projectSectionResultsHookSource, /updateSectionResultReviewStatus/, "project section result hook should expose a review-status update action");
+  assert.match(projectSectionResultsHookSource, /result\.sectionId === sectionId/, "project section result hook should derive active-section results");
+  assert.match(pagesSource, /from "\.\/use-project-section-results"/, "section detail page should import the focused result hook");
+  assert.doesNotMatch(pagesSource, /\n  const \[sectionResultsByProjectKey, setSectionResultsByProjectKey\]/, "section detail page should not keep result review state inline");
+  assert.doesNotMatch(pagesSource, /setSectionResultsByProjectKey/, "section detail page should not update result review state inline");
 });
 
 test("training generation compose reference selection lives in a focused hook module", () => {
@@ -621,6 +635,8 @@ test("training result review actions update local front-end review state", () =>
   assert.match(resultsPageSource, /handleBatchReviewResults/, "project results page should define a selected batch review handler");
   assert.match(resultsPageSource, /onReviewStatusChange=\{handleReviewResult\}/, "project results grid should be wired to the review handler");
   assert.match(sectionDetailSource, /sectionResults/, "section detail results should render from local review state");
+  assert.match(sectionDetailSource, /useProjectSectionResults/, "section detail should delegate result review state to the focused hook");
+  assert.match(projectSectionResultsHookSource, /updateSectionResultReviewStatus/, "section detail result hook should expose local review updates");
   assert.match(sectionDetailSource, /onReviewStatusChange=\{handleReviewSectionResult\}/, "section detail result grid should be wired to a review handler");
 });
 

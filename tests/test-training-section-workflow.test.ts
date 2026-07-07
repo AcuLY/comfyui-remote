@@ -13,6 +13,10 @@ const projectSectionSceneBlocksHookPath = resolve(featureUiDir, "use-project-sec
 const projectSectionSceneBlocksHookSource = existsSync(projectSectionSceneBlocksHookPath)
   ? readFileSync(projectSectionSceneBlocksHookPath, "utf8")
   : "";
+const projectSectionResultsHookPath = resolve(featureUiDir, "use-project-section-results.ts");
+const projectSectionResultsHookSource = existsSync(projectSectionResultsHookPath)
+  ? readFileSync(projectSectionResultsHookPath, "utf8")
+  : "";
 const generationComposeReferenceSelectionHookPath = resolve(featureUiDir, "use-generation-compose-reference-selection.ts");
 const generationComposeReferenceSelectionHookSource = existsSync(generationComposeReferenceSelectionHookPath)
   ? readFileSync(generationComposeReferenceSelectionHookPath, "utf8")
@@ -420,8 +424,8 @@ test("training section detail keeps local edits keyed by project and section", (
   assert.match(projectSectionSceneBlocksHookSource, /projectSectionStateKey/, "section detail scene-block hook should build a stable local state key");
   assert.match(projectSectionSceneBlocksHookSource, /sectionSceneBlocksByKey/, "scene-block edits should be stored per project section");
   assert.match(projectSectionSceneBlocksHookSource, /setSectionSceneBlocksByKey/, "scene-block actions should update keyed local state");
-  assert.match(detailPage, /sectionResultsByProjectKey/, "result review changes should be stored per project");
-  assert.match(detailPage, /setSectionResultsByProjectKey/, "result review actions should update keyed local results");
+  assert.match(projectSectionResultsHookSource, /sectionResultsByProjectKey/, "result review changes should be stored per project");
+  assert.match(projectSectionResultsHookSource, /setSectionResultsByProjectKey/, "result review actions should update keyed local results");
   assert.match(detailPage, /useProjectSectionDraft\(initialProjectSectionStateKey\)/, "saved section drafts should be delegated to the focused hook");
   assert.match(projectSectionDraftHookSource, /sectionDraftsByKey/, "saved section drafts should be stored per project section");
   assert.match(projectSectionDraftHookSource, /setSectionDraftsByKey/, "save action should update keyed local drafts");
@@ -429,6 +433,7 @@ test("training section detail keeps local edits keyed by project and section", (
   assert.match(projectSectionDraftHookSource, /sectionDraftsByKey\[projectSectionStateKey\] \?\? null/, "saved drafts should read the active section key before falling back to empty state");
   assert.doesNotMatch(detailPage, /sceneBlockState/, "section detail should not use a single mutable slot for scene blocks");
   assert.doesNotMatch(detailPage, /sectionSceneBlocksByKey/, "section detail should not own scene-block keyed storage inline");
+  assert.doesNotMatch(detailPage, /sectionResultsByProjectKey/, "section detail should not own result keyed storage inline");
   assert.doesNotMatch(detailPage, /sectionDraft\?\.projectId/, "section detail should not filter a single mutable draft slot");
 });
 

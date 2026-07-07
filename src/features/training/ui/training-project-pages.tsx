@@ -94,6 +94,7 @@ import { useGenerationComposeForm } from "./use-generation-compose-form";
 import { useGenerationComposeReferenceSelection } from "./use-generation-compose-reference-selection";
 import { useGenerationSupplementalImages } from "./use-generation-supplemental-images";
 import { useGenerationTaskDraft } from "./use-generation-task-draft";
+import { useProjectSectionResults } from "./use-project-section-results";
 import { useProjectSectionSceneBlocks } from "./use-project-section-scene-blocks";
 import { useProjectSectionDraft } from "./use-project-section-draft";
 import { useProjectReferenceUploadDrafts } from "./use-project-reference-upload-drafts";
@@ -2560,9 +2561,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
   const initialProjectSectionStateKey = project && section ? buildProjectSectionStateKey(project.id, section.id) : null;
-  const [sectionResultsByProjectKey, setSectionResultsByProjectKey] = useState<Record<string, LoraTrainingImageResult[]>>(() => (
-    project ? { [project.id]: project.resultPool } : {}
-  ));
+  const { sectionResults, updateSectionResultReviewStatus } = useProjectSectionResults(project?.id ?? null, section?.id ?? null, project?.resultPool ?? []);
   const {
     replaceSceneBlocks,
     sceneBlocks,
@@ -2582,8 +2581,6 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
 
   const activeProject = project;
   const activeSection = section;
-  const sectionResults = (sectionResultsByProjectKey[activeProject.id] ?? activeProject.resultPool)
-    .filter((result) => result.sectionId === activeSection.id);
   const selectedTrainingPreset = training.presets.find((preset) => preset.id === selectedTrainingPresetId) ?? null;
 
   function handleAddLocalSceneBlock() {
@@ -2830,12 +2827,7 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
     const reviewedResult = sectionResults.find((result) => result.id === resultId);
 
     const applyLocalReview = () => {
-      setSectionResultsByProjectKey((current) => ({
-        ...current,
-        [activeProject.id]: (current[activeProject.id] ?? activeProject.resultPool).map((result) =>
-          result.id === resultId ? { ...result, reviewStatus } : result,
-        ),
-      }));
+      updateSectionResultReviewStatus(resultId, reviewStatus);
     };
 
     if (!isProductionTrainingRoute) {
