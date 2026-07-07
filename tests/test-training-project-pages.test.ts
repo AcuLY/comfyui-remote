@@ -24,6 +24,10 @@ const generationComposePagePath = resolve(featureUiDir, "training-generation-com
 const generationComposePageSource = existsSync(generationComposePagePath)
   ? readFileSync(generationComposePagePath, "utf8")
   : "";
+const projectResultsPagePath = resolve(featureUiDir, "training-project-results-page.tsx");
+const projectResultsPageSource = existsSync(projectResultsPagePath)
+  ? readFileSync(projectResultsPagePath, "utf8")
+  : "";
 const projectPageShellPath = resolve(featureUiDir, "project-page-shell.tsx");
 const projectPageShellSource = existsSync(projectPageShellPath) ? readFileSync(projectPageShellPath, "utf8") : "";
 const trainingResultGridPath = resolve(featureUiDir, "training-result-grid.tsx");
@@ -143,6 +147,13 @@ test("training generation compose page lives in a focused page module", () => {
   assert.match(generationComposePageSource, /ensureGenerationDraftTaskId/, "generation compose draft transport should move with the page");
   assert.match(pagesSource, /export \{ LoraTrainingGenerationComposePage \} from "\.\/training-generation-compose-page";/, "broad project pages module should retain a compatibility re-export");
   assert.doesNotMatch(pagesSource, /export function LoraTrainingGenerationComposePage/, "broad project pages module should not keep the generation compose implementation inline");
+});
+
+test("training project results page lives in a focused page module", () => {
+  assert.match(projectResultsPageSource, /export function LoraTrainingProjectResultsPage/, "project results implementation should live in its own module");
+  assert.match(projectResultsPageSource, /handleOpenCaptionRevisionHistory/, "caption revision history should move with the results page");
+  assert.match(pagesSource, /export \{ LoraTrainingProjectResultsPage \} from "\.\/training-project-results-page";/, "broad project pages module should retain a compatibility re-export");
+  assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectResultsPage/, "broad project pages module should not keep the project results implementation inline");
 });
 
 test("training project page shell lives in a focused component module", () => {
@@ -622,13 +633,8 @@ test("training results and dataset pages use caption-aware review grids instead 
 });
 
 test("training result review actions update local front-end review state", () => {
-  const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  assert.notEqual(resultsPageStart, -1);
-  assert.notEqual(datasetPageStart, -1);
-
   const gridSource = trainingResultGridSource;
-  const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
+  const resultsPageSource = projectResultsPageSource;
   const sectionDetailSource = projectSectionDetailPageSource;
 
   assert.match(gridSource, /onReviewStatusChange/, "training result grid should expose a review status change callback");
@@ -646,13 +652,8 @@ test("training result review actions update local front-end review state", () =>
 });
 
 test("training result review posts through the formal HTTP API on production routes", () => {
-  const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  assert.notEqual(resultsPageStart, -1);
-  assert.notEqual(datasetPageStart, -1);
-
   const sectionDetailSource = projectSectionDetailPageSource;
-  const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
+  const resultsPageSource = projectResultsPageSource;
 
   assert.match(sectionDetailSource, /usePathname/, "section detail review should detect whether it is running under production \\/training routes");
   assert.match(sectionDetailSource, /fetch\(`\/api\/training\/image-results\/\$\{resultId\}\/review`/, "section detail review should call the formal training image review API");
@@ -668,13 +669,8 @@ test("training result review posts through the formal HTTP API on production rou
 });
 
 test("training results page exposes caption text revision history and restore controls", () => {
-  const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  assert.notEqual(resultsPageStart, -1);
-  assert.notEqual(datasetPageStart, -1);
-
   const gridSource = trainingResultGridSource;
-  const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
+  const resultsPageSource = projectResultsPageSource;
 
   assert.match(gridSource, /onOpenCaptionRevisionHistory/, "result grid should expose a per-result caption history callback");
   assert.match(gridSource, /查看说明文本历史/, "result cards should render a nearby caption history action");
@@ -777,12 +773,7 @@ test("training result lightbox tracks the active image by result id", () => {
 });
 
 test("training result review supports explicit selected batch keep and reject actions", () => {
-  const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  assert.notEqual(resultsPageStart, -1);
-  assert.notEqual(datasetPageStart, -1);
-
-  const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
+  const resultsPageSource = projectResultsPageSource;
 
   assert.match(resultsPageSource, /selectedResultIds/, "results page should track explicitly selected result ids");
   assert.match(resultsPageSource, /toggleResultSelection/, "result cards should be selectable without opening the lightbox");
@@ -797,12 +788,7 @@ test("training result review supports explicit selected batch keep and reject ac
 });
 
 test("training result filters and selections stay scoped to the active project", () => {
-  const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  assert.notEqual(resultsPageStart, -1);
-  assert.notEqual(datasetPageStart, -1);
-
-  const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
+  const resultsPageSource = projectResultsPageSource;
 
   assert.match(resultsPageSource, /resultInteractionState/, "result page interaction state should be stored with project context");
   assert.match(resultsPageSource, /projectId:\s*project\?\.id \?\? null/, "result page interaction state should remember the source project id");

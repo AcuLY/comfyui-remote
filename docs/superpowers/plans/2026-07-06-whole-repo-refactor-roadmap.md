@@ -479,6 +479,8 @@
 - Phase 8 slice 105 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, targeted fixes for `tests/test-training-frontend-api-contract.test.ts` and `tests/test-training-run-detail-page.test.ts`, and `npm test` with 1151 tests discovered, 1150 pass, 0 fail, 1 skipped.
 - Phase 8 slice 106 moved the generation compose page into `src/features/training/ui/training-generation-compose-page.tsx`. The focused page owns reference source construction, explicit reference selection wiring, supplemental image upload/remove APIs, generation-task draft transport, final input preview, and queue/run navigation while `training-project-pages.tsx` keeps a compatibility re-export.
 - Phase 8 slice 106 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts tests/test-training-frontend-api-contract.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts tests/test-training-frontend-api-contract.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts tests/test-training-frontend-api-contract.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1152 tests discovered, 1151 pass, 0 fail, 1 skipped.
+- Phase 8 slice 107 moved the project results page into `src/features/training/ui/training-project-results-page.tsx`. The focused page owns project-scoped result filters and selection state, single and batch review API flows, caption revision history loading, caption restore, and result-grid wiring while `training-project-pages.tsx` keeps a compatibility re-export.
+- Phase 8 slice 107 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-frontend-api-contract.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-frontend-api-contract.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-frontend-api-contract.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1153 tests discovered, 1152 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1125,7 +1127,7 @@ Loading states remain colocated under their route segments for now; the later lo
   - [x] Sections list page.
   - [x] Section detail page.
   - [x] Generation compose page.
-  - [ ] Project results page.
+  - [x] Project results page.
   - [ ] Dataset page.
   - [ ] Dataset revision page.
   - [ ] Project-scoped runs page.
