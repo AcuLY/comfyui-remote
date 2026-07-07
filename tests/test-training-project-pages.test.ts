@@ -31,6 +31,10 @@ const generationComposeFormHookPath = resolve(featureUiDir, "use-generation-comp
 const generationComposeFormHookSource = existsSync(generationComposeFormHookPath)
   ? readFileSync(generationComposeFormHookPath, "utf8")
   : "";
+const generationSupplementalImagesHookPath = resolve(featureUiDir, "use-generation-supplemental-images.ts");
+const generationSupplementalImagesHookSource = existsSync(generationSupplementalImagesHookPath)
+  ? readFileSync(generationSupplementalImagesHookPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
@@ -212,6 +216,17 @@ test("training generation compose form state lives in a focused hook module", ()
   assert.match(pagesSource, /from "\.\/use-generation-compose-form"/, "generation compose page should import the focused form hook");
   assert.doesNotMatch(pagesSource, /\nconst DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT\b/, "generation compose page should not own form defaults");
   assert.doesNotMatch(pagesSource, /\n  const \[generationFormState, setGenerationForm\]/, "generation compose page should not keep form state inline");
+});
+
+test("training generation supplemental image state lives in a focused hook module", () => {
+  assert.match(generationSupplementalImagesHookSource, /function useGenerationSupplementalImages\b/, "generation supplemental image state should live in a focused hook");
+  assert.match(generationSupplementalImagesHookSource, /SupplementalImageAttachment/, "generation supplemental image hook should own supplemental attachment typing");
+  assert.match(generationSupplementalImagesHookSource, /supplementalImageAttachmentState/, "generation supplemental image hook should own route-scoped attachment state");
+  assert.match(generationSupplementalImagesHookSource, /addSupplementalImage/, "generation supplemental image hook should expose an explicit add action");
+  assert.match(generationSupplementalImagesHookSource, /removeLocalSupplementalImage/, "generation supplemental image hook should expose local remove behavior");
+  assert.match(pagesSource, /from "\.\/use-generation-supplemental-images"/, "generation compose page should import the focused supplemental image hook");
+  assert.doesNotMatch(pagesSource, /\n  const \[supplementalImageAttachmentState, setSupplementalImageAttachments\]/, "generation compose page should not keep supplemental image state inline");
+  assert.doesNotMatch(pagesSource, /setSupplementalImageAttachments/, "generation compose page should not update supplemental image state inline");
 });
 
 test("training project page upload preview helpers live in the utility module", () => {

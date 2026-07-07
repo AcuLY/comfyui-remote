@@ -92,6 +92,7 @@ import {
 import s from "./training-project-pages.module.css";
 import { useGenerationComposeForm } from "./use-generation-compose-form";
 import { useGenerationComposeReferenceSelection } from "./use-generation-compose-reference-selection";
+import { useGenerationSupplementalImages } from "./use-generation-supplemental-images";
 import { useProjectSectionDraft } from "./use-project-section-draft";
 import { useProjectReferenceUploadDrafts } from "./use-project-reference-upload-drafts";
 import { useProjectReferenceSelection } from "./use-project-reference-selection";
@@ -3156,15 +3157,15 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     selectedReferenceIds,
   } = useGenerationComposeReferenceSelection(project?.id ?? null, section?.id ?? null, fallbackTaskReference);
   const { generationForm, handleUpdateGenerationForm } = useGenerationComposeForm(project?.id ?? null, section?.id ?? null);
+  const {
+    addSupplementalImage: handleAddSupplementalImage,
+    removeLocalSupplementalImage,
+    supplementalImageAttachments,
+  } = useGenerationSupplementalImages(project?.id ?? null, section?.id ?? null);
   const [generationTaskDraftTransportState, setGenerationTaskDraftTransportState] = useState(() => ({
     projectId: project?.id ?? null,
     sectionId: section?.id ?? null,
     taskId: null as string | null,
-  }));
-  const [supplementalImageAttachmentState, setSupplementalImageAttachments] = useState(() => ({
-    attachments: [] as SupplementalImageAttachment[],
-    projectId: project?.id ?? null,
-    sectionId: section?.id ?? null,
   }));
   const [generationTaskDraft, setGenerationTaskDraft] = useState<{
     finalInput: string;
@@ -3188,9 +3189,6 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
   const draftTaskId = generationTaskDraftTransportState.projectId === activeProject.id && generationTaskDraftTransportState.sectionId === activeSection.id
     ? generationTaskDraftTransportState.taskId
     : null;
-  const supplementalImageAttachments = supplementalImageAttachmentState.projectId === activeProject.id && supplementalImageAttachmentState.sectionId === activeSection.id
-    ? supplementalImageAttachmentState.attachments
-    : [];
   const supplementalImageCandidates: SupplementalImageAttachment[] = [
     ...activeProject.referenceImages.slice(0, 3).map((reference) => ({
       detail: reference.note,
@@ -3271,34 +3269,6 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     return nextTaskId;
   }
 
-  function handleAddSupplementalImage(candidate: SupplementalImageAttachment) {
-    setSupplementalImageAttachments((current) => {
-      const activeAttachments = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.attachments : [];
-      if (activeAttachments.some((attachment) => attachment.id === candidate.id)) {
-        return {
-          attachments: activeAttachments,
-          projectId: activeProject.id,
-          sectionId: activeSection.id,
-        };
-      }
-      return {
-        attachments: [...activeAttachments, candidate],
-        projectId: activeProject.id,
-        sectionId: activeSection.id,
-      };
-    });
-  }
-
-  function removeLocalSupplementalImage(attachmentId: string) {
-    setSupplementalImageAttachments((current) => ({
-      attachments: current.projectId === activeProject.id && current.sectionId === activeSection.id
-        ? current.attachments.filter((attachment) => attachment.id !== attachmentId)
-        : [],
-      projectId: activeProject.id,
-      sectionId: activeSection.id,
-    }));
-  }
-
   async function handleRemoveSupplementalImage(attachmentId: string) {
     const attachment = supplementalImageAttachments.find((item) => item.id === attachmentId);
     if (!attachment) return;
@@ -3362,22 +3332,12 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     if (!isProductionTrainingRoute) {
       const previewImage = activeProject.referenceImages[0]?.image ?? activeProject.resultPool[0]?.image ?? activeProject.images[0];
       if (previewImage) {
-        setSupplementalImageAttachments((current) => {
-          const activeAttachments = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.attachments : [];
-          return {
-            attachments: [
-              ...activeAttachments,
-              {
-                detail: "页面内本地上传草稿，可继续作为补充图片使用。",
-                id: `uploaded-supplemental-${Date.now()}`,
-                image: previewImage,
-                source: "上传",
-                title: file.name.replace(/\.[^.]+$/, "") || "补充图片",
-              },
-            ],
-            projectId: activeProject.id,
-            sectionId: activeSection.id,
-          };
+        handleAddSupplementalImage({
+          detail: "页面内本地上传草稿，可继续作为补充图片使用。",
+          id: `uploaded-supplemental-${Date.now()}`,
+          image: previewImage,
+          source: "上传",
+          title: file.name.replace(/\.[^.]+$/, "") || "补充图片",
         });
       }
       event.currentTarget.value = "";
@@ -3423,14 +3383,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
         return;
       }
 
-      setSupplementalImageAttachments((current) => {
-        const activeAttachments = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current.attachments : [];
-        return {
-          attachments: [...activeAttachments, uploadedAttachment],
-          projectId: activeProject.id,
-          sectionId: activeSection.id,
-        };
-      });
+      handleAddSupplementalImage(uploadedAttachment);
       pushToast({
         tone: "success",
         title: "补充图片已上传",

@@ -17,6 +17,10 @@ const generationComposeFormHookPath = resolve(featureUiDir, "use-generation-comp
 const generationComposeFormHookSource = existsSync(generationComposeFormHookPath)
   ? readFileSync(generationComposeFormHookPath, "utf8")
   : "";
+const generationSupplementalImagesHookPath = resolve(featureUiDir, "use-generation-supplemental-images.ts");
+const generationSupplementalImagesHookSource = existsSync(generationSupplementalImagesHookPath)
+  ? readFileSync(generationSupplementalImagesHookPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 
 function sourceBetween(startMarker: string, endMarker: string) {
@@ -540,9 +544,10 @@ test("generation compose manages supplemental image attachments in local state",
     "export function LoraTrainingProjectResultsPage",
   );
 
-  assert.match(composePage, /supplementalImageAttachments/, "compose page should keep supplemental image attachments in local state");
+  assert.match(composePage, /useGenerationSupplementalImages/, "compose page should delegate supplemental image attachments to the focused hook");
+  assert.match(generationSupplementalImagesHookSource, /supplementalImageAttachmentState/, "generation supplemental image hook should keep supplemental image attachments in local state");
   assert.match(composePage, /handleAddSupplementalImage/, "compose page should expose an explicit local add-image action");
-  assert.match(composePage, /handleAddSupplementalImage\(candidate: SupplementalImageAttachment\)/, "add-image action should require an explicit candidate");
+  assert.match(generationSupplementalImagesHookSource, /addSupplementalImage\(candidate: SupplementalImageAttachment\)/, "add-image action should require an explicit candidate");
   assert.match(composePage, /onClick=\{\(\) => handleAddSupplementalImage\(candidate\)\}/, "candidate cards should pass the selected image to the add handler");
   assert.match(composePage, /handleRemoveSupplementalImage/, "compose page should expose an explicit local remove-image action");
   assert.match(composePage, /补充图片附件/, "compose page should render a visible supplemental image attachment list");
