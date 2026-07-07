@@ -76,3 +76,14 @@ test("preset manager imports server actions from focused modules", () => {
   assert.match(source, /from "@\/lib\/actions\/preset-folder";/);
   assert.doesNotMatch(source, /from "@\/lib\/actions";/);
 });
+
+test("preset group list imports server actions from focused modules", () => {
+  const groupListSource = readSource("src/app/assets/presets/group-list.tsx");
+  const groupCardSource = readSource("src/app/assets/presets/sortable-group-card.tsx");
+
+  assert.match(groupListSource, /from "@\/lib\/actions\/preset-group";/);
+  assert.match(groupListSource, /from "@\/lib\/actions\/preset-folder";/);
+  assert.match(groupCardSource, /from "@\/lib\/actions\/preset-group";/);
+  assert.doesNotMatch(groupListSource, /from "@\/lib\/actions";/);
+  assert.doesNotMatch(groupCardSource, /from "@\/lib\/actions";/);
+});

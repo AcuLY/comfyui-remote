@@ -21,16 +21,18 @@ import {
 import { Folder, FolderPlus, Plus, Save, X } from "lucide-react";
 import type { FolderItem, PresetCategoryFull } from "@/lib/server-data";
 import {
-  addGroupMember,
-  copyPresetGroup,
   createPresetFolder,
-  createPresetGroup,
   deletePresetFolder,
   moveToFolder,
   renamePresetFolder,
   reorderPresetFolders,
+} from "@/lib/actions/preset-folder";
+import {
+  addGroupMember,
+  copyPresetGroup,
+  createPresetGroup,
   reorderPresetGroups,
-} from "@/lib/actions";
+} from "@/lib/actions/preset-group";
 import { toast } from "sonner";
 import {
   BatchActionBar,
