@@ -5,38 +5,17 @@
  */
 
 import { fail, ok } from "@/lib/api-response";
-import { prisma } from "@/lib/prisma";
 import { checkComfyUIReachability } from "@/server/services/comfyui-service";
-import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { getActiveComfyTarget } from "@/server/services/comfy-target";
+import { getGenerationWorkerRunStatus } from "@/server/worker/repository";
 
 export async function GET() {
   try {
     const target = getActiveComfyTarget();
-    const [queuedCount, runningCount, recentDone, recentFailed, comfyReachability] =
-      await Promise.all([
-        prisma.run.count({ where: { status: "queued", project: buildGenerationProjectWhere() } }),
-        prisma.run.count({ where: { status: "running", project: buildGenerationProjectWhere() } }),
-        prisma.run.findMany({
-          where: { status: "done", project: buildGenerationProjectWhere() },
-          orderBy: { finishedAt: "desc" },
-          take: 5,
-          include: {
-            project: { select: { title: true } },
-            projectSection: { select: { name: true, sortOrder: true } },
-            _count: { select: { images: true } },
-          },
-        }),
-        prisma.run.findMany({
-          where: { status: "failed", project: buildGenerationProjectWhere() },
-          orderBy: { finishedAt: "desc" },
-          take: 5,
-          include: {
-            project: { select: { title: true } },
-          },
-        }),
-        checkComfyUIReachability(),
-      ]);
+    const [runStatus, comfyReachability] = await Promise.all([
+      getGenerationWorkerRunStatus(),
+      checkComfyUIReachability(),
+    ]);
 
     return ok({
       comfyui: {
@@ -45,23 +24,9 @@ export async function GET() {
         targetId: target.id,
         targetMode: target.mode,
       },
-      queue: {
-        queued: queuedCount,
-        running: runningCount,
-      },
-      recentDone: recentDone.map((r) => ({
-        id: r.id,
-        projectTitle: r.project.title,
-        sectionName: r.projectSection.name ?? `section_${r.projectSection.sortOrder + 1}`,
-        imagesCount: r._count.images,
-        finishedAt: r.finishedAt,
-      })),
-      recentFailed: recentFailed.map((r) => ({
-        id: r.id,
-        projectTitle: r.project.title,
-        error: r.errorMessage,
-        finishedAt: r.finishedAt,
-      })),
+      queue: runStatus.queue,
+      recentDone: runStatus.recentDone,
+      recentFailed: runStatus.recentFailed,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

@@ -1008,17 +1008,22 @@ test("generation review and image API entrypoints reuse the generation project b
 test("generation worker status uses the generation project boundary", () => {
   assert.match(
     generationWorkerStatusRouteSource,
-    /buildGenerationProjectWhere/,
-    "Generation worker status should not aggregate training-owned run resources.",
+    /getGenerationWorkerRunStatus/,
+    "Generation worker status should delegate run aggregation below the route.",
+  );
+  assert.doesNotMatch(
+    generationWorkerStatusRouteSource,
+    /@\/lib\/prisma|buildGenerationProjectWhere|prisma\.run/,
+    "Generation worker status routes should not own the resource-boundary query.",
   );
   assert.match(
-    generationWorkerStatusRouteSource,
-    /run\.count\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    generationWorkerRepositorySource,
+    /getGenerationWorkerRunStatus[\s\S]*run\.count\(\{[\s\S]*buildGenerationRunWhere\(\{\s*status:\s*RunStatus\.queued/,
     "Generation worker status queued/running counts should filter through generation-owned projects.",
   );
   assert.match(
-    generationWorkerStatusRouteSource,
-    /run\.findMany\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    generationWorkerRepositorySource,
+    /getGenerationWorkerRunStatus[\s\S]*run\.findMany\(\{[\s\S]*buildGenerationRunWhere\(\{\s*status:\s*RunStatus\.done/,
     "Generation worker status recent runs should filter through generation-owned projects.",
   );
 });

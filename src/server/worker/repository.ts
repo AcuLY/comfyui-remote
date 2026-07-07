@@ -43,6 +43,26 @@ type CompleteWorkerRunInput = {
   }>;
 };
 
+export type GenerationWorkerRunStatus = {
+  queue: {
+    queued: number;
+    running: number;
+  };
+  recentDone: Array<{
+    id: string;
+    projectTitle: string;
+    sectionName: string;
+    imagesCount: number;
+    finishedAt: Date | null;
+  }>;
+  recentFailed: Array<{
+    id: string;
+    projectTitle: string;
+    error: string | null;
+    finishedAt: Date | null;
+  }>;
+};
+
 function buildGenerationRunWhere(where: Prisma.RunWhereInput = {}): Prisma.RunWhereInput {
   return {
     AND: [
@@ -71,6 +91,51 @@ function serializeWorkerRunSnapshot(run: WorkerRunRecord): WorkerRunSnapshot {
       name: run.projectSection.name ?? `section_${run.projectSection.sortOrder + 1}`,
       slug: `section_${run.projectSection.sortOrder + 1}`,
     },
+  };
+}
+
+export async function getGenerationWorkerRunStatus(): Promise<GenerationWorkerRunStatus> {
+  const [queuedCount, runningCount, recentDone, recentFailed] = await Promise.all([
+    db.run.count({ where: buildGenerationRunWhere({ status: RunStatus.queued }) }),
+    db.run.count({ where: buildGenerationRunWhere({ status: RunStatus.running }) }),
+    db.run.findMany({
+      where: buildGenerationRunWhere({ status: RunStatus.done }),
+      orderBy: { finishedAt: "desc" },
+      take: 5,
+      include: {
+        project: { select: { title: true } },
+        projectSection: { select: { name: true, sortOrder: true } },
+        _count: { select: { images: true } },
+      },
+    }),
+    db.run.findMany({
+      where: buildGenerationRunWhere({ status: RunStatus.failed }),
+      orderBy: { finishedAt: "desc" },
+      take: 5,
+      include: {
+        project: { select: { title: true } },
+      },
+    }),
+  ]);
+
+  return {
+    queue: {
+      queued: queuedCount,
+      running: runningCount,
+    },
+    recentDone: recentDone.map((run) => ({
+      id: run.id,
+      projectTitle: run.project.title,
+      sectionName: run.projectSection.name ?? `section_${run.projectSection.sortOrder + 1}`,
+      imagesCount: run._count.images,
+      finishedAt: run.finishedAt,
+    })),
+    recentFailed: recentFailed.map((run) => ({
+      id: run.id,
+      projectTitle: run.project.title,
+      error: run.errorMessage,
+      finishedAt: run.finishedAt,
+    })),
   };
 }
 
