@@ -13,6 +13,10 @@ const generationComposeReferenceSelectionHookPath = resolve(featureUiDir, "use-g
 const generationComposeReferenceSelectionHookSource = existsSync(generationComposeReferenceSelectionHookPath)
   ? readFileSync(generationComposeReferenceSelectionHookPath, "utf8")
   : "";
+const generationComposeFormHookPath = resolve(featureUiDir, "use-generation-compose-form.ts");
+const generationComposeFormHookSource = existsSync(generationComposeFormHookPath)
+  ? readFileSync(generationComposeFormHookPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 
 function sourceBetween(startMarker: string, endMarker: string) {
@@ -518,8 +522,9 @@ test("generation compose saves editable task fields into final input and draft",
     "export function LoraTrainingProjectResultsPage",
   );
 
-  assert.match(composePage, /generationForm/, "compose page should track editable task fields in local state");
-  assert.match(composePage, /handleUpdateGenerationForm/, "compose page should expose a local task form update handler");
+  assert.match(composePage, /useGenerationComposeForm/, "compose page should delegate editable task fields to the focused hook");
+  assert.match(generationComposeFormHookSource, /generationFormState/, "generation compose form hook should track editable task fields in local state");
+  assert.match(generationComposeFormHookSource, /handleUpdateGenerationForm/, "generation compose form hook should expose a local task form update handler");
   assert.match(composePage, /value=\{generationForm\.taskType\}/, "task type select should be controlled by local form state");
   assert.match(composePage, /onChange=\{\(value\) => handleUpdateGenerationForm\("taskType", value\)\}/, "task type changes should update local form state");
   assert.match(composePage, /value=\{generationForm\.supplementalPrompt\}/, "supplemental prompt should be controlled by local form state");

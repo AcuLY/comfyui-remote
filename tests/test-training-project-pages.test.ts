@@ -27,6 +27,10 @@ const generationComposeReferenceSelectionHookPath = resolve(featureUiDir, "use-g
 const generationComposeReferenceSelectionHookSource = existsSync(generationComposeReferenceSelectionHookPath)
   ? readFileSync(generationComposeReferenceSelectionHookPath, "utf8")
   : "";
+const generationComposeFormHookPath = resolve(featureUiDir, "use-generation-compose-form.ts");
+const generationComposeFormHookSource = existsSync(generationComposeFormHookPath)
+  ? readFileSync(generationComposeFormHookPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
@@ -198,6 +202,16 @@ test("training generation compose reference selection lives in a focused hook mo
   assert.match(pagesSource, /from "\.\/use-generation-compose-reference-selection"/, "generation compose page should import the focused reference selection hook");
   assert.doesNotMatch(pagesSource, /\n  const \[referenceSelectionState, setReferenceSelectionState\]/, "generation compose page should not keep reference selection state inline");
   assert.doesNotMatch(pagesSource, /setReferenceSelectionState/, "generation compose page should not update reference selection state inline");
+});
+
+test("training generation compose form state lives in a focused hook module", () => {
+  assert.match(generationComposeFormHookSource, /function useGenerationComposeForm\b/, "generation compose form state should live in a focused hook");
+  assert.match(generationComposeFormHookSource, /DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT/, "generation compose form hook should own the default supplemental prompt");
+  assert.match(generationComposeFormHookSource, /generationFormState/, "generation compose form hook should own route-scoped form state");
+  assert.match(generationComposeFormHookSource, /handleUpdateGenerationForm/, "generation compose form hook should expose the form update handler");
+  assert.match(pagesSource, /from "\.\/use-generation-compose-form"/, "generation compose page should import the focused form hook");
+  assert.doesNotMatch(pagesSource, /\nconst DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT\b/, "generation compose page should not own form defaults");
+  assert.doesNotMatch(pagesSource, /\n  const \[generationFormState, setGenerationForm\]/, "generation compose page should not keep form state inline");
 });
 
 test("training project page upload preview helpers live in the utility module", () => {

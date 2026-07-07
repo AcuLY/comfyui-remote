@@ -90,6 +90,7 @@ import {
   type TrainingTextRevisionItem,
 } from "./project-page-utils";
 import s from "./training-project-pages.module.css";
+import { useGenerationComposeForm } from "./use-generation-compose-form";
 import { useGenerationComposeReferenceSelection } from "./use-generation-compose-reference-selection";
 import { useProjectSectionDraft } from "./use-project-section-draft";
 import { useProjectReferenceUploadDrafts } from "./use-project-reference-upload-drafts";
@@ -122,7 +123,6 @@ const RESULT_FILTER_ITEMS = [
 
 type TrainingResultFilter = (typeof RESULT_FILTER_ITEMS)[number]["value"];
 type SceneBlockPatch = Partial<Pick<LoraTrainingSectionBlock, "text" | "title">>;
-const DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT = "保持角色正面可训练，避免复杂遮挡和多人构图。";
 const PROJECT_RUN_ERROR_CLAMP_LINES = 3;
 
 function useTraining(data: TrainingAppData) {
@@ -3155,12 +3155,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     removeTaskReference: handleRemoveTaskReference,
     selectedReferenceIds,
   } = useGenerationComposeReferenceSelection(project?.id ?? null, section?.id ?? null, fallbackTaskReference);
-  const [generationFormState, setGenerationForm] = useState(() => ({
-    projectId: project?.id ?? null,
-    sectionId: section?.id ?? null,
-    supplementalPrompt: DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT,
-    taskType: "训练集图片生成",
-  }));
+  const { generationForm, handleUpdateGenerationForm } = useGenerationComposeForm(project?.id ?? null, section?.id ?? null);
   const [generationTaskDraftTransportState, setGenerationTaskDraftTransportState] = useState(() => ({
     projectId: project?.id ?? null,
     sectionId: section?.id ?? null,
@@ -3190,12 +3185,6 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
   if (!project || !section) return <EmptyPage title="没有生成任务上下文" />;
   const activeProject = project;
   const activeSection = section;
-  const generationForm = generationFormState.projectId === activeProject.id && generationFormState.sectionId === activeSection.id ? generationFormState : {
-    projectId: activeProject.id,
-    sectionId: activeSection.id,
-    supplementalPrompt: DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT,
-    taskType: "训练集图片生成",
-  };
   const draftTaskId = generationTaskDraftTransportState.projectId === activeProject.id && generationTaskDraftTransportState.sectionId === activeSection.id
     ? generationTaskDraftTransportState.taskId
     : null;
@@ -3240,18 +3229,6 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     .map((part) => part.trim())
     .filter(Boolean)
     .join("\n");
-
-  function handleUpdateGenerationForm(field: "supplementalPrompt" | "taskType", value: string) {
-    setGenerationForm((current) => {
-      const active = current.projectId === activeProject.id && current.sectionId === activeSection.id ? current : generationForm;
-      return {
-        ...active,
-        [field]: value,
-        projectId: activeProject.id,
-        sectionId: activeSection.id,
-      };
-    });
-  }
 
   async function ensureGenerationDraftTaskId() {
     if (draftTaskId) {
