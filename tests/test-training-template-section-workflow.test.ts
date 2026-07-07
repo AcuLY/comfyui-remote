@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const featureRoot = resolve(testDir, "../src/features/training");
-const resourceSource = readFileSync(resolve(featureUiDir, "training-resource-pages.tsx"), "utf8");
+const templateSectionPageSource = readFileSync(resolve(featureUiDir, "training-template-section-page.tsx"), "utf8");
 const templatePageUtilsSource = readFileSync(resolve(featureUiDir, "training-template-page-utils.ts"), "utf8");
 const templateSceneBlockCardPath = resolve(featureUiDir, "training-template-scene-block-card.tsx");
 const templateSceneBlockCardSource = existsSync(templateSceneBlockCardPath)
@@ -18,9 +18,9 @@ const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
 
 function sourceFrom(startMarker: string) {
-  const start = resourceSource.indexOf(startMarker);
+  const start = templateSectionPageSource.indexOf(startMarker);
   assert.notEqual(start, -1, `${startMarker} should exist`);
-  return resourceSource.slice(start);
+  return templateSectionPageSource.slice(start);
 }
 
 function templateSceneBlockCardBody() {
@@ -176,8 +176,8 @@ test("training template section state stays scoped to the active template sectio
     /\[templateSectionStateKey\]: updater\(current\[templateSectionStateKey\] \?\? activeSection\.blocks\)/,
     "scene-block updates should write only the active keyed state",
   );
-  assert.match(resourceSource, /type TemplateSectionDraftState = \{[\s\S]*?templateId:\s*string;/, "saved template section drafts should be typed with the parent template id");
-  assert.match(resourceSource, /type TemplateSectionDraftState = \{[\s\S]*?sectionId:\s*string;/, "saved template section drafts should be typed with the active section id");
+  assert.match(templateSectionPageSource, /type TemplateSectionDraftState = \{[\s\S]*?templateId:\s*string;/, "saved template section drafts should be typed with the parent template id");
+  assert.match(templateSectionPageSource, /type TemplateSectionDraftState = \{[\s\S]*?sectionId:\s*string;/, "saved template section drafts should be typed with the active section id");
   assert.match(templateSectionPage, /templateId:\s*activeTemplate\.id/, "scene-block updates and saved drafts should store the active template id");
   assert.match(templateSectionPage, /sectionId:\s*activeSection\.id/, "scene-block updates and saved drafts should store the active section id");
   assert.match(templateSectionPage, /editingTemplateBlockState/, "editing template block state should be stored with route context");

@@ -17,6 +17,7 @@ const TRAINING_UI_FILES = [
   "src/features/training/ui/training-preset-sort-rules-page.tsx",
   "src/features/training/ui/training-resource-pages.tsx",
   "src/features/training/ui/training-template-form-page.tsx",
+  "src/features/training/ui/training-template-section-page.tsx",
   "src/features/training/ui/training-templates-page.tsx",
   "src/features/training/ui/training-run-detail-page.tsx",
   "src/features/training/ui/training-runs-page.tsx",
