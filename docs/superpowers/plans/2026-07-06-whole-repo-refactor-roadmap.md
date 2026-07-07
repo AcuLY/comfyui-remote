@@ -427,6 +427,8 @@
 - Phase 8 slice 79 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, then green `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1134 tests discovered, 1133 pass, 0 fail, 1 skipped.
 - Phase 8 slice 80 moved reference upload preview helpers into `src/features/training/ui/project-page-utils.ts`: reusable `ReferenceCandidate` and `SupplementalImageAttachment` types, local project-reference upload preview construction, uploaded reference-image mapping, and uploaded supplemental-image mapping. `training-project-pages.tsx` now imports these browser-safe mapping helpers while the form, profile upload, and generation compose state remain page-local.
 - Phase 8 slice 80 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, then green `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1135 tests discovered, 1134 pass, 0 fail, 1 skipped.
+- Phase 8 slice 81 moved `runPreviewImages` into `src/features/training/ui/project-page-utils.ts` and closed the pure-helper extraction checkpoint. `training-project-pages.tsx` now keeps page constants, state hooks, DOM/CSS-bound clipboard fallback, and JSX components local while pure route lookup, state-key, ordinal, review, dataset, upload, status, and run-preview helpers live in the utility module.
+- Phase 8 slice 81 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, initial `npm test` found one stale source marker in `tests/test-training-image-thumbnail-contract.test.ts`, then green `node --import tsx --test tests/test-training-image-thumbnail-contract.test.ts tests/test-training-project-pages.test.ts`, `npm run lint`, and `npm test` with 1135 tests discovered, 1134 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1074,7 +1076,7 @@ Loading states remain colocated under their route segments for now; the later lo
   - [ ] Dataset page.
   - [ ] Dataset revision page.
   - [ ] Project-scoped runs page.
-- [ ] Move pure helpers from `training-project-pages.tsx` into `src/features/training/ui/project-page-utils.ts` or domain-specific files.
+- [x] Move pure helpers from `training-project-pages.tsx` into `src/features/training/ui/project-page-utils.ts` or domain-specific files.
 - [ ] Move hooks from `training-project-pages.tsx` into focused hook files: URL search, upload previews, section draft state, reference picker state, result review state.
 - [ ] Split `training-resource-pages.tsx` into presets, templates, scene description categories/folders/presets, and shared resource list primitives.
 - [ ] Keep `training-runs-page.tsx` and `training-run-detail-page.tsx` separate from project-scoped run rows unless shared components are extracted.

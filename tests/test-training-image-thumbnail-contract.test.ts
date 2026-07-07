@@ -15,7 +15,7 @@ function sourceBetween(source: string, startMarker: string, endMarker: string) {
 }
 
 test("training result pool renders card thumbnails and opens the shared lightbox only on demand", () => {
-  const gridSource = sourceBetween(projectPagesSource, "function TrainingResultGrid", "function runPreviewImages");
+  const gridSource = sourceBetween(projectPagesSource, "function TrainingResultGrid", "function ProjectRunFailureBlock");
   const gridCss = sourceBetween(projectPagesCss, ".referenceImageGrid,", ".referenceImageCard > div:last-child");
 
   assert.match(gridSource, /ImageThumbMedium/, "result cards should use the same thumbnail component as image grids");

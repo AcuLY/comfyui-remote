@@ -5,6 +5,7 @@ import type {
   LoraTrainingImageResult,
   LoraTrainingProject,
   LoraTrainingReferenceImage,
+  LoraTrainingRun,
   LoraTrainingSection,
   LoraTrainingSectionBlock,
   LoraTrainingTaskStatus,
@@ -360,6 +361,15 @@ export function projectRunStatusLabel(status: LoraTrainingTaskStatus) {
   if (status === "running") return "进行中";
   if (status === "queued") return "排队";
   return "失败";
+}
+
+export function runPreviewImages(run: LoraTrainingRun, project: LoraTrainingProject) {
+  if (run.kind === "training") {
+    return (run.datasetSamples ?? []).map((sample) => sample.image).slice(0, 4);
+  }
+
+  if (!run.summary.startsWith("图片")) return [];
+  return project.resultPool.map((result) => result.image).slice(0, run.status === "completed" ? 4 : 3);
 }
 
 export function sceneBlockPreviewText(text: string) {

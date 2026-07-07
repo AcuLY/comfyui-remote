@@ -122,6 +122,7 @@ test("training project page pure display and dataset helpers live in the utility
     "deriveDatasetCaption",
     "buildLocalDatasetRevision",
     "projectRunStatusLabel",
+    "runPreviewImages",
     "sceneBlockPreviewText",
   ];
 
@@ -470,19 +471,19 @@ test("training results and dataset pages use caption-aware review grids instead 
 
 test("training result review actions update local front-end review state", () => {
   const gridStart = pagesSource.indexOf("function TrainingResultGrid");
-  const runRowsStart = pagesSource.indexOf("function runPreviewImages");
+  const gridEnd = pagesSource.indexOf("function ProjectRunFailureBlock");
   const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
   const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
   const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
   assert.notEqual(gridStart, -1);
-  assert.notEqual(runRowsStart, -1);
+  assert.notEqual(gridEnd, -1);
   assert.notEqual(resultsPageStart, -1);
   assert.notEqual(datasetPageStart, -1);
   assert.notEqual(sectionDetailStart, -1);
   assert.notEqual(composeStart, -1);
 
-  const gridSource = pagesSource.slice(gridStart, runRowsStart);
+  const gridSource = pagesSource.slice(gridStart, gridEnd);
   const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
   const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
 
@@ -526,15 +527,15 @@ test("training result review posts through the formal HTTP API on production rou
 
 test("training results page exposes caption text revision history and restore controls", () => {
   const gridStart = pagesSource.indexOf("function TrainingResultGrid");
-  const runRowsStart = pagesSource.indexOf("function runPreviewImages");
+  const gridEnd = pagesSource.indexOf("function ProjectRunFailureBlock");
   const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
   assert.notEqual(gridStart, -1);
-  assert.notEqual(runRowsStart, -1);
+  assert.notEqual(gridEnd, -1);
   assert.notEqual(resultsPageStart, -1);
   assert.notEqual(datasetPageStart, -1);
 
-  const gridSource = pagesSource.slice(gridStart, runRowsStart);
+  const gridSource = pagesSource.slice(gridStart, gridEnd);
   const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
 
   assert.match(gridSource, /onOpenCaptionRevisionHistory/, "result grid should expose a per-result caption history callback");
@@ -599,20 +600,24 @@ test("training section list mutations use the formal HTTP APIs on production rou
 
 test("training project repeated object actions include the acted-on object name", () => {
   const gridStart = pagesSource.indexOf("function TrainingResultGrid");
-  const runRowsStart = pagesSource.indexOf("function runPreviewImages");
+  const gridEnd = pagesSource.indexOf("function ProjectRunFailureBlock");
+  const runRowsStart = pagesSource.indexOf("function RunRows");
+  const runRowsEnd = pagesSource.indexOf("function TrainingSectionRail");
   const newProjectStart = pagesSource.indexOf("export function LoraTrainingProjectFormPage");
   const projectDetailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
   const projectProfileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
   assert.notEqual(gridStart, -1);
+  assert.notEqual(gridEnd, -1);
   assert.notEqual(runRowsStart, -1);
+  assert.notEqual(runRowsEnd, -1);
   assert.notEqual(newProjectStart, -1);
   assert.notEqual(projectDetailStart, -1);
   assert.notEqual(projectProfileStart, -1);
   assert.notEqual(scopedPageStart, -1);
 
-  const gridSource = pagesSource.slice(gridStart, runRowsStart);
-  const runRowsSource = pagesSource.slice(runRowsStart, newProjectStart);
+  const gridSource = pagesSource.slice(gridStart, gridEnd);
+  const runRowsSource = pagesSource.slice(runRowsStart, runRowsEnd);
   const newProjectSource = pagesSource.slice(newProjectStart, projectDetailStart);
   const projectDetailSource = pagesSource.slice(projectDetailStart, projectProfileStart);
   const scopedPageSource = pagesSource.slice(scopedPageStart);
@@ -646,11 +651,11 @@ test("project-scoped run pages leave the primary-action target selection to rout
 
 test("training result lightbox tracks the active image by result id", () => {
   const gridStart = pagesSource.indexOf("function TrainingResultGrid");
-  const runRowsStart = pagesSource.indexOf("function runPreviewImages");
+  const gridEnd = pagesSource.indexOf("function ProjectRunFailureBlock");
   assert.notEqual(gridStart, -1);
-  assert.notEqual(runRowsStart, -1);
+  assert.notEqual(gridEnd, -1);
 
-  const gridSource = pagesSource.slice(gridStart, runRowsStart);
+  const gridSource = pagesSource.slice(gridStart, gridEnd);
 
   assert.match(gridSource, /activeResultId/, "result grid should store the active result id");
   assert.match(gridSource, /setActiveResultId/, "result grid should update the active result by id");
@@ -882,7 +887,7 @@ test("training result cards keep thumbnail density and clamp captions", () => {
 });
 
 test("project-scoped run rows use task cards with recent output thumbnails", () => {
-  const runRowsStart = pagesSource.indexOf("function runPreviewImages");
+  const runRowsStart = pagesSource.indexOf("function RunRows");
   const sectionRailStart = pagesSource.indexOf("function TrainingSectionRail");
   assert.notEqual(runRowsStart, -1);
   assert.notEqual(sectionRailStart, -1);
@@ -891,9 +896,10 @@ test("project-scoped run rows use task cards with recent output thumbnails", () 
 
   assert.match(runRowsSource, /project:\s*LoraTrainingProject/, "RunRows should receive the active project context");
   assert.match(runRowsSource, /runPreviewImages/, "RunRows should resolve previews per run");
+  assert.match(projectPageUtilsSource, /function runPreviewImages/, "preview image derivation should live in the utility module");
   assert.match(runRowsSource, /ImageListSmall/, "RunRows should render the shared small thumbnail strip");
-  assert.match(runRowsSource, /resultPool/, "generation task rows should source previews from project results");
-  assert.match(runRowsSource, /datasetSamples/, "training task rows should source previews from dataset samples");
+  assert.match(projectPageUtilsSource, /resultPool/, "generation task rows should source previews from project results");
+  assert.match(projectPageUtilsSource, /datasetSamples/, "training task rows should source previews from dataset samples");
   assert.doesNotMatch(runRowsSource, /className=\{s\.entityRow\}/, "RunRows should not collapse back to generic entity rows");
   assert.match(cssSource, /\.projectRunRows\b/, "project run rows should have dedicated list styling");
   assert.match(cssSource, /\.projectRunThumbs\b/, "project run rows should style thumbnail strips separately");
