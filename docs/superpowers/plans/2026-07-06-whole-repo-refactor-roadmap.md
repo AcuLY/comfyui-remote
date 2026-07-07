@@ -343,6 +343,8 @@
 - Phase 6 slice 37 verification passed: red `node --import tsx --test tests/test-character-lora-source-images.test.ts`, then green `node --import tsx --test tests/test-character-lora-source-images.test.ts`, `node --import tsx --test tests/test-character-lora-source-images.test.ts tests/test-training-api-routes.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `node --import tsx --test tests/test-character-lora-source-images.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1074 tests discovered, 1073 pass, 0 fail, 1 skipped.
 - Phase 7 slice 38 clarified the root layout shell boundary after reading `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/layout.md`, `node_modules/next/dist/docs/01-app/01-getting-started/03-layouts-and-pages.md`, and `node_modules/next/dist/docs/01-app/01-getting-started/05-server-and-client-components.md`: standalone root surfaces now flow through `shouldSkipAppShell`, while `src/app/layout.tsx` stays limited to global providers, shell selection, metadata/fonts, and auth-safe header/cookie reads.
 - Phase 7 slice 38 verification passed: red `node --import tsx --test tests/test-training-prod-route-shell.test.ts`, then green `node --import tsx --test tests/test-training-prod-route-shell.test.ts`, `node --import tsx --test tests/test-training-prod-route-shell.test.ts tests/test-next16-build-compat-source.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1075 tests discovered, 1074 pass, 0 fail, 1 skipped.
+- Phase 7 slice 39 kept `src/proxy.ts` aligned with the local Next 16 Proxy docs after reading `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md` and `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`: the file keeps the named `proxy` export, a static matcher, no runtime segment config, and a type-only `NextRequest` import.
+- Phase 7 slice 39 verification passed: red `node --import tsx --test tests/test-proxy-dev-internal-paths.test.ts`, then green `node --import tsx --test tests/test-proxy-dev-internal-paths.test.ts`, `node --import tsx --test tests/test-proxy-dev-internal-paths.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1076 tests discovered, 1075 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -788,7 +790,7 @@
 - `src/instrumentation.node.ts`
 
 - [x] Keep `src/app/layout.tsx` responsible for providers, shell inclusion/exclusion, and auth-safe global layout only.
-- [ ] Keep `src/proxy.ts` aligned with Next 16 proxy conventions from local docs.
+- [x] Keep `src/proxy.ts` aligned with Next 16 proxy conventions from local docs.
 - [ ] Keep instrumentation server-safe and documented.
 - [ ] Review global CSS variables against `DESIGN.md` and `docs/frontend-design-guide.md`.
 

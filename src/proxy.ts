@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 
 const AUTH_COOKIE_NAME = "auth_token";
@@ -108,6 +108,7 @@ export function proxy(request: NextRequest) {
   return nextWithRequestContext(request, pathname);
 }
 
+// Next 16 Proxy convention: keep this matcher static so build-time analysis can find it.
 export const config = {
   matcher: [
     "/((?!_next/).*)",

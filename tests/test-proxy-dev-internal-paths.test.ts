@@ -1,9 +1,29 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { NextRequest } from "next/server";
 
 import { config, proxy } from "../src/proxy";
+
+const proxySource = readFileSync("src/proxy.ts", "utf8");
+
+test("proxy follows the Next 16 proxy file convention", () => {
+  assert.match(
+    proxySource,
+    /Next 16 Proxy convention/,
+    "proxy should document that it is intentionally using the Next 16 proxy convention.",
+  );
+  assert.match(
+    proxySource,
+    /import \{ NextResponse, type NextRequest \} from "next\/server";/,
+    "NextRequest should remain a type-only import from next/server.",
+  );
+  assert.match(proxySource, /export function proxy\(request: NextRequest\)/);
+  assert.match(proxySource, /export const config = \{\s*matcher:\s*\[/);
+  assert.doesNotMatch(proxySource, /export const runtime\b/, "Proxy files must not export route runtime config.");
+  assert.doesNotMatch(proxySource, /\bmiddleware\b/, "Proxy code should not use the deprecated middleware convention name.");
+});
 
 test("proxy matcher excludes all Next internal routes, including dev HMR", () => {
   for (const url of ["/_next/webpack-hmr", "/_next/static/chunks/main.js"]) {
