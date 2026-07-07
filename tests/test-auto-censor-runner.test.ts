@@ -134,16 +134,17 @@ async function runRunnerCase(options: RunnerCaseOptions = {}): Promise<RunnerCas
       timeoutMs: options.timeoutMs,
     }, options.harnessSafetyTimeoutMs);
 
-    const args = existsSync(argsPath)
+    const shouldReadSidecarFiles = options.mode !== "timeout";
+    const args = shouldReadSidecarFiles && existsSync(argsPath)
       ? JSON.parse(await readFile(argsPath, "utf8")) as string[]
       : undefined;
-    const spawnCalls = existsSync(spawnsPath)
+    const spawnCalls = shouldReadSidecarFiles && existsSync(spawnsPath)
       ? JSON.parse(await readFile(spawnsPath, "utf8")) as string[][]
       : [];
-    const manifest = existsSync(manifestSnapshotPath)
+    const manifest = shouldReadSidecarFiles && existsSync(manifestSnapshotPath)
       ? JSON.parse(await readFile(manifestSnapshotPath, "utf8")) as unknown
       : undefined;
-    const childPythonEnv = existsSync(envSnapshotPath)
+    const childPythonEnv = shouldReadSidecarFiles && existsSync(envSnapshotPath)
       ? JSON.parse(await readFile(envSnapshotPath, "utf8")) as Record<string, string | null>
       : undefined;
 
