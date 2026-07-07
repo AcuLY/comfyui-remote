@@ -31,6 +31,10 @@ const templateListPrimitivesPath = resolve(featureUiDir, "training-template-list
 const templateListPrimitivesSource = existsSync(templateListPrimitivesPath)
   ? readFileSync(templateListPrimitivesPath, "utf8")
   : "";
+const trainingTemplatesPagePath = resolve(featureUiDir, "training-templates-page.tsx");
+const trainingTemplatesPageSource = existsSync(trainingTemplatesPagePath)
+  ? readFileSync(trainingTemplatesPagePath, "utf8")
+  : "";
 const templateSectionRowPath = resolve(featureUiDir, "training-template-section-row.tsx");
 const templateSectionRowSource = existsSync(templateSectionRowPath)
   ? readFileSync(templateSectionRowPath, "utf8")
@@ -158,7 +162,14 @@ test("training template list primitives live in a focused module", () => {
     assert.doesNotMatch(pageSource, new RegExp(`function ${helperName}\\b`), `${helperName} should not stay inline in the broad resource pages file`);
   }
   assert.match(templateListPrimitivesSource, /TRAINING_TEMPLATE_SCROLL_KEY\s*=\s*"comfyui-manager:training:templates:list-anchor"/, "template list anchor key should move with the anchor helpers");
-  assert.match(pageSource, /from "\.\/training-template-list-primitives"/, "resource pages should import focused template list primitives");
+  assert.match(trainingTemplatesPageSource, /from "\.\/training-template-list-primitives"/, "training templates page should import focused template list primitives");
+  assert.doesNotMatch(pageSource, /from "\.\/training-template-list-primitives"/, "resource pages should leave template list primitives to the focused templates page");
+});
+
+test("training templates page lives in a focused module", () => {
+  assert.match(trainingTemplatesPageSource, /export function LoraTrainingTemplatesPage\b/, "training templates page should live in training-templates-page.tsx");
+  assert.doesNotMatch(pageSource, /\nexport function LoraTrainingTemplatesPage\b/, "training templates page should not stay inline in the broad resource pages file");
+  assert.match(pageSource, /from "\.\/training-templates-page"/, "resource pages should re-export the focused templates page");
 });
 
 test("training template section row primitive lives in a focused module", () => {
@@ -247,23 +258,22 @@ test("training preset library deletes through the formal HTTP API on production 
 test("training resource pages use product-facing copy instead of internal prompt schema terms", () => {
   const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
   const presetDetailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
   const templateFormStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const templateSectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
 
   assert.notEqual(presetsStart, -1);
   assert.notEqual(presetDetailStart, -1);
   assert.match(presetSortRulesPageSource, /export function LoraTrainingPresetSortRulesPage\b/, "preset sort rules source should be readable");
-  assert.notEqual(templatesStart, -1);
+  assert.match(trainingTemplatesPageSource, /export function LoraTrainingTemplatesPage\b/, "training templates source should be readable");
   assert.notEqual(templateFormStart, -1);
   assert.notEqual(templateSectionStart, -1);
 
   const visibleResourceCopy = [
     pageSource.slice(presetsStart, presetDetailStart),
-    pageSource.slice(presetDetailStart, templatesStart),
+    pageSource.slice(presetDetailStart, templateFormStart),
     presetSortRulesPageSource,
+    trainingTemplatesPageSource,
     templateListPrimitivesSource,
-    pageSource.slice(templatesStart, templateFormStart),
     pageSource.slice(templateFormStart, templateSectionStart),
   ].join("\n");
 
@@ -385,8 +395,7 @@ test("training preset selection labels reflect selected state like the managed l
 });
 
 test("training resource repeated object actions include the acted-on object name", () => {
-  const templatesPageStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
-  assert.notEqual(templatesPageStart, -1);
+  assert.match(trainingTemplatesPageSource, /export function LoraTrainingTemplatesPage\b/, "training templates source should be readable");
 
   const presetItemSource = presetLibraryPrimitivesSource;
   const sortPanelSource = presetSortPanelSource;
@@ -426,13 +435,13 @@ test("training preset category rail drag handles reorder categories locally", ()
 test("training preset new actions route into a real new-preset form", () => {
   const presetsStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const templateFormStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   assert.notEqual(presetsStart, -1);
   assert.notEqual(detailStart, -1);
-  assert.notEqual(templatesStart, -1);
+  assert.notEqual(templateFormStart, -1);
 
   const presetsSource = pageSource.slice(presetsStart, detailStart);
-  const detailSource = pageSource.slice(detailStart, templatesStart);
+  const detailSource = pageSource.slice(detailStart, templateFormStart);
 
   assert.match(headerSpecsSource, /headerAction\("新建预制",\s*Plus,\s*"primary",\s*"\/training\/presets\/new"\)/, "global new action should live in the route header and navigate to the new training preset route");
   assert.match(presetsSource, /newPresetInCategoryHref/, "category-scoped new action should preserve the active category");
@@ -446,11 +455,11 @@ test("training preset new actions route into a real new-preset form", () => {
 
 test("training preset new form carries source training artifact context", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const templateFormStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   assert.notEqual(detailStart, -1);
-  assert.notEqual(templatesStart, -1);
+  assert.notEqual(templateFormStart, -1);
 
-  const detailSource = pageSource.slice(detailStart, templatesStart);
+  const detailSource = pageSource.slice(detailStart, templateFormStart);
 
   assert.match(resourcePageUtilsSource, /sourceRun:\s*searchParams\.get\("sourceRun"\)/, "new preset hints should read source training run id");
   assert.match(resourcePageUtilsSource, /artifact:\s*searchParams\.get\("artifact"\)/, "new preset hints should read source artifact name");
@@ -461,11 +470,11 @@ test("training preset new form carries source training artifact context", () => 
 
 test("training preset new form keeps source run ids out of visible copy", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const templateFormStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   assert.notEqual(detailStart, -1);
-  assert.notEqual(templatesStart, -1);
+  assert.notEqual(templateFormStart, -1);
 
-  const detailSource = pageSource.slice(detailStart, templatesStart);
+  const detailSource = pageSource.slice(detailStart, templateFormStart);
   const sourceFieldStart = detailSource.indexOf('label="来源训练产物"');
   const nextFieldStart = detailSource.indexOf('<Field multiline', sourceFieldStart);
   assert.notEqual(sourceFieldStart, -1);
@@ -495,11 +504,11 @@ test("training preset direct creation stays neutral instead of inheriting the fi
 
 test("training preset detail saves a visible local preset draft instead of only showing feedback", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const templateFormStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   assert.notEqual(detailStart, -1);
-  assert.notEqual(templatesStart, -1);
+  assert.notEqual(templateFormStart, -1);
 
-  const detailSource = pageSource.slice(detailStart, templatesStart);
+  const detailSource = pageSource.slice(detailStart, templateFormStart);
 
   assert.match(detailSource, /presetForm/, "preset detail should keep editable form fields in local state");
   assert.match(detailSource, /setPresetForm/, "preset field edits should update local form state");
@@ -517,11 +526,11 @@ test("training preset detail saves a visible local preset draft instead of only 
 
 test("training preset detail state stays scoped to the active preset context", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const templateFormStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   assert.notEqual(detailStart, -1);
-  assert.notEqual(templatesStart, -1);
+  assert.notEqual(templateFormStart, -1);
 
-  const detailSource = pageSource.slice(detailStart, templatesStart);
+  const detailSource = pageSource.slice(detailStart, templateFormStart);
 
   assert.match(detailSource, /presetFormContextId/, "preset detail should derive a route/query context id");
   assert.match(detailSource, /presetFormState/, "preset form fields should be stored with preset context");
@@ -536,11 +545,11 @@ test("training preset detail state stays scoped to the active preset context", (
 
 test("training preset detail saves through the formal HTTP API on production routes", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const templateFormStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   assert.notEqual(detailStart, -1);
-  assert.notEqual(templatesStart, -1);
+  assert.notEqual(templateFormStart, -1);
 
-  const detailSource = pageSource.slice(detailStart, templatesStart);
+  const detailSource = pageSource.slice(detailStart, templateFormStart);
 
   assert.match(detailSource, /usePathname/, "preset detail should detect whether it is running under production \\/training routes");
   assert.match(detailSource, /fetch\(isNew \? "\/api\/training\/presets" : `\/api\/training\/presets\/\$\{preset\.id\}`/, "preset detail should save through the formal training preset API");
@@ -552,11 +561,11 @@ test("training preset detail saves through the formal HTTP API on production rou
 
 test("training preset detail deletes through the formal cascade API on production routes", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const templateFormStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   assert.notEqual(detailStart, -1);
-  assert.notEqual(templatesStart, -1);
+  assert.notEqual(templateFormStart, -1);
 
-  const detailSource = pageSource.slice(detailStart, templatesStart);
+  const detailSource = pageSource.slice(detailStart, templateFormStart);
 
   assert.match(detailSource, /isDeletingPreset/, "preset detail should track delete request state");
   assert.match(detailSource, /handleDeletePreset/, "preset detail should define a delete handler");
@@ -654,12 +663,7 @@ test("training template new form keeps source project ids out of visible copy", 
 });
 
 test("training template list creates projects with selected template context", () => {
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
-  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
-  assert.notEqual(templatesStart, -1);
-  assert.notEqual(formStart, -1);
-
-  const templatesSource = pageSource.slice(templatesStart, formStart);
+  const templatesSource = trainingTemplatesPageSource;
 
   assert.match(resourcePageUtilsSource, /function createProjectFromTemplateHref/, "template list should build a concrete project-create href");
   assert.match(templatesSource, /createProjectFromTemplateHref\(template\)/, "template row create actions should carry the row template context");
@@ -901,12 +905,7 @@ test("training template form section rows are actually sortable", () => {
 });
 
 test("training template list follows the template-list surface with local delete state", () => {
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
-  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
-  assert.notEqual(templatesStart, -1);
-  assert.notEqual(formStart, -1);
-
-  const templatesSource = pageSource.slice(templatesStart, formStart);
+  const templatesSource = trainingTemplatesPageSource;
   const templateListSource = `${templateListPrimitivesSource}\n${templatesSource}`;
 
   assert.match(templatesSource, /hiddenTemplateIds/, "template list should keep locally hidden templates");
@@ -926,8 +925,7 @@ test("training template list follows the template-list surface with local delete
 });
 
 test("training template list keeps card actions grouped by priority", () => {
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
-  assert.notEqual(templatesStart, -1);
+  assert.match(trainingTemplatesPageSource, /export function LoraTrainingTemplatesPage\b/, "training templates source should be readable");
 
   const itemSource = templateListPrimitivesSource;
   const actionRule = cssSource.match(/\.trainingTemplateListActions\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
@@ -945,12 +943,7 @@ test("training template list keeps card actions grouped by priority", () => {
 });
 
 test("training template list deletes through the formal HTTP API on production routes", () => {
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
-  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
-  assert.notEqual(templatesStart, -1);
-  assert.notEqual(formStart, -1);
-
-  const templatesSource = pageSource.slice(templatesStart, formStart);
+  const templatesSource = trainingTemplatesPageSource;
 
   assert.match(templatesSource, /usePathname/, "template list should detect whether it is running under production \\/training routes");
   assert.match(templatesSource, /fetch\(`\/api\/training\/templates\/\$\{templateId\}`/, "template delete should call the formal training template API");
@@ -960,13 +953,8 @@ test("training template list deletes through the formal HTTP API on production r
 });
 
 test("training template list exposes managed object controls and local ordering", () => {
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
-  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
-  assert.notEqual(templatesStart, -1);
-  assert.notEqual(formStart, -1);
-
   const itemSource = templateListPrimitivesSource;
-  const templatesSource = pageSource.slice(templatesStart, formStart);
+  const templatesSource = trainingTemplatesPageSource;
 
   assert.match(templatesSource, /selectedTemplateIds/, "template list should keep selected template ids in local state");
   assert.match(templatesSource, /orderedTemplateIds/, "template list should keep a local template order");
@@ -983,12 +971,7 @@ test("training template list exposes managed object controls and local ordering"
 });
 
 test("training template list persists reorder through the formal HTTP API on production routes", () => {
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
-  const formStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
-  assert.notEqual(templatesStart, -1);
-  assert.notEqual(formStart, -1);
-
-  const templatesSource = pageSource.slice(templatesStart, formStart);
+  const templatesSource = trainingTemplatesPageSource;
 
   assert.match(templatesSource, /usePathname/, "template list should detect whether it is running under production \\/training routes");
   assert.match(templatesSource, /fetch\("\/api\/training\/templates\/reorder"/, "template reorder should call the formal template reorder API");
@@ -999,11 +982,11 @@ test("training template list persists reorder through the formal HTTP API on pro
 
 test("training preset detail and sort rules reuse editor/sort shells without regular preset dimensions", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  const templatesStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
+  const templateFormStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   assert.notEqual(detailStart, -1);
-  assert.notEqual(templatesStart, -1);
+  assert.notEqual(templateFormStart, -1);
 
-  const detailSource = pageSource.slice(detailStart, templatesStart);
+  const detailSource = pageSource.slice(detailStart, templateFormStart);
   const sortSource = presetSortRulesPageSource;
   const sortWithPanelSource = presetSortPanelSource;
 
