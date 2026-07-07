@@ -417,6 +417,8 @@
 - Phase 7 slice 74 verification passed: red `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, then green `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, green `node --import tsx --test tests/test-queue-review-grid-split.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1122 tests discovered, 1121 pass, 0 fail, 1 skipped.
 - Phase 7 slice 75 moved queue review page-level keyboard shortcut wiring into `src/app/queue/[runId]/use-queue-review-keyboard-shortcuts.ts`. The queue review grid split checkpoint is now complete: `review-grid.tsx` delegates image cards, selection toolbar, selection state, batch actions, and page-level keyboard shortcuts to focused modules.
 - Phase 7 slice 75 verification passed: red `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, then green `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, green `node --import tsx --test tests/test-queue-review-grid-split.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1123 tests discovered, 1122 pass, 0 fail, 1 skipped.
+- Phase 7 slice 76 added `tests/test-settings-operational-dashboards.test.ts` to guard production settings pages as operational dashboards: the entry page stays limited to SFW/monitor/logs, settings pages avoid generation/training business imports, logs only poll `/api/logs`, and monitor only calls Comfy operational endpoints.
+- Phase 7 slice 76 verification passed: green `node --import tsx --test tests/test-settings-operational-dashboards.test.ts`, green `node --import tsx --test tests/test-settings-operational-dashboards.test.ts tests/test-training-prod-route-shell.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1127 tests discovered, 1126 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1013,7 +1015,7 @@ Loading states remain colocated under their route segments for now; the later lo
   - [x] Selection-state helpers extracted to `src/app/queue/[runId]/use-queue-review-selection.ts` and covered by `tests/test-queue-review-grid-split.test.ts`.
   - [x] Batch action strip and handle-rest-next actions extracted to `src/app/queue/[runId]/queue-review-batch-actions.tsx` and covered by `tests/test-queue-review-grid-split.test.ts`.
   - [x] Page-level keyboard shortcuts extracted to `src/app/queue/[runId]/use-queue-review-keyboard-shortcuts.ts` and covered by `tests/test-queue-review-grid-split.test.ts`.
-- [ ] Keep settings pages as operational dashboards and avoid adding business logic there.
+- [x] Keep settings pages as operational dashboards and avoid adding business logic there.
 
 ## Phase 8: Training Feature Frontend
 
