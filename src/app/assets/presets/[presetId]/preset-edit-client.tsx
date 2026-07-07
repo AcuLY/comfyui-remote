@@ -9,7 +9,7 @@ import {
   updatePreset,
   updatePresetVariant,
   upsertPresetVariantBySlug,
-} from "@/lib/actions";
+} from "@/lib/actions/preset-variant-crud";
 import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 import { PresetForm, type VariantDraft } from "../preset-form";
 import { toast } from "sonner";

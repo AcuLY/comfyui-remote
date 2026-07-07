@@ -303,6 +303,8 @@
 - Phase 6 slice 17 verification passed: red `node --import tsx --test tests/test-preset-sortable-card-links.test.ts`, then green `node --import tsx --test tests/test-preset-sortable-card-links.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-preset-sortable-card-links.test.ts`, and `npm test` with 1052 tests discovered, 1051 pass, 0 fail, 1 skipped.
 - Phase 6 slice 18 narrowed `src/app/assets/presets/preset-form.tsx` to import preset variant delete and reorder actions from `src/lib/actions/preset-variant-crud.ts` instead of the full `src/lib/actions.ts` barrel.
 - Phase 6 slice 18 verification passed: red `node --import tsx --test tests/test-preset-sortable-card-links.test.ts`, then green `node --import tsx --test tests/test-preset-sortable-card-links.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-preset-sortable-card-links.test.ts`, and `npm test` with 1053 tests discovered, 1052 pass, 0 fail, 1 skipped.
+- Phase 6 slice 19 narrowed `src/app/assets/presets/[presetId]/preset-edit-client.tsx` to import preset and variant save actions from `src/lib/actions/preset-variant-crud.ts` instead of the full `src/lib/actions.ts` barrel.
+- Phase 6 slice 19 verification passed: red `node --import tsx --test tests/test-preset-variant-save-optimization.test.ts`, then green `node --import tsx --test tests/test-preset-variant-save-optimization.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-preset-variant-save-optimization.test.ts tests/test-preset-detail-neighbors.test.ts`, and `npm test` with 1054 tests discovered, 1053 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 

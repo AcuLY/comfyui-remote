@@ -34,6 +34,13 @@ test("preset detail saves existing variants with changed fields only", () => {
   );
 });
 
+test("preset detail imports save actions from focused preset variant module", () => {
+  const source = readSource("src/app/assets/presets/[presetId]/preset-edit-client.tsx");
+
+  assert.match(source, /from "@\/lib\/actions\/preset-variant-crud";/);
+  assert.doesNotMatch(source, /from "@\/lib\/actions";/);
+});
+
 test("preset variant update skips unchanged linked variant replacements and asyncs history", () => {
   const source = readSource("src/lib/actions/preset-variant-crud.ts");
   const updateStart = source.indexOf("export async function updatePresetVariant");
