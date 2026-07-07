@@ -8,6 +8,7 @@ const rootDir = process.cwd();
 const projectSectionEditorFile = "src/components/section-editor.tsx";
 const promptBlockEditorFile = "src/components/prompt-block-editor.tsx";
 const templateSectionEditorFile = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/section-detail-client.tsx";
+const templateSectionPresetBindingsFile = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-preset-bindings.tsx";
 
 function readSource(path: string) {
   return readFileSync(join(rootDir, path), "utf8");
@@ -104,9 +105,10 @@ test("project section editors import prompt block actions from focused module", 
 });
 
 test("template section preset binding detail links still use the shared manager target in the same tab", () => {
-  const source = readSource(templateSectionEditorFile);
-  const hrefFunction = functionSource(source, "getPresetManagerHref");
-  const link = presetDetailHrefLinkBlock(source);
+  const clientSource = readSource(templateSectionEditorFile);
+  const bindingSource = readSource(templateSectionPresetBindingsFile);
+  const hrefFunction = functionSource(clientSource, "getPresetManagerHref");
+  const link = presetDetailHrefLinkBlock(bindingSource);
 
   assert.match(
     hrefFunction,
@@ -114,14 +116,14 @@ test("template section preset binding detail links still use the shared manager 
     `${templateSectionEditorFile} should delegate preset binding links to the shared preset/group route helper`,
   );
   assert.match(
-    source,
+    bindingSource,
     /binding\.sourceId\s*\|\|\s*binding\.presetGroupId/,
-    `${templateSectionEditorFile} should show the detail link for preset group bindings as well as preset bindings`,
+    `${templateSectionPresetBindingsFile} should show the detail link for preset group bindings as well as preset bindings`,
   );
   assert.match(
-    source,
-    /const detailHref = \(binding\.sourceId \|\| binding\.presetGroupId\) \? getPresetManagerHref\(binding\) : null/,
-    `${templateSectionEditorFile} should derive detailHref from the shared manager target`,
+    bindingSource,
+    /const detailHref = \(binding\.sourceId \|\| binding\.presetGroupId\) \? getDetailHref\(binding\) : null/,
+    `${templateSectionPresetBindingsFile} should derive detailHref from the shared manager target callback`,
   );
-  assert.doesNotMatch(link, /target=["']_blank["']/, `${templateSectionEditorFile} should navigate in the same tab`);
+  assert.doesNotMatch(link, /target=["']_blank["']/, `${templateSectionPresetBindingsFile} should navigate in the same tab`);
 });
