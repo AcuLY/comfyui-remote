@@ -265,6 +265,13 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/training/generation-tasks/[taskId]/cancel/route.ts",
     "src/app/api/training/worker/generation-tasks/[taskId]/complete/route.ts",
     "src/app/api/training/worker/generation-tasks/[taskId]/fail/route.ts",
+    "src/app/api/training/section-runs/[runId]/cancel/route.ts",
+    "src/app/api/training/projects/[projectId]/training-runs/route.ts",
+    "src/app/api/training/training-runs/[trainingRunId]/create-preset/route.ts",
+    "src/app/api/training/training-runs/[trainingRunId]/cancel/route.ts",
+    "src/app/api/training/worker/training-runs/[trainingRunId]/complete/route.ts",
+    "src/app/api/training/worker/training-runs/[trainingRunId]/fail/route.ts",
+    "src/app/api/training/worker/training-runs/[trainingRunId]/progress/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -579,6 +586,26 @@ test("training generation-task mutations use shared JSON parsing", () => {
     "src/app/api/training/generation-tasks/[taskId]/cancel/route.ts",
     "src/app/api/training/worker/generation-tasks/[taskId]/complete/route.ts",
     "src/app/api/training/worker/generation-tasks/[taskId]/fail/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readOptionalJsonObject\(request\)/, `${routePath} should parse through readOptionalJsonObject`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /request\.json\(\)/, `${routePath} should not parse JSON directly`);
+    assert.doesNotMatch(source, /JSON\.parse\(/, `${routePath} should not parse request text locally`);
+  }
+});
+
+test("training run mutations use shared optional JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/training/section-runs/[runId]/cancel/route.ts",
+    "src/app/api/training/projects/[projectId]/training-runs/route.ts",
+    "src/app/api/training/training-runs/[trainingRunId]/create-preset/route.ts",
+    "src/app/api/training/training-runs/[trainingRunId]/cancel/route.ts",
+    "src/app/api/training/worker/training-runs/[trainingRunId]/complete/route.ts",
+    "src/app/api/training/worker/training-runs/[trainingRunId]/fail/route.ts",
+    "src/app/api/training/worker/training-runs/[trainingRunId]/progress/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -1129,6 +1156,48 @@ test("training generation-task mutations preserve invalid JSON response envelope
     }),
     await generationTaskWorkerFailRoute.POST(makeRequest("not-json"), {
       params: Promise.resolve({ taskId: "task-1" }),
+    }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("training run mutations preserve invalid JSON response envelope", async () => {
+  const sectionRunCancelRoute = await import("../src/app/api/training/section-runs/[runId]/cancel/route");
+  const projectTrainingRunsRoute = await import("../src/app/api/training/projects/[projectId]/training-runs/route");
+  const trainingRunCreatePresetRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/create-preset/route");
+  const trainingRunCancelRoute = await import("../src/app/api/training/training-runs/[trainingRunId]/cancel/route");
+  const trainingRunWorkerCompleteRoute = await import("../src/app/api/training/worker/training-runs/[trainingRunId]/complete/route");
+  const trainingRunWorkerFailRoute = await import("../src/app/api/training/worker/training-runs/[trainingRunId]/fail/route");
+  const trainingRunWorkerProgressRoute = await import("../src/app/api/training/worker/training-runs/[trainingRunId]/progress/route");
+
+  for (const response of [
+    await sectionRunCancelRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ runId: "run-1" }),
+    }),
+    await projectTrainingRunsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await trainingRunCreatePresetRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ trainingRunId: "training-run-1" }),
+    }),
+    await trainingRunCancelRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ trainingRunId: "training-run-1" }),
+    }),
+    await trainingRunWorkerCompleteRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ trainingRunId: "training-run-1" }),
+    }),
+    await trainingRunWorkerFailRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ trainingRunId: "training-run-1" }),
+    }),
+    await trainingRunWorkerProgressRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ trainingRunId: "training-run-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);

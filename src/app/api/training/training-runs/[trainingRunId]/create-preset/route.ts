@@ -1,8 +1,9 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   createTrainingPresetFromRun,
   mapTrainingRunPresetError,
 } from "@/server/services/training/run-preset-service";
+import { readOptionalJsonObject } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -10,13 +11,12 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ trainingRunId: string }> },
 ) {
-  let body: unknown = {};
+  let body: Record<string, unknown>;
 
   try {
-    const rawBody = await request.text();
-    body = rawBody.trim() ? JSON.parse(rawBody) : {};
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readOptionalJsonObject(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {
