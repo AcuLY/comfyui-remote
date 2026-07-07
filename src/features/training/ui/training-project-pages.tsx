@@ -26,7 +26,6 @@ import {
   X,
 } from "lucide-react";
 
-import { toImageUrl } from "@/lib/image-url";
 import { useRouteHref } from "@/components/design-demo-routing";
 import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import { useDemoFeedback } from "@/components/design-demo-ui/feedback/context";
@@ -49,14 +48,17 @@ import { SelectionBatchBar } from "@/components/design-demo-ui/patterns";
 import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData, TrainingModelOption } from "@/features/training/data";
 import { TRAINING_PROJECT_SECTION_ADD_EVENT } from "@/features/training/header-action-slots";
-import type { TrainingImage, LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus } from "@/features/training/types";
+import type { LoraTrainingImageResult, LoraTrainingPreset, LoraTrainingProject, LoraTrainingReferenceImage, LoraTrainingRun, LoraTrainingSection, LoraTrainingSectionBlock, LoraTrainingTaskKind, LoraTrainingTaskStatus } from "@/features/training/types";
 import {
   PROFILE_REVISION_FIELDS,
   PROFILE_REVISION_REASON_LABELS,
   buildLocalDatasetRevision,
   buildProjectSectionStateKey,
+  buildProjectReferenceUploadPreview,
   buildSeedSectionCopy,
   buildTrainingProjectTriggerToken,
+  buildUploadedReferenceImage,
+  buildUploadedSupplementalImage,
   captionMissing,
   deriveDatasetCaption,
   findProject,
@@ -82,6 +84,8 @@ import {
   sceneBlockPreviewText,
   toTrainingImageReviewApiStatus,
   type LoraTrainingTemplateSeedSection,
+  type ReferenceCandidate,
+  type SupplementalImageAttachment,
   type TrainingProfileRevisionField,
   type TrainingTextRevisionItem,
   type ProjectSectionDraftState,
@@ -130,89 +134,6 @@ function useTraining(data: TrainingAppData) {
 function useUrlSearch() {
   const searchParams = useSearchParams();
   return searchParams.toString();
-}
-
-function buildProjectReferenceUploadPreview(file: File, draftId: string): ReferenceCandidate {
-  const title = file.name.replace(/\.[^.]+$/, "") || "本地上传图片";
-  const url = URL.createObjectURL(file);
-
-  return {
-    id: draftId,
-    title,
-    detail: "创建项目后会自动上传到角色资料，并作为参考图保留。",
-    image: {
-      id: `${draftId}-image`,
-      src: url,
-      full: url,
-      label: title,
-      status: "pending",
-      featured: false,
-      featured2: false,
-      cover: false,
-      width: null,
-      height: null,
-    },
-    meta: "本地上传",
-  };
-}
-
-function buildUploadedReferenceImage(
-  input: {
-    id: string;
-    index: number;
-    label: string;
-    note: string;
-    relativePath: string;
-  },
-): LoraTrainingReferenceImage | null {
-  const url = toImageUrl(input.relativePath);
-  if (!url) return null;
-  return {
-    id: input.id,
-    kind: input.index === 0 ? "original" : "auxiliary",
-    label: input.label,
-    note: input.note,
-    image: {
-      id: `${input.id}-image`,
-      src: url,
-      full: url,
-      label: input.label,
-      status: "pending",
-      featured: input.index === 0,
-      featured2: false,
-      cover: input.index === 0,
-      width: null,
-      height: null,
-    },
-  };
-}
-
-function buildUploadedSupplementalImage(input: {
-  detail: string;
-  id: string;
-  relativePath: string;
-  title: string;
-}): SupplementalImageAttachment | null {
-  const url = toImageUrl(input.relativePath);
-  if (!url) return null;
-  return {
-    detail: input.detail,
-    id: input.id,
-    image: {
-      id: `${input.id}-image`,
-      src: url,
-      full: url,
-      label: input.title,
-      status: "pending",
-      featured: false,
-      featured2: false,
-      cover: false,
-      width: null,
-      height: null,
-    },
-    source: "上传",
-    title: input.title,
-  };
 }
 
 function ProjectNav({ active, project }: { active: (typeof PROJECT_TABS)[number]["key"]; project: LoraTrainingProject }) {
@@ -545,22 +466,6 @@ function RunRows({
     </div>
   );
 }
-
-type ReferenceCandidate = {
-  id: string;
-  title: string;
-  detail: string;
-  image?: TrainingImage;
-  meta?: string;
-};
-
-type SupplementalImageAttachment = {
-  id: string;
-  title: string;
-  detail: string;
-  image: TrainingImage;
-  source: string;
-};
 
 type ReferenceSourceGroup = {
   id: string;

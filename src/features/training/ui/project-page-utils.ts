@@ -1,3 +1,4 @@
+import { toImageUrl } from "@/lib/image-url";
 import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData, TrainingModelOption } from "@/features/training/data";
 import type {
@@ -8,6 +9,7 @@ import type {
   LoraTrainingSectionBlock,
   LoraTrainingTaskStatus,
   LoraTrainingTemplate,
+  TrainingImage,
 } from "@/features/training/types";
 
 export type LoraTrainingTemplateSeedSection = LoraTrainingTemplate["sections"][number];
@@ -39,6 +41,22 @@ export type TrainingTextRevisionItem = {
   sourceTaskId: string | null;
   sourceRunId: string | null;
   createdAt: string;
+};
+
+export type ReferenceCandidate = {
+  id: string;
+  title: string;
+  detail: string;
+  image?: TrainingImage;
+  meta?: string;
+};
+
+export type SupplementalImageAttachment = {
+  id: string;
+  title: string;
+  detail: string;
+  image: TrainingImage;
+  source: string;
 };
 
 export const PROFILE_REVISION_FIELDS: Array<{
@@ -177,6 +195,89 @@ export function isProductionTrainingPath(pathname: string | null | undefined) {
 export function buildTrainingProjectTriggerToken(title: string) {
   const normalized = title.trim().replace(/\s+/g, "_");
   return normalized || "training_project";
+}
+
+export function buildProjectReferenceUploadPreview(file: File, draftId: string): ReferenceCandidate {
+  const title = file.name.replace(/\.[^.]+$/, "") || "本地上传图片";
+  const url = URL.createObjectURL(file);
+
+  return {
+    id: draftId,
+    title,
+    detail: "创建项目后会自动上传到角色资料，并作为参考图保留。",
+    image: {
+      id: `${draftId}-image`,
+      src: url,
+      full: url,
+      label: title,
+      status: "pending",
+      featured: false,
+      featured2: false,
+      cover: false,
+      width: null,
+      height: null,
+    },
+    meta: "本地上传",
+  };
+}
+
+export function buildUploadedReferenceImage(
+  input: {
+    id: string;
+    index: number;
+    label: string;
+    note: string;
+    relativePath: string;
+  },
+): LoraTrainingReferenceImage | null {
+  const url = toImageUrl(input.relativePath);
+  if (!url) return null;
+  return {
+    id: input.id,
+    kind: input.index === 0 ? "original" : "auxiliary",
+    label: input.label,
+    note: input.note,
+    image: {
+      id: `${input.id}-image`,
+      src: url,
+      full: url,
+      label: input.label,
+      status: "pending",
+      featured: input.index === 0,
+      featured2: false,
+      cover: input.index === 0,
+      width: null,
+      height: null,
+    },
+  };
+}
+
+export function buildUploadedSupplementalImage(input: {
+  detail: string;
+  id: string;
+  relativePath: string;
+  title: string;
+}): SupplementalImageAttachment | null {
+  const url = toImageUrl(input.relativePath);
+  if (!url) return null;
+  return {
+    detail: input.detail,
+    id: input.id,
+    image: {
+      id: `${input.id}-image`,
+      src: url,
+      full: url,
+      label: input.title,
+      status: "pending",
+      featured: false,
+      featured2: false,
+      cover: false,
+      width: null,
+      height: null,
+    },
+    source: "上传",
+    title: input.title,
+  };
 }
 
 export function toTrainingImageReviewApiStatus(reviewStatus: LoraTrainingImageResult["reviewStatus"]) {

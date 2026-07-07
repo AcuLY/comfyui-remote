@@ -59,11 +59,11 @@ test("training project overview keeps subresource bodies out of the overview pag
 
 test("training project run rows respond to their own list surface width", () => {
   const runRowsStart = pagesSource.indexOf("function RunRows");
-  const referenceStart = pagesSource.indexOf("type ReferenceCandidate");
+  const sectionRailStart = pagesSource.indexOf("function TrainingSectionRail");
   assert.notEqual(runRowsStart, -1);
-  assert.notEqual(referenceStart, -1);
+  assert.notEqual(sectionRailStart, -1);
 
-  const runRowsSource = pagesSource.slice(runRowsStart, referenceStart);
+  const runRowsSource = pagesSource.slice(runRowsStart, sectionRailStart);
   const projectRunRowsRule = cssSource.match(/\.projectRunRows\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
 
   assert.match(runRowsSource, /projectRunRowsSurface/, "Project run rows should be wrapped in a list surface container");
@@ -132,6 +132,23 @@ test("training project page pure display and dataset helpers live in the utility
   assert.match(projectPageUtilsSource, /type TrainingProfileRevisionField\b/, "profile revision field typing should move with profile helpers");
   assert.match(projectPageUtilsSource, /const PROFILE_REVISION_FIELDS\b/, "profile revision field config should move with profile helpers");
   assert.match(projectPageUtilsSource, /const PROFILE_REVISION_REASON_LABELS\b/, "profile revision reason labels should move with profile helpers");
+});
+
+test("training project page upload preview helpers live in the utility module", () => {
+  const helperNames = [
+    "buildProjectReferenceUploadPreview",
+    "buildUploadedReferenceImage",
+    "buildUploadedSupplementalImage",
+  ];
+
+  for (const helperName of helperNames) {
+    assert.match(projectPageUtilsSource, new RegExp(`function ${helperName}\\b`), `${helperName} should live in project-page-utils.ts`);
+    assert.doesNotMatch(pagesSource, new RegExp(`function ${helperName}\\b`), `${helperName} should not stay inline in the broad project pages file`);
+  }
+  assert.match(projectPageUtilsSource, /export type ReferenceCandidate =/, "reference candidate typing should move with upload preview helpers");
+  assert.match(projectPageUtilsSource, /export type SupplementalImageAttachment =/, "supplemental attachment typing should move with upload preview helpers");
+  assert.doesNotMatch(pagesSource, /\ntype ReferenceCandidate =/, "reference candidate typing should not stay inline in the broad project pages file");
+  assert.doesNotMatch(pagesSource, /\ntype SupplementalImageAttachment =/, "supplemental attachment typing should not stay inline in the broad project pages file");
 });
 
 test("training dataset revision detail does not replace invalid revision ids with first fixtures", () => {
@@ -866,7 +883,7 @@ test("training result cards keep thumbnail density and clamp captions", () => {
 
 test("project-scoped run rows use task cards with recent output thumbnails", () => {
   const runRowsStart = pagesSource.indexOf("function runPreviewImages");
-  const sectionRailStart = pagesSource.indexOf("type ReferenceCandidate");
+  const sectionRailStart = pagesSource.indexOf("function TrainingSectionRail");
   assert.notEqual(runRowsStart, -1);
   assert.notEqual(sectionRailStart, -1);
 
@@ -884,13 +901,13 @@ test("project-scoped run rows use task cards with recent output thumbnails", () 
 
 test("project-scoped run rows manage local visibility and failed retry state", () => {
   const runRowsStart = pagesSource.indexOf("function RunRows");
-  const referenceSourceStart = pagesSource.indexOf("type ReferenceCandidate");
+  const runRowsEnd = pagesSource.indexOf("function TrainingSectionRail");
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
   assert.notEqual(runRowsStart, -1);
-  assert.notEqual(referenceSourceStart, -1);
+  assert.notEqual(runRowsEnd, -1);
   assert.notEqual(scopedPageStart, -1);
 
-  const runRowsSource = pagesSource.slice(runRowsStart, referenceSourceStart);
+  const runRowsSource = pagesSource.slice(runRowsStart, runRowsEnd);
   const scopedPageSource = pagesSource.slice(scopedPageStart);
 
   assert.match(scopedPageSource, /hiddenProjectRunIds/, "project task page should track locally removed run ids");
@@ -921,13 +938,13 @@ test("project-scoped run rows delete through the formal HTTP API on production r
 
 test("project-scoped queued or running run rows cancel through the formal HTTP API on production routes", () => {
   const runRowsStart = pagesSource.indexOf("function RunRows");
-  const referenceSourceStart = pagesSource.indexOf("type ReferenceCandidate");
+  const runRowsEnd = pagesSource.indexOf("function TrainingSectionRail");
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
   assert.notEqual(runRowsStart, -1);
-  assert.notEqual(referenceSourceStart, -1);
+  assert.notEqual(runRowsEnd, -1);
   assert.notEqual(scopedPageStart, -1);
 
-  const runRowsSource = pagesSource.slice(runRowsStart, referenceSourceStart);
+  const runRowsSource = pagesSource.slice(runRowsStart, runRowsEnd);
   const scopedPageSource = pagesSource.slice(scopedPageStart);
 
   assert.match(scopedPageSource, /cancelledProjectRunIds/, "project task page should track locally cancelled run ids");
@@ -999,11 +1016,11 @@ test("project-scoped run pages rely on route headers for the primary action", ()
 
 test("project-scoped failed run rows use structured failure panels", () => {
   const runRowsStart = pagesSource.indexOf("function RunRows");
-  const referenceSourceStart = pagesSource.indexOf("type ReferenceCandidate");
+  const runRowsEnd = pagesSource.indexOf("function TrainingSectionRail");
   assert.notEqual(runRowsStart, -1);
-  assert.notEqual(referenceSourceStart, -1);
+  assert.notEqual(runRowsEnd, -1);
 
-  const runRowsSource = pagesSource.slice(runRowsStart, referenceSourceStart);
+  const runRowsSource = pagesSource.slice(runRowsStart, runRowsEnd);
 
   assert.match(pagesSource, /function ProjectRunFailureBlock/, "project scoped rows should render failed reasons through a dedicated block");
   assert.match(runRowsSource, /projectRunRowFailed/, "failed project rows should get a dedicated layout class");
@@ -1018,11 +1035,11 @@ test("project-scoped failed run rows use structured failure panels", () => {
 
 test("project-scoped failed run errors inherit the generated-run clamp and copy fallback", () => {
   const runRowsStart = pagesSource.indexOf("function RunRows");
-  const referenceSourceStart = pagesSource.indexOf("type ReferenceCandidate");
+  const runRowsEnd = pagesSource.indexOf("function TrainingSectionRail");
   assert.notEqual(runRowsStart, -1);
-  assert.notEqual(referenceSourceStart, -1);
+  assert.notEqual(runRowsEnd, -1);
 
-  const runRowsSource = pagesSource.slice(runRowsStart, referenceSourceStart);
+  const runRowsSource = pagesSource.slice(runRowsStart, runRowsEnd);
 
   assert.match(pagesSource, /const PROJECT_RUN_ERROR_CLAMP_LINES = 3;/, "project scoped failed run errors should share the generated-run clamp depth");
   assert.match(pagesSource, /useRef<HTMLParagraphElement>/, "project scoped failure block should measure the rendered paragraph");

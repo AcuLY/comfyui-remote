@@ -555,7 +555,7 @@ test("generation compose uploads supplemental images through the formal HTTP API
   assert.match(composePage, /fetch\(`\/api\/training\/generation-tasks\/\$\{ensuredDraftTaskId\}\/supplemental-images`/, "supplemental image upload should call the formal draft supplemental-image API");
   assert.match(composePage, /new FormData\(\)/, "supplemental image upload should send a multipart form payload");
   assert.match(composePage, /buildUploadedSupplementalImage/, "uploaded supplemental images should resolve through a dedicated preview helper");
-  assert.match(pagesSource, /function buildUploadedSupplementalImage/, "compose upload flow should define a helper for uploaded supplemental previews");
+  assert.match(projectPageUtilsSource, /function buildUploadedSupplementalImage/, "compose upload flow should define uploaded supplemental preview mapping in the utility module");
 });
 
 test("generation compose removes uploaded supplemental images through the formal HTTP API on production routes", () => {
