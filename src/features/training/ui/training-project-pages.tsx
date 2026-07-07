@@ -95,6 +95,7 @@ import { useGenerationComposeReferenceSelection } from "./use-generation-compose
 import { useGenerationSupplementalImages } from "./use-generation-supplemental-images";
 import { useGenerationTaskDraft } from "./use-generation-task-draft";
 import { useProjectArchiveState } from "./use-project-archive-state";
+import { useProjectCreateForm } from "./use-project-create-form";
 import { useProjectSectionResults } from "./use-project-section-results";
 import { useProjectSectionSceneBlocks } from "./use-project-section-scene-blocks";
 import { useProjectSectionDraft } from "./use-project-section-draft";
@@ -708,19 +709,11 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
   const fallbackCheckpointModels = data.models.filter((model) => model.modelType === "checkpoint");
   const [availableCheckpointModels, setAvailableCheckpointModels] = useState<TrainingModelOption[]>(fallbackCheckpointModels);
   const baseModelOptions = availableCheckpointModels.map((model) => model.name);
-  const defaultProjectForm = {
-    baseModel: baseModelOptions[0] ?? "继承训练默认模型",
-    captionStrategy: "先触发词后描述",
-    detailPrompt: "发型、眼睛、服装材质、常见构图和需要避免的变化。",
-    perSectionImageCount: "4",
-    templateContextId: projectTemplateContextId,
-    templateTitle: sourceTemplate?.title ?? "不使用模板",
-    title: "新角色 LoRA 项目",
-    trainingSteps: "2400",
-    usagePrompt: "角色触发词、服装和稳定身份描述。",
-  };
-  const [projectFormState, setProjectFormState] = useState(defaultProjectForm);
-  const projectForm = projectFormState.templateContextId === projectTemplateContextId ? projectFormState : defaultProjectForm;
+  const { projectForm, handleUpdateProjectForm } = useProjectCreateForm(
+    projectTemplateContextId,
+    sourceTemplate?.title ?? "不使用模板",
+    baseModelOptions,
+  );
   const { stagedProjectReferenceUploads, stageProjectReferenceUploadFiles } = useProjectReferenceUploadDrafts(projectTemplateContextId);
   const referenceSourceTree: ReferenceSourceGroup[] = [
     {
@@ -849,10 +842,6 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
     };
   }, [isProductionTrainingRoute]);
 
-  function setProjectForm(updater: (current: typeof projectForm) => typeof projectForm) {
-    setProjectFormState((current) => updater(current.templateContextId === projectTemplateContextId ? current : projectForm));
-  }
-
   function setTrainingDefaults(updater: (current: typeof trainingDefaults) => typeof trainingDefaults) {
     setTrainingDefaultsState((current) => ({
       ...updater(current.templateContextId === projectTemplateContextId ? current : defaultTrainingDefaults),
@@ -876,10 +865,6 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
       draft,
       templateContextId: projectTemplateContextId,
     });
-  }
-
-  function handleUpdateProjectForm(field: keyof typeof projectForm, value: string) {
-    setProjectForm((current) => ({ ...current, [field]: value }));
   }
 
   function handleSelectTemplate(templateTitle: string) {

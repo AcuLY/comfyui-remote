@@ -23,6 +23,10 @@ const projectArchiveStateHookPath = resolve(featureUiDir, "use-project-archive-s
 const projectArchiveStateHookSource = existsSync(projectArchiveStateHookPath)
   ? readFileSync(projectArchiveStateHookPath, "utf8")
   : "";
+const projectCreateFormHookPath = resolve(featureUiDir, "use-project-create-form.ts");
+const projectCreateFormHookSource = existsSync(projectCreateFormHookPath)
+  ? readFileSync(projectCreateFormHookPath, "utf8")
+  : "";
 const projectSectionDraftHookPath = resolve(featureUiDir, "use-project-section-draft.ts");
 const projectSectionDraftHookSource = existsSync(projectSectionDraftHookPath)
   ? readFileSync(projectSectionDraftHookPath, "utf8")
@@ -1308,7 +1312,8 @@ test("training project create page does not silently apply the first template", 
 
   assert.match(formSource, /const initialTemplate = sourceTemplate;/, "direct project creation should start without an implicit source template");
   assert.match(formSource, /const initialSectionSeeds = sourceTemplate\?\.sections \?\? \[\];/, "seed sections should be empty until a template is hinted or chosen");
-  assert.match(formSource, /templateTitle:\s*sourceTemplate\?\.title \?\? "不使用模板"/, "the default template select should match the generation project form");
+  assert.match(formSource, /useProjectCreateForm\([\s\S]*sourceTemplate\?\.title \?\? "不使用模板"/, "the default template select should match the generation project form");
+  assert.match(projectCreateFormHookSource, /templateTitle,/, "project create form hook should store the default template title");
   assert.match(formSource, /没有初始小节/, "empty seed state should explain that no template has been selected yet");
   assert.doesNotMatch(formSource, /const initialTemplate = sourceTemplate \?\? training\.templates\[0\];/, "direct project creation should not silently use the first training template");
 });
@@ -1474,13 +1479,15 @@ test("training project create form fields and training defaults stay scoped to t
 
   const formSource = pagesSource.slice(formStart, detailStart);
 
-  assert.match(formSource, /defaultProjectForm/, "project create form should have a per-template default form state");
-  assert.match(formSource, /projectFormState\.templateContextId === projectTemplateContextId \? projectFormState : defaultProjectForm/, "form fields should reset after template context changes");
+  assert.match(formSource, /useProjectCreateForm/, "project create form should delegate editable fields to the focused hook");
+  assert.match(projectCreateFormHookSource, /defaultProjectForm/, "project create form should have a per-template default form state");
+  assert.match(projectCreateFormHookSource, /projectFormState\.templateContextId === projectTemplateContextId \? projectFormState : defaultProjectForm/, "form fields should reset after template context changes");
   assert.match(formSource, /trainingDefaultsState/, "training defaults should be stored with template context");
   assert.match(formSource, /defaultTrainingDefaults/, "training defaults should have a per-template fallback");
   assert.match(formSource, /trainingDefaultsState\.templateContextId === projectTemplateContextId \? trainingDefaultsState : defaultTrainingDefaults/, "training defaults should reset after template context changes");
   assert.match(formSource, /templateContextId:\s*projectTemplateContextId/, "context-scoped state updates should store the active template context");
   assert.doesNotMatch(formSource, /\.\.\.projectFormState,\s*templateContextId:\s*projectTemplateContextId,\s*templateTitle:/, "form fallback should not carry stale fields from another template context");
+  assert.doesNotMatch(formSource, /\n  const \[projectFormState, setProjectFormState\]/, "project create page should not keep form state inline");
   assert.doesNotMatch(formSource, /const \[trainingDefaults, setTrainingDefaults\] = useState\(\{/, "training defaults should not be stored without template context");
 });
 
@@ -1515,6 +1522,7 @@ test("training project create page saves editable form fields into the local dra
 
   assert.match(formSource, /projectForm/, "project creation should track editable form fields in local state");
   assert.match(formSource, /handleUpdateProjectForm/, "project creation should expose a form update handler");
+  assert.match(projectCreateFormHookSource, /handleUpdateProjectForm/, "project create form hook should expose a form update handler");
   assert.match(formSource, /handleSelectTemplate/, "template selection should update both form state and seed sections");
   assert.match(formSource, /value=\{projectForm\.title\}/, "project title field should be controlled by local form state");
   assert.match(formSource, /onChange=\{\(value\) => handleUpdateProjectForm\("title", value\)\}/, "project title edits should update form state");
