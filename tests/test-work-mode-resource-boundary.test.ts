@@ -81,10 +81,15 @@ const generationPresetReplacementSource = readFileSync(resolve(repoRoot, "src/se
 const generationActionsBarrelSource = readFileSync(resolve(repoRoot, "src/lib/actions.ts"), "utf8");
 const serverDataFacadeSource = readFileSync(resolve(repoRoot, "src/lib/server-data.ts"), "utf8");
 const loggerSource = readFileSync(resolve(repoRoot, "src/lib/logger.ts"), "utf8");
+const refactorRoadmapSource = readFileSync(
+  resolve(repoRoot, "docs/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md"),
+  "utf8",
+);
 
 const MODULE_OWNED_RESOURCE_KEYS = ["runs", "projects", "presets", "templates"] as const;
 const SHARED_RESOURCE_KEYS = ["models", "settings"] as const;
 const retiredTrainingApiRoot = `/api/${["character", "lora", "training"].join("-")}`;
+const SHARED_LIB_RUNTIME_BOUNDARIES = new Set(["client-safe", "server-only", "universal"]);
 
 function readOptionalSource(relativePath: string): string {
   try {
@@ -147,6 +152,17 @@ function hasLoggerValueImport(source: string) {
   return hasValueImportFrom(source, /^(?:@\/lib\/logger|(?:\.\.?\/)+(?:.*\/)?logger)$/);
 }
 
+function extractSharedLibRoadmapRows() {
+  const match = refactorRoadmapSource.match(
+    /\*\*Shared pure and client-safe libs:\*\*\n(?<body>[\s\S]*?)\n- \[[ x]\] Mark each file as client-safe, server-only, or universal\./,
+  );
+  assert.ok(match?.groups?.body, "Roadmap should include the Phase 6 shared-lib inventory section.");
+  return match.groups.body
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("- `src/lib/"));
+}
+
 test("full actions barrel is compatibility-only and unused by source callers", () => {
   assert.match(
     generationActionsBarrelSource,
@@ -199,6 +215,38 @@ test("logger module is documented as server-only and not value-imported by clien
     [],
     "Client layers must not value-import the Node-backed logger module.",
   );
+});
+
+test("Phase 6 shared-lib roadmap files declare a runtime boundary", () => {
+  const rows = extractSharedLibRoadmapRows();
+  assert.ok(rows.length >= 30, "Phase 6 shared-lib section should list the shared lib files under review.");
+
+  const missingOrInvalid = rows.filter((line) => {
+    const boundary = line.match(/\(runtime: ([^)]+)\)$/)?.[1];
+    return !boundary || !SHARED_LIB_RUNTIME_BOUNDARIES.has(boundary);
+  });
+
+  assert.deepEqual(
+    missingOrInvalid,
+    [],
+    "Each Phase 6 shared lib row should end with (runtime: client-safe), (runtime: server-only), or (runtime: universal).",
+  );
+
+  const byPath = new Map(
+    rows.map((line) => {
+      const match = line.match(/^- `([^`]+)` \(runtime: ([^)]+)\)$/);
+      assert.ok(match, `Shared-lib row has unexpected format: ${line}`);
+      return [match[1], match[2]];
+    }),
+  );
+
+  assert.equal(byPath.get("src/lib/api-response.ts"), "server-only");
+  assert.equal(byPath.get("src/lib/env.ts"), "server-only");
+  assert.equal(byPath.get("src/lib/logger.ts"), "server-only");
+  assert.equal(byPath.get("src/lib/preset-resource-scope.ts"), "server-only");
+  assert.equal(byPath.get("src/lib/server-data.ts"), "server-only");
+  assert.equal(byPath.get("src/lib/run-submission-toast.ts"), "client-safe");
+  assert.equal(byPath.get("src/lib/scroll-container.ts"), "client-safe");
 });
 
 test("preset resource scope lives in shared lib instead of server action modules", () => {

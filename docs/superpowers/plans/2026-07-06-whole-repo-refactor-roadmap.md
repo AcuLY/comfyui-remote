@@ -337,6 +337,8 @@
 - Phase 6 slice 34 verification passed: red `node --import tsx --test tests/test-preset-section-replacement-ui.test.ts tests/test-sync-preset-variant-flow-ui.test.ts`, then green `node --import tsx --test tests/test-preset-section-replacement-ui.test.ts tests/test-sync-preset-variant-flow-ui.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `node --import tsx --test tests/test-preset-section-replacement-ui.test.ts tests/test-sync-preset-variant-flow-ui.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1070 tests discovered, 1069 pass, 0 fail, 1 skipped.
 - Phase 6 slice 35 aligned route fallback behavior with work-mode route ownership by adding production Training route patterns to `src/lib/route-fallback.ts` and asserting fallback destinations remain in the inferred work mode.
 - Phase 6 slice 35 verification passed: red `node --import tsx --test tests/test-route-fallback.test.ts`, then green `node --import tsx --test tests/test-route-fallback.test.ts`, `node --import tsx --test tests/test-route-fallback.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1071 tests discovered, 1070 pass, 0 fail, 1 skipped.
+- Phase 6 slice 36 classified every shared lib listed in Phase 6 as `client-safe`, `server-only`, or `universal`, and added a roadmap source-contract test to keep the labels present for future shared-lib edits.
+- Phase 6 slice 36 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1072 tests discovered, 1071 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -721,45 +723,45 @@
 - [ ] Add tests around every server action that wraps nontrivial service behavior.
 
 **Shared pure and client-safe libs:**
-- `src/lib/api-response.ts`
-- `src/lib/api-error-message.ts`
-- `src/lib/aspect-ratio-utils.ts`
-- `src/lib/character-lora-canonical-views.ts`
-- `src/lib/character-lora-prompt-card-draft.ts`
-- `src/lib/character-lora-source-images.ts`
-- `src/lib/client-review-mutation.ts`
-- `src/lib/db-enums.ts`
-- `src/lib/env.ts`
-- `src/lib/folder-navigation.ts`
-- `src/lib/image-url.ts`
-- `src/lib/logger.ts`
-- `src/lib/lora-types.ts`
-- `src/lib/model-asset-navigation.ts`
-- `src/lib/model-constants.ts`
-- `src/lib/preset-binding-utils.ts`
-- `src/lib/preset-resource-scope.ts`
-- `src/lib/preset-group-slot-layout.ts`
-- `src/lib/preset-section-replacement-ui.ts`
-- `src/lib/queue-control-progress.ts`
-- `src/lib/quick-censor-core.ts`
-- `src/lib/review-lightbox-state.ts`
-- `src/lib/review-undo-state.ts`
-- `src/lib/route-fallback.ts`
-- `src/lib/run-submission-toast.ts`
-- `src/lib/scroll-container.ts`
-- `src/lib/section-batch-run.ts`
-- `src/lib/section-list-ordering.ts`
-- `src/lib/server-data.ts`
-- `src/lib/sfw-mode.ts`
-- `src/lib/sync-preset-variant-flow-ui.ts`
-- `src/lib/types.ts`
-- `src/lib/utils.ts`
-- `src/lib/work-mode.ts`
-- `src/lib/work-mode-resources.ts`
-- `src/lib/training/provider-policy.ts`
-- `src/lib/training/schemas.ts`
+- `src/lib/api-response.ts` (runtime: server-only)
+- `src/lib/api-error-message.ts` (runtime: universal)
+- `src/lib/aspect-ratio-utils.ts` (runtime: universal)
+- `src/lib/character-lora-canonical-views.ts` (runtime: universal)
+- `src/lib/character-lora-prompt-card-draft.ts` (runtime: universal)
+- `src/lib/character-lora-source-images.ts` (runtime: universal)
+- `src/lib/client-review-mutation.ts` (runtime: client-safe)
+- `src/lib/db-enums.ts` (runtime: universal)
+- `src/lib/env.ts` (runtime: server-only)
+- `src/lib/folder-navigation.ts` (runtime: universal)
+- `src/lib/image-url.ts` (runtime: universal)
+- `src/lib/logger.ts` (runtime: server-only)
+- `src/lib/lora-types.ts` (runtime: universal)
+- `src/lib/model-asset-navigation.ts` (runtime: universal)
+- `src/lib/model-constants.ts` (runtime: universal)
+- `src/lib/preset-binding-utils.ts` (runtime: universal)
+- `src/lib/preset-resource-scope.ts` (runtime: server-only)
+- `src/lib/preset-group-slot-layout.ts` (runtime: universal)
+- `src/lib/preset-section-replacement-ui.ts` (runtime: client-safe)
+- `src/lib/queue-control-progress.ts` (runtime: universal)
+- `src/lib/quick-censor-core.ts` (runtime: universal)
+- `src/lib/review-lightbox-state.ts` (runtime: client-safe)
+- `src/lib/review-undo-state.ts` (runtime: universal)
+- `src/lib/route-fallback.ts` (runtime: universal)
+- `src/lib/run-submission-toast.ts` (runtime: client-safe)
+- `src/lib/scroll-container.ts` (runtime: client-safe)
+- `src/lib/section-batch-run.ts` (runtime: universal)
+- `src/lib/section-list-ordering.ts` (runtime: universal)
+- `src/lib/server-data.ts` (runtime: server-only)
+- `src/lib/sfw-mode.ts` (runtime: client-safe)
+- `src/lib/sync-preset-variant-flow-ui.ts` (runtime: client-safe)
+- `src/lib/types.ts` (runtime: universal)
+- `src/lib/utils.ts` (runtime: universal)
+- `src/lib/work-mode.ts` (runtime: universal)
+- `src/lib/work-mode-resources.ts` (runtime: universal)
+- `src/lib/training/provider-policy.ts` (runtime: universal)
+- `src/lib/training/schemas.ts` (runtime: universal)
 
-- [ ] Mark each file as client-safe, server-only, or universal.
+- [x] Mark each file as client-safe, server-only, or universal.
 - [x] Move server-only re-export layer `server-data.ts` into a clearer server namespace or document it as RSC-only.
 - [x] Keep `logger.ts` server-safe and avoid importing it into browser components.
 - [x] Consolidate UI error extraction helpers for preset replacement and sync preset variant flow if their payload shape is the same.
