@@ -3,11 +3,15 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
 
 import { Prisma } from "@/generated/prisma";
+import {
+  CHARACTER_LORA_UNDIFFERENTIATED_SOURCE_ROLE,
+  normalizeSourceImageUploadRole,
+} from "@/lib/character-lora-source-images";
 import { prisma } from "@/lib/prisma";
 import { TRAINING_IMAGE_GENERATION_PROVIDER_POLICY } from "@/lib/training/provider-policy";
 import { slugifyForTrainingRepository } from "@/server/repositories/training/helpers";
 
-export const TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE = "source";
+export const TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE = CHARACTER_LORA_UNDIFFERENTIATED_SOURCE_ROLE;
 
 type JsonObject = Record<string, unknown>;
 
@@ -923,7 +927,7 @@ export async function uploadTrainingReferenceImage(projectId: string, formData: 
   if (!isFileLike(file)) {
     throw new TrainingRepositoryError("file is required", 400);
   }
-  const role = normalizeNullableString(formData.get("role")) ?? TRAINING_UNDIFFERENTIATED_REFERENCE_ROLE;
+  const role = normalizeSourceImageUploadRole(formData.get("role"));
   const sortOrder = Number(normalizeNullableString(formData.get("sortOrder")) ?? "0");
   const safeName = normalizeUploadName(file.name);
   const relativePath = `data/images/training/${row.id}/references/${nowStorageStamp()}-${safeName}`;

@@ -339,6 +339,8 @@
 - Phase 6 slice 35 verification passed: red `node --import tsx --test tests/test-route-fallback.test.ts`, then green `node --import tsx --test tests/test-route-fallback.test.ts`, `node --import tsx --test tests/test-route-fallback.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1071 tests discovered, 1070 pass, 0 fail, 1 skipped.
 - Phase 6 slice 36 classified every shared lib listed in Phase 6 as `client-safe`, `server-only`, or `universal`, and added a roadmap source-contract test to keep the labels present for future shared-lib edits.
 - Phase 6 slice 36 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1072 tests discovered, 1071 pass, 0 fail, 1 skipped.
+- Phase 6 slice 37 kept the Character LoRA source-image compatibility helper active by routing training reference-image uploads through `normalizeSourceImageUploadRole`, so old role form fields are still accepted but stored as the ordinary `source` role.
+- Phase 6 slice 37 verification passed: red `node --import tsx --test tests/test-character-lora-source-images.test.ts`, then green `node --import tsx --test tests/test-character-lora-source-images.test.ts`, `node --import tsx --test tests/test-character-lora-source-images.test.ts tests/test-training-api-routes.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `node --import tsx --test tests/test-character-lora-source-images.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1074 tests discovered, 1073 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -766,7 +768,7 @@
 - [x] Keep `logger.ts` server-safe and avoid importing it into browser components.
 - [x] Consolidate UI error extraction helpers for preset replacement and sync preset variant flow if their payload shape is the same.
 - [x] Keep route fallback tests aligned with work-mode route behavior.
-- [ ] Keep character LoRA compatibility helpers until migration docs explicitly retire old forms/API clients.
+- [x] Keep character LoRA compatibility helpers until migration docs explicitly retire old forms/API clients.
 
 ## Phase 7: App Pages And Production UI Routes
 
