@@ -91,3 +91,10 @@ test("project detail section action controls import server actions from focused 
   assert.doesNotMatch(sectionActions, /from "@\/lib\/actions";/);
   assert.doesNotMatch(clearSectionsButton, /from "@\/lib\/actions";/);
 });
+
+test("project detail batch create client imports section actions from focused module", () => {
+  const batchCreateClient = readSource("src/app/projects/[projectId]/batch-create/batch-create-client.tsx");
+
+  assert.match(batchCreateClient, /from "@\/lib\/actions\/section";/);
+  assert.doesNotMatch(batchCreateClient, /from "@\/lib\/actions";/);
+});

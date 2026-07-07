@@ -7,7 +7,7 @@ import {
   Folder, ClipboardCopy, Check, Replace,
 } from "lucide-react";
 import { toast } from "sonner";
-import { createSectionFromTemplate } from "@/lib/actions";
+import { createSectionFromTemplate } from "@/lib/actions/section";
 import type { PresetLibraryV2 } from "@/components/prompt-block-editor";
 import { ASPECT_RATIOS, resolveResolution } from "@/lib/aspect-ratio-utils";
 
