@@ -19,6 +19,7 @@ import {
 import type { ReviewImage } from "@/lib/types";
 import { ImageLightbox } from "./image-lightbox";
 import { QueueReviewImageCard } from "./queue-review-image-card";
+import { QueueReviewSelectionToolbar } from "./queue-review-selection-toolbar";
 
 type LastAction = "keep" | "trash";
 type MarkerField = "featured" | "featured2" | "cover";
@@ -563,27 +564,15 @@ export function ReviewGrid({
   return (
     <div>
       {/* 全选 / 只选 pending */}
-      <div className="mb-3 flex items-center gap-2 text-xs">
-        <button
-          type="button"
-          onClick={selectAll}
-          className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-zinc-300 transition hover:bg-white/[0.08]"
-        >
-          {selected.size === reviewImages.length ? "取消全选" : "全选"}
-        </button>
-        <button
-          type="button"
-          onClick={() =>
-            setSelected(new Set(pendingImages.map((img) => img.id)))
-          }
-          className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-zinc-300 transition hover:bg-white/[0.08]"
-        >
-          选中待审核 ({pendingImages.length})
-        </button>
-        {selectedCount > 0 && (
-          <span className="ml-auto text-sky-300">已选 {selectedCount} 张</span>
-        )}
-      </div>
+      <QueueReviewSelectionToolbar
+        allSelected={selected.size === reviewImages.length}
+        pendingCount={pendingImages.length}
+        selectedCount={selectedCount}
+        onToggleSelectAll={selectAll}
+        onSelectPending={() =>
+          setSelected(new Set(pendingImages.map((img) => img.id)))
+        }
+      />
 
       {/* 宫格 */}
       <div className="flex flex-wrap gap-3">
