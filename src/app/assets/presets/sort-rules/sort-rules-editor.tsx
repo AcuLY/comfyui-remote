@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ArrowLeft, GripVertical, Check } from "lucide-react";
-import { updateCategorySortOrders } from "@/lib/actions";
+import { updateCategorySortOrders } from "@/lib/actions/preset-category";
 
 // ---------------------------------------------------------------------------
 // Types

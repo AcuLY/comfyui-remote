@@ -35,6 +35,7 @@ const changeHistoryTypesSource = readOptionalSource("src/lib/change-history-type
 const generationPresetListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/presets/route.ts"), "utf8");
 const generationPresetLibraryCategoryRouteSource = readFileSync(resolve(repoRoot, "src/app/api/preset-library/categories/route.ts"), "utf8");
 const generationTemplateListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/templates/route.ts"), "utf8");
+const generationPresetSortRulesEditorSource = readFileSync(resolve(repoRoot, "src/app/assets/presets/sort-rules/sort-rules-editor.tsx"), "utf8");
 const trainingProjectListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/training/projects/route.ts"), "utf8");
 const trainingRunListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/training/runs/route.ts"), "utf8");
 const trainingPresetListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/training/presets/route.ts"), "utf8");
@@ -421,6 +422,16 @@ test("generation preset sort rules page delegates ordinary category reads", () =
     generationPresetViewRepositorySource,
     /listPresetSortRuleCategories[\s\S]*presetCategory\.findMany\(\{[\s\S]*ordinaryPresetLibraryCategoryTypeWhere\(\)/,
     "Generation preset sort-rules repository read should stay scoped to ordinary preset categories.",
+  );
+  assert.match(
+    generationPresetSortRulesEditorSource,
+    /from "@\/lib\/actions\/preset-category";/,
+    "Generation preset sort-rules editor should import category writes from the focused preset-category action module.",
+  );
+  assert.doesNotMatch(
+    generationPresetSortRulesEditorSource,
+    /from "@\/lib\/actions";/,
+    "Generation preset sort-rules editor should not import the full server-action barrel.",
   );
 });
 
