@@ -1,3 +1,5 @@
+import { extractApiErrorMessage } from "./api-error-message";
+
 export type PresetSectionReplacementFormRule = {
   fromPresetId: string;
   toPresetId: string;
@@ -77,9 +79,5 @@ export function summarizePresetSectionReplacementPlan(plan: unknown) {
 }
 
 export function extractPresetSectionReplacementError(payload: unknown, fallback: string): string {
-  if (!payload || typeof payload !== "object") return fallback;
-  const error = (payload as Record<string, unknown>).error;
-  if (!error || typeof error !== "object") return fallback;
-  const message = (error as Record<string, unknown>).message;
-  return typeof message === "string" && message.trim() ? message : fallback;
+  return extractApiErrorMessage(payload, fallback);
 }

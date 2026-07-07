@@ -1,3 +1,5 @@
+import { extractApiErrorMessage } from "./api-error-message";
+
 export type SyncPresetVariantFlowFormValues = {
   sourceProjectTitle: string;
   targetProjectTitle: string;
@@ -107,12 +109,7 @@ export function summarizeSyncPresetVariantFlowPlan(plan: Array<Record<string, un
 }
 
 export function extractSyncPresetVariantFlowError(payload: unknown, fallback: string): string {
-  if (!payload || typeof payload !== "object") return fallback;
-  const record = payload as Record<string, unknown>;
-  const error = record.error;
-  if (!error || typeof error !== "object") return fallback;
-  const message = (error as Record<string, unknown>).message;
-  return typeof message === "string" && message.trim() ? message : fallback;
+  return extractApiErrorMessage(payload, fallback);
 }
 
 export function formatSyncPresetVariantFlowApplyToast(

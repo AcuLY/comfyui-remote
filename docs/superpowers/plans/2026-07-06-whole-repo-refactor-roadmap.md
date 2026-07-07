@@ -333,6 +333,8 @@
 - Phase 6 slice 32 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, reran the known flaky auto-censor timeout subtest after one full-suite empty-stdout JSON parse failure, and clean `npm test` with 1067 tests discovered, 1066 pass, 0 fail, 1 skipped.
 - Phase 6 slice 33 documented `src/lib/logger.ts` as a server-only logger module and added a source-contract guard keeping client-capable layers from value-importing the Node-backed logger.
 - Phase 6 slice 33 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1068 tests discovered, 1067 pass, 0 fail, 1 skipped.
+- Phase 6 slice 34 consolidated preset replacement and sync preset variant flow UI API error extraction through the shared client-safe `src/lib/api-error-message.ts` helper while preserving the feature-specific wrapper exports.
+- Phase 6 slice 34 verification passed: red `node --import tsx --test tests/test-preset-section-replacement-ui.test.ts tests/test-sync-preset-variant-flow-ui.test.ts`, then green `node --import tsx --test tests/test-preset-section-replacement-ui.test.ts tests/test-sync-preset-variant-flow-ui.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `node --import tsx --test tests/test-preset-section-replacement-ui.test.ts tests/test-sync-preset-variant-flow-ui.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1070 tests discovered, 1069 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -718,6 +720,7 @@
 
 **Shared pure and client-safe libs:**
 - `src/lib/api-response.ts`
+- `src/lib/api-error-message.ts`
 - `src/lib/aspect-ratio-utils.ts`
 - `src/lib/character-lora-canonical-views.ts`
 - `src/lib/character-lora-prompt-card-draft.ts`
@@ -757,7 +760,7 @@
 - [ ] Mark each file as client-safe, server-only, or universal.
 - [x] Move server-only re-export layer `server-data.ts` into a clearer server namespace or document it as RSC-only.
 - [x] Keep `logger.ts` server-safe and avoid importing it into browser components.
-- [ ] Consolidate UI error extraction helpers for preset replacement and sync preset variant flow if their payload shape is the same.
+- [x] Consolidate UI error extraction helpers for preset replacement and sync preset variant flow if their payload shape is the same.
 - [ ] Keep route fallback tests aligned with work-mode route behavior.
 - [ ] Keep character LoRA compatibility helpers until migration docs explicitly retire old forms/API clients.
 
