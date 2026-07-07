@@ -59,14 +59,53 @@ function extractTrainingPageSwitchCases() {
 test("production app shell treats /training routes as standalone surfaces", () => {
   assert.match(
     layoutSource,
-    /pathname === "\/training" \|\| pathname\.startsWith\("\/training\/"\)/,
-    "root layout should recognize training routes explicitly",
+    /const STANDALONE_ROOT_SURFACE_PREFIXES = \["\/design-demos", "\/training"\] as const;/,
+    "root layout should recognize training as an explicit standalone surface prefix",
   );
   assert.match(
     layoutSource,
-    /isLoginPage \|\| isDesignDemoPage \|\| isTrainingPage \? children : <AppShell>\{children\}<\/AppShell>/,
+    /const content = shouldSkipAppShell\(pathname\) \? children : <AppShell>\{children\}<\/AppShell>;/,
     "training routes should not be wrapped in the legacy production AppShell",
   );
+});
+
+test("root layout remains a global provider and shell boundary only", () => {
+  assert.match(
+    layoutSource,
+    /const STANDALONE_ROOT_SURFACE_PREFIXES = \["\/design-demos", "\/training"\] as const;/,
+    "standalone root surfaces should be named at the layout boundary.",
+  );
+  assert.match(
+    layoutSource,
+    /function shouldSkipAppShell\(pathname: string\)/,
+    "AppShell inclusion/exclusion should stay in a named root-layout helper.",
+  );
+  assert.match(
+    layoutSource,
+    /const content = shouldSkipAppShell\(pathname\) \? children : <AppShell>\{children\}<\/AppShell>;/,
+    "Root layout should only choose between standalone children and the production shell.",
+  );
+  assert.match(
+    layoutSource,
+    /<TooltipProvider>\{content\}<\/TooltipProvider>/,
+    "Root layout should keep global providers around the selected shell content.",
+  );
+
+  for (const forbidden of [
+    /from ["']@\/lib\/actions/,
+    /from ["']@\/lib\/db["']/,
+    /from ["']@\/lib\/prisma["']/,
+    /from ["']@\/server\//,
+    /\bfetch\(/,
+    /\bredirect\(/,
+    /\bNextResponse\b/,
+  ]) {
+    assert.doesNotMatch(
+      layoutSource,
+      forbidden,
+      "Root layout should not own business workflows, route responses, or runtime side effects.",
+    );
+  }
 });
 
 test("production training routes do not own the shared model manager page", () => {

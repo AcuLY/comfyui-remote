@@ -19,6 +19,8 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
+const STANDALONE_ROOT_SURFACE_PREFIXES = ["/design-demos", "/training"] as const;
+
 export const metadata: Metadata = {
   title: "ComfyUI Manager",
   description: "Mobile-first ComfyUI project, review, and asset manager.",
@@ -28,15 +30,20 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+function isRouteUnder(pathname: string, prefix: string) {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+function shouldSkipAppShell(pathname: string) {
+  return pathname === "/login" || STANDALONE_ROOT_SURFACE_PREFIXES.some((prefix) => isRouteUnder(pathname, prefix));
+}
+
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const [headersList, cookieStore] = await Promise.all([headers(), cookies()]);
   const pathname = headersList.get("x-pathname") ?? "/";
-  const isLoginPage = pathname === "/login";
-  const isDesignDemoPage = pathname === "/design-demos" || pathname.startsWith("/design-demos/");
-  const isTrainingPage = pathname === "/training" || pathname.startsWith("/training/");
   const designDemoTheme = resolveDemoTheme(cookieStore.get(DESIGN_DEMO_THEME_COOKIE)?.value);
 
-  const content = isLoginPage || isDesignDemoPage || isTrainingPage ? children : <AppShell>{children}</AppShell>;
+  const content = shouldSkipAppShell(pathname) ? children : <AppShell>{children}</AppShell>;
 
   return (
     <html
