@@ -538,6 +538,8 @@
 - Phase 10 slice 134 verification passed: red `node --import tsx --test tests/test-design-demo-governance.test.ts`, green `node --import tsx --test tests/test-design-demo-governance.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-design-demo-governance.test.ts src/app/design-demos/routing/routes.test.ts src/app/design-demos/showcase/registry.test.ts src/app/design-demos/data/row-shaping.test.ts src/app/design-demos/data/fallback-images.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1182 tests discovered, 1181 pass, 0 fail, 1 skipped.
 - Phase 10 slice 135 added `docs/ui/legacy-static-design-demos.md` and `tests/test-legacy-static-design-demos.test.ts` to classify every tracked `design-demos/` static file as archival or superseded by the Next design-demo app, name the later archive directory, and carry the remaining `todo.txt` notes into maintained docs before deleting the stale runtime-adjacent task file.
 - Phase 10 slice 135 verification passed: red `node --import tsx --test tests/test-legacy-static-design-demos.test.ts`, green `node --import tsx --test tests/test-legacy-static-design-demos.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-legacy-static-design-demos.test.ts tests/test-design-demo-governance.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1184 tests discovered, 1183 pass, 0 fail, 1 skipped.
+- Phase 10 slice 136 added `docs/prototypes/README.md` and `tests/test-training-prototype-governance.test.ts` to classify `docs/prototypes/**` as training prototype intent only, map every LoRA training HTML prototype to its production `/training` route and `src/features/training` owner, and guard `lora-training-shared.css`/`.js` plus prototype images/fonts as prototype-only assets that production `src/**` must not import.
+- Phase 10 slice 136 verification passed: red `node --import tsx --test tests/test-training-prototype-governance.test.ts`, green `node --import tsx --test tests/test-training-prototype-governance.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-prototype-governance.test.ts tests/test-design-demo-governance.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1186 tests discovered, 1185 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1305,9 +1307,9 @@ Loading states remain colocated under their route segments for now; the later lo
 - `docs/prototypes/assets/lora-training-shared.css`
 - `docs/prototypes/assets/lora-training-shared.js`
 
-- [ ] Treat `docs/prototypes` as source-of-truth only for training prototype intent, not production route behavior.
-- [ ] Map each HTML prototype to a production training route.
-- [ ] Keep shared prototype assets documented and avoid mixing them with production CSS.
+- [x] Treat `docs/prototypes` as source-of-truth only for training prototype intent, not production route behavior.
+- [x] Map each HTML prototype to a production training route.
+- [x] Keep shared prototype assets documented and avoid mixing them with production CSS.
 
 ## Phase 11: Worker, Scheduler, And External Process Boundaries
 
