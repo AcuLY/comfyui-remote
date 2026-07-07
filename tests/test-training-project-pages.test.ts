@@ -9,6 +9,8 @@ const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const featureRoot = resolve(testDir, "../src/features/training");
 const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
 const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
+const referencePickerPath = resolve(featureUiDir, "reference-picker.tsx");
+const referencePickerSource = existsSync(referencePickerPath) ? readFileSync(referencePickerPath, "utf8") : "";
 const urlSearchHookPath = resolve(featureUiDir, "use-url-search.ts");
 const urlSearchHookSource = existsSync(urlSearchHookPath) ? readFileSync(urlSearchHookPath, "utf8") : "";
 const projectReferenceUploadHookPath = resolve(featureUiDir, "use-project-reference-upload-drafts.ts");
@@ -1233,6 +1235,9 @@ test("training project create page is a full form workspace with training seed c
 
   assert.match(formSource, /referenceSourceTree/, "project creation should offer explicit reference sources");
   assert.match(formSource, /ReferencePicker/, "project creation should preview references before adding them");
+  assert.match(referencePickerSource, /export function ReferencePicker/, "shared reference picker should live in a focused component module");
+  assert.match(referencePickerSource, /ReferenceSourceGroup/, "reference picker module should own the reference source group type");
+  assert.doesNotMatch(pagesSource, /function ReferencePicker\(/, "training project pages should not keep shared reference picker rendering inline");
   assert.match(formSource, /previewReference/, "reference selection should be preview-first, not immediate write");
   assert.match(formSource, /SwitchRow/, "project creation should expose default training/dataset toggles");
   assert.match(formSource, /训练默认/, "project creation should include training defaults");

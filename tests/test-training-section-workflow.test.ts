@@ -8,6 +8,7 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
 const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
+const referencePickerSource = readFileSync(resolve(featureUiDir, "reference-picker.tsx"), "utf8");
 const projectSectionDraftHookSource = readFileSync(resolve(featureUiDir, "use-project-section-draft.ts"), "utf8");
 const projectSectionSceneBlocksHookPath = resolve(featureUiDir, "use-project-section-scene-blocks.ts");
 const projectSectionSceneBlocksHookSource = existsSync(projectSectionSceneBlocksHookPath)
@@ -269,7 +270,7 @@ test("training section detail exposes full scene-block management controls", () 
     "export function LoraTrainingProjectSectionDetailPage",
     "export function LoraTrainingGenerationComposePage",
   );
-  const sceneBlockCard = sourceBetween("function SceneBlockCard", "function ReferencePicker");
+  const sceneBlockCard = sourceBetween("function SceneBlockCard", "export function LoraTrainingProjectFormPage");
 
   for (const label of ["选择预制", "导入所选", "添加本地块"]) {
     assert.match(detailPage, new RegExp(label), `section detail should include ${label}`);
@@ -300,7 +301,7 @@ test("training section detail puts results first and uses the page scroll", () =
 });
 
 test("training scene-block cards mirror the compact prompt-block row pattern", () => {
-  const sceneBlockCard = sourceBetween("function SceneBlockCard", "function ReferencePicker");
+  const sceneBlockCard = sourceBetween("function SceneBlockCard", "export function LoraTrainingProjectFormPage");
   const sceneBlockCardRule = cssRule("sceneBlockCard");
 
   assert.match(sceneBlockCard, /className=\{s\.sceneBlockTitleRow\}/, "scene block title and source should share a stable title row");
@@ -325,7 +326,7 @@ test("training section detail scene-block actions update local front-end state",
     "export function LoraTrainingProjectSectionDetailPage",
     "export function LoraTrainingGenerationComposePage",
   );
-  const sceneBlockCard = sourceBetween("function SceneBlockCard", "function ReferencePicker");
+  const sceneBlockCard = sourceBetween("function SceneBlockCard", "export function LoraTrainingProjectFormPage");
 
   assert.match(detailPage, /useProjectSectionSceneBlocks/, "section detail should delegate scene-block state to the focused hook");
   assert.match(projectSectionSceneBlocksHookSource, /sectionSceneBlocksByKey/, "section detail block actions should update keyed local state");
@@ -495,7 +496,7 @@ test("generation compose uses an explicit reference source tree with preview the
   assert.match(composePage, /ReferencePicker/, "compose page should delegate reference selection to a source-tree picker");
   assert.match(composePage, /referenceSourceTree/, "reference picker should render an explicit source tree");
   assert.match(composePage, /previewReference/, "clicking a candidate should preview instead of adding immediately");
-  assert.match(sourceBetween("function ReferencePicker", "export function LoraTrainingProjectFormPage"), /添加引用/, "reference candidates should require an explicit add action");
+  assert.match(referencePickerSource, /添加引用/, "reference candidates should require an explicit add action");
 });
 
 test("generation compose queues a local generation task draft instead of only showing a toast", () => {
@@ -636,7 +637,7 @@ test("generation compose task draft stays scoped to the active project section",
 });
 
 test("reference picker records explicitly added references in local front-end state", () => {
-  const pickerSource = sourceBetween("function ReferencePicker", "export function LoraTrainingProjectFormPage");
+  const pickerSource = referencePickerSource;
 
   assert.match(pickerSource, /selectedReferenceIds/, "reference picker should track added references locally");
   assert.match(pickerSource, /handleAddReference/, "reference picker should expose an explicit add handler");
@@ -644,7 +645,7 @@ test("reference picker records explicitly added references in local front-end st
 });
 
 test("reference picker disables references that have already been added", () => {
-  const pickerSource = sourceBetween("function ReferencePicker", "export function LoraTrainingProjectFormPage");
+  const pickerSource = referencePickerSource;
 
   assert.match(pickerSource, /previewAlreadyAdded/, "reference picker should know when the previewed reference is already selected");
   assert.match(pickerSource, /if \(!previewReference \|\| previewAlreadyAdded\) return;/, "add handler should short-circuit duplicate selected references");
@@ -652,7 +653,7 @@ test("reference picker disables references that have already been added", () => 
 });
 
 test("reference picker can remove explicitly added references", () => {
-  const pickerSource = sourceBetween("function ReferencePicker", "export function LoraTrainingProjectFormPage");
+  const pickerSource = referencePickerSource;
   const composePage = sourceBetween(
     "export function LoraTrainingGenerationComposePage",
     "export function LoraTrainingProjectResultsPage",
