@@ -32,9 +32,15 @@ Do not call the fallback prompt builder from run-executor, repositories, route h
 
 `src/server/worker/training/target-discovery.ts` owns training worker target discovery. It maps database rows into `WorkerTarget` values, counts queued/running work by worker type, finds queued or running targets, and resolves a serialized worker task ID back to its backing generation task, dataset revision, or training run.
 
-`src/server/worker/training/task-api.ts` remains the compatibility boundary for existing route handlers while the larger split continues. It may compose target discovery, leasing, heartbeat, completion, failure, and scheduler helpers, but it should not own pure task ID prefix parsing.
+`src/server/worker/training/task-serialization.ts` owns serialized worker task shaping. It builds the HTTP task payload shape shared by leases, heartbeats, completion, failure, scheduler progress, and queue status compatibility responses.
 
-Do not reintroduce worker task ID prefix parsing into task-api, route handlers, or CLI worker scripts. Do not reintroduce target discovery queries into task-api; leasing may call discovery helpers, but discovery should stay isolated from state transitions. New worker task kinds should first extend the task ID and discovery boundaries, then add route/service tests for lease, heartbeat, complete, and fail behavior.
+`src/server/worker/training/task-errors.ts` owns training worker task error mapping. It defines `TrainingWorkerTaskError` and converts expected worker validation failures or unexpected errors into route-safe error payloads.
+
+`src/server/worker/training/leasing.ts` owns training worker leasing. It validates lease requests, returns an existing running target when appropriate, prevents concurrent running work per worker type and project scope, and performs the mark-running state transition for newly leased targets.
+
+`src/server/worker/training/task-api.ts` remains the compatibility boundary for existing route handlers while the larger split continues. It may compose target discovery, leasing, heartbeat, completion, failure, and scheduler helpers, but it should not own pure task ID prefix parsing, target discovery queries, lease request parsing, or mark-running transitions.
+
+Do not reintroduce worker task ID prefix parsing into task-api, route handlers, or CLI worker scripts. Do not reintroduce target discovery queries into task-api; leasing may call discovery helpers, but discovery should stay isolated from completion, heartbeat, and failure handling. Do not reintroduce lease request parsing or mark-running transitions into task-api. New worker task kinds should first extend the task ID and discovery boundaries, then add route/service tests for lease, heartbeat, complete, and fail behavior.
 
 ## Verification
 

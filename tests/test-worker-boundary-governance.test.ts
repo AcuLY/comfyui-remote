@@ -22,10 +22,14 @@ test("worker boundary doc records generation payload and repository ownership", 
   assert.match(doc, /src\/server\/worker\/fallback-prompt-builder\.ts[\s\S]*last resort only/);
   assert.match(doc, /src\/server\/worker\/training\/task-id\.ts[\s\S]*owns training worker task ID parsing/);
   assert.match(doc, /src\/server\/worker\/training\/target-discovery\.ts[\s\S]*owns training worker target discovery/);
+  assert.match(doc, /src\/server\/worker\/training\/task-serialization\.ts[\s\S]*owns serialized worker task shaping/);
+  assert.match(doc, /src\/server\/worker\/training\/task-errors\.ts[\s\S]*owns training worker task error mapping/);
+  assert.match(doc, /src\/server\/worker\/training\/leasing\.ts[\s\S]*owns training worker leasing/);
   assert.match(doc, /docs\/workflow\.api\.json[\s\S]*default standard workflow/);
   assert.match(doc, /Do not let repositories import payload builders/);
   assert.match(doc, /Do not reintroduce worker task ID prefix parsing into task-api/);
   assert.match(doc, /Do not reintroduce target discovery queries into task-api/);
+  assert.match(doc, /Do not reintroduce lease request parsing or mark-running transitions into task-api/);
   assert.match(doc, /Do not call the fallback prompt builder from run-executor/);
   assert.match(docsIndex, /docs\/worker-boundaries\.md/, "documentation index should point agents to worker boundaries");
 });
@@ -174,4 +178,72 @@ test("training worker target discovery lives in a dedicated boundary", async () 
     targetType: "trainingRun",
     workerType: "training",
   });
+});
+
+test("training worker task errors live in a dedicated boundary", async () => {
+  const taskErrorsPath = "src/server/worker/training/task-errors.ts";
+  assert.ok(existsSync(join(repoRoot, taskErrorsPath)), `${taskErrorsPath} should own worker task error mapping`);
+
+  const taskApi = readSource("src/server/worker/training/task-api.ts");
+  const taskErrorsSource = readSource(taskErrorsPath);
+  assert.match(taskApi, /from "@\/server\/worker\/training\/task-errors"/);
+  assert.doesNotMatch(taskApi, /export class TrainingWorkerTaskError/);
+  assert.doesNotMatch(taskApi, /export function mapTrainingWorkerTaskError/);
+  assert.match(taskErrorsSource, /export class TrainingWorkerTaskError/);
+  assert.match(taskErrorsSource, /export function mapTrainingWorkerTaskError/);
+
+  const taskErrorsUrl = new URL(pathToFileURL(join(repoRoot, taskErrorsPath)));
+  taskErrorsUrl.searchParams.set("testImport", String(Date.now()));
+  const mod = await import(taskErrorsUrl.href);
+  const error = new mod.TrainingWorkerTaskError("bad lease", 400, { reason: "test" });
+
+  assert.deepEqual(mod.mapTrainingWorkerTaskError(error), {
+    details: { reason: "test" },
+    message: "bad lease",
+    status: 400,
+  });
+  assert.deepEqual(mod.mapTrainingWorkerTaskError(new Error("boom")), {
+    details: "boom",
+    message: "Unexpected training worker task error",
+    status: 500,
+  });
+});
+
+test("training worker leasing lives in a dedicated boundary", async () => {
+  const leasingPath = "src/server/worker/training/leasing.ts";
+  const serializerPath = "src/server/worker/training/task-serialization.ts";
+  assert.ok(existsSync(join(repoRoot, leasingPath)), `${leasingPath} should own worker leasing`);
+  assert.ok(existsSync(join(repoRoot, serializerPath)), `${serializerPath} should own serialized worker task shaping`);
+
+  const taskApi = readSource("src/server/worker/training/task-api.ts");
+  const leasingSource = readSource(leasingPath);
+  const serializerSource = readSource(serializerPath);
+  assert.match(taskApi, /from "@\/server\/worker\/training\/leasing"/);
+  assert.match(taskApi, /from "@\/server\/worker\/training\/task-serialization"/);
+  assert.doesNotMatch(taskApi, /async function markWorkerTargetRunning/);
+  assert.doesNotMatch(taskApi, /export async function leaseNextTrainingWorkerTask/);
+  assert.doesNotMatch(taskApi, /trainingWorkerTaskLeaseRequestSchema/);
+  assert.match(leasingSource, /export async function markWorkerTargetRunning/);
+  assert.match(leasingSource, /export async function leaseNextTrainingWorkerTask/);
+  assert.match(serializerSource, /export function serializeWorkerTask/);
+
+  const serializerUrl = new URL(pathToFileURL(join(repoRoot, serializerPath)));
+  serializerUrl.searchParams.set("testImport", String(Date.now()));
+  const serializer = await import(serializerUrl.href);
+  const serialized = serializer.serializeWorkerTask({
+    id: "run-1",
+    projectId: "project-1",
+    status: "running",
+    targetType: "trainingRun",
+    workerType: "training",
+  }, {
+    leaseOwner: "owner-1",
+    progressJson: { phase: "training" },
+  });
+
+  assert.equal(serialized.id, "training-run-worker-task-run-1");
+  assert.equal(serialized.jobId, "project-1");
+  assert.equal(serialized.leaseOwner, "owner-1");
+  assert.deepEqual(serialized.progressJson, { phase: "training" });
+  assert.equal(serialized.status, "running");
 });

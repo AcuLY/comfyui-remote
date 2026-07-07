@@ -1346,14 +1346,19 @@ test("worker task lease route and Training worker API preserve target filter que
     join(process.cwd(), "src", "server", "worker", "training", "task-api.ts"),
     "utf8",
   );
+  const leasingSource = await readFile(
+    join(process.cwd(), "src", "server", "worker", "training", "leasing.ts"),
+    "utf8",
+  );
 
   assert.match(routeSource, /targetType:\s*searchParams\.get\("targetType"\)\s*\?\?\s*undefined/);
   assert.match(routeSource, /targetId:\s*searchParams\.get\("targetId"\)\s*\?\?\s*undefined/);
   assert.match(routeSource, /@\/server\/worker\/training\/task-api/);
-  assert.match(taskApiSource, /parsed\.data\.targetType/);
-  assert.match(taskApiSource, /parsed\.data\.targetId/);
+  assert.match(taskApiSource, /@\/server\/worker\/training\/leasing/);
+  assert.match(leasingSource, /parsed\.data\.targetType/);
+  assert.match(leasingSource, /parsed\.data\.targetId/);
   assert.deepEqual(
-    findRetiredTrainingTokens(taskApiSource),
+    findRetiredTrainingTokens(`${taskApiSource}\n${leasingSource}`),
     [],
     "Training worker task API should preserve target filters through Training-owned queue code, not retired adapters.",
   );
@@ -5491,15 +5496,17 @@ test("production worker task lease route filters queued tasks through Training-o
   );
   const schemaSource = await readFile(join(process.cwd(), "src", "lib", "training", "schemas.ts"), "utf8");
   const taskApiSource = await readFile(join(process.cwd(), "src", "server", "worker", "training", "task-api.ts"), "utf8");
+  const leasingSource = await readFile(join(process.cwd(), "src", "server", "worker", "training", "leasing.ts"), "utf8");
 
   assert.match(routeSource, /targetType:\s*searchParams\.get\("targetType"\)\s*\?\?\s*undefined/);
   assert.match(routeSource, /targetId:\s*searchParams\.get\("targetId"\)\s*\?\?\s*undefined/);
   assert.match(schemaSource, /targetType:\s*z\.string\(\)\.trim\(\)\.min\(1\)\.optional\(\)/);
   assert.match(schemaSource, /targetId:\s*z\.string\(\)\.trim\(\)\.min\(1\)\.optional\(\)/);
-  assert.match(taskApiSource, /parsed\.data\.targetType/);
-  assert.match(taskApiSource, /parsed\.data\.targetId/);
+  assert.match(taskApiSource, /@\/server\/worker\/training\/leasing/);
+  assert.match(leasingSource, /parsed\.data\.targetType/);
+  assert.match(leasingSource, /parsed\.data\.targetId/);
   assert.deepEqual(
-    findRetiredTrainingTokens(taskApiSource),
+    findRetiredTrainingTokens(`${taskApiSource}\n${leasingSource}`),
     [],
     "Target-scoped worker leases should not fall back to retired task delegates.",
   );

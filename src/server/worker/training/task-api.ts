@@ -7,118 +7,30 @@ import {
   trainingWorkerTaskCompleteRequestSchema,
   trainingWorkerTaskFailRequestSchema,
   trainingWorkerTaskHeartbeatRequestSchema,
-  trainingWorkerTaskLeaseRequestSchema,
 } from "@/lib/training/schemas";
+import { leaseNextTrainingWorkerTask } from "@/server/worker/training/leasing";
+import { TrainingWorkerTaskError } from "@/server/worker/training/task-errors";
 import {
   getGenerationWorkerTaskId,
   getTrainingRunWorkerTaskId,
-  getWorkerTaskId,
   workerTypeForTargetType,
   type TrainingWorkerType,
 } from "@/server/worker/training/task-id";
+import { serializeWorkerTask } from "@/server/worker/training/task-serialization";
 import {
   countWorkerTargets,
-  findQueuedWorkerTarget,
-  findRunningWorkerTarget,
   findWorkerTargetByTaskId,
-  mapDatasetRevisionToTarget,
-  mapGenerationTaskToTarget,
   mapTrainingRunToTarget,
   type WorkerTarget,
 } from "@/server/worker/training/target-discovery";
 
-type SerializedWorkerTaskInput = {
-  errorSummary?: string | null;
-  leaseOwner?: string | null;
-  progressJson?: unknown;
-  status?: "running" | "succeeded" | "failed";
-};
-
-export class TrainingWorkerTaskError extends Error {
-  details?: unknown;
-  status: number;
-
-  constructor(message: string, status: number, details?: unknown) {
-    super(message);
-    this.name = "TrainingWorkerTaskError";
-    this.status = status;
-    this.details = details;
-  }
-}
+export { leaseNextTrainingWorkerTask } from "@/server/worker/training/leasing";
+export { TrainingWorkerTaskError, mapTrainingWorkerTaskError } from "@/server/worker/training/task-errors";
 
 function normalizeJson(value: unknown): Prisma.InputJsonValue {
   if (value === null || typeof value === "undefined") return {};
   if (typeof value === "object") return value as Prisma.InputJsonValue;
   return { value } as Prisma.InputJsonValue;
-}
-
-function serializeWorkerTask(target: WorkerTarget, input: SerializedWorkerTaskInput = {}) {
-  const now = new Date().toISOString();
-  return {
-    id: getWorkerTaskId(target),
-    jobId: target.projectId,
-    workerType: target.workerType,
-    targetType: target.targetType,
-    targetId: target.id,
-    status: input.status ?? "running",
-    payload: {
-      projectId: target.projectId,
-      taskType: target.workerType,
-    },
-    leaseOwner: input.leaseOwner ?? null,
-    leaseExpiresAt: null,
-    attemptCount: 1,
-    progressJson: input.progressJson ?? null,
-    startedAt: target.status === "running" ? now : null,
-    heartbeatAt: input.progressJson ? now : null,
-    finishedAt: input.status === "succeeded" || input.status === "failed" ? now : null,
-    errorSummary: input.errorSummary ?? null,
-    createdAt: now,
-    updatedAt: now,
-  };
-}
-
-async function markWorkerTargetRunning(target: WorkerTarget, leaseOwner?: string | null) {
-  const now = new Date();
-  if (target.workerType === "image_generation") {
-    const updated = await prisma.trainingGenerationTask.update({
-      where: { id: target.id },
-      data: {
-        startedAt: now,
-        status: "running",
-        sectionRuns: {
-          updateMany: {
-            where: {},
-            data: {
-              startedAt: now,
-              status: "running",
-            },
-          },
-        },
-      },
-    });
-    return mapGenerationTaskToTarget(updated);
-  }
-  if (target.workerType === "dataset_freeze") {
-    const updated = await prisma.trainingDatasetRevision.update({
-      where: { id: target.id },
-      data: {
-        status: "freezing",
-      },
-    });
-    return mapDatasetRevisionToTarget(updated);
-  }
-  const updated = await prisma.trainingRun.update({
-    where: { id: target.id },
-    data: {
-      progressJson: {
-        ...(leaseOwner ? { leaseOwner } : {}),
-      },
-      startedAt: now,
-      status: "running",
-    },
-  });
-  return mapTrainingRunToTarget(updated);
 }
 
 async function writeArtifact(input: {
@@ -341,44 +253,6 @@ export async function getTrainingWorkerQueueStatus() {
     },
     byWorkerType,
   };
-}
-
-export async function leaseNextTrainingWorkerTask(input: unknown) {
-  const parsed = trainingWorkerTaskLeaseRequestSchema.safeParse(input);
-  if (!parsed.success) {
-    throw new TrainingWorkerTaskError("Invalid training worker lease request", 400, {
-      issues: parsed.error.issues,
-    });
-  }
-
-  const running = await findRunningWorkerTarget(
-    parsed.data.workerType,
-    parsed.data.targetId,
-    parsed.data.targetType,
-    parsed.data.projectId,
-  );
-  if (running) {
-    return serializeWorkerTask(running, {
-      leaseOwner: parsed.data.leaseOwner ?? null,
-    });
-  }
-
-  if (await countWorkerTargets(parsed.data.workerType, "running", parsed.data.projectId) > 0) {
-    return null;
-  }
-
-  const queued = await findQueuedWorkerTarget(
-    parsed.data.workerType,
-    parsed.data.targetId,
-    parsed.data.targetType,
-    parsed.data.projectId,
-  );
-  if (!queued) return null;
-
-  const target = await markWorkerTargetRunning(queued, parsed.data.leaseOwner ?? null);
-  return serializeWorkerTask(target, {
-    leaseOwner: parsed.data.leaseOwner ?? null,
-  });
 }
 
 export async function tickTrainingWorkerScheduler(input: unknown = {}) {
@@ -670,19 +544,4 @@ export async function failTrainingWorkerTask(taskId: string, input: unknown) {
     progressJson: parsed.data.providerError ?? null,
     status: "failed",
   });
-}
-
-export function mapTrainingWorkerTaskError(error: unknown) {
-  if (error instanceof TrainingWorkerTaskError) {
-    return {
-      details: error.details,
-      message: error.message,
-      status: error.status,
-    };
-  }
-  return {
-    details: error instanceof Error ? error.message : String(error),
-    message: "Unexpected training worker task error",
-    status: 500,
-  };
 }
