@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { resolveTemplatePresetImports, updateProjectTemplateSection } from "@/lib/actions/template-crud";
 import { parseInitialKSampler } from "@/components/ksampler-panel";
-import type { ImportCategory } from "@/components/section-editor";
+import type { ImportCategory } from "@/components/section-import-preset-panel";
 import {
   getSectionPresetBindingGroupName,
   getSectionPresetManagerHref,

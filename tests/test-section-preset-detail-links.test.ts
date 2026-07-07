@@ -6,6 +6,7 @@ import { join } from "node:path";
 const rootDir = process.cwd();
 
 const projectSectionEditorFile = "src/components/section-editor.tsx";
+const sectionImportPresetPanelFile = "src/components/section-import-preset-panel.tsx";
 const promptBlockEditorFile = "src/components/prompt-block-editor.tsx";
 const templateSectionEditorFile = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/section-detail-client.tsx";
 const templateSectionPresetBindingsFile = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-preset-bindings.tsx";
@@ -102,6 +103,22 @@ test("project section editors import prompt block actions from focused module", 
   assert.match(promptBlockEditor, /from "@\/lib\/actions\/prompt-block";/);
   assert.doesNotMatch(sectionEditor, /from "@\/lib\/actions";/);
   assert.doesNotMatch(promptBlockEditor, /from "@\/lib\/actions";/);
+});
+
+test("section import preset panel lives in a focused component module", () => {
+  const sectionEditor = readSource(projectSectionEditorFile);
+  const importPanel = readSource(sectionImportPresetPanelFile);
+  const templateClient = readSource(templateSectionEditorFile);
+  const templateBindings = readSource(templateSectionPresetBindingsFile);
+
+  assert.match(importPanel, /export type ImportCategory\b/, `${sectionImportPresetPanelFile} should own the import category type`);
+  assert.match(importPanel, /export function ImportPresetPanel\b/, `${sectionImportPresetPanelFile} should own the import preset panel`);
+  assert.match(sectionEditor, /from "@\/components\/section-import-preset-panel";/, "project section editor should import the focused import panel");
+  assert.match(templateBindings, /from "@\/components\/section-import-preset-panel";/, "template preset bindings should import the focused import panel");
+  assert.match(templateClient, /from "@\/components\/section-import-preset-panel";/, "template section client should import the focused import category type");
+  assert.doesNotMatch(sectionEditor, /export function ImportPresetPanel\b/, "project section editor should not keep the import panel inline");
+  assert.doesNotMatch(templateBindings, /from "@\/components\/section-editor";/, "template preset bindings should not depend on the broad section editor module");
+  assert.doesNotMatch(templateClient, /from "@\/components\/section-editor";/, "template section client should not depend on the broad section editor module");
 });
 
 test("template section preset binding detail links still use the shared manager target in the same tab", () => {

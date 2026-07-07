@@ -10,7 +10,7 @@ import {
   Trash2,
   Unlink,
 } from "lucide-react";
-import { ImportPresetPanel, type ImportCategory } from "@/components/section-editor";
+import { ImportPresetPanel, type ImportCategory } from "@/components/section-import-preset-panel";
 
 export type TemplateSectionPresetBindingInfo = {
   bindingId: string;

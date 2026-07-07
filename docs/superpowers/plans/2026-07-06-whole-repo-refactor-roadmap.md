@@ -527,6 +527,8 @@
 - Phase 8 slice 129 verification passed: red `node --import tsx --test tests/test-training-run-detail-page.test.ts`, green `node --import tsx --test tests/test-training-run-detail-page.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-run-detail-page.test.ts tests/test-training-frontend-api-contract.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, stale thumbnail source-contract assertions fixed with green `node --import tsx --test tests/test-training-run-detail-page.test.ts tests/test-training-image-thumbnail-contract.test.ts`, and `npm test` with 1172 tests discovered, 1171 pass, 0 fail, 1 skipped.
 - Phase 8 slice 130 moved the project-profile reference image card panel into `src/features/training/ui/training-project-reference-image-panel.tsx`. The focused component owns reference thumbnails, editable label/note controls, upload input wiring, result-pool action UI, and card action labels while `training-project-profile-page.tsx` now stays under 800 lines and keeps profile/reference state plus HTTP mutation handlers.
 - Phase 8 slice 130 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-frontend-api-contract.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1173 tests discovered, 1172 pass, 0 fail, 1 skipped.
+- Phase 9 slice 131 moved the shared section import preset panel into `src/components/section-import-preset-panel.tsx`. The focused component owns import categories, folder/search navigation, preset/variant/group rows, and import callbacks while `section-editor.tsx` now stays under 800 lines and template section bindings import the shared panel directly instead of depending on the broad section editor module.
+- Phase 9 slice 131 verification passed: red `node --import tsx --test tests/test-section-preset-detail-links.test.ts tests/test-template-section-detail-split.test.ts`, green `node --import tsx --test tests/test-section-preset-detail-links.test.ts tests/test-template-section-detail-split.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-section-preset-detail-links.test.ts tests/test-template-section-detail-split.test.ts tests/test-section-editor-binding-rules.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1174 tests discovered, 1173 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1200,6 +1202,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/components/neighbor-navigation.tsx`
 - `src/components/section-card.tsx`
 - `src/components/section-editor.tsx`
+- `src/components/section-import-preset-panel.tsx`
 - `src/components/section-editor-binding-rules.ts`
 - `src/components/section-folder-controls.tsx`
 - `src/components/section-sidebar-nav.tsx`
@@ -1224,9 +1227,9 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/components/stat-chip.tsx`
 
 - [ ] Split complex editors into primitives, hooks, and domain-specific adapters.
-- [ ] Fix React hooks lint errors in `design-demo-shell/app-shell.tsx` and `preset-cascade-picker.tsx` before using lint as a gate.
+- [x] Fix React hooks lint errors in `design-demo-shell/app-shell.tsx` and `preset-cascade-picker.tsx` before using lint as a gate.
 - [ ] Ensure every dialog/cascade picker has accessible labels and stable portal handling.
-- [ ] Keep section editor binding rules as pure functions with tests.
+- [x] Keep section editor binding rules as pure functions with tests.
 - [ ] Keep copy buttons and toast text behavior tested.
 - [ ] Avoid moving production components into design-demo namespaces.
 
