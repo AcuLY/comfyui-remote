@@ -94,6 +94,7 @@ import { useGenerationComposeForm } from "./use-generation-compose-form";
 import { useGenerationComposeReferenceSelection } from "./use-generation-compose-reference-selection";
 import { useGenerationSupplementalImages } from "./use-generation-supplemental-images";
 import { useGenerationTaskDraft } from "./use-generation-task-draft";
+import { useProjectSectionSceneBlocks } from "./use-project-section-scene-blocks";
 import { useProjectSectionDraft } from "./use-project-section-draft";
 import { useProjectReferenceUploadDrafts } from "./use-project-reference-upload-drafts";
 import { useProjectReferenceSelection } from "./use-project-reference-selection";
@@ -2559,17 +2560,17 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
   const project = findProject(data, projectId);
   const section = findSection(project, sectionId);
   const initialProjectSectionStateKey = project && section ? buildProjectSectionStateKey(project.id, section.id) : null;
-  const [sectionSceneBlocksByKey, setSectionSceneBlocksByKey] = useState<Record<string, LoraTrainingSectionBlock[]>>(() => (
-    project && section ? { [buildProjectSectionStateKey(project.id, section.id)]: section.blocks } : {}
-  ));
   const [sectionResultsByProjectKey, setSectionResultsByProjectKey] = useState<Record<string, LoraTrainingImageResult[]>>(() => (
     project ? { [project.id]: project.resultPool } : {}
   ));
-  const [editingSceneBlockState, setEditingSceneBlockState] = useState(() => ({
-    blockId: null as string | null,
-    projectId: project?.id ?? null,
-    sectionId: section?.id ?? null,
-  }));
+  const {
+    replaceSceneBlocks,
+    sceneBlocks,
+    scenePreview,
+    setEditingSceneBlockId,
+    updateSceneBlocks,
+    visibleEditingSceneBlockId,
+  } = useProjectSectionSceneBlocks(project?.id ?? null, section?.id ?? null, section?.blocks ?? []);
   const [presetImportOpen, setPresetImportOpen] = useState(false);
   const [selectedTrainingPresetId, setSelectedTrainingPresetId] = useState<string | null>(null);
   const { saveSectionDraft, visibleSectionDraft } = useProjectSectionDraft(initialProjectSectionStateKey);
@@ -2581,35 +2582,9 @@ export function LoraTrainingProjectSectionDetailPage({ data, projectId, sectionI
 
   const activeProject = project;
   const activeSection = section;
-  const projectSectionStateKey = initialProjectSectionStateKey ?? buildProjectSectionStateKey(activeProject.id, activeSection.id);
-  const sceneBlocks = sectionSceneBlocksByKey[projectSectionStateKey] ?? activeSection.blocks;
   const sectionResults = (sectionResultsByProjectKey[activeProject.id] ?? activeProject.resultPool)
     .filter((result) => result.sectionId === activeSection.id);
-  const visibleEditingSceneBlockId = editingSceneBlockState.projectId === activeProject.id && editingSceneBlockState.sectionId === activeSection.id ? editingSceneBlockState.blockId : null;
   const selectedTrainingPreset = training.presets.find((preset) => preset.id === selectedTrainingPresetId) ?? null;
-  const scenePreview = sceneBlocks.map((block) => block.text).join("\n\n");
-
-  function setEditingSceneBlockId(blockId: string | null) {
-    setEditingSceneBlockState({
-      blockId,
-      projectId: activeProject.id,
-      sectionId: activeSection.id,
-    });
-  }
-
-  function updateSceneBlocks(updater: (current: LoraTrainingSectionBlock[]) => LoraTrainingSectionBlock[]) {
-    setSectionSceneBlocksByKey((current) => ({
-      ...current,
-      [projectSectionStateKey]: updater(current[projectSectionStateKey] ?? activeSection.blocks),
-    }));
-  }
-
-  function replaceSceneBlocks(blocks: LoraTrainingSectionBlock[]) {
-    setSectionSceneBlocksByKey((current) => ({
-      ...current,
-      [projectSectionStateKey]: blocks,
-    }));
-  }
 
   function handleAddLocalSceneBlock() {
     const nextBlock = {

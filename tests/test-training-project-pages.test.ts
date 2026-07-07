@@ -23,6 +23,10 @@ const projectSectionDraftHookPath = resolve(featureUiDir, "use-project-section-d
 const projectSectionDraftHookSource = existsSync(projectSectionDraftHookPath)
   ? readFileSync(projectSectionDraftHookPath, "utf8")
   : "";
+const projectSectionSceneBlocksHookPath = resolve(featureUiDir, "use-project-section-scene-blocks.ts");
+const projectSectionSceneBlocksHookSource = existsSync(projectSectionSceneBlocksHookPath)
+  ? readFileSync(projectSectionSceneBlocksHookPath, "utf8")
+  : "";
 const generationComposeReferenceSelectionHookPath = resolve(featureUiDir, "use-generation-compose-reference-selection.ts");
 const generationComposeReferenceSelectionHookSource = existsSync(generationComposeReferenceSelectionHookPath)
   ? readFileSync(generationComposeReferenceSelectionHookPath, "utf8")
@@ -200,6 +204,17 @@ test("training project section draft state lives in a focused hook module", () =
   assert.match(pagesSource, /from "\.\/use-project-section-draft"/, "section detail page should import the focused section draft hook");
   assert.doesNotMatch(pagesSource, /\nconst \[sectionDraftsByKey, setSectionDraftsByKey\]/, "section detail page should not keep section draft state inline");
   assert.doesNotMatch(pagesSource, /type ProjectSectionDraftState/, "section detail page should not import section draft state typing directly");
+});
+
+test("training project section scene-block state lives in a focused hook module", () => {
+  assert.match(projectSectionSceneBlocksHookSource, /function useProjectSectionSceneBlocks\b/, "project section scene-block state should live in a focused hook");
+  assert.match(projectSectionSceneBlocksHookSource, /sectionSceneBlocksByKey/, "project section scene-block hook should own keyed block storage");
+  assert.match(projectSectionSceneBlocksHookSource, /editingSceneBlockState/, "project section scene-block hook should own route-scoped edit state");
+  assert.match(projectSectionSceneBlocksHookSource, /scenePreview/, "project section scene-block hook should derive scene preview text");
+  assert.match(projectSectionSceneBlocksHookSource, /replaceSceneBlocks/, "project section scene-block hook should expose replace behavior");
+  assert.match(pagesSource, /from "\.\/use-project-section-scene-blocks"/, "section detail page should import the focused scene-block hook");
+  assert.doesNotMatch(pagesSource, /\n  const \[sectionSceneBlocksByKey, setSectionSceneBlocksByKey\]/, "section detail page should not keep scene-block state inline");
+  assert.doesNotMatch(pagesSource, /\n  const \[editingSceneBlockState, setEditingSceneBlockState\]/, "section detail page should not keep scene-block edit state inline");
 });
 
 test("training generation compose reference selection lives in a focused hook module", () => {
