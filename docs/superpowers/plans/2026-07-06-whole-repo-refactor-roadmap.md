@@ -389,6 +389,8 @@
 - Phase 7 slice 60 verification passed: `node --import tsx --test tests/test-section-editor-binding-rules.test.ts tests/test-preset-group-member-replacement-source.test.ts tests/test-repo-inventory.test.ts` with 25 tests discovered, 25 pass, 0 fail.
 - Phase 7 slice 61 moved template section prompt-block rendering into `src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-prompt-blocks.tsx`. The broad section detail client now delegates the `TemplatePromptBlockEditor` surface while keeping prompt-block state and save scheduling in the route client until the larger section-detail split continues.
 - Phase 7 slice 61 verification passed: red `node --import tsx --test tests/test-template-section-detail-split.test.ts`, then green `node --import tsx --test tests/test-template-section-detail-split.test.ts`, green `node --import tsx --test tests/test-template-section-detail-split.test.ts tests/test-template-ui-action-imports.test.ts tests/test-shared-neighbor-navigation-usage.test.ts tests/text-editor-mobile-height.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-template-section-detail-split.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1108 tests discovered, 1107 pass, 0 fail, 1 skipped.
+- Phase 7 slice 62 moved template section LoRA rendering into `src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-lora-editor.tsx`. The broad section detail client now delegates both LoRA columns and standalone-delete wiring while keeping LoRA state mutation and save scheduling in the route client.
+- Phase 7 slice 62 verification passed: red `node --import tsx --test tests/test-template-section-detail-split.test.ts`, then green `node --import tsx --test tests/test-template-section-detail-split.test.ts`, green `node --import tsx --test tests/test-template-section-detail-split.test.ts tests/test-template-ui-action-imports.test.ts tests/test-lora-model-navigation.test.ts tests/text-editor-mobile-height.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1109 tests discovered, 1108 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -957,7 +959,8 @@ Loading states remain colocated under their route segments for now; the later lo
 - [x] Keep preset group slot ordering owned by category slot template logic.
 - [ ] Split template section detail client into route container, section form, preset binding editor, prompt blocks, LoRA editor, and change history.
   - [x] Prompt block rendering extracted to `src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-prompt-blocks.tsx` and covered by `tests/test-template-section-detail-split.test.ts`.
-  - [ ] Route/container, section form, preset binding editor, LoRA editor, and change history surfaces remain in `section-detail-client.tsx`.
+  - [x] LoRA editor rendering extracted to `src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-lora-editor.tsx` and covered by `tests/test-template-section-detail-split.test.ts`.
+  - [ ] Route/container, section form, preset binding editor, and change history surfaces remain in `section-detail-client.tsx`.
 - [ ] Keep sort rules editor isolated from preset edit form state.
 
 **Queue and settings pages:**

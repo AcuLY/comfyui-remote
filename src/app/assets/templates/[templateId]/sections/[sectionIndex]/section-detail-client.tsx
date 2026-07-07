@@ -16,7 +16,6 @@ import {
   getSectionPresetBindingGroupName,
   getSectionPresetManagerHref,
 } from "@/components/section-editor-binding-rules";
-import { LoraListEditor } from "@/components/lora-list-editor";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { generateLoraEntryId, type LoraEntry, DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2, type KSamplerParams } from "@/lib/lora-types";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
@@ -28,6 +27,7 @@ import {
   type TemplateBlockData,
   type TemplateSectionPromptCategoryConfig,
 } from "./template-section-prompt-blocks";
+import { TemplateSectionLoraEditor } from "./template-section-lora-editor";
 
 const AUTO_SAVE_DELAY = 600;
 
@@ -1191,30 +1191,12 @@ export function TemplateSectionDetailClient({
         categoryMap={categoryMap}
       />
 
-      {/* LoRA config */}
-      <div className="space-y-3 border-t border-white/5 pt-3">
-        <div className="text-xs font-medium text-zinc-400">LoRA 配置</div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <div className="mb-1.5 text-[11px] font-medium text-sky-400">LoRA 1</div>
-            <LoraListEditor
-              entries={loraConfig.lora1}
-              onChange={handleLora1Change}
-              presetBindings={presetBindings}
-              enableStandaloneDelete
-            />
-          </div>
-          <div>
-            <div className="mb-1.5 text-[11px] font-medium text-violet-400">LoRA 2</div>
-            <LoraListEditor
-              entries={loraConfig.lora2}
-              onChange={handleLora2Change}
-              presetBindings={presetBindings}
-              enableStandaloneDelete
-            />
-          </div>
-        </div>
-      </div>
+      <TemplateSectionLoraEditor
+        loraConfig={loraConfig}
+        onLora1Change={handleLora1Change}
+        onLora2Change={handleLora2Change}
+        presetBindings={presetBindings}
+      />
 
       {isPending && (
         <div className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2 text-center text-[11px] text-zinc-500">
