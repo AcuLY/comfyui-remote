@@ -7,6 +7,8 @@ import {
   getDefaultPhase0OutputDir,
   verifyPhase0Baseline,
   writePhase0BaselineReports,
+  type Phase0ReportPaths,
+  type Phase0VerificationResult,
 } from "../../src/server/quality/phase0-baseline";
 
 export interface BaselineCliArgs {
@@ -14,6 +16,16 @@ export interface BaselineCliArgs {
   outDir: string;
   exclusionPath?: string;
   projectRoot: string;
+}
+
+export interface BaselineCliResult {
+  phase: 0;
+  pass: boolean;
+  summaryJson: string;
+  validProjects: number;
+  labeledImages: number;
+  canonicalSections: number;
+  failedCriteria: string[];
 }
 
 export function parseBaselineArgs(argv: readonly string[]): BaselineCliArgs {
@@ -48,6 +60,21 @@ export function parseBaselineArgs(argv: readonly string[]): BaselineCliArgs {
   return { dbPath, outDir: outDir ?? getDefaultPhase0OutputDir(projectRoot), exclusionPath, projectRoot };
 }
 
+export function buildBaselineCliResult(
+  reportPaths: Phase0ReportPaths,
+  verification: Phase0VerificationResult,
+): BaselineCliResult {
+  return {
+    phase: 0,
+    pass: verification.pass,
+    summaryJson: reportPaths.summaryJson,
+    validProjects: verification.validProjects,
+    labeledImages: verification.labeledImages,
+    canonicalSections: verification.canonicalSections,
+    failedCriteria: verification.failedCriteria,
+  };
+}
+
 export async function runPhase0BaselineCli(argv = process.argv.slice(2)): Promise<number> {
   const args = parseBaselineArgs(argv);
   const projectRoot = args.projectRoot;
@@ -59,22 +86,9 @@ export async function runPhase0BaselineCli(argv = process.argv.slice(2)): Promis
   });
   const reportPaths = await writePhase0BaselineReports(baseline, { outputDir: outDir });
   const verification = verifyPhase0Baseline(baseline.summary);
+  const result = buildBaselineCliResult(reportPaths, verification);
 
-  console.log(
-    JSON.stringify(
-      {
-        phase: 0,
-        pass: verification.pass,
-        summaryJson: reportPaths.summaryJson,
-        validProjects: verification.validProjects,
-        labeledImages: verification.labeledImages,
-        canonicalSections: verification.canonicalSections,
-        failedCriteria: verification.failedCriteria,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log(JSON.stringify(result, null, 2));
 
   return verification.pass ? 0 : 1;
 }

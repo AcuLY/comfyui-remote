@@ -12,7 +12,11 @@ import {
   readPhase0LabeledImagesCsv,
   verifyPhase1Evaluation,
   writePhase1EvaluationReports,
+  type Phase1EvaluationSummary,
+  type Phase1PredictionCoverage,
+  type Phase1ReportPaths,
   type Phase1SplitMode,
+  type Phase1VerificationResult,
 } from "../../src/server/quality/phase1-offline-eval";
 
 export interface EvaluateCliArgs {
@@ -22,6 +26,18 @@ export interface EvaluateCliArgs {
   predictionsPath?: string;
   outDir?: string;
   projectRoot: string;
+}
+
+export interface EvaluateCliResult {
+  phase: 1;
+  pass: boolean;
+  splitMode: Phase1SplitMode;
+  summaryJson: string;
+  labeledImages: number;
+  mainImages: number;
+  manualExcludedImages: number;
+  predictionCoverage: Phase1PredictionCoverage;
+  failedCriteria: string[];
 }
 
 export function parseEvaluateArgs(argv: readonly string[]): EvaluateCliArgs {
@@ -78,6 +94,25 @@ export function parseEvaluateArgs(argv: readonly string[]): EvaluateCliArgs {
   };
 }
 
+export function buildEvaluateCliResult(
+  args: Pick<EvaluateCliArgs, "splitMode">,
+  reportPaths: Phase1ReportPaths,
+  summary: Phase1EvaluationSummary,
+  verification: Phase1VerificationResult,
+): EvaluateCliResult {
+  return {
+    phase: 1,
+    pass: verification.pass,
+    splitMode: args.splitMode,
+    summaryJson: reportPaths.summaryJson,
+    labeledImages: summary.labeledImages,
+    mainImages: summary.mainImages,
+    manualExcludedImages: summary.manualExcludedImages,
+    predictionCoverage: summary.predictionCoverage,
+    failedCriteria: verification.failedCriteria,
+  };
+}
+
 export async function runPhase1EvaluateCli(argv = process.argv.slice(2)): Promise<number> {
   const args = parseEvaluateArgs(argv);
   const projectRoot = args.projectRoot;
@@ -101,24 +136,9 @@ export async function runPhase1EvaluateCli(argv = process.argv.slice(2)): Promis
   });
   const reportPaths = await writePhase1EvaluationReports(evaluation, { outputDir });
   const verification = verifyPhase1Evaluation(evaluation.summary);
+  const result = buildEvaluateCliResult(args, reportPaths, evaluation.summary, verification);
 
-  console.log(
-    JSON.stringify(
-      {
-        phase: 1,
-        pass: verification.pass,
-        splitMode: args.splitMode,
-        summaryJson: reportPaths.summaryJson,
-        labeledImages: evaluation.summary.labeledImages,
-        mainImages: evaluation.summary.mainImages,
-        manualExcludedImages: evaluation.summary.manualExcludedImages,
-        predictionCoverage: evaluation.summary.predictionCoverage,
-        failedCriteria: verification.failedCriteria,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log(JSON.stringify(result, null, 2));
 
   return verification.pass ? 0 : 1;
 }

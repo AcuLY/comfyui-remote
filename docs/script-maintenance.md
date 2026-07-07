@@ -43,4 +43,6 @@ Keep Python scripts separate from Node scripts. Node services may spawn Python C
 - Keep destructive scripts explicit about whether dry-run exists. If dry-run is absent, this document must say so.
 - Generated docs scripts should be followed by a diff review before staging generated artifacts.
 - Quality scripts must keep output paths configurable so experiments can write to scratch directories before replacing checked-in benchmark fixtures.
+- Quality scripts must keep CSV serialization in `src/server/quality/csv-utils.ts` and JSON stdout behind exported typed CLI result builders.
+- Quality analysis files under `docs/plans/auto-review-analysis/**` must be listed in `docs/plans/auto-review-analysis/README.md` as either regenerated artifacts or checked-in benchmark fixtures with an owner and regeneration or verification command.
 - SQL files are script inputs rather than Node or Python CLIs; their preview and exit behavior come from the SQL client used to run them.

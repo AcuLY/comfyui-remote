@@ -572,6 +572,8 @@
 - Phase 12 slice 151 verification passed: red `node --import tsx --test --test-name-pattern "Python script environment" tests/test-script-maintenance-doc.test.ts`, green `node --import tsx --test --test-name-pattern "Python script environment|auto-censor Python runner help documents" tests/test-script-maintenance-doc.test.ts tests/test-auto-censor-python-script.test.ts`, green `node --import tsx --test tests/test-script-maintenance-doc.test.ts tests/test-auto-censor-python-script.test.ts` with 8 tests passed, `npm run lint`, and `npm test` with 1205 tests discovered, 1204 pass, 0 fail, 1 skipped.
 - Phase 12 slice 152 changed `scripts/cleanup-latent-artifacts.mjs` from immediate traversal deletion to collect-plan-then-delete behavior. It now prints a `cleanup-latent-artifacts-plan` JSON line with exact root, directory, and file paths before deletion, then prints the cleanup summary after deleting the planned targets.
 - Phase 12 slice 152 verification passed: red `node --import tsx --test tests/test-cleanup-latent-artifacts.test.ts` before implementation, green same command after implementation, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-cleanup-latent-artifacts.test.ts tests/test-latent-schema-cleanup.test.ts tests/test-script-maintenance-doc.test.ts tests/test-repo-inventory.test.ts` with 11 tests passed after updating the legacy missing-root assertion for the new two-line JSON output, `npm run lint`, and `npm test` with 1207 tests discovered, 1206 pass, 0 fail, 1 skipped.
+- Phase 12 slice 153 added `tests/test-quality-script-governance.test.ts` and `docs/plans/auto-review-analysis/README.md` to lock the quality pipeline maintenance boundary. Phase 0 and Phase 1 report CSV serialization must stay in `src/server/quality/csv-utils.ts`, quality CLI JSON stdout now flows through exported typed result builders, and every tracked auto-review analysis CSV/JSON/Markdown file is classified as either a regenerated artifact or checked-in benchmark fixture with a quality command owner.
+- Phase 12 slice 153 verification passed: red `node --import tsx --test tests/test-quality-script-governance.test.ts` before typed result builders and the data-owner README existed, green same command after implementation, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-quality-script-governance.test.ts tests/test-quality-phase0-baseline.test.ts tests/test-quality-phase1-offline-eval.test.ts tests/test-quality-phase1-reviewer.test.ts tests/test-script-maintenance-doc.test.ts tests/test-repo-inventory.test.ts` with 52 tests discovered, 51 pass, 0 fail, 1 skipped, `npm run lint`, and `npm test` with 1210 tests discovered, 1209 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1406,8 +1408,8 @@ Loading states remain colocated under their route segments for now; the later lo
 - [x] Keep Python scripts separate from Node scripts and document their required Python environment.
 - [x] Ensure auto-censor Python CLI can show help without loading heavy model dependencies.
 - [x] Make cleanup scripts print exactly what they will delete before deleting.
-- [ ] Keep quality scripts using shared CSV utilities and typed result objects.
-- [ ] Ensure quality analysis data files are either regenerated artifacts or checked-in benchmark fixtures with owners.
+- [x] Keep quality scripts using shared CSV utilities and typed result objects.
+- [x] Ensure quality analysis data files are either regenerated artifacts or checked-in benchmark fixtures with owners.
 
 ## Phase 13: Tests And Fixtures
 

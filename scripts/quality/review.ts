@@ -12,6 +12,7 @@ import {
   createOpenAICompatibleVisionClient,
   writePhase1ReviewerPredictionsJsonl,
   type Phase1ReviewerImageField,
+  type WritePhase1ReviewerPredictionsJsonlResult,
 } from "../../src/server/quality/phase1-reviewer";
 
 export type Phase1ReviewerBackend = "openai" | "codex";
@@ -30,6 +31,16 @@ export interface ReviewCliArgs {
   resume: boolean;
   model?: string;
   projectRoot: string;
+}
+
+export interface ReviewCliResult {
+  phase: 1;
+  backend: Phase1ReviewerBackend;
+  outputPath: string;
+  selectedRows: number;
+  written: number;
+  skipped: number;
+  model: string;
 }
 
 export function parseReviewArgs(argv: readonly string[], env: ReviewCliEnv = process.env): ReviewCliArgs {
@@ -114,6 +125,22 @@ export function parseReviewArgs(argv: readonly string[], env: ReviewCliEnv = pro
   };
 }
 
+export function buildReviewCliResult(
+  args: Pick<ReviewCliArgs, "backend">,
+  summary: WritePhase1ReviewerPredictionsJsonlResult,
+  model: string,
+): ReviewCliResult {
+  return {
+    phase: 1,
+    backend: args.backend,
+    outputPath: summary.outputPath,
+    selectedRows: summary.selectedRows,
+    written: summary.written,
+    skipped: summary.skipped,
+    model,
+  };
+}
+
 export async function runPhase1ReviewCli(argv = process.argv.slice(2)): Promise<number> {
   const args = parseReviewArgs(argv);
   const projectRoot = args.projectRoot;
@@ -143,22 +170,9 @@ export async function runPhase1ReviewCli(argv = process.argv.slice(2)): Promise<
     resume: args.resume,
     client,
   });
+  const result = buildReviewCliResult(args, summary, client.model);
 
-  console.log(
-    JSON.stringify(
-      {
-        phase: 1,
-        backend: args.backend,
-        outputPath: summary.outputPath,
-        selectedRows: summary.selectedRows,
-        written: summary.written,
-        skipped: summary.skipped,
-        model: client.model,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log(JSON.stringify(result, null, 2));
 
   return 0;
 }
