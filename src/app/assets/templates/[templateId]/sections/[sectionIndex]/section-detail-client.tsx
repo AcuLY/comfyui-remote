@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { resolveTemplatePresetImports, updateProjectTemplateSection } from "@/lib/actions/template-crud";
 import { parseInitialKSampler } from "@/components/ksampler-panel";
@@ -12,7 +10,6 @@ import {
   getSectionPresetBindingGroupName,
   getSectionPresetManagerHref,
 } from "@/components/section-editor-binding-rules";
-import { NeighborNavigation } from "@/components/neighbor-navigation";
 import { generateLoraEntryId, type LoraEntry, DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2, type KSamplerParams } from "@/lib/lora-types";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { normalizeAspectRatioList } from "@/lib/aspect-ratio-utils";
@@ -29,6 +26,7 @@ import {
   type TemplateSectionPresetBindingInfo,
 } from "./template-section-preset-bindings";
 import { TemplateSectionForm } from "./template-section-form";
+import { TemplateSectionNavigation } from "./template-section-navigation";
 
 const AUTO_SAVE_DELAY = 600;
 
@@ -662,32 +660,14 @@ export function TemplateSectionDetailClient({
 
   return (
     <div className="mx-auto w-full max-w-3xl min-w-0 space-y-4">
-      {/* Navigation bar */}
-      <div className="flex items-center justify-between">
-        <Link
-          href={basePath}
-          className="inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-zinc-200"
-        >
-          <ArrowLeft className="size-4" /> 返回模板
-        </Link>
-        <NeighborNavigation
-          previousOnClick={() => navigateToSection(previousSectionIndex)}
-          nextOnClick={() => navigateToSection(nextSectionIndex)}
-          previousDisabled={previousSectionIndex === null}
-          nextDisabled={nextSectionIndex === null}
-          previousLabel={null}
-          nextLabel={null}
-          previousTitle="上一节"
-          nextTitle="下一节"
-          previousAriaLabel="上一节"
-          nextAriaLabel="下一节"
-          positionText={`${sectionPosition + 1} / ${totalSections}`}
-          className="gap-2"
-          controlClassName="rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-zinc-400 transition hover:bg-white/[0.08] disabled:opacity-30"
-          disabledControlClassName="rounded-lg border border-white/10 bg-white/[0.04] p-1.5 text-zinc-400 opacity-30"
-          iconClassName="size-4"
-        />
-      </div>
+      <TemplateSectionNavigation
+        basePath={basePath}
+        previousSectionIndex={previousSectionIndex}
+        nextSectionIndex={nextSectionIndex}
+        sectionPosition={sectionPosition}
+        totalSections={totalSections}
+        onNavigateToSection={navigateToSection}
+      />
 
       <TemplateSectionForm
         name={name}

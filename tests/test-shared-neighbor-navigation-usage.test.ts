@@ -6,7 +6,7 @@ import { join } from "node:path";
 const rootDir = process.cwd();
 
 const pageFiles = [
-  "src/app/assets/templates/[templateId]/sections/[sectionIndex]/section-detail-client.tsx",
+  "src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-navigation.tsx",
   "src/app/projects/[projectId]/app-sidebar.tsx",
   "src/app/projects/[projectId]/results/project-results-client.tsx",
   "src/app/projects/[projectId]/sections/[sectionId]/page.tsx",

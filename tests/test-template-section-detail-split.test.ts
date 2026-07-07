@@ -7,6 +7,7 @@ const promptBlocksPath = "src/app/assets/templates/[templateId]/sections/[sectio
 const loraEditorPath = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-lora-editor.tsx";
 const presetBindingsPath = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-preset-bindings.tsx";
 const sectionFormPath = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-form.tsx";
+const navigationPath = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-navigation.tsx";
 
 test("template section detail delegates prompt block rendering to a focused component", () => {
   assert.ok(existsSync(promptBlocksPath), `${promptBlocksPath} should own template prompt block rendering`);
@@ -82,4 +83,33 @@ test("template section detail delegates section form rendering to a focused form
   assert.doesNotMatch(clientSource, /<BatchSizeQuickFill/);
   assert.doesNotMatch(clientSource, /<UpscaleFactorQuickFill/);
   assert.doesNotMatch(clientSource, /<KSamplerPanel/);
+});
+
+test("template section detail delegates navigation rendering to a focused header component", () => {
+  assert.ok(existsSync(navigationPath), `${navigationPath} should own template section navigation rendering`);
+
+  const clientSource = readFileSync(clientPath, "utf8");
+  const navigationSource = readFileSync(navigationPath, "utf8");
+
+  assert.match(navigationSource, /export function TemplateSectionNavigation/);
+  assert.match(navigationSource, /<NeighborNavigation/);
+  assert.match(navigationSource, /href=\{basePath\}/);
+  assert.match(navigationSource, /onNavigateToSection/);
+
+  assert.match(clientSource, /from "\.\/template-section-navigation";/);
+  assert.doesNotMatch(clientSource, /<NeighborNavigation/);
+  assert.doesNotMatch(clientSource, /from "@\/components\/neighbor-navigation";/);
+  assert.doesNotMatch(clientSource, /<ArrowLeft/);
+});
+
+test("template section detail route client remains the orchestration container after renderer splits", () => {
+  const clientSource = readFileSync(clientPath, "utf8");
+
+  assert.match(clientSource, /<TemplateSectionNavigation/);
+  assert.match(clientSource, /<TemplateSectionForm/);
+  assert.match(clientSource, /<TemplateSectionPresetBindings/);
+  assert.match(clientSource, /<TemplateSectionPromptBlocks/);
+  assert.match(clientSource, /<TemplateSectionLoraEditor/);
+  assert.doesNotMatch(clientSource, /ChangeHistory|change-history|变更记录/);
+  assert.ok(clientSource.split("\n").length < 800, `${clientPath} should stay below the broad-client review threshold`);
 });
