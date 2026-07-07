@@ -148,6 +148,10 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/training/worker/tasks/[taskId]/heartbeat/route.ts`
 - `src/app/api/training/worker/tasks/[taskId]/complete/route.ts`
 - `src/app/api/training/worker/tasks/[taskId]/fail/route.ts`
+- `src/app/api/models/move/route.ts`
+- `src/app/api/models/notes/route.ts`
+- `src/app/api/loras/move/route.ts`
+- `src/app/api/loras/notes/route.ts`
 
 ## Compatibility Exceptions
 

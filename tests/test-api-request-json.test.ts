@@ -23,6 +23,13 @@ function makeJsonRequest(body?: string) {
   });
 }
 
+function makeNextRequest(path: string, body?: string, method = "POST") {
+  return new NextRequest(`http://localhost${path}`, {
+    body,
+    method,
+  });
+}
+
 test("readOptionalJsonObject returns an empty object for empty request bodies", async () => {
   assert.deepEqual(await readOptionalJsonObject(makeRequest("")), {});
 });
@@ -289,6 +296,10 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/training/worker/tasks/[taskId]/heartbeat/route.ts",
     "src/app/api/training/worker/tasks/[taskId]/complete/route.ts",
     "src/app/api/training/worker/tasks/[taskId]/fail/route.ts",
+    "src/app/api/models/move/route.ts",
+    "src/app/api/models/notes/route.ts",
+    "src/app/api/loras/move/route.ts",
+    "src/app/api/loras/notes/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -675,6 +686,22 @@ test("training worker task mutations use shared JSON parsing", () => {
   assert.match(heartbeatSource, /\bfailFromError\(/, "worker heartbeat route should map parser errors through failFromError");
   assert.doesNotMatch(heartbeatSource, /request\.json\(\)/, "worker heartbeat route should not parse JSON directly");
   assert.doesNotMatch(heartbeatSource, /JSON\.parse\(/, "worker heartbeat route should not parse request text locally");
+});
+
+test("model and lora asset mutations use shared raw JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/models/move/route.ts",
+    "src/app/api/models/notes/route.ts",
+    "src/app/api/loras/move/route.ts",
+    "src/app/api/loras/notes/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
 });
 
 test("generation section batch delete route delegates destructive checks to project service", () => {
@@ -1315,6 +1342,28 @@ test("training worker task mutations preserve invalid JSON response envelope", a
     await workerTaskFailRoute.POST(makeRequest("not-json"), {
       params: Promise.resolve({ taskId: "task-1" }),
     }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("model and lora asset mutations preserve invalid JSON response envelope", async () => {
+  const modelMoveRoute = await import("../src/app/api/models/move/route");
+  const modelNotesRoute = await import("../src/app/api/models/notes/route");
+  const loraMoveRoute = await import("../src/app/api/loras/move/route");
+  const loraNotesRoute = await import("../src/app/api/loras/notes/route");
+
+  for (const response of [
+    await modelMoveRoute.POST(makeNextRequest("/api/models/move?kind=checkpoint", "not-json")),
+    await modelNotesRoute.PUT(makeNextRequest("/api/models/notes?kind=checkpoint", "not-json", "PUT")),
+    await loraMoveRoute.POST(makeRequest("not-json")),
+    await loraNotesRoute.PUT(makeNextRequest("/api/loras/notes", "not-json", "PUT")),
   ]) {
     assert.equal(response.status, 400);
     assert.deepEqual(await response.json(), {

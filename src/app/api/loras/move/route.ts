@@ -1,9 +1,10 @@
 import { z } from "zod";
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   ModelAssetError,
   moveModelFile,
 } from "@/server/services/model-asset-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 const MoveSchema = z.object({
   sourcePath: z.string().min(1),
@@ -11,8 +12,15 @@ const MoveSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  let body: unknown;
+
   try {
-    const body = await request.json().catch(() => null);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
+  }
+
+  try {
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return fail("Invalid JSON body", 400);
     }

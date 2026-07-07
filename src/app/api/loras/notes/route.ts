@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { NextRequest } from "next/server";
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   getModelNotes,
   ModelAssetError,
   updateModelNotes,
 } from "@/server/services/model-asset-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 const NotesSchema = z.object({
   path: z.string().min(1),
@@ -28,8 +29,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  let body: unknown;
+
   try {
-    const body = await request.json().catch(() => null);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
+  }
+
+  try {
     if (!body || typeof body !== "object" || Array.isArray(body)) {
       return fail("Invalid JSON body", 400);
     }
