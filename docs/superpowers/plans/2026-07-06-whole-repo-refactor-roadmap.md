@@ -574,6 +574,8 @@
 - Phase 12 slice 152 verification passed: red `node --import tsx --test tests/test-cleanup-latent-artifacts.test.ts` before implementation, green same command after implementation, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-cleanup-latent-artifacts.test.ts tests/test-latent-schema-cleanup.test.ts tests/test-script-maintenance-doc.test.ts tests/test-repo-inventory.test.ts` with 11 tests passed after updating the legacy missing-root assertion for the new two-line JSON output, `npm run lint`, and `npm test` with 1207 tests discovered, 1206 pass, 0 fail, 1 skipped.
 - Phase 12 slice 153 added `tests/test-quality-script-governance.test.ts` and `docs/plans/auto-review-analysis/README.md` to lock the quality pipeline maintenance boundary. Phase 0 and Phase 1 report CSV serialization must stay in `src/server/quality/csv-utils.ts`, quality CLI JSON stdout now flows through exported typed result builders, and every tracked auto-review analysis CSV/JSON/Markdown file is classified as either a regenerated artifact or checked-in benchmark fixture with a quality command owner.
 - Phase 12 slice 153 verification passed: red `node --import tsx --test tests/test-quality-script-governance.test.ts` before typed result builders and the data-owner README existed, green same command after implementation, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-quality-script-governance.test.ts tests/test-quality-phase0-baseline.test.ts tests/test-quality-phase1-offline-eval.test.ts tests/test-quality-phase1-reviewer.test.ts tests/test-script-maintenance-doc.test.ts tests/test-repo-inventory.test.ts` with 52 tests discovered, 51 pass, 0 fail, 1 skipped, `npm run lint`, and `npm test` with 1210 tests discovered, 1209 pass, 0 fail, 1 skipped.
+- Phase 13 slice 154 added `tests/fixtures/domain-builders.ts`, `tests/README.md`, and `tests/test-fixture-governance.test.ts` to lock test-suite maintainability. The shared fixture builders now cover generation and training project/section/run/image/task/revision entities, SQLite DB setup stays behind `tests/fixtures/sqlite-db.ts`, route tests are guarded against static API-route imports before env setup, and the test README documents source-contract, native-module, local-DB, route-env, visual/UI, and fresh fixture rules.
+- Phase 13 slice 154 verification passed: red `node --import tsx --test tests/test-fixture-governance.test.ts` before the domain builders and test README existed, green same command after implementation, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-fixture-governance.test.ts tests/test-repo-inventory.test.ts` with 7 tests passed, `npm run lint`, and `npm test` with 1214 tests discovered, 1213 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1425,14 +1427,14 @@ Loading states remain colocated under their route segments for now; the later lo
 - UI/source contract: `test-*-source`, design-demo tests, component tests.
 - Quality: `test-quality-*`.
 
-- [ ] Create shared fixture builders for project, section, preset category, preset, preset group, template, run, image result, training project, training section, generation task, dataset revision, and training run.
-- [ ] Create DB setup helpers for SQLite schema bootstrap and cleanup.
-- [ ] Split tests that scan source text from tests that exercise runtime behavior.
-- [ ] Keep source contract tests but annotate why they exist and what behavior they protect.
-- [ ] Add a test README explaining which tests require regenerated native modules or local DB files.
-- [ ] Make route tests import route modules only after test env vars are set.
-- [ ] Avoid test order dependencies by creating fresh DB/file fixtures per test file.
-- [ ] Keep visual/UI tests focused on rendered output or stable source contracts, not incidental CSS class order.
+- [x] Create shared fixture builders for project, section, preset category, preset, preset group, template, run, image result, training project, training section, generation task, dataset revision, and training run.
+- [x] Create DB setup helpers for SQLite schema bootstrap and cleanup.
+- [x] Split tests that scan source text from tests that exercise runtime behavior.
+- [x] Keep source contract tests but annotate why they exist and what behavior they protect.
+- [x] Add a test README explaining which tests require regenerated native modules or local DB files.
+- [x] Make route tests import route modules only after test env vars are set.
+- [x] Avoid test order dependencies by creating fresh DB/file fixtures per test file.
+- [x] Keep visual/UI tests focused on rendered output or stable source contracts, not incidental CSS class order.
 
 ## Phase 14: Documentation And Agent Rules
 
