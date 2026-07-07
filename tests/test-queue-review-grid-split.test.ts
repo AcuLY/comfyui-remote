@@ -6,6 +6,7 @@ const reviewGridPath = "src/app/queue/[runId]/review-grid.tsx";
 const imageCardPath = "src/app/queue/[runId]/queue-review-image-card.tsx";
 const selectionToolbarPath = "src/app/queue/[runId]/queue-review-selection-toolbar.tsx";
 const selectionHookPath = "src/app/queue/[runId]/use-queue-review-selection.ts";
+const batchActionsPath = "src/app/queue/[runId]/queue-review-batch-actions.tsx";
 
 test("queue review grid delegates image card labels and markers to a focused component", () => {
   assert.ok(existsSync(imageCardPath), `${imageCardPath} should own queue review image card rendering`);
@@ -73,4 +74,31 @@ test("queue review grid delegates selection state helpers to a focused hook", ()
   assert.doesNotMatch(reviewGridSource, /function toggleSelect/);
   assert.doesNotMatch(reviewGridSource, /function selectAll/);
   assert.doesNotMatch(reviewGridSource, /function removeSelectedIds/);
+});
+
+test("queue review grid delegates batch action strip and rest navigation to a focused component", () => {
+  assert.ok(existsSync(batchActionsPath), `${batchActionsPath} should own queue review batch actions`);
+
+  const reviewGridSource = readFileSync(reviewGridPath, "utf8");
+  const batchActionsSource = readFileSync(batchActionsPath, "utf8");
+
+  assert.match(batchActionsSource, /export function QueueReviewBatchActions/);
+  assert.match(batchActionsSource, /function handleKeep/);
+  assert.match(batchActionsSource, /function handleTrash/);
+  assert.match(batchActionsSource, /function handleRestAndNext/);
+  assert.match(batchActionsSource, /pendingAfterAction/);
+  assert.match(batchActionsSource, /批量保留/);
+  assert.match(batchActionsSource, /批量删除/);
+  assert.match(batchActionsSource, /保留剩余/);
+  assert.match(batchActionsSource, /删除剩余/);
+  assert.match(batchActionsSource, /Trash2/);
+  assert.match(batchActionsSource, /ChevronRight/);
+
+  assert.match(reviewGridSource, /from "\.\/queue-review-batch-actions";/);
+  assert.match(reviewGridSource, /<QueueReviewBatchActions/);
+  assert.doesNotMatch(reviewGridSource, /function handleKeep/);
+  assert.doesNotMatch(reviewGridSource, /function handleTrash/);
+  assert.doesNotMatch(reviewGridSource, /function handleRestAndNext/);
+  assert.doesNotMatch(reviewGridSource, /批量保留/);
+  assert.doesNotMatch(reviewGridSource, /保留剩余/);
 });

@@ -278,16 +278,17 @@ test("queue trash undo stack restores batch deletes in order and supports consec
 
 test("queue review grid records batch trash actions and exposes lightbox undo", () => {
   const gridSource = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
+  const batchActionsSource = readFileSync("src/app/queue/[runId]/queue-review-batch-actions.tsx", "utf8");
   const lightboxSource = readFileSync("src/app/queue/[runId]/image-lightbox.tsx", "utf8");
   const handleTrash = sourceSlice(
-    gridSource,
+    batchActionsSource,
     "  function handleTrash()",
-    "  /** Handle the remaining pending images",
+    "  function handleRestAndNext",
   );
   const undoHandler = sourceSlice(
     gridSource,
     "  const handleUndoTrash = useCallback",
-    "  function handleKeep()",
+    "  const trashCurrentRunImages = useCallback",
   );
 
   assert.match(
@@ -1026,7 +1027,7 @@ test("single-image review controls do not use one global pending lock", () => {
   const queueBusySource = sourceSlice(
     queueSource,
     "  const lightboxBusy =",
-    "  const pendingAfterAction =",
+    "  function markImagesKept",
   );
   const queueReviewLightboxImage = sourceSlice(
     queueSource,
