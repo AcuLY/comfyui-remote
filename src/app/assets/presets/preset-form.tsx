@@ -30,6 +30,13 @@ import { PresetVariantBulkEditDialog } from "./preset-variant-bulk-edit-dialog";
 import { toSlug } from "./group-utils";
 import { usePresetSaveQueue } from "./use-preset-save-queue";
 import { PresetVariantList } from "./preset-variant-list";
+import {
+  applyLoraToPresetVariants,
+  applyPromptToPresetVariants,
+  cloneLinkedVariants,
+  cloneLoraBindings,
+  hasIncompletePresetVariantLoraDraft,
+} from "./preset-variant-bulk-apply";
 
 function uniqueSlug(base: string, usedSlugs: Set<string>) {
   let slug = base;
@@ -267,20 +274,6 @@ function nextVariantDraftClientId() {
   return `variant-draft-${variantDraftCounter}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-function cloneLoraBindings(bindings: VariantDraft["lora1"]) {
-  return bindings.map((entry) => ({ ...entry }));
-}
-
-function cloneLinkedVariants(linkedVariants: VariantDraft["linkedVariants"]) {
-  return linkedVariants.map((entry) => ({ ...entry }));
-}
-
-function hasIncompleteLoraDraft(variantDrafts: VariantDraft[]) {
-  return variantDrafts.some((variant) =>
-    [...variant.lora1, ...variant.lora2].some((entry) => !entry.path.trim()),
-  );
-}
-
 type PresetFormData = {
   categoryId: string;
   folderId?: string | null;
@@ -490,14 +483,13 @@ export function PresetForm({
     updated[targetIdx] = { ...updated[targetIdx], [key]: cloneLoraBindings(value) };
     setVariants(updated);
 
-    if (!hasIncompleteLoraDraft(updated)) {
+    if (!hasIncompletePresetVariantLoraDraft(updated)) {
       saveDrafts(updated);
     }
   }
 
   function applyPromptToAllVariants(key: "prompt" | "negativePrompt") {
-    const value = current[key];
-    const updated = variants.map((variant) => ({ ...variant, [key]: value }));
+    const updated = applyPromptToPresetVariants(variants, current, key);
     setVariants(updated);
     saveDrafts(updated);
   }
@@ -508,27 +500,11 @@ export function PresetForm({
   }
 
   function applyLoraToAllVariants(key: "lora1" | "lora2", entry: VariantDraft["lora1"][number]) {
-    const path = entry.path.trim();
-    if (!path) return;
-
-    const appliedEntry = {
-      path,
-      weight: entry.weight,
-      enabled: entry.enabled,
-    };
-    const updated = variants.map((variant) => {
-      const bindings = cloneLoraBindings(variant[key]);
-      const existingIdx = bindings.findIndex((item) => item.path.trim() === path);
-      if (existingIdx >= 0) {
-        bindings[existingIdx] = appliedEntry;
-      } else {
-        bindings.push(appliedEntry);
-      }
-      return { ...variant, [key]: bindings };
-    });
+    const updated = applyLoraToPresetVariants(variants, key, entry);
+    if (!updated) return;
 
     setVariants(updated);
-    if (!hasIncompleteLoraDraft(updated)) {
+    if (!hasIncompletePresetVariantLoraDraft(updated)) {
       saveDrafts(updated);
     }
   }

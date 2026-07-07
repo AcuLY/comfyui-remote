@@ -379,6 +379,8 @@
 - Phase 7 slice 55 verification passed: red `node --import tsx --test tests/test-preset-save-queue.test.ts`, red `node --import tsx --test tests/test-repo-inventory.test.ts` for preset-owned queue inventory classification, then green `node --import tsx --test tests/test-preset-save-queue.test.ts tests/test-preset-variant-save-optimization.test.ts`, green `node --import tsx --test tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1098 tests discovered, 1097 pass, 0 fail, 1 skipped.
 - Phase 7 slice 56 moved preset variant-list rendering, DnD wiring, sortable row rendering, and add/delete controls into `src/app/assets/presets/preset-variant-list.tsx`. `preset-form.tsx` now delegates the list surface while keeping selected-index updates, server reorder persistence, and variant editor fields in the form container.
 - Phase 7 slice 56 verification passed: red `node --import tsx --test tests/test-preset-form-split.test.ts`, then green `node --import tsx --test tests/test-preset-form-split.test.ts tests/test-preset-save-queue.test.ts tests/test-preset-variant-save-optimization.test.ts`, `node --import tsx --test tests/test-preset-form-split.test.ts tests/test-preset-save-queue.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1100 tests discovered, 1099 pass, 0 fail, 1 skipped.
+- Phase 7 slice 57 moved preset variant bulk apply copy logic into `src/app/assets/presets/preset-variant-bulk-apply.ts`. `preset-form.tsx` still owns button handlers and save coordination, while prompt copy, LoRA update/append, blank-path no-op, nested clone helpers, and incomplete LoRA detection are covered as pure utilities.
+- Phase 7 slice 57 verification passed: red `node --import tsx --test tests/test-preset-variant-bulk-apply.test.ts`, then green `node --import tsx --test tests/test-preset-variant-bulk-apply.test.ts tests/test-preset-form-split.test.ts tests/test-preset-save-queue.test.ts`, `node --import tsx --test tests/test-preset-variant-bulk-apply.test.ts tests/test-preset-form-split.test.ts tests/test-preset-save-queue.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1105 tests discovered, 1104 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -938,10 +940,11 @@ Loading states remain colocated under their route segments for now; the later lo
 - [ ] Split `preset-form.tsx` into variant list, variant editor, save queue hook, bulk apply utilities, and action footer.
   - [x] Save queue hook extracted to `src/app/assets/presets/use-preset-save-queue.ts` and covered by `tests/test-preset-save-queue.test.ts`.
   - [x] Variant list and DnD surface extracted to `src/app/assets/presets/preset-variant-list.tsx` and covered by `tests/test-preset-form-split.test.ts`.
-  - [ ] Variant editor, bulk apply utilities, and action footer remain in `preset-form.tsx`.
-- [ ] Keep "apply to all variants" behavior tested for copy loop and save queue separately.
+  - [x] Bulk apply utilities extracted to `src/app/assets/presets/preset-variant-bulk-apply.ts` and covered by `tests/test-preset-variant-bulk-apply.test.ts`.
+  - [ ] Variant editor and action footer remain in `preset-form.tsx`.
+- [x] Keep "apply to all variants" behavior tested for copy loop and save queue separately.
   - [x] Save queue behavior is tested separately for latest-payload coalescing, retry, handler refresh, and falsy payloads.
-  - [ ] Copy-loop/apply-to-all behavior still needs focused utility tests before the bulk apply split is marked complete.
+  - [x] Copy-loop/apply-to-all behavior is tested separately for prompt copy, LoRA update/append, blank-path no-op, incomplete LoRA detection, and nested clone helpers.
 - [ ] Keep preset group slot ordering owned by category slot template logic.
 - [ ] Split template section detail client into route container, section form, preset binding editor, prompt blocks, LoRA editor, and change history.
 - [ ] Keep sort rules editor isolated from preset edit form state.
