@@ -405,6 +405,8 @@
 - Phase 7 slice 68 verification passed: red `node --import tsx --test tests/test-queue-page-client-split.test.ts`, then green `node --import tsx --test tests/test-queue-page-client-split.test.ts`, green `node --import tsx --test tests/test-queue-page-client-split.test.ts tests/test-queue-autopoll-no-router-refresh.test.ts tests/test-queue-trash-restore.test.ts tests/test-queue-control-progress-stream.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-run-submission-deferral.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1116 tests discovered, 1115 pass, 0 fail, 1 skipped.
 - Phase 7 slice 69 moved queue trash tab rendering, restore buttons, clear action surface, and trash pagination controls into `src/app/queue/queue-trash-tab.tsx`. `queue-page-client.tsx` still owns trash state and restore/clear callbacks until the final trash-state hook split.
 - Phase 7 slice 69 verification passed: red `node --import tsx --test tests/test-queue-page-client-split.test.ts`, then green `node --import tsx --test tests/test-queue-page-client-split.test.ts`, green `node --import tsx --test tests/test-queue-page-client-split.test.ts tests/test-queue-trash-restore.test.ts tests/test-queue-autopoll-no-router-refresh.test.ts tests/test-queue-control-progress-stream.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-run-submission-deferral.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1117 tests discovered, 1116 pass, 0 fail, 1 skipped.
+- Phase 7 slice 70 moved queue trash local items, pagination, visible pages, restore, clear, and page-change callbacks into `src/app/queue/use-queue-trash-state.ts`. `queue-page-client.tsx` still owns queue-data refresh orchestration and passes refresh results into the trash hook through `applyTrashRefresh`.
+- Phase 7 slice 70 verification passed: red `node --import tsx --test tests/test-queue-page-client-split.test.ts`, red `node --import tsx --test tests/test-queue-page-client-split.test.ts tests/test-queue-trash-restore.test.ts`, then green `node --import tsx --test tests/test-queue-page-client-split.test.ts tests/test-queue-trash-restore.test.ts`, green `node --import tsx --test tests/test-queue-page-client-split.test.ts tests/test-queue-trash-restore.test.ts tests/test-queue-autopoll-no-router-refresh.test.ts tests/test-queue-control-progress-stream.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-run-submission-deferral.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1118 tests discovered, 1117 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -989,12 +991,12 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/app/settings/logs/page.tsx`
 - `src/app/settings/monitor/page.tsx`
 
-- [ ] Keep queue list, active progress, review group pagination, and trash/restore state separate.
+- [x] Keep queue list, active progress, review group pagination, and trash/restore state separate.
   - [x] Pending review-group list and pagination extracted to `src/app/queue/queue-pending-tab.tsx` and covered by `tests/test-queue-page-client-split.test.ts`.
   - [x] Active run progress and controls extracted to `src/app/queue/queue-running-tab.tsx` and covered by `tests/test-queue-page-client-split.test.ts`.
   - [x] Trash/restore list and pagination rendering extracted to `src/app/queue/queue-trash-tab.tsx` and covered by `tests/test-queue-page-client-split.test.ts`.
-  - [ ] Trash/restore local state and callbacks extracted from `queue-page-client.tsx`.
-- [ ] Keep queue page autopoll behavior from causing `router.refresh` loops.
+  - [x] Trash/restore local state and callbacks extracted to `src/app/queue/use-queue-trash-state.ts` and covered by `tests/test-queue-page-client-split.test.ts` plus `tests/test-queue-trash-restore.test.ts`.
+- [x] Keep queue page autopoll behavior from causing `router.refresh` loops.
 - [ ] Keep review grid selection, action strip, keyboard shortcuts, and image labeling split into focused components.
 - [ ] Keep settings pages as operational dashboards and avoid adding business logic there.
 

@@ -7,7 +7,6 @@ import { RotateCw, RefreshCw, AlertTriangle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
-import { clearTrash } from "@/lib/actions/image-review";
 import { runSection } from "@/lib/actions/run-execution";
 import { cancelRun, clearRuns, pauseRun, resumeRun } from "@/lib/actions/run-lifecycle";
 import { showRunSubmissionToast } from "@/lib/run-submission-toast";
@@ -17,6 +16,7 @@ import { CensoringProgressCard } from "./queue-censoring-progress-card";
 import { QueuePendingTab } from "./queue-pending-tab";
 import { QueueRunningTab } from "./queue-running-tab";
 import { QueueTrashTab } from "./queue-trash-tab";
+import { useQueueTrashState } from "./use-queue-trash-state";
 
 export type QueueTabKey = "pending" | "running" | "failed" | "censoring" | "trash";
 
@@ -150,8 +150,6 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
   const [queuePagination, setQueuePagination] = useState<QueuePagination>(initialQueuePagination);
   const [runningRuns, setRunningRuns] = useState<RunningRun[]>(initialRunningRuns);
   const [failedRuns, setFailedRuns] = useState<FailedRun[]>(initialFailedRuns ?? []);
-  const [trashItems, setTrashItems] = useState<TrashItem[]>(initialTrashItems ?? []);
-  const [trashPagination, setTrashPagination] = useState<TrashPagination>(initialTrashPagination);
   const [censoringProgress, setCensoringProgress] = useState<CensoringProgressItem[]>(initialCensoringProgress ?? []);
   const [censoringHistory, setCensoringHistory] = useState<CensoringHistoryItem[]>(initialCensoringHistory ?? []);
   const [isPending, startTransition] = useTransition();
@@ -168,10 +166,26 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
     setQueuePagination(initialQueuePagination);
   }, [initialQueueRuns, initialQueuePagination]);
 
-  useEffect(() => {
-    setTrashItems(initialTrashItems ?? []);
-    setTrashPagination(initialTrashPagination);
-  }, [initialTrashItems, initialTrashPagination]);
+  function refreshTrashPage(page: number) {
+    refresh({ trashPage: page });
+  }
+
+  const {
+    trashItems,
+    trashPagination,
+    trashCount,
+    trashVisiblePages,
+    applyTrashRefresh,
+    handleTrashPageChange,
+    handleRestore,
+    handleClearTrash,
+  } = useQueueTrashState({
+    initialTrashItems,
+    initialTrashPagination,
+    isPending,
+    startTransition,
+    refreshTrashPage,
+  });
 
   const refresh = useCallback((options: { trashPage?: number } = {}) => {
     startTransition(async () => {
@@ -218,16 +232,11 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
       }
       knownFailedIdsRef.current = new Set(newFailed.map((r) => r.id));
       setFailedRuns(newFailed);
-      if (Array.isArray(data.trashItems)) {
-        setTrashItems(data.trashItems);
-      }
-      if (data.trashPagination) {
-        setTrashPagination(data.trashPagination);
-      }
+      applyTrashRefresh(data);
       setCensoringProgress(data.censoringProgress ?? []);
       setCensoringHistory(data.censoringHistory ?? []);
     });
-  }, [activeTab, queuePagination.page, queuePagination.pageSize, trashPagination.page, trashPagination.pageSize]);
+  }, [activeTab, applyTrashRefresh, queuePagination.page, queuePagination.pageSize, trashPagination.page, trashPagination.pageSize]);
 
   // Auto-poll
   useEffect(() => {
@@ -254,94 +263,6 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
   const runningCount = runningRuns.length + censoringActiveCount;
   const censoringCount = censoringActiveCount;
   const failedCount = failedRuns.length;
-  const trashCount = trashPagination.totalItems;
-  const trashVisiblePages = Array.from(
-    new Set([
-      1,
-      trashPagination.page - 1,
-      trashPagination.page,
-      trashPagination.page + 1,
-      trashPagination.totalPages,
-    ]),
-  ).filter((page) => page >= 1 && page <= trashPagination.totalPages);
-
-  function handleTrashPageChange(page: number) {
-    const nextPage = Math.min(Math.max(1, page), trashPagination.totalPages);
-    if (nextPage === trashPagination.page || isPending) return;
-    refresh({ trashPage: nextPage });
-  }
-
-  function handleRestore(item: TrashItem) {
-    startTransition(async () => {
-      try {
-        const response = await fetch(`/api/images/${encodeURIComponent(item.imageResultId)}/restore`, {
-          method: "POST",
-        });
-        const result = (await response.json().catch(() => null)) as {
-          ok?: boolean;
-          error?: { message?: string };
-        } | null;
-
-        if (!response.ok || result?.ok === false) {
-          throw new Error(result?.error?.message ?? "恢复失败");
-        }
-
-        setTrashItems((prev) => prev.filter((trashItem) => trashItem.id !== item.id));
-        setTrashPagination((prev) => {
-          const totalItems = Math.max(0, prev.totalItems - 1);
-          const totalPages = Math.max(1, Math.ceil(totalItems / prev.pageSize));
-          const page = Math.min(prev.page, totalPages);
-          const startIndex = (page - 1) * prev.pageSize;
-          return {
-            ...prev,
-            page,
-            totalItems,
-            totalPages,
-            startItem: totalItems === 0 ? 0 : startIndex + 1,
-            endItem: Math.min(Math.max(startIndex, prev.endItem - 1), totalItems),
-          };
-        });
-        refresh({ trashPage: trashPagination.page });
-        toast.success("图片已恢复");
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "恢复失败");
-      }
-    });
-  }
-
-  function handleClearTrash() {
-    if (trashCount === 0) return;
-    if (
-      !confirm(
-        `确定要永久清空回收站中的 ${trashCount} 张图片吗？此操作不可恢复。`,
-      )
-    ) {
-      return;
-    }
-
-    startTransition(async () => {
-      const result = await clearTrash();
-      if (result.ok) {
-        setTrashItems([]);
-        setTrashPagination((prev) => ({
-          ...prev,
-          page: 1,
-          totalItems: 0,
-          totalPages: 1,
-          startItem: 0,
-          endItem: 0,
-        }));
-        const suffix =
-          result.fileDeleteFailures > 0
-            ? `，其中 ${result.fileDeleteFailures} 个文件未能删除`
-            : "";
-        toast.success(`已清空 ${result.count} 张图片${suffix}`);
-        router.refresh();
-      } else {
-        toast.error(result.error ?? "清空回收站失败");
-      }
-    });
-  }
 
   async function runQueueControlProgressStream(
     url: string,

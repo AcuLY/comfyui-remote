@@ -7,6 +7,7 @@ const pendingTabPath = "src/app/queue/queue-pending-tab.tsx";
 const runningTabPath = "src/app/queue/queue-running-tab.tsx";
 const censoringProgressCardPath = "src/app/queue/queue-censoring-progress-card.tsx";
 const trashTabPath = "src/app/queue/queue-trash-tab.tsx";
+const trashStateHookPath = "src/app/queue/use-queue-trash-state.ts";
 
 test("queue page delegates pending review groups and pagination to a focused tab component", () => {
   assert.ok(existsSync(pendingTabPath), `${pendingTabPath} should own pending review-group rendering`);
@@ -68,4 +69,28 @@ test("queue page delegates trash list and pagination rendering to a focused tab 
   assert.match(clientSource, /<QueueTrashTab/);
   assert.doesNotMatch(clientSource, /trashItems\.map/);
   assert.doesNotMatch(clientSource, /trashVisiblePages\.map/);
+});
+
+test("queue page delegates trash state and callbacks to a focused hook", () => {
+  assert.ok(existsSync(trashStateHookPath), `${trashStateHookPath} should own trash state and callbacks`);
+
+  const clientSource = readFileSync(queueClientPath, "utf8");
+  const trashStateHookSource = readFileSync(trashStateHookPath, "utf8");
+
+  assert.match(trashStateHookSource, /export function useQueueTrashState/);
+  assert.match(trashStateHookSource, /useState<TrashItem\[\]>/);
+  assert.match(trashStateHookSource, /setTrashPagination/);
+  assert.match(trashStateHookSource, /handleTrashPageChange/);
+  assert.match(trashStateHookSource, /handleRestore/);
+  assert.match(trashStateHookSource, /handleClearTrash/);
+  assert.match(trashStateHookSource, /clearTrash/);
+  assert.match(trashStateHookSource, /fetch\(`\/api\/images\/\$\{encodeURIComponent\(item\.imageResultId\)\}\/restore`/);
+
+  assert.match(clientSource, /from "\.\/use-queue-trash-state";/);
+  assert.match(clientSource, /useQueueTrashState\(/);
+  assert.doesNotMatch(clientSource, /const \[trashItems, setTrashItems\]/);
+  assert.doesNotMatch(clientSource, /const \[trashPagination, setTrashPagination\]/);
+  assert.doesNotMatch(clientSource, /function handleTrashPageChange/);
+  assert.doesNotMatch(clientSource, /function handleRestore/);
+  assert.doesNotMatch(clientSource, /function handleClearTrash/);
 });

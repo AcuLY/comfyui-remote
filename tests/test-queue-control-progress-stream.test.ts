@@ -51,6 +51,7 @@ test("queue page bulk controls consume streaming progress events", () => {
 
 test("queue page client imports queue actions from focused action modules", () => {
   const source = readSource("src/app/queue/queue-page-client.tsx");
+  const trashStateSource = readSource("src/app/queue/use-queue-trash-state.ts");
 
   assert.match(
     source,
@@ -63,9 +64,9 @@ test("queue page client imports queue actions from focused action modules", () =
     "queue page should import rerun actions from the focused run-execution action module.",
   );
   assert.match(
-    source,
+    trashStateSource,
     /from "@\/lib\/actions\/image-review";/,
-    "queue page should import trash actions from the focused image-review action module.",
+    "queue trash state hook should import trash actions from the focused image-review action module.",
   );
   assert.match(
     source,
@@ -73,8 +74,8 @@ test("queue page client imports queue actions from focused action modules", () =
     "queue page should lazy-load censoring controls from the focused censoring action module.",
   );
   assert.doesNotMatch(
-    source,
+    `${source}\n${trashStateSource}`,
     /from "@\/lib\/actions";|import\("@\/lib\/actions"\)/,
-    "queue page should not import the full server-action barrel.",
+    "queue page and trash state hook should not import the full server-action barrel.",
   );
 });

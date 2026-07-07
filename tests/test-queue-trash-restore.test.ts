@@ -12,12 +12,12 @@ function sourceSlice(source: string, startNeedle: string, endNeedle: string) {
 }
 
 test("queue trash restore uses the background restore API without refreshing the heavy queue page", () => {
-  const source = readFileSync("src/app/queue/queue-page-client.tsx", "utf8");
-  const imports = sourceSlice(source, "import {", "type QueueControlStreamResult");
+  const source = readFileSync("src/app/queue/use-queue-trash-state.ts", "utf8");
+  const imports = sourceSlice(source, "import {", "type UseQueueTrashStateOptions");
   const handleRestore = sourceSlice(
     source,
-    "  function handleRestore",
-    "  function handleClearTrash",
+    "  const handleRestore",
+    "  const handleClearTrash",
   );
 
   assert.doesNotMatch(
@@ -52,6 +52,7 @@ test("queue trash tab loads a paginated trash page instead of every trashed imag
   const apiSource = readFileSync("src/app/api/queue-data/route.ts", "utf8");
   const pageSource = readFileSync("src/app/queue/page.tsx", "utf8");
   const clientSource = readFileSync("src/app/queue/queue-page-client.tsx", "utf8");
+  const trashStateSource = readFileSync("src/app/queue/use-queue-trash-state.ts", "utf8");
   const trashListSource = readFileSync("src/app/queue/queue-trash-tab.tsx", "utf8");
 
   assert.match(
@@ -113,9 +114,9 @@ test("queue trash tab loads a paginated trash page instead of every trashed imag
     "queue client should receive trash pagination metadata",
   );
   assert.match(
-    clientSource,
+    trashStateSource,
     /const \[trashPagination, setTrashPagination\] = useState<TrashPagination>\(initialTrashPagination\)/,
-    "queue client should keep trash pagination state",
+    "queue trash hook should keep trash pagination state",
   );
   assert.match(
     clientSource,
@@ -129,6 +130,11 @@ test("queue trash tab loads a paginated trash page instead of every trashed imag
   );
   assert.match(
     clientSource,
+    /applyTrashRefresh\(data\)/,
+    "queue refresh should hand trash response data to the trash state hook",
+  );
+  assert.match(
+    trashStateSource,
     /setTrashPagination\(data\.trashPagination\)/,
     "queue refresh should update trash pagination from the API response",
   );
