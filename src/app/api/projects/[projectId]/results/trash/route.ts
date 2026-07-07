@@ -1,5 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
-import { trashProjectImages } from "@/lib/actions";
+import { trashProjectImages } from "@/lib/actions/image-review";
 
 type RouteContext = {
   params: Promise<{ projectId: string }>;

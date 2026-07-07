@@ -1,5 +1,5 @@
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { deleteSection } from "@/lib/actions";
+import { deleteSection } from "@/lib/actions/section";
 import { readJsonBody } from "@/server/http/request-json";
 import { mapProjectError, updateProjectSection } from "@/server/services/project-service";
 

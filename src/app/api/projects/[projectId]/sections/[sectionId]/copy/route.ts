@@ -1,5 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
-import { copySection } from "@/lib/actions";
+import { copySection } from "@/lib/actions/section";
 import { assertSectionBelongsToProject, mapPromptBlockError } from "@/server/services/prompt-block-service";
 
 type RouteContext = {

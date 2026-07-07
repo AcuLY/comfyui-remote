@@ -1,5 +1,5 @@
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { deleteProject } from "@/lib/actions";
+import { deleteProject } from "@/lib/actions/project";
 import { readJsonBody } from "@/server/http/request-json";
 import { getProjectDetail } from "@/server/repositories/project-repository";
 import { mapProjectError, updateProject } from "@/server/services/project-service";

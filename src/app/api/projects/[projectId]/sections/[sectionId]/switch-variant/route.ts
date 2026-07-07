@@ -1,5 +1,5 @@
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { switchBindingVariant } from "@/lib/actions";
+import { switchBindingVariant } from "@/lib/actions/prompt-block";
 import { readJsonBody } from "@/server/http/request-json";
 import { assertSectionBelongsToProject, mapPromptBlockError } from "@/server/services/prompt-block-service";
 

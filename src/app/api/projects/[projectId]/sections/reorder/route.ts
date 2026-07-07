@@ -1,5 +1,5 @@
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { reorderSections } from "@/lib/actions";
+import { reorderSections } from "@/lib/actions/section";
 import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {

@@ -419,6 +419,25 @@ test("queue and run lifecycle API routes import actions from focused modules", (
   }
 });
 
+test("generation project and section API routes import actions from focused modules", () => {
+  for (const [routePath, actionModule] of [
+    ["src/app/api/projects/[projectId]/route.ts", "@/lib/actions/project"],
+    ["src/app/api/projects/[projectId]/results/trash/route.ts", "@/lib/actions/image-review"],
+    ["src/app/api/projects/[projectId]/sections/route.ts", "@/lib/actions/section"],
+    ["src/app/api/projects/[projectId]/sections/reorder/route.ts", "@/lib/actions/section"],
+    ["src/app/api/projects/[projectId]/sections/[sectionId]/copy/route.ts", "@/lib/actions/section"],
+    ["src/app/api/projects/[projectId]/sections/[sectionId]/route.ts", "@/lib/actions/section"],
+    ["src/app/api/projects/[projectId]/sections/[sectionId]/create-from-template/route.ts", "@/lib/actions/section"],
+    ["src/app/api/projects/[projectId]/sections/[sectionId]/import-preset/route.ts", "@/lib/actions/prompt-block"],
+    ["src/app/api/projects/[projectId]/sections/[sectionId]/switch-variant/route.ts", "@/lib/actions/prompt-block"],
+  ] as const) {
+    const source = readFileSync(routePath, "utf8");
+
+    assertImportsFrom(source, actionModule, routePath);
+    assert.doesNotMatch(source, /from ["']@\/lib\/actions["']/, `${routePath} should not import the full actions barrel`);
+  }
+});
+
 test("generation project mutations use shared raw JSON parsing", () => {
   for (const routePath of [
     "src/app/api/projects/route.ts",
