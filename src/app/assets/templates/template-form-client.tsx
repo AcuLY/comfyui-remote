@@ -40,14 +40,16 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import {
   createTemplateSectionFolder,
-  copyProjectTemplateSection,
-  createProjectTemplate,
   deleteTemplateSectionFolder,
   moveTemplateSectionsToFolder,
   renameTemplateSectionFolder,
   reorderTemplateSectionFolders,
+} from "@/lib/actions/section-folder";
+import {
+  copyProjectTemplateSection,
+  createProjectTemplate,
   updateProjectTemplate,
-} from "@/lib/actions";
+} from "@/lib/actions/template-crud";
 import { resolveResolution } from "@/lib/aspect-ratio-utils";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { getPreferredScrollContainer } from "@/lib/scroll-container";

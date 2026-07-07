@@ -15,3 +15,11 @@ test("templates list imports server actions from focused modules", () => {
   assert.match(source, /from "@\/lib\/actions\/template-crud";/);
   assert.doesNotMatch(source, /from "@\/lib\/actions";/);
 });
+
+test("template form imports server actions from focused modules", () => {
+  const source = readSource("src/app/assets/templates/template-form-client.tsx");
+
+  assert.match(source, /from "@\/lib\/actions\/template-crud";/);
+  assert.match(source, /from "@\/lib\/actions\/section-folder";/);
+  assert.doesNotMatch(source, /from "@\/lib\/actions";/);
+});
