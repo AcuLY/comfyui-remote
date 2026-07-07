@@ -14,6 +14,8 @@ const projectPageShellPath = resolve(featureUiDir, "project-page-shell.tsx");
 const projectPageShellSource = existsSync(projectPageShellPath) ? readFileSync(projectPageShellPath, "utf8") : "";
 const trainingResultGridPath = resolve(featureUiDir, "training-result-grid.tsx");
 const trainingResultGridSource = existsSync(trainingResultGridPath) ? readFileSync(trainingResultGridPath, "utf8") : "";
+const projectRunRowsPath = resolve(featureUiDir, "project-run-rows.tsx");
+const projectRunRowsSource = existsSync(projectRunRowsPath) ? readFileSync(projectRunRowsPath, "utf8") : "";
 const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
 const referencePickerPath = resolve(featureUiDir, "reference-picker.tsx");
 const referencePickerSource = existsSync(referencePickerPath) ? readFileSync(referencePickerPath, "utf8") : "";
@@ -140,14 +142,12 @@ test("training project overview keeps subresource bodies out of the overview pag
 });
 
 test("training project run rows respond to their own list surface width", () => {
-  const runRowsStart = pagesSource.indexOf("function RunRows");
-  const sectionRailStart = pagesSource.indexOf("function TrainingSectionRail");
-  assert.notEqual(runRowsStart, -1);
-  assert.notEqual(sectionRailStart, -1);
-
-  const runRowsSource = pagesSource.slice(runRowsStart, sectionRailStart);
+  const runRowsSource = projectRunRowsSource;
   const projectRunRowsRule = cssSource.match(/\.projectRunRows\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
 
+  assert.match(runRowsSource, /export function RunRows/, "project run rows should live in a focused component module");
+  assert.match(pagesSource, /from "\.\/project-run-rows"/, "project pages should import the focused project run rows module");
+  assert.doesNotMatch(pagesSource, /\nfunction RunRows\b/, "project pages should not keep project run rows inline");
   assert.match(runRowsSource, /projectRunRowsSurface/, "Project run rows should be wrapped in a list surface container");
   assert.match(
     cssSource,
@@ -781,19 +781,15 @@ test("training section list mutations use the formal HTTP APIs on production rou
 });
 
 test("training project repeated object actions include the acted-on object name", () => {
-  const runRowsStart = pagesSource.indexOf("function RunRows");
-  const runRowsEnd = pagesSource.indexOf("function TrainingSectionRail");
   const projectDetailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
   const projectProfileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(runRowsStart, -1);
-  assert.notEqual(runRowsEnd, -1);
   assert.notEqual(projectDetailStart, -1);
   assert.notEqual(projectProfileStart, -1);
   assert.notEqual(scopedPageStart, -1);
 
   const gridSource = trainingResultGridSource;
-  const runRowsSource = pagesSource.slice(runRowsStart, runRowsEnd);
+  const runRowsSource = projectRunRowsSource;
   const newProjectSource = projectFormPageSource;
   const projectDetailSource = pagesSource.slice(projectDetailStart, projectProfileStart);
   const scopedPageSource = pagesSource.slice(scopedPageStart);
@@ -1058,12 +1054,7 @@ test("training result cards keep thumbnail density and clamp captions", () => {
 });
 
 test("project-scoped run rows use task cards with recent output thumbnails", () => {
-  const runRowsStart = pagesSource.indexOf("function RunRows");
-  const sectionRailStart = pagesSource.indexOf("function TrainingSectionRail");
-  assert.notEqual(runRowsStart, -1);
-  assert.notEqual(sectionRailStart, -1);
-
-  const runRowsSource = pagesSource.slice(runRowsStart, sectionRailStart);
+  const runRowsSource = projectRunRowsSource;
 
   assert.match(runRowsSource, /project:\s*LoraTrainingProject/, "RunRows should receive the active project context");
   assert.match(runRowsSource, /runPreviewImages/, "RunRows should resolve previews per run");
@@ -1077,14 +1068,10 @@ test("project-scoped run rows use task cards with recent output thumbnails", () 
 });
 
 test("project-scoped run rows manage local visibility and failed retry state", () => {
-  const runRowsStart = pagesSource.indexOf("function RunRows");
-  const runRowsEnd = pagesSource.indexOf("function TrainingSectionRail");
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(runRowsStart, -1);
-  assert.notEqual(runRowsEnd, -1);
   assert.notEqual(scopedPageStart, -1);
 
-  const runRowsSource = pagesSource.slice(runRowsStart, runRowsEnd);
+  const runRowsSource = projectRunRowsSource;
   const scopedPageSource = pagesSource.slice(scopedPageStart);
 
   assert.match(scopedPageSource, /hiddenProjectRunIds/, "project task page should track locally removed run ids");
@@ -1114,14 +1101,10 @@ test("project-scoped run rows delete through the formal HTTP API on production r
 });
 
 test("project-scoped queued or running run rows cancel through the formal HTTP API on production routes", () => {
-  const runRowsStart = pagesSource.indexOf("function RunRows");
-  const runRowsEnd = pagesSource.indexOf("function TrainingSectionRail");
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(runRowsStart, -1);
-  assert.notEqual(runRowsEnd, -1);
   assert.notEqual(scopedPageStart, -1);
 
-  const runRowsSource = pagesSource.slice(runRowsStart, runRowsEnd);
+  const runRowsSource = projectRunRowsSource;
   const scopedPageSource = pagesSource.slice(scopedPageStart);
 
   assert.match(scopedPageSource, /cancelledProjectRunIds/, "project task page should track locally cancelled run ids");
@@ -1192,14 +1175,9 @@ test("project-scoped run pages rely on route headers for the primary action", ()
 });
 
 test("project-scoped failed run rows use structured failure panels", () => {
-  const runRowsStart = pagesSource.indexOf("function RunRows");
-  const runRowsEnd = pagesSource.indexOf("function TrainingSectionRail");
-  assert.notEqual(runRowsStart, -1);
-  assert.notEqual(runRowsEnd, -1);
+  const runRowsSource = projectRunRowsSource;
 
-  const runRowsSource = pagesSource.slice(runRowsStart, runRowsEnd);
-
-  assert.match(pagesSource, /function ProjectRunFailureBlock/, "project scoped rows should render failed reasons through a dedicated block");
+  assert.match(runRowsSource, /function ProjectRunFailureBlock/, "project scoped rows should render failed reasons through a dedicated block");
   assert.match(runRowsSource, /projectRunRowFailed/, "failed project rows should get a dedicated layout class");
   assert.match(runRowsSource, /projectRunSecondary/, "failed project rows should move error handling into a secondary panel");
   assert.match(runRowsSource, /projectRunFailureToolbar/, "failed project rows should group copy and retry as lightweight failure actions");
@@ -1211,20 +1189,15 @@ test("project-scoped failed run rows use structured failure panels", () => {
 });
 
 test("project-scoped failed run errors inherit the generated-run clamp and copy fallback", () => {
-  const runRowsStart = pagesSource.indexOf("function RunRows");
-  const runRowsEnd = pagesSource.indexOf("function TrainingSectionRail");
-  assert.notEqual(runRowsStart, -1);
-  assert.notEqual(runRowsEnd, -1);
+  const runRowsSource = projectRunRowsSource;
 
-  const runRowsSource = pagesSource.slice(runRowsStart, runRowsEnd);
-
-  assert.match(pagesSource, /const PROJECT_RUN_ERROR_CLAMP_LINES = 3;/, "project scoped failed run errors should share the generated-run clamp depth");
-  assert.match(pagesSource, /useRef<HTMLParagraphElement>/, "project scoped failure block should measure the rendered paragraph");
-  assert.match(pagesSource, /setOverflows\(node\.scrollHeight > node\.clientHeight \+ 2\)/, "project scoped failure block should detect clamped overflow");
-  assert.match(pagesSource, /!expanded && s\.projectRunFailureTextClamped/, "project scoped failed run text should stay clamped until expanded");
+  assert.match(runRowsSource, /const PROJECT_RUN_ERROR_CLAMP_LINES = 3;/, "project scoped failed run errors should share the generated-run clamp depth");
+  assert.match(runRowsSource, /useRef<HTMLParagraphElement>/, "project scoped failure block should measure the rendered paragraph");
+  assert.match(runRowsSource, /setOverflows\(node\.scrollHeight > node\.clientHeight \+ 2\)/, "project scoped failure block should detect clamped overflow");
+  assert.match(runRowsSource, /!expanded && s\.projectRunFailureTextClamped/, "project scoped failed run text should stay clamped until expanded");
   assert.match(runRowsSource, /copyProjectRunMessage/, "project scoped failed run rows should expose the copy action");
-  assert.match(pagesSource, /document\.createElement\("textarea"\)/, "project scoped copy action should create a hidden textarea fallback");
-  assert.match(pagesSource, /document\.execCommand\("copy"\)/, "project scoped copy action should use the selection API fallback");
+  assert.match(runRowsSource, /document\.createElement\("textarea"\)/, "project scoped copy action should create a hidden textarea fallback");
+  assert.match(runRowsSource, /document\.execCommand\("copy"\)/, "project scoped copy action should use the selection API fallback");
   assert.match(cssSource, /\.projectRunFailureTextClamped\b/, "project scoped failed run errors should have a dedicated clamped text style");
   assert.match(cssSource, /-webkit-line-clamp:\s*var\(--error-clamp-lines,\s*3\)/, "project scoped failed run errors should clamp to the shared line count variable");
   assert.match(cssSource, /\.clipboardTextarea\b/, "project scoped copy fallback should keep the temporary textarea invisible");
