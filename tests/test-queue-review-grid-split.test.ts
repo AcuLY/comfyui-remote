@@ -5,6 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 const reviewGridPath = "src/app/queue/[runId]/review-grid.tsx";
 const imageCardPath = "src/app/queue/[runId]/queue-review-image-card.tsx";
 const selectionToolbarPath = "src/app/queue/[runId]/queue-review-selection-toolbar.tsx";
+const selectionHookPath = "src/app/queue/[runId]/use-queue-review-selection.ts";
 
 test("queue review grid delegates image card labels and markers to a focused component", () => {
   assert.ok(existsSync(imageCardPath), `${imageCardPath} should own queue review image card rendering`);
@@ -47,4 +48,29 @@ test("queue review grid delegates selection toolbar rendering to a focused compo
   assert.doesNotMatch(reviewGridSource, /取消全选/);
   assert.doesNotMatch(reviewGridSource, /选中待审核/);
   assert.doesNotMatch(reviewGridSource, /已选 \{selectedCount\} 张/);
+});
+
+test("queue review grid delegates selection state helpers to a focused hook", () => {
+  assert.ok(existsSync(selectionHookPath), `${selectionHookPath} should own queue review selection state helpers`);
+
+  const reviewGridSource = readFileSync(reviewGridPath, "utf8");
+  const selectionHookSource = readFileSync(selectionHookPath, "utf8");
+
+  assert.match(selectionHookSource, /export function useQueueReviewSelection/);
+  assert.match(selectionHookSource, /useState<Set<string>>/);
+  assert.match(selectionHookSource, /selectedCount/);
+  assert.match(selectionHookSource, /selectedIds/);
+  assert.match(selectionHookSource, /toggleSelect/);
+  assert.match(selectionHookSource, /selectAll/);
+  assert.match(selectionHookSource, /selectPending/);
+  assert.match(selectionHookSource, /removeSelectedIds/);
+  assert.match(selectionHookSource, /addSelectedIds/);
+  assert.match(selectionHookSource, /remainingPendingIds/);
+
+  assert.match(reviewGridSource, /from "\.\/use-queue-review-selection";/);
+  assert.match(reviewGridSource, /useQueueReviewSelection\(/);
+  assert.doesNotMatch(reviewGridSource, /const \[selected, setSelected\]/);
+  assert.doesNotMatch(reviewGridSource, /function toggleSelect/);
+  assert.doesNotMatch(reviewGridSource, /function selectAll/);
+  assert.doesNotMatch(reviewGridSource, /function removeSelectedIds/);
 });

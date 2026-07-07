@@ -411,6 +411,8 @@
 - Phase 7 slice 71 verification passed: red `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, then green `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, green `node --import tsx --test tests/test-queue-review-grid-split.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1119 tests discovered, 1118 pass, 0 fail, 1 skipped.
 - Phase 7 slice 72 moved queue review selection toolbar rendering into `src/app/queue/[runId]/queue-review-selection-toolbar.tsx`. `review-grid.tsx` still owns the selected-id state and helpers until the selection-state hook split.
 - Phase 7 slice 72 verification passed: red `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, then green `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, green `node --import tsx --test tests/test-queue-review-grid-split.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1120 tests discovered, 1119 pass, 0 fail, 1 skipped.
+- Phase 7 slice 73 moved queue review selected-id state, selected-id derivations, select-all/pending helpers, and add/remove selected helpers into `src/app/queue/[runId]/use-queue-review-selection.ts`. `review-grid.tsx` still owns batch review actions and page-level keyboard shortcut wiring until the remaining review-grid split subchecks.
+- Phase 7 slice 73 verification passed: red `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, then green `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, green `node --import tsx --test tests/test-queue-review-grid-split.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1121 tests discovered, 1120 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1004,7 +1006,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - [ ] Keep review grid selection, action strip, keyboard shortcuts, and image labeling split into focused components.
   - [x] Image card label, marker, and status rendering extracted to `src/app/queue/[runId]/queue-review-image-card.tsx` and covered by `tests/test-queue-review-grid-split.test.ts`.
   - [x] Selection toolbar rendering extracted to `src/app/queue/[runId]/queue-review-selection-toolbar.tsx` and covered by `tests/test-queue-review-grid-split.test.ts`.
-  - [ ] Selection-state helpers extracted from `review-grid.tsx`.
+  - [x] Selection-state helpers extracted to `src/app/queue/[runId]/use-queue-review-selection.ts` and covered by `tests/test-queue-review-grid-split.test.ts`.
   - [ ] Batch action strip and handle-rest-next actions extracted from `review-grid.tsx`.
   - [ ] Page-level keyboard shortcuts extracted from `review-grid.tsx`.
 - [ ] Keep settings pages as operational dashboards and avoid adding business logic there.

@@ -20,6 +20,7 @@ import type { ReviewImage } from "@/lib/types";
 import { ImageLightbox } from "./image-lightbox";
 import { QueueReviewImageCard } from "./queue-review-image-card";
 import { QueueReviewSelectionToolbar } from "./queue-review-selection-toolbar";
+import { useQueueReviewSelection } from "./use-queue-review-selection";
 
 type LastAction = "keep" | "trash";
 type MarkerField = "featured" | "featured2" | "cover";
@@ -35,7 +36,6 @@ export function ReviewGrid({
 }) {
   const router = useRouter();
   const [reviewImages, setReviewImages] = useState<ReviewImage[]>(images);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
   /** Tracks the last bulk action so we can offer the complementary "handle rest" button. */
   const [lastAction, setLastAction] = useState<LastAction | null>(null);
@@ -54,6 +54,24 @@ export function ReviewGrid({
     window.location.assign(href);
   }, []);
 
+  const pendingImages = reviewImages.filter((img) => img.status === "pending");
+  const {
+    selected,
+    selectedIds,
+    selectedCount,
+    allSelected,
+    remainingPendingIds,
+    isSelected,
+    toggleSelect,
+    selectAll,
+    selectPending,
+    removeSelectedIds,
+    addSelectedIds,
+  } = useQueueReviewSelection({
+    reviewImages,
+    pendingImages,
+  });
+
   useEffect(() => {
     const reconciledImages = reconcileReviewImagesWithOptimisticReviews(
       images,
@@ -61,10 +79,6 @@ export function ReviewGrid({
     );
 
     setReviewImages(reconciledImages);
-    setSelected((prev) => {
-      const imageIds = new Set(reconciledImages.map((image) => image.id));
-      return new Set([...prev].filter((id) => imageIds.has(id)));
-    });
   }, [images]);
 
   useEffect(() => {
@@ -150,10 +164,7 @@ export function ReviewGrid({
         return next;
       });
       setReviewImages((prev) => restoreTrashUndoEntry(prev, undoEntry));
-      setSelected((prev) => {
-        const idSet = new Set(imageIds);
-        return new Set([...prev].filter((id) => !idSet.has(id)));
-      });
+      removeSelectedIds(imageIds);
       setTrashUndoStack((prev) => prev.slice(0, -1));
       toast.success(`已撤销删除 ${imageIds.length} 张图片`);
       router.refresh();
@@ -162,7 +173,7 @@ export function ReviewGrid({
     } finally {
       isUndoingTrashRef.current = false;
     }
-  }, [router, trashUndoStack]);
+  }, [removeSelectedIds, router, trashUndoStack]);
 
   const trashCurrentRunImages = useCallback(() => {
     if (isPending) return;
@@ -178,14 +189,14 @@ export function ReviewGrid({
         await trashImages(ids);
         setTrashUndoStack((prev) => undoEntry ? [...prev, undoEntry] : prev);
         setReviewImages((prev) => prev.filter((image) => !idSet.has(image.id)));
-        setSelected((prev) => new Set([...prev].filter((id) => !idSet.has(id))));
+        removeSelectedIds(ids);
         setLastAction("trash");
         router.refresh();
       } catch (error) {
         toast.error(error instanceof Error ? error.message : "删除失败");
       }
     });
-  }, [isPending, reviewImages, router, startTransition]);
+  }, [isPending, removeSelectedIds, reviewImages, router, startTransition]);
 
   // Page-level shortcuts (lightbox closed)
   useEffect(() => {
@@ -257,8 +268,6 @@ export function ReviewGrid({
     return () => window.removeEventListener("keydown", handler);
   }, [handleUndoTrash, lightboxIndex, navigateDocument, prevRunId, nextRunId, reviewImages.length, trashCurrentRunImages]);
 
-  const pendingImages = reviewImages.filter((img) => img.status === "pending");
-  const selectedCount = selected.size;
   const lightboxImage = lightboxIndex === null ? null : reviewImages[lightboxIndex] ?? null;
   const lightboxBusy = Boolean(
     togglingMarker || (lightboxImage && pendingReviewActions.has(lightboxImage.id)),
@@ -267,39 +276,9 @@ export function ReviewGrid({
     ? pendingReviewActions.get(lightboxImage.id) ?? null
     : null;
 
-  /** IDs of images that are still pending **and** were NOT part of the last action selection. */
-  const remainingPendingIds = pendingImages
-    .filter((img) => !selected.has(img.id))
-    .map((img) => img.id);
-
   const pendingAfterAction = lastAction
     ? reviewImages.filter((img) => img.status === "pending").map((img) => img.id)
     : [];
-
-  function toggleSelect(id: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function selectAll() {
-    if (selected.size === reviewImages.length) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(reviewImages.map((img) => img.id)));
-    }
-  }
-
-  function removeSelectedIds(ids: string[]) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      for (const id of ids) next.delete(id);
-      return next;
-    });
-  }
 
   function markImagesKept(ids: string[]) {
     const idSet = new Set(ids);
@@ -335,7 +314,7 @@ export function ReviewGrid({
   }
 
   function handleKeep() {
-    const ids = [...selected];
+    const ids = selectedIds;
     if (ids.length === 0) return;
     startTransition(async () => {
       try {
@@ -351,7 +330,7 @@ export function ReviewGrid({
   }
 
   function handleTrash() {
-    const ids = [...selected];
+    const ids = selectedIds;
     if (ids.length === 0) return;
     const undoEntry = buildTrashUndoEntry(reviewImages, ids);
     startTransition(async () => {
@@ -487,7 +466,7 @@ export function ReviewGrid({
         }
       });
     },
-    [lightboxBusy, lightboxImage, reviewImages, router, setImageMarker],
+    [lightboxBusy, lightboxImage, removeSelectedIds, reviewImages, router, setImageMarker],
   );
 
   const reviewLightboxImage = useCallback(
@@ -550,40 +529,45 @@ export function ReviewGrid({
             });
           }
 
-          if (wasSelected) {
-            setSelected((prev) => new Set(prev).add(imageId));
-          }
+          if (wasSelected) addSelectedIds([imageId]);
           setLastAction(previousLastAction);
           toast.error(error instanceof Error ? error.message : "审核失败");
         })
         .finally(() => removePendingReviewAction(imageId));
     },
-    [lastAction, lightboxImage, lightboxIndex, reviewImages, selected, togglingMarker],
+    [
+      addSelectedIds,
+      lastAction,
+      lightboxImage,
+      lightboxIndex,
+      removeSelectedIds,
+      reviewImages,
+      selected,
+      togglingMarker,
+    ],
   );
 
   return (
     <div>
       {/* 全选 / 只选 pending */}
       <QueueReviewSelectionToolbar
-        allSelected={selected.size === reviewImages.length}
+        allSelected={allSelected}
         pendingCount={pendingImages.length}
         selectedCount={selectedCount}
         onToggleSelectAll={selectAll}
-        onSelectPending={() =>
-          setSelected(new Set(pendingImages.map((img) => img.id)))
-        }
+        onSelectPending={selectPending}
       />
 
       {/* 宫格 */}
       <div className="flex flex-wrap gap-3">
         {reviewImages.map((image, index) => {
-          const isSelected = selected.has(image.id);
+          const selectedImage = isSelected(image.id);
           return (
             <QueueReviewImageCard
               key={image.id}
               image={image}
               index={index}
-              isSelected={isSelected}
+              isSelected={selectedImage}
               onToggleSelect={toggleSelect}
               onOpen={setLightboxIndex}
             />

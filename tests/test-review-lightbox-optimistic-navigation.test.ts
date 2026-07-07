@@ -175,7 +175,7 @@ test("queue review page shortcuts mirror results where matching queue actions ex
   const pageShortcuts = sourceSlice(
     gridSource,
     "  // Page-level shortcuts (lightbox closed)",
-    "  const pendingImages =",
+    "  const lightboxImage =",
   );
 
   assert.match(
@@ -1026,7 +1026,7 @@ test("single-image review controls do not use one global pending lock", () => {
   const queueBusySource = sourceSlice(
     queueSource,
     "  const lightboxBusy =",
-    "  /** IDs",
+    "  const pendingAfterAction =",
   );
   const queueReviewLightboxImage = sourceSlice(
     queueSource,
