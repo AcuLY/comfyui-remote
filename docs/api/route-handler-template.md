@@ -158,3 +158,5 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 Some routes have intentionally legacy response shapes. `src/app/api/auth/verify/route.ts` keeps flat `{ error: string }` failures and `{ ok: true }` success because `src/app/login/page.tsx` consumes that contract. It still parses via `readJsonBody` and formats through `flatFail`/`okOnly`.
 
 `src/app/api/logs/route.ts` is a parser exception: its `JSON.parse(line)` handles JSONL log line parsing for file-log entries, not request-body parsing. Source-contract tests require this to be the only route-local `JSON.parse` exception and require route request bodies to go through `src/server/http/request-json.ts`.
+
+`src/app/api/queue-data/route.ts` is a response-shape exception: it returns the legacy raw JSON response shape consumed by the queue UI and documented Agent API. It is the only route that may call `NextResponse.json(...)` directly; file-streaming routes may still return `new NextResponse(stream, ...)` for non-JSON payloads while using shared helpers for JSON errors.

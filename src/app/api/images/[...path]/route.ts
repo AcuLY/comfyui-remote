@@ -11,6 +11,7 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import path from "path";
 import { Readable } from "node:stream";
+import { flatFail } from "@/lib/api-response";
 
 const OUTPUT_BASE =
   process.env.OUTPUT_BASE_PATH ??
@@ -42,24 +43,24 @@ export async function GET(
   const { path: segments } = await params;
 
   if (!segments || segments.length === 0) {
-    return NextResponse.json({ error: "No path specified" }, { status: 400 });
+    return flatFail("No path specified", 400);
   }
 
   // Sanitize: reject path traversal and encoded path separators.
   if (!segments.every(isSafePathSegment)) {
-    return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+    return flatFail("Invalid path", 400);
   }
   const joined = segments.join("/");
 
   // Reject temp files (used during atomic writes)
   const lastSegment = segments[segments.length - 1];
   if (lastSegment.endsWith(".tmp")) {
-    return NextResponse.json({ error: "File not found" }, { status: 404 });
+    return flatFail("File not found", 404);
   }
 
   const ext = path.extname(joined).toLowerCase();
   if (!ALLOWED_EXTENSIONS.has(ext)) {
-    return NextResponse.json({ error: "Unsupported file type" }, { status: 400 });
+    return flatFail("Unsupported file type", 400);
   }
 
   const resolved = path.resolve(RESOLVED_OUTPUT_BASE, ...segments);
@@ -68,13 +69,13 @@ export async function GET(
     ? (RESOLVED_OUTPUT_BASE + path.sep).toLowerCase()
     : RESOLVED_OUTPUT_BASE + path.sep;
   if (!normalizedResolved.startsWith(normalizedBase)) {
-    return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    return flatFail("Access denied", 403);
   }
 
   try {
     const fileStat = await stat(resolved);
     if (!fileStat.isFile()) {
-      return NextResponse.json({ error: "Not a file" }, { status: 404 });
+      return flatFail("Not a file", 404);
     }
 
     const mimeMap: Record<string, string> = {
@@ -95,6 +96,6 @@ export async function GET(
       },
     });
   } catch {
-    return NextResponse.json({ error: "File not found" }, { status: 404 });
+    return flatFail("File not found", 404);
   }
 }

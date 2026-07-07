@@ -243,6 +243,8 @@
 - Phase 3 slice 29 verification passed: red `node --import tsx --test tests/test-api-request-json.test.ts`, then green `node --import tsx --test tests/test-api-request-json.test.ts`, `node --import tsx --test tests/test-api-request-json.test.ts tests/test-model-civitai-info-panel.test.ts tests/test-training-api-routes.test.ts`, `npm run lint`, and `npm test` with 1028 tests discovered, 1027 pass, 0 fail, 1 skipped.
 - Phase 3 slice 30 added a source-contract scan proving route-local JSON request-body parsing is gone across `src/app/api/**/route.ts`, with `src/app/api/logs/route.ts` documented as the only `JSON.parse` exception because it parses JSONL log-file lines rather than request bodies.
 - Phase 3 slice 30 verification passed: red `node --import tsx --test tests/test-api-request-json.test.ts`, then green `node --import tsx --test tests/test-api-request-json.test.ts`, `npm run lint`, and `npm test` with 1029 tests discovered, 1028 pass, 0 fail, 1 skipped.
+- Phase 3 slice 31 moved `src/app/api/images/[...path]/route.ts` flat JSON error responses to `flatFail`, preserved its `new NextResponse(stream, ...)` file payload path, and documented `src/app/api/queue-data/route.ts` as the only direct `NextResponse.json(...)` raw response-shape exception.
+- Phase 3 slice 31 verification passed: red `node --import tsx --test tests/test-api-request-json.test.ts`, then green `node --import tsx --test tests/test-api-request-json.test.ts tests/test-image-access-source.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts`, `npm run lint`, and `npm test` with 1030 tests discovered, 1029 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -323,7 +325,7 @@
 - `src/app/api/image-review/route.ts`
 
 - [x] Define a route-handler template: parse request, validate input, call service, return `ok(...)` or error envelope.
-- [ ] Move repeated response formatting into `src/lib/api-response.ts`.
+- [x] Move repeated response formatting into `src/lib/api-response.ts`.
 - [x] Move repeated request parsing into route helpers under `src/server/http` or extend `src/server/services/validation-utils.ts`.
 - [x] Keep `/api/auth/verify` compatible with UI auth verification and never log token values.
 - [x] Keep `/api/health` minimal and safe for public/local probes.

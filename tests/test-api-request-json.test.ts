@@ -197,6 +197,18 @@ test("route-local JSON parsing is limited to the documented log-line exception",
   assert.match(template, /src\/app\/api\/logs\/route\.ts[\s\S]*JSONL log line parsing/);
 });
 
+test("route-local JSON response formatting is limited to documented raw-shape exceptions", () => {
+  const routesWithDirectNextJson = listRouteFiles().filter((routePath) => {
+    const source = readFileSync(routePath, "utf8");
+    return /NextResponse\.json\(/.test(source);
+  });
+
+  assert.deepEqual(routesWithDirectNextJson, ["src/app/api/queue-data/route.ts"]);
+
+  const template = readFileSync("docs/api/route-handler-template.md", "utf8");
+  assert.match(template, /src\/app\/api\/queue-data\/route\.ts[\s\S]*raw JSON response shape/);
+});
+
 test("resume-paused route uses the shared optional JSON parser", () => {
   const source = readFileSync("src/app/api/queue/resume-paused/route.ts", "utf8");
 
