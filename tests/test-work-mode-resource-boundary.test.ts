@@ -79,6 +79,7 @@ const generationTemplateCrudSource = readFileSync(resolve(repoRoot, "src/lib/act
 const generationTemplateImportSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-import.ts"), "utf8");
 const generationPresetReplacementSource = readFileSync(resolve(repoRoot, "src/server/services/preset-section-replacement-service.ts"), "utf8");
 const generationActionsBarrelSource = readFileSync(resolve(repoRoot, "src/lib/actions.ts"), "utf8");
+const serverDataFacadeSource = readFileSync(resolve(repoRoot, "src/lib/server-data.ts"), "utf8");
 
 const MODULE_OWNED_RESOURCE_KEYS = ["runs", "projects", "presets", "templates"] as const;
 const SHARED_RESOURCE_KEYS = ["models", "settings"] as const;
@@ -109,8 +110,27 @@ function findMatchingSources(paths: string[], pattern: RegExp) {
     .map(({ path }) => path.replace(`${repoRoot}/`, ""));
 }
 
+function findSourcesWithPredicate(paths: string[], predicate: (source: string) => boolean) {
+  return paths
+    .map((path) => ({ path, source: readFileSync(path, "utf8") }))
+    .filter(({ source }) => predicate(source))
+    .map(({ path }) => path.replace(`${repoRoot}/`, ""));
+}
+
 function sourceFilesFromRoots(...roots: string[]) {
   return roots.flatMap((root) => listSourceFiles(resolve(repoRoot, root)));
+}
+
+function hasUseClientDirective(source: string) {
+  return /^\s*["']use client["'];?/.test(source);
+}
+
+function hasServerDataValueImport(source: string) {
+  const importStatements = source.match(/import[\s\S]*?from\s+["'][^"']+["'];?/g) ?? [];
+
+  return importStatements.some((statement) =>
+    /from\s+["']@\/lib\/server-data["']/.test(statement) && !/^import\s+type\b/.test(statement.trim()),
+  );
 }
 
 test("full actions barrel is compatibility-only and unused by source callers", () => {
@@ -127,6 +147,25 @@ test("full actions barrel is compatibility-only and unused by source callers", (
   );
 
   assert.deepEqual(offenders, [], "Source files should import focused action modules instead of the full barrel.");
+});
+
+test("server data facade is documented as RSC-only and not value-imported by client layers", () => {
+  assert.match(
+    serverDataFacadeSource,
+    /RSC-only server data facade/,
+    "src/lib/server-data.ts should document that its value exports are for RSC/server contexts.",
+  );
+
+  const clientLayerFiles = [
+    ...sourceFilesFromRoots("src/components", "src/features", "src/hooks"),
+    ...sourceFilesFromRoots("src/app").filter((path) => hasUseClientDirective(readFileSync(path, "utf8"))),
+  ];
+
+  assert.deepEqual(
+    findSourcesWithPredicate(clientLayerFiles, hasServerDataValueImport),
+    [],
+    "Client layers may import server-data types only; value imports must stay in RSC pages, route handlers, or server-only services.",
+  );
 });
 
 test("preset resource scope lives in shared lib instead of server action modules", () => {

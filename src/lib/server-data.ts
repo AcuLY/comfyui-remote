@@ -1,5 +1,8 @@
 /**
- * Data facade — re-exports server repository functions for use in page components and API routes.
+ * RSC-only server data facade - re-exports server repository functions for page and API code.
+ *
+ * Value imports from this file belong in React Server Components, route handlers, or
+ * server-only services. Client modules may import its exported types with `import type` only.
  *
  * NOTE: This file is an architectural compromise. Ideally `lib/` should not import from `server/`,
  * but this barrel has 48+ importers across the codebase. Moving it to `server/facades/data.ts`
