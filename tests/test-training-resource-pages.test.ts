@@ -15,6 +15,10 @@ const resourceUrlSearchHookPath = resolve(featureUiDir, "use-resource-url-search
 const resourceUrlSearchHookSource = existsSync(resourceUrlSearchHookPath)
   ? readFileSync(resourceUrlSearchHookPath, "utf8")
   : "";
+const presetSortPanelPath = resolve(featureUiDir, "training-preset-sort-panel.tsx");
+const presetSortPanelSource = existsSync(presetSortPanelPath)
+  ? readFileSync(presetSortPanelPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
 const headerSpecsSource = readFileSync(resolve(testDir, "../src/features/training/header-specs.ts"), "utf8");
 const legacyPageSource = readFileSync(resolve(testDir, "../src/app/design-demos/features/lora-training/training-resource-pages.tsx"), "utf8");
@@ -74,6 +78,19 @@ test("training resource route and query helpers live in a focused utility module
   assert.match(resourcePageUtilsSource, /type NewPresetHints\b/, "new preset hint typing should move with the hint parser");
   assert.match(resourcePageUtilsSource, /type NewTemplateHints\b/, "new template hint typing should move with the hint parser");
   assert.match(pageSource, /from "\.\/training-resource-page-utils"/, "resource pages should import focused route and query helpers");
+});
+
+test("training preset sort panel primitives live in a focused module", () => {
+  for (const helperName of [
+    "orderTrainingPresetSortItems",
+    "TrainingPresetSortPanel",
+    "TrainingPresetSortableSortRow",
+  ]) {
+    assert.match(presetSortPanelSource, new RegExp(`function ${helperName}\\b`), `${helperName} should live in training-preset-sort-panel.tsx`);
+    assert.doesNotMatch(pageSource, new RegExp(`function ${helperName}\\b`), `${helperName} should not stay inline in the broad resource pages file`);
+  }
+  assert.match(presetSortPanelSource, /type TrainingPresetSortItem\b/, "training preset sort item typing should move with the sort panel");
+  assert.match(pageSource, /from "\.\/training-preset-sort-panel"/, "resource pages should import focused preset sort panel primitives");
 });
 
 test("training resource route helpers do not replace invalid route ids with first fixtures", () => {
@@ -277,21 +294,17 @@ test("training preset selection labels reflect selected state like the managed l
 test("training resource repeated object actions include the acted-on object name", () => {
   const presetItemStart = pageSource.indexOf("function TrainingPresetLibraryItemRow");
   const presetCategoryStart = pageSource.indexOf("function TrainingPresetCategoryRailItem");
-  const sortPanelStart = pageSource.indexOf("function TrainingPresetSortPanel");
-  const sortRowStart = pageSource.indexOf("function TrainingPresetSortableSortRow");
   const templateItemStart = pageSource.indexOf("function TrainingTemplateListItem");
   const templateRowStart = pageSource.indexOf("function TemplateEditorSectionRow");
   const templatesPageStart = pageSource.indexOf("export function LoraTrainingTemplatesPage");
   assert.notEqual(presetItemStart, -1);
   assert.notEqual(presetCategoryStart, -1);
-  assert.notEqual(sortPanelStart, -1);
-  assert.notEqual(sortRowStart, -1);
   assert.notEqual(templateItemStart, -1);
   assert.notEqual(templateRowStart, -1);
   assert.notEqual(templatesPageStart, -1);
 
   const presetItemSource = pageSource.slice(presetItemStart, presetCategoryStart);
-  const sortPanelSource = pageSource.slice(sortPanelStart, sortRowStart);
+  const sortPanelSource = presetSortPanelSource;
   const templateItemSource = pageSource.slice(templateItemStart, templateRowStart);
   const templateRowSource = pageSource.slice(templateRowStart, templatesPageStart);
 
@@ -384,11 +397,11 @@ test("training preset new form keeps source run ids out of visible copy", () => 
 
 test("training preset direct creation stays neutral instead of inheriting the first preset", () => {
   const draftStart = pageSource.indexOf("function createDraftTrainingPreset");
-  const sortStart = pageSource.indexOf("type TrainingPresetSortItem");
+  const sceneBlockStart = pageSource.indexOf("function TemplateSceneBlockCard");
   assert.notEqual(draftStart, -1);
-  assert.notEqual(sortStart, -1);
+  assert.notEqual(sceneBlockStart, -1);
 
-  const draftSource = pageSource.slice(draftStart, sortStart);
+  const draftSource = pageSource.slice(draftStart, sceneBlockStart);
 
   assert.doesNotMatch(draftSource, /training\.presets\[0\]/, "direct new preset drafts should not use the first demo preset as a hidden template");
   assert.doesNotMatch(draftSource, /source\?\.category/, "direct new preset category should come from route hints or a neutral default");
@@ -917,17 +930,15 @@ test("training template list persists reorder through the formal HTTP API on pro
 
 test("training preset detail and sort rules reuse editor/sort shells without regular preset dimensions", () => {
   const detailStart = pageSource.indexOf("export function LoraTrainingPresetDetailPage");
-  const sortPanelStart = pageSource.indexOf("function TrainingPresetSortPanel");
   const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
   const templatesStart = pageSource.indexOf("function templateStatus");
   assert.notEqual(detailStart, -1);
-  assert.notEqual(sortPanelStart, -1);
   assert.notEqual(sortStart, -1);
   assert.notEqual(templatesStart, -1);
 
   const detailSource = pageSource.slice(detailStart, sortStart);
   const sortSource = pageSource.slice(sortStart, templatesStart);
-  const sortWithPanelSource = pageSource.slice(sortPanelStart, templatesStart);
+  const sortWithPanelSource = presetSortPanelSource;
 
   assert.match(detailSource, /WorkbenchSurface/, "preset detail should use the shared editor surface");
   assert.match(detailSource, /EditorBlock/, "preset detail should use editor blocks");
@@ -939,15 +950,13 @@ test("training preset detail and sort rules reuse editor/sort shells without reg
 });
 
 test("training preset sort rules keep local order state and save a visible draft", () => {
-  const sortPanelStart = pageSource.indexOf("function TrainingPresetSortPanel");
   const sortStart = pageSource.indexOf("export function LoraTrainingPresetSortRulesPage");
   const templatesStart = pageSource.indexOf("function templateStatus");
-  assert.notEqual(sortPanelStart, -1);
   assert.notEqual(sortStart, -1);
   assert.notEqual(templatesStart, -1);
 
   const sortSource = pageSource.slice(sortStart, templatesStart);
-  const panelSource = pageSource.slice(sortPanelStart, templatesStart);
+  const panelSource = presetSortPanelSource;
 
   assert.match(sortSource, /orderedCategoryIds/, "category sort order should live in local state");
   assert.match(sortSource, /setOrderedCategoryIds/, "category reorder should update local state");
@@ -980,12 +989,12 @@ test("training preset sort rules save through the formal HTTP API on production 
 });
 
 test("training preset sort panel save buttons do not override HTTP result feedback", () => {
-  const panelStart = pageSource.indexOf("function TrainingPresetSortPanel");
-  const panelEnd = pageSource.indexOf("function TrainingPresetSortableSortRow");
+  const panelStart = presetSortPanelSource.indexOf("function TrainingPresetSortPanel");
+  const panelEnd = presetSortPanelSource.indexOf("function TrainingPresetSortableSortRow");
   assert.notEqual(panelStart, -1);
   assert.notEqual(panelEnd, -1);
 
-  const panelSource = pageSource.slice(panelStart, panelEnd);
+  const panelSource = presetSortPanelSource.slice(panelStart, panelEnd);
 
   assert.doesNotMatch(
     panelSource,
