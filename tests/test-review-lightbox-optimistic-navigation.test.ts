@@ -45,6 +45,21 @@ function image(id: string, status: ReviewImage["status"] = "pending"): ReviewIma
   };
 }
 
+test("queue review grid imports review actions from the focused action module", () => {
+  const source = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
+
+  assert.match(
+    source,
+    /from "@\/lib\/actions\/image-review";/,
+    "queue review grid should import keep/trash review actions from the focused image-review action module.",
+  );
+  assert.doesNotMatch(
+    source,
+    /from "@\/lib\/actions";|import\("@\/lib\/actions"\)/,
+    "queue review grid should not import the full server-action barrel.",
+  );
+});
+
 test("queue review lightbox navigates optimistically before awaiting review actions", () => {
   const source = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
   const reviewLightboxImage = sourceSlice(

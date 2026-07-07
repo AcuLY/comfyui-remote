@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Check, ChevronRight, Eye, ImageIcon, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { keepImages, trashImages } from "@/lib/actions";
+import { keepImages, trashImages } from "@/lib/actions/image-review";
 import { submitReviewMutation } from "@/lib/client-review-mutation";
 import {
   getLightboxPreloadCandidates,
