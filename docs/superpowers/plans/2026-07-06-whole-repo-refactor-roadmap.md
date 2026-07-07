@@ -481,6 +481,8 @@
 - Phase 8 slice 106 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts tests/test-training-frontend-api-contract.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts tests/test-training-frontend-api-contract.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts tests/test-training-frontend-api-contract.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1152 tests discovered, 1151 pass, 0 fail, 1 skipped.
 - Phase 8 slice 107 moved the project results page into `src/features/training/ui/training-project-results-page.tsx`. The focused page owns project-scoped result filters and selection state, single and batch review API flows, caption revision history loading, caption restore, and result-grid wiring while `training-project-pages.tsx` keeps a compatibility re-export.
 - Phase 8 slice 107 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-frontend-api-contract.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-frontend-api-contract.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-frontend-api-contract.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1153 tests discovered, 1152 pass, 0 fail, 1 skipped.
+- Phase 8 slice 108 moved the project dataset page into `src/features/training/ui/training-project-dataset-page.tsx`. The focused page owns dataset readiness state, kept-result caption generation, dataset revision freezing, start-training gating, training draft state, and training-run creation/navigation while `training-project-pages.tsx` keeps a compatibility re-export.
+- Phase 8 slice 108 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-frontend-api-contract.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-frontend-api-contract.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-frontend-api-contract.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1154 tests discovered, 1153 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1128,7 +1130,7 @@ Loading states remain colocated under their route segments for now; the later lo
   - [x] Section detail page.
   - [x] Generation compose page.
   - [x] Project results page.
-  - [ ] Dataset page.
+  - [x] Dataset page.
   - [ ] Dataset revision page.
   - [ ] Project-scoped runs page.
 - [x] Move pure helpers from `training-project-pages.tsx` into `src/features/training/ui/project-page-utils.ts` or domain-specific files.

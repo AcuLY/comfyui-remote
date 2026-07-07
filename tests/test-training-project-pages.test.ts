@@ -28,6 +28,10 @@ const projectResultsPagePath = resolve(featureUiDir, "training-project-results-p
 const projectResultsPageSource = existsSync(projectResultsPagePath)
   ? readFileSync(projectResultsPagePath, "utf8")
   : "";
+const projectDatasetPagePath = resolve(featureUiDir, "training-project-dataset-page.tsx");
+const projectDatasetPageSource = existsSync(projectDatasetPagePath)
+  ? readFileSync(projectDatasetPagePath, "utf8")
+  : "";
 const projectPageShellPath = resolve(featureUiDir, "project-page-shell.tsx");
 const projectPageShellSource = existsSync(projectPageShellPath) ? readFileSync(projectPageShellPath, "utf8") : "";
 const trainingResultGridPath = resolve(featureUiDir, "training-result-grid.tsx");
@@ -154,6 +158,13 @@ test("training project results page lives in a focused page module", () => {
   assert.match(projectResultsPageSource, /handleOpenCaptionRevisionHistory/, "caption revision history should move with the results page");
   assert.match(pagesSource, /export \{ LoraTrainingProjectResultsPage \} from "\.\/training-project-results-page";/, "broad project pages module should retain a compatibility re-export");
   assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectResultsPage/, "broad project pages module should not keep the project results implementation inline");
+});
+
+test("training project dataset page lives in a focused page module", () => {
+  assert.match(projectDatasetPageSource, /export function LoraTrainingProjectDatasetPage/, "project dataset implementation should live in its own module");
+  assert.match(projectDatasetPageSource, /handleFreezeDatasetRevision/, "dataset freeze workflow should move with the dataset page");
+  assert.match(pagesSource, /export \{ LoraTrainingProjectDatasetPage \} from "\.\/training-project-dataset-page";/, "broad project pages module should retain a compatibility re-export");
+  assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectDatasetPage/, "broad project pages module should not keep the project dataset implementation inline");
 });
 
 test("training project page shell lives in a focused component module", () => {
@@ -800,12 +811,7 @@ test("training result filters and selections stay scoped to the active project",
 });
 
 test("training dataset page opens a local training draft instead of only previewing the start action", () => {
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
-  assert.notEqual(datasetPageStart, -1);
-  assert.notEqual(revisionPageStart, -1);
-
-  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+  const datasetPageSource = projectDatasetPageSource;
 
   assert.match(datasetPageSource, /trainingDraft/, "dataset page should expose a local training draft state");
   assert.match(datasetPageSource, /setTrainingDraft/, "start training should update local training draft state");
@@ -818,12 +824,7 @@ test("training dataset page opens a local training draft instead of only preview
 });
 
 test("training dataset page starts training through the formal HTTP API on production routes", () => {
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
-  assert.notEqual(datasetPageStart, -1);
-  assert.notEqual(revisionPageStart, -1);
-
-  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+  const datasetPageSource = projectDatasetPageSource;
 
   assert.match(datasetPageSource, /usePathname/, "dataset page should detect whether it is running under production \\/training routes");
   assert.match(datasetPageSource, /useRouter/, "dataset page should be able to navigate to the queued training run on production routes");
@@ -836,12 +837,7 @@ test("training dataset page starts training through the formal HTTP API on produ
 });
 
 test("training dataset page gates start-training behind readiness and active-run checks", () => {
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
-  assert.notEqual(datasetPageStart, -1);
-  assert.notEqual(revisionPageStart, -1);
-
-  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+  const datasetPageSource = projectDatasetPageSource;
 
   assert.match(datasetPageSource, /const training = useTraining\(data\)/, "dataset page should inspect the full training run list for gating");
   assert.match(datasetPageSource, /run\.kind === "training"/, "dataset gating should only consider training runs");
@@ -855,12 +851,7 @@ test("training dataset page gates start-training behind readiness and active-run
 });
 
 test("training dataset page freezes the current dataset version through the formal HTTP API on production routes", () => {
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
-  assert.notEqual(datasetPageStart, -1);
-  assert.notEqual(revisionPageStart, -1);
-
-  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+  const datasetPageSource = projectDatasetPageSource;
 
   assert.match(datasetPageSource, /datasetRevisionState/, "dataset page should keep revision state scoped to the active project");
   assert.match(datasetPageSource, /setDatasetRevisionState/, "freeze actions should update project-scoped dataset revision state");
@@ -872,12 +863,7 @@ test("training dataset page freezes the current dataset version through the form
 });
 
 test("training dataset page bulk-generates captions through the formal HTTP API on production routes", () => {
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
-  assert.notEqual(datasetPageStart, -1);
-  assert.notEqual(revisionPageStart, -1);
-
-  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+  const datasetPageSource = projectDatasetPageSource;
 
   assert.match(datasetPageSource, /handleGenerateDatasetCaptions/, "dataset page should define an explicit bulk caption-generation handler");
   assert.match(datasetPageSource, /批量生成说明文本/, "dataset page should expose a visible bulk caption-generation action");
@@ -888,12 +874,7 @@ test("training dataset page bulk-generates captions through the formal HTTP API 
 });
 
 test("training dataset draft stays scoped to the active project", () => {
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
-  assert.notEqual(datasetPageStart, -1);
-  assert.notEqual(revisionPageStart, -1);
-
-  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+  const datasetPageSource = projectDatasetPageSource;
 
   assert.match(datasetPageSource, /trainingDraftState/, "dataset draft state should be stored with project context");
   assert.match(datasetPageSource, /projectId:\s*project\?\.id \?\? null/, "dataset draft state should remember the source project id");
@@ -903,12 +884,7 @@ test("training dataset draft stays scoped to the active project", () => {
 });
 
 test("training dataset readiness is a lightweight preparation summary, not a standalone metric grid", () => {
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
-  assert.notEqual(datasetPageStart, -1);
-  assert.notEqual(revisionPageStart, -1);
-
-  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+  const datasetPageSource = projectDatasetPageSource;
 
   assert.doesNotMatch(datasetPageSource, /<StatGrid/, "dataset page should not render the old full readiness metric grid");
   assert.doesNotMatch(datasetPageSource, /title="Readiness"/, "dataset page should not keep a standalone Readiness panel");
@@ -920,12 +896,7 @@ test("training dataset readiness is a lightweight preparation summary, not a sta
 });
 
 test("training dataset revision rows respond to their own panel width", () => {
-  const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
-  assert.notEqual(datasetPageStart, -1);
-  assert.notEqual(revisionPageStart, -1);
-
-  const datasetPageSource = pagesSource.slice(datasetPageStart, revisionPageStart);
+  const datasetPageSource = projectDatasetPageSource;
   const entityRowsRule = cssSource.match(/\.entityRows\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
 
   assert.match(datasetPageSource, /entityRowsSurface/, "dataset revision rows should be wrapped in a list surface container");
