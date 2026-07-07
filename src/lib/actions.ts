@@ -1,3 +1,5 @@
+// Compatibility-only server action barrel.
+// New source code should import focused modules from src/lib/actions/* directly.
 export * from "./actions/image-review";
 export * from "./actions/project";
 export * from "./actions/project-folder";

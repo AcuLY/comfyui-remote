@@ -325,6 +325,8 @@
 - Phase 6 slice 28 verification passed: red `node --import tsx --test tests/test-api-request-json.test.ts`, then green `node --import tsx --test tests/test-api-request-json.test.ts`, clean `rg -n "from [\"']@/lib/actions[\"'];|import\\([\"']@/lib/actions[\"']\\)" src/app/api -g '*.ts' -g '*.tsx'`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-api-request-json.test.ts tests/test-preset-sortable-card-links.test.ts tests/test-preset-detail-neighbors.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-training-api-boundary.test.ts`, and `npm test` with 1063 tests discovered, 1062 pass, 0 fail, 1 skipped.
 - Phase 6 slice 29 narrowed `src/server/services/agent-preset-variant-service.ts` to import `switchBindingVariant` from `src/lib/actions/prompt-block.ts` instead of the full `src/lib/actions.ts` barrel; `src` no longer imports the full actions barrel outside the barrel module itself.
 - Phase 6 slice 29 verification passed: red `node --import tsx --test tests/test-agent-preset-variant-flow-service.test.ts`, then green `node --import tsx --test tests/test-agent-preset-variant-flow-service.test.ts`, clean `rg -n "from [\"']@/lib/actions[\"'];|import\\([\"']@/lib/actions[\"']\\)" src -g '*.ts' -g '*.tsx'`, `npm run lint`, staged `node --import tsx --test tests/test-agent-preset-variant-flow-service.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, and `npm test` with 1064 tests discovered, 1063 pass, 0 fail, 1 skipped.
+- Phase 6 slice 30 documented `src/lib/actions.ts` as a compatibility-only server action barrel while keeping focused `src/lib/actions/*` imports as the source-code path, and added a persistent source-contract guard that fails on new direct `@/lib/actions` imports under `src`.
+- Phase 6 slice 30 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, and `npm test` with 1065 tests discovered, 1064 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -701,7 +703,7 @@
 - `src/lib/actions/preset-variant-resolve.ts`
 - `src/lib/actions/lora.ts`
 
-- [ ] Decide whether `src/lib/actions.ts` remains a wildcard barrel or becomes explicit named exports.
+- [x] Decide whether `src/lib/actions.ts` remains a wildcard barrel or becomes explicit named exports.
 - [ ] Move server-only actions into `src/server/actions` if a future implementation wants a clearer import boundary.
 - [ ] Keep client-safe parsing helpers outside server action files.
 - [ ] Keep queue lifecycle actions compatible with pause/resume deployment requirements.

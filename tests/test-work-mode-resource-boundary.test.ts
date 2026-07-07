@@ -78,6 +78,7 @@ const generationAgentPresetVariantSyncSource = readFileSync(resolve(repoRoot, "s
 const generationTemplateCrudSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-crud.ts"), "utf8");
 const generationTemplateImportSource = readFileSync(resolve(repoRoot, "src/lib/actions/template-import.ts"), "utf8");
 const generationPresetReplacementSource = readFileSync(resolve(repoRoot, "src/server/services/preset-section-replacement-service.ts"), "utf8");
+const generationActionsBarrelSource = readFileSync(resolve(repoRoot, "src/lib/actions.ts"), "utf8");
 
 const MODULE_OWNED_RESOURCE_KEYS = ["runs", "projects", "presets", "templates"] as const;
 const SHARED_RESOURCE_KEYS = ["models", "settings"] as const;
@@ -111,6 +112,22 @@ function findMatchingSources(paths: string[], pattern: RegExp) {
 function sourceFilesFromRoots(...roots: string[]) {
   return roots.flatMap((root) => listSourceFiles(resolve(repoRoot, root)));
 }
+
+test("full actions barrel is compatibility-only and unused by source callers", () => {
+  assert.match(
+    generationActionsBarrelSource,
+    /Compatibility-only server action barrel/,
+    "src/lib/actions.ts should document its compatibility-only role.",
+  );
+
+  const directBarrelImportPattern = /from ["']@\/lib\/actions["']|import\(["']@\/lib\/actions["']\)/;
+  const offenders = findMatchingSources(
+    sourceFilesFromRoots("src").filter((path) => path !== resolve(repoRoot, "src/lib/actions.ts")),
+    directBarrelImportPattern,
+  );
+
+  assert.deepEqual(offenders, [], "Source files should import focused action modules instead of the full barrel.");
+});
 
 test("work mode resource targets isolate generation and training-owned resources", () => {
   const generationTargets = buildWorkModeResourceTargets("generation");
