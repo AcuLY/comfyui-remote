@@ -28,6 +28,7 @@ test("worker boundary doc records generation payload and repository ownership", 
   assert.match(doc, /src\/server\/worker\/training\/task-json\.ts[\s\S]*owns worker task JSON normalization/);
   assert.match(doc, /src\/server\/worker\/training\/heartbeat\.ts[\s\S]*owns training worker heartbeat handling/);
   assert.match(doc, /src\/server\/worker\/training\/completion\.ts[\s\S]*owns training worker completion handling/);
+  assert.match(doc, /src\/server\/worker\/training\/failure\.ts[\s\S]*owns training worker failure handling/);
   assert.match(doc, /docs\/workflow\.api\.json[\s\S]*default standard workflow/);
   assert.match(doc, /Do not let repositories import payload builders/);
   assert.match(doc, /Do not reintroduce worker task ID prefix parsing into task-api/);
@@ -35,6 +36,7 @@ test("worker boundary doc records generation payload and repository ownership", 
   assert.match(doc, /Do not reintroduce lease request parsing or mark-running transitions into task-api/);
   assert.match(doc, /Do not reintroduce heartbeat request parsing or heartbeat progress writes into task-api/);
   assert.match(doc, /Do not reintroduce completion request parsing or artifact completion writes into task-api/);
+  assert.match(doc, /Do not reintroduce failure request parsing or failure status writes into task-api/);
   assert.match(doc, /Do not call the fallback prompt builder from run-executor/);
   assert.match(docsIndex, /docs\/worker-boundaries\.md/, "documentation index should point agents to worker boundaries");
 });
@@ -302,4 +304,23 @@ test("training worker completion lives in a dedicated boundary", () => {
   assert.match(completionSource, /async function completeGenerationTarget/);
   assert.match(completionSource, /async function completeTrainingTarget/);
   assert.match(completionSource, /async function writeArtifact/);
+});
+
+test("training worker failure lives in a dedicated boundary", () => {
+  const failurePath = "src/server/worker/training/failure.ts";
+  assert.ok(existsSync(join(repoRoot, failurePath)), `${failurePath} should own worker failure handling`);
+
+  const taskApi = readSource("src/server/worker/training/task-api.ts");
+  const failureSource = readSource(failurePath);
+  assert.match(taskApi, /from "@\/server\/worker\/training\/failure"/);
+  assert.doesNotMatch(taskApi, /trainingWorkerTaskFailRequestSchema/);
+  assert.doesNotMatch(taskApi, /export async function failTrainingWorkerTask/);
+  assert.doesNotMatch(taskApi, /export async function failTrainingRunWorkerTarget/);
+  assert.doesNotMatch(taskApi, /export async function failGenerationTaskWorkerTarget/);
+  assert.doesNotMatch(taskApi, /errorMessage: parsed\.data\.errorSummary/);
+  assert.match(failureSource, /export async function failTrainingWorkerTask/);
+  assert.match(failureSource, /export async function failTrainingRunWorkerTarget/);
+  assert.match(failureSource, /export async function failGenerationTaskWorkerTarget/);
+  assert.match(failureSource, /trainingWorkerTaskFailRequestSchema/);
+  assert.match(failureSource, /providerError/);
 });
