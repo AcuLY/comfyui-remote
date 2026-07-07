@@ -125,7 +125,13 @@ export function ProjectCascadePicker({
         if (event.target === backdropRef.current) setOpen(false);
       }}
     >
-      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl" style={{ maxHeight: "75vh" }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="选择项目"
+        className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl"
+        style={{ maxHeight: "75vh" }}
+      >
         <div className="border-b border-white/5 px-4 pt-3 pb-2">
           <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
             <Search className="size-3.5 shrink-0 text-zinc-500" />
@@ -134,11 +140,12 @@ export function ProjectCascadePicker({
               type="text"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
+              aria-label="搜索项目"
               placeholder="搜索项目..."
               className="flex-1 bg-transparent text-xs text-zinc-200 outline-none placeholder:text-zinc-600"
             />
             {searchQuery && (
-              <button type="button" onClick={() => setSearchQuery("")} className="shrink-0 text-zinc-500 hover:text-zinc-300">
+              <button type="button" onClick={() => setSearchQuery("")} aria-label="清空搜索" className="shrink-0 text-zinc-500 hover:text-zinc-300">
                 <X className="size-3.5" />
               </button>
             )}
@@ -151,6 +158,7 @@ export function ProjectCascadePicker({
               <button
                 type="button"
                 onClick={() => setCurrentFolderId(parentFolderId)}
+                aria-label="返回上级项目文件夹"
                 className="shrink-0 rounded-lg p-1.5 text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-200"
               >
                 <ChevronLeft className="size-4" />
@@ -183,6 +191,7 @@ export function ProjectCascadePicker({
             <button
               type="button"
               onClick={() => setOpen(false)}
+              aria-label="关闭项目选择器"
               className="shrink-0 rounded-lg p-1.5 text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
             >
               <X className="size-4" />
@@ -257,6 +266,7 @@ export function ProjectCascadePicker({
         type="button"
         disabled={disabled}
         onClick={openPicker}
+        aria-label="选择项目"
         className={`flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-left text-sm outline-none transition hover:bg-white/[0.06] focus:border-sky-500/40 disabled:cursor-not-allowed disabled:opacity-50 ${
           selectedProject ? "text-zinc-100" : "text-zinc-500"
         }`}

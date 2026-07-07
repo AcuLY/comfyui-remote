@@ -54,3 +54,56 @@ test("training shell does not import the shadcn sidebar primitive directly", () 
 
   assert.deepEqual(directSidebarImports, [], "training shell files should not directly import components/ui/sidebar");
 });
+
+test("dialog and cascade pickers keep labeled modal surfaces and portal owners", () => {
+  const pickerExpectations = [
+    {
+      file: "src/components/lora-cascade-picker.tsx",
+      label: /aria-label=\{`\$\{label\} 选择器`\}/,
+      searchLabel: /aria-label=\{`搜索 \$\{label\} 文件`\}/,
+    },
+    {
+      file: "src/components/preset-cascade-picker.tsx",
+      label: /aria-label="选择预制"/,
+      searchLabel: /aria-label="搜索预制"/,
+    },
+    {
+      file: "src/components/preset-group-cascade-picker.tsx",
+      label: /aria-label="选择预制组"/,
+      searchLabel: /aria-label="搜索预制组"/,
+    },
+    {
+      file: "src/components/project-cascade-picker.tsx",
+      label: /aria-label="选择项目"/,
+      searchLabel: /aria-label="搜索项目"/,
+    },
+    {
+      file: "src/components/preset-section-replacement-dialog.tsx",
+      label: /aria-label="批量替换预制"/,
+      searchLabel: /aria-label="关闭"/,
+    },
+  ];
+
+  for (const expectation of pickerExpectations) {
+    const source = readSource(expectation.file);
+    assert.match(source, /createPortal\(/, `${expectation.file} should render modal content through a portal`);
+    assert.match(source, /role="dialog"/, `${expectation.file} should expose a dialog role`);
+    assert.match(source, /aria-modal="true"/, `${expectation.file} should mark modal content as modal`);
+    assert.match(source, expectation.label, `${expectation.file} should label the dialog surface`);
+    assert.match(source, expectation.searchLabel, `${expectation.file} should label key dialog controls`);
+  }
+
+  const checkpointSource = readSource("src/components/checkpoint-cascade-picker.tsx");
+  assert.match(checkpointSource, /<LoraCascadePicker[\s\S]*kind="checkpoint"/, "checkpoint picker should inherit the model cascade dialog boundary");
+});
+
+test("copy buttons and toast text behavior stay under regression tests", () => {
+  const toastCopyTest = readSource("tests/test-toast-copy-button.test.ts");
+  const notificationCopyTest = readSource("tests/test-notification-copy-button.test.ts");
+  const appShell = readSource("src/components/app-shell.tsx");
+
+  assert.match(toastCopyTest, /global notification toasts expose a copy button/, "toast copy behavior should have a regression test");
+  assert.match(notificationCopyTest, /app shell mounts the notification copy button enhancement/, "notification copy mounting should have a regression test");
+  assert.match(notificationCopyTest, /copy button needs an accessible label/, "copy-button accessibility labels should be tested");
+  assert.match(appShell, /toast: "!pr-20"/, "toast layout should reserve room for copy and close controls");
+});

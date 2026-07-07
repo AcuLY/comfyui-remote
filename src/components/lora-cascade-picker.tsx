@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { ChevronRight, Folder, FileText, X, ChevronLeft, Search, Zap } from "lucide-react";
 import type { ModelKind } from "@/lib/model-constants";
 
@@ -297,6 +298,7 @@ export function LoraCascadePicker({
         type="button"
         disabled={disabled}
         onClick={() => setOpen(true)}
+        aria-label={`选择 ${label}`}
         className={`flex w-full items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.04] ${triggerSizeClasses} text-left outline-none transition hover:bg-white/[0.06] focus:border-sky-500/30 disabled:cursor-not-allowed disabled:opacity-50 ${
           displayValue ? "text-zinc-200" : "text-zinc-500"
         }`}
@@ -320,7 +322,7 @@ export function LoraCascadePicker({
       </button>
 
       {/* Centered modal overlay */}
-      {open && (
+      {open ? createPortal((
         <div
           ref={backdropRef}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -328,7 +330,13 @@ export function LoraCascadePicker({
             if (e.target === backdropRef.current) setOpen(false);
           }}
         >
-          <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl" style={{ maxHeight: "75vh" }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${label} 选择器`}
+            className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl"
+            style={{ maxHeight: "75vh" }}
+          >
             {/* Search bar */}
             <div className="border-b border-white/5 px-4 pt-3 pb-2">
               <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
@@ -338,6 +346,7 @@ export function LoraCascadePicker({
                   type="text"
                   value={search.query}
                   onChange={(e) => search.setQuery(e.target.value)}
+                  aria-label={`搜索 ${label} 文件`}
                   placeholder={`搜索 ${label} 文件…`}
                   className="flex-1 bg-transparent text-xs text-zinc-200 outline-none placeholder:text-zinc-600"
                 />
@@ -345,6 +354,7 @@ export function LoraCascadePicker({
                   <button
                     type="button"
                     onClick={() => search.reset()}
+                    aria-label="清空搜索"
                     className="shrink-0 text-zinc-500 hover:text-zinc-300"
                   >
                     <X className="size-3.5" />
@@ -360,6 +370,7 @@ export function LoraCascadePicker({
                   <button
                     type="button"
                     onClick={() => fetchDir(parentPath)}
+                    aria-label={`返回上级 ${label} 文件夹`}
                     className="shrink-0 rounded-lg p-1.5 text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-200"
                   >
                     <ChevronLeft className="size-4" />
@@ -398,6 +409,7 @@ export function LoraCascadePicker({
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
+                  aria-label={`关闭 ${label} 选择器`}
                   className="shrink-0 rounded-lg p-1.5 text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
                 >
                   <X className="size-4" />
@@ -525,7 +537,7 @@ export function LoraCascadePicker({
             </div>
           </div>
         </div>
-      )}
+      ), document.body) : null}
     </>
   );
 }

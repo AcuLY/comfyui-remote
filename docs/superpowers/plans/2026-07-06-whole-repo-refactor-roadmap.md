@@ -531,6 +531,8 @@
 - Phase 9 slice 131 verification passed: red `node --import tsx --test tests/test-section-preset-detail-links.test.ts tests/test-template-section-detail-split.test.ts`, green `node --import tsx --test tests/test-section-preset-detail-links.test.ts tests/test-template-section-detail-split.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-section-preset-detail-links.test.ts tests/test-template-section-detail-split.test.ts tests/test-section-editor-binding-rules.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1174 tests discovered, 1173 pass, 0 fail, 1 skipped.
 - Phase 9 slice 132 added `docs/ui/component-boundaries.md` and `tests/test-ui-component-boundaries.test.ts` to classify production-supported shadcn local primitives, document `design-demo-ui` as not the default production primitive layer, and guard training shell files from direct `@/components/ui/sidebar` imports.
 - Phase 9 slice 132 verification passed: red `node --import tsx --test tests/test-ui-component-boundaries.test.ts`, green `node --import tsx --test tests/test-ui-component-boundaries.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-ui-component-boundaries.test.ts src/components/design-demo-ui/media/image-accessibility.test.ts src/components/design-demo-ui/primitives/controls-interaction.test.mjs src/components/design-demo-ui/primitives/field/field.test.ts src/components/design-demo-ui/feedback/provider-theme.test.mjs tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1176 tests discovered, 1175 pass, 0 fail, 1 skipped.
+- Phase 9 slice 133 added explicit dialog roles, modal flags, accessible trigger/search/back/clear/close labels, and portal ownership checks across the shared LoRA/checkpoint, preset, preset group, and project cascade picker surfaces while keeping copy button and toast text behavior covered by source-contract tests.
+- Phase 9 slice 133 verification passed: red `node --import tsx --test tests/test-ui-component-boundaries.test.ts`, green `node --import tsx --test tests/test-ui-component-boundaries.test.ts`, green `node --import tsx --test tests/test-ui-component-boundaries.test.ts tests/test-toast-copy-button.test.ts tests/test-notification-copy-button.test.ts tests/test-project-mobile-sidebar-width.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1178 tests discovered, 1177 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1230,9 +1232,9 @@ Loading states remain colocated under their route segments for now; the later lo
 
 - [x] Split complex editors into primitives, hooks, and domain-specific adapters.
 - [x] Fix React hooks lint errors in `design-demo-shell/app-shell.tsx` and `preset-cascade-picker.tsx` before using lint as a gate.
-- [ ] Ensure every dialog/cascade picker has accessible labels and stable portal handling.
+- [x] Ensure every dialog/cascade picker has accessible labels and stable portal handling.
 - [x] Keep section editor binding rules as pure functions with tests.
-- [ ] Keep copy buttons and toast text behavior tested.
+- [x] Keep copy buttons and toast text behavior tested.
 - [x] Avoid moving production components into design-demo namespaces.
 
 **UI primitives and design-demo component system:**

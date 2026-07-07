@@ -200,6 +200,7 @@ export function PresetCascadePicker({
         type="button"
         disabled={disabled}
         onClick={openPicker}
+        aria-label="选择预制"
         className={`flex w-full items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-2 py-1 text-xs text-left outline-none transition hover:bg-white/[0.06] focus:border-sky-500/30 disabled:cursor-not-allowed disabled:opacity-50 ${
           displayName ? "text-zinc-200" : "text-zinc-500"
         }`}
@@ -215,7 +216,13 @@ export function PresetCascadePicker({
           className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 p-4"
           onClick={(e) => { if (e.target === backdropRef.current) setOpen(false); }}
         >
-          <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl" style={{ maxHeight: "75vh" }}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="选择预制"
+            className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl"
+            style={{ maxHeight: "75vh" }}
+          >
             {/* Category tabs (skip if locked) */}
             {!lockedCategoryId && filteredCats.length > 1 && (
               <div className="flex flex-wrap gap-1 border-b border-white/5 px-4 pt-3 pb-2">
@@ -246,11 +253,12 @@ export function PresetCascadePicker({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => { setSearchQuery(e.target.value); setExpandedPresetId(null); }}
+                  aria-label="搜索预制"
                   placeholder="搜索预制…"
                   className="flex-1 bg-transparent text-xs text-zinc-200 outline-none placeholder:text-zinc-600"
                 />
                 {searchQuery && (
-                  <button type="button" onClick={() => setSearchQuery("")} className="shrink-0 text-zinc-500 hover:text-zinc-300">
+                  <button type="button" onClick={() => setSearchQuery("")} aria-label="清空搜索" className="shrink-0 text-zinc-500 hover:text-zinc-300">
                     <X className="size-3.5" />
                   </button>
                 )}
@@ -264,6 +272,7 @@ export function PresetCascadePicker({
                   <button
                     type="button"
                     onClick={() => setCurrentFolderId(parentFolderId)}
+                    aria-label="返回上级预制文件夹"
                     className="shrink-0 rounded-lg p-1.5 text-zinc-400 transition hover:bg-white/[0.06] hover:text-zinc-200"
                   >
                     <ChevronLeft className="size-4" />
@@ -300,6 +309,7 @@ export function PresetCascadePicker({
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
+                  aria-label="关闭预制选择器"
                   className="shrink-0 rounded-lg p-1.5 text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
                 >
                   <X className="size-4" />
