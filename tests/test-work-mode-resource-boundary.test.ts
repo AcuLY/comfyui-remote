@@ -25,6 +25,7 @@ const generationQueuePageSource = readFileSync(resolve(repoRoot, "src/app/queue/
 const generationQueueDataRouteSource = readFileSync(resolve(repoRoot, "src/app/api/queue-data/route.ts"), "utf8");
 const generationQueueDataRepositorySource = readFileSync(resolve(repoRoot, "src/server/repositories/queue-data-repository.ts"), "utf8");
 const generationProjectListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/projects/route.ts"), "utf8");
+const generationPresetSortRulesPageSource = readFileSync(resolve(repoRoot, "src/app/assets/presets/sort-rules/page.tsx"), "utf8");
 const generationPresetListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/presets/route.ts"), "utf8");
 const generationPresetLibraryCategoryRouteSource = readFileSync(resolve(repoRoot, "src/app/api/preset-library/categories/route.ts"), "utf8");
 const generationTemplateListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/templates/route.ts"), "utf8");
@@ -362,6 +363,24 @@ test("module-owned frontend pages do not import or link to the other module's re
     ),
     [],
     "Training-owned pages must not import or link to generation-owned projects, runs, presets, or templates.",
+  );
+});
+
+test("generation preset sort rules page delegates ordinary category reads", () => {
+  assert.match(
+    generationPresetSortRulesPageSource,
+    /listPresetSortRuleCategories/,
+    "Generation preset sort-rules page should delegate category reads below the page layer.",
+  );
+  assert.doesNotMatch(
+    generationPresetSortRulesPageSource,
+    /@\/lib\/prisma|ordinaryPresetCategoryTypeWhere|presetCategory\.findMany/,
+    "Generation preset sort-rules page should not own the ordinary preset category query.",
+  );
+  assert.match(
+    generationPresetViewRepositorySource,
+    /listPresetSortRuleCategories[\s\S]*presetCategory\.findMany\(\{[\s\S]*ordinaryPresetLibraryCategoryTypeWhere\(\)/,
+    "Generation preset sort-rules repository read should stay scoped to ordinary preset categories.",
   );
 });
 

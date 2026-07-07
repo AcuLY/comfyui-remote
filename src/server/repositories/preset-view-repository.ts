@@ -249,6 +249,31 @@ export type PresetFull = PresetItem & {
   changeHistory: Record<PresetChangeDimension, PresetHistoryEntry<PresetChangeDimension>[]>;
 };
 
+export type PresetSortRuleCategory = {
+  id: string;
+  name: string;
+  color: string | null;
+  positivePromptOrder: number;
+  negativePromptOrder: number;
+  lora1Order: number;
+  lora2Order: number;
+};
+
+export async function listPresetSortRuleCategories(): Promise<PresetSortRuleCategory[]> {
+  return prisma.presetCategory.findMany({
+    where: { type: ordinaryPresetLibraryCategoryTypeWhere() },
+    select: {
+      id: true,
+      name: true,
+      color: true,
+      positivePromptOrder: true,
+      negativePromptOrder: true,
+      lora1Order: true,
+      lora2Order: true,
+    },
+  });
+}
+
 export async function getPresetCategoriesWithPresets(): Promise<PresetCategoryFull[]> {
   const categories = await prisma.presetCategory.findMany({
     where: { type: ordinaryPresetLibraryCategoryTypeWhere() },

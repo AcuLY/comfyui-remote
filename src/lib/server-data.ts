@@ -31,6 +31,7 @@ export {
   getPresetGroup,
   getPresetFolders,
   getPresetFolder,
+  listPresetSortRuleCategories,
 } from "@/server/repositories/preset-view-repository";
 export type {
   SlotTemplateDef,
