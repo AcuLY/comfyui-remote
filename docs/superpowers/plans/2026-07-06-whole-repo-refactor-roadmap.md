@@ -578,6 +578,8 @@
 - Phase 13 slice 154 verification passed: red `node --import tsx --test tests/test-fixture-governance.test.ts` before the domain builders and test README existed, green same command after implementation, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-fixture-governance.test.ts tests/test-repo-inventory.test.ts` with 7 tests passed, `npm run lint`, and `npm test` with 1214 tests discovered, 1213 pass, 0 fail, 1 skipped.
 - Phase 14 slice 155 added `tests/test-documentation-governance.test.ts`, `docs/documentation-map.md`, target-layer README files under `docs/{architecture,runbooks,api,ui,testing,archive}/`, root-doc classifications, retained-context banners, and a local verification service/auth matrix. README now points to `docs/index.md`, `docs/documentation-map.md`, and `docs/repo-inventory.md`; `CLAUDE.md` delegates to `AGENTS.md`; `position_presets.md` is classified as an active product prompt reference; and `AGENTS.md` records the manual synchronization rule for `agent-rules/**`.
 - Phase 14 slice 155 verification passed: red `npx tsx --test tests/test-documentation-governance.test.ts` before the documentation map, root classifications, retained-context banners, and local verification matrix existed; green same command after implementation; `npx tsx scripts/docs/generate-repo-inventory.ts`; green `npx tsx --test tests/test-documentation-governance.test.ts tests/test-repo-inventory.test.ts tests/test-training-prototype-governance.test.ts` with 12 tests passed; `npm run lint`; and `npm test` with 1221 tests discovered, 1220 pass, 0 fail, 1 skipped.
+- Phase 15 slice 156 added `tests/test-config-runtime-governance.test.ts` and `docs/runbooks/config-runtime-assets.md` to document `config/path-maps.json`, `config/comfy-targets.example.json`, generated Prisma output, public asset policy, runtime-only ignore rules, and local DB decisions. The unused default Next.js `public/{file,globe,next,vercel,window}.svg` files were deleted after source reference checks, and `.gitignore` now explicitly ignores `.deploy.lock/**`.
+- Phase 15 slice 156 verification passed: red `npx tsx --test tests/test-config-runtime-governance.test.ts` before the config/runtime runbook existed, default public SVGs were removed, and `.deploy.lock/**` was ignored; green same command after implementation; `npx tsx scripts/docs/generate-repo-inventory.ts`; green `npx tsx --test tests/test-config-runtime-governance.test.ts tests/test-comfy-target-config.test.ts tests/test-prisma-provider-matrix-doc.test.ts tests/test-repo-inventory.test.ts` with 17 tests passed; `npm run lint`; and `npm test` with 1225 tests discovered, 1224 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1538,12 +1540,12 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/generated/**`
 - Runtime-only local areas: `.next/**`, `data/**`, `logs/**`, `.tmp/**`, `server-dev-*.log`, `server-prod-*.log`, `build-prod*.log`, `.deploy.lock/**`.
 
-- [ ] Document `config/path-maps.json` schema and owner.
-- [ ] Document `config/comfy-targets.example.json` fields and relation to `COMFY_API_URL`, `MODEL_BASE_DIR`, `COMFY_LAUNCH_CMD`, and SSH targets.
-- [ ] Remove unused default public SVGs only if no route references them.
-- [ ] Keep generated Prisma exports out of manual refactor tasks.
-- [ ] Ensure runtime-only directories are ignored and not used in tests except through explicit fixture setup.
-- [ ] Decide whether any runtime local DB file should become a fixture or be removed from git.
+- [x] Document `config/path-maps.json` schema and owner.
+- [x] Document `config/comfy-targets.example.json` fields and relation to `COMFY_API_URL`, `MODEL_BASE_DIR`, `COMFY_LAUNCH_CMD`, and SSH targets.
+- [x] Remove unused default public SVGs only if no route references them.
+- [x] Keep generated Prisma exports out of manual refactor tasks.
+- [x] Ensure runtime-only directories are ignored and not used in tests except through explicit fixture setup.
+- [x] Decide whether any runtime local DB file should become a fixture or be removed from git.
 
 ## Phase 16: Final Convergence And Release Gates
 

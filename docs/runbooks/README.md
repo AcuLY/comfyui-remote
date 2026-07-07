@@ -7,6 +7,7 @@ Runbooks contain executable operational steps. Keep dev-service procedures separ
 
 Current mapped sources:
 - `docs/local-verification.md`
+- `docs/runbooks/config-runtime-assets.md`
 - `agent-rules/dev-service.md`
 - `agent-rules/deploy/**`
 - `agent-rules/mypc-powershell.md`
