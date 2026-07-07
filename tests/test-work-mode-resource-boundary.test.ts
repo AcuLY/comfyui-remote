@@ -23,6 +23,7 @@ const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/train
 const generationProjectDetailSource = readFileSync(resolve(repoRoot, "src/server/repositories/project-view-repository/detail-view.ts"), "utf8");
 const generationQueuePageSource = readFileSync(resolve(repoRoot, "src/app/queue/page.tsx"), "utf8");
 const generationQueueDataRouteSource = readFileSync(resolve(repoRoot, "src/app/api/queue-data/route.ts"), "utf8");
+const generationQueueDataRepositorySource = readFileSync(resolve(repoRoot, "src/server/repositories/queue-data-repository.ts"), "utf8");
 const generationProjectListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/projects/route.ts"), "utf8");
 const generationPresetListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/presets/route.ts"), "utf8");
 const generationPresetLibraryCategoryRouteSource = readFileSync(resolve(repoRoot, "src/app/api/preset-library/categories/route.ts"), "utf8");
@@ -740,25 +741,36 @@ test("generation queue auxiliary lists reuse the generation project boundary", (
   ] as const) {
     assert.match(
       source,
-      /buildGenerationProjectWhere/,
-      `${label} auxiliary lists should import the generation project boundary.`,
-    );
-    assert.match(
-      source,
-      /censoringTask\.groupBy\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
-      `${label} active censoring progress should not include training-owned projects.`,
-    );
-    assert.match(
-      source,
-      /censoringTask\.findMany\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
-      `${label} censoring history should not include training-owned projects.`,
+      /getCensoringQueueData/,
+      `${label} auxiliary lists should delegate censoring queue reads below the UI/route layer.`,
     );
     assert.doesNotMatch(
       source,
-      /project\.findMany\(\{[\s\S]*where:\s*\{\s*id:\s*\{\s*in:\s*projectIds\s*\}/,
-      `${label} project-title lookup must not fetch projects by id without the generation project boundary.`,
+      /@\/lib\/prisma|buildGenerationProjectWhere|censoringTask\./,
+      `${label} should not own censoring resource-boundary queries.`,
     );
   }
+
+  assert.match(
+    generationQueueDataRepositorySource,
+    /buildGenerationProjectWhere/,
+    "Generation queue data repository should import the generation project boundary.",
+  );
+  assert.match(
+    generationQueueDataRepositorySource,
+    /getCensoringQueueData[\s\S]*censoringTask\.groupBy\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation queue data repository active censoring progress should not include training-owned projects.",
+  );
+  assert.match(
+    generationQueueDataRepositorySource,
+    /getCensoringQueueData[\s\S]*censoringTask\.findMany\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    "Generation queue data repository censoring history should not include training-owned projects.",
+  );
+  assert.doesNotMatch(
+    generationQueueDataRepositorySource,
+    /project\.findMany\(\{[\s\S]*where:\s*\{\s*id:\s*\{\s*in:\s*projectIds\s*\}/,
+    "Generation queue data repository project-title lookup must not fetch projects by id without the generation project boundary.",
+  );
 });
 
 test("generation project service entrypoints reuse the generation project boundary", () => {

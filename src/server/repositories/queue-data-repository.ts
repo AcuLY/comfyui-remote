@@ -104,6 +104,33 @@ type AvailableImage = ImageRecord & {
   displayPath: string;
 };
 
+export type CensoringProgressItem = {
+  projectId: string;
+  projectTitle: string;
+  total: number;
+  done: number;
+  running: number;
+  queued: number;
+  failed: number;
+  paused: number;
+};
+
+export type CensoringHistoryItem = {
+  id: string;
+  status: string;
+  errorMessage: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  projectTitle: string;
+  thumbUrl: string;
+};
+
+export type CensoringQueueData = {
+  censoringProgress: CensoringProgressItem[];
+  censoringHistory: CensoringHistoryItem[];
+};
+
 function normalizePositiveInteger(value: number | undefined, fallback: number): number {
   if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
     return fallback;
@@ -424,6 +451,91 @@ export async function getFailedRuns(): Promise<FailedRun[]> {
       finishedAt: run.finishedAt?.toISOString() ?? null,
     };
   });
+}
+
+export async function getCensoringQueueData(): Promise<CensoringQueueData> {
+  const activeCensoringProjects = await prisma.censoringTask.groupBy({
+    by: ["projectId"],
+    where: {
+      status: { in: ["queued", "running", "paused"] },
+      project: buildGenerationProjectWhere(),
+    },
+  });
+
+  const censoringProgress: CensoringProgressItem[] = [];
+
+  if (activeCensoringProjects.length > 0) {
+    const projectIds = activeCensoringProjects.map((project) => project.projectId);
+    const projects = await prisma.project.findMany({
+      where: buildGenerationProjectWhere({ id: { in: projectIds } }),
+      select: { id: true, title: true },
+    });
+    const projectMap = new Map(projects.map((project) => [project.id, project.title]));
+    const visibleProjectIds = projects.map((project) => project.id);
+
+    const taskCounts = await prisma.censoringTask.groupBy({
+      by: ["projectId", "status"],
+      where: {
+        projectId: { in: visibleProjectIds },
+        project: buildGenerationProjectWhere(),
+      },
+      _count: { _all: true },
+    });
+
+    for (const projectId of visibleProjectIds) {
+      const counts = { total: 0, done: 0, running: 0, queued: 0, failed: 0, paused: 0 };
+      for (const group of taskCounts) {
+        if (group.projectId !== projectId) continue;
+        const count = group._count._all;
+        counts.total += count;
+        if (group.status === "done") counts.done = count;
+        else if (group.status === "running") counts.running = count;
+        else if (group.status === "queued") counts.queued = count;
+        else if (group.status === "failed") counts.failed = count;
+        else if (group.status === "paused") counts.paused = count;
+      }
+      censoringProgress.push({
+        projectId,
+        projectTitle: projectMap.get(projectId) ?? "Unknown",
+        ...counts,
+      });
+    }
+  }
+
+  const censoringHistory = await prisma.censoringTask.findMany({
+    where: {
+      status: { in: ["done", "failed"] },
+      project: buildGenerationProjectWhere(),
+    },
+    orderBy: { finishedAt: "desc" },
+    take: 50,
+    select: {
+      id: true,
+      status: true,
+      errorMessage: true,
+      createdAt: true,
+      startedAt: true,
+      finishedAt: true,
+      project: { select: { id: true, title: true } },
+      imageResult: { select: { id: true, thumbPath: true, filePath: true, censoredThumbPath: true } },
+    },
+  });
+
+  return {
+    censoringProgress,
+    censoringHistory: censoringHistory.map((task) => ({
+      id: task.id,
+      status: task.status,
+      errorMessage: task.errorMessage,
+      createdAt: task.createdAt.toISOString(),
+      startedAt: task.startedAt?.toISOString() ?? null,
+      finishedAt: task.finishedAt?.toISOString() ?? null,
+      projectTitle: task.project.title,
+      thumbUrl: toImageUrl(
+        task.imageResult.censoredThumbPath ?? task.imageResult.thumbPath ?? task.imageResult.filePath,
+      ) ?? "",
+    })),
+  };
 }
 
 // ---------------------------------------------------------------------------
