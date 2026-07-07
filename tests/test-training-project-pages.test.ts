@@ -12,6 +12,8 @@ const projectFormPagePath = resolve(featureUiDir, "training-project-form-page.ts
 const projectFormPageSource = existsSync(projectFormPagePath) ? readFileSync(projectFormPagePath, "utf8") : "";
 const projectDetailPagePath = resolve(featureUiDir, "training-project-detail-page.tsx");
 const projectDetailPageSource = existsSync(projectDetailPagePath) ? readFileSync(projectDetailPagePath, "utf8") : "";
+const projectProfilePagePath = resolve(featureUiDir, "training-project-profile-page.tsx");
+const projectProfilePageSource = existsSync(projectProfilePagePath) ? readFileSync(projectProfilePagePath, "utf8") : "";
 const projectPageShellPath = resolve(featureUiDir, "project-page-shell.tsx");
 const projectPageShellSource = existsSync(projectPageShellPath) ? readFileSync(projectPageShellPath, "utf8") : "";
 const trainingResultGridPath = resolve(featureUiDir, "training-result-grid.tsx");
@@ -102,6 +104,12 @@ test("training project detail overview page lives in a focused page module", () 
   assert.match(projectDetailPageSource, /export function LoraTrainingProjectDetailPage/, "project detail overview implementation should live in its own module");
   assert.match(pagesSource, /export \{ LoraTrainingProjectDetailPage \} from "\.\/training-project-detail-page";/, "broad project pages module should retain a compatibility re-export");
   assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectDetailPage/, "broad project pages module should not keep the detail overview implementation inline");
+});
+
+test("training project profile page lives in a focused page module", () => {
+  assert.match(projectProfilePageSource, /export function LoraTrainingProjectProfilePage/, "project profile implementation should live in its own module");
+  assert.match(pagesSource, /export \{ LoraTrainingProjectProfilePage \} from "\.\/training-project-profile-page";/, "broad project pages module should retain a compatibility re-export");
+  assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectProfilePage/, "broad project pages module should not keep the profile implementation inline");
 });
 
 test("training project page shell lives in a focused component module", () => {
@@ -421,12 +429,7 @@ test("training project overview archives and restores through the formal HTTP AP
 });
 
 test("training profile page renders reference image cards with kind, label, and note", () => {
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  const sectionsStart = pagesSource.indexOf("function SectionCard");
-  assert.notEqual(profileStart, -1);
-  assert.notEqual(sectionsStart, -1);
-
-  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const profileSource = projectProfilePageSource;
 
   assert.match(profileSource, /referenceImages/, "profile should render project reference image fixtures");
   assert.match(profileSource, /referenceImageCard/, "profile should use explicit reference image cards");
@@ -436,12 +439,7 @@ test("training profile page renders reference image cards with kind, label, and 
 });
 
 test("training profile page places reference images before profile text", () => {
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  const sectionsStart = pagesSource.indexOf("function SectionCard");
-  assert.notEqual(profileStart, -1);
-  assert.notEqual(sectionsStart, -1);
-
-  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const profileSource = projectProfilePageSource;
   const referencePanelIndex = profileSource.indexOf('<Panel title="参考图"');
   const textPanelIndex = profileSource.indexOf('<Panel title="角色文本"');
 
@@ -451,12 +449,7 @@ test("training profile page places reference images before profile text", () => 
 });
 
 test("training profile page edits reference image label and note from local card state", () => {
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  const sectionsStart = pagesSource.indexOf("function SectionCard");
-  assert.notEqual(profileStart, -1);
-  assert.notEqual(sectionsStart, -1);
-
-  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const profileSource = projectProfilePageSource;
 
   assert.match(profileSource, /editingReferenceImageId/, "profile should track the reference card currently being edited");
   assert.match(profileSource, /handleUpdateReferenceImageDraft/, "profile should update reference label and note in local card state");
@@ -469,12 +462,7 @@ test("training profile page edits reference image label and note from local card
 });
 
 test("training profile page persists reference image metadata and deletion through formal HTTP APIs", () => {
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  const sectionsStart = pagesSource.indexOf("function SectionCard");
-  assert.notEqual(profileStart, -1);
-  assert.notEqual(sectionsStart, -1);
-
-  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const profileSource = projectProfilePageSource;
 
   assert.match(profileSource, /fetch\(`\/api\/training\/reference-images\/\$\{reference\.id\}`/, "reference metadata save should call the formal reference image detail API");
   assert.match(profileSource, /label:\s*reference\.label/, "reference metadata save should submit the edited label");
@@ -486,12 +474,7 @@ test("training profile page persists reference image metadata and deletion throu
 });
 
 test("training profile page uploads reference images into local front-end state", () => {
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  const sectionsStart = pagesSource.indexOf("function SectionCard");
-  assert.notEqual(profileStart, -1);
-  assert.notEqual(sectionsStart, -1);
-
-  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const profileSource = projectProfilePageSource;
 
   assert.match(profileSource, /localReferenceImages/, "profile should render references from local editable state");
   assert.match(profileSource, /setLocalReferenceImages/, "profile upload action should update local state");
@@ -504,12 +487,7 @@ test("training profile page uploads reference images into local front-end state"
 });
 
 test("training profile page uploads reference images through the formal HTTP API on production routes", () => {
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  const sectionsStart = pagesSource.indexOf("function SectionCard");
-  assert.notEqual(profileStart, -1);
-  assert.notEqual(sectionsStart, -1);
-
-  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const profileSource = projectProfilePageSource;
 
   assert.match(profileSource, /usePathname/, "profile upload should detect whether it is running under production \\/training routes");
   assert.match(profileSource, /useRef<HTMLInputElement \| null>/, "profile upload should keep a real file input ref for production uploads");
@@ -521,12 +499,7 @@ test("training profile page uploads reference images through the formal HTTP API
 });
 
 test("training profile page adds reference images to the result pool through the formal HTTP API on production routes", () => {
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  const sectionsStart = pagesSource.indexOf("function SectionCard");
-  assert.notEqual(profileStart, -1);
-  assert.notEqual(sectionsStart, -1);
-
-  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const profileSource = projectProfilePageSource;
 
   assert.match(profileSource, /fetch\(`\/api\/training\/reference-images\/\$\{referenceId\}\/add-to-results`/, "profile reference cards should call the formal add-to-results API");
   assert.match(profileSource, /method:\s*"POST"/, "profile add-to-results action should use POST");
@@ -536,12 +509,7 @@ test("training profile page adds reference images to the result pool through the
 });
 
 test("training profile page saves a visible local profile draft instead of only showing feedback", () => {
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  const sectionsStart = pagesSource.indexOf("function SectionCard");
-  assert.notEqual(profileStart, -1);
-  assert.notEqual(sectionsStart, -1);
-
-  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const profileSource = projectProfilePageSource;
 
   assert.match(profileSource, /profileDraft/, "profile page should expose a local saved profile draft");
   assert.match(profileSource, /setProfileDraft/, "save action should update local profile state");
@@ -554,12 +522,7 @@ test("training profile page saves a visible local profile draft instead of only 
 });
 
 test("training profile page saves through the formal HTTP API on production routes", () => {
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  const sectionsStart = pagesSource.indexOf("function SectionCard");
-  assert.notEqual(profileStart, -1);
-  assert.notEqual(sectionsStart, -1);
-
-  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const profileSource = projectProfilePageSource;
 
   assert.match(profileSource, /usePathname/, "profile page should detect whether it is running under production /training routes");
   assert.match(profileSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/profile`/, "production profile save should call the formal training profile API");
@@ -569,12 +532,7 @@ test("training profile page saves through the formal HTTP API on production rout
 });
 
 test("training profile page exposes text revision history and restore beside editable fields", () => {
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  const sectionsStart = pagesSource.indexOf("function SectionCard");
-  assert.notEqual(profileStart, -1);
-  assert.notEqual(sectionsStart, -1);
-
-  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const profileSource = projectProfilePageSource;
 
   assert.match(profileSource, /const router = useRouter\(\)/, "profile page should refresh after restoring a server-side text revision");
   assert.match(profileSource, /profileRevisionField/, "profile page should keep selected text-revision field state");
@@ -601,12 +559,7 @@ test("training profile page exposes text revision history and restore beside edi
 });
 
 test("training profile page saves editable profile fields into the local draft", () => {
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  const sectionsStart = pagesSource.indexOf("function SectionCard");
-  assert.notEqual(profileStart, -1);
-  assert.notEqual(sectionsStart, -1);
-
-  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const profileSource = projectProfilePageSource;
 
   assert.match(profileSource, /profileForm/, "profile page should track editable profile fields in local state");
   assert.match(profileSource, /handleUpdateProfileForm/, "profile page should expose a form update handler");
@@ -620,12 +573,7 @@ test("training profile page saves editable profile fields into the local draft",
 });
 
 test("training profile draft stays scoped to the active project", () => {
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  const sectionsStart = pagesSource.indexOf("function SectionCard");
-  assert.notEqual(profileStart, -1);
-  assert.notEqual(sectionsStart, -1);
-
-  const profileSource = pagesSource.slice(profileStart, sectionsStart);
+  const profileSource = projectProfilePageSource;
 
   assert.match(profileSource, /projectId:\s*string;/, "saved profile draft should remember the project it belongs to");
   assert.match(profileSource, /visibleProfileDraft/, "profile page should derive a project-scoped visible draft");
@@ -769,9 +717,7 @@ test("training section list mutations use the formal HTTP APIs on production rou
 });
 
 test("training project repeated object actions include the acted-on object name", () => {
-  const projectProfileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(projectProfileStart, -1);
   assert.notEqual(scopedPageStart, -1);
 
   const gridSource = trainingResultGridSource;
