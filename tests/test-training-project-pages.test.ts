@@ -35,6 +35,10 @@ const generationSupplementalImagesHookPath = resolve(featureUiDir, "use-generati
 const generationSupplementalImagesHookSource = existsSync(generationSupplementalImagesHookPath)
   ? readFileSync(generationSupplementalImagesHookPath, "utf8")
   : "";
+const generationTaskDraftHookPath = resolve(featureUiDir, "use-generation-task-draft.ts");
+const generationTaskDraftHookSource = existsSync(generationTaskDraftHookPath)
+  ? readFileSync(generationTaskDraftHookPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
@@ -227,6 +231,17 @@ test("training generation supplemental image state lives in a focused hook modul
   assert.match(pagesSource, /from "\.\/use-generation-supplemental-images"/, "generation compose page should import the focused supplemental image hook");
   assert.doesNotMatch(pagesSource, /\n  const \[supplementalImageAttachmentState, setSupplementalImageAttachments\]/, "generation compose page should not keep supplemental image state inline");
   assert.doesNotMatch(pagesSource, /setSupplementalImageAttachments/, "generation compose page should not update supplemental image state inline");
+});
+
+test("training generation task draft state lives in a focused hook module", () => {
+  assert.match(generationTaskDraftHookSource, /function useGenerationTaskDraft\b/, "generation task draft state should live in a focused hook");
+  assert.match(generationTaskDraftHookSource, /type GenerationTaskDraft\b/, "generation task draft typing should move with the hook");
+  assert.match(generationTaskDraftHookSource, /generationTaskDraftTransportState/, "generation task draft hook should own transport task id state");
+  assert.match(generationTaskDraftHookSource, /visibleGenerationTaskDraft/, "generation task draft hook should expose the active visible draft");
+  assert.match(generationTaskDraftHookSource, /rememberGenerationDraftTaskId/, "generation task draft hook should expose an explicit task id setter");
+  assert.match(pagesSource, /from "\.\/use-generation-task-draft"/, "generation compose page should import the focused task draft hook");
+  assert.doesNotMatch(pagesSource, /\n  const \[generationTaskDraftTransportState, setGenerationTaskDraftTransportState\]/, "generation compose page should not keep draft transport state inline");
+  assert.doesNotMatch(pagesSource, /\n  const \[generationTaskDraft, setGenerationTaskDraft\]/, "generation compose page should not keep visible draft state inline");
 });
 
 test("training project page upload preview helpers live in the utility module", () => {

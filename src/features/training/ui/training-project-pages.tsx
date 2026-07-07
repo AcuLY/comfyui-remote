@@ -93,6 +93,7 @@ import s from "./training-project-pages.module.css";
 import { useGenerationComposeForm } from "./use-generation-compose-form";
 import { useGenerationComposeReferenceSelection } from "./use-generation-compose-reference-selection";
 import { useGenerationSupplementalImages } from "./use-generation-supplemental-images";
+import { useGenerationTaskDraft } from "./use-generation-task-draft";
 import { useProjectSectionDraft } from "./use-project-section-draft";
 import { useProjectReferenceUploadDrafts } from "./use-project-reference-upload-drafts";
 import { useProjectReferenceSelection } from "./use-project-reference-selection";
@@ -3162,22 +3163,12 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     removeLocalSupplementalImage,
     supplementalImageAttachments,
   } = useGenerationSupplementalImages(project?.id ?? null, section?.id ?? null);
-  const [generationTaskDraftTransportState, setGenerationTaskDraftTransportState] = useState(() => ({
-    projectId: project?.id ?? null,
-    sectionId: section?.id ?? null,
-    taskId: null as string | null,
-  }));
-  const [generationTaskDraft, setGenerationTaskDraft] = useState<{
-    finalInput: string;
-    projectId: string;
-    selectedReferenceTitles: string[];
-    sectionId: string;
-    sectionTitle: string;
-    supplementalImageCount: number;
-    supplementalImageTitles: string[];
-    supplementalPrompt: string;
-      taskType: string;
-  } | null>(null);
+  const {
+    draftTaskId,
+    rememberGenerationDraftTaskId,
+    setGenerationTaskDraft,
+    visibleGenerationTaskDraft,
+  } = useGenerationTaskDraft(project?.id ?? null, section?.id ?? null);
   const [isQueueingGenerationTask, setIsQueueingGenerationTask] = useState(false);
   const [isUploadingSupplementalImage, setIsUploadingSupplementalImage] = useState(false);
   const [isRemovingSupplementalImage, setIsRemovingSupplementalImage] = useState(false);
@@ -3186,9 +3177,6 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
   if (!project || !section) return <EmptyPage title="没有生成任务上下文" />;
   const activeProject = project;
   const activeSection = section;
-  const draftTaskId = generationTaskDraftTransportState.projectId === activeProject.id && generationTaskDraftTransportState.sectionId === activeSection.id
-    ? generationTaskDraftTransportState.taskId
-    : null;
   const supplementalImageCandidates: SupplementalImageAttachment[] = [
     ...activeProject.referenceImages.slice(0, 3).map((reference) => ({
       detail: reference.note,
@@ -3205,7 +3193,6 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
       title: result.sourceLabel,
     })),
   ];
-  const visibleGenerationTaskDraft = generationTaskDraft?.projectId === activeProject.id && generationTaskDraft.sectionId === activeSection.id ? generationTaskDraft : null;
   const sectionTitle = activeSection.title;
   const selectedReferences = referenceSourceTree
     .flatMap((group) => group.items)
@@ -3261,11 +3248,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
     }
 
     const nextTaskId = createDraftPayload.data.id as string;
-    setGenerationTaskDraftTransportState({
-      projectId: activeProject.id,
-      sectionId: activeSection.id,
-      taskId: nextTaskId,
-    });
+    rememberGenerationDraftTaskId(nextTaskId);
     return nextTaskId;
   }
 
@@ -3508,11 +3491,7 @@ export function LoraTrainingGenerationComposePage({ data, projectId, sectionId }
         ...nextDraft,
         finalInput: previewPayload.data.finalInput,
       });
-      setGenerationTaskDraftTransportState({
-        projectId: activeProject.id,
-        sectionId: activeSection.id,
-        taskId: null,
-      });
+      rememberGenerationDraftTaskId(null);
       pushToast({
         tone: "success",
         title: "生成任务已创建",

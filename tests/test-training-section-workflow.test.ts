@@ -21,6 +21,10 @@ const generationSupplementalImagesHookPath = resolve(featureUiDir, "use-generati
 const generationSupplementalImagesHookSource = existsSync(generationSupplementalImagesHookPath)
   ? readFileSync(generationSupplementalImagesHookPath, "utf8")
   : "";
+const generationTaskDraftHookPath = resolve(featureUiDir, "use-generation-task-draft.ts");
+const generationTaskDraftHookSource = existsSync(generationTaskDraftHookPath)
+  ? readFileSync(generationTaskDraftHookPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 
 function sourceBetween(startMarker: string, endMarker: string) {
@@ -610,10 +614,11 @@ test("generation compose task draft stays scoped to the active project section",
     "export function LoraTrainingProjectResultsPage",
   );
 
-  assert.match(composePage, /projectId:\s*string;/, "generation task draft should remember its project");
-  assert.match(composePage, /sectionId:\s*string;/, "generation task draft should remember its section");
-  assert.match(composePage, /visibleGenerationTaskDraft/, "compose page should derive a route-scoped visible draft");
-  assert.match(composePage, /generationTaskDraft\?\.projectId === activeProject\.id && generationTaskDraft\.sectionId === activeSection\.id \? generationTaskDraft : null/, "draft display should be gated by the active project and section");
+  assert.match(composePage, /useGenerationTaskDraft/, "compose page should delegate generation task draft state to the focused hook");
+  assert.match(generationTaskDraftHookSource, /projectId:\s*string;/, "generation task draft should remember its project");
+  assert.match(generationTaskDraftHookSource, /sectionId:\s*string;/, "generation task draft should remember its section");
+  assert.match(generationTaskDraftHookSource, /visibleGenerationTaskDraft/, "generation task draft hook should derive a route-scoped visible draft");
+  assert.match(generationTaskDraftHookSource, /generationTaskDraft\?\.projectId === projectId && generationTaskDraft\.sectionId === sectionId \? generationTaskDraft : null/, "draft display should be gated by the active project and section");
   assert.match(composePage, /projectId:\s*activeProject\.id/, "queue action should store the active project id");
   assert.match(composePage, /sectionId:\s*activeSection\.id/, "queue action should store the active section id");
   assert.doesNotMatch(composePage, /\{generationTaskDraft \? \(/, "compose page should not render a stale draft from another project section");
