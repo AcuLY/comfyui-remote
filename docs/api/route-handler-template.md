@@ -128,6 +128,12 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/route.ts`
 - `src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/reorder/route.ts`
 - `src/app/api/training/templates/[templateId]/blocks/[blockId]/route.ts`
+- `src/app/api/training/projects/[projectId]/generation-tasks/route.ts`
+- `src/app/api/training/generation-tasks/[taskId]/route.ts`
+- `src/app/api/training/generation-tasks/[taskId]/inputs/route.ts`
+- `src/app/api/training/generation-tasks/[taskId]/cancel/route.ts`
+- `src/app/api/training/worker/generation-tasks/[taskId]/complete/route.ts`
+- `src/app/api/training/worker/generation-tasks/[taskId]/fail/route.ts`
 
 ## Compatibility Exceptions
 

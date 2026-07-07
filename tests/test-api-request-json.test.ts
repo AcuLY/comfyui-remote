@@ -259,6 +259,12 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/route.ts",
     "src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/reorder/route.ts",
     "src/app/api/training/templates/[templateId]/blocks/[blockId]/route.ts",
+    "src/app/api/training/projects/[projectId]/generation-tasks/route.ts",
+    "src/app/api/training/generation-tasks/[taskId]/route.ts",
+    "src/app/api/training/generation-tasks/[taskId]/inputs/route.ts",
+    "src/app/api/training/generation-tasks/[taskId]/cancel/route.ts",
+    "src/app/api/training/worker/generation-tasks/[taskId]/complete/route.ts",
+    "src/app/api/training/worker/generation-tasks/[taskId]/fail/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -553,6 +559,35 @@ test("training template mutations use shared JSON parsing", () => {
   assert.match(templateSectionsSource, /readOptionalJsonObject\(request\)/, "template sections route should parse through readOptionalJsonObject");
   assert.match(templateSectionsSource, /\bfailFromError\(/, "template sections route should map parser errors through failFromError");
   assert.doesNotMatch(templateSectionsSource, /await request\.json\(\)/, "template sections route should not parse JSON directly");
+});
+
+test("training generation-task mutations use shared JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/training/projects/[projectId]/generation-tasks/route.ts",
+    "src/app/api/training/generation-tasks/[taskId]/route.ts",
+    "src/app/api/training/generation-tasks/[taskId]/inputs/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+
+  for (const routePath of [
+    "src/app/api/training/generation-tasks/[taskId]/cancel/route.ts",
+    "src/app/api/training/worker/generation-tasks/[taskId]/complete/route.ts",
+    "src/app/api/training/worker/generation-tasks/[taskId]/fail/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readOptionalJsonObject\(request\)/, `${routePath} should parse through readOptionalJsonObject`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /request\.json\(\)/, `${routePath} should not parse JSON directly`);
+    assert.doesNotMatch(source, /JSON\.parse\(/, `${routePath} should not parse request text locally`);
+  }
 });
 
 test("generation section batch delete route delegates destructive checks to project service", () => {
@@ -1056,6 +1091,44 @@ test("training template mutations preserve invalid JSON response envelope", asyn
     }),
     await templateBlockRoute.PATCH(makeRequest("not-json"), {
       params: Promise.resolve({ blockId: "block-1", templateId: "template-1" }),
+    }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("training generation-task mutations preserve invalid JSON response envelope", async () => {
+  const projectGenerationTasksRoute = await import("../src/app/api/training/projects/[projectId]/generation-tasks/route");
+  const generationTaskRoute = await import("../src/app/api/training/generation-tasks/[taskId]/route");
+  const generationTaskInputsRoute = await import("../src/app/api/training/generation-tasks/[taskId]/inputs/route");
+  const generationTaskCancelRoute = await import("../src/app/api/training/generation-tasks/[taskId]/cancel/route");
+  const generationTaskWorkerCompleteRoute = await import("../src/app/api/training/worker/generation-tasks/[taskId]/complete/route");
+  const generationTaskWorkerFailRoute = await import("../src/app/api/training/worker/generation-tasks/[taskId]/fail/route");
+
+  for (const response of [
+    await projectGenerationTasksRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await generationTaskRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ taskId: "task-1" }),
+    }),
+    await generationTaskInputsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ taskId: "task-1" }),
+    }),
+    await generationTaskCancelRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ taskId: "task-1" }),
+    }),
+    await generationTaskWorkerCompleteRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ taskId: "task-1" }),
+    }),
+    await generationTaskWorkerFailRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ taskId: "task-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);

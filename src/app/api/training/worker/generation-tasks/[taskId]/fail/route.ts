@@ -1,5 +1,6 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { failGenerationTaskWorkerTarget, mapTrainingWorkerTaskError } from "@/server/worker/training/task-api";
+import { readOptionalJsonObject } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -7,19 +8,17 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ taskId: string }> },
 ) {
-  let body: unknown = {};
+  let body: Record<string, unknown>;
 
   try {
-    const rawBody = await request.text();
-    body = rawBody.trim() ? JSON.parse(rawBody) : {};
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readOptionalJsonObject(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {
     const { taskId } = await params;
-    const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
-    const data = await failGenerationTaskWorkerTarget(taskId, payload);
+    const data = await failGenerationTaskWorkerTarget(taskId, body);
     if (!data) {
       return fail("Training generation task not found", 404, { taskId });
     }

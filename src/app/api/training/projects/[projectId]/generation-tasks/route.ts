@@ -1,4 +1,4 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import type { LoraTrainingTaskStatus } from "@/features/training/types";
 import { listTrainingRuns, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
@@ -8,6 +8,7 @@ import {
   mapTrainingGenerationTaskError,
   normalizeGenerationTaskType,
 } from "@/server/services/training/generation-task-draft-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -68,9 +69,9 @@ export async function POST(
   let body: unknown;
 
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {

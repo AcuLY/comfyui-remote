@@ -1,4 +1,4 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   deleteTrainingGenerationTask,
   getTrainingGenerationTask,
@@ -8,6 +8,7 @@ import {
 } from "@/server/services/training/generation-task-draft-service";
 import { getTrainingRun, mapTrainingReadError } from "@/server/services/training/read-service";
 import { hideTrainingRuns, mapTrainingRunVisibilityError } from "@/server/services/training/run-visibility-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -41,9 +42,9 @@ export async function PATCH(
   let body: unknown;
 
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {
