@@ -5,8 +5,10 @@ import {
   getRunReviewGroup as getRunReviewGroupInRepository,
   keepRunImages as keepRunImagesInRepository,
   restoreImage as restoreImageInRepository,
+  setGenerationImageFeature as setGenerationImageFeatureInRepository,
   setGenerationImageCover as setGenerationImageCoverInRepository,
   trashRunImages as trashRunImagesInRepository,
+  type GenerationImageFeatureField,
 } from "@/server/repositories/review-repository";
 import { audit, auditMany } from "@/server/services/audit-service";
 import {
@@ -118,6 +120,18 @@ export async function setGenerationImageCover(imageId: string, actorType: ActorT
   const normalizedId = normalizeRequiredId(imageId, "imageId");
   const result = await setGenerationImageCoverInRepository(normalizedId);
   audit("ImageResult", normalizedId, "update", { projectId: result.projectId, cover: true }, actorType);
+  return result;
+}
+
+export async function setGenerationImageFeature(
+  imageId: string,
+  field: GenerationImageFeatureField,
+  value: boolean,
+  actorType: ActorType = ActorType.user,
+) {
+  const normalizedId = normalizeRequiredId(imageId, "imageId");
+  const result = await setGenerationImageFeatureInRepository(normalizedId, field, value);
+  audit("ImageResult", normalizedId, "update", { [field]: value }, actorType);
   return result;
 }
 

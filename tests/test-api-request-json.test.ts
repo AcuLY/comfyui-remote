@@ -483,6 +483,12 @@ test("review and image mutations use shared JSON parsing", () => {
   assert.match(coverRouteSource, /readOptionalJsonObject\(request\)/, "cover route should parse through readOptionalJsonObject");
   assert.match(coverRouteSource, /\bfailFromError\(/, "cover route should map parser errors through failFromError");
   assert.doesNotMatch(coverRouteSource, /request\.json\(\)/, "cover route should not parse JSON directly");
+
+  const featuredHelperSource = readFileSync("src/app/api/images/[imageId]/featured-helper.ts", "utf8");
+  assert.match(featuredHelperSource, /from ["']@\/server\/http\/request-json["']/, "featured helper should import request JSON helpers");
+  assert.match(featuredHelperSource, /readJsonBody\(request\)/, "featured helper should parse through readJsonBody");
+  assert.match(featuredHelperSource, /\bfailFromError\(/, "featured helper should map parser errors through failFromError");
+  assert.doesNotMatch(featuredHelperSource, /request\.json\(\)/, "featured helper should not parse JSON directly");
 });
 
 test("agent API mutations use shared raw JSON parsing", () => {

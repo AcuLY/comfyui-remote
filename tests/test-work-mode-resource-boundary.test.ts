@@ -979,7 +979,6 @@ test("generation project, template, and agent entrypoints reuse the generation p
 test("generation review and image API entrypoints reuse the generation project boundary", () => {
   for (const [label, source] of [
     ["generation review repository", generationReviewRepositorySource],
-    ["generation featured image helper", generationImageFeaturedHelperSource],
   ] as const) {
     assert.match(
       source,
@@ -1007,6 +1006,16 @@ test("generation review and image API entrypoints reuse the generation project b
     /@\/lib\/db|buildGenerationProjectWhere|imageResult\.findFirst|project\.updateMany/,
     "Generation image cover route should not own the resource-boundary mutation.",
   );
+  assert.match(
+    generationImageFeaturedHelperSource,
+    /setGenerationImageFeature/,
+    "Generation featured image helper should delegate marker mutations below the route helper.",
+  );
+  assert.doesNotMatch(
+    generationImageFeaturedHelperSource,
+    /@\/lib\/db|buildGenerationProjectWhere|imageResult\.findFirst|imageResult\.update/,
+    "Generation featured image helper should not own the resource-boundary mutation.",
+  );
 
   assert.match(
     generationReviewRepositorySource,
@@ -1029,8 +1038,8 @@ test("generation review and image API entrypoints reuse the generation project b
     "Generation cover image route should reject hidden training benchmark images.",
   );
   assert.match(
-    generationImageFeaturedHelperSource,
-    /imageResult\.findFirst\(\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    generationReviewRepositorySource,
+    /setGenerationImageFeature[\s\S]*imageResult\.findFirst\(\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
     "Generation featured image route should reject hidden training benchmark images.",
   );
 });

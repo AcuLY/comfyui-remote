@@ -33,6 +33,8 @@ type TrashPlan = ImagePathChangePlan & {
   trashPath: string;
 };
 
+export type GenerationImageFeatureField = "featured" | "featured2";
+
 async function getRunReviewBase(runId: string) {
   const run = await db.run.findFirst({
     where: {
@@ -523,4 +525,44 @@ export async function setGenerationImageCover(imageId: string) {
     cover: projectUpdate.count > 0,
     reviewStatus: keptImage.reviewStatus,
   };
+}
+
+export async function setGenerationImageFeature(
+  imageId: string,
+  field: GenerationImageFeatureField,
+  value: boolean,
+) {
+  const existing = await db.imageResult.findFirst({
+    where: {
+      id: imageId,
+      run: { project: buildGenerationProjectWhere() },
+    },
+    select: { id: true, reviewStatus: true },
+  });
+
+  if (!existing) {
+    throw new Error("IMAGE_NOT_FOUND");
+  }
+
+  const shouldKeep = value && existing.reviewStatus !== ReviewStatus.trashed;
+  const data = {
+    [field]: value,
+    ...(shouldKeep
+      ? { reviewStatus: ReviewStatus.kept, reviewedAt: new Date() }
+      : {}),
+  };
+
+  if (field === "featured") {
+    return db.imageResult.update({
+      where: { id: imageId },
+      data,
+      select: { id: true, featured: true, reviewStatus: true },
+    });
+  }
+
+  return db.imageResult.update({
+    where: { id: imageId },
+    data,
+    select: { id: true, featured2: true, reviewStatus: true },
+  });
 }

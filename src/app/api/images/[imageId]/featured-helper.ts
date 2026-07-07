@@ -1,8 +1,11 @@
 import { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
-import { ok, fail } from "@/lib/api-response";
-import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
+import { fail, failFromError, ok } from "@/lib/api-response";
+import { readJsonBody } from "@/server/http/request-json";
+import {
+  mapReviewError,
+  setGenerationImageFeature,
+} from "@/server/services/review-service";
 
 type FeaturedField = "featured" | "featured2";
 
@@ -17,44 +20,22 @@ export async function handleFeaturedToggle(
 ) {
   const { imageId } = await context.params;
 
+  let body: unknown;
   try {
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      return fail("Invalid JSON body", 400);
-    }
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
+  }
 
-    const value = Boolean((body as Record<string, unknown>)[field]);
+  const value = Boolean((body as Record<string, unknown> | null | undefined)?.[field]);
 
-    const existing = await db.imageResult.findFirst({
-      where: {
-        id: imageId,
-        run: { project: buildGenerationProjectWhere() },
-      },
-      select: { id: true, reviewStatus: true },
-    });
-    if (!existing) {
-      return fail("Image not found", 404);
-    }
-
-    const shouldKeep = value && existing.reviewStatus !== "trashed";
-    const image = await db.imageResult.update({
-      where: { id: imageId },
-      data: {
-        [field]: value,
-        ...(shouldKeep
-          ? { reviewStatus: "kept", reviewedAt: new Date() }
-          : {}),
-      },
-      select: { id: true, [field]: true, reviewStatus: true },
-    });
-
+  try {
+    const image = await setGenerationImageFeature(imageId, field, value);
     revalidatePath("/projects", "layout");
 
     return ok(image);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    return fail(message, 400);
+    const mapped = mapReviewError(error);
+    return fail(mapped.message, mapped.status, mapped.details);
   }
 }
