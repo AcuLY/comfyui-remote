@@ -1,9 +1,10 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { listTrainingProjects, mapTrainingReadError } from "@/server/services/training/read-service";
 import {
   createTrainingProject,
   mapTrainingProjectError,
 } from "@/server/services/training/project-actions-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +25,9 @@ export async function POST(request: Request) {
   let body: unknown;
 
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {

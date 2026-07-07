@@ -221,6 +221,11 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/agent/projects/[projectId]/sync-preset-variants/route.ts",
     "src/app/api/agent/projects/[projectId]/update/route.ts",
     "src/app/api/agent/projects/sync-preset-variant-flow/route.ts",
+    "src/app/api/training/projects/route.ts",
+    "src/app/api/training/projects/[projectId]/route.ts",
+    "src/app/api/training/projects/reorder/route.ts",
+    "src/app/api/training/projects/[projectId]/profile/route.ts",
+    "src/app/api/training/projects/[projectId]/save-as-template/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -369,6 +374,23 @@ test("agent API mutations use shared raw JSON parsing", () => {
     "src/app/api/agent/projects/[projectId]/sync-preset-variants/route.ts",
     "src/app/api/agent/projects/[projectId]/update/route.ts",
     "src/app/api/agent/projects/sync-preset-variant-flow/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+});
+
+test("training project mutations use shared raw JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/training/projects/route.ts",
+    "src/app/api/training/projects/[projectId]/route.ts",
+    "src/app/api/training/projects/reorder/route.ts",
+    "src/app/api/training/projects/[projectId]/profile/route.ts",
+    "src/app/api/training/projects/[projectId]/save-as-template/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -661,6 +683,36 @@ test("agent API mutations preserve invalid JSON response envelope", async () => 
       params: Promise.resolve({ projectId: "project-1" }),
     }),
     await syncPresetVariantFlowRoute.POST(makeRequest("not-json")),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("training project mutations preserve invalid JSON response envelope", async () => {
+  const projectsRoute = await import("../src/app/api/training/projects/route");
+  const projectRoute = await import("../src/app/api/training/projects/[projectId]/route");
+  const projectsReorderRoute = await import("../src/app/api/training/projects/reorder/route");
+  const projectProfileRoute = await import("../src/app/api/training/projects/[projectId]/profile/route");
+  const saveAsTemplateRoute = await import("../src/app/api/training/projects/[projectId]/save-as-template/route");
+
+  for (const response of [
+    await projectsRoute.POST(makeRequest("not-json")),
+    await projectRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await projectsReorderRoute.POST(makeRequest("not-json")),
+    await projectProfileRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await saveAsTemplateRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
   ]) {
     assert.equal(response.status, 400);
     assert.deepEqual(await response.json(), {

@@ -90,6 +90,11 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/agent/projects/[projectId]/sync-preset-variants/route.ts`
 - `src/app/api/agent/projects/[projectId]/update/route.ts`
 - `src/app/api/agent/projects/sync-preset-variant-flow/route.ts`
+- `src/app/api/training/projects/route.ts`
+- `src/app/api/training/projects/[projectId]/route.ts`
+- `src/app/api/training/projects/reorder/route.ts`
+- `src/app/api/training/projects/[projectId]/profile/route.ts`
+- `src/app/api/training/projects/[projectId]/save-as-template/route.ts`
 
 ## Compatibility Exceptions
 
