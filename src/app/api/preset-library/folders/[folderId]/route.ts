@@ -24,7 +24,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const { folderId } = await context.params;
 
   try {
-    const body = await readJsonBody(request) as { name?: unknown };
+    const body = await readJsonBody(request) as { name: string };
     await renamePresetFolder(folderId, body.name);
     return ok({ success: true });
   } catch (error) {

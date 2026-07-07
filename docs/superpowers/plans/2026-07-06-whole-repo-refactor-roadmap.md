@@ -12,101 +12,101 @@
 
 ## Scope And Ground Rules
 
-- [ ] Cover every tracked area: root files, `agent-rules/`, `config/`, `design-demos/`, `docs/`, `prisma/`, `public/`, `scripts/`, `src/`, and `tests/`.
-- [ ] Treat generated and runtime files differently from source files: generated files must be regenerated, runtime files must be ignored or documented, and neither should be hand-refactored.
-- [ ] Do not change runtime behavior in the same commit as broad movement unless the test explicitly proves the behavior is unchanged.
-- [ ] Prefer moving code behind stable exports before changing implementation details.
-- [ ] Keep route URLs, API response envelopes, database shape, queue semantics, auth token handling, and deployment scripts stable until a task explicitly changes them.
-- [ ] Keep `/api/queue` semantics explicit: it is the review queue, not the active queued/running work source.
-- [ ] For active work state, use `/api/worker/status`, `/api/queue-data`, `pause-active`, and `resume-paused`.
-- [ ] Read the relevant Next.js 16 guide under `node_modules/next/dist/docs/` before changing App Router, route handler, proxy, build, cache, or React Server Component patterns.
-- [ ] Keep all auth verification compatible with the `.env` token workflow in `AGENTS.md`; never hard-code or print token values.
-- [ ] Any later implementation that affects runtime behavior must follow the repository deploy rules in `AGENTS.md`, including `.deploy.lock`, queue pause/resume, build checks, service restart filtering, and authenticated verification.
+- [x] Cover every tracked area: root files, `agent-rules/`, `config/`, `design-demos/`, `docs/`, `prisma/`, `public/`, `scripts/`, `src/`, and `tests/`.
+- [x] Treat generated and runtime files differently from source files: generated files must be regenerated, runtime files must be ignored or documented, and neither should be hand-refactored.
+- [x] Do not change runtime behavior in the same commit as broad movement unless the test explicitly proves the behavior is unchanged.
+- [x] Prefer moving code behind stable exports before changing implementation details.
+- [x] Keep route URLs, API response envelopes, database shape, queue semantics, auth token handling, and deployment scripts stable until a task explicitly changes them.
+- [x] Keep `/api/queue` semantics explicit: it is the review queue, not the active queued/running work source.
+- [x] For active work state, use `/api/worker/status`, `/api/queue-data`, `pause-active`, and `resume-paused`.
+- [x] Read the relevant Next.js 16 guide under `node_modules/next/dist/docs/` before changing App Router, route handler, proxy, build, cache, or React Server Component patterns.
+- [x] Keep all auth verification compatible with the `.env` token workflow in `AGENTS.md`; never hard-code or print token values.
+- [x] Any later implementation that affects runtime behavior must follow the repository deploy rules in `AGENTS.md`, including `.deploy.lock`, queue pause/resume, build checks, service restart filtering, and authenticated verification.
 
 ## Architecture Quality Gates
 
 **Purpose:** Make module boundaries, maintainability, code style, and extensibility explicit acceptance criteria for every refactor batch.
 
 **Module split gates:**
-- [ ] Every module must have one primary reason to change; if a file changes for UI layout, API behavior, persistence, and worker behavior at the same time, split it.
-- [ ] Every moved or newly created file must declare its owner area in the inventory: route, page container, UI component, hook, service, repository, worker, script, test fixture, doc, generated code, or runtime artifact.
-- [ ] A route file must not own business workflow. It can own request parsing, auth checks, input validation, service invocation, and response mapping.
-- [ ] A service file must not own raw page rendering or route-specific response formatting. It can own workflow orchestration, validation coordination, audit, external calls, and side effects.
-- [ ] A repository file must not own business decisions, UI labels, HTTP response shape, or external process behavior. It can own query construction, persistence, transactions, and row mapping.
-- [ ] A UI component must not import Prisma, repository modules, server services, Node-only APIs, or deployment/runtime utilities.
-- [ ] Shared helpers must be classified as client-safe, server-only, or universal before they are imported from multiple modules.
-- [ ] Any module that remains intentionally broad must have an explicit retention reason and a follow-up split checkpoint.
+- [x] Every module must have one primary reason to change; if a file changes for UI layout, API behavior, persistence, and worker behavior at the same time, split it.
+- [x] Every moved or newly created file must declare its owner area in the inventory: route, page container, UI component, hook, service, repository, worker, script, test fixture, doc, generated code, or runtime artifact.
+- [x] A route file must not own business workflow. It can own request parsing, auth checks, input validation, service invocation, and response mapping.
+- [x] A service file must not own raw page rendering or route-specific response formatting. It can own workflow orchestration, validation coordination, audit, external calls, and side effects.
+- [x] A repository file must not own business decisions, UI labels, HTTP response shape, or external process behavior. It can own query construction, persistence, transactions, and row mapping.
+- [x] A UI component must not import Prisma, repository modules, server services, Node-only APIs, or deployment/runtime utilities.
+- [x] Shared helpers must be classified as client-safe, server-only, or universal before they are imported from multiple modules.
+- [x] Any module that remains intentionally broad must have an explicit retention reason and a follow-up split checkpoint.
 
 **Dependency gates:**
-- [ ] Preferred request dependency direction is `src/app/api -> src/server/services -> src/server/repositories -> prisma`.
-- [ ] Preferred page dependency direction is `src/app/* route/page -> src/features or src/components -> src/lib client-safe helpers`.
-- [ ] Repositories must not import services.
-- [ ] Server services must not import React components or route client modules.
-- [ ] Client components must not import `src/server/**`, `src/lib/db.ts`, `src/lib/prisma.ts`, or Node built-ins.
-- [ ] Training-owned resources must not fall back to generation-owned APIs or UI routes except for explicitly shared resources such as models and settings.
-- [ ] Generation-owned resources must not use training APIs or training UI routes as compatibility shortcuts.
-- [ ] Barrel files must use explicit exports for public APIs; wildcard barrels require a documented reason and a test that catches accidental public surface expansion.
+- [x] Preferred request dependency direction is `src/app/api -> src/server/services -> src/server/repositories -> prisma`.
+- [x] Preferred page dependency direction is `src/app/* route/page -> src/features or src/components -> src/lib client-safe helpers`.
+- [x] Repositories must not import services.
+- [x] Server services must not import React components or route client modules.
+- [x] Client components must not import `src/server/**`, `src/lib/db.ts`, `src/lib/prisma.ts`, or Node built-ins.
+- [x] Training-owned resources must not fall back to generation-owned APIs or UI routes except for explicitly shared resources such as models and settings.
+- [x] Generation-owned resources must not use training APIs or training UI routes as compatibility shortcuts.
+- [x] Barrel files must use explicit exports for public APIs; wildcard barrels require a documented reason and a test that catches accidental public surface expansion.
 
 **Maintainability gates:**
-- [ ] Files over 800 lines must be reviewed for extraction before feature work continues.
-- [ ] Files over 1200 lines must either be split in the same batch or have a written exception with a target split batch.
-- [ ] Functions over 80 lines must be reviewed for extraction into parser, mapper, validator, command, or renderer helpers.
-- [ ] Components with more than three independent state clusters must extract hooks or child components.
-- [ ] Any helper used by three or more modules must live in a named shared module with tests.
-- [ ] Every nontrivial module must have a stable test entrypoint or an explicit reason why it is covered through a higher-level test.
-- [ ] Known-red tests must be listed with cause and owner before unrelated refactors proceed.
-- [ ] Source-contract tests that inspect file text must explain the behavior they protect and should not duplicate runtime tests.
+- [x] Files over 800 lines must be reviewed for extraction before feature work continues.
+- [x] Files over 1200 lines must either be split in the same batch or have a written exception with a target split batch.
+- [x] Functions over 80 lines must be reviewed for extraction into parser, mapper, validator, command, or renderer helpers.
+- [x] Components with more than three independent state clusters must extract hooks or child components.
+- [x] Any helper used by three or more modules must live in a named shared module with tests.
+- [x] Every nontrivial module must have a stable test entrypoint or an explicit reason why it is covered through a higher-level test.
+- [x] Known-red tests must be listed with cause and owner before unrelated refactors proceed.
+- [x] Source-contract tests that inspect file text must explain the behavior they protect and should not duplicate runtime tests.
 
 **Code style gates:**
-- [ ] Naming must reflect layer and domain: route handlers use HTTP verbs, services use command/query names, repositories use list/get/create/update/delete or transaction-specific names, UI components use product nouns, hooks start with `use`.
-- [ ] Error responses must use the shared API envelope and a consistent error message extraction path.
-- [ ] Toast messages, route labels, status labels, and audit messages must be owned by the feature area that renders or records them, not duplicated in routes.
-- [ ] Import paths must prefer `@/` aliases for source modules and relative paths for files within the same small folder.
-- [ ] Type definitions shared across client and server must not include Prisma-only types unless the file is server-only.
-- [ ] `unknown` parsing must be localized to boundary modules; downstream code should receive typed inputs.
-- [ ] `any` requires a local explanation or replacement with `unknown`, typed generics, or schema parsing.
-- [ ] CSS modules must stay colocated with the component or feature they style; global CSS is reserved for tokens, resets, and app-wide layout primitives.
-- [ ] Generated files, runtime logs, local DB files, and build artifacts must not be formatted, linted, or manually edited.
+- [x] Naming must reflect layer and domain: route handlers use HTTP verbs, services use command/query names, repositories use list/get/create/update/delete or transaction-specific names, UI components use product nouns, hooks start with `use`.
+- [x] Error responses must use the shared API envelope and a consistent error message extraction path.
+- [x] Toast messages, route labels, status labels, and audit messages must be owned by the feature area that renders or records them, not duplicated in routes.
+- [x] Import paths must prefer `@/` aliases for source modules and relative paths for files within the same small folder.
+- [x] Type definitions shared across client and server must not include Prisma-only types unless the file is server-only.
+- [x] `unknown` parsing must be localized to boundary modules; downstream code should receive typed inputs.
+- [x] `any` requires a local explanation or replacement with `unknown`, typed generics, or schema parsing.
+- [x] CSS modules must stay colocated with the component or feature they style; global CSS is reserved for tokens, resets, and app-wide layout primitives.
+- [x] Generated files, runtime logs, local DB files, and build artifacts must not be formatted, linted, or manually edited.
 
 **Extensibility gates:**
-- [ ] Adding a new API route requires a service owner, input schema, response shape, route test, and docs update if public or agent-facing.
-- [ ] Adding a new service requires a repository or external dependency map, a test plan, and a note about side effects.
-- [ ] Adding a new repository method requires a typed filter/input object and at least one test for ordering, scoping, or transaction behavior if the query is nontrivial.
-- [ ] Adding a new Prisma model requires updates to both PostgreSQL and SQLite schemas, migration strategy, generated client plan, and schema compatibility tests.
-- [ ] Adding a new worker task requires task ID parsing, lease/heartbeat/complete/fail behavior, retry semantics, and worker route tests.
-- [ ] Adding a new UI route requires route data ownership, loading/error state, mobile layout behavior, auth behavior if protected, and navigation placement.
-- [ ] Adding a new design-demo page requires a clear relationship to production: active reference, component lab, migration staging, or archive.
-- [ ] Adding a new script requires documented inputs, outputs, dry-run behavior, logging, and exit code semantics.
-- [ ] Adding a new doc requires classification as current, runbook, historical, prototype, generated, or superseded.
+- [x] Adding a new API route requires a service owner, input schema, response shape, route test, and docs update if public or agent-facing.
+- [x] Adding a new service requires a repository or external dependency map, a test plan, and a note about side effects.
+- [x] Adding a new repository method requires a typed filter/input object and at least one test for ordering, scoping, or transaction behavior if the query is nontrivial.
+- [x] Adding a new Prisma model requires updates to both PostgreSQL and SQLite schemas, migration strategy, generated client plan, and schema compatibility tests.
+- [x] Adding a new worker task requires task ID parsing, lease/heartbeat/complete/fail behavior, retry semantics, and worker route tests.
+- [x] Adding a new UI route requires route data ownership, loading/error state, mobile layout behavior, auth behavior if protected, and navigation placement.
+- [x] Adding a new design-demo page requires a clear relationship to production: active reference, component lab, migration staging, or archive.
+- [x] Adding a new script requires documented inputs, outputs, dry-run behavior, logging, and exit code semantics.
+- [x] Adding a new doc requires classification as current, runbook, historical, prototype, generated, or superseded.
 
 **Documentation system gates:**
-- [ ] The refactor must leave behind a maintained documentation system, not only updated individual documents.
-- [ ] Every documentation file must be classified as current, runbook, architecture reference, API contract, product/design reference, prototype, historical record, generated artifact, or superseded.
-- [ ] Every current document must have an owner area, update trigger, and verification method.
-- [ ] Every superseded document must either be deleted, moved to an archive area, or kept with a clear supersession banner pointing to the current source of truth.
-- [ ] Historical plans and PRDs must not be presented as current runtime truth; they must be indexed as historical/product intent if retained.
-- [ ] Prototype HTML/CSS/JS files must be classified as active reference, migration staging, or archive; stale prototype files must not remain beside current docs without status.
-- [ ] The documentation system must include a top-level index that tells agents which docs to read first for architecture, local development, deployment, API contracts, UI design, training, queue/worker behavior, and troubleshooting.
-- [ ] Documentation changes must accompany module boundary changes, route contract changes, Prisma schema changes, script behavior changes, and deployment workflow changes.
-- [ ] Docs that duplicate another source must either become generated/synchronized, be merged into the authoritative doc, or be removed.
-- [ ] File cleanup must include stale docs, stale prototype assets, obsolete static demos, unused public assets, abandoned scripts, and old local verification notes.
-- [ ] A deleted documentation or prototype file must have its replacement path or deletion reason recorded in the batch notes.
-- [ ] New docs must avoid vague handoff prose; they must name exact files, commands, routes, services, repositories, scripts, and verification gates.
+- [x] The refactor must leave behind a maintained documentation system, not only updated individual documents.
+- [x] Every documentation file must be classified as current, runbook, architecture reference, API contract, product/design reference, prototype, historical record, generated artifact, or superseded.
+- [x] Every current document must have an owner area, update trigger, and verification method.
+- [x] Every superseded document must either be deleted, moved to an archive area, or kept with a clear supersession banner pointing to the current source of truth.
+- [x] Historical plans and PRDs must not be presented as current runtime truth; they must be indexed as historical/product intent if retained.
+- [x] Prototype HTML/CSS/JS files must be classified as active reference, migration staging, or archive; stale prototype files must not remain beside current docs without status.
+- [x] The documentation system must include a top-level index that tells agents which docs to read first for architecture, local development, deployment, API contracts, UI design, training, queue/worker behavior, and troubleshooting.
+- [x] Documentation changes must accompany module boundary changes, route contract changes, Prisma schema changes, script behavior changes, and deployment workflow changes.
+- [x] Docs that duplicate another source must either become generated/synchronized, be merged into the authoritative doc, or be removed.
+- [x] File cleanup must include stale docs, stale prototype assets, obsolete static demos, unused public assets, abandoned scripts, and old local verification notes.
+- [x] A deleted documentation or prototype file must have its replacement path or deletion reason recorded in the batch notes.
+- [x] New docs must avoid vague handoff prose; they must name exact files, commands, routes, services, repositories, scripts, and verification gates.
 
 **Review gates:**
-- [ ] Each batch review must explicitly answer: did this improve module split, maintainability, style consistency, or extensibility?
-- [ ] If a batch only moves files, review must compare imports before and after and run import-level tests.
-- [ ] If a batch changes behavior, review must include test evidence and user-visible behavior notes.
-- [ ] If a batch introduces an exception to these gates, the exception must name an owner, reason, risk, and removal trigger.
-- [ ] Final convergence cannot pass while files remain unclassified, generated/runtime files are mixed with source, or broad modules lack split decisions.
+- [x] Each batch review must explicitly answer: did this improve module split, maintainability, style consistency, or extensibility?
+- [x] If a batch only moves files, review must compare imports before and after and run import-level tests.
+- [x] If a batch changes behavior, review must include test evidence and user-visible behavior notes.
+- [x] If a batch introduces an exception to these gates, the exception must name an owner, reason, risk, and removal trigger.
+- [x] Final convergence cannot pass while files remain unclassified, generated/runtime files are mixed with source, or broad modules lack split decisions.
 
 ## Current Inventory Snapshot
 
-- [ ] Root tracked files: `AGENTS.md`, `CLAUDE.md`, `README.md`, `DESIGN.md`, `.env.example`, `.gitignore`, `package.json`, `package-lock.json`, `tsconfig.json`, `eslint.config.mjs`, `next.config.ts`, `postcss.config.mjs`, `prisma.config.ts`, `components.json`, `docker-compose.yml`, `position_presets.md`, `start-server.bat`.
-- [ ] Source areas: `src/app`, `src/app/api`, `src/components`, `src/features/training`, `src/lib`, `src/server`, `src/hooks`, `src/scripts`, `src/generated`, `src/proxy.ts`, `src/instrumentation.ts`, `src/instrumentation.node.ts`.
-- [ ] Test areas: `tests/*.test.ts`, colocated design-demo tests under `src/app/design-demos/**`, component tests under `src/components/**`.
-- [ ] Documentation areas: `docs/analysis`, `docs/plans`, `docs/prd`, `docs/prototypes`, `docs/superpowers`, top-level design and verification docs.
-- [ ] Operational areas: `agent-rules/`, `scripts/`, `config/`, `prisma/`, `public/`, legacy static demos under `design-demos/`.
+- [x] Root tracked files: `AGENTS.md`, `CLAUDE.md`, `README.md`, `DESIGN.md`, `.env.example`, `.gitignore`, `package.json`, `package-lock.json`, `tsconfig.json`, `eslint.config.mjs`, `next.config.ts`, `postcss.config.mjs`, `prisma.config.ts`, `components.json`, `docker-compose.yml`, `position_presets.md`, `start-server.bat`.
+- [x] Source areas: `src/app`, `src/app/api`, `src/components`, `src/features/training`, `src/lib`, `src/server`, `src/hooks`, `src/scripts`, `src/generated`, `src/proxy.ts`, `src/instrumentation.ts`, `src/instrumentation.node.ts`.
+- [x] Test areas: `tests/*.test.ts`, colocated design-demo tests under `src/app/design-demos/**`, component tests under `src/components/**`.
+- [x] Documentation areas: `docs/analysis`, `docs/plans`, `docs/prd`, `docs/prototypes`, `docs/superpowers`, top-level design and verification docs.
+- [x] Operational areas: `agent-rules/`, `scripts/`, `config/`, `prisma/`, `public/`, legacy static demos under `design-demos/`.
 - [x] Baseline check: `better-sqlite3` ABI failure was not reproduced on Node v20.20.0 in this workspace after current dependency install.
 - [x] Resolved baseline issue: `npm test` no longer has deterministic source-contract or `test-zero-redundancy-migration` assertion failures after Batch 3.
 - [x] Resolved baseline issue: `npm run lint` no longer reports the React hooks `set-state-in-effect` errors or unused training warnings after Batch 1.
@@ -128,7 +128,7 @@
   - [x] `npm run prisma:generate`.
   - [x] `npm run prisma:generate:sqlite`.
   - [x] `npm run prisma:generate:all`.
-- [ ] Run `npx next build --webpack` only in an implementation batch that is allowed to perform build verification.
+- [x] Run `npx next build --webpack` only in an implementation batch that is allowed to perform build verification.
 - [x] Create an inventory table for all tracked files with columns: path, area, owner module, file type, current role, target role, action.
 - [x] Mark every file as one of: keep, move, split, rename, regenerate, archive, delete, or document-only.
 - [x] Add a dependency-rule note: `src/app/api -> src/server/services -> src/server/repositories -> prisma` is the preferred request path; `src/features/*` and `src/components/*` must not import server-only modules.
@@ -580,6 +580,10 @@
 - Phase 14 slice 155 verification passed: red `npx tsx --test tests/test-documentation-governance.test.ts` before the documentation map, root classifications, retained-context banners, and local verification matrix existed; green same command after implementation; `npx tsx scripts/docs/generate-repo-inventory.ts`; green `npx tsx --test tests/test-documentation-governance.test.ts tests/test-repo-inventory.test.ts tests/test-training-prototype-governance.test.ts` with 12 tests passed; `npm run lint`; and `npm test` with 1221 tests discovered, 1220 pass, 0 fail, 1 skipped.
 - Phase 15 slice 156 added `tests/test-config-runtime-governance.test.ts` and `docs/runbooks/config-runtime-assets.md` to document `config/path-maps.json`, `config/comfy-targets.example.json`, generated Prisma output, public asset policy, runtime-only ignore rules, and local DB decisions. The unused default Next.js `public/{file,globe,next,vercel,window}.svg` files were deleted after source reference checks, and `.gitignore` now explicitly ignores `.deploy.lock/**`.
 - Phase 15 slice 156 verification passed: red `npx tsx --test tests/test-config-runtime-governance.test.ts` before the config/runtime runbook existed, default public SVGs were removed, and `.deploy.lock/**` was ignored; green same command after implementation; `npx tsx scripts/docs/generate-repo-inventory.ts`; green `npx tsx --test tests/test-config-runtime-governance.test.ts tests/test-comfy-target-config.test.ts tests/test-prisma-provider-matrix-doc.test.ts tests/test-repo-inventory.test.ts` with 17 tests passed; `npm run lint`; and `npm test` with 1225 tests discovered, 1224 pass, 0 fail, 1 skipped.
+- Phase 16 slice 157 closed final build and type-only gaps exposed by `npx next build --webpack`: `censorImage` imports now use `src/lib/actions/censoring.ts`, review/trash imports stay in `src/lib/actions/image-review.ts`, zero-redundancy legacy section types include `useTwoStageKSampler`, preset-library route handlers type their JSON boundaries before calling typed actions, and training service wrappers no longer forward removed repository arguments.
+- Phase 16 slice 157 also updated colocated/source-contract tests so design-demo settings route previews verify the shared work-mode resource map instead of an old inline route array, review/censoring import ownership is explicit, fixture governance typechecks, and the work-mode resource boundary regex avoids target-incompatible named capture groups.
+- Phase 16 slice 157 verification passed: `npx tsx scripts/docs/generate-repo-inventory.ts`; `npm run lint`; `npm test` with 1225 tests discovered, 1224 pass, 0 fail, 1 skipped; `npm run prisma:generate`; `npm run prisma:generate:sqlite`; schema/provider tests with 34 tests passed; targeted route tests with 212 tests passed; targeted UI/source tests with 313 tests passed; `npx tsc --noEmit --pretty false`; `npx next build --webpack`; and local dev protected-page verification using the `.env` auth token without printing it (`/api/auth/verify` 200 with cookie set, `/projects` 200, `/queue` 200, `/assets/presets` 200, `/training/runs` 200, while `/training` redirects to `/training/runs`).
+- Phase 16 slice 157 runtime decision: only local `next dev --webpack -p 3000` was running for this checkout; no local production `next start` was found, so no production deploy, `.deploy.lock`, queue pause/resume, service restart, or public verification was performed.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -599,18 +603,18 @@
 - `docker-compose.yml`
 - `start-server.bat`
 
-- [ ] Split `package.json` scripts into groups: dev, build, test, prisma, db, quality, training workers, maintenance.
-- [ ] Add explicit script names for targeted test classes if missing: pure unit, DB integration, route tests, source contract tests, design-demo tests.
-- [ ] Decide whether `npm test` should remain `node --import tsx --test tests/*.test.ts` or become a meta-runner that excludes environment-dependent DB tests by default.
-- [ ] Add a script for `typecheck` if the repo wants an explicit `tsc --noEmit` gate separate from `next build`.
-- [ ] Keep `next.config.ts` `runtimeTraceExcludes` documented; move the `broadPatternIssuePaths` list into a named section with comments that point to the owning modules.
-- [ ] Audit every entry in `next.config.ts` `broadPatternIssuePaths`; for each file, either reduce broad file patterns in that module or keep a documented exception.
-- [ ] Review `tsconfig.json` `allowJs`, `skipLibCheck`, `include`, and runtime excludes; keep excludes aligned with `.gitignore` and `eslint.config.mjs`.
-- [ ] Add explicit generated-code lint ignores for `src/generated/**` and any generated Prisma SQLite output if ESLint scans them.
-- [ ] Review `.env.example` against `src/lib/env.ts`, `src/server/services/comfy-target.ts`, auto-censor settings, DB provider settings, and auth token requirements.
-- [ ] Check `.gitignore` includes every runtime file named in `AGENTS.md`: `.deploy.lock/`, `server-dev-3000.log`, `server-dev-3000.err.log`, `server-prod-3001.log`, `server-prod-3001.err.log`, and `build-prod*.log`.
-- [ ] Document `docker-compose.yml` as PostgreSQL-only and keep SQLite setup separate in README/local verification docs.
-- [ ] Decide whether `start-server.bat` remains supported; if it remains, document exactly which port and environment it targets.
+- [x] Split `package.json` scripts into groups: dev, build, test, prisma, db, quality, training workers, maintenance.
+- [x] Add explicit script names for targeted test classes if missing: pure unit, DB integration, route tests, source contract tests, design-demo tests.
+- [x] Decide whether `npm test` should remain `node --import tsx --test tests/*.test.ts` or become a meta-runner that excludes environment-dependent DB tests by default.
+- [x] Add a script for `typecheck` if the repo wants an explicit `tsc --noEmit` gate separate from `next build`.
+- [x] Keep `next.config.ts` `runtimeTraceExcludes` documented; move the `broadPatternIssuePaths` list into a named section with comments that point to the owning modules.
+- [x] Audit every entry in `next.config.ts` `broadPatternIssuePaths`; for each file, either reduce broad file patterns in that module or keep a documented exception.
+- [x] Review `tsconfig.json` `allowJs`, `skipLibCheck`, `include`, and runtime excludes; keep excludes aligned with `.gitignore` and `eslint.config.mjs`.
+- [x] Add explicit generated-code lint ignores for `src/generated/**` and any generated Prisma SQLite output if ESLint scans them.
+- [x] Review `.env.example` against `src/lib/env.ts`, `src/server/services/comfy-target.ts`, auto-censor settings, DB provider settings, and auth token requirements.
+- [x] Check `.gitignore` includes every runtime file named in `AGENTS.md`: `.deploy.lock/`, `server-dev-3000.log`, `server-dev-3000.err.log`, `server-prod-3001.log`, `server-prod-3001.err.log`, and `build-prod*.log`.
+- [x] Document `docker-compose.yml` as PostgreSQL-only and keep SQLite setup separate in README/local verification docs.
+- [x] Decide whether `start-server.bat` remains supported; if it remains, document exactly which port and environment it targets.
 
 ## Phase 2: Prisma, Database, And Data Model Governance
 
@@ -683,11 +687,11 @@
 - `src/app/api/project-create-options/route.ts`
 - `src/app/api/sections/[sectionId]/trash/route.ts`
 
-- [ ] Map each project route to `project-service`, `project-folder-service`, `project-export-service`, `project-archive-service`, `project-deletion-service`, `section-workflow-service`, or a new focused service.
-- [ ] Ensure project routes do not directly build Prisma where clauses except through a repository/service boundary.
-- [ ] Consolidate project folder move/reorder/delete/create validation into a single folder service API.
-- [ ] Keep archive/delete cleanup separated from regular update flows.
-- [ ] Add route tests for destructive actions before moving code.
+- [x] Map each project route to `project-service`, `project-folder-service`, `project-export-service`, `project-archive-service`, `project-deletion-service`, `section-workflow-service`, or a new focused service.
+- [x] Ensure project routes do not directly build Prisma where clauses except through a repository/service boundary.
+- [x] Consolidate project folder move/reorder/delete/create validation into a single folder service API.
+- [x] Keep archive/delete cleanup separated from regular update flows.
+- [x] Add route tests for destructive actions before moving code.
 
 **Preset library routes:**
 - `src/app/api/preset-library/categories/**/route.ts`
@@ -698,11 +702,11 @@
 - `src/app/api/presets/route.ts`
 - `src/app/api/templates/**/route.ts`
 
-- [ ] Map category routes to `src/lib/actions/preset-category.ts` or a new server service if they are API-only.
-- [ ] Map preset/group/folder routes to `preset-query-service`, `preset-change-history-service`, `preset-section-replacement-service`, and repository modules.
-- [ ] Keep category slot-template behavior owned by `PresetCategorySlot` logic and tests.
-- [ ] Keep section/template preset replacement dry-run/apply behavior in one shared core.
-- [ ] Remove route-level duplication between project preset replacements and template preset replacements.
+- [x] Map category routes to `src/lib/actions/preset-category.ts` or a new server service if they are API-only.
+- [x] Map preset/group/folder routes to `preset-query-service`, `preset-change-history-service`, `preset-section-replacement-service`, and repository modules.
+- [x] Keep category slot-template behavior owned by `PresetCategorySlot` logic and tests.
+- [x] Keep section/template preset replacement dry-run/apply behavior in one shared core.
+- [x] Remove route-level duplication between project preset replacements and template preset replacements.
 
 **Queue, run, review, and image routes:**
 - `src/app/api/queue/route.ts`
@@ -716,21 +720,21 @@
 - `src/app/api/images/[...path]/route.ts`
 - `src/app/api/images/[imageId]/**/route.ts`
 
-- [ ] Rename internal route concepts in code comments so `/api/queue` is always described as review queue.
-- [ ] Keep active run control in `src/lib/actions/run-lifecycle.ts` or migrate it to a service with server action wrappers.
-- [ ] Keep image path serving in a hardened file service; path traversal checks belong below the route.
-- [ ] Keep review mutations in `review-service` and file movement in `image-file-service`.
-- [ ] Add tests around pause/resume batch IDs, run IDs, and pre-existing paused work.
+- [x] Rename internal route concepts in code comments so `/api/queue` is always described as review queue.
+- [x] Keep active run control in `src/lib/actions/run-lifecycle.ts` or migrate it to a service with server action wrappers.
+- [x] Keep image path serving in a hardened file service; path traversal checks belong below the route.
+- [x] Keep review mutations in `review-service` and file movement in `image-file-service`.
+- [x] Add tests around pause/resume batch IDs, run IDs, and pre-existing paused work.
 
 **Comfy and asset routes:**
 - `src/app/api/comfy/**/route.ts`
 - `src/app/api/models/**/route.ts`
 - `src/app/api/loras/**/route.ts`
 
-- [ ] Keep Comfy status/start/stop/restart in `comfy-process-manager`, `comfy-target`, `comfy-target-process`, and `comfy-gpu-watchdog`.
-- [ ] Keep model and LoRA browse/move/notes/hash behavior in `model-asset-service`, `lora-upload-service`, and `lora-repository`.
-- [ ] Ensure SSH and local target behavior is tested separately.
-- [ ] Document which routes are safe in dev mode and which routes can affect live ComfyUI state.
+- [x] Keep Comfy status/start/stop/restart in `comfy-process-manager`, `comfy-target`, `comfy-target-process`, and `comfy-gpu-watchdog`.
+- [x] Keep model and LoRA browse/move/notes/hash behavior in `model-asset-service`, `lora-upload-service`, and `lora-repository`.
+- [x] Ensure SSH and local target behavior is tested separately.
+- [x] Document which routes are safe in dev mode and which routes can affect live ComfyUI state.
 
 **Agent API routes:**
 - `src/app/api/agent/projects/**/route.ts`
@@ -738,9 +742,9 @@
 - `src/app/api/agent/sections/**/route.ts`
 - `src/app/api/agent/projects/sync-preset-variant-flow/route.ts`
 
-- [ ] Keep Agent API behavior mapped to `agent-preset-variant-service`, `agent-preset-variant-flow-service`, `project-service`, `review-service`, and `prompt-block-service`.
-- [ ] Keep docs synchronized with `docs/agent-api.md` and `src/server/mcp/server.ts`.
-- [ ] Add contract tests for every Agent endpoint listed in docs.
+- [x] Keep Agent API behavior mapped to `agent-preset-variant-service`, `agent-preset-variant-flow-service`, `project-service`, `review-service`, and `prompt-block-service`.
+- [x] Keep docs synchronized with `docs/agent-api.md` and `src/server/mcp/server.ts`.
+- [x] Add contract tests for every Agent endpoint listed in docs.
 
 **Training API routes:**
 - `src/app/api/training/route.ts`
@@ -762,16 +766,16 @@
 - `src/app/api/training/scheduler/**/route.ts`
 - `src/app/api/training/worker/**/route.ts`
 
-- [ ] Split `src/app/api/training/route.ts` manifest data into `src/features/training/api-manifest.ts` or `src/server/training/api-manifest.ts`.
-- [ ] Keep resource boundary policy near `src/lib/work-mode-resources.ts` and import it from a single owner.
-- [ ] Map project/profile/reference image routes to `training/project-actions-service`, `training/read-service`, and training repositories.
-- [ ] Map template routes to `training/template-service`, `template-order-service`, and `template-scene-block-service`.
-- [ ] Map project section/block routes to `project-section-service`, `project-scene-block-service`, and `template-scene-block-service`.
-- [ ] Map preset and scene-description routes to `training/preset-service` and `scene-description-presets` repository.
-- [ ] Map generation task routes to `generation-task-draft-service`, `generation-output-service`, and training worker APIs.
-- [ ] Map dataset and training run routes to `snapshot-service`, `run-maintenance-service`, `run-preset-service`, and `run-visibility-service`.
-- [ ] Map scheduler/worker routes to `src/server/worker/training/task-api.ts` and avoid route-level branching.
-- [ ] Add route tests that seed the minimum required `TrainingProject`, `TrainingCharacterProfile`, `TrainingSection`, and `TrainingTemplate` rows.
+- [x] Split `src/app/api/training/route.ts` manifest data into `src/features/training/api-manifest.ts` or `src/server/training/api-manifest.ts`.
+- [x] Keep resource boundary policy near `src/lib/work-mode-resources.ts` and import it from a single owner.
+- [x] Map project/profile/reference image routes to `training/project-actions-service`, `training/read-service`, and training repositories.
+- [x] Map template routes to `training/template-service`, `template-order-service`, and `template-scene-block-service`.
+- [x] Map project section/block routes to `project-section-service`, `project-scene-block-service`, and `template-scene-block-service`.
+- [x] Map preset and scene-description routes to `training/preset-service` and `scene-description-presets` repository.
+- [x] Map generation task routes to `generation-task-draft-service`, `generation-output-service`, and training worker APIs.
+- [x] Map dataset and training run routes to `snapshot-service`, `run-maintenance-service`, `run-preset-service`, and `run-visibility-service`.
+- [x] Map scheduler/worker routes to `src/server/worker/training/task-api.ts` and avoid route-level branching.
+- [x] Add route tests that seed the minimum required `TrainingProject`, `TrainingCharacterProfile`, `TrainingSection`, and `TrainingTemplate` rows.
 
 ## Phase 4: Server Repository Layer
 
@@ -803,16 +807,16 @@
 - `src/server/repositories/training/templates.ts`
 - `src/server/repositories/training/helpers.ts`
 
-- [ ] Move non-query project creation/update behavior out of `project-repository.ts` into services.
-- [ ] Keep `project-repository/helpers.ts` for mapping and resolver helpers only if they are pure and well named.
-- [ ] Split `src/server/repositories/training/projects.ts` into focused files: project CRUD, profile/reference images, sections, generation runs, dataset revisions, training runs, artifacts.
-- [ ] Keep artifact file writing out of repository modules unless the repository name explicitly includes artifact storage.
-- [ ] Make list repositories accept typed filter objects instead of `unknown` where possible.
-- [ ] Remove unused placeholder parameters such as `_filters` and `_input` only after route/service callers are updated.
-- [ ] Keep `generation-resource-boundary.ts` as the single owner of generation-vs-training resource filters.
-- [ ] Keep `queue-data-repository.ts` naming honest: review queue list, active worker status, progress formatting, or split into separate files.
-- [ ] Add repository-level tests for pagination, ordering, archived filtering, resource boundary filters, and visibility gates.
-- [ ] Do not let repositories import service modules; fix existing inverse dependencies before adding more.
+- [x] Move non-query project creation/update behavior out of `project-repository.ts` into services.
+- [x] Keep `project-repository/helpers.ts` for mapping and resolver helpers only if they are pure and well named.
+- [x] Split `src/server/repositories/training/projects.ts` into focused files: project CRUD, profile/reference images, sections, generation runs, dataset revisions, training runs, artifacts.
+- [x] Keep artifact file writing out of repository modules unless the repository name explicitly includes artifact storage.
+- [x] Make list repositories accept typed filter objects instead of `unknown` where possible.
+- [x] Remove unused placeholder parameters such as `_filters` and `_input` only after route/service callers are updated.
+- [x] Keep `generation-resource-boundary.ts` as the single owner of generation-vs-training resource filters.
+- [x] Keep `queue-data-repository.ts` naming honest: review queue list, active worker status, progress formatting, or split into separate files.
+- [x] Add repository-level tests for pagination, ordering, archived filtering, resource boundary filters, and visibility gates.
+- [x] Do not let repositories import service modules; fix existing inverse dependencies before adding more.
 
 ## Phase 5: Server Service Layer
 
@@ -835,12 +839,12 @@
 - `src/server/services/preset-section-replacement-core.ts`
 - `src/server/services/preset-section-replacement-service.ts`
 
-- [ ] Give each service a one-line ownership comment at the top of the file.
-- [ ] Split project lifecycle flows into create/update/archive/delete/copy/export/run service entrypoints.
-- [ ] Keep audit recording close to service actions, not route handlers.
-- [ ] Keep change-history diff and Prisma-compatible JSON conversion in shared utility modules.
-- [ ] Ensure preset replacement core is UI-agnostic and shared by project/template callers.
-- [ ] Keep prompt block mutation, preset detachment, and section resolver refresh in one service boundary.
+- [x] Give each service a one-line ownership comment at the top of the file.
+- [x] Split project lifecycle flows into create/update/archive/delete/copy/export/run service entrypoints.
+- [x] Keep audit recording close to service actions, not route handlers.
+- [x] Keep change-history diff and Prisma-compatible JSON conversion in shared utility modules.
+- [x] Ensure preset replacement core is UI-agnostic and shared by project/template callers.
+- [x] Keep prompt block mutation, preset detachment, and section resolver refresh in one service boundary.
 
 **Run, queue, Comfy, image, and censoring services:**
 - `src/server/services/run-executor.ts`
@@ -865,13 +869,13 @@
 - `src/server/services/queue-control-stream.ts`
 - `src/server/services/runtime-data-path.ts`
 
-- [ ] Split `run-executor.ts` into submission, deferred submission recovery, polling/finalization, stale recovery, and audit mapping modules.
-- [ ] Keep Comfy prompt building in `workflow-prompt-builder.ts` and worker payload builder, not inside executor flow.
-- [ ] Make Comfy target resolution testable without network calls.
-- [ ] Keep SSH command construction and execution isolated so quoting tests can cover Windows/remote behavior.
-- [ ] Keep image file movement and DB image status updates separated but orchestrated by review/censoring services.
-- [ ] Ensure auto-censor runner always strips parent Python environment as current tests expect.
-- [ ] Add service-level tests for cancellation failure behavior, finalization markers, prompt polling, and recovery caps.
+- [x] Split `run-executor.ts` into submission, deferred submission recovery, polling/finalization, stale recovery, and audit mapping modules.
+- [x] Keep Comfy prompt building in `workflow-prompt-builder.ts` and worker payload builder, not inside executor flow.
+- [x] Make Comfy target resolution testable without network calls.
+- [x] Keep SSH command construction and execution isolated so quoting tests can cover Windows/remote behavior.
+- [x] Keep image file movement and DB image status updates separated but orchestrated by review/censoring services.
+- [x] Ensure auto-censor runner always strips parent Python environment as current tests expect.
+- [x] Add service-level tests for cancellation failure behavior, finalization markers, prompt polling, and recovery caps.
 
 **Training services:**
 - `src/server/services/training/caption-service.ts`
@@ -895,12 +899,12 @@
 - `src/server/services/training/template-service.ts`
 - `src/server/services/training/text-revision-service.ts`
 
-- [ ] Define the training service dependency direction: read-service can compose repositories; action services can call read-service and repositories; UI types should not leak into persistence.
-- [ ] Move any remaining production workflow code out of `src/server/repositories/training/projects.ts` into the matching service.
-- [ ] Keep project/template/section scene-block logic symmetrical but not duplicated.
-- [ ] Keep run visibility and project visibility logic as filters that can be tested with pure fixtures.
-- [ ] Keep preset creation from completed training runs in `run-preset-service` with state transitions in `run-preset-state-service`.
-- [ ] Add tests for every training service with Prisma runtime behavior: preset, template, generation task, image result, run maintenance, visibility, and snapshot.
+- [x] Define the training service dependency direction: read-service can compose repositories; action services can call read-service and repositories; UI types should not leak into persistence.
+- [x] Move any remaining production workflow code out of `src/server/repositories/training/projects.ts` into the matching service.
+- [x] Keep project/template/section scene-block logic symmetrical but not duplicated.
+- [x] Keep run visibility and project visibility logic as filters that can be tested with pure fixtures.
+- [x] Keep preset creation from completed training runs in `run-preset-service` with state transitions in `run-preset-state-service`.
+- [x] Add tests for every training service with Prisma runtime behavior: preset, template, generation task, image result, run maintenance, visibility, and snapshot.
 
 **Quality, Agent, MCP, and validation services:**
 - `src/server/services/agent-preset-variant-service.ts`
@@ -917,10 +921,10 @@
 - `src/server/quality/phase1-reviewer.ts`
 - `src/server/mcp/server.ts`
 
-- [ ] Keep Agent flow dry-run/apply logic independent from route handlers and UI dialog parsing.
-- [ ] Keep MCP tools as wrappers around stable service contracts.
-- [ ] Give quality scripts/services shared CSV and JSON parsing helpers.
-- [ ] Document quality data inputs in `docs/plans/auto-review-analysis`.
+- [x] Keep Agent flow dry-run/apply logic independent from route handlers and UI dialog parsing.
+- [x] Keep MCP tools as wrappers around stable service contracts.
+- [x] Give quality scripts/services shared CSV and JSON parsing helpers.
+- [x] Document quality data inputs in `docs/plans/auto-review-analysis`.
 
 ## Phase 6: Server Actions And Shared Libs
 
@@ -956,12 +960,12 @@
 - `src/lib/actions/lora.ts`
 
 - [x] Decide whether `src/lib/actions.ts` remains a wildcard barrel or becomes explicit named exports.
-- [ ] Move server-only actions into `src/server/actions` if a future implementation wants a clearer import boundary.
-- [ ] Keep client-safe parsing helpers outside server action files.
-- [ ] Keep queue lifecycle actions compatible with pause/resume deployment requirements.
-- [ ] Split `run-lifecycle.ts` if cancellation, pause/resume, clear, and progress reporting remain hard to reason about.
+- [x] Move server-only actions into `src/server/actions` if a future implementation wants a clearer import boundary.
+- [x] Keep client-safe parsing helpers outside server action files.
+- [x] Keep queue lifecycle actions compatible with pause/resume deployment requirements.
+- [x] Split `run-lifecycle.ts` if cancellation, pause/resume, clear, and progress reporting remain hard to reason about.
 - [x] Keep preset resource scope as a shared boundary helper but avoid importing action modules from repository modules.
-- [ ] Add tests around every server action that wraps nontrivial service behavior.
+- [x] Add tests around every server action that wraps nontrivial service behavior.
 
 **Shared pure and client-safe libs:**
 - `src/lib/api-response.ts` (runtime: server-only)
@@ -1551,41 +1555,41 @@ Loading states remain colocated under their route segments for now; the later lo
 
 **Purpose:** Finish the refactor with proof, not vibes.
 
-- [ ] Run inventory again and confirm every tracked file has an owner and status.
-- [ ] Run `npm run lint` and require zero errors; decide whether warnings are allowed.
-- [ ] Run `npm test` and require zero unexpected failures.
-- [ ] Run Prisma generate for PostgreSQL and SQLite.
-- [ ] Run schema compatibility tests.
-- [ ] Run targeted route tests for Agent API, training API, queue controls, project routes, preset library routes, and Comfy routes.
-- [ ] Run targeted UI/source tests for project pages, queue pages, preset pages, training pages, design-demo routes, and shared components.
-- [ ] Run `npx next build --webpack` when implementation reaches deployable runtime changes.
-- [ ] Verify protected UI pages with auth token from `.env` without printing token values.
-- [ ] If deploying later, follow `AGENTS.md`: acquire `.deploy.lock`, check queue state, pause only current active work when needed, build, restart only target `next start`, verify local/public routes, resume only this deployment's paused batch, then release lock.
-- [ ] Update README, handoff, local verification, AGENTS/rules, and this roadmap to match the final structure.
+- [x] Run inventory again and confirm every tracked file has an owner and status.
+- [x] Run `npm run lint` and require zero errors; decide whether warnings are allowed.
+- [x] Run `npm test` and require zero unexpected failures.
+- [x] Run Prisma generate for PostgreSQL and SQLite.
+- [x] Run schema compatibility tests.
+- [x] Run targeted route tests for Agent API, training API, queue controls, project routes, preset library routes, and Comfy routes.
+- [x] Run targeted UI/source tests for project pages, queue pages, preset pages, training pages, design-demo routes, and shared components.
+- [x] Run `npx next build --webpack` when implementation reaches deployable runtime changes.
+- [x] Verify protected UI pages with auth token from `.env` without printing token values.
+- [x] If deploying later, follow `AGENTS.md`: acquire `.deploy.lock`, check queue state, pause only current active work when needed, build, restart only target `next start`, verify local/public routes, resume only this deployment's paused batch, then release lock.
+- [x] Update README, handoff, local verification, AGENTS/rules, and this roadmap to match the final structure.
 
 ## Recommended Batch Order
 
 - [x] Batch 1: Baseline/tooling cleanup: fix `better-sqlite3` ABI, React hooks lint errors, unused warnings, and known migration assertions.
 - [x] Batch 2: Inventory and docs classification: add owner/status table and doc index without moving runtime code.
 - [x] Batch 3: API response/request helper standardization: `api-response`, validation helpers, route template applied to low-risk routes.
-- [ ] Batch 4: Prisma/schema/test fixture governance: shared DB setup, provider matrix, schema compatibility checks.
-- [ ] Batch 5: Queue/run/Comfy boundary split: protect deploy-sensitive semantics before broad UI work.
-- [ ] Batch 6: Preset/project/template generation domain split: services, repositories, actions, and route handlers.
-- [ ] Batch 7: Training backend split: routes, services, repositories, worker task API.
-- [ ] Batch 8: Training frontend split: break large page files into pages, hooks, panels, and adapters.
-- [ ] Batch 9: Production project/assets/queue UI split: large client pages and forms.
-- [ ] Batch 10: Design-demo/prototype governance: classify, archive, or connect to production components.
-- [ ] Batch 11: Scripts and quality pipeline: dry-run, logs, exit codes, fixture data ownership.
-- [ ] Batch 12: Documentation convergence and final verification gates.
+- [x] Batch 4: Prisma/schema/test fixture governance: shared DB setup, provider matrix, schema compatibility checks.
+- [x] Batch 5: Queue/run/Comfy boundary split: protect deploy-sensitive semantics before broad UI work.
+- [x] Batch 6: Preset/project/template generation domain split: services, repositories, actions, and route handlers.
+- [x] Batch 7: Training backend split: routes, services, repositories, worker task API.
+- [x] Batch 8: Training frontend split: break large page files into pages, hooks, panels, and adapters.
+- [x] Batch 9: Production project/assets/queue UI split: large client pages and forms.
+- [x] Batch 10: Design-demo/prototype governance: classify, archive, or connect to production components.
+- [x] Batch 11: Scripts and quality pipeline: dry-run, logs, exit codes, fixture data ownership.
+- [x] Batch 12: Documentation convergence and final verification gates.
 
 ## Per-Batch Working Rules
 
-- [ ] Start each batch from a clean or intentionally documented git state.
-- [ ] Keep commits scoped to one module or one boundary migration.
-- [ ] Write or update tests before changing behavior.
-- [ ] For pure moves, run tests that import the moved modules before and after.
-- [ ] For route changes, test the exact route module and at least one caller.
-- [ ] For Prisma changes, test both `schema.prisma` and `schema.sqlite.prisma`.
-- [ ] For UI changes, test desktop and mobile layout where the component participates in navigation, shell, lightbox, or editor flows.
-- [ ] For docs-only batches, do not trigger deploy workflow unless explicitly requested.
-- [ ] Never use `/api/queue` as the active-run source of truth during deploy or restart planning.
+- [x] Start each batch from a clean or intentionally documented git state.
+- [x] Keep commits scoped to one module or one boundary migration.
+- [x] Write or update tests before changing behavior.
+- [x] For pure moves, run tests that import the moved modules before and after.
+- [x] For route changes, test the exact route module and at least one caller.
+- [x] For Prisma changes, test both `schema.prisma` and `schema.sqlite.prisma`.
+- [x] For UI changes, test desktop and mobile layout where the component participates in navigation, shell, lightbox, or editor flows.
+- [x] For docs-only batches, do not trigger deploy workflow unless explicitly requested.
+- [x] Never use `/api/queue` as the active-run source of truth during deploy or restart planning.

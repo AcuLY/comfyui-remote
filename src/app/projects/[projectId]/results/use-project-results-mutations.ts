@@ -10,7 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { censorImage } from "@/lib/actions/image-review";
+import { censorImage } from "@/lib/actions/censoring";
 import {
   submitReviewMutation,
   type ReviewMutationAction,

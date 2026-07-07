@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { createPresetVariant } from "@/lib/actions/preset-variant-crud";
+import { createPresetVariant, type PresetVariantInput } from "@/lib/actions/preset-variant-crud";
 import { resolveVariantContent } from "@/lib/actions/preset-variant-resolve";
 import { readJsonBody } from "@/server/http/request-json";
 
@@ -16,8 +16,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       action?: string;
       presetId?: unknown;
       variantId?: string;
-      [key: string]: unknown;
-    };
+    } & Partial<PresetVariantInput>;
 
     if (body.action === "resolve") {
       const variantId = body.variantId ?? presetId;
@@ -29,7 +28,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       const input = { ...body };
       delete input.action;
       delete input.presetId;
-      const result = await createPresetVariant({ ...input, presetId });
+      const result = await createPresetVariant({ ...input, presetId } as PresetVariantInput);
       return ok(result);
     }
 

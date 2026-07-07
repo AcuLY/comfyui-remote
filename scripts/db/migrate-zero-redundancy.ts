@@ -98,6 +98,7 @@ export interface LegacyProjectSectionRow {
   ksampler1?: unknown;
   ksampler2?: unknown;
   upscaleFactor?: number | null;
+  useTwoStageKSampler?: boolean | null;
   checkpointName?: string | null;
   extraParams?: unknown;
 }
@@ -130,6 +131,7 @@ export interface LegacyProjectTemplateSectionRow {
   ksampler1?: unknown;
   ksampler2?: unknown;
   upscaleFactor?: number | null;
+  useTwoStageKSampler?: boolean | null;
   checkpointName?: string | null;
   extraParams?: unknown;
 }
@@ -1943,6 +1945,7 @@ function sectionForResolver(section: LegacyProjectSectionRow): ResolveSectionCon
     ksampler1: section.ksampler1 ?? null,
     ksampler2: section.ksampler2 ?? null,
     upscaleFactor: section.upscaleFactor ?? null,
+    useTwoStageKSampler: section.useTwoStageKSampler ?? null,
     checkpointName: section.checkpointName ?? null,
     extraParams: section.extraParams ?? null,
   };

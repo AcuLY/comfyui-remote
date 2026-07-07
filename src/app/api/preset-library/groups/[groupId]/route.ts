@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { updatePresetGroup, deletePresetGroup } from "@/lib/actions/preset-group";
+import { updatePresetGroup, deletePresetGroup, type PresetGroupInput } from "@/lib/actions/preset-group";
 import { getPresetGroup } from "@/lib/server-data";
 import { readJsonBody } from "@/server/http/request-json";
 
@@ -24,7 +24,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const { groupId } = await context.params;
 
   try {
-    const body = await readJsonBody(request);
+    const body = await readJsonBody(request) as Partial<PresetGroupInput>;
     const result = await updatePresetGroup(groupId, body);
     return ok(result);
   } catch (error) {

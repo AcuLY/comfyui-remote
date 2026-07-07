@@ -187,7 +187,7 @@ export async function generateTrainingCaptions(projectId: string, input: unknown
     throw new TrainingCaptionServiceError("imageResultIds is required when mode=selected", 400);
   }
 
-  const candidateImages = await listTrainingCandidateImages(projectId, {});
+  const candidateImages = await listTrainingCandidateImages(projectId);
   const targetImages = mode === "selected"
     ? candidateImages.filter((image) => (parsed.imageResultIds ?? []).includes(image.id))
     : candidateImages.filter((image) =>

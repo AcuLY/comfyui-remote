@@ -442,7 +442,7 @@ async function mapTrainingProjectDetail(
     listTrainingReferenceImages(job.id),
     listTrainingPromptCardVersions(job.id),
     listTrainingProjectSections(job.id),
-    listTrainingCandidateImages(job.id, {}),
+    listTrainingCandidateImages(job.id),
     listTrainingDatasetRevisions(job.id),
     listTrainingRuns(job.id),
   ]);
@@ -569,7 +569,7 @@ async function mapTrainingProjectRuns(
 async function mapTrainingProjectRunSummary(job: TrainingProjectRow): Promise<{ project: LoraTrainingProject; runs: LoraTrainingRun[] }> {
   const [summaryProject, candidateImages, trainingRuns] = await Promise.all([
     mapTrainingProjectSummary(job, undefined, { includePreviewImages: false, includeReferenceImages: false }),
-    listTrainingCandidateImages(job.id, {}),
+    listTrainingCandidateImages(job.id),
     listTrainingRuns(job.id),
   ]);
   const sectionNames = new Map<string, string>();

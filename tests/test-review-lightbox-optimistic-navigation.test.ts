@@ -147,7 +147,7 @@ test("section results lightbox navigates optimistically before awaiting review a
   );
 });
 
-test("section results import image review and run actions from focused modules", () => {
+test("section results import review, censoring, and run actions from focused modules", () => {
   const gridSource = readFileSync(
     "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",
     "utf8",
@@ -158,8 +158,10 @@ test("section results import image review and run actions from focused modules",
   );
 
   assert.match(gridSource, /from "@\/lib\/actions\/image-review";/);
+  assert.match(gridSource, /from "@\/lib\/actions\/censoring";/);
   assert.match(gridSource, /from "@\/lib\/actions\/run-execution";/);
-  assert.match(gallerySource, /from "@\/lib\/actions\/image-review";/);
+  assert.match(gallerySource, /from "@\/lib\/actions\/censoring";/);
+  assert.doesNotMatch(gallerySource, /from "@\/lib\/actions\/image-review";/);
   assert.doesNotMatch(gridSource, /from "@\/lib\/actions";/);
   assert.doesNotMatch(gallerySource, /from "@\/lib\/actions";/);
 });

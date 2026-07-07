@@ -21,6 +21,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const body = await readJsonBody(request) as { dimension?: string; ids?: unknown };
     const { dimension, ids } = body;
 
+    if (typeof dimension !== "string") {
+      return fail('dimension must be "preset", "group", "variant", or "lora"', 400);
+    }
     const mappedDimension = dimensionMap[dimension];
     if (!mappedDimension) {
       return fail('dimension must be "preset", "group", "variant", or "lora"', 400);

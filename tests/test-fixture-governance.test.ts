@@ -44,7 +44,7 @@ test("shared domain fixture builders cover roadmap resource types", async () => 
     );
   }
 
-  const builders = (await import("./fixtures/domain-builders")) as Record<
+  const builders = (await import("./fixtures/domain-builders") as unknown) as Record<
     (typeof REQUIRED_DOMAIN_BUILDERS)[number],
     (overrides?: Record<string, unknown>) => Record<string, unknown>
   >;

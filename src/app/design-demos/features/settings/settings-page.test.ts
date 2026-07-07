@@ -8,6 +8,7 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const source = readFileSync(resolve(testDir, "settings-page.tsx"), "utf8");
 const cssSource = readFileSync(resolve(testDir, "settings-page.shell.module.css"), "utf8");
 const routeSource = readFileSync(resolve(testDir, "../../routing/routes.ts"), "utf8");
+const workModeResourceSource = readFileSync(resolve(testDir, "../../../../lib/work-mode-resources.ts"), "utf8");
 
 test("settings page exposes the generation versus LoRA training work mode switch", () => {
   assert.match(routeSource, /comfyui-manager:work-mode/, "routing should own the confirmed work mode storage key");
@@ -22,15 +23,16 @@ test("settings page exposes the generation versus LoRA training work mode switch
 });
 
 test("LoRA training work mode explanation does not list shared models as a training entry", () => {
-  const trainingRowsStart = source.indexOf("lora_training: [");
-  const readInitialStart = source.indexOf("function readInitialWorkMode");
-  assert.notEqual(trainingRowsStart, -1, "settings page should define LoRA training route rows");
-  assert.notEqual(readInitialStart, -1, "settings page should define route rows before the initial mode reader");
+  const trainingTargetsStart = workModeResourceSource.indexOf("lora_training: {");
+  const sharedTargetsStart = workModeResourceSource.indexOf("...SHARED_RESOURCE_TARGETS", trainingTargetsStart);
+  assert.notEqual(trainingTargetsStart, -1, "work mode resources should define LoRA training route targets");
+  assert.notEqual(sharedTargetsStart, -1, "LoRA training route targets should include shared resources separately");
 
-  const trainingRowsSource = source.slice(trainingRowsStart, readInitialStart);
-  assert.match(trainingRowsSource, /\/training\/runs/, "LoRA training mode should list training runs");
-  assert.match(trainingRowsSource, /\/training\/projects/, "LoRA training mode should list training projects");
-  assert.doesNotMatch(trainingRowsSource, /模型|\/models/, "LoRA training route explanation should not list shared model management");
+  const trainingOwnedTargetSource = workModeResourceSource.slice(trainingTargetsStart, sharedTargetsStart);
+  assert.match(source, /buildWorkModeResourceTargetList\(workMode\)/, "settings should derive route rows from the shared work-mode resource map");
+  assert.match(trainingOwnedTargetSource, /\/training\/runs/, "LoRA training mode should list training runs");
+  assert.match(trainingOwnedTargetSource, /\/training\/projects/, "LoRA training mode should list training projects");
+  assert.doesNotMatch(trainingOwnedTargetSource, /模型|\/models/, "LoRA training-owned routes should not list shared model management");
   assert.doesNotMatch(source, /<strong>模型<\/strong>\s*<code>\/models<\/code>/, "settings route list should not append models to every work mode");
 });
 

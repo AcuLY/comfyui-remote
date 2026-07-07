@@ -92,13 +92,15 @@ test("project results lightbox exposes review and censor controls like section r
   );
 });
 
-test("project results import image review actions from focused module", () => {
+test("project results import review and censoring actions from focused modules", () => {
   const routeSource = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
   const mutationSource = readSource("src/app/projects/[projectId]/results/use-project-results-mutations.ts");
 
-  assert.match(mutationSource, /from "@\/lib\/actions\/image-review";/);
+  assert.match(mutationSource, /from "@\/lib\/actions\/censoring";/);
+  assert.doesNotMatch(mutationSource, /from "@\/lib\/actions\/image-review";/);
   assert.doesNotMatch(mutationSource, /from "@\/lib\/actions";/);
   assert.doesNotMatch(routeSource, /from "@\/lib\/actions\/image-review";/);
+  assert.doesNotMatch(routeSource, /from "@\/lib\/actions\/censoring";/);
 });
 
 test("project results review actions update local image state before awaiting the API", () => {

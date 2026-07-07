@@ -512,7 +512,8 @@ export async function addTrainingReferenceImageToResults(imageId: string, input:
 }
 
 export async function freezeTrainingDataset(projectId: string, input: unknown = {}) {
-  return freezeTrainingProductionDataset(projectId, input);
+  void input;
+  return freezeTrainingProductionDataset(projectId);
 }
 
 export async function enqueueTrainingSectionGenerationRun(sectionId: string, input: unknown = {}) {
@@ -537,7 +538,7 @@ export async function enqueueTrainingRun(projectId: string, input: Record<string
   delete enqueueInput.config;
 
   const resolvedRevisionId = revisionId ?? await (async () => {
-    const frozen = await freezeTrainingProductionDataset(projectId, {});
+    const frozen = await freezeTrainingProductionDataset(projectId);
     if (!("revision" in frozen) || !frozen.revision?.id) {
       throw new TrainingProjectActionServiceError("Dataset freeze did not return a revision id", 409);
     }
@@ -553,11 +554,13 @@ export async function enqueueTrainingRun(projectId: string, input: Record<string
 }
 
 export async function cancelTrainingRun(trainingRunId: string, input: unknown = {}) {
-  return cancelTrainingProductionRun(trainingRunId, input);
+  void input;
+  return cancelTrainingProductionRun(trainingRunId);
 }
 
 export async function cancelTrainingGenerationRun(taskId: string, input: unknown = {}) {
-  const generationRun = await cancelTrainingProductionGenerationRun(taskId, input);
+  void input;
+  const generationRun = await cancelTrainingProductionGenerationRun(taskId);
   return {
     ...generationRun,
     kind: "generation" as const,

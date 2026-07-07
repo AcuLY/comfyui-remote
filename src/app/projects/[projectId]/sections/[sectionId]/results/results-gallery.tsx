@@ -13,7 +13,7 @@ import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, Eye, ImageIcon, Shield, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { QuickCensorCanvas } from "@/components/quick-censor-canvas";
-import { censorImage } from "@/lib/actions/image-review";
+import { censorImage } from "@/lib/actions/censoring";
 import { submitReviewMutation } from "@/lib/client-review-mutation";
 import {
   clearSharedOptimisticReviewAction,

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { updatePresetCategory, deletePresetCategory } from "@/lib/actions/preset-category";
+import { updatePresetCategory, deletePresetCategory, type PresetCategoryInput } from "@/lib/actions/preset-category";
 import { getPresetCategoriesWithPresets } from "@/lib/server-data";
 import { readJsonBody } from "@/server/http/request-json";
 
@@ -25,7 +25,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const { categoryId } = await context.params;
 
   try {
-    const body = await readJsonBody(request);
+    const body = await readJsonBody(request) as Partial<PresetCategoryInput>;
     const result = await updatePresetCategory(categoryId, body);
     return ok(result);
   } catch (error) {

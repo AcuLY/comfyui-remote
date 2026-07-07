@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { updatePreset, deletePreset } from "@/lib/actions/preset-variant-crud";
+import { updatePreset, deletePreset, type PresetInput } from "@/lib/actions/preset-variant-crud";
 import { getPresetById } from "@/server/services/preset-query-service";
 import { readJsonBody } from "@/server/http/request-json";
 
@@ -25,7 +25,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   const { presetId } = await context.params;
 
   try {
-    const body = await readJsonBody(request);
+    const body = await readJsonBody(request) as Partial<PresetInput>;
     const result = await updatePreset(presetId, body);
     return ok(result);
   } catch (error) {
