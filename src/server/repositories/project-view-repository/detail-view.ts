@@ -72,6 +72,95 @@ export type ProjectSectionFolderItem = {
   childCount: number;
 };
 
+export async function getProjectSectionEditData(projectId: string, sectionId: string) {
+  const section = await prisma.projectSection.findFirst({
+    where: {
+      id: sectionId,
+      projectId,
+      project: buildGenerationProjectWhere({ id: projectId }),
+    },
+    include: {
+      project: {
+        select: {
+          checkpointName: true,
+        },
+      },
+      sectionPromptBlocks: {
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: {
+          id: true,
+          type: true,
+          sectionBindingId: true,
+          customLabel: true,
+          customPositive: true,
+          customNegative: true,
+          sortOrder: true,
+          sectionBinding: {
+            select: {
+              bindingKey: true,
+              presetId: true,
+              presetGroupId: true,
+            },
+          },
+        },
+      },
+      runs: {
+        where: { status: "done" },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          runIndex: true,
+          images: {
+            orderBy: { createdAt: "asc" },
+            take: 8,
+            select: {
+              id: true,
+              thumbPath: true,
+              filePath: true,
+              reviewStatus: true,
+            },
+          },
+          _count: {
+            select: {
+              images: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!section) return null;
+
+  const [resolvedConfig, siblingFolders, siblingSections] = await Promise.all([
+    resolveSectionConfig(section.id),
+    prisma.projectSectionFolder.findMany({
+      where: {
+        projectId: section.projectId,
+        project: buildGenerationProjectWhere({ id: section.projectId }),
+      },
+      orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, parentId: true, sortOrder: true },
+    }),
+    prisma.projectSection.findMany({
+      where: {
+        projectId: section.projectId,
+        project: buildGenerationProjectWhere({ id: section.projectId }),
+      },
+      orderBy: { sortOrder: "asc" },
+      select: { id: true, folderId: true, sortOrder: true },
+    }),
+  ]);
+
+  return {
+    section,
+    resolvedConfig,
+    siblingFolders,
+    siblingSections,
+  };
+}
+
 function readResolvedNumber(
   resolvedConfig: ResolvedSectionConfig,
   key: string,

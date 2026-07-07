@@ -3,7 +3,6 @@ import Image from "next/image";
 import { ArrowLeft, ImageIcon } from "lucide-react";
 import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { WorkflowDownloadMenu } from "@/components/workflow-download-menu";
-import { prisma } from "@/lib/prisma";
 import { buildFolderScopedItemOrder, hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { toImageUrl } from "@/lib/image-url";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
@@ -12,13 +11,13 @@ import { SectionParamsForm } from "./section-params-form";
 import { SectionNameEditor } from "./section-name-editor";
 import { SectionRunButton } from "@/app/projects/[projectId]/project-detail-actions";
 import type { PromptBlockData } from "@/lib/actions";
-import { getPresetLibraryV2 } from "@/lib/server-data";
-import { shouldPersistLoraBindingLink, type SectionLoraConfig } from "@/lib/lora-types";
+import { getPresetLibraryV2, getProjectSectionEditData } from "@/lib/server-data";
+import type { SectionLoraConfig } from "@/lib/lora-types";
 import { revalidatePath } from "next/cache";
 import { getSectionChangeHistory } from "@/server/services/section-change-history-service";
 import { SectionChangeHistory } from "./section-change-history";
 import { SectionSwitchHeaderLink, SectionSwitchScrollRestorer, SectionKeyboardShortcuts } from "./section-switch-navigation";
-import { resolveSectionConfig } from "@/server/prompt-config/section-resolver";
+import { saveSectionLoraConfig } from "@/server/services/section-lora-service";
 
 const RESOLVED_ONLY_BLOCK_ID_PREFIX = "resolved:";
 
@@ -29,78 +28,16 @@ export default async function SectionEditPage({
 }) {
   const { projectId, sectionId } = await params;
 
-  const [pos, resolvedConfig, libraryV2, siblingFolders, siblingSections] = await Promise.all([
-    prisma.projectSection.findUnique({
-      where: { id: sectionId },
-      include: {
-        project: {
-          select: {
-            checkpointName: true,
-          },
-        },
-        sectionPromptBlocks: {
-          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-          select: {
-            id: true,
-            type: true,
-            sectionBindingId: true,
-            customLabel: true,
-            customPositive: true,
-            customNegative: true,
-            sortOrder: true,
-            sectionBinding: {
-              select: {
-                bindingKey: true,
-                presetId: true,
-                presetGroupId: true,
-              },
-            },
-          },
-        },
-        runs: {
-          where: { status: "done" },
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: {
-            id: true,
-            runIndex: true,
-            images: {
-              orderBy: { createdAt: "asc" },
-              take: 8,
-              select: {
-                id: true,
-                thumbPath: true,
-                filePath: true,
-                reviewStatus: true,
-              },
-            },
-            _count: {
-              select: {
-                images: true,
-              },
-            },
-          },
-        },
-      },
-    }),
-    resolveSectionConfig(sectionId),
+  const [sectionEditData, libraryV2] = await Promise.all([
+    getProjectSectionEditData(projectId, sectionId),
     getPresetLibraryV2(),
-    prisma.projectSectionFolder.findMany({
-      where: { projectId },
-      orderBy: [{ parentId: "asc" }, { sortOrder: "asc" }, { name: "asc" }],
-      select: { id: true, name: true, parentId: true, sortOrder: true },
-    }),
-    prisma.projectSection.findMany({
-      where: { projectId },
-      orderBy: { sortOrder: "asc" },
-      select: { id: true, folderId: true, sortOrder: true },
-    }),
   ]);
 
-  if (!pos || pos.projectId !== projectId) {
+  if (!sectionEditData) {
     notFound();
   }
 
+  const { section: pos, resolvedConfig, siblingFolders, siblingSections } = sectionEditData;
   const orderedSiblingSections = buildFolderScopedItemOrder(siblingFolders, siblingSections);
   const sectionIdx = orderedSiblingSections.findIndex((s) => s.id === sectionId);
   const prevSection = sectionIdx > 0 ? orderedSiblingSections[sectionIdx - 1] : null;
@@ -246,60 +183,7 @@ export default async function SectionEditPage({
   // Server action to save LoRA config (2-partition: lora1, lora2)
   async function handleLoraChange(config: SectionLoraConfig) {
     "use server";
-    const { prisma } = await import("@/lib/prisma");
-    const { resolveSectionConfig } = await import("@/server/prompt-config/section-resolver");
-    const { recordSectionChange } = await import("@/server/services/section-change-history-service");
-    const before = await resolveSectionConfig(sectionId);
-    const bindings = await prisma.sectionPresetBinding.findMany({
-      where: { projectSectionId: sectionId },
-      select: { id: true, bindingKey: true, presetId: true, variantId: true },
-    });
-    const bindingByKey = new Map(bindings.map((binding) => [binding.bindingKey, binding]));
-    const manualRows = (["lora1", "lora2"] as const).flatMap((stage) =>
-      config[stage].flatMap((entry, index) => {
-        const cleanPresetEntry =
-          entry.source === "preset" &&
-          !entry.detachedBindingId &&
-          !entry.detachedPresetPath &&
-          entry.suppressed !== true;
-        if (cleanPresetEntry) return [];
-
-        const bindingKey = entry.detachedBindingId ?? entry.bindingId ?? null;
-        const binding = bindingKey ? bindingByKey.get(bindingKey) ?? null : null;
-        const shouldLinkBinding = shouldPersistLoraBindingLink(entry);
-        return [{
-          projectSectionId: sectionId,
-          sectionBindingId: shouldLinkBinding ? binding?.id ?? null : null,
-          stage,
-          path: entry.path,
-          weight: Math.round(entry.weight * 100) / 100,
-          enabled: entry.suppressed === true ? false : entry.enabled,
-          detachedFromBindingKey: entry.detachedBindingId ?? (entry.source === "preset" ? entry.bindingId ?? null : null),
-          detachedFromPresetId: binding?.presetId ?? null,
-          detachedFromVariantId: binding?.variantId ?? null,
-          detachedFromPath: entry.detachedPresetPath ?? (entry.source === "preset" ? entry.path : null),
-          metadata: entry.suppressed === true ? { suppressed: true } : undefined,
-          sortOrder: index,
-        }];
-      }),
-    );
-
-    await prisma.$transaction(async (tx) => {
-      await tx.sectionManualLoraEntry.deleteMany({
-        where: { projectSectionId: sectionId },
-      });
-      if (manualRows.length > 0) {
-        await tx.sectionManualLoraEntry.createMany({ data: manualRows });
-      }
-    });
-    await recordSectionChange({
-      sectionId,
-      dimension: "lora",
-      title: "更新 LoRA 配置",
-      before: before?.loraConfig ?? null,
-      after: config,
-    });
-
+    await saveSectionLoraConfig(sectionId, config);
     revalidatePath(`/projects/${projectId}/sections/${sectionId}`);
   }
 

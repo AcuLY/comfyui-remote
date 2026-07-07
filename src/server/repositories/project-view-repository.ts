@@ -5,6 +5,7 @@ export {
 } from "./project-view-repository/list-view";
 export {
   getProjectDetail,
+  getProjectSectionEditData,
   getSectionResults,
   getProjectResults,
 } from "./project-view-repository/detail-view";

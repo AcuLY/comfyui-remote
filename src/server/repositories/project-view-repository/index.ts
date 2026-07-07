@@ -1,6 +1,7 @@
 export { listProjectNavigationItems, listProjects, listProjectFolders } from "./list-view";
 export {
   getProjectDetail,
+  getProjectSectionEditData,
   getSectionResults,
   getProjectResults,
 } from "./detail-view";

@@ -21,6 +21,7 @@ const trainingRoutesSource = readFileSync(resolve(repoRoot, "src/features/traini
 const trainingNotFoundSource = readFileSync(resolve(repoRoot, "src/features/training/not-found-page.tsx"), "utf8");
 const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/training/route.ts"), "utf8");
 const generationProjectDetailSource = readFileSync(resolve(repoRoot, "src/server/repositories/project-view-repository/detail-view.ts"), "utf8");
+const generationSectionEditPageSource = readFileSync(resolve(repoRoot, "src/app/projects/[projectId]/sections/[sectionId]/page.tsx"), "utf8");
 const generationQueuePageSource = readFileSync(resolve(repoRoot, "src/app/queue/page.tsx"), "utf8");
 const generationQueueDataRouteSource = readFileSync(resolve(repoRoot, "src/app/api/queue-data/route.ts"), "utf8");
 const generationQueueDataRepositorySource = readFileSync(resolve(repoRoot, "src/server/repositories/queue-data-repository.ts"), "utf8");
@@ -51,6 +52,7 @@ const generationProjectExportServiceSource = readFileSync(resolve(repoRoot, "src
 const generationProjectArchiveServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-archive-service.ts"), "utf8");
 const generationProjectFolderServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-folder-service.ts"), "utf8");
 const generationProjectServiceSource = readFileSync(resolve(repoRoot, "src/server/services/project-service.ts"), "utf8");
+const generationSectionLoraServiceSource = readOptionalSource("src/server/services/section-lora-service.ts");
 const generationImageReviewActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/image-review.ts"), "utf8");
 const generationCensoringActionSource = readFileSync(resolve(repoRoot, "src/lib/actions/censoring.ts"), "utf8");
 const generationCensoringExecutorSource = readFileSync(resolve(repoRoot, "src/server/services/censoring-executor.ts"), "utf8");
@@ -73,6 +75,14 @@ const generationPresetReplacementSource = readFileSync(resolve(repoRoot, "src/se
 const MODULE_OWNED_RESOURCE_KEYS = ["runs", "projects", "presets", "templates"] as const;
 const SHARED_RESOURCE_KEYS = ["models", "settings"] as const;
 const retiredTrainingApiRoot = `/api/${["character", "lora", "training"].join("-")}`;
+
+function readOptionalSource(relativePath: string): string {
+  try {
+    return readFileSync(resolve(repoRoot, relativePath), "utf8");
+  } catch {
+    return "";
+  }
+}
 
 function listSourceFiles(root: string): string[] {
   return readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
@@ -381,6 +391,39 @@ test("generation preset sort rules page delegates ordinary category reads", () =
     generationPresetViewRepositorySource,
     /listPresetSortRuleCategories[\s\S]*presetCategory\.findMany\(\{[\s\S]*ordinaryPresetLibraryCategoryTypeWhere\(\)/,
     "Generation preset sort-rules repository read should stay scoped to ordinary preset categories.",
+  );
+});
+
+test("generation section edit page delegates data reads and LoRA writes", () => {
+  assert.match(
+    generationSectionEditPageSource,
+    /getProjectSectionEditData/,
+    "Generation section edit page should delegate its section, sibling, and resolved-config reads below the page layer.",
+  );
+  assert.match(
+    generationSectionEditPageSource,
+    /saveSectionLoraConfig/,
+    "Generation section edit page should delegate LoRA persistence below the page layer.",
+  );
+  assert.doesNotMatch(
+    generationSectionEditPageSource,
+    /@\/lib\/prisma|prisma\.projectSection|sectionPresetBinding\.findMany|sectionManualLoraEntry|\$transaction/,
+    "Generation section edit page should not own Prisma queries or manual LoRA transactions.",
+  );
+  assert.match(
+    generationProjectDetailSource,
+    /getProjectSectionEditData[\s\S]*projectSection\.findFirst\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\{\s*id:\s*projectId\s*\}/,
+    "Generation section edit data loader should reject sections outside the visible generation project boundary.",
+  );
+  assert.match(
+    generationSectionLoraServiceSource,
+    /saveSectionLoraConfig[\s\S]*sectionPresetBinding\.findMany/,
+    "Generation section LoRA service should own binding lookup before writing manual LoRA rows.",
+  );
+  assert.match(
+    generationSectionLoraServiceSource,
+    /saveSectionLoraConfig[\s\S]*recordSectionChange/,
+    "Generation section LoRA service should keep LoRA change history with the mutation.",
   );
 });
 

@@ -18,7 +18,7 @@ export {
 } from "@/server/repositories/queue-data-repository";
 
 // Project view data
-export { listProjects, listProjectFolders, getProjectDetail, getProjectResults, getSectionResults, getProjectFormOptions, getProjectEditData } from "@/server/repositories/project-view-repository";
+export { listProjects, listProjectFolders, getProjectDetail, getProjectSectionEditData, getProjectResults, getSectionResults, getProjectFormOptions, getProjectEditData } from "@/server/repositories/project-view-repository";
 export type { ProjectDetailSection, ProjectDetail, ProjectSectionFolderItem, ProjectResultsData, SectionResultsData, ProjectFormCategory, ProjectFormOptions, PresetBinding, ProjectEditData, SectionBlockSummary } from "@/server/repositories/project-view-repository";
 export { listSectionTrashItems as getSectionTrashItems, listTrashItems as getTrashItems } from "@/server/repositories/trash-repository";
 
