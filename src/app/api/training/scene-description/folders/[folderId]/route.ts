@@ -1,9 +1,10 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   deleteTrainingSceneDescriptionFolder,
   mapTrainingPresetError,
   updateTrainingSceneDescriptionFolder,
 } from "@/server/services/training/preset-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ folderId: string }>;
@@ -13,10 +14,11 @@ export const dynamic = "force-dynamic";
 
 export async function PATCH(request: Request, context: RouteContext) {
   let body: unknown;
+
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {

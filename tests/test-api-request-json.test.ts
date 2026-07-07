@@ -238,6 +238,11 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/training/presets/route.ts",
     "src/app/api/training/presets/[presetId]/route.ts",
     "src/app/api/training/presets/sort-rules/route.ts",
+    "src/app/api/training/scene-description/categories/route.ts",
+    "src/app/api/training/scene-description/categories/[categoryId]/route.ts",
+    "src/app/api/training/scene-description/folders/route.ts",
+    "src/app/api/training/scene-description/folders/[folderId]/route.ts",
+    "src/app/api/training/scene-description/presets/[presetId]/cascade/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -458,6 +463,29 @@ test("training preset mutations use shared raw JSON parsing", () => {
     assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
     assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
   }
+});
+
+test("training scene-description mutations use shared JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/training/scene-description/categories/route.ts",
+    "src/app/api/training/scene-description/categories/[categoryId]/route.ts",
+    "src/app/api/training/scene-description/folders/route.ts",
+    "src/app/api/training/scene-description/folders/[folderId]/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+
+  const cascadeRouteSource = readFileSync("src/app/api/training/scene-description/presets/[presetId]/cascade/route.ts", "utf8");
+  assert.match(cascadeRouteSource, /from ["']@\/server\/http\/request-json["']/, "cascade route should import request JSON helpers");
+  assert.match(cascadeRouteSource, /readOptionalJsonObject\(request\)/, "cascade route should parse through readOptionalJsonObject");
+  assert.match(cascadeRouteSource, /\bfailFromError\(/, "cascade route should map parser errors through failFromError");
+  assert.doesNotMatch(cascadeRouteSource, /request\.json\(\)/, "cascade route should not parse JSON directly");
+  assert.doesNotMatch(cascadeRouteSource, /JSON\.parse\(/, "cascade route should not parse request text locally");
 });
 
 test("generation section batch delete route delegates destructive checks to project service", () => {
@@ -844,6 +872,36 @@ test("training preset mutations preserve invalid JSON response envelope", async 
       params: Promise.resolve({ presetId: "preset-1" }),
     }),
     await sortRulesRoute.POST(makeRequest("not-json")),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("training scene-description mutations preserve invalid JSON response envelope", async () => {
+  const categoriesRoute = await import("../src/app/api/training/scene-description/categories/route");
+  const categoryRoute = await import("../src/app/api/training/scene-description/categories/[categoryId]/route");
+  const foldersRoute = await import("../src/app/api/training/scene-description/folders/route");
+  const folderRoute = await import("../src/app/api/training/scene-description/folders/[folderId]/route");
+  const cascadeRoute = await import("../src/app/api/training/scene-description/presets/[presetId]/cascade/route");
+
+  for (const response of [
+    await categoriesRoute.POST(makeRequest("not-json")),
+    await categoryRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ categoryId: "category-1" }),
+    }),
+    await foldersRoute.POST(makeRequest("not-json")),
+    await folderRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ folderId: "folder-1" }),
+    }),
+    await cascadeRoute.DELETE(makeRequest("not-json"), {
+      params: Promise.resolve({ presetId: "preset-1" }),
+    }),
   ]) {
     assert.equal(response.status, 400);
     assert.deepEqual(await response.json(), {

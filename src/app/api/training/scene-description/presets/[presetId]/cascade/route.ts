@@ -1,8 +1,9 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   cascadeDeleteTrainingSceneDescriptionPreset,
   mapTrainingPresetError,
 } from "@/server/services/training/preset-service";
+import { readOptionalJsonObject } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -10,20 +11,18 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ presetId: string }> },
 ) {
-  let body: unknown = {};
+  let body: Record<string, unknown>;
 
   try {
-    const rawBody = await request.text();
-    body = rawBody.trim() ? JSON.parse(rawBody) : {};
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readOptionalJsonObject(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {
     const { presetId } = await params;
-    const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
     const data = await cascadeDeleteTrainingSceneDescriptionPreset(presetId, {
-      confirm: payload.confirm === true,
+      confirm: body.confirm === true,
     });
     return ok(data);
   } catch (error) {

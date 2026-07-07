@@ -1,9 +1,10 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   createTrainingSceneDescriptionFolder,
   listTrainingSceneDescriptionTree,
   mapTrainingPresetError,
 } from "@/server/services/training/preset-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -29,10 +30,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   let body: unknown;
+
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {
