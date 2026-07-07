@@ -18,26 +18,22 @@ import {
 } from "@/components/section-editor-binding-rules";
 import { LoraListEditor } from "@/components/lora-list-editor";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
-import { TemplatePromptBlockEditor, type TemplateBlockData } from "@/components/template-prompt-block-editor";
 import { generateLoraEntryId, type LoraEntry, DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2, type KSamplerParams } from "@/lib/lora-types";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { normalizeAspectRatioList } from "@/lib/aspect-ratio-utils";
 import type { ProjectTemplateSectionData } from "@/lib/server-data";
 import type { PresetLibraryV2 } from "@/components/prompt-block-editor";
+import {
+  TemplateSectionPromptBlocks,
+  type TemplateBlockData,
+  type TemplateSectionPromptCategoryConfig,
+} from "./template-section-prompt-blocks";
 
 const AUTO_SAVE_DELAY = 600;
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-type CategoryConfig = {
-  id: string;
-  name: string;
-  slug: string;
-  color: string | null;
-  icon: string | null;
-};
 
 type PresetBindingInfo = {
   bindingId: string;
@@ -139,7 +135,7 @@ export function TemplateSectionDetailClient({
   const aspectRatio = aspectRatios?.[0] ?? null;
 
   const categoryMap = useMemo(() => {
-    const map = new Map<string, CategoryConfig>();
+    const map = new Map<string, TemplateSectionPromptCategoryConfig>();
     for (const cat of library?.categories ?? []) {
       map.set(cat.id, { id: cat.id, name: cat.name, slug: cat.slug, color: cat.color, icon: cat.icon });
     }
@@ -1185,19 +1181,15 @@ export function TemplateSectionDetailClient({
         </div>
       )}
 
-      {/* Prompt blocks */}
-      <div className="space-y-3 border-t border-white/5 pt-3">
-        <div className="text-xs font-medium text-zinc-400">Prompt Blocks</div>
-        <TemplatePromptBlockEditor
-          blocks={promptBlocks}
-          onChange={(nextBlocks) => {
-            setPromptBlocks(nextBlocks);
-            scheduleSaveAfterState();
-          }}
-          onDetachBinding={detachLorasForPromptBinding}
-          categoryMap={categoryMap}
-        />
-      </div>
+      <TemplateSectionPromptBlocks
+        blocks={promptBlocks}
+        onChange={(nextBlocks) => {
+          setPromptBlocks(nextBlocks);
+          scheduleSaveAfterState();
+        }}
+        onDetachBinding={detachLorasForPromptBinding}
+        categoryMap={categoryMap}
+      />
 
       {/* LoRA config */}
       <div className="space-y-3 border-t border-white/5 pt-3">
