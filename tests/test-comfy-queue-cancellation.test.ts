@@ -284,3 +284,42 @@ test("confirmation timeout rejects instead of reporting local cancellation succe
   );
   assert.ok(confirmationChecks > 1, "confirmation should poll after the delete request");
 });
+
+test("confirmation HTTP failure fails the current batch before later batches start", async () => {
+  const positions = Object.fromEntries(
+    Array.from({ length: 140 }, (_value, index) => [`prompt-${index}`, "pending"] as const),
+  );
+  const { deps, calls } = createCancellationDeps(positions, {
+    apiUrl: "http://comfy.example.test:8188",
+    isRemoteTarget: true,
+    preflightElapsedMs: 1_500,
+    requestTimeoutMs: 10,
+  });
+  const confirmedBatchIndexes: number[] = [];
+  deps.getQueuePosition = async (_apiUrl, promptId) => {
+    calls.positionChecks.push(promptId);
+    return "pending";
+  };
+
+  await assert.rejects(
+    () =>
+      cancelComfyPromptsForRuns(
+        Object.keys(positions).map((promptId) => ({ status: "queued", comfyPromptId: promptId })),
+        deps,
+        {
+          onBatchConfirmed: async (batch) => {
+            confirmedBatchIndexes.push(batch.batchIndex);
+          },
+        },
+      ),
+    /confirmation timed out/,
+  );
+
+  assert.deepEqual(calls.deletedPromptBatches.map((batch) => batch.length), [64]);
+  assert.deepEqual(confirmedBatchIndexes, []);
+  assert.equal(
+    calls.positionChecks.includes("prompt-64"),
+    false,
+    "later batches must not start after the current batch fails confirmation",
+  );
+});

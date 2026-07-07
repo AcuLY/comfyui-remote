@@ -40,6 +40,7 @@ test("worker boundary doc records generation payload and repository ownership", 
   assert.match(doc, /Do not reintroduce failure request parsing or failure status writes into task-api/);
   assert.match(doc, /Do not reintroduce scheduler tick routing or training progress writes into task-api/);
   assert.match(doc, /lease owners, heartbeat progress payloads, failure summaries, and provider error payloads/);
+  assert.match(doc, /ComfyUI cancellation HTTP failures must fail the current batch and stop later batches/);
   assert.match(doc, /Do not call the fallback prompt builder from run-executor/);
   assert.match(docsIndex, /docs\/worker-boundaries\.md/, "documentation index should point agents to worker boundaries");
 });

@@ -12,6 +12,12 @@ This document records the current worker ownership split for generation and trai
 
 Do not let repositories import payload builders. Do not let payload builders import repositories, `@/lib/db`, ComfyUI service modules, or fallback prompt construction.
 
+## ComfyUI Queue Cancellation
+
+`src/server/services/comfy-queue-cancellation.ts` owns remote ComfyUI queue deletion, interrupt, and confirmation behavior for generation runs. It batches prompt IDs conservatively for remote or slow targets, confirms each batch before local row updates, and only reports a confirmed batch through `onBatchConfirmed`.
+
+ComfyUI cancellation HTTP failures must fail the current batch and stop later batches. Delete, interrupt, position-check, and confirmation failures should reject the cancellation call instead of reporting local cancellation success or continuing into later prompt batches.
+
 ## Fallback Prompt Builder
 
 `src/server/worker/fallback-prompt-builder.ts` is last resort only. It exists so the ComfyUI validation boundary can still build a minimal SDXL txt2img graph if the default workflow template is unavailable.
@@ -57,7 +63,7 @@ Do not reintroduce worker task ID prefix parsing into task-api, route handlers, 
 ## Verification
 
 ```bash
-node --import tsx --test tests/test-worker-boundary-governance.test.ts tests/test-run-submission-deferral.test.ts tests/test-run-recovery-poller-cap.test.ts tests/test-repo-inventory.test.ts
+node --import tsx --test tests/test-worker-boundary-governance.test.ts tests/test-comfy-queue-cancellation.test.ts tests/test-run-submission-deferral.test.ts tests/test-run-recovery-poller-cap.test.ts tests/test-repo-inventory.test.ts
 ```
 
 Run `npm run lint` and `npm test` for implementation batches that change worker code.
