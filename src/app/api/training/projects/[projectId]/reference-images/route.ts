@@ -1,10 +1,11 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   listTrainingProjectReferenceImages,
   mapTrainingReferenceImageMutationError,
   registerTrainingReferenceImageFromArtifact,
   uploadTrainingProjectReferenceImage,
 } from "@/server/services/training/project-actions-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -28,17 +29,30 @@ export async function POST(
 ) {
   const contentType = request.headers.get("content-type") ?? "";
 
-  try {
-    const { projectId } = await params;
-    if (contentType.includes("application/json")) {
-      const body = await request.json().catch(() => null);
-      if (!body || typeof body !== "object") {
-        return fail("Invalid JSON body", 400);
-      }
-      const data = await registerTrainingReferenceImageFromArtifact(projectId, body);
-      return ok(data, { status: 201 });
+  if (contentType.includes("application/json")) {
+    let body: unknown;
+    try {
+      body = await readJsonBody(request);
+    } catch (error) {
+      return failFromError(error);
     }
 
+    if (!body || typeof body !== "object") {
+      return fail("Invalid JSON body", 400);
+    }
+
+    try {
+      const { projectId } = await params;
+      const data = await registerTrainingReferenceImageFromArtifact(projectId, body);
+      return ok(data, { status: 201 });
+    } catch (error) {
+      const mapped = mapTrainingReferenceImageMutationError(error);
+      return fail(mapped.message, mapped.status, mapped.details);
+    }
+  }
+
+  try {
+    const { projectId } = await params;
     let formData: FormData;
     try {
       formData = await request.formData();

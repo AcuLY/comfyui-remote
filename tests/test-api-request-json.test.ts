@@ -13,6 +13,16 @@ function makeRequest(body?: string) {
   });
 }
 
+function makeJsonRequest(body?: string) {
+  return new Request("http://localhost/api/test", {
+    body,
+    headers: {
+      "content-type": "application/json",
+    },
+    method: "POST",
+  });
+}
+
 test("readOptionalJsonObject returns an empty object for empty request bodies", async () => {
   assert.deepEqual(await readOptionalJsonObject(makeRequest("")), {});
 });
@@ -272,6 +282,10 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/training/worker/training-runs/[trainingRunId]/complete/route.ts",
     "src/app/api/training/worker/training-runs/[trainingRunId]/fail/route.ts",
     "src/app/api/training/worker/training-runs/[trainingRunId]/progress/route.ts",
+    "src/app/api/training/projects/[projectId]/dataset-revisions/route.ts",
+    "src/app/api/training/projects/[projectId]/text-revisions/route.ts",
+    "src/app/api/training/projects/[projectId]/reference-images/route.ts",
+    "src/app/api/training/projects/[projectId]/captions/generate/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -615,6 +629,28 @@ test("training run mutations use shared optional JSON parsing", () => {
     assert.doesNotMatch(source, /request\.json\(\)/, `${routePath} should not parse JSON directly`);
     assert.doesNotMatch(source, /JSON\.parse\(/, `${routePath} should not parse request text locally`);
   }
+});
+
+test("training project support mutations use shared JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/training/projects/[projectId]/text-revisions/route.ts",
+    "src/app/api/training/projects/[projectId]/reference-images/route.ts",
+    "src/app/api/training/projects/[projectId]/captions/generate/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+
+  const datasetRevisionsSource = readFileSync("src/app/api/training/projects/[projectId]/dataset-revisions/route.ts", "utf8");
+  assert.match(datasetRevisionsSource, /from ["']@\/server\/http\/request-json["']/, "dataset revisions route should import request JSON helpers");
+  assert.match(datasetRevisionsSource, /readOptionalJsonObject\(request\)/, "dataset revisions route should parse through readOptionalJsonObject");
+  assert.match(datasetRevisionsSource, /\bfailFromError\(/, "dataset revisions route should map parser errors through failFromError");
+  assert.doesNotMatch(datasetRevisionsSource, /request\.json\(\)/, "dataset revisions route should not parse JSON directly");
+  assert.doesNotMatch(datasetRevisionsSource, /JSON\.parse\(/, "dataset revisions route should not parse request text locally");
 });
 
 test("generation section batch delete route delegates destructive checks to project service", () => {
@@ -1198,6 +1234,36 @@ test("training run mutations preserve invalid JSON response envelope", async () 
     }),
     await trainingRunWorkerProgressRoute.POST(makeRequest("not-json"), {
       params: Promise.resolve({ trainingRunId: "training-run-1" }),
+    }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("training project support mutations preserve invalid JSON response envelope", async () => {
+  const datasetRevisionsRoute = await import("../src/app/api/training/projects/[projectId]/dataset-revisions/route");
+  const textRevisionsRoute = await import("../src/app/api/training/projects/[projectId]/text-revisions/route");
+  const referenceImagesRoute = await import("../src/app/api/training/projects/[projectId]/reference-images/route");
+  const captionsGenerateRoute = await import("../src/app/api/training/projects/[projectId]/captions/generate/route");
+
+  for (const response of [
+    await datasetRevisionsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await textRevisionsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await referenceImagesRoute.POST(makeJsonRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await captionsGenerateRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);
