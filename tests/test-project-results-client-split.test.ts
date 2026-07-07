@@ -6,6 +6,7 @@ const routePath = "src/app/projects/[projectId]/results/project-results-client.t
 const filterHookPath = "src/app/projects/[projectId]/results/use-project-results-filter-state.ts";
 const toolbarPath = "src/app/projects/[projectId]/results/project-results-toolbar.tsx";
 const galleryPath = "src/app/projects/[projectId]/results/project-results-gallery.tsx";
+const lightboxPath = "src/app/projects/[projectId]/results/project-results-lightbox.tsx";
 
 test("project results filter state lives in a focused route hook", () => {
   assert.ok(existsSync(filterHookPath), `${filterHookPath} should own project results filter state`);
@@ -50,4 +51,19 @@ test("project results gallery rendering lives in a focused component", () => {
   assert.match(routeSource, /from "\.\/project-results-gallery";/);
   assert.doesNotMatch(routeSource, /function ResultImageCard/);
   assert.doesNotMatch(routeSource, /function SectionResultsBlock/);
+});
+
+test("project results lightbox shell lives in a focused component", () => {
+  assert.ok(existsSync(lightboxPath), `${lightboxPath} should own project results lightbox rendering`);
+
+  const routeSource = readFileSync(routePath, "utf8");
+  const lightboxSource = readFileSync(lightboxPath, "utf8");
+
+  assert.match(lightboxSource, /export function ProjectResultsLightbox/);
+  assert.match(lightboxSource, /data-project-results-lightbox/);
+  assert.match(lightboxSource, /<QuickCensorCanvas/);
+
+  assert.match(routeSource, /from "\.\/project-results-lightbox";/);
+  assert.doesNotMatch(routeSource, /data-project-results-lightbox/);
+  assert.doesNotMatch(routeSource, /<QuickCensorCanvas/);
 });

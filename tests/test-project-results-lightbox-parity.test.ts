@@ -31,62 +31,63 @@ test("filtered lightbox advances to the next matching image when the current ima
 });
 
 test("project results lightbox exposes review and censor controls like section results", () => {
-  const source = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
-  const lightbox = sourceSlice(
-    source,
-    "{lightboxImage && (",
-    "    </SidebarProvider>",
-  );
+  const routeSource = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+  const lightboxSource = readSource("src/app/projects/[projectId]/results/project-results-lightbox.tsx");
 
   assert.match(
-    source,
+    lightboxSource,
     /from ["']@\/components\/quick-censor-canvas["']/,
     "project results lightbox should reuse the quick-censor canvas",
   );
   assert.match(
-    source,
+    routeSource,
     /from ["']@\/lib\/client-review-mutation["']/,
     "project results lightbox should use the same background review API as section results",
   );
   assert.match(
-    source,
+    lightboxSource,
     /quickCensorMode/,
     "project results lightbox should track quick censor mode",
   );
   assert.match(
-    source,
+    routeSource,
     /\/api\/images\/\$\{encodeURIComponent\(lightboxImage\.id\)\}\/manual-censor/,
     "finished quick censor should upload to the manual censor route",
   );
   assert.match(
-    source,
+    routeSource,
     /setShowCensoredMode\(true\)/,
     "finished quick censor should switch the preview to the saved censored image",
   );
   assert.match(
-    lightbox,
-    /reviewLightboxImage\("keep", true\)/,
+    routeSource,
+    /onKeep=\{\(\) => reviewLightboxImage\("keep", true\)\}/,
     "project results lightbox should expose a keep-and-advance control",
   );
   assert.match(
-    lightbox,
-    /reviewLightboxImage\("trash", true\)/,
+    routeSource,
+    /onTrash=\{\(\) => reviewLightboxImage\("trash", true\)\}/,
     "project results lightbox should expose a delete-and-advance control",
   );
   assert.match(
-    lightbox,
+    lightboxSource,
     /<QuickCensorCanvas[\s\S]*source=\{lightboxImage\.full\}/,
     "manual quick censor should always start from the original full image",
   );
   assert.match(
-    lightbox,
+    lightboxSource,
     /current\.censoredFull|lightboxImage\.censoredFull/,
     "project results lightbox should expose a censored-version toggle",
   );
   assert.match(
-    lightbox,
-    /censorImage\(lightboxImage\.id\)/,
+    routeSource,
+    /censorImage\(imageId\)/,
     "project results lightbox should expose the automatic single-image censor action",
+  );
+  assert.match(
+    routeSource,
+    /onRunAutoCensor=\{runAutoCensorLightboxImage\}/,
+    "project results route should pass automatic censor behavior into the lightbox shell",
   );
 });
 
