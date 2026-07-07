@@ -36,6 +36,10 @@ const projectDatasetRevisionPagePath = resolve(featureUiDir, "training-project-d
 const projectDatasetRevisionPageSource = existsSync(projectDatasetRevisionPagePath)
   ? readFileSync(projectDatasetRevisionPagePath, "utf8")
   : "";
+const projectScopedRunsPagePath = resolve(featureUiDir, "training-project-scoped-runs-page.tsx");
+const projectScopedRunsPageSource = existsSync(projectScopedRunsPagePath)
+  ? readFileSync(projectScopedRunsPagePath, "utf8")
+  : "";
 const projectPageShellPath = resolve(featureUiDir, "project-page-shell.tsx");
 const projectPageShellSource = existsSync(projectPageShellPath) ? readFileSync(projectPageShellPath, "utf8") : "";
 const trainingResultGridPath = resolve(featureUiDir, "training-result-grid.tsx");
@@ -178,11 +182,29 @@ test("training project dataset revision page lives in a focused page module", ()
   assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectDatasetRevisionPage/, "broad project pages module should not keep the dataset revision implementation inline");
 });
 
+test("training project scoped runs page lives in a focused page module", () => {
+  assert.match(projectScopedRunsPageSource, /export function LoraTrainingProjectScopedRunsPage/, "project scoped runs implementation should live in its own module");
+  assert.match(projectScopedRunsPageSource, /projectRunInteractionState/, "project-scoped run interaction state should move with the scoped runs page");
+  assert.match(pagesSource, /export \{ LoraTrainingProjectScopedRunsPage \} from "\.\/training-project-scoped-runs-page";/, "broad project pages module should retain a compatibility re-export");
+  assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectScopedRunsPage/, "broad project pages module should not keep the project scoped runs implementation inline");
+});
+
 test("training project page shell lives in a focused component module", () => {
   assert.match(projectPageShellSource, /const PROJECT_TABS\b/, "project tab configuration should live with the project page shell");
   assert.match(projectPageShellSource, /function ProjectNav\b/, "project navigation should live with the project page shell");
   assert.match(projectPageShellSource, /export function ProjectHeader\b/, "project header should live with the project page shell");
-  assert.match(pagesSource, /from "\.\/project-page-shell"/, "broad project pages module should import the shared project page shell");
+  for (const [label, source] of [
+    ["detail", projectDetailPageSource],
+    ["profile", projectProfilePageSource],
+    ["sections", projectSectionsPageSource],
+    ["section detail", projectSectionDetailPageSource],
+    ["results", projectResultsPageSource],
+    ["dataset", projectDatasetPageSource],
+    ["dataset revision", projectDatasetRevisionPageSource],
+    ["scoped runs", projectScopedRunsPageSource],
+  ] as const) {
+    assert.match(source, /from "\.\/project-page-shell"/, `${label} page should import the shared project page shell`);
+  }
   assert.doesNotMatch(pagesSource, /\nconst PROJECT_TABS\b/, "project tab configuration should not stay inline in the broad project pages file");
   assert.doesNotMatch(pagesSource, /\nfunction ProjectNav\b/, "project navigation should not stay inline in the broad project pages file");
   assert.doesNotMatch(pagesSource, /\nfunction ProjectHeader\b/, "project header should not stay inline in the broad project pages file");
@@ -223,7 +245,8 @@ test("training project run rows respond to their own list surface width", () => 
   const projectRunRowsRule = cssSource.match(/\.projectRunRows\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
 
   assert.match(runRowsSource, /export function RunRows/, "project run rows should live in a focused component module");
-  assert.match(pagesSource, /from "\.\/project-run-rows"/, "project pages should import the focused project run rows module");
+  assert.match(projectDatasetRevisionPageSource, /from "\.\/project-run-rows"/, "dataset revision page should import the focused project run rows module");
+  assert.match(projectScopedRunsPageSource, /from "\.\/project-run-rows"/, "project scoped runs page should import the focused project run rows module");
   assert.doesNotMatch(pagesSource, /\nfunction RunRows\b/, "project pages should not keep project run rows inline");
   assert.match(runRowsSource, /projectRunRowsSurface/, "Project run rows should be wrapped in a list surface container");
   assert.match(
@@ -742,14 +765,11 @@ test("training section list mutations use the formal HTTP APIs on production rou
 });
 
 test("training project repeated object actions include the acted-on object name", () => {
-  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(scopedPageStart, -1);
-
   const gridSource = trainingResultGridSource;
   const runRowsSource = projectRunRowsSource;
   const newProjectSource = projectFormPageSource;
   const projectDetailSource = projectDetailPageSource;
-  const scopedPageSource = pagesSource.slice(scopedPageStart);
+  const scopedPageSource = projectScopedRunsPageSource;
 
   assert.match(gridSource, /ariaLabel=\{`保留训练结果：\$\{activeResult\.sourceLabel\}`\}/, "keep action should name the active training result");
   assert.match(gridSource, /ariaLabel=\{`拒绝训练结果：\$\{activeResult\.sourceLabel\}`\}/, "reject action should name the active training result");
@@ -768,10 +788,7 @@ test("training project repeated object actions include the acted-on object name"
 });
 
 test("project-scoped run pages leave the primary-action target selection to route headers", () => {
-  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(scopedPageStart, -1);
-
-  const scopedPageSource = pagesSource.slice(scopedPageStart);
+  const scopedPageSource = projectScopedRunsPageSource;
 
   assert.doesNotMatch(scopedPageSource, /generationEntrySectionId/, "scoped task pages should not compute a duplicate route-header target");
   assert.doesNotMatch(scopedPageSource, /project\.sections\.find\(\(section\) => section\.enabled\)/, "scoped task pages should leave enabled-section targeting to route headers");
@@ -970,11 +987,8 @@ test("project-scoped run rows use task cards with recent output thumbnails", () 
 });
 
 test("project-scoped run rows manage local visibility and failed retry state", () => {
-  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(scopedPageStart, -1);
-
   const runRowsSource = projectRunRowsSource;
-  const scopedPageSource = pagesSource.slice(scopedPageStart);
+  const scopedPageSource = projectScopedRunsPageSource;
 
   assert.match(scopedPageSource, /hiddenProjectRunIds/, "project task page should track locally removed run ids");
   assert.match(scopedPageSource, /retriedProjectRunIds/, "project task page should track locally retried failed run ids");
@@ -991,10 +1005,7 @@ test("project-scoped run rows manage local visibility and failed retry state", (
 });
 
 test("project-scoped run rows delete through the formal HTTP API on production routes", () => {
-  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(scopedPageStart, -1);
-
-  const scopedPageSource = pagesSource.slice(scopedPageStart);
+  const scopedPageSource = projectScopedRunsPageSource;
 
   assert.match(scopedPageSource, /usePathname/, "project-scoped delete should detect whether it is running under production \\/training routes");
   assert.match(scopedPageSource, /fetch\(\s*run\.kind === "generation"\s*\?\s*`\/api\/training\/generation-tasks\/\$\{run\.id\}`\s*:\s*`\/api\/training\/training-runs\/\$\{run\.id\}`/, "project-scoped delete should call the formal task detail routes");
@@ -1003,11 +1014,8 @@ test("project-scoped run rows delete through the formal HTTP API on production r
 });
 
 test("project-scoped queued or running run rows cancel through the formal HTTP API on production routes", () => {
-  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(scopedPageStart, -1);
-
   const runRowsSource = projectRunRowsSource;
-  const scopedPageSource = pagesSource.slice(scopedPageStart);
+  const scopedPageSource = projectScopedRunsPageSource;
 
   assert.match(scopedPageSource, /cancelledProjectRunIds/, "project task page should track locally cancelled run ids");
   assert.match(scopedPageSource, /handleCancelProjectRun/, "project task page should define a cancel handler");
@@ -1023,10 +1031,7 @@ test("project-scoped queued or running run rows cancel through the formal HTTP A
 });
 
 test("project-scoped run rows retry through the formal HTTP API on production routes", () => {
-  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(scopedPageStart, -1);
-
-  const scopedPageSource = pagesSource.slice(scopedPageStart);
+  const scopedPageSource = projectScopedRunsPageSource;
 
   assert.match(scopedPageSource, /usePathname/, "project-scoped retry should detect whether it is running under production \\/training routes");
   assert.match(scopedPageSource, /fetch\(`\/api\/training\/sections\/\$\{run\.sectionId\}\/runs`/, "project-scoped generation retry should call the formal section run API");
@@ -1037,10 +1042,7 @@ test("project-scoped run rows retry through the formal HTTP API on production ro
 });
 
 test("project-scoped run page interactions stay scoped to project and task kind", () => {
-  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(scopedPageStart, -1);
-
-  const scopedPageSource = pagesSource.slice(scopedPageStart);
+  const scopedPageSource = projectScopedRunsPageSource;
 
   assert.match(scopedPageSource, /projectRunInteractionState/, "project task page interaction state should be stored with route context");
   assert.match(scopedPageSource, /projectId:\s*project\?\.id \?\? null/, "project task interactions should remember the source project id");
@@ -1054,10 +1056,7 @@ test("project-scoped run page interactions stay scoped to project and task kind"
 });
 
 test("project-scoped run pages rely on route headers for the primary action", () => {
-  const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(scopedPageStart, -1);
-
-  const scopedPageSource = pagesSource.slice(scopedPageStart);
+  const scopedPageSource = projectScopedRunsPageSource;
 
   assert.doesNotMatch(
     scopedPageSource,
