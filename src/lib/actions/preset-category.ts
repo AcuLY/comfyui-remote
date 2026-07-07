@@ -8,7 +8,7 @@ import {
   ORDINARY_PRESET_CATEGORY_TYPE,
   assertOrdinaryPresetCategories,
   assertOrdinaryPresetCategory,
-} from "./preset-resource-scope";
+} from "../preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types

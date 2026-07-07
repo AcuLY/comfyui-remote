@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/actions/preset-resource-scope";
+import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/preset-resource-scope";
 import { normalizeCivitaiLinks } from "@/lib/utils";
 import {
   buildGenerationPresetWhere,

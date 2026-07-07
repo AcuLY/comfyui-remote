@@ -1,5 +1,5 @@
 import { revalidatePath } from "next/cache";
-import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
+import { ordinaryPresetCategoryTypeWhere } from "@/lib/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
 import {
   buildGenerationPresetWhere,

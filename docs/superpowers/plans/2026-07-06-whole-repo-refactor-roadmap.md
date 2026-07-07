@@ -327,6 +327,8 @@
 - Phase 6 slice 29 verification passed: red `node --import tsx --test tests/test-agent-preset-variant-flow-service.test.ts`, then green `node --import tsx --test tests/test-agent-preset-variant-flow-service.test.ts`, clean `rg -n "from [\"']@/lib/actions[\"'];|import\\([\"']@/lib/actions[\"']\\)" src -g '*.ts' -g '*.tsx'`, `npm run lint`, staged `node --import tsx --test tests/test-agent-preset-variant-flow-service.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, and `npm test` with 1064 tests discovered, 1063 pass, 0 fail, 1 skipped.
 - Phase 6 slice 30 documented `src/lib/actions.ts` as a compatibility-only server action barrel while keeping focused `src/lib/actions/*` imports as the source-code path, and added a persistent source-contract guard that fails on new direct `@/lib/actions` imports under `src`.
 - Phase 6 slice 30 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, and `npm test` with 1065 tests discovered, 1064 pass, 0 fail, 1 skipped.
+- Phase 6 slice 31 moved preset resource-scope boundary helpers from `src/lib/actions/preset-resource-scope.ts` to shared `src/lib/preset-resource-scope.ts`, updated action, service, repository, and prompt resolver imports, and regenerated `docs/repo-inventory.md`.
+- Phase 6 slice 31 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, staged `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts tests/test-preset-resource-scope.test.ts`, and `npm test` with 1066 tests discovered, 1065 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -696,7 +698,6 @@
 - `src/lib/actions/preset-folder.ts`
 - `src/lib/actions/preset-group.ts`
 - `src/lib/actions/preset-group-sync.ts`
-- `src/lib/actions/preset-resource-scope.ts`
 - `src/lib/actions/preset-sync.ts`
 - `src/lib/actions/preset-variant.ts`
 - `src/lib/actions/preset-variant-crud.ts`
@@ -708,7 +709,7 @@
 - [ ] Keep client-safe parsing helpers outside server action files.
 - [ ] Keep queue lifecycle actions compatible with pause/resume deployment requirements.
 - [ ] Split `run-lifecycle.ts` if cancellation, pause/resume, clear, and progress reporting remain hard to reason about.
-- [ ] Keep preset resource scope as a shared boundary helper but avoid importing action modules from repository modules.
+- [x] Keep preset resource scope as a shared boundary helper but avoid importing action modules from repository modules.
 - [ ] Add tests around every server action that wraps nontrivial service behavior.
 
 **Shared pure and client-safe libs:**
@@ -727,6 +728,7 @@
 - `src/lib/model-asset-navigation.ts`
 - `src/lib/model-constants.ts`
 - `src/lib/preset-binding-utils.ts`
+- `src/lib/preset-resource-scope.ts`
 - `src/lib/preset-group-slot-layout.ts`
 - `src/lib/preset-section-replacement-ui.ts`
 - `src/lib/queue-control-progress.ts`

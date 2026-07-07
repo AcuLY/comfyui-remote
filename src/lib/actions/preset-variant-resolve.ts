@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/actions/preset-resource-scope";
+import { ORDINARY_PRESET_CATEGORY_TYPE } from "@/lib/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
 import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 

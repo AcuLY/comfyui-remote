@@ -10,7 +10,7 @@ import { createBindingId } from "./_helpers";
 import {
   assertOrdinaryPresetLibraryBindingRefs,
   assertOrdinaryProjectPresetBindingRefs,
-} from "./preset-resource-scope";
+} from "../preset-resource-scope";
 import { importPresetGroupToSection, importPresetToSection } from "./prompt-block";
 import { switchBindingVariant } from "./prompt-block";
 

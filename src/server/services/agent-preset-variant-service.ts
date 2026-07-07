@@ -1,5 +1,5 @@
 import { switchBindingVariant } from "@/lib/actions/prompt-block";
-import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
+import { ordinaryPresetCategoryTypeWhere } from "@/lib/preset-resource-scope";
 import type { Prisma } from "@/generated/prisma";
 import { prisma } from "@/lib/prisma";
 import {

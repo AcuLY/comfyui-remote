@@ -14,7 +14,7 @@ import {
   assertOrdinaryPresetLibraryCategory,
   assertOrdinaryPresetVariant,
   ordinaryPresetLibraryCategoryTypeWhere,
-} from "./preset-resource-scope";
+} from "../preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -16,7 +16,7 @@ import {
   assertOrdinaryPresetLibraryBindingRefs,
   assertOrdinaryProjectPresetBindingRefs,
   PresetResourceScopeError,
-} from "./preset-resource-scope";
+} from "../preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -3,7 +3,7 @@ import {
   joinPromptParts,
   sortBySortOrder,
 } from "./order";
-import { isOrdinaryPresetCategoryType } from "@/lib/actions/preset-resource-scope";
+import { isOrdinaryPresetCategoryType } from "@/lib/preset-resource-scope";
 import { isReservedTrainingResourceNotes } from "@/server/repositories/generation-resource-boundary";
 import type {
   LoraBinding,

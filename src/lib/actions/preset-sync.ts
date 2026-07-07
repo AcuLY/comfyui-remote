@@ -6,7 +6,7 @@ import {
   buildGenerationProjectTemplateWhere,
   buildGenerationProjectWhere,
 } from "@/server/repositories/generation-resource-boundary";
-import { assertOrdinaryPreset } from "./preset-resource-scope";
+import { assertOrdinaryPreset } from "../preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types

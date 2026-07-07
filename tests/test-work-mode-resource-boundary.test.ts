@@ -129,6 +129,26 @@ test("full actions barrel is compatibility-only and unused by source callers", (
   assert.deepEqual(offenders, [], "Source files should import focused action modules instead of the full barrel.");
 });
 
+test("preset resource scope lives in shared lib instead of server action modules", () => {
+  const sharedScopeSource = readOptionalSource("src/lib/preset-resource-scope.ts");
+
+  assert.match(
+    sharedScopeSource,
+    /ORDINARY_PRESET_CATEGORY_TYPE/,
+    "Preset resource scope should live in src/lib as shared boundary logic.",
+  );
+  assert.equal(
+    readOptionalSource("src/lib/actions/preset-resource-scope.ts"),
+    "",
+    "Preset resource scope should not live under server action modules.",
+  );
+  assert.deepEqual(
+    findMatchingSources(sourceFilesFromRoots("src"), /@\/lib\/actions\/preset-resource-scope|from ["']\.\/preset-resource-scope["']/),
+    [],
+    "Source callers should import preset resource scope from the shared lib module instead of src/lib/actions.",
+  );
+});
+
 test("work mode resource targets isolate generation and training-owned resources", () => {
   const generationTargets = buildWorkModeResourceTargets("generation");
   const trainingTargets = buildWorkModeResourceTargets("lora_training");

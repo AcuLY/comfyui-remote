@@ -1,3 +1,4 @@
+// Shared generation-vs-training preset resource boundary helpers.
 import { prisma } from "@/lib/prisma";
 import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 

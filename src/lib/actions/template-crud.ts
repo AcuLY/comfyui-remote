@@ -14,7 +14,7 @@ import { resolveVariantContent } from "./preset-variant";
 import {
   assertOrdinaryPresetLibraryBindingRefs,
   ordinaryPresetCategoryTypeWhere,
-} from "./preset-resource-scope";
+} from "../preset-resource-scope";
 import {
   TRAINING_RESERVED_RESOURCE_WRITE_ERROR,
   buildGenerationPresetWhere,

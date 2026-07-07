@@ -1,7 +1,7 @@
 import {
   isOrdinaryPresetCategoryType,
   isOrdinaryPresetLibraryCategoryType,
-} from "@/lib/actions/preset-resource-scope";
+} from "@/lib/preset-resource-scope";
 import { isReservedTrainingResourceNotes } from "@/server/repositories/generation-resource-boundary";
 import { dedupeLoraBindingsByPath, joinPromptParts, sortBySortOrder } from "./order";
 import {

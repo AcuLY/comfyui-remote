@@ -14,7 +14,7 @@ import {
   assertOrdinaryPresetVariant,
   assertOrdinaryPresetVariants,
   assertOrdinaryPresets,
-} from "./preset-resource-scope";
+} from "../preset-resource-scope";
 
 // ---------------------------------------------------------------------------
 // Types

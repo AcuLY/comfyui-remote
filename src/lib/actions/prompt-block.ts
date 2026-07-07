@@ -12,7 +12,7 @@ import { detachSectionLorasFromPresetBinding } from "@/server/services/preset-bi
 import { recordSectionChange } from "@/server/services/section-change-history-service";
 import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 import { resolveVariantContent } from "./preset-variant";
-import { ordinaryPresetCategoryTypeWhere, ordinaryPresetLibraryCategoryTypeWhere } from "./preset-resource-scope";
+import { ordinaryPresetCategoryTypeWhere, ordinaryPresetLibraryCategoryTypeWhere } from "../preset-resource-scope";
 import {
   createBindingId,
 } from "./_helpers";

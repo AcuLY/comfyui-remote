@@ -8,7 +8,7 @@ import { buildGenerationProjectWhere } from "@/server/repositories/generation-re
 import {
   assertOrdinaryPresetLibraryBindingRefs,
   assertOrdinaryProjectPresetBindingRefs,
-} from "./preset-resource-scope";
+} from "../preset-resource-scope";
 import {
   buildTemplateSectionRowsForProjectSectionSave,
   type TemplateSectionManualLoraEntryWrite,

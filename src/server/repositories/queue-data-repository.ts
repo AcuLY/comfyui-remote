@@ -1,5 +1,5 @@
 import { Prisma } from "@/generated/prisma";
-import { ordinaryPresetCategoryTypeWhere } from "@/lib/actions/preset-resource-scope";
+import { ordinaryPresetCategoryTypeWhere } from "@/lib/preset-resource-scope";
 import { prisma } from "@/lib/prisma";
 import { toImageUrl } from "@/lib/image-url";
 import {

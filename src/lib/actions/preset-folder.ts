@@ -9,7 +9,7 @@ import {
   assertOrdinaryPreset,
   assertOrdinaryPresetLibraryCategory,
   ordinaryPresetLibraryCategoryTypeWhere,
-} from "./preset-resource-scope";
+} from "../preset-resource-scope";
 import { buildGenerationPresetWhere } from "@/server/repositories/generation-resource-boundary";
 
 // ---------------------------------------------------------------------------

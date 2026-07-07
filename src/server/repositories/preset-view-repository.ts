@@ -4,7 +4,7 @@ import { normalizeCivitaiLinks } from "@/lib/utils";
 import {
   ORDINARY_PRESET_CATEGORY_TYPE,
   ordinaryPresetLibraryCategoryTypeWhere,
-} from "@/lib/actions/preset-resource-scope";
+} from "@/lib/preset-resource-scope";
 import {
   groupPresetGroupHistory,
   groupPresetHistory,

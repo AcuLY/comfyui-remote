@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import {
   assertOrdinaryPresetLibraryBindingRefs,
   assertOrdinaryProjectPresetBindingRefs,
-} from "./preset-resource-scope";
+} from "../preset-resource-scope";
 import {
   buildProjectSectionDataForTemplateImport,
   buildProjectSectionRowsForTemplateImport,

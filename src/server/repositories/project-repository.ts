@@ -1,7 +1,7 @@
 import { Prisma } from "@/generated/prisma";
 import { JobStatus } from "@/lib/db-enums";
 import { db } from "@/lib/db";
-import { assertOrdinaryPresetLibraryBindingRefs } from "@/lib/actions/preset-resource-scope";
+import { assertOrdinaryPresetLibraryBindingRefs } from "@/lib/preset-resource-scope";
 import { detectProvider } from "@/lib/prisma";
 import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import {
