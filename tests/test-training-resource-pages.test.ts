@@ -88,6 +88,7 @@ test("training resource route and query helpers live in a focused utility module
     "uniquePresetCategories",
     "uniquePresetFolders",
     "isProductionTrainingPath",
+    "orderTrainingPresetsByIds",
     "readNewPresetHints",
     "readNewTemplateHints",
     "createProjectFromTemplateHref",
@@ -98,6 +99,7 @@ test("training resource route and query helpers live in a focused utility module
   assert.match(resourcePageUtilsSource, /type NewPresetHints\b/, "new preset hint typing should move with the hint parser");
   assert.match(resourcePageUtilsSource, /type NewTemplateHints\b/, "new template hint typing should move with the hint parser");
   assert.match(pageSource, /from "\.\/training-resource-page-utils"/, "resource pages should import focused route and query helpers");
+  assert.match(pageSource, /orderTrainingPresetsByIds\(training\.presets, orderedPresetIds\)/, "preset list ordering should use the focused id-order helper");
 });
 
 test("training preset draft factory lives in the resource page utility module", () => {

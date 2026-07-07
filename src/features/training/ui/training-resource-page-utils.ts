@@ -22,6 +22,13 @@ export function uniquePresetFolders(presets: LoraTrainingPreset[]) {
   return Array.from(new Set(presets.reduce<string[]>((items, preset) => [...items, preset.folder], [])));
 }
 
+export function orderTrainingPresetsByIds(presets: LoraTrainingPreset[], orderedIds: string[]) {
+  const presetMap = Object.fromEntries(presets.map((preset) => [preset.id, preset]));
+  const orderedPresets = orderedIds.map((id) => presetMap[id]).filter((preset): preset is LoraTrainingPreset => Boolean(preset));
+  const missingPresets = presets.filter((preset) => !orderedIds.includes(preset.id));
+  return [...orderedPresets, ...missingPresets];
+}
+
 export function isProductionTrainingPath(pathname: string | null | undefined) {
   return pathname === "/training" || pathname?.startsWith("/training/") === true;
 }

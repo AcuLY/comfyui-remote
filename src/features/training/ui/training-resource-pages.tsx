@@ -25,6 +25,7 @@ import {
   findPreset,
   findTemplate,
   isProductionTrainingPath,
+  orderTrainingPresetsByIds,
   readNewPresetHints,
   readNewTemplateHints,
   type NewPresetHints,
@@ -77,10 +78,7 @@ export function LoraTrainingPresetsPage({ data }: { data: TrainingAppData }) {
   const [hiddenPresetIds, setHiddenPresetIds] = useState<Set<string>>(() => new Set());
   const [orderedPresetIds, setOrderedPresetIds] = useState(() => training.presets.reduce<string[]>((ids, preset) => [...ids, preset.id], []));
   const [isDeletingPresets, setIsDeletingPresets] = useState(false);
-  const presetMap = new Map(training.presets.reduce<Array<[string, LoraTrainingPreset]>>((entries, preset) => [...entries, [preset.id, preset]], []));
-  const orderedPresets = orderedPresetIds
-    .map((presetId) => presetMap.get(presetId))
-    .filter((preset): preset is LoraTrainingPreset => Boolean(preset));
+  const orderedPresets = orderTrainingPresetsByIds(training.presets, orderedPresetIds);
   const categoryPresets = orderedPresets.filter((preset) => preset.category === activeCategory && !hiddenPresetIds.has(preset.id));
   const folders = uniquePresetFolders(categoryPresets);
   const visiblePresets = categoryPresets.filter((preset) => !currentFolder || preset.folder === currentFolder);
