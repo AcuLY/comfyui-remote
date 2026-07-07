@@ -373,6 +373,8 @@
 - Phase 7 slice 52 verification passed: red `node --import tsx --test tests/test-project-loading-skeletons.test.ts`, then green `node --import tsx --test tests/test-project-loading-skeletons.test.ts`, `node --import tsx --test tests/test-project-loading-skeletons.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1091 tests discovered, 1090 pass, 0 fail, 1 skipped.
 - Phase 7 slice 53 moved model/LoRA file-manager browse helpers into `src/app/assets/model-file-manager-shared.ts`. `model-file-manager.tsx` and the legacy `lora-file-manager.tsx` now share the browse item/result types, file-size formatter, and path-segment helper while keeping resource-specific API endpoints, metadata UI, and upload/move behavior in their own managers.
 - Phase 7 slice 53 verification passed: red `node --import tsx --test tests/test-asset-file-manager-shared.test.ts`, then green `node --import tsx --test tests/test-asset-file-manager-shared.test.ts`, `node --import tsx --test tests/test-asset-file-manager-shared.test.ts tests/test-lora-model-navigation.test.ts tests/test-model-civitai-info-panel.test.ts tests/test-model-search-filter.test.ts tests/text-editor-mobile-height.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1092 tests discovered, 1091 pass, 0 fail, 1 skipped.
+- Phase 7 slice 54 documented the asset page resource-type split in the Asset Page Boundary Map. Model files, LoRA files, preset library, preset groups, and templates now have explicit route/container boundaries, UI/state owners, and follow-up split checkpoints backed by `tests/test-asset-page-boundaries.test.ts`.
+- Phase 7 slice 54 verification passed: red `node --import tsx --test tests/test-asset-page-boundaries.test.ts`, then green `node --import tsx --test tests/test-asset-page-boundaries.test.ts`, `node --import tsx --test tests/test-asset-page-boundaries.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1093 tests discovered, 1092 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -917,7 +919,17 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/app/assets/templates/[templateId]/sections/[sectionIndex]/page.tsx`
 - `src/app/assets/templates/[templateId]/sections/[sectionIndex]/section-detail-client.tsx`
 
-- [ ] Split asset pages by resource type: model files, LoRA files, preset library, preset groups, templates.
+### Asset Page Boundary Map
+
+| Surface | Route/container boundary | UI/state boundary | Follow-up split checkpoint |
+| --- | --- | --- | --- |
+| Model files | `src/app/assets/models/page.tsx` owns `kind`/`path` search-param normalization and passes the selected model kind/path to `ModelFileManager`. | `src/app/assets/models/model-file-manager.tsx` owns the unified checkpoint/LoRA browser, search, selection, upload, move, notes, trigger words, and Civitai link UI. | Keep shared browse helpers in `src/app/assets/model-file-manager-shared.ts`; split the broad manager further only behind focused tests. |
+| LoRA files | `src/app/assets/loras/page.tsx` redirects to `/assets/models` so LoRA browsing uses the unified model file manager. | `src/app/assets/loras/lora-file-manager.tsx` remains a legacy compatibility manager, while route ownership stays with the unified model assets page. | Do not reintroduce a separate LoRA page unless behavior intentionally diverges from model file management. |
+| Preset library | `src/app/assets/presets/page.tsx` owns preset-category loading with `getPresetCategoriesWithPresets()`. | `src/app/assets/presets/preset-manager.tsx` and colocated preset/folder/group components own preset library browsing and editing state. | Split `preset-form.tsx` into variant list, variant editor, save queue hook, bulk apply utilities, and action footer. |
+| Preset groups | `src/app/assets/preset-groups/[groupId]/page.tsx` owns group edit data loading, missing-group `notFound()`, and neighbor ordering. | `src/app/assets/preset-groups/[groupId]/preset-group-edit-client.tsx` owns preset-group edit UI state. | Keep slot ordering owned by category slot template logic. |
+| Templates | `src/app/assets/templates/page.tsx` owns template listing data with `listProjectTemplates()`, while `new`, `edit`, and section-detail routes stay under `src/app/assets/templates/**`. | `templates-list-client.tsx`, `template-form-client.tsx`, and `section-detail-client.tsx` own template list, form, and section-detail UI state respectively. | Split template section detail client into route container, section form, preset binding editor, prompt blocks, LoRA editor, and change history. |
+
+- [x] Split asset pages by resource type: model files, LoRA files, preset library, preset groups, templates.
 - [x] Keep file manager code shared between models and LoRAs where behavior is actually the same.
 - [ ] Split `preset-form.tsx` into variant list, variant editor, save queue hook, bulk apply utilities, and action footer.
 - [ ] Keep "apply to all variants" behavior tested for copy loop and save queue separately.
