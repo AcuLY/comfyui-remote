@@ -283,6 +283,8 @@
 - Phase 6 slice 7 verification passed: red `node --import tsx --test tests/test-project-detail-section-batch-size-save.test.ts`, then green `node --import tsx --test tests/test-project-detail-section-batch-size-save.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-project-detail-section-batch-size-save.test.ts`, and `npm test` with 1042 tests discovered, 1041 pass, 0 fail, 1 skipped.
 - Phase 6 slice 8 narrowed `src/components/prompt-block-editor.tsx` and `src/components/section-editor.tsx` to import `PromptBlockData` and prompt-block mutation actions from `src/lib/actions/prompt-block.ts` instead of the full `src/lib/actions.ts` barrel.
 - Phase 6 slice 8 verification passed: red `node --import tsx --test tests/test-section-preset-detail-links.test.ts`, then green `node --import tsx --test tests/test-section-preset-detail-links.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-section-preset-detail-links.test.ts`, and `npm test` with 1043 tests discovered, 1042 pass, 0 fail, 1 skipped.
+- Phase 6 slice 9 narrowed `src/app/projects/projects-client.tsx` to import project folder actions from `src/lib/actions/project-folder.ts` instead of the full `src/lib/actions.ts` barrel.
+- Phase 6 slice 9 verification passed: red `node --import tsx --test tests/test-project-archive-ui-source.test.ts`, then green `node --import tsx --test tests/test-project-archive-ui-source.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-project-archive-ui-source.test.ts`, and `npm test` with 1044 tests discovered, 1043 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 

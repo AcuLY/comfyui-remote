@@ -29,7 +29,7 @@ import {
   moveProjectToFolder,
   renameProjectFolder,
   reorderProjectFolders,
-} from "@/lib/actions";
+} from "@/lib/actions/project-folder";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import type { ProjectCard as ProjectCardData, ProjectFolderItem } from "@/lib/types";
 import {

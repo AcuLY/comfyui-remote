@@ -49,3 +49,10 @@ test("project create and destructive controls import focused project actions", (
   assert.doesNotMatch(deleteButton, /from "@\/lib\/actions";/);
   assert.doesNotMatch(projectForm, /from "@\/lib\/actions";/);
 });
+
+test("project list imports folder actions from focused module", () => {
+  const projectList = readSource("src/app/projects/projects-client.tsx");
+
+  assert.match(projectList, /from "@\/lib\/actions\/project-folder";/);
+  assert.doesNotMatch(projectList, /from "@\/lib\/actions";/);
+});
