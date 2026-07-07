@@ -7,6 +7,7 @@ import test from "node:test";
 const TRAINING_ROUTE_METHODS = new Set(["GET", "POST", "PATCH", "DELETE", "PUT"]);
 const TRAINING_UI_FILES = [
   "src/features/training/ui/training-project-pages.tsx",
+  "src/features/training/ui/training-project-section-detail-page.tsx",
   "src/features/training/ui/training-projects-page.tsx",
   "src/features/training/ui/training-resource-pages.tsx",
   "src/features/training/ui/training-run-detail-page.tsx",

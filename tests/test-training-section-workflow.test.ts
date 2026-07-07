@@ -12,6 +12,10 @@ const projectSectionsPagePath = resolve(featureUiDir, "training-project-sections
 const projectSectionsPageSource = existsSync(projectSectionsPagePath)
   ? readFileSync(projectSectionsPagePath, "utf8")
   : "";
+const projectSectionDetailPagePath = resolve(featureUiDir, "training-project-section-detail-page.tsx");
+const projectSectionDetailPageSource = existsSync(projectSectionDetailPagePath)
+  ? readFileSync(projectSectionDetailPagePath, "utf8")
+  : "";
 const sectionWorkspacePath = resolve(featureUiDir, "training-section-workspace.tsx");
 const sectionWorkspaceSource = existsSync(sectionWorkspacePath)
   ? readFileSync(sectionWorkspacePath, "utf8")
@@ -62,6 +66,14 @@ function sectionCardSource() {
 
 function projectSectionsPageBody() {
   return projectSectionsPageSource;
+}
+
+function sceneBlockCardSource() {
+  return sourceBetweenIn(projectSectionDetailPageSource, "function SceneBlockCard", "export function LoraTrainingProjectSectionDetailPage");
+}
+
+function projectSectionDetailPageBody() {
+  return projectSectionDetailPageSource;
 }
 
 function cssRule(className: string) {
@@ -210,10 +222,7 @@ test("training section list can add a section through the project section API on
 
 test("training section list generation actions name the target section while detail pages leave the CTA to route headers", () => {
   const sectionCard = sectionCardSource();
-  const detailPage = sourceBetween(
-    "export function LoraTrainingProjectSectionDetailPage",
-    "export function LoraTrainingGenerationComposePage",
-  );
+  const detailPage = projectSectionDetailPageBody();
 
   assert.match(
     sectionCard,
@@ -264,11 +273,8 @@ test("training section list scans existing section ids for local copy and draft 
 });
 
 test("training section detail exposes full scene-block management controls", () => {
-  const detailPage = sourceBetween(
-    "export function LoraTrainingProjectSectionDetailPage",
-    "export function LoraTrainingGenerationComposePage",
-  );
-  const sceneBlockCard = sourceBetween("function SceneBlockCard", "export { LoraTrainingProjectFormPage");
+  const detailPage = projectSectionDetailPageBody();
+  const sceneBlockCard = sceneBlockCardSource();
 
   for (const label of ["选择预制", "导入所选", "添加本地块"]) {
     assert.match(detailPage, new RegExp(label), `section detail should include ${label}`);
@@ -282,10 +288,7 @@ test("training section detail exposes full scene-block management controls", () 
 });
 
 test("training section detail puts results first and uses the page scroll", () => {
-  const detailPage = sourceBetween(
-    "export function LoraTrainingProjectSectionDetailPage",
-    "export function LoraTrainingGenerationComposePage",
-  );
+  const detailPage = projectSectionDetailPageBody();
   const sectionScrollPaneRule = cssRule("sectionScrollPane");
 
   assert.match(
@@ -299,7 +302,7 @@ test("training section detail puts results first and uses the page scroll", () =
 });
 
 test("training scene-block cards mirror the compact prompt-block row pattern", () => {
-  const sceneBlockCard = sourceBetween("function SceneBlockCard", "export { LoraTrainingProjectFormPage");
+  const sceneBlockCard = sceneBlockCardSource();
   const sceneBlockCardRule = cssRule("sceneBlockCard");
 
   assert.match(sceneBlockCard, /className=\{s\.sceneBlockTitleRow\}/, "scene block title and source should share a stable title row");
@@ -320,11 +323,8 @@ test("training scene-block cards mirror the compact prompt-block row pattern", (
 });
 
 test("training section detail scene-block actions update local front-end state", () => {
-  const detailPage = sourceBetween(
-    "export function LoraTrainingProjectSectionDetailPage",
-    "export function LoraTrainingGenerationComposePage",
-  );
-  const sceneBlockCard = sourceBetween("function SceneBlockCard", "export { LoraTrainingProjectFormPage");
+  const detailPage = projectSectionDetailPageBody();
+  const sceneBlockCard = sceneBlockCardSource();
 
   assert.match(detailPage, /useProjectSectionSceneBlocks/, "section detail should delegate scene-block state to the focused hook");
   assert.match(projectSectionSceneBlocksHookSource, /sectionSceneBlocksByKey/, "section detail block actions should update keyed local state");
@@ -349,10 +349,7 @@ test("training section detail scene-block actions update local front-end state",
 });
 
 test("training section detail scene-block actions persist through formal HTTP APIs on production routes", () => {
-  const detailPage = sourceBetween(
-    "export function LoraTrainingProjectSectionDetailPage",
-    "export function LoraTrainingGenerationComposePage",
-  );
+  const detailPage = projectSectionDetailPageBody();
 
   assert.match(detailPage, /usePathname/, "section detail should detect whether it is running under production \\/training routes");
   assert.match(detailPage, /fetch\(`\/api\/training\/sections\/\$\{activeSection\.id\}\/blocks\?projectId=\$\{activeProject\.id\}`/, "section block create actions should call the formal section block collection API");
@@ -365,10 +362,7 @@ test("training section detail scene-block actions persist through formal HTTP AP
 });
 
 test("training section detail imports training presets into local scene blocks", () => {
-  const detailPage = sourceBetween(
-    "export function LoraTrainingProjectSectionDetailPage",
-    "export function LoraTrainingGenerationComposePage",
-  );
+  const detailPage = projectSectionDetailPageBody();
 
   assert.match(detailPage, /const training = buildLoraTrainingData\(data\)/, "section detail should read available training presets");
   assert.match(detailPage, /handleImportPresetBlock/, "section detail should define a preset import action");
@@ -383,10 +377,7 @@ test("training section detail imports training presets into local scene blocks",
 });
 
 test("training section detail generates scene block ids from existing ids instead of list length", () => {
-  const detailPage = sourceBetween(
-    "export function LoraTrainingProjectSectionDetailPage",
-    "export function LoraTrainingGenerationComposePage",
-  );
+  const detailPage = projectSectionDetailPageBody();
 
   assert.match(projectPageUtilsSource, /function nextSceneBlockOrdinal/, "section block id generation should use a shared ordinal helper");
   assert.match(detailPage, /nextSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-local-block-`\)/, "local block ids should scan existing local ids");
@@ -396,10 +387,7 @@ test("training section detail generates scene block ids from existing ids instea
 });
 
 test("training section detail saves a visible local section draft", () => {
-  const detailPage = sourceBetween(
-    "export function LoraTrainingProjectSectionDetailPage",
-    "export function LoraTrainingGenerationComposePage",
-  );
+  const detailPage = projectSectionDetailPageBody();
 
   assert.match(detailPage, /visibleSectionDraft/, "section detail should expose a saved local section draft");
   assert.match(detailPage, /saveSectionDraft\(nextDraft\)/, "section save should update the local draft hook");
@@ -414,10 +402,7 @@ test("training section detail saves a visible local section draft", () => {
 });
 
 test("training section detail keeps local edits keyed by project and section", () => {
-  const detailPage = sourceBetween(
-    "export function LoraTrainingProjectSectionDetailPage",
-    "export function LoraTrainingGenerationComposePage",
-  );
+  const detailPage = projectSectionDetailPageBody();
 
   assert.match(detailPage, /useProjectSectionSceneBlocks/, "section detail should build scene-block state through the focused hook");
   assert.match(projectSectionSceneBlocksHookSource, /projectSectionStateKey/, "section detail scene-block hook should build a stable local state key");
@@ -437,10 +422,7 @@ test("training section detail keeps local edits keyed by project and section", (
 });
 
 test("training section detail state stays scoped to the active project section", () => {
-  const detailPage = sourceBetween(
-    "export function LoraTrainingProjectSectionDetailPage",
-    "export function LoraTrainingGenerationComposePage",
-  );
+  const detailPage = projectSectionDetailPageBody();
 
   assert.match(projectSectionSceneBlocksHookSource, /buildProjectSectionStateKey\(projectId, sectionId\)/, "state keys should include both parent project and active section");
   assert.match(

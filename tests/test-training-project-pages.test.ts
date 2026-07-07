@@ -16,6 +16,10 @@ const projectProfilePagePath = resolve(featureUiDir, "training-project-profile-p
 const projectProfilePageSource = existsSync(projectProfilePagePath) ? readFileSync(projectProfilePagePath, "utf8") : "";
 const projectSectionsPagePath = resolve(featureUiDir, "training-project-sections-page.tsx");
 const projectSectionsPageSource = existsSync(projectSectionsPagePath) ? readFileSync(projectSectionsPagePath, "utf8") : "";
+const projectSectionDetailPagePath = resolve(featureUiDir, "training-project-section-detail-page.tsx");
+const projectSectionDetailPageSource = existsSync(projectSectionDetailPagePath)
+  ? readFileSync(projectSectionDetailPagePath, "utf8")
+  : "";
 const projectPageShellPath = resolve(featureUiDir, "project-page-shell.tsx");
 const projectPageShellSource = existsSync(projectPageShellPath) ? readFileSync(projectPageShellPath, "utf8") : "";
 const trainingResultGridPath = resolve(featureUiDir, "training-result-grid.tsx");
@@ -122,6 +126,14 @@ test("training project sections page lives in a focused page module", () => {
   assert.doesNotMatch(pagesSource, /\nfunction SectionCard\b/, "broad project pages module should not keep section cards inline");
 });
 
+test("training project section detail page lives in a focused page module", () => {
+  assert.match(projectSectionDetailPageSource, /export function LoraTrainingProjectSectionDetailPage/, "section detail implementation should live in its own module");
+  assert.match(projectSectionDetailPageSource, /function SceneBlockCard\b/, "scene-block card rendering should move with the section detail page");
+  assert.match(pagesSource, /export \{ LoraTrainingProjectSectionDetailPage \} from "\.\/training-project-section-detail-page";/, "broad project pages module should retain a compatibility re-export");
+  assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectSectionDetailPage/, "broad project pages module should not keep the section detail implementation inline");
+  assert.doesNotMatch(pagesSource, /\nfunction SceneBlockCard\b/, "broad project pages module should not keep scene-block cards inline");
+});
+
 test("training project page shell lives in a focused component module", () => {
   assert.match(projectPageShellSource, /const PROJECT_TABS\b/, "project tab configuration should live with the project page shell");
   assert.match(projectPageShellSource, /function ProjectNav\b/, "project navigation should live with the project page shell");
@@ -193,12 +205,7 @@ test("training project pages keep backend wiring notes out of user-facing copy",
 });
 
 test("training project route helpers do not replace invalid route ids with first fixtures", () => {
-  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
-  const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
-  assert.notEqual(sectionDetailStart, -1);
-  assert.notEqual(composeStart, -1);
-
-  const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
+  const sectionDetailSource = projectSectionDetailPageSource;
 
   assert.match(projectPageUtilsSource, /function findProject/, "project route helpers should live in the project page utility module");
   assert.match(projectPageUtilsSource, /if \(!projectId\) return undefined;/, "project routes without a project id should resolve to the empty state");
@@ -270,9 +277,9 @@ test("training project section draft state lives in a focused hook module", () =
   assert.match(projectSectionDraftHookSource, /sectionDraftsByKey/, "project section draft hook should own keyed draft storage");
   assert.match(projectSectionDraftHookSource, /ProjectSectionDraftState/, "project section draft typing should move with the hook");
   assert.match(projectSectionDraftHookSource, /visibleSectionDraft/, "project section draft hook should expose the active visible draft");
-  assert.match(pagesSource, /from "\.\/use-project-section-draft"/, "section detail page should import the focused section draft hook");
-  assert.doesNotMatch(pagesSource, /\nconst \[sectionDraftsByKey, setSectionDraftsByKey\]/, "section detail page should not keep section draft state inline");
-  assert.doesNotMatch(pagesSource, /type ProjectSectionDraftState/, "section detail page should not import section draft state typing directly");
+  assert.match(projectSectionDetailPageSource, /from "\.\/use-project-section-draft"/, "section detail page should import the focused section draft hook");
+  assert.doesNotMatch(projectSectionDetailPageSource, /\nconst \[sectionDraftsByKey, setSectionDraftsByKey\]/, "section detail page should not keep section draft state inline");
+  assert.doesNotMatch(projectSectionDetailPageSource, /type ProjectSectionDraftState/, "section detail page should not import section draft state typing directly");
 });
 
 test("training project section scene-block state lives in a focused hook module", () => {
@@ -281,9 +288,9 @@ test("training project section scene-block state lives in a focused hook module"
   assert.match(projectSectionSceneBlocksHookSource, /editingSceneBlockState/, "project section scene-block hook should own route-scoped edit state");
   assert.match(projectSectionSceneBlocksHookSource, /scenePreview/, "project section scene-block hook should derive scene preview text");
   assert.match(projectSectionSceneBlocksHookSource, /replaceSceneBlocks/, "project section scene-block hook should expose replace behavior");
-  assert.match(pagesSource, /from "\.\/use-project-section-scene-blocks"/, "section detail page should import the focused scene-block hook");
-  assert.doesNotMatch(pagesSource, /\n  const \[sectionSceneBlocksByKey, setSectionSceneBlocksByKey\]/, "section detail page should not keep scene-block state inline");
-  assert.doesNotMatch(pagesSource, /\n  const \[editingSceneBlockState, setEditingSceneBlockState\]/, "section detail page should not keep scene-block edit state inline");
+  assert.match(projectSectionDetailPageSource, /from "\.\/use-project-section-scene-blocks"/, "section detail page should import the focused scene-block hook");
+  assert.doesNotMatch(projectSectionDetailPageSource, /\n  const \[sectionSceneBlocksByKey, setSectionSceneBlocksByKey\]/, "section detail page should not keep scene-block state inline");
+  assert.doesNotMatch(projectSectionDetailPageSource, /\n  const \[editingSceneBlockState, setEditingSceneBlockState\]/, "section detail page should not keep scene-block edit state inline");
 });
 
 test("training project section result review state lives in a focused hook module", () => {
@@ -291,9 +298,9 @@ test("training project section result review state lives in a focused hook modul
   assert.match(projectSectionResultsHookSource, /sectionResultsByProjectKey/, "project section result hook should own project-keyed result storage");
   assert.match(projectSectionResultsHookSource, /updateSectionResultReviewStatus/, "project section result hook should expose a review-status update action");
   assert.match(projectSectionResultsHookSource, /result\.sectionId === sectionId/, "project section result hook should derive active-section results");
-  assert.match(pagesSource, /from "\.\/use-project-section-results"/, "section detail page should import the focused result hook");
-  assert.doesNotMatch(pagesSource, /\n  const \[sectionResultsByProjectKey, setSectionResultsByProjectKey\]/, "section detail page should not keep result review state inline");
-  assert.doesNotMatch(pagesSource, /setSectionResultsByProjectKey/, "section detail page should not update result review state inline");
+  assert.match(projectSectionDetailPageSource, /from "\.\/use-project-section-results"/, "section detail page should import the focused result hook");
+  assert.doesNotMatch(projectSectionDetailPageSource, /\n  const \[sectionResultsByProjectKey, setSectionResultsByProjectKey\]/, "section detail page should not keep result review state inline");
+  assert.doesNotMatch(projectSectionDetailPageSource, /setSectionResultsByProjectKey/, "section detail page should not update result review state inline");
 });
 
 test("training generation compose reference selection lives in a focused hook module", () => {
@@ -606,16 +613,12 @@ test("training results and dataset pages use caption-aware review grids instead 
 test("training result review actions update local front-end review state", () => {
   const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
-  const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
   assert.notEqual(resultsPageStart, -1);
   assert.notEqual(datasetPageStart, -1);
-  assert.notEqual(sectionDetailStart, -1);
-  assert.notEqual(composeStart, -1);
 
   const gridSource = trainingResultGridSource;
   const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
-  const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
+  const sectionDetailSource = projectSectionDetailPageSource;
 
   assert.match(gridSource, /onReviewStatusChange/, "training result grid should expose a review status change callback");
   assert.match(gridSource, /onReviewStatusChange\?\.\(activeResult\.id, "kept"\)/, "keep action should mark the active result as kept");
@@ -632,16 +635,12 @@ test("training result review actions update local front-end review state", () =>
 });
 
 test("training result review posts through the formal HTTP API on production routes", () => {
-  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
-  const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
   const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  assert.notEqual(sectionDetailStart, -1);
-  assert.notEqual(composeStart, -1);
   assert.notEqual(resultsPageStart, -1);
   assert.notEqual(datasetPageStart, -1);
 
-  const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
+  const sectionDetailSource = projectSectionDetailPageSource;
   const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
 
   assert.match(sectionDetailSource, /usePathname/, "section detail review should detect whether it is running under production \\/training routes");
@@ -693,12 +692,7 @@ test("training results page exposes caption text revision history and restore co
 });
 
 test("training section detail saves through the formal HTTP API on production routes", () => {
-  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
-  const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
-  assert.notEqual(sectionDetailStart, -1);
-  assert.notEqual(composeStart, -1);
-
-  const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
+  const sectionDetailSource = projectSectionDetailPageSource;
 
   assert.match(sectionDetailSource, /usePathname/, "section detail save should detect whether it is running under production \\/training routes");
   assert.match(sectionDetailSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/sections\/\$\{activeSection\.id\}`/, "section detail save should call the formal section save API");

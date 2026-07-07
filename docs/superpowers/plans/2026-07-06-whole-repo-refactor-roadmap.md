@@ -475,6 +475,8 @@
 - Phase 8 slice 103 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1149 tests discovered, 1148 pass, 0 fail, 1 skipped.
 - Phase 8 slice 104 moved the project sections list into `src/features/training/ui/training-project-sections-page.tsx` and the shared section rail/workspace into `src/features/training/ui/training-section-workspace.tsx`. The focused sections page owns section cards, local add/copy/delete/reorder state, production project-section API calls, header add-section event handling, and section-grid actions while `training-project-pages.tsx` keeps a compatibility re-export and imports the shared workspace for section detail.
 - Phase 8 slice 104 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1150 tests discovered, 1149 pass, 0 fail, 1 skipped.
+- Phase 8 slice 105 moved the project section detail page into `src/features/training/ui/training-project-section-detail-page.tsx`. The focused page owns `SceneBlockCard`, scene-block add/import/move/update/delete UI and production APIs, section result review state wiring, section save draft/API flow, and the result-first section workspace while `training-project-pages.tsx` keeps a compatibility re-export.
+- Phase 8 slice 105 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, targeted fixes for `tests/test-training-frontend-api-contract.test.ts` and `tests/test-training-run-detail-page.test.ts`, and `npm test` with 1151 tests discovered, 1150 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1119,7 +1121,7 @@ Loading states remain colocated under their route segments for now; the later lo
   - [x] Project detail overview.
   - [x] Profile page and text revision UI.
   - [x] Sections list page.
-  - [ ] Section detail page.
+  - [x] Section detail page.
   - [ ] Generation compose page.
   - [ ] Project results page.
   - [ ] Dataset page.
