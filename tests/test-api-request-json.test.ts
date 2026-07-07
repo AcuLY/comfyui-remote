@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 import { NextRequest } from "next/server";
 
@@ -27,6 +27,16 @@ function makeNextRequest(path: string, body?: string, method = "POST") {
   return new NextRequest(`http://localhost${path}`, {
     body,
     method,
+  });
+}
+
+function listRouteFiles(dir = "src/app/api"): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const routePath = `${dir}/${entry.name}`;
+    if (entry.isDirectory()) {
+      return listRouteFiles(routePath);
+    }
+    return entry.isFile() && entry.name === "route.ts" ? [routePath] : [];
   });
 }
 
@@ -163,6 +173,28 @@ test("auth verify route keeps flat error compatibility and does not log tokens",
       process.env.AUTH_TOKEN = previousAuthToken;
     }
   }
+});
+
+test("route-local JSON parsing is limited to the documented log-line exception", () => {
+  const routesWithJsonParse: string[] = [];
+  const routesWithDirectRequestBodyParsing: string[] = [];
+
+  for (const routePath of listRouteFiles()) {
+    const source = readFileSync(routePath, "utf8");
+
+    if (/JSON\.parse\(/.test(source)) {
+      routesWithJsonParse.push(routePath);
+    }
+    if (/\brequest\.(?:json|text)\(/.test(source)) {
+      routesWithDirectRequestBodyParsing.push(routePath);
+    }
+  }
+
+  assert.deepEqual(routesWithDirectRequestBodyParsing, [], "API routes should use shared request-json helpers");
+  assert.deepEqual(routesWithJsonParse, ["src/app/api/logs/route.ts"], "log-line parsing should be the only route-local JSON.parse exception");
+
+  const template = readFileSync("docs/api/route-handler-template.md", "utf8");
+  assert.match(template, /src\/app\/api\/logs\/route\.ts[\s\S]*JSONL log line parsing/);
 });
 
 test("resume-paused route uses the shared optional JSON parser", () => {

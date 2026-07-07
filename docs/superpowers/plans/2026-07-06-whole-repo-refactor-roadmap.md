@@ -241,6 +241,8 @@
 - Phase 3 slice 28 verification passed: red `node --import tsx --test tests/test-api-request-json.test.ts`, then green `node --import tsx --test tests/test-api-request-json.test.ts`, `node --import tsx --test tests/test-api-request-json.test.ts tests/test-training-api-routes.test.ts`, `npm run lint`, and `npm test` with 1026 tests discovered, 1025 pass, 0 fail, 1 skipped.
 - Phase 3 slice 29 migrated model and LoRA asset move/notes route parsing in `src/app/api/models/move/route.ts`, `src/app/api/models/notes/route.ts`, `src/app/api/loras/move/route.ts`, and `src/app/api/loras/notes/route.ts` to `readJsonBody` with `failFromError`, preserving each route's existing ModelAssetError mapper, fallback error response, and object/Zod validation branches.
 - Phase 3 slice 29 verification passed: red `node --import tsx --test tests/test-api-request-json.test.ts`, then green `node --import tsx --test tests/test-api-request-json.test.ts`, `node --import tsx --test tests/test-api-request-json.test.ts tests/test-model-civitai-info-panel.test.ts tests/test-training-api-routes.test.ts`, `npm run lint`, and `npm test` with 1028 tests discovered, 1027 pass, 0 fail, 1 skipped.
+- Phase 3 slice 30 added a source-contract scan proving route-local JSON request-body parsing is gone across `src/app/api/**/route.ts`, with `src/app/api/logs/route.ts` documented as the only `JSON.parse` exception because it parses JSONL log-file lines rather than request bodies.
+- Phase 3 slice 30 verification passed: red `node --import tsx --test tests/test-api-request-json.test.ts`, then green `node --import tsx --test tests/test-api-request-json.test.ts`, `npm run lint`, and `npm test` with 1029 tests discovered, 1028 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -322,7 +324,7 @@
 
 - [x] Define a route-handler template: parse request, validate input, call service, return `ok(...)` or error envelope.
 - [ ] Move repeated response formatting into `src/lib/api-response.ts`.
-- [ ] Move repeated request parsing into route helpers under `src/server/http` or extend `src/server/services/validation-utils.ts`.
+- [x] Move repeated request parsing into route helpers under `src/server/http` or extend `src/server/services/validation-utils.ts`.
 - [x] Keep `/api/auth/verify` compatible with UI auth verification and never log token values.
 - [x] Keep `/api/health` minimal and safe for public/local probes.
 - [x] Route `/api/mcp` through `src/server/mcp/server.ts` only; avoid duplicating Agent API behavior in the route.
