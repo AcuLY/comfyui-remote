@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
-const projectPagesSource = readFileSync("src/features/training/ui/training-project-pages.tsx", "utf8");
+const projectResultsPageSource = readFileSync("src/features/training/ui/training-project-results-page.tsx", "utf8");
+const projectDatasetPageSource = readFileSync("src/features/training/ui/training-project-dataset-page.tsx", "utf8");
+const projectDatasetRevisionPageSource = readFileSync("src/features/training/ui/training-project-dataset-revision-page.tsx", "utf8");
 const trainingResultGridPath = "src/features/training/ui/training-result-grid.tsx";
 const trainingResultGridSource = existsSync(trainingResultGridPath) ? readFileSync(trainingResultGridPath, "utf8") : "";
 const projectPagesCss = readFileSync("src/features/training/ui/training-project-pages.module.css", "utf8");
@@ -20,7 +22,9 @@ test("training result pool renders card thumbnails and opens the shared lightbox
   const gridSource = trainingResultGridSource;
   const gridCss = sourceBetween(projectPagesCss, ".referenceImageGrid,", ".referenceImageCard > div:last-child");
 
-  assert.match(projectPagesSource, /from "\.\/training-result-grid"/, "project pages should import the focused result grid module");
+  assert.match(projectResultsPageSource, /from "\.\/training-result-grid"/, "project results page should import the focused result grid module");
+  assert.match(projectDatasetPageSource, /from "\.\/training-result-grid"/, "project dataset page should import the focused result grid module");
+  assert.match(projectDatasetRevisionPageSource, /from "\.\/training-result-grid"/, "project dataset revision page should import the focused result grid module");
   assert.match(gridSource, /ImageThumbMedium/, "result cards should use the same thumbnail component as image grids");
   assert.match(gridSource, /onOpen=\{\(\) => setActiveResultId\(result\.id\)\}/, "result thumbnails should open the lightbox");
   assert.match(gridSource, /ImagePreviewLarge/, "full-size result images should still use the shared lightbox");

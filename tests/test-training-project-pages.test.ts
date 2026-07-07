@@ -32,6 +32,10 @@ const projectDatasetPagePath = resolve(featureUiDir, "training-project-dataset-p
 const projectDatasetPageSource = existsSync(projectDatasetPagePath)
   ? readFileSync(projectDatasetPagePath, "utf8")
   : "";
+const projectDatasetRevisionPagePath = resolve(featureUiDir, "training-project-dataset-revision-page.tsx");
+const projectDatasetRevisionPageSource = existsSync(projectDatasetRevisionPagePath)
+  ? readFileSync(projectDatasetRevisionPagePath, "utf8")
+  : "";
 const projectPageShellPath = resolve(featureUiDir, "project-page-shell.tsx");
 const projectPageShellSource = existsSync(projectPageShellPath) ? readFileSync(projectPageShellPath, "utf8") : "";
 const trainingResultGridPath = resolve(featureUiDir, "training-result-grid.tsx");
@@ -165,6 +169,13 @@ test("training project dataset page lives in a focused page module", () => {
   assert.match(projectDatasetPageSource, /handleFreezeDatasetRevision/, "dataset freeze workflow should move with the dataset page");
   assert.match(pagesSource, /export \{ LoraTrainingProjectDatasetPage \} from "\.\/training-project-dataset-page";/, "broad project pages module should retain a compatibility re-export");
   assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectDatasetPage/, "broad project pages module should not keep the project dataset implementation inline");
+});
+
+test("training project dataset revision page lives in a focused page module", () => {
+  assert.match(projectDatasetRevisionPageSource, /export function LoraTrainingProjectDatasetRevisionPage/, "project dataset revision implementation should live in its own module");
+  assert.match(projectDatasetRevisionPageSource, /captionSnapshot/, "dataset revision sample snapshots should move with the revision page");
+  assert.match(pagesSource, /export \{ LoraTrainingProjectDatasetRevisionPage \} from "\.\/training-project-dataset-revision-page";/, "broad project pages module should retain a compatibility re-export");
+  assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectDatasetRevisionPage/, "broad project pages module should not keep the dataset revision implementation inline");
 });
 
 test("training project page shell lives in a focused component module", () => {
@@ -396,12 +407,7 @@ test("training project page upload preview helpers live in the utility module", 
 });
 
 test("training dataset revision detail does not replace invalid revision ids with first fixtures", () => {
-  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
-  const scopedRunsStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(revisionPageStart, -1);
-  assert.notEqual(scopedRunsStart, -1);
-
-  const revisionPageSource = pagesSource.slice(revisionPageStart, scopedRunsStart);
+  const revisionPageSource = projectDatasetRevisionPageSource;
 
   assert.match(revisionPageSource, /const revision = project\?\.datasetRevisions\.find\(\(item\) => item\.id === revisionId\);/, "dataset revision detail should resolve the explicit route revision");
   assert.doesNotMatch(revisionPageSource, /\?\?\s*project\?\.datasetRevisions\[0\]/, "invalid revision ids should not silently render the first dataset revision");
@@ -636,11 +642,13 @@ test("training results and dataset pages use caption-aware review grids instead 
   assert.match(trainingResultGridSource, /export function TrainingResultGrid/, "caption-aware training result grid should live in its own module");
   assert.match(trainingResultGridSource, /ImagePreviewLarge/, "training result grid should use the shared lightbox");
   assert.match(trainingResultGridSource, /result\.caption/, "result cards should render caption summaries");
-  assert.match(pagesSource, /from "\.\/training-result-grid"/, "project pages should import the focused result grid module");
+  assert.match(projectResultsPageSource, /from "\.\/training-result-grid"/, "project results page should import the focused result grid module");
+  assert.match(projectDatasetPageSource, /from "\.\/training-result-grid"/, "project dataset page should import the focused result grid module");
+  assert.match(projectDatasetRevisionPageSource, /from "\.\/training-result-grid"/, "project dataset revision page should import the focused result grid module");
   assert.doesNotMatch(pagesSource, /\nfunction TrainingResultGrid\b/, "project pages should not keep the result grid implementation inline");
-  assert.match(pagesSource, /captionSnapshot/, "dataset revision pages should render frozen caption snapshots");
-  assert.match(pagesSource, /manifestRows/, "dataset revision pages should render manifest rows");
-  assert.match(pagesSource, /relatedTrainingRunIds/, "dataset revision pages should use related training ids");
+  assert.match(projectDatasetRevisionPageSource, /captionSnapshot/, "dataset revision pages should render frozen caption snapshots");
+  assert.match(projectDatasetRevisionPageSource, /manifestRows/, "dataset revision pages should render manifest rows");
+  assert.match(projectDatasetRevisionPageSource, /relatedTrainingRunIds/, "dataset revision pages should use related training ids");
 });
 
 test("training result review actions update local front-end review state", () => {
@@ -919,12 +927,7 @@ test("training dataset revision rows respond to their own panel width", () => {
 });
 
 test("training dataset revision manifest list expands from its panel width", () => {
-  const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
-  const scopedRunsPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(revisionPageStart, -1);
-  assert.notEqual(scopedRunsPageStart, -1);
-
-  const revisionPageSource = pagesSource.slice(revisionPageStart, scopedRunsPageStart);
+  const revisionPageSource = projectDatasetRevisionPageSource;
   const manifestListRule = cssSource.match(/\.manifestList\s*\{[\s\S]*?\n\}/)?.[0] ?? "";
 
   assert.match(revisionPageSource, /manifestListSurface/, "dataset revision manifest rows should be wrapped in a list surface container");

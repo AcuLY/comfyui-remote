@@ -9,6 +9,7 @@ const TRAINING_UI_FILES = [
   "src/features/training/ui/training-generation-compose-page.tsx",
   "src/features/training/ui/training-project-pages.tsx",
   "src/features/training/ui/training-project-dataset-page.tsx",
+  "src/features/training/ui/training-project-dataset-revision-page.tsx",
   "src/features/training/ui/training-project-results-page.tsx",
   "src/features/training/ui/training-project-section-detail-page.tsx",
   "src/features/training/ui/training-projects-page.tsx",
