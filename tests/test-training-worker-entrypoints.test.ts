@@ -87,6 +87,26 @@ test("training launcher worker keeps runtime behavior in an importable module", 
   assert.match(runtimeSource, /createMockTrainingOutput/);
 });
 
+test("training image worker keeps provider runtime behavior in an importable module", () => {
+  const entrypointPath = join(process.cwd(), "scripts/training/image-worker.ts");
+  const runtimePath = join(process.cwd(), "scripts/training/image-worker-runtime.ts");
+  assert.equal(existsSync(runtimePath), true, "training image worker runtime module should exist");
+
+  const entrypointSource = readFileSync(entrypointPath, "utf8");
+  const runtimeSource = readFileSync(runtimePath, "utf8");
+  assert.match(entrypointSource, /from "\.\/image-worker-runtime"/);
+  assert.match(entrypointSource, /handleTask:\s*runImageTask/);
+  assert.match(entrypointSource, /runImageProviderCheck/);
+  assert.doesNotMatch(entrypointSource, /from "node:child_process"/);
+  assert.doesNotMatch(entrypointSource, /from "@\/lib\/prisma"/);
+  assert.doesNotMatch(entrypointSource, /async function runImageTask/);
+  assert.doesNotMatch(entrypointSource, /function createMockImageOutput/);
+  assert.match(runtimeSource, /export async function runImageTask/);
+  assert.match(runtimeSource, /export async function runImageProviderCheck/);
+  assert.match(runtimeSource, /loadCodexProviderConfig/);
+  assert.match(runtimeSource, /createMockImageOutput/);
+});
+
 test("training worker scripts are independent from removed legacy modules", () => {
   const trainingScriptPaths = [
     "scripts/training/image-worker.ts",
