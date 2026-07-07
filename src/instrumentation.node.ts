@@ -8,6 +8,10 @@
  *
  * Graceful shutdown: on SIGTERM/SIGINT, pauses all active runs before exit.
  * Paused runs stay paused on startup and are resumed explicitly after deploy.
+ *
+ * Node-only startup boundary: this file owns Prisma, process signal hooks,
+ * queue recovery, and ComfyUI process management because instrumentation.ts
+ * loads it only when NEXT_RUNTIME is nodejs.
  */
 
 import { createLogger } from "@/lib/logger";

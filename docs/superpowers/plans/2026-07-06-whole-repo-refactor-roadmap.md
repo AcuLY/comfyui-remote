@@ -345,6 +345,8 @@
 - Phase 7 slice 38 verification passed: red `node --import tsx --test tests/test-training-prod-route-shell.test.ts`, then green `node --import tsx --test tests/test-training-prod-route-shell.test.ts`, `node --import tsx --test tests/test-training-prod-route-shell.test.ts tests/test-next16-build-compat-source.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1075 tests discovered, 1074 pass, 0 fail, 1 skipped.
 - Phase 7 slice 39 kept `src/proxy.ts` aligned with the local Next 16 Proxy docs after reading `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md` and `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`: the file keeps the named `proxy` export, a static matcher, no runtime segment config, and a type-only `NextRequest` import.
 - Phase 7 slice 39 verification passed: red `node --import tsx --test tests/test-proxy-dev-internal-paths.test.ts`, then green `node --import tsx --test tests/test-proxy-dev-internal-paths.test.ts`, `node --import tsx --test tests/test-proxy-dev-internal-paths.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1076 tests discovered, 1075 pass, 0 fail, 1 skipped.
+- Phase 7 slice 40 documented the instrumentation runtime split after reading `node_modules/next/dist/docs/01-app/02-guides/instrumentation.md`, `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/instrumentation.md`, and the Node-only OpenTelemetry section of `node_modules/next/dist/docs/01-app/02-guides/open-telemetry.md`: `src/instrumentation.ts` remains import-free and Node-gated, while `src/instrumentation.node.ts` owns Prisma, process hooks, queue recovery, and ComfyUI startup side effects.
+- Phase 7 slice 40 verification passed: red `node --import tsx --test tests/test-instrumentation-boundary.test.ts`, then green `node --import tsx --test tests/test-instrumentation-boundary.test.ts`, `node --import tsx --test tests/test-instrumentation-boundary.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1078 tests discovered, 1077 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -791,7 +793,7 @@
 
 - [x] Keep `src/app/layout.tsx` responsible for providers, shell inclusion/exclusion, and auth-safe global layout only.
 - [x] Keep `src/proxy.ts` aligned with Next 16 proxy conventions from local docs.
-- [ ] Keep instrumentation server-safe and documented.
+- [x] Keep instrumentation server-safe and documented.
 - [ ] Review global CSS variables against `DESIGN.md` and `docs/frontend-design-guide.md`.
 
 **Project pages:**

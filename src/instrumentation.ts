@@ -1,3 +1,6 @@
+// Next instrumentation runtime split: this file is loaded for every runtime.
+// Keep it import-free and load Node-only startup work only inside the nodejs
+// guard so Prisma, process hooks, and queue services stay out of Edge traces.
 export async function register() {
   if (process.env.NEXT_RUNTIME === "nodejs") {
     // Follow Next's instrumentation guidance: dispatch Node-only startup
