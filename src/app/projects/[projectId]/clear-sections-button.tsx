@@ -9,7 +9,7 @@ import {
   clearAllSections,
   getClearSectionsPreview,
   type ClearSectionsPreview,
-} from "@/lib/actions";
+} from "@/lib/actions/section";
 
 export function ClearSectionsButton({ projectId }: { projectId: string }) {
   const router = useRouter();

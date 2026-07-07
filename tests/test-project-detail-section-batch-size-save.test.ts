@@ -79,3 +79,15 @@ test("project detail section cards import server actions from focused modules", 
   assert.match(sectionCards, /from "@\/lib\/actions\/run-execution";/);
   assert.doesNotMatch(sectionCards, /from "@\/lib\/actions";/);
 });
+
+test("project detail section action controls import server actions from focused modules", () => {
+  const sectionActions = readSource("src/app/projects/[projectId]/section-actions.tsx");
+  const clearSectionsButton = readSource("src/app/projects/[projectId]/clear-sections-button.tsx");
+
+  assert.match(sectionActions, /from "@\/lib\/actions\/section";/);
+  assert.match(sectionActions, /from "@\/lib\/actions\/template-crud";/);
+  assert.match(sectionActions, /from "@\/lib\/actions\/template-import";/);
+  assert.match(clearSectionsButton, /from "@\/lib\/actions\/section";/);
+  assert.doesNotMatch(sectionActions, /from "@\/lib\/actions";/);
+  assert.doesNotMatch(clearSectionsButton, /from "@\/lib\/actions";/);
+});

@@ -4,13 +4,9 @@ import { useEffect, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Copy, Download, Plus, Trash2, X } from "lucide-react";
-import {
-  addSection,
-  copySection,
-  deleteSection,
-  getTemplateOptionsForClient,
-  importTemplateToProject,
-} from "@/lib/actions";
+import { addSection, copySection, deleteSection } from "@/lib/actions/section";
+import { getTemplateOptionsForClient } from "@/lib/actions/template-crud";
+import { importTemplateToProject } from "@/lib/actions/template-import";
 import { toast } from "sonner";
 
 export function AddSectionButton({
