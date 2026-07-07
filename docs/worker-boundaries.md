@@ -38,9 +38,13 @@ Do not call the fallback prompt builder from run-executor, repositories, route h
 
 `src/server/worker/training/leasing.ts` owns training worker leasing. It validates lease requests, returns an existing running target when appropriate, prevents concurrent running work per worker type and project scope, and performs the mark-running state transition for newly leased targets.
 
-`src/server/worker/training/task-api.ts` remains the compatibility boundary for existing route handlers while the larger split continues. It may compose target discovery, leasing, heartbeat, completion, failure, and scheduler helpers, but it should not own pure task ID prefix parsing, target discovery queries, lease request parsing, or mark-running transitions.
+`src/server/worker/training/task-json.ts` owns worker task JSON normalization. It converts unknown progress, metadata, heartbeat, and provider payload values into Prisma-compatible JSON values shared by heartbeat, completion, failure, scheduler progress, and artifact registration helpers.
 
-Do not reintroduce worker task ID prefix parsing into task-api, route handlers, or CLI worker scripts. Do not reintroduce target discovery queries into task-api; leasing may call discovery helpers, but discovery should stay isolated from completion, heartbeat, and failure handling. Do not reintroduce lease request parsing or mark-running transitions into task-api. New worker task kinds should first extend the task ID and discovery boundaries, then add route/service tests for lease, heartbeat, complete, and fail behavior.
+`src/server/worker/training/heartbeat.ts` owns training worker heartbeat handling. It validates heartbeat requests, persists image-generation heartbeat metadata, updates training run progress fields, and returns the shared serialized worker task shape.
+
+`src/server/worker/training/task-api.ts` remains the compatibility boundary for existing route handlers while the larger split continues. It may compose target discovery, leasing, heartbeat, completion, failure, and scheduler helpers, but it should not own pure task ID prefix parsing, target discovery queries, lease request parsing, mark-running transitions, heartbeat request parsing, or heartbeat progress writes.
+
+Do not reintroduce worker task ID prefix parsing into task-api, route handlers, or CLI worker scripts. Do not reintroduce target discovery queries into task-api; leasing may call discovery helpers, but discovery should stay isolated from completion, heartbeat, and failure handling. Do not reintroduce lease request parsing or mark-running transitions into task-api. Do not reintroduce heartbeat request parsing or heartbeat progress writes into task-api. New worker task kinds should first extend the task ID and discovery boundaries, then add route/service tests for lease, heartbeat, complete, and fail behavior.
 
 ## Verification
 

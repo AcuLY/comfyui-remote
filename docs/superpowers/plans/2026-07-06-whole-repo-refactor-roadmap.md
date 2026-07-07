@@ -548,6 +548,8 @@
 - Phase 11 slice 139 verification passed: red `node --import tsx --test tests/test-worker-boundary-governance.test.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts tests/test-training-api-boundary.test.ts tests/test-training-api-routes.test.ts tests/test-training-worker-entrypoints.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1191 tests discovered, 1190 pass, 0 fail, 1 skipped.
 - Phase 11 slice 140 extracted `src/server/worker/training/leasing.ts`, `src/server/worker/training/task-errors.ts`, and `src/server/worker/training/task-serialization.ts` from `src/server/worker/training/task-api.ts` so lease validation, mark-running transitions, worker task error mapping, and serialized HTTP task shaping have dedicated boundaries while `task-api.ts` keeps compatibility re-exports for existing routes.
 - Phase 11 slice 140 verification passed: red `node --import tsx --test tests/test-worker-boundary-governance.test.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts`, stale lease source-contract fix in `tests/test-training-api-routes.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts tests/test-training-api-boundary.test.ts tests/test-training-api-routes.test.ts tests/test-training-worker-entrypoints.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1193 tests discovered, 1192 pass, 0 fail, 1 skipped.
+- Phase 11 slice 141 extracted `src/server/worker/training/heartbeat.ts` and `src/server/worker/training/task-json.ts` from `src/server/worker/training/task-api.ts` so heartbeat request validation, progress writes, and Prisma-compatible JSON normalization have dedicated boundaries while `task-api.ts` keeps compatibility re-exports for existing routes.
+- Phase 11 slice 141 verification passed: red `node --import tsx --test tests/test-worker-boundary-governance.test.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts`, targeted heartbeat route/entrypoint regression with `node --import tsx --test --test-name-pattern "GET /api/training full workflow heartbeat steps reuse the worker task HTTP contract|managed scheduler and worker endpoints can advance generation and training runs through completion|managed worker endpoints can mark generation and training runs as failed through /api/training" tests/test-training-api-routes.test.ts` and `node --import tsx --test tests/test-training-worker-entrypoints.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts tests/test-training-api-boundary.test.ts tests/test-training-api-routes.test.ts tests/test-training-worker-entrypoints.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1194 tests discovered, 1193 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1328,11 +1330,13 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/server/worker/payload-builder.ts`
 - `src/server/worker/repository.ts`
 - `src/server/worker/fallback-prompt-builder.ts`
+- `src/server/worker/training/heartbeat.ts`
 - `src/server/worker/training/leasing.ts`
 - `src/server/worker/training/task-api.ts`
 - `src/server/worker/training/target-discovery.ts`
 - `src/server/worker/training/task-errors.ts`
 - `src/server/worker/training/task-id.ts`
+- `src/server/worker/training/task-json.ts`
 - `src/server/worker/training/task-serialization.ts`
 - `scripts/training/worker-queue.ts`
 - `scripts/training/worker-common.ts`

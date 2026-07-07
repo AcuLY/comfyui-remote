@@ -6,10 +6,10 @@ import {
   TRAINING_WORKER_TYPES,
   trainingWorkerTaskCompleteRequestSchema,
   trainingWorkerTaskFailRequestSchema,
-  trainingWorkerTaskHeartbeatRequestSchema,
 } from "@/lib/training/schemas";
 import { leaseNextTrainingWorkerTask } from "@/server/worker/training/leasing";
 import { TrainingWorkerTaskError } from "@/server/worker/training/task-errors";
+import { normalizeWorkerTaskJson } from "@/server/worker/training/task-json";
 import {
   getGenerationWorkerTaskId,
   getTrainingRunWorkerTaskId,
@@ -24,14 +24,9 @@ import {
   type WorkerTarget,
 } from "@/server/worker/training/target-discovery";
 
+export { heartbeatTrainingWorkerTask } from "@/server/worker/training/heartbeat";
 export { leaseNextTrainingWorkerTask } from "@/server/worker/training/leasing";
 export { TrainingWorkerTaskError, mapTrainingWorkerTaskError } from "@/server/worker/training/task-errors";
-
-function normalizeJson(value: unknown): Prisma.InputJsonValue {
-  if (value === null || typeof value === "undefined") return {};
-  if (typeof value === "object") return value as Prisma.InputJsonValue;
-  return { value } as Prisma.InputJsonValue;
-}
 
 async function writeArtifact(input: {
   metadata?: unknown;
@@ -53,7 +48,7 @@ async function writeArtifact(input: {
     update: {
       filePath: input.relativePath,
       lifecycleStatus: "active",
-      metadata: input.metadata === undefined ? undefined : normalizeJson(input.metadata),
+      metadata: input.metadata === undefined ? undefined : normalizeWorkerTaskJson(input.metadata),
       mimeType: input.mimeType ?? undefined,
       sha256: input.sha256 ?? undefined,
       storageRole: input.role,
@@ -65,7 +60,7 @@ async function writeArtifact(input: {
       storageKey: input.relativePath,
       filePath: input.relativePath,
       lifecycleStatus: "active",
-      metadata: input.metadata === undefined ? Prisma.JsonNull : normalizeJson(input.metadata),
+      metadata: input.metadata === undefined ? Prisma.JsonNull : normalizeWorkerTaskJson(input.metadata),
       mimeType: input.mimeType ?? null,
       sha256: input.sha256 ?? null,
       storageRole: input.role,
@@ -103,7 +98,7 @@ async function completeGenerationTarget(target: WorkerTarget, output: unknown) {
           update: {
             filePath: relativePath,
             lifecycleStatus: "active",
-            metadata: normalizeJson({ index, purpose: "generation_output" }),
+            metadata: normalizeWorkerTaskJson({ index, purpose: "generation_output" }),
             sha256,
             storageRole: "generation_output",
             width: typeof image.width === "number" ? image.width : undefined,
@@ -114,7 +109,7 @@ async function completeGenerationTarget(target: WorkerTarget, output: unknown) {
             storageKey: relativePath,
             filePath: relativePath,
             lifecycleStatus: "active",
-            metadata: normalizeJson({ index, purpose: "generation_output" }),
+            metadata: normalizeWorkerTaskJson({ index, purpose: "generation_output" }),
             sha256,
             storageRole: "generation_output",
             width: typeof image.width === "number" ? image.width : null,
@@ -207,7 +202,7 @@ async function completeTrainingTarget(target: WorkerTarget, output: unknown) {
     data: {
       finalLoraArtifactId: finalArtifact?.id ?? run.finalLoraArtifactId,
       finishedAt: new Date(),
-      progressJson: normalizeJson(data.metadataSummary ?? data),
+      progressJson: normalizeWorkerTaskJson(data.metadataSummary ?? data),
       status: "done",
       trainingLogArtifactId: logArtifact?.id ?? run.trainingLogArtifactId,
     },
@@ -308,7 +303,7 @@ export async function progressTrainingRunWorkerTarget(trainingRunId: string, inp
       where: { id: trainingRunId },
       data: {
         currentStep,
-        progressJson: normalizeJson(progressJson),
+        progressJson: normalizeWorkerTaskJson(progressJson),
         schedulerMessage,
         startedAt: new Date(),
         status: "running",
@@ -407,55 +402,6 @@ export async function failGenerationTaskWorkerTarget(taskId: string, input: unkn
     errorSummary: typeof payload.errorSummary === "string" && payload.errorSummary.trim()
       ? payload.errorSummary.trim()
       : "生成任务失败",
-  });
-}
-
-export async function heartbeatTrainingWorkerTask(taskId: string, input: unknown = {}) {
-  const parsed = trainingWorkerTaskHeartbeatRequestSchema.safeParse(input);
-  if (!parsed.success) {
-    throw new TrainingWorkerTaskError("Invalid training worker heartbeat request", 400, {
-      issues: parsed.error.issues,
-    });
-  }
-  const target = await findWorkerTargetByTaskId(taskId);
-  if (!target) return null;
-
-  if (target.workerType === "image_generation") {
-    const current = await prisma.trainingGenerationTask.findUnique({
-      where: { id: target.id },
-      select: { paramsJson: true },
-    });
-    const existingParams = current?.paramsJson
-      && typeof current.paramsJson === "object"
-      && !Array.isArray(current.paramsJson)
-      ? current.paramsJson as Record<string, unknown>
-      : {};
-    await prisma.trainingGenerationTask.update({
-      where: { id: target.id },
-      data: {
-        paramsJson: normalizeJson({
-          ...existingParams,
-          heartbeatAt: new Date().toISOString(),
-          leaseOwner: parsed.data.leaseOwner ?? null,
-          progressJson: parsed.data.progressJson ?? null,
-        }),
-      },
-    });
-  } else if (target.workerType === "training") {
-    await prisma.trainingRun.update({
-      where: { id: target.id },
-      data: {
-        currentStep: typeof parsed.data.progressJson?.currentStep === "number" ? parsed.data.progressJson.currentStep : undefined,
-        progressJson: normalizeJson(parsed.data.progressJson ?? {}),
-        schedulerMessage: typeof parsed.data.progressJson?.phase === "string" ? parsed.data.progressJson.phase : undefined,
-        totalSteps: typeof parsed.data.progressJson?.targetSteps === "number" ? parsed.data.progressJson.targetSteps : undefined,
-      },
-    });
-  }
-
-  return serializeWorkerTask(target, {
-    leaseOwner: parsed.data.leaseOwner ?? null,
-    progressJson: parsed.data.progressJson ?? null,
   });
 }
 

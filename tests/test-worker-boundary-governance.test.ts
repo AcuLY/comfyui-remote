@@ -25,11 +25,14 @@ test("worker boundary doc records generation payload and repository ownership", 
   assert.match(doc, /src\/server\/worker\/training\/task-serialization\.ts[\s\S]*owns serialized worker task shaping/);
   assert.match(doc, /src\/server\/worker\/training\/task-errors\.ts[\s\S]*owns training worker task error mapping/);
   assert.match(doc, /src\/server\/worker\/training\/leasing\.ts[\s\S]*owns training worker leasing/);
+  assert.match(doc, /src\/server\/worker\/training\/task-json\.ts[\s\S]*owns worker task JSON normalization/);
+  assert.match(doc, /src\/server\/worker\/training\/heartbeat\.ts[\s\S]*owns training worker heartbeat handling/);
   assert.match(doc, /docs\/workflow\.api\.json[\s\S]*default standard workflow/);
   assert.match(doc, /Do not let repositories import payload builders/);
   assert.match(doc, /Do not reintroduce worker task ID prefix parsing into task-api/);
   assert.match(doc, /Do not reintroduce target discovery queries into task-api/);
   assert.match(doc, /Do not reintroduce lease request parsing or mark-running transitions into task-api/);
+  assert.match(doc, /Do not reintroduce heartbeat request parsing or heartbeat progress writes into task-api/);
   assert.match(doc, /Do not call the fallback prompt builder from run-executor/);
   assert.match(docsIndex, /docs\/worker-boundaries\.md/, "documentation index should point agents to worker boundaries");
 });
@@ -246,4 +249,32 @@ test("training worker leasing lives in a dedicated boundary", async () => {
   assert.equal(serialized.leaseOwner, "owner-1");
   assert.deepEqual(serialized.progressJson, { phase: "training" });
   assert.equal(serialized.status, "running");
+});
+
+test("training worker heartbeat lives in a dedicated boundary", async () => {
+  const heartbeatPath = "src/server/worker/training/heartbeat.ts";
+  const jsonPath = "src/server/worker/training/task-json.ts";
+  assert.ok(existsSync(join(repoRoot, heartbeatPath)), `${heartbeatPath} should own worker heartbeat handling`);
+  assert.ok(existsSync(join(repoRoot, jsonPath)), `${jsonPath} should own worker task JSON normalization`);
+
+  const taskApi = readSource("src/server/worker/training/task-api.ts");
+  const heartbeatSource = readSource(heartbeatPath);
+  const jsonSource = readSource(jsonPath);
+  assert.match(taskApi, /from "@\/server\/worker\/training\/heartbeat"/);
+  assert.match(taskApi, /from "@\/server\/worker\/training\/task-json"/);
+  assert.doesNotMatch(taskApi, /trainingWorkerTaskHeartbeatRequestSchema/);
+  assert.doesNotMatch(taskApi, /export async function heartbeatTrainingWorkerTask/);
+  assert.doesNotMatch(taskApi, /function normalizeJson/);
+  assert.match(heartbeatSource, /export async function heartbeatTrainingWorkerTask/);
+  assert.match(heartbeatSource, /trainingWorkerTaskHeartbeatRequestSchema/);
+  assert.match(jsonSource, /export function normalizeWorkerTaskJson/);
+
+  const jsonUrl = new URL(pathToFileURL(join(repoRoot, jsonPath)));
+  jsonUrl.searchParams.set("testImport", String(Date.now()));
+  const json = await import(jsonUrl.href);
+
+  assert.deepEqual(json.normalizeWorkerTaskJson(null), {});
+  assert.deepEqual(json.normalizeWorkerTaskJson(undefined), {});
+  assert.deepEqual(json.normalizeWorkerTaskJson("ready"), { value: "ready" });
+  assert.deepEqual(json.normalizeWorkerTaskJson({ phase: "training" }), { phase: "training" });
 });
