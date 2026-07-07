@@ -6,6 +6,7 @@ const queueClientPath = "src/app/queue/queue-page-client.tsx";
 const pendingTabPath = "src/app/queue/queue-pending-tab.tsx";
 const runningTabPath = "src/app/queue/queue-running-tab.tsx";
 const censoringProgressCardPath = "src/app/queue/queue-censoring-progress-card.tsx";
+const trashTabPath = "src/app/queue/queue-trash-tab.tsx";
 
 test("queue page delegates pending review groups and pagination to a focused tab component", () => {
   assert.ok(existsSync(pendingTabPath), `${pendingTabPath} should own pending review-group rendering`);
@@ -48,4 +49,23 @@ test("queue page delegates active run progress and controls to a focused running
   assert.match(clientSource, /<QueueRunningTab/);
   assert.doesNotMatch(clientSource, /function RunProgressView/);
   assert.doesNotMatch(clientSource, /runningRuns\.map/);
+});
+
+test("queue page delegates trash list and pagination rendering to a focused tab component", () => {
+  assert.ok(existsSync(trashTabPath), `${trashTabPath} should own trash list and pagination rendering`);
+
+  const clientSource = readFileSync(queueClientPath, "utf8");
+  const trashTabSource = readFileSync(trashTabPath, "utf8");
+
+  assert.match(trashTabSource, /export function QueueTrashTab/);
+  assert.match(trashTabSource, /trashItems\.map/);
+  assert.match(trashTabSource, /trashVisiblePages\.map/);
+  assert.match(trashTabSource, /onRestore/);
+  assert.match(trashTabSource, /onTrashPageChange/);
+  assert.match(trashTabSource, /onClearTrash/);
+
+  assert.match(clientSource, /from "\.\/queue-trash-tab";/);
+  assert.match(clientSource, /<QueueTrashTab/);
+  assert.doesNotMatch(clientSource, /trashItems\.map/);
+  assert.doesNotMatch(clientSource, /trashVisiblePages\.map/);
 });

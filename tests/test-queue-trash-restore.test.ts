@@ -52,7 +52,7 @@ test("queue trash tab loads a paginated trash page instead of every trashed imag
   const apiSource = readFileSync("src/app/api/queue-data/route.ts", "utf8");
   const pageSource = readFileSync("src/app/queue/page.tsx", "utf8");
   const clientSource = readFileSync("src/app/queue/queue-page-client.tsx", "utf8");
-  const trashListSource = clientSource;
+  const trashListSource = readFileSync("src/app/queue/queue-trash-tab.tsx", "utf8");
 
   assert.match(
     repositorySource,
@@ -144,7 +144,7 @@ test("queue trash tab loads a paginated trash page instead of every trashed imag
   );
   assert.match(
     trashListSource,
-    /onClick=\{\(\) => handleTrashPageChange\(page\)\}/,
+    /onClick=\{\(\) => onTrashPageChange\(page\)\}/,
     "trash tab page buttons should fetch another bounded trash page without route navigation",
   );
 });
