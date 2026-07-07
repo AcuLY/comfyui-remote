@@ -10,7 +10,9 @@ import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { PageHeader } from "@/components/page-header";
 import { SectionCard } from "@/components/section-card";
 import { StatChip } from "@/components/stat-chip";
-import { cancelRun, runSection, clearRuns, clearTrash, pauseRun, resumeRun } from "@/lib/actions";
+import { clearTrash } from "@/lib/actions/image-review";
+import { runSection } from "@/lib/actions/run-execution";
+import { cancelRun, clearRuns, pauseRun, resumeRun } from "@/lib/actions/run-lifecycle";
 import { showRunSubmissionToast } from "@/lib/run-submission-toast";
 import type { QueueControlProgressEvent } from "@/lib/queue-control-progress";
 import type { QueuePagination, QueueRun, RunningRun, FailedRun, TrashItem, TrashPagination, CensoringProgressItem, CensoringHistoryItem } from "@/lib/types";
@@ -532,7 +534,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
 
   const handleCancelCensoring = useCallback(async (projectId: string) => {
     try {
-      const { cancelCensoringTasks } = await import("@/lib/actions");
+      const { cancelCensoringTasks } = await import("@/lib/actions/censoring");
       const result = await cancelCensoringTasks(projectId);
       if (result.success) {
         toast.success(result.message);
@@ -547,7 +549,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
 
   const handlePauseCensoring = useCallback(async (projectId: string) => {
     try {
-      const { pauseCensoringTasks } = await import("@/lib/actions");
+      const { pauseCensoringTasks } = await import("@/lib/actions/censoring");
       const result = await pauseCensoringTasks(projectId);
       if (result.success) {
         toast.success(result.message);
@@ -562,7 +564,7 @@ export function QueuePageClient({ initialQueueRuns, initialQueuePagination, init
 
   const handleResumeCensoring = useCallback(async (projectId: string) => {
     try {
-      const { resumeCensoringTasks } = await import("@/lib/actions");
+      const { resumeCensoringTasks } = await import("@/lib/actions/censoring");
       const result = await resumeCensoringTasks(projectId);
       if (result.success) {
         toast.success(result.message);

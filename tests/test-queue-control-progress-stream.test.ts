@@ -48,3 +48,33 @@ test("queue page bulk controls consume streaming progress events", () => {
     "progress UI should include counts, batch size, and elapsed timing",
   );
 });
+
+test("queue page client imports queue actions from focused action modules", () => {
+  const source = readSource("src/app/queue/queue-page-client.tsx");
+
+  assert.match(
+    source,
+    /from "@\/lib\/actions\/run-lifecycle";/,
+    "queue page should import run lifecycle controls from the focused run-lifecycle action module.",
+  );
+  assert.match(
+    source,
+    /from "@\/lib\/actions\/run-execution";/,
+    "queue page should import rerun actions from the focused run-execution action module.",
+  );
+  assert.match(
+    source,
+    /from "@\/lib\/actions\/image-review";/,
+    "queue page should import trash actions from the focused image-review action module.",
+  );
+  assert.match(
+    source,
+    /import\("@\/lib\/actions\/censoring"\)/,
+    "queue page should lazy-load censoring controls from the focused censoring action module.",
+  );
+  assert.doesNotMatch(
+    source,
+    /from "@\/lib\/actions";|import\("@\/lib\/actions"\)/,
+    "queue page should not import the full server-action barrel.",
+  );
+});
