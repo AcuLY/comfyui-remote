@@ -273,6 +273,8 @@
 - Phase 6 slice 2 verification passed: red `node --import tsx --test tests/test-queue-control-progress-stream.test.ts`, then green `node --import tsx --test tests/test-queue-control-progress-stream.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-queue-control-progress-stream.test.ts`, and `npm test` with 1037 tests discovered, 1036 pass, 0 fail, 1 skipped.
 - Phase 6 slice 3 narrowed project archive, delete, and create UI controls to import `createProject`, `createProjectFromExisting`, `deleteProject`, and `archiveProject` from `src/lib/actions/project.ts` instead of the full `src/lib/actions.ts` barrel.
 - Phase 6 slice 3 verification passed: red `node --import tsx --test tests/test-project-archive-ui-source.test.ts`, then green `node --import tsx --test tests/test-project-archive-ui-source.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-project-archive-ui-source.test.ts`, and `npm test` with 1038 tests discovered, 1037 pass, 0 fail, 1 skipped.
+- Phase 6 slice 4 narrowed `src/app/assets/loras/lora-upload-form.tsx` to import `uploadLora` from `src/lib/actions/lora.ts` instead of the full `src/lib/actions.ts` barrel.
+- Phase 6 slice 4 verification passed: red `node --import tsx --test tests/test-lora-upload-action-boundary.test.ts`, then green `node --import tsx --test tests/test-lora-upload-action-boundary.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-lora-upload-action-boundary.test.ts`, and `npm test` with 1039 tests discovered, 1038 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 

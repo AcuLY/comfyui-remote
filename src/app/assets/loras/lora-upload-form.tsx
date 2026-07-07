@@ -2,7 +2,7 @@
 
 import { useState, useRef, useTransition } from "react";
 import { ChevronDown, Loader2, Upload } from "lucide-react";
-import { uploadLora } from "@/lib/actions";
+import { uploadLora } from "@/lib/actions/lora";
 
 const CATEGORIES = [
   { value: "characters", label: "Characters" },
