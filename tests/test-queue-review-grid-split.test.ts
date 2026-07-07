@@ -7,6 +7,7 @@ const imageCardPath = "src/app/queue/[runId]/queue-review-image-card.tsx";
 const selectionToolbarPath = "src/app/queue/[runId]/queue-review-selection-toolbar.tsx";
 const selectionHookPath = "src/app/queue/[runId]/use-queue-review-selection.ts";
 const batchActionsPath = "src/app/queue/[runId]/queue-review-batch-actions.tsx";
+const keyboardShortcutsHookPath = "src/app/queue/[runId]/use-queue-review-keyboard-shortcuts.ts";
 
 test("queue review grid delegates image card labels and markers to a focused component", () => {
   assert.ok(existsSync(imageCardPath), `${imageCardPath} should own queue review image card rendering`);
@@ -101,4 +102,27 @@ test("queue review grid delegates batch action strip and rest navigation to a fo
   assert.doesNotMatch(reviewGridSource, /function handleRestAndNext/);
   assert.doesNotMatch(reviewGridSource, /批量保留/);
   assert.doesNotMatch(reviewGridSource, /保留剩余/);
+});
+
+test("queue review grid delegates page-level keyboard shortcuts to a focused hook", () => {
+  assert.ok(existsSync(keyboardShortcutsHookPath), `${keyboardShortcutsHookPath} should own queue review keyboard shortcuts`);
+
+  const reviewGridSource = readFileSync(reviewGridPath, "utf8");
+  const keyboardShortcutsSource = readFileSync(keyboardShortcutsHookPath, "utf8");
+
+  assert.match(keyboardShortcutsSource, /export function useQueueReviewKeyboardShortcuts/);
+  assert.match(keyboardShortcutsSource, /window\.addEventListener\("keydown"/);
+  assert.match(keyboardShortcutsSource, /data-nav-editor/);
+  assert.match(keyboardShortcutsSource, /data-batch-size/);
+  assert.match(keyboardShortcutsSource, /data-queue-run-section/);
+  assert.match(keyboardShortcutsSource, /toast\.dismiss\("batch-size"\)/);
+  assert.match(keyboardShortcutsSource, /onUndoTrash/);
+  assert.match(keyboardShortcutsSource, /onTrashCurrentRun/);
+  assert.match(keyboardShortcutsSource, /openLightbox/);
+
+  assert.match(reviewGridSource, /from "\.\/use-queue-review-keyboard-shortcuts";/);
+  assert.match(reviewGridSource, /useQueueReviewKeyboardShortcuts\(/);
+  assert.doesNotMatch(reviewGridSource, /Page-level shortcuts/);
+  assert.doesNotMatch(reviewGridSource, /window\.addEventListener\("keydown"/);
+  assert.doesNotMatch(reviewGridSource, /data-batch-size/);
 });

@@ -415,6 +415,8 @@
 - Phase 7 slice 73 verification passed: red `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, then green `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, green `node --import tsx --test tests/test-queue-review-grid-split.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1121 tests discovered, 1120 pass, 0 fail, 1 skipped.
 - Phase 7 slice 74 moved queue review batch keep/trash buttons, remaining-pending derivation, and handle-rest-next navigation actions into `src/app/queue/[runId]/queue-review-batch-actions.tsx`. `review-grid.tsx` still owns page-level keyboard shortcut wiring until the final review-grid split subcheck.
 - Phase 7 slice 74 verification passed: red `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, then green `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, green `node --import tsx --test tests/test-queue-review-grid-split.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1122 tests discovered, 1121 pass, 0 fail, 1 skipped.
+- Phase 7 slice 75 moved queue review page-level keyboard shortcut wiring into `src/app/queue/[runId]/use-queue-review-keyboard-shortcuts.ts`. The queue review grid split checkpoint is now complete: `review-grid.tsx` delegates image cards, selection toolbar, selection state, batch actions, and page-level keyboard shortcuts to focused modules.
+- Phase 7 slice 75 verification passed: red `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, then green `node --import tsx --test tests/test-queue-review-grid-split.test.ts`, green `node --import tsx --test tests/test-queue-review-grid-split.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1123 tests discovered, 1122 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1005,12 +1007,12 @@ Loading states remain colocated under their route segments for now; the later lo
   - [x] Trash/restore list and pagination rendering extracted to `src/app/queue/queue-trash-tab.tsx` and covered by `tests/test-queue-page-client-split.test.ts`.
   - [x] Trash/restore local state and callbacks extracted to `src/app/queue/use-queue-trash-state.ts` and covered by `tests/test-queue-page-client-split.test.ts` plus `tests/test-queue-trash-restore.test.ts`.
 - [x] Keep queue page autopoll behavior from causing `router.refresh` loops.
-- [ ] Keep review grid selection, action strip, keyboard shortcuts, and image labeling split into focused components.
+- [x] Keep review grid selection, action strip, keyboard shortcuts, and image labeling split into focused components.
   - [x] Image card label, marker, and status rendering extracted to `src/app/queue/[runId]/queue-review-image-card.tsx` and covered by `tests/test-queue-review-grid-split.test.ts`.
   - [x] Selection toolbar rendering extracted to `src/app/queue/[runId]/queue-review-selection-toolbar.tsx` and covered by `tests/test-queue-review-grid-split.test.ts`.
   - [x] Selection-state helpers extracted to `src/app/queue/[runId]/use-queue-review-selection.ts` and covered by `tests/test-queue-review-grid-split.test.ts`.
   - [x] Batch action strip and handle-rest-next actions extracted to `src/app/queue/[runId]/queue-review-batch-actions.tsx` and covered by `tests/test-queue-review-grid-split.test.ts`.
-  - [ ] Page-level keyboard shortcuts extracted from `review-grid.tsx`.
+  - [x] Page-level keyboard shortcuts extracted to `src/app/queue/[runId]/use-queue-review-keyboard-shortcuts.ts` and covered by `tests/test-queue-review-grid-split.test.ts`.
 - [ ] Keep settings pages as operational dashboards and avoid adding business logic there.
 
 ## Phase 8: Training Feature Frontend

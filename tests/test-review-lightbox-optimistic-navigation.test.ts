@@ -165,18 +165,16 @@ test("section results import image review and run actions from focused modules",
 });
 
 test("queue review page shortcuts mirror results where matching queue actions exist", () => {
-  const gridSource = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
+  const pageShortcuts = readFileSync(
+    "src/app/queue/[runId]/use-queue-review-keyboard-shortcuts.ts",
+    "utf8",
+  );
   const pageSource = readFileSync("src/app/queue/[runId]/page.tsx", "utf8");
   const sectionRunButtonSource = readFileSync(
     "src/app/projects/[projectId]/project-detail-actions.tsx",
     "utf8",
   );
   const batchQuickFillSource = readFileSync("src/components/batch-size-quick-fill.tsx", "utf8");
-  const pageShortcuts = sourceSlice(
-    gridSource,
-    "  // Page-level shortcuts (lightbox closed)",
-    "  const lightboxImage =",
-  );
 
   assert.match(
     pageShortcuts,
@@ -185,7 +183,7 @@ test("queue review page shortcuts mirror results where matching queue actions ex
   );
   assert.match(
     pageShortcuts,
-    /document\.querySelector<HTMLAnchorElement>\('\[data-nav-editor\]'\)/,
+    /document\.querySelector<HTMLAnchorElement>\(["']\[data-nav-editor\]["']\)/,
     "queue A shortcut should use the same data-nav-editor contract as results",
   );
   assert.match(
@@ -215,7 +213,7 @@ test("queue review page shortcuts mirror results where matching queue actions ex
   );
   assert.match(
     pageShortcuts,
-    /document\.querySelector<HTMLButtonElement>\('\[data-queue-run-section\]'\)/,
+    /document\.querySelector<HTMLButtonElement>\(["']\[data-queue-run-section\]["']\)/,
     "queue N shortcut should click the rerun button",
   );
   assert.match(
@@ -230,7 +228,7 @@ test("queue review page shortcuts mirror results where matching queue actions ex
   );
   assert.match(
     pageShortcuts,
-    /trashCurrentRunImages\(\)/,
+    /onTrashCurrentRun\(\)/,
     "queue X shortcut should delete the current queue group's visible images",
   );
   assert.match(
@@ -240,7 +238,7 @@ test("queue review page shortcuts mirror results where matching queue actions ex
   );
   assert.match(
     pageShortcuts,
-    /handleUndoTrash\(\)/,
+    /onUndoTrash\(\)/,
     "queue Z shortcut should invoke the trash undo stack",
   );
 });
@@ -1147,7 +1145,7 @@ test("lightbox preloads neighbors only after the current full image has loaded",
   const queuePreloadEffect = sourceSlice(
     queueSource,
     "// Preload upcoming images after the current full image has loaded.",
-    "  // Page-level shortcuts",
+    "  const handleUndoTrash = useCallback",
   );
   const queueLightboxSource = readFileSync("src/app/queue/[runId]/image-lightbox.tsx", "utf8");
   const sectionSource = readFileSync(

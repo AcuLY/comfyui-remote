@@ -20,6 +20,7 @@ import { ImageLightbox } from "./image-lightbox";
 import { QueueReviewBatchActions } from "./queue-review-batch-actions";
 import { QueueReviewImageCard } from "./queue-review-image-card";
 import { QueueReviewSelectionToolbar } from "./queue-review-selection-toolbar";
+import { useQueueReviewKeyboardShortcuts } from "./use-queue-review-keyboard-shortcuts";
 import { useQueueReviewSelection } from "./use-queue-review-selection";
 
 type LastAction = "keep" | "trash";
@@ -56,6 +57,9 @@ export function ReviewGrid({
   const refreshRoute = useCallback(() => {
     router.refresh();
   }, [router]);
+  const openFirstLightboxImage = useCallback(() => {
+    setLightboxIndex(0);
+  }, []);
 
   const pendingImages = reviewImages.filter((img) => img.status === "pending");
   const {
@@ -201,75 +205,16 @@ export function ReviewGrid({
     });
   }, [isPending, removeSelectedIds, reviewImages, router, startTransition]);
 
-  // Page-level shortcuts (lightbox closed)
-  useEffect(() => {
-    const handler = (event: KeyboardEvent) => {
-      if (lightboxIndex !== null) return; // lightbox handles its own keys
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
-      const key = event.key;
-      // S / ArrowLeft: prev group
-      if (key === "s" || key === "S" || key === "ArrowLeft") {
-        event.preventDefault();
-        if (prevRunId) navigateDocument(`/queue/${prevRunId}`);
-        return;
-      }
-      // F / ArrowRight: next group
-      if (key === "f" || key === "F" || key === "ArrowRight") {
-        event.preventDefault();
-        if (nextRunId) navigateDocument(`/queue/${nextRunId}`);
-        return;
-      }
-      // A: jump to section editor
-      if (event.key === "a" || event.key === "A") {
-        event.preventDefault();
-        const editorLink = document.querySelector<HTMLAnchorElement>('[data-nav-editor]');
-        if (editorLink) editorLink.click();
-        return;
-      }
-      // 1-5: set rerun batch size
-      if ("12345".includes(event.key)) {
-        event.preventDefault();
-        const bsMap: Record<string, number> = { "1": 1, "2": 2, "3": 4, "4": 8, "5": 16 };
-        const bs = bsMap[event.key];
-        if (bs !== undefined) {
-          const batchButton = document.querySelector<HTMLButtonElement>(`[data-batch-size="${bs}"]`);
-          if (batchButton) {
-            batchButton.click();
-            toast.dismiss("batch-size");
-            toast(`Batch size: ${bs}`, { id: "batch-size", duration: 2000 });
-          }
-        }
-        return;
-      }
-      // N: rerun current section
-      if (event.key === "n" || event.key === "N") {
-        event.preventDefault();
-        const runButton = document.querySelector<HTMLButtonElement>('[data-queue-run-section]');
-        if (runButton) runButton.click();
-        return;
-      }
-      // I / D: open lightbox
-      if (key === "i" || key === "I" || key === "d" || key === "D") {
-        event.preventDefault();
-        if (reviewImages.length > 0) setLightboxIndex(0);
-        return;
-      }
-      // Z: undo last trash batch
-      if ((key === "z" || key === "Z") && !event.ctrlKey && !event.metaKey) {
-        event.preventDefault();
-        handleUndoTrash();
-        return;
-      }
-      // X: trash current queue group
-      if (event.key === "x" || event.key === "X") {
-        if (event.repeat) return;
-        event.preventDefault();
-        trashCurrentRunImages();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [handleUndoTrash, lightboxIndex, navigateDocument, prevRunId, nextRunId, reviewImages.length, trashCurrentRunImages]);
+  useQueueReviewKeyboardShortcuts({
+    lightboxOpen: lightboxIndex !== null,
+    prevRunId,
+    nextRunId,
+    reviewImageCount: reviewImages.length,
+    navigateDocument,
+    openLightbox: openFirstLightboxImage,
+    onUndoTrash: handleUndoTrash,
+    onTrashCurrentRun: trashCurrentRunImages,
+  });
 
   const lightboxImage = lightboxIndex === null ? null : reviewImages[lightboxIndex] ?? null;
   const lightboxBusy = Boolean(
