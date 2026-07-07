@@ -27,7 +27,9 @@ import {
   Square,
   Play,
 } from "lucide-react";
-import { moveProjectSectionsToFolder, reorderSections, deleteSections, runSections } from "@/lib/actions";
+import { moveProjectSectionsToFolder } from "@/lib/actions/section-folder";
+import { deleteSections, reorderSections } from "@/lib/actions/section";
+import { runSections } from "@/lib/actions/run-execution";
 import { normalizeBatchRunBatchSize } from "@/lib/section-batch-run";
 import { buildGroupedDragOrder, mergeVisibleOrderIntoAllIds } from "@/lib/section-list-ordering";
 import { toast } from "sonner";

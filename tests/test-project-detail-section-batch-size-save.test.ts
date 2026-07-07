@@ -70,3 +70,12 @@ test("project detail folder controls import section folder actions from focused 
   assert.match(detailClient, /from "@\/lib\/actions\/section-folder";/);
   assert.doesNotMatch(detailClient, /from "@\/lib\/actions";/);
 });
+
+test("project detail section cards import server actions from focused modules", () => {
+  const sectionCards = readSource("src/app/projects/[projectId]/section-cards.tsx");
+
+  assert.match(sectionCards, /from "@\/lib\/actions\/section-folder";/);
+  assert.match(sectionCards, /from "@\/lib\/actions\/section";/);
+  assert.match(sectionCards, /from "@\/lib\/actions\/run-execution";/);
+  assert.doesNotMatch(sectionCards, /from "@\/lib\/actions";/);
+});
