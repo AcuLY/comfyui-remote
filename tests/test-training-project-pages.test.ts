@@ -27,6 +27,10 @@ const projectCreateFormHookPath = resolve(featureUiDir, "use-project-create-form
 const projectCreateFormHookSource = existsSync(projectCreateFormHookPath)
   ? readFileSync(projectCreateFormHookPath, "utf8")
   : "";
+const projectCreateTrainingDefaultsHookPath = resolve(featureUiDir, "use-project-create-training-defaults.ts");
+const projectCreateTrainingDefaultsHookSource = existsSync(projectCreateTrainingDefaultsHookPath)
+  ? readFileSync(projectCreateTrainingDefaultsHookPath, "utf8")
+  : "";
 const projectSectionDraftHookPath = resolve(featureUiDir, "use-project-section-draft.ts");
 const projectSectionDraftHookSource = existsSync(projectSectionDraftHookPath)
   ? readFileSync(projectSectionDraftHookPath, "utf8")
@@ -1482,12 +1486,14 @@ test("training project create form fields and training defaults stay scoped to t
   assert.match(formSource, /useProjectCreateForm/, "project create form should delegate editable fields to the focused hook");
   assert.match(projectCreateFormHookSource, /defaultProjectForm/, "project create form should have a per-template default form state");
   assert.match(projectCreateFormHookSource, /projectFormState\.templateContextId === projectTemplateContextId \? projectFormState : defaultProjectForm/, "form fields should reset after template context changes");
-  assert.match(formSource, /trainingDefaultsState/, "training defaults should be stored with template context");
-  assert.match(formSource, /defaultTrainingDefaults/, "training defaults should have a per-template fallback");
-  assert.match(formSource, /trainingDefaultsState\.templateContextId === projectTemplateContextId \? trainingDefaultsState : defaultTrainingDefaults/, "training defaults should reset after template context changes");
+  assert.match(formSource, /useProjectCreateTrainingDefaults/, "project create form should delegate training defaults to the focused hook");
+  assert.match(projectCreateTrainingDefaultsHookSource, /trainingDefaultsState/, "training defaults should be stored with template context");
+  assert.match(projectCreateTrainingDefaultsHookSource, /defaultTrainingDefaults/, "training defaults should have a per-template fallback");
+  assert.match(projectCreateTrainingDefaultsHookSource, /trainingDefaultsState\.templateContextId === projectTemplateContextId \? trainingDefaultsState : defaultTrainingDefaults/, "training defaults should reset after template context changes");
   assert.match(formSource, /templateContextId:\s*projectTemplateContextId/, "context-scoped state updates should store the active template context");
   assert.doesNotMatch(formSource, /\.\.\.projectFormState,\s*templateContextId:\s*projectTemplateContextId,\s*templateTitle:/, "form fallback should not carry stale fields from another template context");
   assert.doesNotMatch(formSource, /\n  const \[projectFormState, setProjectFormState\]/, "project create page should not keep form state inline");
+  assert.doesNotMatch(formSource, /\n  const \[trainingDefaultsState, setTrainingDefaultsState\]/, "project create page should not keep training default state inline");
   assert.doesNotMatch(formSource, /const \[trainingDefaults, setTrainingDefaults\] = useState\(\{/, "training defaults should not be stored without template context");
 });
 
@@ -1501,6 +1507,7 @@ test("training project create page training default switches feed into the local
 
   assert.match(formSource, /trainingDefaults/, "project creation should track training defaults locally");
   assert.match(formSource, /setTrainingDefaults/, "training default switches should update local state");
+  assert.match(projectCreateTrainingDefaultsHookSource, /setTrainingDefaults/, "training defaults hook should expose the update action");
   assert.match(formSource, /autoGenerateSamples/, "project creation should track the initial sample-generation default");
   assert.match(formSource, /autoFreezeDataset/, "project creation should track the dataset-freeze default");
   assert.match(formSource, /checked=\{trainingDefaults\.autoGenerateSamples\}/, "sample-generation switch should be controlled by local state");

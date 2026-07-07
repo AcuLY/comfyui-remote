@@ -96,6 +96,7 @@ import { useGenerationSupplementalImages } from "./use-generation-supplemental-i
 import { useGenerationTaskDraft } from "./use-generation-task-draft";
 import { useProjectArchiveState } from "./use-project-archive-state";
 import { useProjectCreateForm } from "./use-project-create-form";
+import { useProjectCreateTrainingDefaults } from "./use-project-create-training-defaults";
 import { useProjectSectionResults } from "./use-project-section-results";
 import { useProjectSectionSceneBlocks } from "./use-project-section-scene-blocks";
 import { useProjectSectionDraft } from "./use-project-section-draft";
@@ -771,13 +772,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
     templateContextId: projectTemplateContextId,
   }));
   const sectionSeeds = sectionSeedState.templateContextId === projectTemplateContextId ? sectionSeedState.sections : initialSectionSeeds;
-  const defaultTrainingDefaults = {
-    autoFreezeDataset: true,
-    autoGenerateSamples: true,
-    templateContextId: projectTemplateContextId,
-  };
-  const [trainingDefaultsState, setTrainingDefaultsState] = useState(defaultTrainingDefaults);
-  const trainingDefaults = trainingDefaultsState.templateContextId === projectTemplateContextId ? trainingDefaultsState : defaultTrainingDefaults;
+  const { setTrainingDefaults, trainingDefaults } = useProjectCreateTrainingDefaults(projectTemplateContextId);
   type CreatedProjectDraft = {
     autoFreezeDataset: boolean;
     autoGenerateSamples: boolean;
@@ -841,13 +836,6 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
       cancelled = true;
     };
   }, [isProductionTrainingRoute]);
-
-  function setTrainingDefaults(updater: (current: typeof trainingDefaults) => typeof trainingDefaults) {
-    setTrainingDefaultsState((current) => ({
-      ...updater(current.templateContextId === projectTemplateContextId ? current : defaultTrainingDefaults),
-      templateContextId: projectTemplateContextId,
-    }));
-  }
 
   function setSectionSeeds(nextValue: LoraTrainingTemplateSeedSection[] | ((current: LoraTrainingTemplateSeedSection[]) => LoraTrainingTemplateSeedSection[])) {
     setSectionSeedState((current) => {
