@@ -369,6 +369,8 @@
 - Phase 7 slice 50 verification passed: red `node --import tsx --test tests/test-project-results-client-split.test.ts`, then green `node --import tsx --test tests/test-project-results-client-split.test.ts`, `node --import tsx --test tests/test-project-results-client-split.test.ts tests/test-project-results-lightbox-parity.test.ts tests/test-project-results-review-counts.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1090 tests discovered, 1089 pass, 0 fail, 1 skipped.
 - Phase 7 slice 51 marked the project-page hard-navigation and G-shortcut coverage checkpoints complete after confirming `tests/test-hard-navigation-for-image-heavy-pages.test.ts` covers document navigation for image-heavy exits and visible next-pending links, while `tests/test-review-lightbox-optimistic-navigation.test.ts` covers lightbox G, page-level G, optimistic next-pending state, and empty-section availability.
 - Phase 7 slice 51 verification passed: `node --import tsx --test tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts` with 33 tests discovered, 33 pass, 0 fail.
+- Phase 7 slice 52 added `src/app/projects/project-loading-skeletons.tsx` as the shared project loading primitive module while keeping the four project route `loading.tsx` files colocated with their route segments. Project detail, project results, section edit, and section results loading states now compose shared action-bar, block, grid, and sidebar skeleton primitives.
+- Phase 7 slice 52 verification passed: red `node --import tsx --test tests/test-project-loading-skeletons.test.ts`, then green `node --import tsx --test tests/test-project-loading-skeletons.test.ts`, `node --import tsx --test tests/test-project-loading-skeletons.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1091 tests discovered, 1090 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -875,7 +877,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - [x] Split `project-results-client.tsx` into route container, toolbar/filter state, gallery/list component, lightbox adapter, mutation adapter.
 - [x] Keep image-heavy navigation hard-navigation behavior covered by `test-hard-navigation-for-image-heavy-pages.test.ts`.
 - [x] Keep G shortcut behavior covered by section/results tests.
-- [ ] Keep loading states colocated with routes but share skeleton components.
+- [x] Keep loading states colocated with routes but share skeleton components.
 
 **Asset pages:**
 - `src/app/assets/models/page.tsx`
