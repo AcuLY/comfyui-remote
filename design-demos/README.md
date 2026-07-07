@@ -1,5 +1,7 @@
 ﻿# 前端设计系统 - 工作总结
 
+> Superseded static demo summary. Current governance lives in `docs/ui/legacy-static-design-demos.md` and the routable implementation lives under `src/app/design-demos/**`.
+
 ## ✅ 已完成
 
 ### 1. 设计规范文档

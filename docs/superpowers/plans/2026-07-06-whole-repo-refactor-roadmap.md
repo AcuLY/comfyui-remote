@@ -536,6 +536,8 @@
 - Phase 10 slice 134 added `docs/ui/design-demo-governance.md` and `tests/test-design-demo-governance.test.ts` to classify `/design-demos` as an active component lab and visual reference, document `routing/routes.ts`, `routing/header-specs.ts`, showcase registry files, and `data/load-demo-data.ts` as the source-of-truth boundaries, and guard intentional LoRA training UI sharing through narrow compatibility re-exports.
 - Phase 10 slice 134 also expanded `docs/design-demos-frontend-parity.md` with a LoRA training page parity checklist covering production route, design-demo route, owner, status, and verification for every training counterpart before duplicated demo components can be removed or archived.
 - Phase 10 slice 134 verification passed: red `node --import tsx --test tests/test-design-demo-governance.test.ts`, green `node --import tsx --test tests/test-design-demo-governance.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-design-demo-governance.test.ts src/app/design-demos/routing/routes.test.ts src/app/design-demos/showcase/registry.test.ts src/app/design-demos/data/row-shaping.test.ts src/app/design-demos/data/fallback-images.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1182 tests discovered, 1181 pass, 0 fail, 1 skipped.
+- Phase 10 slice 135 added `docs/ui/legacy-static-design-demos.md` and `tests/test-legacy-static-design-demos.test.ts` to classify every tracked `design-demos/` static file as archival or superseded by the Next design-demo app, name the later archive directory, and carry the remaining `todo.txt` notes into maintained docs before deleting the stale runtime-adjacent task file.
+- Phase 10 slice 135 verification passed: red `node --import tsx --test tests/test-legacy-static-design-demos.test.ts`, green `node --import tsx --test tests/test-legacy-static-design-demos.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-legacy-static-design-demos.test.ts tests/test-design-demo-governance.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1184 tests discovered, 1183 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1293,10 +1295,10 @@ Loading states remain colocated under their route segments for now; the later lo
 - `design-demos/style-audit-report.md`
 - `design-demos/todo.txt`
 
-- [ ] Mark each static file as active reference, superseded by Next design-demo, or archival.
-- [ ] If archival, move to a documented archive directory in a later implementation batch.
-- [ ] If active, document the exact production page it informs.
-- [ ] Remove stale `todo.txt` only after its live tasks are copied into a maintained plan.
+- [x] Mark each static file as active reference, superseded by Next design-demo, or archival.
+- [x] If archival, move to a documented archive directory in a later implementation batch.
+- [x] If active, document the exact production page it informs.
+- [x] Remove stale `todo.txt` only after its live tasks are copied into a maintained plan.
 
 **HTML prototypes in docs:**
 - `docs/prototypes/manager-lora-training-*.html`

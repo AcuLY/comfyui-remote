@@ -1,9 +1,0 @@
-正在载入工作台”的加载状态页需要重新设计
-
-- ImageThumbMedium的checkbox浅色模式的深绿色背景+黑色勾在图片顶上看不清（浅色模式同理），右下角的“保留”等tag背景颜色太透明，文本看不清
-- ImagePreviewFrame / ImagePreviewLarge 对横向图展示不全，应该object-fit: contain，点击留白部分要能退出放大
-
-- DimensionsReadout的高度要和SegmentControl一致
-- SegmentControl现在和底部的卡片合并时的样式错误，背景是透明的
-
-- /projects/:id/sections/:id 页旧的header删掉，新header的action从左到右分别为：上一节下一节、下载工作流、batchsize选择器+运行按钮（参考/projects/:id的）
