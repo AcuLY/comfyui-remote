@@ -20,20 +20,23 @@ test("project results data exposes kept image counts", () => {
 
 test("project results page shows kept and pending counts instead of total image counts", () => {
   const routeSource = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+  const toolbarSource = readSource("src/app/projects/[projectId]/results/project-results-toolbar.tsx");
   const filterHookSource = readSource("src/app/projects/[projectId]/results/use-project-results-filter-state.ts");
 
   assert.doesNotMatch(routeSource, /<span>\{section\.imageCount\} 张图片<\/span>/, "section summary should not display total image count");
   assert.doesNotMatch(routeSource, /<span>\{totalImages\} 张图片<\/span>/, "project header should not display total image count");
+  assert.doesNotMatch(toolbarSource, /<span>\{totalImages\} 张图片<\/span>/, "project header should not display total image count");
   assert.match(filterHookSource, /const totalKept = sections\.reduce\(/, "project header should aggregate kept counts");
   assert.match(filterHookSource, /const totalPending = sections\.reduce\(/, "project header should aggregate pending counts");
-  assert.match(routeSource, /\{totalKept\} 保留/, "project header should show kept count");
-  assert.match(routeSource, /\{totalPending\} 待审/, "project header should show pending count");
+  assert.match(toolbarSource, /\{totalKept\} 保留/, "project header should show kept count");
+  assert.match(toolbarSource, /\{totalPending\} 待审/, "project header should show pending count");
   assert.match(routeSource, /\{section\.keptCount\} 保留/, "section summary should show kept count");
   assert.match(routeSource, /\{section\.pendingCount\} 待审/, "section summary should show pending count");
 });
 
 test("project results page filters by one result marker and hides sections without visible images", () => {
   const routeSource = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+  const toolbarSource = readSource("src/app/projects/[projectId]/results/project-results-toolbar.tsx");
   const filterHookSource = readSource("src/app/projects/[projectId]/results/use-project-results-filter-state.ts");
 
   assert.match(
@@ -82,7 +85,7 @@ test("project results page filters by one result marker and hides sections witho
     "the project results lightbox should navigate within the filtered image set",
   );
   assert.match(
-    routeSource,
+    toolbarSource,
     /data-result-filter=\{option\.value\}/,
     "filter controls should expose stable attributes for UI verification",
   );

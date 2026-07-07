@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 
 const routePath = "src/app/projects/[projectId]/results/project-results-client.tsx";
 const filterHookPath = "src/app/projects/[projectId]/results/use-project-results-filter-state.ts";
+const toolbarPath = "src/app/projects/[projectId]/results/project-results-toolbar.tsx";
 
 test("project results filter state lives in a focused route hook", () => {
   assert.ok(existsSync(filterHookPath), `${filterHookPath} should own project results filter state`);
@@ -18,4 +19,19 @@ test("project results filter state lives in a focused route hook", () => {
   assert.match(routeSource, /from "\.\/use-project-results-filter-state";/);
   assert.doesNotMatch(routeSource, /const \[resultFilter,\s*setResultFilter\] = useState<ProjectResultFilter>\("all"\)/);
   assert.doesNotMatch(routeSource, /const filteredSections = useMemo/);
+});
+
+test("project results toolbar rendering lives in a focused component", () => {
+  assert.ok(existsSync(toolbarPath), `${toolbarPath} should own project results toolbar rendering`);
+
+  const routeSource = readFileSync(routePath, "utf8");
+  const toolbarSource = readFileSync(toolbarPath, "utf8");
+
+  assert.match(toolbarSource, /export function ProjectResultsToolbar/);
+  assert.match(toolbarSource, /PROJECT_RESULT_FILTER_OPTIONS/);
+  assert.match(toolbarSource, /data-result-filter=\{option\.value\}/);
+
+  assert.match(routeSource, /from "\.\/project-results-toolbar";/);
+  assert.doesNotMatch(routeSource, /function ProjectResultFilterControl/);
+  assert.doesNotMatch(routeSource, /function ProjectResultFilterIcon/);
 });
