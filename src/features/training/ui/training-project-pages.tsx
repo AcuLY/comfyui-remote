@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { ChangeEvent, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -92,6 +92,7 @@ import {
   type ProjectSectionDraftState,
 } from "./project-page-utils";
 import s from "./training-project-pages.module.css";
+import { useUrlSearch } from "./use-url-search";
 
 const PROJECT_TABS = [
   { key: "overview", label: "总览", path: "" },
@@ -130,11 +131,6 @@ const PROJECT_RUN_ERROR_CLAMP_LINES = 3;
 
 function useTraining(data: TrainingAppData) {
   return buildLoraTrainingData(data);
-}
-
-function useUrlSearch() {
-  const searchParams = useSearchParams();
-  return searchParams.toString();
 }
 
 function ProjectNav({ active, project }: { active: (typeof PROJECT_TABS)[number]["key"]; project: LoraTrainingProject }) {

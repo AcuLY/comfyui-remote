@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -9,6 +9,8 @@ const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const featureRoot = resolve(testDir, "../src/features/training");
 const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
 const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
+const projectPageHooksPath = resolve(featureUiDir, "use-url-search.ts");
+const projectPageHooksSource = existsSync(projectPageHooksPath) ? readFileSync(projectPageHooksPath, "utf8") : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
@@ -135,6 +137,13 @@ test("training project page pure display and dataset helpers live in the utility
   assert.match(projectPageUtilsSource, /const PROFILE_REVISION_REASON_LABELS\b/, "profile revision reason labels should move with profile helpers");
 });
 
+test("training project page URL search hook lives in a focused hook module", () => {
+  assert.match(projectPageHooksSource, /function useUrlSearch\b/, "URL search hook should live in use-url-search.ts");
+  assert.match(projectPageHooksSource, /useSearchParams/, "URL search hook should own the Next search params dependency");
+  assert.match(pagesSource, /from "\.\/use-url-search"/, "project pages should import the focused URL search hook");
+  assert.doesNotMatch(pagesSource, /\nfunction useUrlSearch\b/, "URL search hook should not stay inline in the broad project pages file");
+});
+
 test("training project page upload preview helpers live in the utility module", () => {
   const helperNames = [
     "buildProjectReferenceUploadPreview",
@@ -166,9 +175,10 @@ test("training dataset revision detail does not replace invalid revision ids wit
 });
 
 test("training project query hints use Next search params instead of a manual location store", () => {
-  assert.match(pagesSource, /import \{[^}]*useSearchParams[^}]*\} from "next\/navigation";/, "project pages should subscribe to Next-managed query changes");
-  assert.match(pagesSource, /const searchParams = useSearchParams\(\)/, "project pages should read current query params through Next navigation state");
-  assert.match(pagesSource, /searchParams\.toString\(\)/, "project pages should pass the live query string into hint parsers");
+  assert.match(projectPageHooksSource, /import \{[^}]*useSearchParams[^}]*\} from "next\/navigation";/, "project URL hook should subscribe to Next-managed query changes");
+  assert.match(projectPageHooksSource, /const searchParams = useSearchParams\(\)/, "project URL hook should read current query params through Next navigation state");
+  assert.match(projectPageHooksSource, /searchParams\.toString\(\)/, "project URL hook should pass the live query string into hint parsers");
+  assert.match(pagesSource, /useUrlSearch\(\)/, "project pages should consume the focused URL search hook");
   assert.doesNotMatch(pagesSource, /useSyncExternalStore/, "project query hints should not depend on a manual window.location.search store");
   assert.doesNotMatch(pagesSource, /window\.location\.search/, "project query hints should not read location.search during render");
 });
