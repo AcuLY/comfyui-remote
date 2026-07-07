@@ -566,6 +566,8 @@
 - Phase 11 slice 148 verification passed: red `node --import tsx --test --test-name-pattern "training worker lifecycle request schemas validate ownership" tests/test-worker-boundary-governance.test.ts`, green `node --import tsx --test --test-name-pattern "worker boundary doc records generation payload and repository ownership|training worker lifecycle request schemas validate ownership" tests/test-worker-boundary-governance.test.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts tests/test-training-api-routes.test.ts`, `npm run lint`, and `npm test` with 1201 tests discovered, 1200 pass, 0 fail, 1 skipped.
 - Phase 11 slice 149 closed the strict ComfyUI cancellation checkpoint by documenting `src/server/services/comfy-queue-cancellation.ts` as the remote queue deletion, interrupt, and confirmation owner. Confirmation failures now have an explicit multi-batch regression: failed batches do not call `onBatchConfirmed`, do not report local success, and do not start later prompt batches.
 - Phase 11 slice 149 verification passed: red `node --import tsx --test --test-name-pattern "worker boundary doc records generation payload and repository ownership|confirmation HTTP failure fails the current batch" tests/test-worker-boundary-governance.test.ts tests/test-comfy-queue-cancellation.test.ts`, green same command after the doc update, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts tests/test-comfy-queue-cancellation.test.ts tests/test-clear-active-runs-responsiveness.test.ts tests/test-run-submission-deferral.test.ts tests/test-run-recovery-poller-cap.test.ts tests/test-repo-inventory.test.ts` with 32 tests passed, `npm run lint`, and `npm test` with 1202 tests discovered, 1201 pass, 0 fail, 1 skipped.
+- Phase 12 slice 150 added `docs/script-maintenance.md` as the script maintenance matrix for every tracked file under `scripts/**` and `src/scripts/**`. The matrix records owner, purpose, inputs, outputs, dry-run or preview behavior, and exit-code behavior, and `docs/index.md` now points agents to it as the read-first script maintenance source.
+- Phase 12 slice 150 verification passed: red `node --import tsx --test tests/test-script-maintenance-doc.test.ts`, green same command after adding the matrix and index link, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-script-maintenance-doc.test.ts tests/test-repo-inventory.test.ts` with 5 tests passed, `npm run lint`, and `npm test` with 1204 tests discovered, 1203 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1396,7 +1398,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/server/quality/*.ts`
 - `docs/plans/auto-review-analysis/**`
 
-- [ ] Give every script a documented purpose, input, output, dry-run behavior, and exit code behavior.
+- [x] Give every script a documented purpose, input, output, dry-run behavior, and exit code behavior.
 - [ ] Keep Python scripts separate from Node scripts and document their required Python environment.
 - [ ] Ensure auto-censor Python CLI can show help without loading heavy model dependencies.
 - [ ] Make cleanup scripts print exactly what they will delete before deleting.
