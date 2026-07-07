@@ -105,6 +105,35 @@ test("training project route helpers do not replace invalid route ids with first
   assert.doesNotMatch(sectionDetailSource, /training\.projects\.find\(\(item\) => item\.id === projectId\) \?\? training\.projects\[0\]/, "section detail should use the route helper instead of its own first-project fallback");
 });
 
+test("training project page pure display and dataset helpers live in the utility module", () => {
+  const helperNames = [
+    "isTrainingModelOption",
+    "isTrainingTextRevisionItem",
+    "profileRevisionFieldConfig",
+    "formatProfileRevisionTime",
+    "toTrainingImageReviewApiStatus",
+    "reviewResultToastTitle",
+    "reviewStatusLabel",
+    "reviewStatusTone",
+    "referenceKindLabel",
+    "nextDatasetVersionLabel",
+    "normalizeGenerationDraftReferenceId",
+    "captionMissing",
+    "deriveDatasetCaption",
+    "buildLocalDatasetRevision",
+    "projectRunStatusLabel",
+    "sceneBlockPreviewText",
+  ];
+
+  for (const helperName of helperNames) {
+    assert.match(projectPageUtilsSource, new RegExp(`function ${helperName}\\b`), `${helperName} should live in project-page-utils.ts`);
+    assert.doesNotMatch(pagesSource, new RegExp(`function ${helperName}\\b`), `${helperName} should not stay inline in the broad project pages file`);
+  }
+  assert.match(projectPageUtilsSource, /type TrainingProfileRevisionField\b/, "profile revision field typing should move with profile helpers");
+  assert.match(projectPageUtilsSource, /const PROFILE_REVISION_FIELDS\b/, "profile revision field config should move with profile helpers");
+  assert.match(projectPageUtilsSource, /const PROFILE_REVISION_REASON_LABELS\b/, "profile revision reason labels should move with profile helpers");
+});
+
 test("training dataset revision detail does not replace invalid revision ids with first fixtures", () => {
   const revisionPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetRevisionPage");
   const scopedRunsStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
