@@ -7,6 +7,10 @@ import { fileURLToPath } from "node:url";
 const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const pageSource = readFileSync(resolve(featureUiDir, "training-resource-pages.tsx"), "utf8");
+const resourcePageUtilsPath = resolve(featureUiDir, "training-resource-page-utils.ts");
+const resourcePageUtilsSource = existsSync(resourcePageUtilsPath)
+  ? readFileSync(resourcePageUtilsPath, "utf8")
+  : "";
 const resourceUrlSearchHookPath = resolve(featureUiDir, "use-resource-url-search.ts");
 const resourceUrlSearchHookSource = existsSync(resourceUrlSearchHookPath)
   ? readFileSync(resourceUrlSearchHookPath, "utf8")
@@ -53,17 +57,32 @@ test("training resource pages use production-owned browser persistence keys", ()
   );
 });
 
+test("training resource route and query helpers live in a focused utility module", () => {
+  for (const helperName of [
+    "findPreset",
+    "findTemplate",
+    "uniquePresetCategories",
+    "uniquePresetFolders",
+    "isProductionTrainingPath",
+    "readNewPresetHints",
+    "readNewTemplateHints",
+    "createProjectFromTemplateHref",
+  ]) {
+    assert.match(resourcePageUtilsSource, new RegExp(`function ${helperName}\\b`), `${helperName} should live in training-resource-page-utils.ts`);
+    assert.doesNotMatch(pageSource, new RegExp(`function ${helperName}\\b`), `${helperName} should not stay inline in the broad resource pages file`);
+  }
+  assert.match(resourcePageUtilsSource, /type NewPresetHints\b/, "new preset hint typing should move with the hint parser");
+  assert.match(resourcePageUtilsSource, /type NewTemplateHints\b/, "new template hint typing should move with the hint parser");
+  assert.match(pageSource, /from "\.\/training-resource-page-utils"/, "resource pages should import focused route and query helpers");
+});
+
 test("training resource route helpers do not replace invalid route ids with first fixtures", () => {
-  const helperStart = pageSource.indexOf("function findPreset");
-  const foldersStart = pageSource.indexOf("function uniquePresetCategories");
   const templateFormStart = pageSource.indexOf("export function LoraTrainingTemplateFormPage");
   const templateSectionStart = pageSource.indexOf("export function LoraTrainingTemplateSectionPage");
-  assert.notEqual(helperStart, -1);
-  assert.notEqual(foldersStart, -1);
   assert.notEqual(templateFormStart, -1);
   assert.notEqual(templateSectionStart, -1);
 
-  const helperSource = pageSource.slice(helperStart, foldersStart);
+  const helperSource = resourcePageUtilsSource;
   const templateFormSource = pageSource.slice(templateFormStart, templateSectionStart);
   const templateSectionSource = pageSource.slice(templateSectionStart);
 
@@ -337,9 +356,9 @@ test("training preset new form carries source training artifact context", () => 
 
   const detailSource = pageSource.slice(detailStart, sortStart);
 
-  assert.match(pageSource, /sourceRun:\s*searchParams\.get\("sourceRun"\)/, "new preset hints should read source training run id");
-  assert.match(pageSource, /artifact:\s*searchParams\.get\("artifact"\)/, "new preset hints should read source artifact name");
-  assert.match(pageSource, /project:\s*searchParams\.get\("project"\)/, "new preset hints should read source project title");
+  assert.match(resourcePageUtilsSource, /sourceRun:\s*searchParams\.get\("sourceRun"\)/, "new preset hints should read source training run id");
+  assert.match(resourcePageUtilsSource, /artifact:\s*searchParams\.get\("artifact"\)/, "new preset hints should read source artifact name");
+  assert.match(resourcePageUtilsSource, /project:\s*searchParams\.get\("project"\)/, "new preset hints should read source project title");
   assert.match(detailSource, /来源训练产物/, "new preset form should show source artifact context");
   assert.match(detailSource, /newPresetHints\.artifact/, "source artifact field should only appear when artifact context exists");
 });
@@ -482,10 +501,10 @@ test("training template new form carries source project context", () => {
 
   const formSource = pageSource.slice(formStart, sectionStart);
 
-  assert.match(pageSource, /type NewTemplateHints/, "template creation should define source-project hints");
-  assert.match(pageSource, /function readNewTemplateHints/, "template creation should read query hints");
-  assert.match(pageSource, /sourceProject:\s*searchParams\.get\("sourceProject"\)/, "template form should read source project title");
-  assert.match(pageSource, /sections:\s*searchParams\.get\("sections"\)/, "template form should read source section count");
+  assert.match(resourcePageUtilsSource, /type NewTemplateHints/, "template creation should define source-project hints");
+  assert.match(resourcePageUtilsSource, /function readNewTemplateHints/, "template creation should read query hints");
+  assert.match(resourcePageUtilsSource, /sourceProject:\s*searchParams\.get\("sourceProject"\)/, "template form should read source project title");
+  assert.match(resourcePageUtilsSource, /sections:\s*searchParams\.get\("sections"\)/, "template form should read source section count");
   assert.match(formSource, /newTemplateHints/, "template form should derive hints in new mode");
   assert.match(formSource, /来源训练项目/, "new template form should show source project context");
   assert.match(formSource, /newTemplateHints\.sourceProject/, "source project field should only appear when project context exists");
@@ -550,12 +569,12 @@ test("training template list creates projects with selected template context", (
 
   const templatesSource = pageSource.slice(templatesStart, formStart);
 
-  assert.match(pageSource, /function createProjectFromTemplateHref/, "template list should build a concrete project-create href");
+  assert.match(resourcePageUtilsSource, /function createProjectFromTemplateHref/, "template list should build a concrete project-create href");
   assert.match(templatesSource, /createProjectFromTemplateHref\(template\)/, "template row create actions should carry the row template context");
   assert.match(templatesSource, /selectedVisibleTemplates\.length === 1 \? selectedVisibleTemplates\[0\] : null/, "top-level template create action should require one explicit selected template");
   assert.match(templatesSource, /ariaLabel=\{`从训练模板创建项目：\$\{projectTemplateSource\.title\}`\}/, "template-source create action should name the selected template");
-  assert.match(pageSource, /templateId:\s*template\.id/, "project-create href should include the template id");
-  assert.match(pageSource, /sections:\s*String\(template\.sections\.length\)/, "project-create href should include the template section count");
+  assert.match(resourcePageUtilsSource, /templateId:\s*template\.id/, "project-create href should include the template id");
+  assert.match(resourcePageUtilsSource, /sections:\s*String\(template\.sections\.length\)/, "project-create href should include the template section count");
   assert.doesNotMatch(templatesSource, /visibleTemplates\[0\]/, "template create-project action should not silently use the first visible template");
   assert.doesNotMatch(templatesSource, /<ButtonLink href="\/training\/projects\/new" icon=\{CopyPlus\}>从模板创建项目<\/ButtonLink>/, "template create-project action should not navigate to a blank project form");
 });

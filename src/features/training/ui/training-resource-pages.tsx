@@ -22,6 +22,17 @@ import { EditorBlock, FolderBreadcrumb, FolderRow, SelectionBatchBar, SortableRo
 import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData } from "@/features/training/data";
 import type { LoraTrainingPreset, LoraTrainingProject, LoraTrainingSectionBlock, LoraTrainingTemplate } from "@/features/training/types";
+import {
+  createProjectFromTemplateHref,
+  findPreset,
+  findTemplate,
+  isProductionTrainingPath,
+  readNewPresetHints,
+  readNewTemplateHints,
+  type NewPresetHints,
+  uniquePresetCategories,
+  uniquePresetFolders,
+} from "./training-resource-page-utils";
 import { useResourceUrlSearch } from "./use-resource-url-search";
 import s from "./training-resource-pages.module.css";
 
@@ -49,26 +60,6 @@ function buildTemplateSectionStateKey(templateId: string, sectionId: string) {
 
 function presetStatus(preset: LoraTrainingPreset) {
   return preset.status === "active" ? <StatusBadge status="ready" label="启用" /> : <StatusBadge status="archived" label="停用" />;
-}
-
-function findPreset(data: TrainingAppData, presetId?: string) {
-  if (!presetId) return undefined;
-  const training = buildLoraTrainingData(data);
-  return training.presets.find((preset) => preset.id === presetId);
-}
-
-function findTemplate(data: TrainingAppData, templateId?: string) {
-  if (!templateId) return undefined;
-  const training = buildLoraTrainingData(data);
-  return training.templates.find((template) => template.id === templateId);
-}
-
-function uniquePresetCategories(presets: LoraTrainingPreset[]) {
-  return Array.from(new Set(presets.reduce<string[]>((items, preset) => [...items, preset.category], [])));
-}
-
-function uniquePresetFolders(presets: LoraTrainingPreset[]) {
-  return Array.from(new Set(presets.reduce<string[]>((items, preset) => [...items, preset.folder], [])));
 }
 
 function moveTemplateBlock(blocks: LoraTrainingSectionBlock[], index: number, direction: -1 | 1) {
@@ -137,53 +128,6 @@ function buildTemplateSectionsFromProject(project: LoraTrainingProject): LoraTra
 function presetUsageLabel(preset: LoraTrainingPreset) {
   const usageCount = preset.projectUsage.length + preset.templateUsage.length;
   return usageCount > 0 ? `${usageCount} 处引用` : "未引用";
-}
-
-function isProductionTrainingPath(pathname: string | null | undefined) {
-  return pathname === "/training" || pathname?.startsWith("/training/") === true;
-}
-
-type NewPresetHints = {
-  artifact: string;
-  category: string;
-  folder: string;
-  project: string;
-  sourceRun: string;
-};
-
-type NewTemplateHints = {
-  projectId: string;
-  sections: string;
-  sourceProject: string;
-};
-
-function readNewPresetHints(search: string) {
-  const searchParams = new URLSearchParams(search);
-  return {
-    artifact: searchParams.get("artifact") ?? "",
-    category: searchParams.get("category") ?? "",
-    folder: searchParams.get("folder") ?? "",
-    project: searchParams.get("project") ?? "",
-    sourceRun: searchParams.get("sourceRun") ?? "",
-  };
-}
-
-function readNewTemplateHints(search: string): NewTemplateHints {
-  const searchParams = new URLSearchParams(search);
-  return {
-    projectId: searchParams.get("projectId") ?? "",
-    sections: searchParams.get("sections") ?? "",
-    sourceProject: searchParams.get("sourceProject") ?? "",
-  };
-}
-
-function createProjectFromTemplateHref(template: LoraTrainingTemplate) {
-  const searchParams = new URLSearchParams({
-    sections: String(template.sections.length),
-    template: template.title,
-    templateId: template.id,
-  });
-  return `/training/projects/new?${searchParams.toString()}`;
 }
 
 function createDraftTrainingPreset(hints: NewPresetHints): LoraTrainingPreset {
