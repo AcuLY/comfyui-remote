@@ -285,6 +285,8 @@
 - Phase 6 slice 8 verification passed: red `node --import tsx --test tests/test-section-preset-detail-links.test.ts`, then green `node --import tsx --test tests/test-section-preset-detail-links.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-section-preset-detail-links.test.ts`, and `npm test` with 1043 tests discovered, 1042 pass, 0 fail, 1 skipped.
 - Phase 6 slice 9 narrowed `src/app/projects/projects-client.tsx` to import project folder actions from `src/lib/actions/project-folder.ts` instead of the full `src/lib/actions.ts` barrel.
 - Phase 6 slice 9 verification passed: red `node --import tsx --test tests/test-project-archive-ui-source.test.ts`, then green `node --import tsx --test tests/test-project-archive-ui-source.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-project-archive-ui-source.test.ts`, and `npm test` with 1044 tests discovered, 1043 pass, 0 fail, 1 skipped.
+- Phase 6 slice 10 narrowed `src/app/projects/[projectId]/app-sidebar.tsx` to import `runProject` from `src/lib/actions/run-execution.ts` and `saveProjectAsTemplate` from `src/lib/actions/template-save.ts` instead of the full `src/lib/actions.ts` barrel.
+- Phase 6 slice 10 verification passed: red `node --import tsx --test tests/test-project-detail-section-batch-size-save.test.ts`, then green `node --import tsx --test tests/test-project-detail-section-batch-size-save.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-project-detail-section-batch-size-save.test.ts`, and `npm test` with 1045 tests discovered, 1044 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 

@@ -55,3 +55,11 @@ test("project detail controls import server actions from focused modules", () =>
     assert.doesNotMatch(source, /from "@\/lib\/actions";/, `${label} should not import the full server-action barrel`);
   }
 });
+
+test("project detail sidebar imports server actions from focused modules", () => {
+  const sidebar = readSource("src/app/projects/[projectId]/app-sidebar.tsx");
+
+  assert.match(sidebar, /from "@\/lib\/actions\/run-execution";/);
+  assert.match(sidebar, /from "@\/lib\/actions\/template-save";/);
+  assert.doesNotMatch(sidebar, /from "@\/lib\/actions";/);
+});

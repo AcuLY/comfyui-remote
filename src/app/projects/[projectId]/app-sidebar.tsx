@@ -13,10 +13,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  runProject,
-  saveProjectAsTemplate,
-} from "@/lib/actions";
+import { runProject } from "@/lib/actions/run-execution";
+import { saveProjectAsTemplate } from "@/lib/actions/template-save";
 import { showRunSubmissionToast } from "@/lib/run-submission-toast";
 import { hrefWithFolderQuery } from "@/lib/folder-navigation";
 import { exportProjectImages } from "@/app/projects/actions-export";
