@@ -20,6 +20,7 @@ import { buildLoraTrainingData } from "@/features/training/build";
 import type { TrainingAppData } from "@/features/training/data";
 import type { LoraTrainingPreset, LoraTrainingSectionBlock, LoraTrainingTemplate } from "@/features/training/types";
 import {
+  createDraftTrainingPreset,
   createProjectFromTemplateHref,
   findPreset,
   findTemplate,
@@ -63,24 +64,6 @@ type TemplateSectionDraftState = {
   templateId: string;
   templateTitle: string;
 };
-
-function createDraftTrainingPreset(hints: NewPresetHints): LoraTrainingPreset {
-  const artifactTitle = hints.artifact.replace(/\.safetensors$/i, "");
-  const sourceLabel = hints.project || artifactTitle;
-  return {
-    id: "new-training-preset",
-    title: sourceLabel ? `${sourceLabel} 训练预制` : "新训练预制",
-    category: hints.category || "未分类",
-    folder: hints.folder || "未归档",
-    status: "active",
-    updatedAt: "本地草稿",
-    sceneDescriptionText: hints.artifact
-      ? `从 ${hints.project || "训练项目"} 的训练产物 ${hints.artifact} 创建，补充后作为可复用场景描述导入训练小节。`
-      : "在这里补充可复用的场景描述，只描述训练小节需要导入的场景文本。",
-    projectUsage: [],
-    templateUsage: [],
-  };
-}
 
 export function LoraTrainingPresetsPage({ data }: { data: TrainingAppData }) {
   const pathname = usePathname();

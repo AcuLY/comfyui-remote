@@ -100,6 +100,12 @@ test("training resource route and query helpers live in a focused utility module
   assert.match(pageSource, /from "\.\/training-resource-page-utils"/, "resource pages should import focused route and query helpers");
 });
 
+test("training preset draft factory lives in the resource page utility module", () => {
+  assert.match(resourcePageUtilsSource, /function createDraftTrainingPreset\b/, "new preset draft creation should live in training-resource-page-utils.ts");
+  assert.doesNotMatch(pageSource, /\nfunction createDraftTrainingPreset\b/, "new preset draft creation should not stay inline in the broad resource pages file");
+  assert.match(pageSource, /createDraftTrainingPreset/, "resource pages should import the focused preset draft factory");
+});
+
 test("training preset sort panel primitives live in a focused module", () => {
   for (const helperName of [
     "orderTrainingPresetSortItems",
@@ -459,12 +465,12 @@ test("training preset new form keeps source run ids out of visible copy", () => 
 });
 
 test("training preset direct creation stays neutral instead of inheriting the first preset", () => {
-  const draftStart = pageSource.indexOf("function createDraftTrainingPreset");
-  const sceneBlockStart = pageSource.indexOf("export function LoraTrainingPresetsPage");
+  const draftStart = resourcePageUtilsSource.indexOf("function createDraftTrainingPreset");
+  const sceneBlockStart = resourcePageUtilsSource.indexOf("export function readNewTemplateHints");
   assert.notEqual(draftStart, -1);
   assert.notEqual(sceneBlockStart, -1);
 
-  const draftSource = pageSource.slice(draftStart, sceneBlockStart);
+  const draftSource = resourcePageUtilsSource.slice(draftStart, sceneBlockStart);
 
   assert.doesNotMatch(draftSource, /training\.presets\[0\]/, "direct new preset drafts should not use the first demo preset as a hidden template");
   assert.doesNotMatch(draftSource, /source\?\.category/, "direct new preset category should come from route hints or a neutral default");
