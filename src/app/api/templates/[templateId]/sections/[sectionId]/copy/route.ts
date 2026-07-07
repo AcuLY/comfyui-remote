@@ -1,5 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
-import { copyProjectTemplateSection } from "@/lib/actions";
+import { copyProjectTemplateSection } from "@/lib/actions/template-crud";
 import { getProjectTemplateDetail } from "@/lib/server-data";
 
 type RouteContext = {

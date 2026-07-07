@@ -1,5 +1,5 @@
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { importTemplateToProject } from "@/lib/actions";
+import { importTemplateToProject } from "@/lib/actions/template-import";
 import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = { params: Promise<{ templateId: string }> };

@@ -1,5 +1,5 @@
 import { failFromError, ok } from "@/lib/api-response";
-import { createProjectTemplate } from "@/lib/actions";
+import { createProjectTemplate } from "@/lib/actions/template-crud";
 import { listProjectTemplates } from "@/lib/server-data";
 import { readJsonObject } from "@/server/http/request-json";
 

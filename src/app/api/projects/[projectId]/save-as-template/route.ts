@@ -1,5 +1,5 @@
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { saveProjectAsTemplate } from "@/lib/actions";
+import { saveProjectAsTemplate } from "@/lib/actions/template-save";
 import { readJsonObject } from "@/server/http/request-json";
 
 type RouteContext = { params: Promise<{ projectId: string }> };

@@ -40,6 +40,13 @@ function listRouteFiles(dir = "src/app/api"): string[] {
   });
 }
 
+function assertImportsFrom(source: string, modulePath: string, routePath: string) {
+  assert.ok(
+    source.includes(`from "${modulePath}"`) || source.includes(`from '${modulePath}'`),
+    `${routePath} should import from ${modulePath}`,
+  );
+}
+
 test("readOptionalJsonObject returns an empty object for empty request bodies", async () => {
   assert.deepEqual(await readOptionalJsonObject(makeRequest("")), {});
 });
@@ -379,6 +386,22 @@ test("generation template mutations use shared raw JSON parsing", () => {
     assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
     assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
     assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+});
+
+test("generation template API routes import actions from focused modules", () => {
+  for (const [routePath, actionModule] of [
+    ["src/app/api/templates/route.ts", "@/lib/actions/template-crud"],
+    ["src/app/api/templates/[templateId]/route.ts", "@/lib/actions/template-crud"],
+    ["src/app/api/templates/[templateId]/import/route.ts", "@/lib/actions/template-import"],
+    ["src/app/api/templates/[templateId]/sections/[sectionId]/copy/route.ts", "@/lib/actions/template-crud"],
+    ["src/app/api/templates/[templateId]/sections/[sectionId]/route.ts", "@/lib/actions/template-crud"],
+    ["src/app/api/projects/[projectId]/save-as-template/route.ts", "@/lib/actions/template-save"],
+  ] as const) {
+    const source = readFileSync(routePath, "utf8");
+
+    assertImportsFrom(source, actionModule, routePath);
+    assert.doesNotMatch(source, /from ["']@\/lib\/actions["']/, `${routePath} should not import the full actions barrel`);
   }
 });
 

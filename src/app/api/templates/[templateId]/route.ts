@@ -1,5 +1,5 @@
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { updateProjectTemplate, deleteProjectTemplate } from "@/lib/actions";
+import { updateProjectTemplate, deleteProjectTemplate } from "@/lib/actions/template-crud";
 import { getProjectTemplateDetail } from "@/lib/server-data";
 import { readJsonObject } from "@/server/http/request-json";
 
