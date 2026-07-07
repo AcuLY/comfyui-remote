@@ -29,6 +29,7 @@ test("worker boundary doc records generation payload and repository ownership", 
   assert.match(doc, /src\/server\/worker\/training\/heartbeat\.ts[\s\S]*owns training worker heartbeat handling/);
   assert.match(doc, /src\/server\/worker\/training\/completion\.ts[\s\S]*owns training worker completion handling/);
   assert.match(doc, /src\/server\/worker\/training\/failure\.ts[\s\S]*owns training worker failure handling/);
+  assert.match(doc, /src\/server\/worker\/training\/scheduler\.ts[\s\S]*owns training worker scheduler handling/);
   assert.match(doc, /docs\/workflow\.api\.json[\s\S]*default standard workflow/);
   assert.match(doc, /Do not let repositories import payload builders/);
   assert.match(doc, /Do not reintroduce worker task ID prefix parsing into task-api/);
@@ -37,6 +38,7 @@ test("worker boundary doc records generation payload and repository ownership", 
   assert.match(doc, /Do not reintroduce heartbeat request parsing or heartbeat progress writes into task-api/);
   assert.match(doc, /Do not reintroduce completion request parsing or artifact completion writes into task-api/);
   assert.match(doc, /Do not reintroduce failure request parsing or failure status writes into task-api/);
+  assert.match(doc, /Do not reintroduce scheduler tick routing or training progress writes into task-api/);
   assert.match(doc, /Do not call the fallback prompt builder from run-executor/);
   assert.match(docsIndex, /docs\/worker-boundaries\.md/, "documentation index should point agents to worker boundaries");
 });
@@ -87,7 +89,12 @@ test("training worker task id parsing lives in a dedicated boundary", async () =
 
   const taskApi = readSource("src/server/worker/training/task-api.ts");
   const taskIdSource = readSource(taskIdPath);
-  assert.match(taskApi, /from "@\/server\/worker\/training\/task-id"/);
+  const taskIdConsumers = [
+    readSource("src/server/worker/training/scheduler.ts"),
+    readSource("src/server/worker/training/task-serialization.ts"),
+    readSource("src/server/worker/training/target-discovery.ts"),
+  ].join("\n");
+  assert.match(taskIdConsumers, /from "@\/server\/worker\/training\/task-id"/);
   assert.doesNotMatch(taskApi, /const GENERATION_WORKER_TASK_PREFIX/);
   assert.doesNotMatch(taskApi, /function parseWorkerTaskId/);
   assert.doesNotMatch(taskApi, /function workerTypeForTargetType/);
@@ -137,7 +144,14 @@ test("training worker target discovery lives in a dedicated boundary", async () 
 
   const taskApi = readSource("src/server/worker/training/task-api.ts");
   const targetDiscoverySource = readSource(targetDiscoveryPath);
-  assert.match(taskApi, /from "@\/server\/worker\/training\/target-discovery"/);
+  const targetDiscoveryConsumers = [
+    readSource("src/server/worker/training/completion.ts"),
+    readSource("src/server/worker/training/failure.ts"),
+    readSource("src/server/worker/training/heartbeat.ts"),
+    readSource("src/server/worker/training/leasing.ts"),
+    readSource("src/server/worker/training/scheduler.ts"),
+  ].join("\n");
+  assert.match(targetDiscoveryConsumers, /from "@\/server\/worker\/training\/target-discovery"/);
   assert.doesNotMatch(taskApi, /function mapGenerationTaskToTarget/);
   assert.doesNotMatch(taskApi, /async function countWorkerTargets/);
   assert.doesNotMatch(taskApi, /async function findQueuedWorkerTarget/);
@@ -226,7 +240,7 @@ test("training worker leasing lives in a dedicated boundary", async () => {
   const leasingSource = readSource(leasingPath);
   const serializerSource = readSource(serializerPath);
   assert.match(taskApi, /from "@\/server\/worker\/training\/leasing"/);
-  assert.match(taskApi, /from "@\/server\/worker\/training\/task-serialization"/);
+  assert.match(leasingSource, /from "@\/server\/worker\/training\/task-serialization"/);
   assert.doesNotMatch(taskApi, /async function markWorkerTargetRunning/);
   assert.doesNotMatch(taskApi, /export async function leaseNextTrainingWorkerTask/);
   assert.doesNotMatch(taskApi, /trainingWorkerTaskLeaseRequestSchema/);
@@ -265,7 +279,7 @@ test("training worker heartbeat lives in a dedicated boundary", async () => {
   const heartbeatSource = readSource(heartbeatPath);
   const jsonSource = readSource(jsonPath);
   assert.match(taskApi, /from "@\/server\/worker\/training\/heartbeat"/);
-  assert.match(taskApi, /from "@\/server\/worker\/training\/task-json"/);
+  assert.match(heartbeatSource, /from "@\/server\/worker\/training\/task-json"/);
   assert.doesNotMatch(taskApi, /trainingWorkerTaskHeartbeatRequestSchema/);
   assert.doesNotMatch(taskApi, /export async function heartbeatTrainingWorkerTask/);
   assert.doesNotMatch(taskApi, /function normalizeJson/);
@@ -323,4 +337,24 @@ test("training worker failure lives in a dedicated boundary", () => {
   assert.match(failureSource, /export async function failGenerationTaskWorkerTarget/);
   assert.match(failureSource, /trainingWorkerTaskFailRequestSchema/);
   assert.match(failureSource, /providerError/);
+});
+
+test("training worker scheduler lives in a dedicated boundary", () => {
+  const schedulerPath = "src/server/worker/training/scheduler.ts";
+  assert.ok(existsSync(join(repoRoot, schedulerPath)), `${schedulerPath} should own worker scheduler handling`);
+
+  const taskApi = readSource("src/server/worker/training/task-api.ts");
+  const schedulerSource = readSource(schedulerPath);
+  assert.match(taskApi, /from "@\/server\/worker\/training\/scheduler"/);
+  assert.doesNotMatch(taskApi, /export async function/);
+  assert.doesNotMatch(taskApi, /TRAINING_WORKER_TYPES/);
+  assert.doesNotMatch(taskApi, /workerTypeForTargetType/);
+  assert.doesNotMatch(taskApi, /countWorkerTargets/);
+  assert.doesNotMatch(taskApi, /PrismaClientKnownRequestError/);
+  assert.match(schedulerSource, /export async function getTrainingWorkerQueueStatus/);
+  assert.match(schedulerSource, /export async function tickTrainingWorkerScheduler/);
+  assert.match(schedulerSource, /export async function progressTrainingRunWorkerTarget/);
+  assert.match(schedulerSource, /TRAINING_WORKER_TYPES/);
+  assert.match(schedulerSource, /workerTypeForTargetType/);
+  assert.match(schedulerSource, /countWorkerTargets/);
 });
