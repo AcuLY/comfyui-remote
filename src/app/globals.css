@@ -4,8 +4,8 @@
 
 /* 浅色模式 */
 :root[data-theme="light"] {
-  --bg: #f5f7fa;
-  --fg: #1a1a1a;
+  --bg: #f7f9fb;
+  --fg: #16181d;
   --panel: #ffffff;
   --panel-soft: #e8ecf1;
 
@@ -55,9 +55,9 @@
 :root,
 :root[data-theme="dark"] {
   --bg: #09090b;
-  --fg: #f4f4f5;
-  --panel: #111217;
-  --panel-soft: #171923;
+  --fg: #fafafa;
+  --panel: #18181b;
+  --panel-soft: #27272a;
 
   /* shadcn dark theme */
   --background: oklch(0.145 0 0);
