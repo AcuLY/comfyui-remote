@@ -7,6 +7,7 @@ const filterHookPath = "src/app/projects/[projectId]/results/use-project-results
 const toolbarPath = "src/app/projects/[projectId]/results/project-results-toolbar.tsx";
 const galleryPath = "src/app/projects/[projectId]/results/project-results-gallery.tsx";
 const lightboxPath = "src/app/projects/[projectId]/results/project-results-lightbox.tsx";
+const mutationAdapterPath = "src/app/projects/[projectId]/results/use-project-results-mutations.ts";
 
 test("project results filter state lives in a focused route hook", () => {
   assert.ok(existsSync(filterHookPath), `${filterHookPath} should own project results filter state`);
@@ -66,4 +67,29 @@ test("project results lightbox shell lives in a focused component", () => {
   assert.match(routeSource, /from "\.\/project-results-lightbox";/);
   assert.doesNotMatch(routeSource, /data-project-results-lightbox/);
   assert.doesNotMatch(routeSource, /<QuickCensorCanvas/);
+});
+
+test("project results mutations live in a focused route adapter hook", () => {
+  assert.ok(existsSync(mutationAdapterPath), `${mutationAdapterPath} should own project results mutations`);
+
+  const routeSource = readFileSync(routePath, "utf8");
+  const mutationSource = readFileSync(mutationAdapterPath, "utf8");
+
+  assert.match(mutationSource, /export function useProjectResultsMutationAdapter/);
+  assert.match(mutationSource, /submitReviewMutation/);
+  assert.match(mutationSource, /censorImage/);
+  assert.match(mutationSource, /getNextImageIdAfterCurrentLeavesSequence/);
+  assert.match(mutationSource, /ManualCensorUploadResponse/);
+
+  assert.match(routeSource, /from "\.\/use-project-results-mutations";/);
+  assert.match(routeSource, /setLightboxImageIdAndResetQuickCensor/);
+  assert.doesNotMatch(routeSource, /from "@\/lib\/actions\/image-review";/);
+  assert.doesNotMatch(routeSource, /from "@\/lib\/client-review-mutation";/);
+  assert.doesNotMatch(routeSource, /from "@\/lib\/review-lightbox-state";/);
+  assert.doesNotMatch(routeSource, /useEffect\(\(\) => \{\s*setQuickCensorMode\(false\);\s*\}, \[lightboxImageId\]\)/);
+  assert.doesNotMatch(routeSource, /const handleToggleFeatured = useCallback/);
+  assert.doesNotMatch(routeSource, /const finishQuickCensor = useCallback/);
+  assert.doesNotMatch(routeSource, /const reviewLightboxImage = useCallback/);
+  assert.doesNotMatch(routeSource, /const runAutoCensorLightboxImage = useCallback/);
+  assert.doesNotMatch(routeSource, /const handleTrashAllImages = useCallback/);
 });

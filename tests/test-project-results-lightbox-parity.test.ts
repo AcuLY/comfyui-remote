@@ -33,6 +33,7 @@ test("filtered lightbox advances to the next matching image when the current ima
 test("project results lightbox exposes review and censor controls like section results", () => {
   const routeSource = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
   const lightboxSource = readSource("src/app/projects/[projectId]/results/project-results-lightbox.tsx");
+  const mutationSource = readSource("src/app/projects/[projectId]/results/use-project-results-mutations.ts");
 
   assert.match(
     lightboxSource,
@@ -40,7 +41,7 @@ test("project results lightbox exposes review and censor controls like section r
     "project results lightbox should reuse the quick-censor canvas",
   );
   assert.match(
-    routeSource,
+    mutationSource,
     /from ["']@\/lib\/client-review-mutation["']/,
     "project results lightbox should use the same background review API as section results",
   );
@@ -50,12 +51,12 @@ test("project results lightbox exposes review and censor controls like section r
     "project results lightbox should track quick censor mode",
   );
   assert.match(
-    routeSource,
+    mutationSource,
     /\/api\/images\/\$\{encodeURIComponent\(lightboxImage\.id\)\}\/manual-censor/,
     "finished quick censor should upload to the manual censor route",
   );
   assert.match(
-    routeSource,
+    mutationSource,
     /setShowCensoredMode\(true\)/,
     "finished quick censor should switch the preview to the saved censored image",
   );
@@ -80,7 +81,7 @@ test("project results lightbox exposes review and censor controls like section r
     "project results lightbox should expose a censored-version toggle",
   );
   assert.match(
-    routeSource,
+    mutationSource,
     /censorImage\(imageId\)/,
     "project results lightbox should expose the automatic single-image censor action",
   );
@@ -92,18 +93,20 @@ test("project results lightbox exposes review and censor controls like section r
 });
 
 test("project results import image review actions from focused module", () => {
-  const source = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+  const routeSource = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+  const mutationSource = readSource("src/app/projects/[projectId]/results/use-project-results-mutations.ts");
 
-  assert.match(source, /from "@\/lib\/actions\/image-review";/);
-  assert.doesNotMatch(source, /from "@\/lib\/actions";/);
+  assert.match(mutationSource, /from "@\/lib\/actions\/image-review";/);
+  assert.doesNotMatch(mutationSource, /from "@\/lib\/actions";/);
+  assert.doesNotMatch(routeSource, /from "@\/lib\/actions\/image-review";/);
 });
 
 test("project results review actions update local image state before awaiting the API", () => {
-  const source = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+  const source = readSource("src/app/projects/[projectId]/results/use-project-results-mutations.ts");
   const reviewLightboxImage = sourceSlice(
     source,
     "const reviewLightboxImage = useCallback",
-    "  const handleTrashAllImages = useCallback",
+    "  const runAutoCensorLightboxImage = useCallback",
   );
 
   assert.match(
@@ -184,25 +187,26 @@ test("project results lightbox supports the same review shortcuts as section res
 });
 
 test("project results marker removal keeps the filtered lightbox open and supports plain Z undo", () => {
-  const source = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+  const routeSource = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+  const mutationSource = readSource("src/app/projects/[projectId]/results/use-project-results-mutations.ts");
   const handleToggleFeatured = sourceSlice(
-    source,
+    mutationSource,
     "  const handleToggleFeatured = useCallback",
     "  const handleToggleFeatured2 = useCallback",
   );
   const handleToggleFeatured2 = sourceSlice(
-    source,
+    mutationSource,
     "  const handleToggleFeatured2 = useCallback",
-    "  const handleSetCover = useCallback",
+    "  const handleUndoMarkerToggle = useCallback",
   );
   const shortcuts = sourceSlice(
-    source,
+    routeSource,
     "function handleKeyDown(event: KeyboardEvent) {",
     "    window.addEventListener(\"keydown\", handleKeyDown);",
   );
 
   assert.match(
-    source,
+    mutationSource,
     /getNextImageIdAfterCurrentLeavesSequence/,
     "project results should share the filtered lightbox replacement helper",
   );
@@ -227,12 +231,12 @@ test("project results marker removal keeps the filtered lightbox open and suppor
     "preview removal should keep the lightbox pointed at the replacement image",
   );
   assert.match(
-    source,
+    mutationSource,
     /const \[markerUndoStack, setMarkerUndoStack\]/,
     "project results should keep marker toggle undo entries",
   );
   assert.match(
-    source,
+    mutationSource,
     /const handleUndoMarkerToggle = useCallback/,
     "project results should expose a marker undo handler",
   );
