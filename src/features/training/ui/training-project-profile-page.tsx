@@ -2,17 +2,15 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { Edit3, FileText, ImagePlus, Save, Trash2 } from "lucide-react";
+import { FileText, Save } from "lucide-react";
 
 import { cx } from "@/components/design-demo-ui/primitives/classnames";
 import { useDemoFeedback } from "@/components/design-demo-ui/feedback/context";
 import { ImagePreviewLarge } from "@/components/design-demo-ui/media/image-preview-large";
-import { ImageThumbMedium } from "@/components/design-demo-ui/media/image-thumb-medium";
 import { Button } from "@/components/design-demo-ui/primitives/button";
 import { EmptyPage } from "@/components/design-demo-ui/primitives/empty-page";
 import { Field } from "@/components/design-demo-ui/primitives/field";
 import { Panel } from "@/components/design-demo-ui/primitives/panel";
-import { StatusBadge } from "@/components/design-demo-ui/primitives/status-badge";
 import type { TrainingAppData } from "@/features/training/data";
 import type { LoraTrainingReferenceImage } from "@/features/training/types";
 
@@ -24,11 +22,11 @@ import {
   formatProfileRevisionTime,
   isTrainingTextRevisionItem,
   profileRevisionFieldConfig,
-  referenceKindLabel,
   type TrainingProfileRevisionField,
   type TrainingTextRevisionItem,
 } from "./project-page-utils";
 import { ProjectHeader } from "./project-page-shell";
+import { TrainingProjectReferenceImagePanel } from "./training-project-reference-image-panel";
 import s from "./training-project-pages.module.css";
 
 export function LoraTrainingProjectProfilePage({ data, projectId }: { data: TrainingAppData; projectId?: string }) {
@@ -622,104 +620,24 @@ export function LoraTrainingProjectProfilePage({ data, projectId }: { data: Trai
         )}
       />
       <div className={s.twoCol}>
-        <Panel title="参考图" subtitle="original / generated / auxiliary 都作为自由参考图管理，不做 fixed slots。">
-          <div className={s.stack}>
-            <div className={s.referenceImageGrid}>
-              {localReferenceImages.map((reference) => (
-                <article className={s.referenceImageCard} key={reference.id}>
-                  <div className={s.referenceImageThumb}>
-                    <ImageThumbMedium
-                      image={reference.image}
-                      onOpen={() => setActiveReferenceImageId(reference.id)}
-                      showStatus={false}
-                      tags={[referenceKindLabel(reference.kind)]}
-                    />
-                  </div>
-                  <div>
-                    {editingReferenceImageId === reference.id ? (
-                      <div className={s.referenceImageEditFields}>
-                        <Field
-                          label="参考图名称"
-                          value={reference.label}
-                          onChange={(value) => handleUpdateReferenceImageDraft(reference.id, { label: value })}
-                        />
-                        <Field
-                          multiline
-                          features={{ resize: true, clipboard: true }}
-                          label="参考图备注"
-                          value={reference.note}
-                          onChange={(value) => handleUpdateReferenceImageDraft(reference.id, { note: value })}
-                        />
-                      </div>
-                    ) : (
-                      <>
-                        <strong>{reference.label}</strong>
-                        <p>{reference.note}</p>
-                      </>
-                    )}
-                    {addedReferenceResultIds.has(reference.id) ? <StatusBadge status="pending" label="已加入结果池" /> : null}
-                    <div className={s.referenceImageActions}>
-                      <Button
-                        className={s.referenceImageResultAction}
-                        size="sm"
-                        tone="primary"
-                        pending={pendingReferenceIds.has(reference.id)}
-                        disabled={addedReferenceResultIds.has(reference.id)}
-                        onClick={() => handleAddReferenceImageToResults(reference.id, reference.label)}
-                      >
-                        {addedReferenceResultIds.has(reference.id) ? "已加入结果池" : "加入结果池"}
-                      </Button>
-                      <div className={s.referenceImageSecondaryActions}>
-                        <Button
-                          size="sm"
-                          tone="subtle"
-                          icon={Edit3}
-                          iconOnly
-                          ariaLabel={editingReferenceImageId === reference.id ? `收起参考图编辑：${reference.label}` : `编辑参考图：${reference.label}`}
-                          onClick={() => setEditingReferenceImageId(editingReferenceImageId === reference.id ? null : reference.id)}
-                        >
-                          {editingReferenceImageId === reference.id ? "收起" : "编辑"}
-                        </Button>
-                        {editingReferenceImageId === reference.id ? (
-                          <Button
-                            size="sm"
-                            tone="primary"
-                            icon={Save}
-                            iconOnly
-                            pending={savingReferenceImageIds.has(reference.id)}
-                            ariaLabel={`保存参考图：${reference.label}`}
-                            onClick={() => handleSaveReferenceImage(reference)}
-                          >
-                            保存
-                          </Button>
-                        ) : null}
-                        <Button
-                          size="sm"
-                          tone="danger"
-                          icon={Trash2}
-                          iconOnly
-                          pending={deletingReferenceImageIds.has(reference.id)}
-                          ariaLabel={`删除参考图：${reference.label}`}
-                          onClick={() => handleDeleteReferenceImage(reference.id, reference.label)}
-                        >
-                          删除
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-            <input
-              ref={referenceUploadInputRef}
-              hidden
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              onChange={handleReferenceImageFileChange}
-            />
-            <Button icon={ImagePlus} pending={isUploadingReferenceImage} onClick={handleUploadReferenceImage}>上传参考图</Button>
-          </div>
-        </Panel>
+        <TrainingProjectReferenceImagePanel
+          addedReferenceResultIds={addedReferenceResultIds}
+          deletingReferenceImageIds={deletingReferenceImageIds}
+          editingReferenceImageId={editingReferenceImageId}
+          isUploadingReferenceImage={isUploadingReferenceImage}
+          onAddReferenceImageToResults={handleAddReferenceImageToResults}
+          onDeleteReferenceImage={handleDeleteReferenceImage}
+          onOpenReferenceImage={setActiveReferenceImageId}
+          onReferenceImageFileChange={handleReferenceImageFileChange}
+          onSaveReferenceImage={handleSaveReferenceImage}
+          onToggleReferenceImageEdit={(referenceId) => setEditingReferenceImageId(editingReferenceImageId === referenceId ? null : referenceId)}
+          onUpdateReferenceImageDraft={handleUpdateReferenceImageDraft}
+          onUploadReferenceImage={handleUploadReferenceImage}
+          pendingReferenceIds={pendingReferenceIds}
+          referenceUploadInputRef={referenceUploadInputRef}
+          references={localReferenceImages}
+          savingReferenceImageIds={savingReferenceImageIds}
+        />
         <Panel title="角色文本">
           <div className={cx(s.formStack, s.profileTextFields)}>
             <div className={s.profileFieldShell}>

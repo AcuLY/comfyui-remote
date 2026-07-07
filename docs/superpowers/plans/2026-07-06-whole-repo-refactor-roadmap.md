@@ -525,6 +525,8 @@
 - Phase 8 slice 128 verification passed: red `node --import tsx --test tests/test-training-run-detail-page.test.ts`, green `node --import tsx --test tests/test-training-run-detail-page.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-run-detail-page.test.ts tests/test-training-frontend-api-contract.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1171 tests discovered, 1170 pass, 0 fail, 1 skipped.
 - Phase 8 slice 129 moved the generation-output thumbnail/lightbox grid into `src/features/training/ui/training-run-generation-output-grid.tsx`. The focused component owns generation output thumbnails, review/apply action rail, applied-state badges, lightbox navigation, and output-review button labels while `training-run-detail-page.tsx` now stays under 800 lines and keeps run state plus HTTP mutation handlers.
 - Phase 8 slice 129 verification passed: red `node --import tsx --test tests/test-training-run-detail-page.test.ts`, green `node --import tsx --test tests/test-training-run-detail-page.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-run-detail-page.test.ts tests/test-training-frontend-api-contract.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, stale thumbnail source-contract assertions fixed with green `node --import tsx --test tests/test-training-run-detail-page.test.ts tests/test-training-image-thumbnail-contract.test.ts`, and `npm test` with 1172 tests discovered, 1171 pass, 0 fail, 1 skipped.
+- Phase 8 slice 130 moved the project-profile reference image card panel into `src/features/training/ui/training-project-reference-image-panel.tsx`. The focused component owns reference thumbnails, editable label/note controls, upload input wiring, result-pool action UI, and card action labels while `training-project-profile-page.tsx` now stays under 800 lines and keeps profile/reference state plus HTTP mutation handlers.
+- Phase 8 slice 130 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-frontend-api-contract.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1173 tests discovered, 1172 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1145,6 +1147,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/features/training/ui/index.ts`
 - `src/features/training/ui/training-project-pages.tsx`
 - `src/features/training/ui/training-project-pages.module.css`
+- `src/features/training/ui/training-project-reference-image-panel.tsx`
 - `src/features/training/ui/training-projects-page.tsx`
 - `src/features/training/ui/training-projects-page.module.css`
 - `src/features/training/ui/training-project-list-item.tsx`
@@ -1178,9 +1181,9 @@ Loading states remain colocated under their route segments for now; the later lo
 - [x] Move pure helpers from `training-project-pages.tsx` into `src/features/training/ui/project-page-utils.ts` or domain-specific files.
 - [x] Move hooks from `training-project-pages.tsx` into focused hook files: URL search, upload previews, section draft state, reference picker state, result review state.
 - [x] Split `training-resource-pages.tsx` into presets, templates, scene description categories/folders/presets, and shared resource list primitives.
-- [ ] Keep `training-runs-page.tsx` and `training-run-detail-page.tsx` separate from project-scoped run rows unless shared components are extracted.
-- [ ] Ensure every split preserves existing tests: `test-training-project-pages`, `test-training-resource-pages`, `test-training-run-detail-page`, `test-training-runs-page`, `test-training-list-layout`, and route-data tests.
-- [ ] Keep mobile layout and bottom-nav work-mode behavior under regression tests.
+- [x] Keep `training-runs-page.tsx` and `training-run-detail-page.tsx` separate from project-scoped run rows unless shared components are extracted.
+- [x] Ensure every split preserves existing tests: `test-training-project-pages`, `test-training-resource-pages`, `test-training-run-detail-page`, `test-training-runs-page`, `test-training-list-layout`, and route-data tests.
+- [x] Keep mobile layout and bottom-nav work-mode behavior under regression tests.
 
 ## Phase 9: Shared Components And Design System
 

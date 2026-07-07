@@ -14,6 +14,10 @@ const projectDetailPagePath = resolve(featureUiDir, "training-project-detail-pag
 const projectDetailPageSource = existsSync(projectDetailPagePath) ? readFileSync(projectDetailPagePath, "utf8") : "";
 const projectProfilePagePath = resolve(featureUiDir, "training-project-profile-page.tsx");
 const projectProfilePageSource = existsSync(projectProfilePagePath) ? readFileSync(projectProfilePagePath, "utf8") : "";
+const projectReferenceImagePanelPath = resolve(featureUiDir, "training-project-reference-image-panel.tsx");
+const projectReferenceImagePanelSource = existsSync(projectReferenceImagePanelPath)
+  ? readFileSync(projectReferenceImagePanelPath, "utf8")
+  : "";
 const projectSectionsPagePath = resolve(featureUiDir, "training-project-sections-page.tsx");
 const projectSectionsPageSource = existsSync(projectSectionsPagePath) ? readFileSync(projectSectionsPagePath, "utf8") : "";
 const projectSectionDetailPagePath = resolve(featureUiDir, "training-project-section-detail-page.tsx");
@@ -136,6 +140,29 @@ test("training project profile page lives in a focused page module", () => {
   assert.match(projectProfilePageSource, /export function LoraTrainingProjectProfilePage/, "project profile implementation should live in its own module");
   assert.match(pagesSource, /export \{ LoraTrainingProjectProfilePage \} from "\.\/training-project-profile-page";/, "broad project pages module should retain a compatibility re-export");
   assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectProfilePage/, "broad project pages module should not keep the profile implementation inline");
+});
+
+test("training profile reference image panel lives in a focused component module", () => {
+  assert.match(
+    projectReferenceImagePanelSource,
+    /export function TrainingProjectReferenceImagePanel\b/,
+    "profile reference image cards should live in a focused component module",
+  );
+  assert.match(
+    projectProfilePageSource,
+    /from "\.\/training-project-reference-image-panel"/,
+    "profile page should import the focused reference image panel",
+  );
+  assert.match(
+    projectProfilePageSource,
+    /<TrainingProjectReferenceImagePanel\b/,
+    "profile page should delegate reference image card rendering to the focused panel",
+  );
+  assert.doesNotMatch(
+    projectProfilePageSource,
+    /localReferenceImages\.map/,
+    "profile page should not keep reference image card mapping inline",
+  );
 });
 
 test("training project sections page lives in a focused page module", () => {
@@ -509,19 +536,21 @@ test("training project overview archives and restores through the formal HTTP AP
 
 test("training profile page renders reference image cards with kind, label, and note", () => {
   const profileSource = projectProfilePageSource;
+  const panelSource = projectReferenceImagePanelSource;
 
   assert.match(profileSource, /referenceImages/, "profile should render project reference image fixtures");
-  assert.match(profileSource, /referenceImageCard/, "profile should use explicit reference image cards");
-  assert.match(profileSource, /reference\.kind/, "reference cards should show original/generated/auxiliary kind");
-  assert.match(profileSource, /reference\.label/, "reference cards should show editable labels");
-  assert.match(profileSource, /reference\.note/, "reference cards should show notes");
+  assert.match(panelSource, /referenceImageCard/, "profile reference image panel should use explicit reference image cards");
+  assert.match(panelSource, /reference\.kind/, "reference cards should show original/generated/auxiliary kind");
+  assert.match(panelSource, /reference\.label/, "reference cards should show editable labels");
+  assert.match(panelSource, /reference\.note/, "reference cards should show notes");
 });
 
 test("training profile page places reference images before profile text", () => {
   const profileSource = projectProfilePageSource;
-  const referencePanelIndex = profileSource.indexOf('<Panel title="参考图"');
+  const referencePanelIndex = profileSource.indexOf("<TrainingProjectReferenceImagePanel");
   const textPanelIndex = profileSource.indexOf('<Panel title="角色文本"');
 
+  assert.match(projectReferenceImagePanelSource, /<Panel title="参考图"/, "profile reference image panel should render the reference image panel");
   assert.ok(referencePanelIndex >= 0, "profile should render the reference image panel");
   assert.ok(textPanelIndex >= 0, "profile should render the profile text panel");
   assert.ok(referencePanelIndex < textPanelIndex, "reference images should appear before prompt fields");
@@ -529,15 +558,16 @@ test("training profile page places reference images before profile text", () => 
 
 test("training profile page edits reference image label and note from local card state", () => {
   const profileSource = projectProfilePageSource;
+  const panelSource = projectReferenceImagePanelSource;
 
   assert.match(profileSource, /editingReferenceImageId/, "profile should track the reference card currently being edited");
   assert.match(profileSource, /handleUpdateReferenceImageDraft/, "profile should update reference label and note in local card state");
-  assert.match(profileSource, /label="参考图名称"/, "reference card edit mode should expose an editable label field");
-  assert.match(profileSource, /label="参考图备注"/, "reference card edit mode should expose an editable note field");
-  assert.match(profileSource, /value=\{reference\.label\}/, "reference label input should render from the current local card value");
-  assert.match(profileSource, /value=\{reference\.note\}/, "reference note input should render from the current local card value");
-  assert.match(profileSource, /onClick=\{\(\) => handleSaveReferenceImage\(reference\)\}/, "reference cards should save edited metadata explicitly");
-  assert.match(profileSource, /onClick=\{\(\) => handleDeleteReferenceImage\(reference\.id, reference\.label\)\}/, "reference cards should expose an explicit delete action");
+  assert.match(panelSource, /label="参考图名称"/, "reference card edit mode should expose an editable label field");
+  assert.match(panelSource, /label="参考图备注"/, "reference card edit mode should expose an editable note field");
+  assert.match(panelSource, /value=\{reference\.label\}/, "reference label input should render from the current local card value");
+  assert.match(panelSource, /value=\{reference\.note\}/, "reference note input should render from the current local card value");
+  assert.match(panelSource, /onClick=\{\(\) => onSaveReferenceImage\(reference\)\}/, "reference cards should save edited metadata explicitly");
+  assert.match(panelSource, /onClick=\{\(\) => onDeleteReferenceImage\(reference\.id, reference\.label\)\}/, "reference cards should expose an explicit delete action");
 });
 
 test("training profile page persists reference image metadata and deletion through formal HTTP APIs", () => {
@@ -554,13 +584,16 @@ test("training profile page persists reference image metadata and deletion throu
 
 test("training profile page uploads reference images into local front-end state", () => {
   const profileSource = projectProfilePageSource;
+  const panelSource = projectReferenceImagePanelSource;
 
   assert.match(profileSource, /localReferenceImages/, "profile should render references from local editable state");
   assert.match(profileSource, /setLocalReferenceImages/, "profile upload action should update local state");
   assert.match(profileSource, /handleUploadReferenceImage/, "profile should define a local upload simulation");
   assert.match(profileSource, /kind:\s*"auxiliary"/, "uploaded demo references should enter as auxiliary references");
-  assert.match(profileSource, /localReferenceImages\.map/, "reference cards should render the local reference list");
-  assert.match(profileSource, /onClick=\{handleUploadReferenceImage\}/, "upload action should call the local upload handler");
+  assert.match(profileSource, /references=\{localReferenceImages\}/, "profile should pass the local reference list to the panel");
+  assert.match(profileSource, /onUploadReferenceImage=\{handleUploadReferenceImage\}/, "profile should pass the upload handler to the panel");
+  assert.match(panelSource, /references\.map/, "reference cards should render the local reference list");
+  assert.match(panelSource, /onClick=\{onUploadReferenceImage\}/, "upload action should call the local upload handler");
   assert.doesNotMatch(profileSource, /上传参考图入口已预览/, "reference upload should not remain a feedback-only placeholder");
   assert.doesNotMatch(profileSource, /后续接入文件选择和后端存储/, "reference upload should not expose backend wiring gaps in the UI");
 });
