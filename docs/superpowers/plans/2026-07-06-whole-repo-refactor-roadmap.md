@@ -399,6 +399,8 @@
 - Phase 7 slice 65 verification passed: red `node --import tsx --test tests/test-template-section-detail-split.test.ts`, then green `node --import tsx --test tests/test-template-section-detail-split.test.ts`, green `node --import tsx --test tests/test-template-section-detail-split.test.ts tests/test-template-ui-action-imports.test.ts tests/test-section-preset-detail-links.test.ts tests/test-shared-neighbor-navigation-usage.test.ts tests/text-editor-mobile-height.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1113 tests discovered, 1112 pass, 0 fail, 1 skipped.
 - Phase 7 slice 66 locked the preset sort-rules boundary with a source contract: `src/app/assets/presets/sort-rules/sort-rules-editor.tsx` owns its local dimension order state and `updateCategorySortOrders`, while `preset-form.tsx` and `[presetId]/preset-edit-client.tsx` stay limited to preset/variant editing state.
 - Phase 7 slice 66 verification passed: green `node --import tsx --test tests/test-preset-form-split.test.ts`, green `node --import tsx --test tests/test-preset-form-split.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1114 tests discovered, 1113 pass, 0 fail, 1 skipped.
+- Phase 7 slice 67 moved pending queue review-group rendering and pagination links into `src/app/queue/queue-pending-tab.tsx`. `queue-page-client.tsx` still owns tab state, polling, running controls, censoring, failed runs, and trash/restore until the remaining queue split subchecks are handled.
+- Phase 7 slice 67 verification passed: red `node --import tsx --test tests/test-queue-page-client-split.test.ts`, then green `node --import tsx --test tests/test-queue-page-client-split.test.ts`, green `node --import tsx --test tests/test-queue-page-client-split.test.ts tests/test-queue-autopoll-no-router-refresh.test.ts tests/test-queue-trash-restore.test.ts tests/test-queue-control-progress-stream.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-run-submission-deferral.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1115 tests discovered, 1114 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -984,6 +986,9 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/app/settings/monitor/page.tsx`
 
 - [ ] Keep queue list, active progress, review group pagination, and trash/restore state separate.
+  - [x] Pending review-group list and pagination extracted to `src/app/queue/queue-pending-tab.tsx` and covered by `tests/test-queue-page-client-split.test.ts`.
+  - [ ] Active run progress and controls extracted from `queue-page-client.tsx`.
+  - [ ] Trash/restore list, pagination, and local restore state extracted from `queue-page-client.tsx`.
 - [ ] Keep queue page autopoll behavior from causing `router.refresh` loops.
 - [ ] Keep review grid selection, action strip, keyboard shortcuts, and image labeling split into focused components.
 - [ ] Keep settings pages as operational dashboards and avoid adding business logic there.

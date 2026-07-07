@@ -46,7 +46,7 @@ test("image-heavy production pages use document navigation for primary route exi
     ["src/app/projects/[projectId]/sections/[sectionId]/results/page.tsx", "href={`/projects/${projectId}/results`}"],
     ["src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx", "href={resolvedNextPendingSectionHref}"],
     ["src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx", "href={`/queue/${run.id}`}"],
-    ["src/app/queue/queue-page-client.tsx", "href={`/queue/${run.id}`}"],
+    ["src/app/queue/queue-pending-tab.tsx", "href={`/queue/${run.id}`}"],
     ["src/app/queue/[runId]/page.tsx", "href={`/queue#run-${runId}`}"],
     ["src/app/queue/[runId]/page.tsx", "href={`/projects/${group.projectId}/sections/${group.projectSectionId}`}"],
     ["src/app/queue/[runId]/page.tsx", "href={`/projects/${group.projectId}/sections/${group.projectSectionId}/results`}"],
