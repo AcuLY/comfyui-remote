@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ChevronDown, Download, Package, Trash2, Unlink, ClipboardCopy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
-import { resolveTemplatePresetImports, updateProjectTemplateSection } from "@/lib/actions";
+import { resolveTemplatePresetImports, updateProjectTemplateSection } from "@/lib/actions/template-crud";
 import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";

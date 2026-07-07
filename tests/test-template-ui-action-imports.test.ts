@@ -23,3 +23,10 @@ test("template form imports server actions from focused modules", () => {
   assert.match(source, /from "@\/lib\/actions\/section-folder";/);
   assert.doesNotMatch(source, /from "@\/lib\/actions";/);
 });
+
+test("template section detail imports server actions from focused modules", () => {
+  const source = readSource("src/app/assets/templates/[templateId]/sections/[sectionIndex]/section-detail-client.tsx");
+
+  assert.match(source, /from "@\/lib\/actions\/template-crud";/);
+  assert.doesNotMatch(source, /from "@\/lib\/actions";/);
+});
