@@ -31,6 +31,10 @@ const templateSectionRowPath = resolve(featureUiDir, "training-template-section-
 const templateSectionRowSource = existsSync(templateSectionRowPath)
   ? readFileSync(templateSectionRowPath, "utf8")
   : "";
+const templatePageUtilsPath = resolve(featureUiDir, "training-template-page-utils.ts");
+const templatePageUtilsSource = existsSync(templatePageUtilsPath)
+  ? readFileSync(templatePageUtilsPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
 const headerSpecsSource = readFileSync(resolve(testDir, "../src/features/training/header-specs.ts"), "utf8");
 const legacyPageSource = readFileSync(resolve(testDir, "../src/app/design-demos/features/lora-training/training-resource-pages.tsx"), "utf8");
@@ -137,6 +141,23 @@ test("training template section row primitive lives in a focused module", () => 
   assert.match(templateSectionRowSource, /function TemplateEditorSectionRow\b/, "template section row should live in training-template-section-row.tsx");
   assert.doesNotMatch(pageSource, /function TemplateEditorSectionRow\b/, "template section row should not stay inline in the broad resource pages file");
   assert.match(pageSource, /from "\.\/training-template-section-row"/, "resource pages should import the focused template section row");
+});
+
+test("training template page pure helpers live in a focused module", () => {
+  for (const helperName of [
+    "buildTemplateSectionStateKey",
+    "moveTemplateBlock",
+    "nextTemplateSceneBlockOrdinal",
+    "nextTemplateSectionCopyNumber",
+    "nextTemplateSectionDraftNumber",
+    "orderTemplateSectionsByIds",
+    "orderTrainingTemplatesByIds",
+    "buildTemplateSectionsFromProject",
+  ]) {
+    assert.match(templatePageUtilsSource, new RegExp(`function ${helperName}\\b`), `${helperName} should live in training-template-page-utils.ts`);
+    assert.doesNotMatch(pageSource, new RegExp(`function ${helperName}\\b`), `${helperName} should not stay inline in the broad resource pages file`);
+  }
+  assert.match(pageSource, /from "\.\/training-template-page-utils"/, "resource pages should import focused template page helpers");
 });
 
 test("training resource route helpers do not replace invalid route ids with first fixtures", () => {
@@ -808,8 +829,8 @@ test("training template form scans existing section ids for local copy and draft
 
   const formSource = pageSource.slice(formStart, sectionStart);
 
-  assert.match(pageSource, /function nextTemplateSectionCopyNumber/, "template section copy ids should use a shared ordinal helper");
-  assert.match(pageSource, /function nextTemplateSectionDraftNumber/, "new template section draft ids should use a shared ordinal helper");
+  assert.match(templatePageUtilsSource, /function nextTemplateSectionCopyNumber/, "template section copy ids should use a shared ordinal helper");
+  assert.match(templatePageUtilsSource, /function nextTemplateSectionDraftNumber/, "new template section draft ids should use a shared ordinal helper");
   assert.match(formSource, /nextTemplateSectionCopyNumber\(templateSections, section\.id\)/, "template copy ids should scan existing copied section ids");
   assert.match(formSource, /nextTemplateSectionDraftNumber\(current\)/, "new template section ids should scan existing draft section ids");
   assert.doesNotMatch(formSource, /id:\s*`\$\{section\.id\}-copy-\$\{Date\.now\(\)\}`/, "template copy ids should not depend on Date.now");

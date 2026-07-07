@@ -8,6 +8,7 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const featureRoot = resolve(testDir, "../src/features/training");
 const resourceSource = readFileSync(resolve(featureUiDir, "training-resource-pages.tsx"), "utf8");
+const templatePageUtilsSource = readFileSync(resolve(featureUiDir, "training-template-page-utils.ts"), "utf8");
 const cssSource = readFileSync(resolve(featureUiDir, "training-resource-pages.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
@@ -110,7 +111,7 @@ test("training template section imports training presets into local scene blocks
 test("training template section generates block ids from existing ids instead of list length", () => {
   const templateSectionPage = sourceFrom("export function LoraTrainingTemplateSectionPage");
 
-  assert.match(resourceSource, /function nextTemplateSceneBlockOrdinal/, "template block id generation should use a shared ordinal helper");
+  assert.match(templatePageUtilsSource, /function nextTemplateSceneBlockOrdinal/, "template block id generation should use a shared ordinal helper");
   assert.match(templateSectionPage, /nextTemplateSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-template-local-block-`\)/, "local template block ids should scan existing local ids");
   assert.match(templateSectionPage, /nextTemplateSceneBlockOrdinal\(current, `\$\{activeSection\.id\}-template-preset-block-\$\{preset\.id\}-`\)/, "imported template block ids should scan existing imported ids");
   assert.doesNotMatch(templateSectionPage, /id:\s*`\$\{activeSection\.id\}-template-local-block-\$\{current\.length \+ 1\}`/, "local template block ids should not reuse ids after deleting earlier blocks");
