@@ -123,9 +123,9 @@ const trainingCompleteOutputSchema = z.object({
 
 const trainingWorkerProviderErrorSchema = z.object({
   httpStatus: z.number().int().positive().optional(),
-  backendError: z.string().min(1),
+  backendError: z.string().trim().min(1),
   retryable: z.boolean(),
-});
+}).strict();
 
 export const trainingWorkerTaskLeaseRequestSchema = z.object({
   workerType: trainingWorkerTypeSchema,

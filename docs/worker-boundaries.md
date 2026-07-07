@@ -50,6 +50,8 @@ Do not call the fallback prompt builder from run-executor, repositories, route h
 
 `src/server/worker/training/task-api.ts` is now only the compatibility barrel for existing route handlers. It re-exports the split worker functions and should not grow runtime implementation again.
 
+Worker task request fields must stay schema-validated in `src/lib/training/schemas.ts`: lease owners, heartbeat progress payloads, failure summaries, and provider error payloads should not be validated with ad hoc route or worker-script checks.
+
 Do not reintroduce worker task ID prefix parsing into task-api, route handlers, or CLI worker scripts. Do not reintroduce target discovery queries into task-api; leasing may call discovery helpers, but discovery should stay isolated from completion, heartbeat, and failure handling. Do not reintroduce lease request parsing or mark-running transitions into task-api. Do not reintroduce heartbeat request parsing or heartbeat progress writes into task-api. Do not reintroduce completion request parsing or artifact completion writes into task-api. Do not reintroduce failure request parsing or failure status writes into task-api. Do not reintroduce scheduler tick routing or training progress writes into task-api. New worker task kinds should first extend the task ID and discovery boundaries, then add route/service tests for lease, heartbeat, complete, and fail behavior.
 
 ## Verification

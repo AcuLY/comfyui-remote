@@ -39,6 +39,7 @@ test("worker boundary doc records generation payload and repository ownership", 
   assert.match(doc, /Do not reintroduce completion request parsing or artifact completion writes into task-api/);
   assert.match(doc, /Do not reintroduce failure request parsing or failure status writes into task-api/);
   assert.match(doc, /Do not reintroduce scheduler tick routing or training progress writes into task-api/);
+  assert.match(doc, /lease owners, heartbeat progress payloads, failure summaries, and provider error payloads/);
   assert.match(doc, /Do not call the fallback prompt builder from run-executor/);
   assert.match(docsIndex, /docs\/worker-boundaries\.md/, "documentation index should point agents to worker boundaries");
 });
@@ -81,6 +82,51 @@ test("fallback prompt builder remains a ComfyUI validation last resort", () => {
   assert.match(comfyService, /3\) built-in SDXL txt2img fallback/);
   assert.match(comfyService, /function shouldUseStandardWorkflow\(\)[\s\S]*return true;/);
   assert.match(comfyService, /const standardPrompt = await resolveStandardWorkflowPrompt\(promptDraft\);[\s\S]*apiPrompt = standardPrompt \?\? buildFallbackPromptNodes\(promptDraft\);/);
+});
+
+test("training worker lifecycle request schemas validate ownership, heartbeat, and failure payloads", async () => {
+  const schemasUrl = new URL(pathToFileURL(join(repoRoot, "src/lib/training/schemas.ts")));
+  schemasUrl.searchParams.set("testImport", String(Date.now()));
+  const schemas = await import(schemasUrl.href);
+
+  assert.equal(schemas.trainingWorkerTaskLeaseRequestSchema.safeParse({
+    leaseOwner: " ",
+    workerType: "training",
+  }).success, false, "blank lease owner should be rejected at lease time");
+  assert.equal(schemas.trainingWorkerTaskHeartbeatRequestSchema.safeParse({
+    progressJson: null,
+  }).success, false, "heartbeat progress must be an object when provided");
+  assert.equal(schemas.trainingWorkerTaskFailRequestSchema.safeParse({
+    errorSummary: " ",
+  }).success, false, "blank failure summary should be rejected");
+  assert.equal(schemas.trainingWorkerTaskFailRequestSchema.safeParse({
+    errorSummary: "failed",
+    providerError: {
+      backendError: " ",
+      retryable: false,
+    },
+  }).success, false, "blank provider backend errors should be rejected");
+  assert.equal(schemas.trainingWorkerTaskFailRequestSchema.safeParse({
+    errorSummary: "failed",
+    providerError: {
+      backendError: "backend",
+      retryable: false,
+      secretToken: "do-not-strip-silently",
+    },
+  }).success, false, "provider errors should reject unknown fields instead of stripping them");
+
+  const parsed = schemas.trainingWorkerTaskFailRequestSchema.parse({
+    errorSummary: " failed ",
+    leaseOwner: " worker-1 ",
+    providerError: {
+      backendError: " backend ",
+      httpStatus: 502,
+      retryable: true,
+    },
+  });
+  assert.equal(parsed.errorSummary, "failed");
+  assert.equal(parsed.leaseOwner, "worker-1");
+  assert.equal(parsed.providerError.backendError, "backend");
 });
 
 test("training worker task id parsing lives in a dedicated boundary", async () => {
