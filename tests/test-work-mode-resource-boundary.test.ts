@@ -967,8 +967,6 @@ test("generation project, template, and agent entrypoints reuse the generation p
 test("generation review and image API entrypoints reuse the generation project boundary", () => {
   for (const [label, source] of [
     ["generation review repository", generationReviewRepositorySource],
-    ["generation manual censor route", generationManualCensorRouteSource],
-    ["generation image cover route", generationImageCoverRouteSource],
     ["generation featured image helper", generationImageFeaturedHelperSource],
   ] as const) {
     assert.match(
@@ -977,6 +975,26 @@ test("generation review and image API entrypoints reuse the generation project b
       `${label} should import the generation project boundary.`,
     );
   }
+  assert.match(
+    generationManualCensorRouteSource,
+    /persistManualCensoredImage/,
+    "Generation manual-censor route should delegate image lookup and persistence below the route.",
+  );
+  assert.doesNotMatch(
+    generationManualCensorRouteSource,
+    /@\/lib\/db|buildGenerationProjectWhere|imageResult\.findFirst/,
+    "Generation manual-censor route should not own the resource-boundary query.",
+  );
+  assert.match(
+    generationImageCoverRouteSource,
+    /setGenerationImageCover/,
+    "Generation image cover route should delegate cover mutations below the route.",
+  );
+  assert.doesNotMatch(
+    generationImageCoverRouteSource,
+    /@\/lib\/db|buildGenerationProjectWhere|imageResult\.findFirst|project\.updateMany/,
+    "Generation image cover route should not own the resource-boundary mutation.",
+  );
 
   assert.match(
     generationReviewRepositorySource,
@@ -994,8 +1012,8 @@ test("generation review and image API entrypoints reuse the generation project b
     "Generation review restore should reject hidden training benchmark images.",
   );
   assert.match(
-    generationImageCoverRouteSource,
-    /imageResult\.findFirst\(\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
+    generationReviewRepositorySource,
+    /setGenerationImageCover[\s\S]*imageResult\.findFirst\(\{[\s\S]*run:\s*\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
     "Generation cover image route should reject hidden training benchmark images.",
   );
   assert.match(

@@ -1,9 +1,11 @@
 import { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/db";
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { readOptionalJsonObject } from "@/server/http/request-json";
+import {
+  mapReviewError,
+  setGenerationImageCover,
+} from "@/server/services/review-service";
 
 type RouteContext = {
   params: Promise<{ imageId: string }>;
@@ -12,59 +14,25 @@ type RouteContext = {
 export async function POST(request: NextRequest, context: RouteContext) {
   const { imageId } = await context.params;
 
+  let body: { cover?: unknown };
   try {
-    const body = await readOptionalJsonObject(request) as { cover?: unknown };
+    body = await readOptionalJsonObject(request) as { cover?: unknown };
+  } catch (error) {
+    return failFromError(error, "Unknown error", 400);
+  }
 
-    if (body.cover === false) {
-      return fail("封面只能通过选择另一张图片覆盖", 400);
-    }
+  if (body.cover === false) {
+    return fail("封面只能通过选择另一张图片覆盖", 400);
+  }
 
-    const image = await db.imageResult.findFirst({
-      where: {
-        id: imageId,
-        run: { project: buildGenerationProjectWhere() },
-      },
-      select: {
-        id: true,
-        reviewStatus: true,
-        run: {
-          select: {
-            projectId: true,
-          },
-        },
-      },
-    });
-
-    if (!image) {
-      return fail("Image not found", 404);
-    }
-
-    if (image.reviewStatus === "trashed") {
-      return fail("不能将已删除图片设为封面", 409);
-    }
-
-    const now = new Date();
-    const [projectUpdate, keptImage] = await db.$transaction([
-      db.project.updateMany({
-        where: buildGenerationProjectWhere({ id: image.run.projectId }),
-        data: { coverImageId: image.id },
-      }),
-      db.imageResult.update({
-        where: { id: image.id },
-        data: { reviewStatus: "kept", reviewedAt: now },
-        select: { id: true, reviewStatus: true },
-      }),
-    ]);
+  try {
+    const result = await setGenerationImageCover(imageId);
 
     revalidatePath("/projects", "layout");
 
-    return ok({
-      id: image.id,
-      projectId: image.run.projectId,
-      cover: projectUpdate.count > 0,
-      reviewStatus: keptImage.reviewStatus,
-    });
+    return ok(result);
   } catch (error) {
-    return failFromError(error, "Unknown error", 400);
+    const mapped = mapReviewError(error);
+    return fail(mapped.message, mapped.status, mapped.details);
   }
 }

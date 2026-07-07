@@ -5,6 +5,7 @@ import {
   getRunReviewGroup as getRunReviewGroupInRepository,
   keepRunImages as keepRunImagesInRepository,
   restoreImage as restoreImageInRepository,
+  setGenerationImageCover as setGenerationImageCoverInRepository,
   trashRunImages as trashRunImagesInRepository,
 } from "@/server/repositories/review-repository";
 import { audit, auditMany } from "@/server/services/audit-service";
@@ -113,6 +114,13 @@ export async function restoreImage(imageId: string, actorType: ActorType = Actor
   return result;
 }
 
+export async function setGenerationImageCover(imageId: string, actorType: ActorType = ActorType.user) {
+  const normalizedId = normalizeRequiredId(imageId, "imageId");
+  const result = await setGenerationImageCoverInRepository(normalizedId);
+  audit("ImageResult", normalizedId, "update", { projectId: result.projectId, cover: true }, actorType);
+  return result;
+}
+
 export async function getRunReviewGroup(runId: string) {
   return getRunReviewGroupInRepository(normalizeRequiredId(runId, "runId"));
 }
@@ -145,6 +153,8 @@ export function mapReviewError(error: unknown) {
       return { message: "One or more images were not found in this run", status: 404 };
     case "IMAGE_NOT_FOUND":
       return { message: "Image not found", status: 404 };
+    case "IMAGE_TRASHED":
+      return { message: "不能将已删除图片设为封面", status: 409 };
     case "TRASH_RECORD_NOT_FOUND":
       return { message: "Image is not currently in trash", status: 404 };
     default:

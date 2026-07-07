@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
 import { runAutoCensorMosaicBatch } from "@/server/services/auto-censor-runner";
 import { resolveProjectPath } from "@/server/services/runtime-data-path";
+import { ServiceValidationError } from "@/server/services/validation-utils";
 
 const log = createLogger({ module: "censoring" });
 const THUMBNAIL_WIDTH = 300;
@@ -367,11 +368,14 @@ export async function persistManualCensoredImage(
   });
 
   if (!imageResult) {
-    throw new Error(`ImageResult not found: ${imageResultId}`);
+    throw new ServiceValidationError("Image not found", 404);
   }
 
   if (imageResult.reviewStatus !== "kept" && imageResult.reviewStatus !== "pending") {
-    throw new Error(`ImageResult ${imageResultId} has status "${imageResult.reviewStatus}", expected "kept" or "pending"`);
+    throw new ServiceValidationError(
+      `ImageResult ${imageResultId} has status "${imageResult.reviewStatus}", expected "kept" or "pending"`,
+      400,
+    );
   }
 
   const manualCensoredImagePath = `data/images/.tmp/manual-censor-${imageResult.id}-${randomUUID()}.jpg`;

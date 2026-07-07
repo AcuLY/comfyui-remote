@@ -478,3 +478,49 @@ export async function restoreImage(imageId: string) {
     restoredAt,
   };
 }
+
+export async function setGenerationImageCover(imageId: string) {
+  const image = await db.imageResult.findFirst({
+    where: {
+      id: imageId,
+      run: { project: buildGenerationProjectWhere() },
+    },
+    select: {
+      id: true,
+      reviewStatus: true,
+      run: {
+        select: {
+          projectId: true,
+        },
+      },
+    },
+  });
+
+  if (!image) {
+    throw new Error("IMAGE_NOT_FOUND");
+  }
+
+  if (image.reviewStatus === ReviewStatus.trashed) {
+    throw new Error("IMAGE_TRASHED");
+  }
+
+  const reviewedAt = new Date();
+  const [projectUpdate, keptImage] = await db.$transaction([
+    db.project.updateMany({
+      where: buildGenerationProjectWhere({ id: image.run.projectId }),
+      data: { coverImageId: image.id },
+    }),
+    db.imageResult.update({
+      where: { id: image.id },
+      data: { reviewStatus: ReviewStatus.kept, reviewedAt },
+      select: { id: true, reviewStatus: true },
+    }),
+  ]);
+
+  return {
+    id: image.id,
+    projectId: image.run.projectId,
+    cover: projectUpdate.count > 0,
+    reviewStatus: keptImage.reviewStatus,
+  };
+}
