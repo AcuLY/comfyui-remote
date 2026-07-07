@@ -33,6 +33,7 @@ import {
   uniquePresetCategories,
   uniquePresetFolders,
 } from "./training-resource-page-utils";
+import { TrainingPresetCategoryRailItem, TrainingPresetLibraryItemRow, presetStatus } from "./training-preset-library-primitives";
 import { TrainingPresetSortPanel, orderTrainingPresetSortItems, type TrainingPresetSortItem } from "./training-preset-sort-panel";
 import { useResourceUrlSearch } from "./use-resource-url-search";
 import s from "./training-resource-pages.module.css";
@@ -57,10 +58,6 @@ type TemplateSectionDraftState = {
 
 function buildTemplateSectionStateKey(templateId: string, sectionId: string) {
   return `${templateId}:${sectionId}`;
-}
-
-function presetStatus(preset: LoraTrainingPreset) {
-  return preset.status === "active" ? <StatusBadge status="ready" label="启用" /> : <StatusBadge status="archived" label="停用" />;
 }
 
 function moveTemplateBlock(blocks: LoraTrainingSectionBlock[], index: number, direction: -1 | 1) {
@@ -124,11 +121,6 @@ function buildTemplateSectionsFromProject(project: LoraTrainingProject): LoraTra
     resolvedScene: section.resolvedScene,
     scenePreview: section.resolvedScene || section.title,
   }));
-}
-
-function presetUsageLabel(preset: LoraTrainingPreset) {
-  const usageCount = preset.projectUsage.length + preset.templateUsage.length;
-  return usageCount > 0 ? `${usageCount} 处引用` : "未引用";
 }
 
 function createDraftTrainingPreset(hints: NewPresetHints): LoraTrainingPreset {
@@ -197,86 +189,6 @@ function TemplateSceneBlockCard({
         <Button size="sm" icon={Trash2} tone="danger" onClick={() => onDelete?.(block.id)} ariaLabel={`删除模板场景块：${block.title}`} feedback={{ tone: "warning", title: "模板块已从草稿移除", detail: block.title }}>删除</Button>
       </div>
     </article>
-  );
-}
-
-function TrainingPresetLibraryItemRow({
-  index,
-  onDelete,
-  onToggleSelected,
-  preset,
-  selected,
-}: {
-  index: number;
-  onDelete: () => void;
-  onToggleSelected: (checked: boolean) => void;
-  preset: LoraTrainingPreset;
-  selected: boolean;
-}) {
-  const hrefForRoute = useRouteHref();
-  const { ref, style, handleProps } = useDemoSortable(preset.id);
-
-  return (
-    <div ref={ref} style={style}>
-      <UnitRowShell
-        className={s.trainingPresetItemFrame}
-        selected={selected}
-        dragHandle={<GripVertical className={s.grip} aria-hidden="true" {...handleProps} />}
-        leading={(
-          <Checkbox
-            checked={selected}
-            label={selected ? `取消选择训练预制：${preset.title}` : `选择训练预制：${preset.title}`}
-            onCheckedChange={onToggleSelected}
-            stopPropagation
-            variant="compact"
-          />
-        )}
-        title={<Link className={s.trainingPresetTitleLink} href={hrefForRoute(`/training/presets/${preset.id}`)}>{preset.title}</Link>}
-        description={<Link className={s.trainingPresetDescriptionLink} href={hrefForRoute(`/training/presets/${preset.id}`)}>{preset.sceneDescriptionText}</Link>}
-        body={(
-          <div className={s.trainingPresetUsageChips}>
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <span>{preset.folder}</span>
-            <span>{presetUsageLabel(preset)}</span>
-          </div>
-        )}
-        meta={<div className={s.trainingPresetMeta}>{presetStatus(preset)}<span>更新 {preset.updatedAt}</span></div>}
-        actions={(
-          <div className={s.trainingPresetActions}>
-            <ButtonLink href={`/training/presets/${preset.id}`} size="sm" icon={Edit3} ariaLabel={`编辑训练预制：${preset.title}`}>编辑</ButtonLink>
-            <Button size="sm" tone="danger" icon={Trash2} iconOnly ariaLabel={`删除训练预制：${preset.title}`} onClick={onDelete} feedback={{ tone: "warning", title: "训练预制已从列表移除", detail: preset.title }} />
-          </div>
-        )}
-      />
-    </div>
-  );
-}
-
-function TrainingPresetCategoryRailItem({
-  active,
-  category,
-  count,
-  onSelect,
-}: {
-  active: boolean;
-  category: string;
-  count: number;
-  onSelect: () => void;
-}) {
-  const { ref, style, handleProps } = useDemoSortable(category);
-
-  return (
-    <div ref={ref} style={style}>
-      <button
-        className={cx(active && s.railItemActive)}
-        type="button"
-        onClick={onSelect}
-      >
-        <GripVertical className={s.resourceRailDragHandle} aria-hidden="true" {...handleProps} />
-        <span>{category}</span>
-        <em>{count}</em>
-      </button>
-    </div>
   );
 }
 
