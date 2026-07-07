@@ -10,6 +10,7 @@ const sectionDetailSource = readFileSync(resolve(featureUiDir, "training-project
 const featureRoot = resolve(testDir, "../src/features/training");
 const detailSource = readFileSync(resolve(featureUiDir, "training-run-detail-page.tsx"), "utf8");
 const detailUtilsSource = readFileSync(resolve(featureUiDir, "training-run-detail-utils.ts"), "utf8");
+const generationOutputGridSource = readFileSync(resolve(featureUiDir, "training-run-generation-output-grid.tsx"), "utf8");
 const detailCss = readFileSync(resolve(featureUiDir, "training-run-detail-page.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
@@ -54,6 +55,12 @@ test("training run detail pure helpers live in a focused utility module", () => 
     assert.doesNotMatch(detailSource, new RegExp(`\\nfunction ${helperName}\\b`), `${helperName} should not stay inline in the broad run detail page`);
   }
   assert.match(detailSource, /from "\.\/training-run-detail-utils"/, "run detail page should import focused pure helpers");
+});
+
+test("training run generation output grid lives in a focused module", () => {
+  assert.match(generationOutputGridSource, /export function GenerationOutputGrid\b/, "generation output grid should live in training-run-generation-output-grid.tsx");
+  assert.doesNotMatch(detailSource, /\nfunction GenerationOutputGrid\b/, "generation output grid should not stay inline in the broad run detail page");
+  assert.match(detailSource, /from "\.\/training-run-generation-output-grid"/, "run detail page should import the focused generation output grid");
 });
 
 test("training run detail title uses dataset version for training runs and task title for generation runs", () => {
@@ -125,10 +132,8 @@ test("training detail page renders training samples, captions, log preview, and 
 test("training detail distinguishes missing artifacts by run lifecycle", () => {
   const artifactHelperStart = detailUtilsSource.indexOf("export function trainingArtifactLabel");
   const presetHelperStart = detailUtilsSource.indexOf("export function trainingPresetStatusLabel");
-  const outputGridStart = detailSource.indexOf("function GenerationOutputGrid");
   assert.notEqual(artifactHelperStart, -1, "training detail should define an artifact label helper");
   assert.notEqual(presetHelperStart, -1, "training detail should define a preset status helper");
-  assert.notEqual(outputGridStart, -1);
 
   const helperSource = detailUtilsSource.slice(artifactHelperStart);
   const detailPageSource = detailSource.slice(detailSource.indexOf("export function LoraTrainingRunDetailPage"));
@@ -151,8 +156,8 @@ test("completed image generation detail renders result thumbnails with review ac
   assert.match(detailSource, /resultReviewState/, "generation output review state should be local to the detail page");
   assert.match(detailSource, /handleReviewGenerationOutput/, "generation output review actions should update local state");
   assert.match(detailSource, /setActiveGenerationResultId/, "generation result thumbnails should open a lightbox by result id");
-  assert.match(detailSource, /ImageThumbMedium[\s\S]*image=\{result\.image\}[\s\S]*onOpen=\{\(\) => onActiveResultChange\(result\.id\)\}/, "generation image outputs should render as clickable thumbnails");
-  assert.match(detailSource, /ImagePreviewLarge/, "generation image outputs should use the shared lightbox");
+  assert.match(generationOutputGridSource, /ImageThumbMedium[\s\S]*image=\{result\.image\}[\s\S]*onOpen=\{\(\) => onActiveResultChange\(result\.id\)\}/, "generation image outputs should render as clickable thumbnails");
+  assert.match(generationOutputGridSource, /ImagePreviewLarge/, "generation image outputs should use the shared lightbox");
   assert.match(detailSource, /onReviewStatusChange=\{handleReviewGenerationOutput\}/, "generation output cards should wire keep/reject actions");
   assert.match(detailCss, /\.generationOutputGrid\b/, "generation outputs should have a dedicated thumbnail grid");
   assert.match(detailCss, /\.generationOutputCaption\b/, "generation output captions should be compact text below thumbnails");
@@ -192,12 +197,10 @@ test("image generation detail prioritizes output before final input", () => {
 });
 
 test("training run detail repeated object actions include the acted-on object name", () => {
-  const outputGridStart = detailSource.indexOf("function GenerationOutputGrid");
   const detailPageStart = detailSource.indexOf("export function LoraTrainingRunDetailPage");
-  assert.notEqual(outputGridStart, -1);
   assert.notEqual(detailPageStart, -1);
 
-  const outputGridSource = detailSource.slice(outputGridStart, detailPageStart);
+  const outputGridSource = generationOutputGridSource;
   const detailPageSource = detailSource.slice(detailPageStart);
 
   assert.match(outputGridSource, /ariaLabel=\{`保留生成输出：\$\{activeResult\.sourceLabel\}`\}/, "keep action should name the active output");

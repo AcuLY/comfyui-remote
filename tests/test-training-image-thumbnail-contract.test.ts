@@ -9,6 +9,7 @@ const trainingResultGridPath = "src/features/training/ui/training-result-grid.ts
 const trainingResultGridSource = existsSync(trainingResultGridPath) ? readFileSync(trainingResultGridPath, "utf8") : "";
 const projectPagesCss = readFileSync("src/features/training/ui/training-project-pages.module.css", "utf8");
 const runDetailSource = readFileSync("src/features/training/ui/training-run-detail-page.tsx", "utf8");
+const runGenerationOutputGridSource = readFileSync("src/features/training/ui/training-run-generation-output-grid.tsx", "utf8");
 
 function sourceBetween(source: string, startMarker: string, endMarker: string) {
   const start = source.indexOf(startMarker);
@@ -34,7 +35,7 @@ test("training result pool renders card thumbnails and opens the shared lightbox
 });
 
 test("training run image outputs and frozen samples use thumbnails before lightbox preview", () => {
-  const outputGridSource = sourceBetween(runDetailSource, "function GenerationOutputGrid", "export function LoraTrainingRunDetailPage");
+  const outputGridSource = runGenerationOutputGridSource;
   const detailPageSource = runDetailSource.slice(runDetailSource.indexOf("export function LoraTrainingRunDetailPage"));
 
   assert.match(outputGridSource, /ImageThumbMedium/, "generation output cards should render shared thumbnails");
