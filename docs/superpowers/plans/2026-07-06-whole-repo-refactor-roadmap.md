@@ -385,6 +385,8 @@
 - Phase 7 slice 58 verification passed: red `node --import tsx --test tests/test-preset-form-split.test.ts`, then green `node --import tsx --test tests/test-preset-form-split.test.ts`, green `node --import tsx --test tests/test-preset-form-split.test.ts tests/test-preset-variant-bulk-apply.test.ts tests/test-preset-save-queue.test.ts tests/test-preset-variant-save-optimization.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1106 tests discovered, 1105 pass, 0 fail, 1 skipped.
 - Phase 7 slice 59 moved preset form autosave status rendering into `src/app/assets/presets/preset-form-action-footer.tsx`. `preset-form.tsx` now only decides when to show the status surface and passes save status, error text, and retry action into the focused component.
 - Phase 7 slice 59 verification passed: red `node --import tsx --test tests/test-preset-form-split.test.ts`, then green `node --import tsx --test tests/test-preset-form-split.test.ts`, green `node --import tsx --test tests/test-preset-form-split.test.ts tests/test-preset-save-queue.test.ts tests/test-preset-variant-bulk-apply.test.ts tests/test-preset-variant-save-optimization.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1107 tests discovered, 1106 pass, 0 fail, 1 skipped.
+- Phase 7 slice 60 marked preset group slot ordering as owned by category slot template logic after verifying `preset-group-edit-client.tsx` persists fixed-slot row reorders through `updateCategorySlotTemplate`, and `getSectionPresetBindingGroupName()` resolves display order from the group category `slotTemplate`.
+- Phase 7 slice 60 verification passed: `node --import tsx --test tests/test-section-editor-binding-rules.test.ts tests/test-preset-group-member-replacement-source.test.ts tests/test-repo-inventory.test.ts` with 25 tests discovered, 25 pass, 0 fail.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -950,7 +952,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - [x] Keep "apply to all variants" behavior tested for copy loop and save queue separately.
   - [x] Save queue behavior is tested separately for latest-payload coalescing, retry, handler refresh, and falsy payloads.
   - [x] Copy-loop/apply-to-all behavior is tested separately for prompt copy, LoRA update/append, blank-path no-op, incomplete LoRA detection, and nested clone helpers.
-- [ ] Keep preset group slot ordering owned by category slot template logic.
+- [x] Keep preset group slot ordering owned by category slot template logic.
 - [ ] Split template section detail client into route container, section form, preset binding editor, prompt blocks, LoRA editor, and change history.
 - [ ] Keep sort rules editor isolated from preset edit form state.
 
