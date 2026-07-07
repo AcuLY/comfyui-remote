@@ -2,6 +2,8 @@
 
 This directory implements the routable `/design-demos` frontend shell.
 
+The maintained governance source is `docs/ui/design-demo-governance.md`. `routing/routes.ts` and `routing/header-specs.ts` are the authoritative route and header registries; the route list below is orientation, not a second source of truth.
+
 ## Files
 
 - `[[...route]]/page.tsx`: optional catch-all route for every product page shell.

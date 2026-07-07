@@ -40,6 +40,36 @@
 
 ## 路由页面对照
 
+## LoRA 训练页面对照
+
+这张表是训练页面的 parity checklist。训练生产路由由 `src/app/training/[[...route]]/page.tsx` 和 `src/features/training/**` 承接；设计壳 counterpart 由 `src/app/design-demos/routing/routes.ts`、`src/app/design-demos/routing/header-specs.ts` 和 `src/app/design-demos/features/lora-training/**` 承接。
+
+| production route | design-demo route | owner | status | verification |
+| --- | --- | --- | --- | --- |
+| `/training/runs` | `/design-demos/training/runs` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-prod-route-shell.test.ts` |
+| `/training/runs/generation/:taskId` | `/design-demos/training/runs/generation/:taskId` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-run-detail-page.test.ts` |
+| `/training/runs/training/:trainingRunId` | `/design-demos/training/runs/training/:trainingRunId` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-run-detail-page.test.ts` |
+| `/training/projects` | `/design-demos/training/projects` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-list-layout.test.ts` |
+| `/training/projects/new` | `/design-demos/training/projects/new` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-project-pages.test.ts` |
+| `/training/projects/:trainingProjectId` | `/design-demos/training/projects/:trainingProjectId` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-project-pages.test.ts` |
+| `/training/projects/:trainingProjectId/profile` | `/design-demos/training/projects/:trainingProjectId/profile` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-project-pages.test.ts` |
+| `/training/projects/:trainingProjectId/sections` | `/design-demos/training/projects/:trainingProjectId/sections` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-project-pages.test.ts` |
+| `/training/projects/:trainingProjectId/sections/:sectionId` | `/design-demos/training/projects/:trainingProjectId/sections/:sectionId` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-project-pages.test.ts` |
+| `/training/projects/:trainingProjectId/sections/:sectionId/generation-tasks/new` | `/design-demos/training/projects/:trainingProjectId/sections/:sectionId/generation-tasks/new` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-project-pages.test.ts` |
+| `/training/projects/:trainingProjectId/results` | `/design-demos/training/projects/:trainingProjectId/results` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-project-pages.test.ts` |
+| `/training/projects/:trainingProjectId/dataset` | `/design-demos/training/projects/:trainingProjectId/dataset` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-route-data-source.test.ts` |
+| `/training/projects/:trainingProjectId/dataset/revisions/:revisionId` | `/design-demos/training/projects/:trainingProjectId/dataset/revisions/:revisionId` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-route-data-source.test.ts` |
+| `/training/projects/:trainingProjectId/training-runs` | `/design-demos/training/projects/:trainingProjectId/training-runs` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-run-detail-page.test.ts` |
+| `/training/projects/:trainingProjectId/generation-tasks` | `/design-demos/training/projects/:trainingProjectId/generation-tasks` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-frontend-api-contract.test.ts` |
+| `/training/presets` | `/design-demos/training/presets` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-resource-pages.test.ts` |
+| `/training/presets/new` | `/design-demos/training/presets/new` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-resource-pages.test.ts` |
+| `/training/presets/:presetId` | `/design-demos/training/presets/:presetId` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-resource-pages.test.ts` |
+| `/training/presets/sort-rules` | `/design-demos/training/presets/sort-rules` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-resource-pages.test.ts` |
+| `/training/templates` | `/design-demos/training/templates` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-resource-pages.test.ts` |
+| `/training/templates/new` | `/design-demos/training/templates/new` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-resource-pages.test.ts` |
+| `/training/templates/:templateId/edit` | `/design-demos/training/templates/:templateId/edit` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-resource-pages.test.ts` |
+| `/training/templates/:templateId/sections/:sectionIndex` | `/design-demos/training/templates/:templateId/sections/:sectionIndex` | `src/features/training` | shared production UI via demo compatibility re-export | `src/app/design-demos/routing/routes.test.ts`, `tests/test-training-resource-pages.test.ts` |
+
 | 原前端路由 | `/design-demos` 路由 | 当前状态 | 已覆盖 | 非壳范围 |
 | --- | --- | --- | --- | --- |
 | `/` | `/design-demos` | 静态对齐 | 进入任务工作台语义。 | 真实根路由跳转。 |

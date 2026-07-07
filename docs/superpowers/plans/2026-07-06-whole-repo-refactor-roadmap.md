@@ -533,6 +533,9 @@
 - Phase 9 slice 132 verification passed: red `node --import tsx --test tests/test-ui-component-boundaries.test.ts`, green `node --import tsx --test tests/test-ui-component-boundaries.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-ui-component-boundaries.test.ts src/components/design-demo-ui/media/image-accessibility.test.ts src/components/design-demo-ui/primitives/controls-interaction.test.mjs src/components/design-demo-ui/primitives/field/field.test.ts src/components/design-demo-ui/feedback/provider-theme.test.mjs tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1176 tests discovered, 1175 pass, 0 fail, 1 skipped.
 - Phase 9 slice 133 added explicit dialog roles, modal flags, accessible trigger/search/back/clear/close labels, and portal ownership checks across the shared LoRA/checkpoint, preset, preset group, and project cascade picker surfaces while keeping copy button and toast text behavior covered by source-contract tests.
 - Phase 9 slice 133 verification passed: red `node --import tsx --test tests/test-ui-component-boundaries.test.ts`, green `node --import tsx --test tests/test-ui-component-boundaries.test.ts`, green `node --import tsx --test tests/test-ui-component-boundaries.test.ts tests/test-toast-copy-button.test.ts tests/test-notification-copy-button.test.ts tests/test-project-mobile-sidebar-width.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1178 tests discovered, 1177 pass, 0 fail, 1 skipped.
+- Phase 10 slice 134 added `docs/ui/design-demo-governance.md` and `tests/test-design-demo-governance.test.ts` to classify `/design-demos` as an active component lab and visual reference, document `routing/routes.ts`, `routing/header-specs.ts`, showcase registry files, and `data/load-demo-data.ts` as the source-of-truth boundaries, and guard intentional LoRA training UI sharing through narrow compatibility re-exports.
+- Phase 10 slice 134 also expanded `docs/design-demos-frontend-parity.md` with a LoRA training page parity checklist covering production route, design-demo route, owner, status, and verification for every training counterpart before duplicated demo components can be removed or archived.
+- Phase 10 slice 134 verification passed: red `node --import tsx --test tests/test-design-demo-governance.test.ts`, green `node --import tsx --test tests/test-design-demo-governance.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-design-demo-governance.test.ts src/app/design-demos/routing/routes.test.ts src/app/design-demos/showcase/registry.test.ts src/app/design-demos/data/row-shaping.test.ts src/app/design-demos/data/fallback-images.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1182 tests discovered, 1181 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1268,12 +1271,12 @@ Loading states remain colocated under their route segments for now; the later lo
 - `docs/DESIGN_SYSTEM_SUMMARY.md`
 - `DESIGN.md`
 
-- [ ] Classify `src/app/design-demos` as either active component lab, visual reference, or migration staging area.
-- [ ] Keep route registry and header specs as the source of truth for design-demo navigation.
-- [ ] Make design-demo data loading explicit: SQLite source, fallback data, local image files, row shaping, selectors, SFW routes.
-- [ ] Keep lora-training demo pages separate from production `src/features/training` unless components are intentionally shared.
-- [ ] Add a parity checklist for every production page that has a design-demo counterpart.
-- [ ] Remove or archive duplicated demo components only after parity is documented.
+- [x] Classify `src/app/design-demos` as either active component lab, visual reference, or migration staging area.
+- [x] Keep route registry and header specs as the source of truth for design-demo navigation.
+- [x] Make design-demo data loading explicit: SQLite source, fallback data, local image files, row shaping, selectors, SFW routes.
+- [x] Keep lora-training demo pages separate from production `src/features/training` unless components are intentionally shared.
+- [x] Add a parity checklist for every production page that has a design-demo counterpart.
+- [x] Remove or archive duplicated demo components only after parity is documented.
 
 **Legacy static demos:**
 - `design-demos/README.md`
