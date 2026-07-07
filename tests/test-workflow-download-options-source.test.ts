@@ -24,9 +24,13 @@ test("workflow download menu exposes original and debug workflow options", () =>
 test("workflow download routes select debug variant from the request URL", () => {
   const sectionRoute = readSource("src/app/api/projects/[projectId]/section-workflow/[sectionId]/route.ts");
   const runRoute = readSource("src/app/api/runs/[runId]/workflow/route.ts");
+  const runWorkflowService = readSource("src/server/services/run-workflow-service.ts");
 
   assert.match(sectionRoute, /getWorkflowDownloadVariant/);
   assert.match(sectionRoute, /buildWorkflowDownloadPayload/);
   assert.match(runRoute, /getWorkflowDownloadVariant/);
-  assert.match(runRoute, /buildWorkflowDownloadPayload/);
+  assert.match(runRoute, /buildRunWorkflowDownload/);
+  assert.doesNotMatch(runRoute, /@\/lib\/prisma|buildGenerationProjectWhere|prisma\.run/);
+  assert.match(runWorkflowService, /buildWorkflowDownloadPayload/);
+  assert.match(runWorkflowService, /buildGenerationProjectWhere/);
 });

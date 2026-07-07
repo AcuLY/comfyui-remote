@@ -1,12 +1,7 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { fail } from "@/lib/api-response";
-import {
-  appendWorkflowVariantSuffix,
-  buildWorkflowDownloadPayload,
-  getWorkflowDownloadVariant,
-} from "@/server/services/workflow-debug-download";
-import { buildGenerationProjectWhere } from "@/server/repositories/generation-resource-boundary";
+import { failFromError } from "@/lib/api-response";
+import { buildRunWorkflowDownload } from "@/server/services/run-workflow-service";
+import { getWorkflowDownloadVariant } from "@/server/services/workflow-debug-download";
 
 export async function GET(
   request: Request,
@@ -14,25 +9,13 @@ export async function GET(
 ) {
   const { runId } = await params;
   const variant = getWorkflowDownloadVariant(request.url);
-  const run = await prisma.run.findFirst({
-    where: {
-      id: runId,
-      project: buildGenerationProjectWhere(),
-    },
-    select: { submittedPrompt: true, projectSection: { select: { name: true } } },
-  });
-  if (!run?.submittedPrompt) {
-    return fail("No workflow data", 404);
+
+  try {
+    const download = await buildRunWorkflowDownload(runId, variant);
+    return new NextResponse(download.body, {
+      headers: download.headers,
+    });
+  } catch (error) {
+    return failFromError(error, "Failed to build workflow", 500);
   }
-  const rawName = run.projectSection?.name ?? runId;
-  // RFC 5987: filename* for UTF-8 names; filename must be ASCII-only
-  const asciiName = `workflow-${runId}${variant === "debug" ? "-debug" : ""}.json`;
-  const encodedName = encodeURIComponent(appendWorkflowVariantSuffix(rawName, variant));
-  const payload = buildWorkflowDownloadPayload(run.submittedPrompt as Record<string, unknown>, variant);
-  return new NextResponse(JSON.stringify(payload, null, 2), {
-    headers: {
-      "Content-Type": "application/json",
-      "Content-Disposition": `attachment; filename="${asciiName}"; filename*=UTF-8''${encodedName}.json`,
-    },
-  });
 }

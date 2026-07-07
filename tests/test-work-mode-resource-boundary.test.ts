@@ -33,6 +33,7 @@ const trainingPresetListRouteSource = readFileSync(resolve(repoRoot, "src/app/ap
 const trainingTemplateListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/training/templates/route.ts"), "utf8");
 const generationPresetQueryServiceSource = readFileSync(resolve(repoRoot, "src/server/services/preset-query-service.ts"), "utf8");
 const generationPresetViewRepositorySource = readFileSync(resolve(repoRoot, "src/server/repositories/preset-view-repository.ts"), "utf8");
+const generationRunWorkflowServiceSource = readFileSync(resolve(repoRoot, "src/server/services/run-workflow-service.ts"), "utf8");
 const trainingPresetServiceSource = readFileSync(resolve(repoRoot, "src/server/services/training/preset-service.ts"), "utf8");
 const trainingRunPresetServiceSource = readFileSync(resolve(repoRoot, "src/server/services/training/run-preset-service.ts"), "utf8");
 const trainingSceneDescriptionPresetRepositorySource = readFileSync(
@@ -1025,16 +1026,26 @@ test("generation worker status uses the generation project boundary", () => {
 test("generation run workflow downloads use the generation project boundary", () => {
   assert.match(
     generationRunWorkflowRouteSource,
+    /buildRunWorkflowDownload/,
+    "Generation workflow downloads should delegate run workflow lookup below the route.",
+  );
+  assert.doesNotMatch(
+    generationRunWorkflowRouteSource,
+    /@\/lib\/prisma|buildGenerationProjectWhere|prisma\.run/,
+    "Generation workflow download routes should not own the resource-boundary query.",
+  );
+  assert.match(
+    generationRunWorkflowServiceSource,
     /buildGenerationProjectWhere/,
     "Generation workflow downloads should not expose training-owned run workflow payloads.",
   );
   assert.match(
-    generationRunWorkflowRouteSource,
+    generationRunWorkflowServiceSource,
     /run\.findFirst\(\{[\s\S]*project:\s*buildGenerationProjectWhere\(\)/,
     "Generation workflow downloads should resolve runs through generation-owned projects.",
   );
   assert.doesNotMatch(
-    generationRunWorkflowRouteSource,
+    generationRunWorkflowServiceSource,
     /run\.findUnique\(\{[\s\S]*where:\s*\{\s*id:\s*runId\s*\}/,
     "Generation workflow downloads must not fetch runs by id without the resource boundary.",
   );
