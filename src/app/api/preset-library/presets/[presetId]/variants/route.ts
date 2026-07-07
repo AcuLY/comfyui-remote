@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { createPresetVariant, resolveVariantContent } from "@/lib/actions";
+import { createPresetVariant } from "@/lib/actions/preset-variant-crud";
+import { resolveVariantContent } from "@/lib/actions/preset-variant-resolve";
 import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {

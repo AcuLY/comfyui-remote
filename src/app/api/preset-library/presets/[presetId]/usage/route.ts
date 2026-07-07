@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api-response";
-import { getPresetUsage } from "@/lib/actions";
+import { getPresetUsage } from "@/lib/actions/preset-sync";
 
 type RouteContext = {
   params: Promise<{ presetId: string }>;

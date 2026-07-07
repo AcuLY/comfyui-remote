@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
 import { failFromError, ok } from "@/lib/api-response";
-import { createPresetGroup } from "@/lib/actions";
+import { createPresetGroup, type PresetGroupInput } from "@/lib/actions/preset-group";
 import { getPresetGroups } from "@/lib/server-data";
-import type { PresetGroupInput } from "@/lib/actions/preset-group";
 import { readJsonBody } from "@/server/http/request-json";
 
 export async function GET() {

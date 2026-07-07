@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { updatePresetGroup, deletePresetGroup } from "@/lib/actions";
+import { updatePresetGroup, deletePresetGroup } from "@/lib/actions/preset-group";
 import { getPresetGroup } from "@/lib/server-data";
 import { readJsonBody } from "@/server/http/request-json";
 

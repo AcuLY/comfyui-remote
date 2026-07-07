@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { failFromError, ok } from "@/lib/api-response";
-import { addGroupMember } from "@/lib/actions";
+import { addGroupMember } from "@/lib/actions/preset-group";
 import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {

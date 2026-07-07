@@ -458,6 +458,32 @@ test("preset library category and folder API routes import actions from focused 
   }
 });
 
+test("preset library group, preset, and variant API routes import actions from focused modules", () => {
+  for (const [routePath, actionModule] of [
+    ["src/app/api/preset-library/groups/route.ts", "@/lib/actions/preset-group"],
+    ["src/app/api/preset-library/groups/[groupId]/route.ts", "@/lib/actions/preset-group"],
+    ["src/app/api/preset-library/groups/[groupId]/members/route.ts", "@/lib/actions/preset-group"],
+    ["src/app/api/preset-library/groups/[groupId]/members/[memberId]/route.ts", "@/lib/actions/preset-group"],
+    ["src/app/api/preset-library/groups/[groupId]/members/reorder/route.ts", "@/lib/actions/preset-group"],
+    ["src/app/api/preset-library/groups/[groupId]/flatten/route.ts", "@/lib/actions/preset-group"],
+    ["src/app/api/preset-library/presets/route.ts", "@/lib/actions/preset-variant-crud"],
+    ["src/app/api/preset-library/presets/[presetId]/route.ts", "@/lib/actions/preset-variant-crud"],
+    ["src/app/api/preset-library/presets/reorder/route.ts", "@/lib/actions/preset-variant-crud"],
+    ["src/app/api/preset-library/presets/[presetId]/variants/route.ts", "@/lib/actions/preset-variant-crud"],
+    ["src/app/api/preset-library/presets/[presetId]/variants/route.ts", "@/lib/actions/preset-variant-resolve"],
+    ["src/app/api/preset-library/presets/[presetId]/variants/reorder/route.ts", "@/lib/actions/preset-variant-crud"],
+    ["src/app/api/preset-library/variants/[variantId]/route.ts", "@/lib/actions/preset-variant-crud"],
+    ["src/app/api/preset-library/presets/[presetId]/usage/route.ts", "@/lib/actions/preset-sync"],
+    ["src/app/api/preset-library/presets/[presetId]/cascade/route.ts", "@/lib/actions/preset-sync"],
+    ["src/app/api/preset-library/presets/[presetId]/sync/route.ts", "@/lib/actions/preset-sync"],
+  ] as const) {
+    const source = readFileSync(routePath, "utf8");
+
+    assertImportsFrom(source, actionModule, routePath);
+    assert.doesNotMatch(source, /from ["']@\/lib\/actions["']/, `${routePath} should not import the full actions barrel`);
+  }
+});
+
 test("generation project mutations use shared raw JSON parsing", () => {
   for (const routePath of [
     "src/app/api/projects/route.ts",

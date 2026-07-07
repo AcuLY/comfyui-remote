@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { reorderPresetVariants } from "@/lib/actions";
+import { reorderPresetVariants } from "@/lib/actions/preset-variant-crud";
 import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {

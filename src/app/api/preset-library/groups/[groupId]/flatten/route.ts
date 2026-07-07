@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { ok, fail } from "@/lib/api-response";
-import { flattenGroup } from "@/lib/actions";
+import { flattenGroup } from "@/lib/actions/preset-group";
 
 type RouteContext = {
   params: Promise<{ groupId: string }>;

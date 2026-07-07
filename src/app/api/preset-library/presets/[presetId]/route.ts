@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { updatePreset, deletePreset } from "@/lib/actions";
+import { updatePreset, deletePreset } from "@/lib/actions/preset-variant-crud";
 import { getPresetById } from "@/server/services/preset-query-service";
 import { readJsonBody } from "@/server/http/request-json";
 

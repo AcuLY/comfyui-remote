@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { failFromError, ok } from "@/lib/api-response";
-import { updatePresetVariant, deletePresetVariant } from "@/lib/actions";
-import type { PresetVariantInput } from "@/lib/actions/preset-variant-crud";
+import { updatePresetVariant, deletePresetVariant, type PresetVariantInput } from "@/lib/actions/preset-variant-crud";
 import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
