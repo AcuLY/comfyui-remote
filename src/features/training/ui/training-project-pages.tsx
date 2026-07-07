@@ -54,7 +54,6 @@ import {
   PROFILE_REVISION_REASON_LABELS,
   buildLocalDatasetRevision,
   buildProjectSectionStateKey,
-  buildProjectReferenceUploadPreview,
   buildSeedSectionCopy,
   buildTrainingProjectTriggerToken,
   buildUploadedReferenceImage,
@@ -92,6 +91,7 @@ import {
   type ProjectSectionDraftState,
 } from "./project-page-utils";
 import s from "./training-project-pages.module.css";
+import { useProjectReferenceUploadDrafts } from "./use-project-reference-upload-drafts";
 import { useUrlSearch } from "./use-url-search";
 
 const PROJECT_TABS = [
@@ -120,12 +120,6 @@ const RESULT_FILTER_ITEMS = [
 
 type TrainingResultFilter = (typeof RESULT_FILTER_ITEMS)[number]["value"];
 type SceneBlockPatch = Partial<Pick<LoraTrainingSectionBlock, "text" | "title">>;
-type ProjectReferenceUploadDraft = {
-  file: File;
-  id: string;
-  previewReference: ReferenceCandidate;
-  title: string;
-};
 const DEFAULT_GENERATION_SUPPLEMENTAL_PROMPT = "保持角色正面可训练，避免复杂遮挡和多人构图。";
 const PROJECT_RUN_ERROR_CLAMP_LINES = 3;
 
@@ -720,13 +714,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
   };
   const [projectFormState, setProjectFormState] = useState(defaultProjectForm);
   const projectForm = projectFormState.templateContextId === projectTemplateContextId ? projectFormState : defaultProjectForm;
-  const [projectReferenceUploadState, setProjectReferenceUploadState] = useState(() => ({
-    templateContextId: projectTemplateContextId,
-    uploads: [] as ProjectReferenceUploadDraft[],
-  }));
-  const stagedProjectReferenceUploads = projectReferenceUploadState.templateContextId === projectTemplateContextId
-    ? projectReferenceUploadState.uploads
-    : [];
+  const { stagedProjectReferenceUploads, stageProjectReferenceUploadFiles } = useProjectReferenceUploadDrafts(projectTemplateContextId);
   const referenceSourceTree: ReferenceSourceGroup[] = [
     {
       id: "existing-training-projects",
@@ -956,35 +944,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
     const files = Array.from(event.currentTarget.files ?? []);
     if (files.length === 0) return;
 
-    const nextUploads: ProjectReferenceUploadDraft[] = [];
-    setProjectReferenceUploadState((current) => {
-      const activeUploads = current.templateContextId === projectTemplateContextId ? current.uploads : [];
-      const uploads = [...activeUploads];
-
-      files.forEach((file) => {
-        const duplicate = uploads.some((upload) => (
-          upload.file.name === file.name
-          && upload.file.size === file.size
-          && upload.file.lastModified === file.lastModified
-        ));
-        if (duplicate) return;
-
-        const id = `staged-upload-${Date.now()}-${uploads.length + 1}`;
-        const nextUpload = {
-          file,
-          id,
-          previewReference: buildProjectReferenceUploadPreview(file, id),
-          title: file.name.replace(/\.[^.]+$/, "") || "本地上传图片",
-        } satisfies ProjectReferenceUploadDraft;
-        uploads.push(nextUpload);
-        nextUploads.push(nextUpload);
-      });
-
-      return {
-        templateContextId: projectTemplateContextId,
-        uploads,
-      };
-    });
+    const nextUploads = stageProjectReferenceUploadFiles(files);
 
     if (nextUploads[0]) {
       handlePreviewProjectReference(nextUploads[0].previewReference);
