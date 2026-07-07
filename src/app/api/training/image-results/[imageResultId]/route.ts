@@ -1,9 +1,10 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   deleteTrainingImageResultRecord,
   mapTrainingGenerationOutputError,
   patchTrainingImageResultRecord,
 } from "@/server/services/training/generation-output-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +15,9 @@ export async function PATCH(
   let body: unknown;
 
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};

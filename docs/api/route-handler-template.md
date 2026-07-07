@@ -112,6 +112,12 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/training/scene-description/folders/route.ts`
 - `src/app/api/training/scene-description/folders/[folderId]/route.ts`
 - `src/app/api/training/scene-description/presets/[presetId]/cascade/route.ts`
+- `src/app/api/training/reference-images/[imageId]/route.ts`
+- `src/app/api/training/reference-images/[imageId]/add-to-results/route.ts`
+- `src/app/api/training/image-results/[imageResultId]/route.ts`
+- `src/app/api/training/image-results/[imageResultId]/review/route.ts`
+- `src/app/api/training/image-results/[imageResultId]/caption/route.ts`
+- `src/app/api/training/generation-outputs/[outputId]/apply/route.ts`
 
 ## Compatibility Exceptions
 

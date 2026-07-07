@@ -1,8 +1,9 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   addTrainingReferenceImageToResults,
   mapTrainingReferenceImageMutationError,
 } from "@/server/services/training/project-actions-service";
+import { readOptionalJsonObject } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -10,19 +11,17 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ imageId: string }> },
 ) {
-  let body: unknown = {};
+  let body: Record<string, unknown>;
 
   try {
-    const rawBody = await request.text();
-    body = rawBody.trim() ? JSON.parse(rawBody) : {};
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readOptionalJsonObject(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {
     const { imageId } = await params;
-    const payload = typeof body === "object" && body ? body as Record<string, unknown> : {};
-    const data = await addTrainingReferenceImageToResults(imageId, payload);
+    const data = await addTrainingReferenceImageToResults(imageId, body);
     return ok(data, { status: 201 });
   } catch (error) {
     const mapped = mapTrainingReferenceImageMutationError(error);

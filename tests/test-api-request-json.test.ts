@@ -243,6 +243,12 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/training/scene-description/folders/route.ts",
     "src/app/api/training/scene-description/folders/[folderId]/route.ts",
     "src/app/api/training/scene-description/presets/[presetId]/cascade/route.ts",
+    "src/app/api/training/reference-images/[imageId]/route.ts",
+    "src/app/api/training/reference-images/[imageId]/add-to-results/route.ts",
+    "src/app/api/training/image-results/[imageResultId]/route.ts",
+    "src/app/api/training/image-results/[imageResultId]/review/route.ts",
+    "src/app/api/training/image-results/[imageResultId]/caption/route.ts",
+    "src/app/api/training/generation-outputs/[outputId]/apply/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -486,6 +492,30 @@ test("training scene-description mutations use shared JSON parsing", () => {
   assert.match(cascadeRouteSource, /\bfailFromError\(/, "cascade route should map parser errors through failFromError");
   assert.doesNotMatch(cascadeRouteSource, /request\.json\(\)/, "cascade route should not parse JSON directly");
   assert.doesNotMatch(cascadeRouteSource, /JSON\.parse\(/, "cascade route should not parse request text locally");
+});
+
+test("training image asset mutations use shared JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/training/reference-images/[imageId]/route.ts",
+    "src/app/api/training/image-results/[imageResultId]/route.ts",
+    "src/app/api/training/image-results/[imageResultId]/review/route.ts",
+    "src/app/api/training/image-results/[imageResultId]/caption/route.ts",
+    "src/app/api/training/generation-outputs/[outputId]/apply/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+
+  const addToResultsSource = readFileSync("src/app/api/training/reference-images/[imageId]/add-to-results/route.ts", "utf8");
+  assert.match(addToResultsSource, /from ["']@\/server\/http\/request-json["']/, "add-to-results route should import request JSON helpers");
+  assert.match(addToResultsSource, /readOptionalJsonObject\(request\)/, "add-to-results route should parse through readOptionalJsonObject");
+  assert.match(addToResultsSource, /\bfailFromError\(/, "add-to-results route should map parser errors through failFromError");
+  assert.doesNotMatch(addToResultsSource, /request\.json\(\)/, "add-to-results route should not parse JSON directly");
+  assert.doesNotMatch(addToResultsSource, /JSON\.parse\(/, "add-to-results route should not parse request text locally");
 });
 
 test("generation section batch delete route delegates destructive checks to project service", () => {
@@ -901,6 +931,44 @@ test("training scene-description mutations preserve invalid JSON response envelo
     }),
     await cascadeRoute.DELETE(makeRequest("not-json"), {
       params: Promise.resolve({ presetId: "preset-1" }),
+    }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("training image asset mutations preserve invalid JSON response envelope", async () => {
+  const referenceImageRoute = await import("../src/app/api/training/reference-images/[imageId]/route");
+  const addReferenceToResultsRoute = await import("../src/app/api/training/reference-images/[imageId]/add-to-results/route");
+  const imageResultRoute = await import("../src/app/api/training/image-results/[imageResultId]/route");
+  const imageResultReviewRoute = await import("../src/app/api/training/image-results/[imageResultId]/review/route");
+  const imageResultCaptionRoute = await import("../src/app/api/training/image-results/[imageResultId]/caption/route");
+  const applyGenerationOutputRoute = await import("../src/app/api/training/generation-outputs/[outputId]/apply/route");
+
+  for (const response of [
+    await referenceImageRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ imageId: "image-1" }),
+    }),
+    await addReferenceToResultsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ imageId: "image-1" }),
+    }),
+    await imageResultRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ imageResultId: "result-1" }),
+    }),
+    await imageResultReviewRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ imageResultId: "result-1" }),
+    }),
+    await imageResultCaptionRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ imageResultId: "result-1" }),
+    }),
+    await applyGenerationOutputRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ outputId: "output-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);
