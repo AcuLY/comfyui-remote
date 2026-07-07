@@ -15,7 +15,7 @@ import {
   deleteProjectSectionFolder,
   renameProjectSectionFolder,
   reorderProjectSectionFolders,
-} from "@/lib/actions";
+} from "@/lib/actions/section-folder";
 import { SectionFolderControls } from "@/components/section-folder-controls";
 import type { PresetLibraryV2, ProjectSectionFolderItem } from "@/lib/server-data";
 import { AddSectionButton, ImportTemplateButton } from "./section-actions";

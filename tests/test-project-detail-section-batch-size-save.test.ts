@@ -63,3 +63,10 @@ test("project detail sidebar imports server actions from focused modules", () =>
   assert.match(sidebar, /from "@\/lib\/actions\/template-save";/);
   assert.doesNotMatch(sidebar, /from "@\/lib\/actions";/);
 });
+
+test("project detail folder controls import section folder actions from focused module", () => {
+  const detailClient = readSource("src/app/projects/[projectId]/project-detail-client.tsx");
+
+  assert.match(detailClient, /from "@\/lib\/actions\/section-folder";/);
+  assert.doesNotMatch(detailClient, /from "@\/lib\/actions";/);
+});
