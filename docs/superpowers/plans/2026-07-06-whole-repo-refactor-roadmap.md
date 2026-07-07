@@ -1123,7 +1123,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - [x] Keep `app.tsx` responsible for route matching to page components, not page internals.
 - [x] Keep `routes.ts` and `runtime.ts` as routing primitives with tests for known paths.
 - [x] Keep `shell.tsx` as the only training shell owner; do not reintroduce `DesignDemoShell` sidebar behavior.
-- [ ] Split `training-project-pages.tsx` by page:
+- [x] Split `training-project-pages.tsx` by page:
   - [x] Project form page and upload reference image workflow.
   - [x] Shared project page shell for project tabs and headers.
   - [x] Shared training result grid for overview, results, and dataset pages.
