@@ -6,9 +6,6 @@ import {
   X,
   ExternalLink,
   ChevronUp,
-  Loader2,
-  CheckCircle2,
-  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 import type {
@@ -25,6 +22,7 @@ import { toSlug } from "./group-utils";
 import { usePresetSaveQueue } from "./use-preset-save-queue";
 import { PresetVariantList } from "./preset-variant-list";
 import { PresetVariantEditor } from "./preset-variant-editor";
+import { PresetFormActionFooter } from "./preset-form-action-footer";
 import {
   applyLoraToPresetVariants,
   applyPromptToPresetVariants,
@@ -376,44 +374,11 @@ export function PresetForm({
   const formContent = (
     <div className="min-w-0 space-y-3 border-t border-white/5 px-3 py-3">
       {showSaveStatus && (
-        <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2.5 py-2 text-[11px]">
-          <span className="shrink-0 text-zinc-500">自动保存</span>
-          <div className="flex min-w-0 items-center gap-2">
-            {saveStatus === "saving" && (
-              <span className="inline-flex items-center gap-1.5 text-zinc-400">
-                <Loader2 className="size-3 animate-spin" />
-                保存中…
-              </span>
-            )}
-            {saveStatus === "queued" && (
-              <span className="inline-flex items-center gap-1.5 text-sky-300">
-                <Loader2 className="size-3 animate-spin" />
-                还有修改待保存
-              </span>
-            )}
-            {saveStatus === "saved" && (
-              <span className="inline-flex items-center gap-1.5 text-emerald-400/80">
-                <CheckCircle2 className="size-3" />
-                已保存
-              </span>
-            )}
-            {saveStatus === "error" && (
-              <>
-                <span className="inline-flex min-w-0 items-center gap-1.5 text-red-300">
-                  <AlertTriangle className="size-3 shrink-0" />
-                  <span className="truncate">{saveError ?? "保存失败"}</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={retryFailedSave}
-                  className="shrink-0 rounded-md border border-red-400/20 bg-red-500/10 px-2 py-0.5 text-[10px] text-red-200 transition hover:bg-red-500/20"
-                >
-                  重试
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+        <PresetFormActionFooter
+          saveStatus={saveStatus}
+          saveError={saveError}
+          onRetry={retryFailedSave}
+        />
       )}
 
       {/* Preset-level: name */}
