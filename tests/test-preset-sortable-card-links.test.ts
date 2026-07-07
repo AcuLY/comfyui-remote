@@ -87,3 +87,10 @@ test("preset group list imports server actions from focused modules", () => {
   assert.doesNotMatch(groupListSource, /from "@\/lib\/actions";/);
   assert.doesNotMatch(groupCardSource, /from "@\/lib\/actions";/);
 });
+
+test("preset form imports server actions from focused modules", () => {
+  const source = readSource("src/app/assets/presets/preset-form.tsx");
+
+  assert.match(source, /from "@\/lib\/actions\/preset-variant-crud";/);
+  assert.doesNotMatch(source, /from "@\/lib\/actions";/);
+});

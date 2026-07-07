@@ -38,7 +38,7 @@ import type {
 import {
   deletePresetVariant,
   reorderPresetVariants,
-} from "@/lib/actions";
+} from "@/lib/actions/preset-variant-crud";
 import { parseLoraBindings } from "@/lib/lora-types";
 import type { LinkedVariantRef, VariantDraft } from "./preset-types";
 import { PRESET_HISTORY_TABS } from "./preset-types";

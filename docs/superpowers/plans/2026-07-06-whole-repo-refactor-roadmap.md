@@ -301,6 +301,8 @@
 - Phase 6 slice 16 verification passed: red `node --import tsx --test tests/test-preset-sortable-card-links.test.ts`, then green `node --import tsx --test tests/test-preset-sortable-card-links.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-preset-sortable-card-links.test.ts`, and `npm test` with 1051 tests discovered, 1050 pass, 0 fail, 1 skipped.
 - Phase 6 slice 17 narrowed `src/app/assets/presets/group-list.tsx` and `src/app/assets/presets/sortable-group-card.tsx` to import preset group and preset folder actions from focused action modules instead of the full `src/lib/actions.ts` barrel.
 - Phase 6 slice 17 verification passed: red `node --import tsx --test tests/test-preset-sortable-card-links.test.ts`, then green `node --import tsx --test tests/test-preset-sortable-card-links.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-preset-sortable-card-links.test.ts`, and `npm test` with 1052 tests discovered, 1051 pass, 0 fail, 1 skipped.
+- Phase 6 slice 18 narrowed `src/app/assets/presets/preset-form.tsx` to import preset variant delete and reorder actions from `src/lib/actions/preset-variant-crud.ts` instead of the full `src/lib/actions.ts` barrel.
+- Phase 6 slice 18 verification passed: red `node --import tsx --test tests/test-preset-sortable-card-links.test.ts`, then green `node --import tsx --test tests/test-preset-sortable-card-links.test.ts`, `npm run lint`, staged `node --import tsx --test tests/test-repo-inventory.test.ts tests/test-preset-sortable-card-links.test.ts`, and `npm test` with 1053 tests discovered, 1052 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
