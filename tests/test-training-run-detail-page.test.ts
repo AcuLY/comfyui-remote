@@ -9,6 +9,7 @@ const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const sectionDetailSource = readFileSync(resolve(featureUiDir, "training-project-section-detail-page.tsx"), "utf8");
 const featureRoot = resolve(testDir, "../src/features/training");
 const detailSource = readFileSync(resolve(featureUiDir, "training-run-detail-page.tsx"), "utf8");
+const detailUtilsSource = readFileSync(resolve(featureUiDir, "training-run-detail-utils.ts"), "utf8");
 const detailCss = readFileSync(resolve(featureUiDir, "training-run-detail-page.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
@@ -38,13 +39,30 @@ test("training run detail keeps the compact detail header with dataset-version t
   assert.doesNotMatch(headerSource, /title=\{`\$\{currentRun\.projectTitle\} \/ \$\{currentRun\.title\}`\}/, "training detail should not expose the internal training task title as the page title");
 });
 
+test("training run detail pure helpers live in a focused utility module", () => {
+  for (const helperName of [
+    "isProductionTrainingPath",
+    "findRun",
+    "trainingRunDetailTitle",
+    "progressPercent",
+    "trainingConfigText",
+    "generationResultsForRun",
+    "trainingArtifactLabel",
+    "trainingPresetStatusLabel",
+  ]) {
+    assert.match(detailUtilsSource, new RegExp(`export function ${helperName}\\b`), `${helperName} should live in training-run-detail-utils.ts`);
+    assert.doesNotMatch(detailSource, new RegExp(`\\nfunction ${helperName}\\b`), `${helperName} should not stay inline in the broad run detail page`);
+  }
+  assert.match(detailSource, /from "\.\/training-run-detail-utils"/, "run detail page should import focused pure helpers");
+});
+
 test("training run detail title uses dataset version for training runs and task title for generation runs", () => {
-  const helperStart = detailSource.indexOf("function trainingRunDetailTitle");
-  const helperEnd = detailSource.indexOf("function progressPercent", helperStart);
+  const helperStart = detailUtilsSource.indexOf("export function trainingRunDetailTitle");
+  const helperEnd = detailUtilsSource.indexOf("export function progressPercent", helperStart);
   assert.notEqual(helperStart, -1, "run detail should define a product-facing title helper");
   assert.notEqual(helperEnd, -1, "title helper should live before progress helper");
 
-  const helperSource = detailSource.slice(helperStart, helperEnd);
+  const helperSource = detailUtilsSource.slice(helperStart, helperEnd);
 
   assert.match(helperSource, /run\.kind === "training"/, "training runs should receive dataset-version titles");
   assert.match(helperSource, /project\?\.datasetRevisions\.find/, "training title should prefer the matched dataset revision version");
@@ -54,12 +72,12 @@ test("training run detail title uses dataset version for training runs and task 
 });
 
 test("training run detail route helper does not replace invalid ids with first fixtures", () => {
-  const helperStart = detailSource.indexOf("function findRun");
-  const helperEnd = detailSource.indexOf("function progressPercent", helperStart);
+  const helperStart = detailUtilsSource.indexOf("export function findRun");
+  const helperEnd = detailUtilsSource.indexOf("export function progressPercent", helperStart);
   assert.notEqual(helperStart, -1, "run detail should define a route helper");
   assert.notEqual(helperEnd, -1, "run detail helper should end before progress helper");
 
-  const helperSource = detailSource.slice(helperStart, helperEnd);
+  const helperSource = detailUtilsSource.slice(helperStart, helperEnd);
   assert.match(helperSource, /if \(!runId\) return undefined;/, "missing run ids should render the empty state");
   assert.doesNotMatch(helperSource, /\?\?\s*training\.runs\.find\(\(run\) => run\.kind === kind\)/, "invalid run ids should not silently render the first run of the same kind");
   assert.match(detailSource, /if \(!run\) return <EmptyPage title=\{kind === "generation" \? "没有生成任务数据" : "没有训练任务数据"\} \/>;/, "invalid run ids should reach the explicit empty state");
@@ -105,14 +123,14 @@ test("training detail page renders training samples, captions, log preview, and 
 });
 
 test("training detail distinguishes missing artifacts by run lifecycle", () => {
-  const artifactHelperStart = detailSource.indexOf("function trainingArtifactLabel");
-  const presetHelperStart = detailSource.indexOf("function trainingPresetStatusLabel");
+  const artifactHelperStart = detailUtilsSource.indexOf("export function trainingArtifactLabel");
+  const presetHelperStart = detailUtilsSource.indexOf("export function trainingPresetStatusLabel");
   const outputGridStart = detailSource.indexOf("function GenerationOutputGrid");
   assert.notEqual(artifactHelperStart, -1, "training detail should define an artifact label helper");
   assert.notEqual(presetHelperStart, -1, "training detail should define a preset status helper");
   assert.notEqual(outputGridStart, -1);
 
-  const helperSource = detailSource.slice(artifactHelperStart, outputGridStart);
+  const helperSource = detailUtilsSource.slice(artifactHelperStart);
   const detailPageSource = detailSource.slice(detailSource.indexOf("export function LoraTrainingRunDetailPage"));
 
   assert.match(helperSource, /run\.status === "failed"/, "artifact copy should branch on failed runs");
