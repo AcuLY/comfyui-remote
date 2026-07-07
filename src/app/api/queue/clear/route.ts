@@ -1,5 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
-import { clearRuns } from "@/lib/actions";
+import { clearRuns } from "@/lib/actions/run-lifecycle";
 
 export async function POST() {
   try {

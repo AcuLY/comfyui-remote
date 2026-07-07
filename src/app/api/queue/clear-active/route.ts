@@ -1,5 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
-import { clearActiveRuns } from "@/lib/actions";
+import { clearActiveRuns } from "@/lib/actions/run-lifecycle";
 import {
   createQueueControlProgressStream,
   wantsQueueControlStream,

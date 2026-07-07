@@ -1,5 +1,5 @@
 import { fail, ok } from "@/lib/api-response";
-import { cancelRun } from "@/lib/actions";
+import { cancelRun } from "@/lib/actions/run-lifecycle";
 
 type RouteContext = { params: Promise<{ runId: string }> };
 

@@ -405,6 +405,20 @@ test("generation template API routes import actions from focused modules", () =>
   }
 });
 
+test("queue and run lifecycle API routes import actions from focused modules", () => {
+  for (const routePath of [
+    "src/app/api/runs/[runId]/cancel/route.ts",
+    "src/app/api/projects/[projectId]/cancel-runs/route.ts",
+    "src/app/api/queue/clear/route.ts",
+    "src/app/api/queue/clear-active/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assertImportsFrom(source, "@/lib/actions/run-lifecycle", routePath);
+    assert.doesNotMatch(source, /from ["']@\/lib\/actions["']/, `${routePath} should not import the full actions barrel`);
+  }
+});
+
 test("generation project mutations use shared raw JSON parsing", () => {
   for (const routePath of [
     "src/app/api/projects/route.ts",
