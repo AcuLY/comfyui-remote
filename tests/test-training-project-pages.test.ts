@@ -15,6 +15,10 @@ const projectReferenceUploadHookPath = resolve(featureUiDir, "use-project-refere
 const projectReferenceUploadHookSource = existsSync(projectReferenceUploadHookPath)
   ? readFileSync(projectReferenceUploadHookPath, "utf8")
   : "";
+const projectReferenceSelectionHookPath = resolve(featureUiDir, "use-project-reference-selection.ts");
+const projectReferenceSelectionHookSource = existsSync(projectReferenceSelectionHookPath)
+  ? readFileSync(projectReferenceSelectionHookPath, "utf8")
+  : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 const fixtureSource = readFileSync(resolve(featureRoot, "build.ts"), "utf8");
 const typesSource = readFileSync(resolve(featureRoot, "types.ts"), "utf8");
@@ -156,6 +160,16 @@ test("training project page reference upload draft previews live in a focused ho
   assert.doesNotMatch(pagesSource, /\nconst \[projectReferenceUploadState, setProjectReferenceUploadState\]/, "project create page should not keep staged upload state inline");
   assert.doesNotMatch(pagesSource, /\ntype ProjectReferenceUploadDraft\b/, "project create page should not keep reference upload draft typing inline");
   assert.doesNotMatch(pagesSource, /buildProjectReferenceUploadPreview/, "project create page should not build upload previews inline");
+});
+
+test("training project page create reference picker state lives in a focused hook module", () => {
+  assert.match(projectReferenceSelectionHookSource, /function useProjectReferenceSelection\b/, "project create reference picker state should live in a focused hook");
+  assert.match(projectReferenceSelectionHookSource, /selectedReferenceIds/, "project reference selection hook should own selected reference ids");
+  assert.match(projectReferenceSelectionHookSource, /previewReference/, "project reference selection hook should own the preview reference");
+  assert.match(projectReferenceSelectionHookSource, /templateContextId/, "project reference selection hook should remain template-context scoped");
+  assert.match(pagesSource, /from "\.\/use-project-reference-selection"/, "project create page should import the focused reference selection hook");
+  assert.doesNotMatch(pagesSource, /\nconst \[projectReferenceSelectionState, setProjectReferenceSelectionState\]/, "project create page should not keep reference selection state inline");
+  assert.doesNotMatch(pagesSource, /\nfunction setSelectedReferenceIds\b/, "project create page should not keep reference id selection updater inline");
 });
 
 test("training project page upload preview helpers live in the utility module", () => {
@@ -1313,13 +1327,14 @@ test("training project create page carries selected references into the local dr
 
   const formSource = pagesSource.slice(formStart, detailStart);
 
-  assert.match(formSource, /selectedReferenceIds/, "project creation should own selected reference state");
-  assert.match(formSource, /setSelectedReferenceIds/, "project creation should update selected references locally");
+  assert.match(formSource, /useProjectReferenceSelection/, "project creation should use the focused reference selection hook");
+  assert.match(projectReferenceSelectionHookSource, /selectedReferenceIds/, "project reference selection hook should own selected reference state");
+  assert.match(projectReferenceSelectionHookSource, /setSelectedReferenceIds/, "project reference selection hook should update selected references locally");
   assert.match(formSource, /selectedProjectReferences/, "project creation should resolve selected reference objects");
   assert.match(formSource, /selectedReferenceTitles/, "created draft should store selected reference titles");
   assert.match(formSource, /selectedReferenceCount/, "created draft summary should expose selected reference count");
-  assert.match(formSource, /handleAddProjectReference/, "project creation should define a reference add handler");
-  assert.match(formSource, /onAddReference=\{handleAddProjectReference\}/, "reference picker add action should update project form state");
+  assert.match(formSource, /addProjectReference/, "project creation should receive a reference add handler from the hook");
+  assert.match(formSource, /onAddReference=\{addProjectReference\}/, "reference picker add action should update project form state through the hook");
   assert.match(formSource, /selectedReferenceIds=\{selectedReferenceIds\}/, "reference picker should receive selected ids from project form state");
 });
 
@@ -1331,11 +1346,11 @@ test("training project create reference and draft state stay scoped to the selec
 
   const formSource = pagesSource.slice(formStart, detailStart);
 
-  assert.match(formSource, /projectReferenceSelectionState/, "project create reference state should be stored with template context");
+  assert.match(projectReferenceSelectionHookSource, /projectReferenceSelectionState/, "project create reference state should be stored with template context");
   assert.match(formSource, /createdProjectDraftState/, "created project draft should be stored with template context");
-  assert.match(formSource, /projectReferenceSelectionState\.templateContextId === projectTemplateContextId \? projectReferenceSelectionState :/, "project references should fall back after template context changes");
+  assert.match(projectReferenceSelectionHookSource, /projectReferenceSelectionState\.templateContextId === templateContextId \? projectReferenceSelectionState :/, "project references should fall back after template context changes");
   assert.match(formSource, /createdProjectDraftState\.templateContextId === projectTemplateContextId \? createdProjectDraftState\.draft : null/, "created draft should reset after template context changes");
-  assert.match(formSource, /selectedReferenceIds:\s*new Set<string>\(\)/, "a new template context should start with no selected references");
+  assert.match(projectReferenceSelectionHookSource, /selectedReferenceIds:\s*new Set<string>\(\)/, "a new template context should start with no selected references");
   assert.doesNotMatch(formSource, /const \[previewReference, setPreviewReference\] = useState<ReferenceCandidate \| null>/, "project reference preview should not be stored without template context");
   assert.doesNotMatch(formSource, /const \[selectedReferenceIds, setSelectedReferenceIds\] = useState<Set<string>>\(new Set\(\)\)/, "project selected references should not be stored without template context");
   assert.doesNotMatch(formSource, /const \[createdProjectDraft, setCreatedProjectDraft\] = useState</, "created project draft should not be stored without template context");

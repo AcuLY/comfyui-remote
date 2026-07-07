@@ -92,6 +92,7 @@ import {
 } from "./project-page-utils";
 import s from "./training-project-pages.module.css";
 import { useProjectReferenceUploadDrafts } from "./use-project-reference-upload-drafts";
+import { useProjectReferenceSelection } from "./use-project-reference-selection";
 import { useUrlSearch } from "./use-url-search";
 
 const PROJECT_TABS = [
@@ -759,11 +760,13 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
       items: stagedProjectReferenceUploads.map((upload) => upload.previewReference),
     },
   ].filter((group) => group.items.length > 0);
-  const [projectReferenceSelectionState, setProjectReferenceSelectionState] = useState(() => ({
-    previewReference: referenceSourceTree[0]?.items[0] ?? null,
-    selectedReferenceIds: new Set<string>(),
-    templateContextId: projectTemplateContextId,
-  }));
+  const fallbackProjectReference = referenceSourceTree[0]?.items[0] ?? null;
+  const {
+    activePreviewReference,
+    addProjectReference,
+    previewProjectReference,
+    selectedReferenceIds,
+  } = useProjectReferenceSelection(projectTemplateContextId, fallbackProjectReference);
   const [sectionSeedState, setSectionSeedState] = useState(() => ({
     sections: initialSectionSeeds,
     templateContextId: projectTemplateContextId,
@@ -799,13 +802,6 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
     draft: null,
     templateContextId: projectTemplateContextId,
   }));
-  const projectReferenceSelection = projectReferenceSelectionState.templateContextId === projectTemplateContextId ? projectReferenceSelectionState : {
-    previewReference: referenceSourceTree[0]?.items[0] ?? null,
-    selectedReferenceIds: new Set<string>(),
-    templateContextId: projectTemplateContextId,
-  };
-  const activePreviewReference = projectReferenceSelection.previewReference ?? referenceSourceTree[0]?.items[0] ?? null;
-  const selectedReferenceIds = projectReferenceSelection.selectedReferenceIds;
   const createdProjectDraft = createdProjectDraftState.templateContextId === projectTemplateContextId ? createdProjectDraftState.draft : null;
   const selectedProjectReferences = referenceSourceTree
     .flatMap((group) => group.items)
@@ -869,32 +865,10 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
     });
   }
 
-  function setSelectedReferenceIds(updater: (current: Set<string>) => Set<string>) {
-    setProjectReferenceSelectionState((current) => {
-      const active = current.templateContextId === projectTemplateContextId ? current : projectReferenceSelection;
-      return {
-        ...active,
-        selectedReferenceIds: updater(active.selectedReferenceIds),
-        templateContextId: projectTemplateContextId,
-      };
-    });
-  }
-
   function setCreatedProjectDraft(draft: CreatedProjectDraft) {
     setCreatedProjectDraftState({
       draft,
       templateContextId: projectTemplateContextId,
-    });
-  }
-
-  function handlePreviewProjectReference(candidate: ReferenceCandidate) {
-    setProjectReferenceSelectionState((current) => {
-      const active = current.templateContextId === projectTemplateContextId ? current : projectReferenceSelection;
-      return {
-        ...active,
-        previewReference: candidate,
-        templateContextId: projectTemplateContextId,
-      };
     });
   }
 
@@ -932,10 +906,6 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
     )));
   }
 
-  function handleAddProjectReference(candidate: ReferenceCandidate) {
-    setSelectedReferenceIds((current) => new Set([...current, candidate.id]));
-  }
-
   function handleUploadProjectReference() {
     projectReferenceUploadInputRef.current?.click();
   }
@@ -947,7 +917,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
     const nextUploads = stageProjectReferenceUploadFiles(files);
 
     if (nextUploads[0]) {
-      handlePreviewProjectReference(nextUploads[0].previewReference);
+      previewProjectReference(nextUploads[0].previewReference);
       pushToast({
         tone: "success",
         title: "本地图片已加入候选",
@@ -1173,8 +1143,8 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
             <ReferencePicker
                 referenceSourceTree={referenceSourceTree}
                 previewReference={activePreviewReference}
-                onPreviewReference={handlePreviewProjectReference}
-                onAddReference={handleAddProjectReference}
+                onPreviewReference={previewProjectReference}
+                onAddReference={addProjectReference}
                 selectedReferenceIds={selectedReferenceIds}
               />
             </Panel>
