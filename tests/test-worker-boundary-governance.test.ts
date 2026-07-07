@@ -27,12 +27,14 @@ test("worker boundary doc records generation payload and repository ownership", 
   assert.match(doc, /src\/server\/worker\/training\/leasing\.ts[\s\S]*owns training worker leasing/);
   assert.match(doc, /src\/server\/worker\/training\/task-json\.ts[\s\S]*owns worker task JSON normalization/);
   assert.match(doc, /src\/server\/worker\/training\/heartbeat\.ts[\s\S]*owns training worker heartbeat handling/);
+  assert.match(doc, /src\/server\/worker\/training\/completion\.ts[\s\S]*owns training worker completion handling/);
   assert.match(doc, /docs\/workflow\.api\.json[\s\S]*default standard workflow/);
   assert.match(doc, /Do not let repositories import payload builders/);
   assert.match(doc, /Do not reintroduce worker task ID prefix parsing into task-api/);
   assert.match(doc, /Do not reintroduce target discovery queries into task-api/);
   assert.match(doc, /Do not reintroduce lease request parsing or mark-running transitions into task-api/);
   assert.match(doc, /Do not reintroduce heartbeat request parsing or heartbeat progress writes into task-api/);
+  assert.match(doc, /Do not reintroduce completion request parsing or artifact completion writes into task-api/);
   assert.match(doc, /Do not call the fallback prompt builder from run-executor/);
   assert.match(docsIndex, /docs\/worker-boundaries\.md/, "documentation index should point agents to worker boundaries");
 });
@@ -277,4 +279,27 @@ test("training worker heartbeat lives in a dedicated boundary", async () => {
   assert.deepEqual(json.normalizeWorkerTaskJson(undefined), {});
   assert.deepEqual(json.normalizeWorkerTaskJson("ready"), { value: "ready" });
   assert.deepEqual(json.normalizeWorkerTaskJson({ phase: "training" }), { phase: "training" });
+});
+
+test("training worker completion lives in a dedicated boundary", () => {
+  const completionPath = "src/server/worker/training/completion.ts";
+  assert.ok(existsSync(join(repoRoot, completionPath)), `${completionPath} should own worker completion handling`);
+
+  const taskApi = readSource("src/server/worker/training/task-api.ts");
+  const completionSource = readSource(completionPath);
+  assert.match(taskApi, /from "@\/server\/worker\/training\/completion"/);
+  assert.doesNotMatch(taskApi, /trainingWorkerTaskCompleteRequestSchema/);
+  assert.doesNotMatch(taskApi, /export async function completeTrainingWorkerTask/);
+  assert.doesNotMatch(taskApi, /export async function completeTrainingRunWorkerTarget/);
+  assert.doesNotMatch(taskApi, /export async function completeGenerationTaskWorkerTarget/);
+  assert.doesNotMatch(taskApi, /async function completeGenerationTarget/);
+  assert.doesNotMatch(taskApi, /async function completeTrainingTarget/);
+  assert.doesNotMatch(taskApi, /async function writeArtifact/);
+  assert.match(completionSource, /export async function completeTrainingWorkerTask/);
+  assert.match(completionSource, /export async function completeTrainingRunWorkerTarget/);
+  assert.match(completionSource, /export async function completeGenerationTaskWorkerTarget/);
+  assert.match(completionSource, /trainingWorkerTaskCompleteRequestSchema/);
+  assert.match(completionSource, /async function completeGenerationTarget/);
+  assert.match(completionSource, /async function completeTrainingTarget/);
+  assert.match(completionSource, /async function writeArtifact/);
 });
