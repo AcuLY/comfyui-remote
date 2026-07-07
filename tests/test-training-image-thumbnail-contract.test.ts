@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const projectPagesSource = readFileSync("src/features/training/ui/training-project-pages.tsx", "utf8");
+const trainingResultGridPath = "src/features/training/ui/training-result-grid.tsx";
+const trainingResultGridSource = existsSync(trainingResultGridPath) ? readFileSync(trainingResultGridPath, "utf8") : "";
 const projectPagesCss = readFileSync("src/features/training/ui/training-project-pages.module.css", "utf8");
 const runDetailSource = readFileSync("src/features/training/ui/training-run-detail-page.tsx", "utf8");
 
@@ -15,9 +17,10 @@ function sourceBetween(source: string, startMarker: string, endMarker: string) {
 }
 
 test("training result pool renders card thumbnails and opens the shared lightbox only on demand", () => {
-  const gridSource = sourceBetween(projectPagesSource, "function TrainingResultGrid", "function ProjectRunFailureBlock");
+  const gridSource = trainingResultGridSource;
   const gridCss = sourceBetween(projectPagesCss, ".referenceImageGrid,", ".referenceImageCard > div:last-child");
 
+  assert.match(projectPagesSource, /from "\.\/training-result-grid"/, "project pages should import the focused result grid module");
   assert.match(gridSource, /ImageThumbMedium/, "result cards should use the same thumbnail component as image grids");
   assert.match(gridSource, /onOpen=\{\(\) => setActiveResultId\(result\.id\)\}/, "result thumbnails should open the lightbox");
   assert.match(gridSource, /ImagePreviewLarge/, "full-size result images should still use the shared lightbox");

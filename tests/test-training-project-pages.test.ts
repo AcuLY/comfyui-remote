@@ -12,6 +12,8 @@ const projectFormPagePath = resolve(featureUiDir, "training-project-form-page.ts
 const projectFormPageSource = existsSync(projectFormPagePath) ? readFileSync(projectFormPagePath, "utf8") : "";
 const projectPageShellPath = resolve(featureUiDir, "project-page-shell.tsx");
 const projectPageShellSource = existsSync(projectPageShellPath) ? readFileSync(projectPageShellPath, "utf8") : "";
+const trainingResultGridPath = resolve(featureUiDir, "training-result-grid.tsx");
+const trainingResultGridSource = existsSync(trainingResultGridPath) ? readFileSync(trainingResultGridPath, "utf8") : "";
 const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
 const referencePickerPath = resolve(featureUiDir, "reference-picker.tsx");
 const referencePickerSource = existsSync(referencePickerPath) ? readFileSync(referencePickerPath, "utf8") : "";
@@ -645,29 +647,27 @@ test("training profile draft stays scoped to the active project", () => {
 });
 
 test("training results and dataset pages use caption-aware review grids instead of bare image grids", () => {
-  assert.match(pagesSource, /function TrainingResultGrid/, "project pages should define a caption-aware training result grid");
-  assert.match(pagesSource, /ImagePreviewLarge/, "training result grid should use the shared lightbox");
-  assert.match(pagesSource, /result\.caption/, "result cards should render caption summaries");
+  assert.match(trainingResultGridSource, /export function TrainingResultGrid/, "caption-aware training result grid should live in its own module");
+  assert.match(trainingResultGridSource, /ImagePreviewLarge/, "training result grid should use the shared lightbox");
+  assert.match(trainingResultGridSource, /result\.caption/, "result cards should render caption summaries");
+  assert.match(pagesSource, /from "\.\/training-result-grid"/, "project pages should import the focused result grid module");
+  assert.doesNotMatch(pagesSource, /\nfunction TrainingResultGrid\b/, "project pages should not keep the result grid implementation inline");
   assert.match(pagesSource, /captionSnapshot/, "dataset revision pages should render frozen caption snapshots");
   assert.match(pagesSource, /manifestRows/, "dataset revision pages should render manifest rows");
   assert.match(pagesSource, /relatedTrainingRunIds/, "dataset revision pages should use related training ids");
 });
 
 test("training result review actions update local front-end review state", () => {
-  const gridStart = pagesSource.indexOf("function TrainingResultGrid");
-  const gridEnd = pagesSource.indexOf("function ProjectRunFailureBlock");
   const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
   const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
   const composeStart = pagesSource.indexOf("export function LoraTrainingGenerationComposePage");
-  assert.notEqual(gridStart, -1);
-  assert.notEqual(gridEnd, -1);
   assert.notEqual(resultsPageStart, -1);
   assert.notEqual(datasetPageStart, -1);
   assert.notEqual(sectionDetailStart, -1);
   assert.notEqual(composeStart, -1);
 
-  const gridSource = pagesSource.slice(gridStart, gridEnd);
+  const gridSource = trainingResultGridSource;
   const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
   const sectionDetailSource = pagesSource.slice(sectionDetailStart, composeStart);
 
@@ -712,16 +712,12 @@ test("training result review posts through the formal HTTP API on production rou
 });
 
 test("training results page exposes caption text revision history and restore controls", () => {
-  const gridStart = pagesSource.indexOf("function TrainingResultGrid");
-  const gridEnd = pagesSource.indexOf("function ProjectRunFailureBlock");
   const resultsPageStart = pagesSource.indexOf("export function LoraTrainingProjectResultsPage");
   const datasetPageStart = pagesSource.indexOf("export function LoraTrainingProjectDatasetPage");
-  assert.notEqual(gridStart, -1);
-  assert.notEqual(gridEnd, -1);
   assert.notEqual(resultsPageStart, -1);
   assert.notEqual(datasetPageStart, -1);
 
-  const gridSource = pagesSource.slice(gridStart, gridEnd);
+  const gridSource = trainingResultGridSource;
   const resultsPageSource = pagesSource.slice(resultsPageStart, datasetPageStart);
 
   assert.match(gridSource, /onOpenCaptionRevisionHistory/, "result grid should expose a per-result caption history callback");
@@ -785,22 +781,18 @@ test("training section list mutations use the formal HTTP APIs on production rou
 });
 
 test("training project repeated object actions include the acted-on object name", () => {
-  const gridStart = pagesSource.indexOf("function TrainingResultGrid");
-  const gridEnd = pagesSource.indexOf("function ProjectRunFailureBlock");
   const runRowsStart = pagesSource.indexOf("function RunRows");
   const runRowsEnd = pagesSource.indexOf("function TrainingSectionRail");
   const projectDetailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
   const projectProfileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(gridStart, -1);
-  assert.notEqual(gridEnd, -1);
   assert.notEqual(runRowsStart, -1);
   assert.notEqual(runRowsEnd, -1);
   assert.notEqual(projectDetailStart, -1);
   assert.notEqual(projectProfileStart, -1);
   assert.notEqual(scopedPageStart, -1);
 
-  const gridSource = pagesSource.slice(gridStart, gridEnd);
+  const gridSource = trainingResultGridSource;
   const runRowsSource = pagesSource.slice(runRowsStart, runRowsEnd);
   const newProjectSource = projectFormPageSource;
   const projectDetailSource = pagesSource.slice(projectDetailStart, projectProfileStart);
@@ -834,12 +826,7 @@ test("project-scoped run pages leave the primary-action target selection to rout
 });
 
 test("training result lightbox tracks the active image by result id", () => {
-  const gridStart = pagesSource.indexOf("function TrainingResultGrid");
-  const gridEnd = pagesSource.indexOf("function ProjectRunFailureBlock");
-  assert.notEqual(gridStart, -1);
-  assert.notEqual(gridEnd, -1);
-
-  const gridSource = pagesSource.slice(gridStart, gridEnd);
+  const gridSource = trainingResultGridSource;
 
   assert.match(gridSource, /activeResultId/, "result grid should store the active result id");
   assert.match(gridSource, /setActiveResultId/, "result grid should update the active result by id");

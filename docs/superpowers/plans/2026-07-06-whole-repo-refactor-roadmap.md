@@ -465,6 +465,8 @@
 - Phase 8 slice 98 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, initial `npm test` found stale form-page import assertions in `tests/test-training-project-pages.test.ts`, then green `node --import tsx --test tests/test-training-project-pages.test.ts`, green `npm test` with 1146 tests discovered, 1145 pass, 0 fail, 1 skipped, and final `npm run lint`.
 - Phase 8 slice 99 moved the shared project page shell into `src/features/training/ui/project-page-shell.tsx`. The component module owns the project tab config, `ProjectNav`, and `ProjectHeader`, so future overview/profile/sections/results/dataset/run page splits can import the shell without circular dependencies while `training-project-pages.tsx` keeps the remaining page implementations inline.
 - Phase 8 slice 99 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1147 tests discovered, 1146 pass, 0 fail, 1 skipped.
+- Phase 8 slice 100 moved the caption-aware training result grid into `src/features/training/ui/training-result-grid.tsx`. The focused component owns thumbnail cards, lightbox state, caption history entrypoints, and keep/reject callbacks while `training-project-pages.tsx` imports it for overview, section detail, results, dataset, and dataset revision pages.
+- Phase 8 slice 100 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1147 tests discovered, 1146 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1104,6 +1106,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - [ ] Split `training-project-pages.tsx` by page:
   - [x] Project form page and upload reference image workflow.
   - [x] Shared project page shell for project tabs and headers.
+  - [x] Shared training result grid for overview, results, and dataset pages.
   - [ ] Project detail overview.
   - [ ] Profile page and text revision UI.
   - [ ] Sections list page.
