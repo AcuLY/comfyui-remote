@@ -6,11 +6,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { resolveTemplatePresetImports, updateProjectTemplateSection } from "@/lib/actions/template-crud";
-import { AspectRatioPicker } from "@/components/aspect-ratio-picker";
-import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
-import { UpscaleFactorQuickFill } from "@/components/upscale-factor-quick-fill";
-import { KSamplerPanel, parseInitialKSampler } from "@/components/ksampler-panel";
-import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";
+import { parseInitialKSampler } from "@/components/ksampler-panel";
 import type { ImportCategory } from "@/components/section-editor";
 import {
   getSectionPresetBindingGroupName,
@@ -32,6 +28,7 @@ import {
   TemplateSectionPresetBindings,
   type TemplateSectionPresetBindingInfo,
 } from "./template-section-preset-bindings";
+import { TemplateSectionForm } from "./template-section-form";
 
 const AUTO_SAVE_DELAY = 600;
 
@@ -663,9 +660,6 @@ export function TemplateSectionDetailClient({
     scheduleSaveAfterState();
   }
 
-  const inputCls =
-    "input-number w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 py-2 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30 disabled:opacity-70";
-
   return (
     <div className="mx-auto w-full max-w-3xl min-w-0 space-y-4">
       {/* Navigation bar */}
@@ -695,305 +689,32 @@ export function TemplateSectionDetailClient({
         />
       </div>
 
-      {/* Section name */}
-      <div className="space-y-2 border-t border-white/5 pt-3">
-        <label className="text-xs text-zinc-500">小节名称</label>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={saveOnBlur}
-          placeholder="小节名称"
-          className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-        />
-      </div>
-
-      <div className="space-y-2 border-t border-white/5 pt-3">
-        <label className="text-xs text-zinc-500">备注</label>
-        <textarea
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-          onBlur={saveOnBlur}
-          placeholder="给这个模板小节添加备注"
-          rows={3}
-          className="cm-text-editor cm-text-editor--compact min-h-20 w-full resize-y rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-2 text-sm leading-5 text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-sky-500/30"
-        />
-      </div>
-
-      {/* Run params – same layout as blocks page */}
-      <div className="space-y-3 border-t border-white/5 pt-3">
-        <div className="flex items-center justify-between">
-          <div className="text-xs font-medium text-zinc-400">运行参数</div>
-          <div className="text-[10px] text-zinc-500">空值参数在导入时不会覆盖项目设置</div>
-        </div>
-
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <div className="text-[11px] text-zinc-500">Checkpoint</div>
-            {checkpointName !== null && (
-              <button
-                type="button"
-                onClick={() => {
-                  setCheckpointName(null);
-                  scheduleSaveAfterState();
-                }}
-                className="text-[10px] text-zinc-500 hover:text-zinc-300"
-              >
-                清除
-              </button>
-            )}
-          </div>
-          {checkpointName === null ? (
-            <button
-              type="button"
-              onClick={() => {
-                setCheckpointName("");
-              }}
-              className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
-            >
-              点击设置
-            </button>
-          ) : (
-            <CheckpointCascadePicker
-              value={checkpointName}
-              onChange={(value) => {
-                setCheckpointName(value);
-                scheduleSaveAfterState();
-              }}
-              disabled={isPending}
-            />
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] text-zinc-500">画幅比例</div>
-              {aspectRatio !== null && (
-                <button
-                  type="button"
-                  onClick={() => { setAspectRatios(null); setShortSidePx(null); scheduleSaveAfterState(); }}
-                  className="text-[10px] text-zinc-500 hover:text-zinc-300"
-                >
-                  清除
-                </button>
-              )}
-            </div>
-            {aspectRatio === null ? (
-              <button
-                type="button"
-                onClick={() => { setAspectRatios(["2:3"]); setShortSidePx(512); scheduleSaveAfterState(); }}
-                className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
-              >
-                点击设置
-              </button>
-            ) : (
-              <AspectRatioPicker
-                name="aspectRatio"
-                defaultValue={aspectRatio}
-                defaultValues={aspectRatios}
-                defaultShortSidePx={shortSidePx}
-                disabled={isPending}
-                multiple
-                onChange={saveOnBlur}
-                onValueChange={(ratio, px, ratios) => {
-                  setAspectRatios(ratios.length > 0 ? ratios : (ratio ? [ratio] : null));
-                  setShortSidePx(px);
-                  scheduleSaveAfterState();
-                }}
-              />
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] text-zinc-500">Batch Size</div>
-              {batchSize !== null && (
-                <button
-                  type="button"
-                  onClick={() => { setBatchSize(null); scheduleSaveAfterState(); }}
-                  className="text-[10px] text-zinc-500 hover:text-zinc-300"
-                >
-                  清除
-                </button>
-              )}
-            </div>
-            {batchSize === null ? (
-              <button
-                type="button"
-                onClick={() => { setBatchSize(""); scheduleSaveAfterState(); }}
-                className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
-              >
-                点击设置
-              </button>
-            ) : (
-              <>
-                <input
-                  type="number"
-                  min={1}
-                  disabled={isPending}
-                  value={batchSize}
-                  onChange={(e) => setBatchSize(e.target.value || null)}
-                  onBlur={saveOnBlur}
-                  placeholder="不设置"
-                  className={inputCls}
-                />
-                <BatchSizeQuickFill
-                  onSelect={(val) => { setBatchSize(String(val)); scheduleSaveAfterState(); }}
-                  currentValue={batchSize ? parseInt(batchSize, 10) : null}
-                  disabled={isPending}
-                  size="sm"
-                />
-              </>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] text-zinc-500">放大倍数</div>
-              {upscaleFactor !== null && (
-                <button
-                  type="button"
-                  onClick={() => { setUpscaleFactor(null); scheduleSaveAfterState(); }}
-                  className="text-[10px] text-zinc-500 hover:text-zinc-300"
-                >
-                  清除
-                </button>
-              )}
-            </div>
-            {upscaleFactor === null ? (
-              <button
-                type="button"
-                onClick={() => { setUpscaleFactor("2"); scheduleSaveAfterState(); }}
-                className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-2.5 py-2 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
-              >
-                点击设置
-              </button>
-            ) : (
-              <>
-                <input
-                  type="number"
-                  min={1}
-                  max={4}
-                  step={0.5}
-                  value={upscaleFactor}
-                  onChange={(v) => setUpscaleFactor(v.target.value || null)}
-                  onBlur={saveOnBlur}
-                  disabled={isPending}
-                  className={inputCls}
-                />
-                <UpscaleFactorQuickFill
-                  onSelect={(val) => { setUpscaleFactor(String(val)); scheduleSaveAfterState(); }}
-                  currentValue={upscaleFactor ? parseFloat(upscaleFactor) : null}
-                  disabled={isPending}
-                  size="sm"
-                />
-              </>
-            )}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          aria-pressed={useTwoStageKSampler}
-          disabled={isPending}
-          onClick={() => {
-            setUseTwoStageKSampler((current) => !current);
-            scheduleSaveAfterState();
-          }}
-          className="flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-left transition hover:bg-white/[0.06] disabled:opacity-50"
-        >
-          <span className="min-w-0">
-            <span className="block text-xs font-medium text-zinc-200">使用二阶段 KSampler</span>
-            <span className="block truncate text-[11px] text-zinc-500">
-              {useTwoStageKSampler ? "Upscale Latent + KSampler2" : "一阶段直接生成最终尺寸"}
-            </span>
-          </span>
-          <span
-            className={`relative h-5 w-10 rounded-full border transition ${
-              useTwoStageKSampler
-                ? "border-sky-400/40 bg-sky-400/25"
-                : "border-white/10 bg-white/[0.04]"
-            }`}
-          >
-            <span
-              className={`absolute top-1/2 size-3.5 -translate-y-1/2 rounded-full bg-white transition ${
-                useTwoStageKSampler ? "left-5" : "left-1"
-              }`}
-            />
-          </span>
-        </button>
-
-        {/* KSampler panels */}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] text-zinc-500">KSampler1（第一阶段）</div>
-              {ks1 !== null && (
-                <button
-                  type="button"
-                  onClick={() => { setKs1(null); scheduleSaveAfterState(); }}
-                  className="text-[10px] text-zinc-500 hover:text-zinc-300"
-                >
-                  清除
-                </button>
-              )}
-            </div>
-            {ks1 === null ? (
-              <button
-                type="button"
-                onClick={() => { setKs1({ ...DEFAULT_KSAMPLER1 }); scheduleSaveAfterState(); }}
-                className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-3 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
-              >
-                点击设置
-              </button>
-            ) : (
-              <KSamplerPanel
-                label=""
-                subtitle={`steps ${ks1.steps ?? DEFAULT_KSAMPLER1.steps} · cfg ${ks1.cfg ?? DEFAULT_KSAMPLER1.cfg} · ${ks1.sampler_name ?? DEFAULT_KSAMPLER1.sampler_name}`}
-                params={ks1}
-                defaults={DEFAULT_KSAMPLER1}
-                onChange={setKs1}
-                onFieldBlur={saveOnBlur}
-                disabled={isPending}
-              />
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <div className="text-[11px] text-zinc-500">KSampler2（高清修复）</div>
-              {ks2 !== null && (
-                <button
-                  type="button"
-                  onClick={() => { setKs2(null); scheduleSaveAfterState(); }}
-                  className="text-[10px] text-zinc-500 hover:text-zinc-300"
-                >
-                  清除
-                </button>
-              )}
-            </div>
-            {ks2 === null ? (
-              <button
-                type="button"
-                onClick={() => { setKs2({ ...DEFAULT_KSAMPLER2 }); scheduleSaveAfterState(); }}
-                className="w-full rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-3 py-3 text-xs text-zinc-500 transition hover:bg-white/[0.04] hover:text-zinc-300"
-              >
-                点击设置
-              </button>
-            ) : (
-              <KSamplerPanel
-                label=""
-                subtitle={!useTwoStageKSampler ? "单阶段模式下不使用" : `steps ${ks2.steps ?? DEFAULT_KSAMPLER2.steps} · cfg ${ks2.cfg ?? DEFAULT_KSAMPLER2.cfg} · ${ks2.sampler_name ?? DEFAULT_KSAMPLER2.sampler_name}`}
-                params={ks2}
-                defaults={DEFAULT_KSAMPLER2}
-                onChange={setKs2}
-                onFieldBlur={saveOnBlur}
-                disabled={isPending || !useTwoStageKSampler}
-              />
-            )}
-          </div>
-        </div>
-      </div>
+      <TemplateSectionForm
+        name={name}
+        notes={notes}
+        aspectRatio={aspectRatio}
+        aspectRatios={aspectRatios}
+        shortSidePx={shortSidePx}
+        batchSize={batchSize}
+        upscaleFactor={upscaleFactor}
+        useTwoStageKSampler={useTwoStageKSampler}
+        checkpointName={checkpointName}
+        ks1={ks1}
+        ks2={ks2}
+        isPending={isPending}
+        onNameChange={setName}
+        onNotesChange={setNotes}
+        onAspectRatiosChange={setAspectRatios}
+        onShortSidePxChange={setShortSidePx}
+        onBatchSizeChange={setBatchSize}
+        onUpscaleFactorChange={setUpscaleFactor}
+        onUseTwoStageKSamplerChange={setUseTwoStageKSampler}
+        onCheckpointNameChange={setCheckpointName}
+        onKSampler1Change={setKs1}
+        onKSampler2Change={setKs2}
+        onSaveNow={saveOnBlur}
+        onScheduleSaveAfterState={scheduleSaveAfterState}
+      />
 
       <TemplateSectionPresetBindings
         presetBindings={presetBindings}

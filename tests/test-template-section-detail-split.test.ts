@@ -6,6 +6,7 @@ const clientPath = "src/app/assets/templates/[templateId]/sections/[sectionIndex
 const promptBlocksPath = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-prompt-blocks.tsx";
 const loraEditorPath = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-lora-editor.tsx";
 const presetBindingsPath = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-preset-bindings.tsx";
+const sectionFormPath = "src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-form.tsx";
 
 test("template section detail delegates prompt block rendering to a focused component", () => {
   assert.ok(existsSync(promptBlocksPath), `${promptBlocksPath} should own template prompt block rendering`);
@@ -59,4 +60,26 @@ test("template section detail delegates preset binding rendering to a focused ed
   assert.doesNotMatch(clientSource, /<Package/);
   assert.doesNotMatch(clientSource, /<Download/);
   assert.doesNotMatch(clientSource, /<Trash2/);
+});
+
+test("template section detail delegates section form rendering to a focused form component", () => {
+  assert.ok(existsSync(sectionFormPath), `${sectionFormPath} should own template section form rendering`);
+
+  const clientSource = readFileSync(clientPath, "utf8");
+  const sectionFormSource = readFileSync(sectionFormPath, "utf8");
+
+  assert.match(sectionFormSource, /export function TemplateSectionForm/);
+  assert.match(sectionFormSource, /<CheckpointCascadePicker/);
+  assert.match(sectionFormSource, /<AspectRatioPicker/);
+  assert.match(sectionFormSource, /<BatchSizeQuickFill/);
+  assert.match(sectionFormSource, /<UpscaleFactorQuickFill/);
+  assert.match(sectionFormSource, /<KSamplerPanel/);
+  assert.match(sectionFormSource, /使用二阶段 KSampler/);
+
+  assert.match(clientSource, /from "\.\/template-section-form";/);
+  assert.doesNotMatch(clientSource, /<CheckpointCascadePicker/);
+  assert.doesNotMatch(clientSource, /<AspectRatioPicker/);
+  assert.doesNotMatch(clientSource, /<BatchSizeQuickFill/);
+  assert.doesNotMatch(clientSource, /<UpscaleFactorQuickFill/);
+  assert.doesNotMatch(clientSource, /<KSamplerPanel/);
 });

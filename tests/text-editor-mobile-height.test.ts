@@ -15,7 +15,7 @@ const visibleTextareaFiles = [
   "src/app/assets/presets/preset-form.tsx",
   "src/app/assets/presets/preset-variant-bulk-edit-dialog.tsx",
   "src/app/assets/templates/template-form-client.tsx",
-  "src/app/assets/templates/[templateId]/sections/[sectionIndex]/section-detail-client.tsx",
+  "src/app/assets/templates/[templateId]/sections/[sectionIndex]/template-section-form.tsx",
   "src/app/assets/models/model-file-manager.tsx",
   "src/app/assets/loras/lora-file-manager.tsx",
   "src/app/projects/new/project-form.tsx",
