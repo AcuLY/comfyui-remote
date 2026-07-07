@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   useTransition,
 } from "react";
@@ -38,6 +37,7 @@ import {
   type ReviewMutationAction,
 } from "@/lib/client-review-mutation";
 import { getNextImageIdAfterCurrentLeavesSequence } from "@/lib/review-lightbox-state";
+import { useReviewLightboxState } from "@/lib/use-review-lightbox-state";
 import {
   SidebarSectionNav,
   useSyncedSidebarContent,
@@ -573,14 +573,12 @@ export function ProjectResultsClient({
   );
   const [togglingImageId, setTogglingImageId] = useState<string | null>(null);
   const [isTrashingAll, setIsTrashingAll] = useState(false);
-  const [lightboxImageId, setLightboxImageId] = useState<string | null>(null);
   const [showCensoredMode, setShowCensoredMode] = useState(false);
   const [quickCensorMode, setQuickCensorMode] = useState(false);
   const [reviewingImageId, setReviewingImageId] = useState<string | null>(null);
   const [reviewingAction, setReviewingAction] = useState<ReviewMutationAction | null>(null);
   const [resultFilter, setResultFilter] = useState<ProjectResultFilter>("all");
   const [markerUndoStack, setMarkerUndoStack] = useState<ProjectResultMarkerUndoEntry[]>([]);
-  const previousFilteredImagesRef = useRef<ProjectResultsImageWithRun[]>([]);
   const [, startTransition] = useTransition();
   const filteredSections = useMemo(() =>
     filterProjectResultSections(sections, resultFilter),
@@ -601,10 +599,16 @@ export function ProjectResultsClient({
     () => collectProjectResultImages(filteredSections),
     [filteredSections],
   );
-  const lightboxIndex = lightboxImageId
-    ? filteredImages.findIndex((image) => image.id === lightboxImageId)
-    : -1;
-  const lightboxImage = lightboxIndex >= 0 ? filteredImages[lightboxIndex] : null;
+  const {
+    lightboxImageId,
+    setLightboxImageId,
+    lightboxIndex,
+    lightboxImage,
+    openLightbox,
+    closeLightbox,
+    goLightboxPrev,
+    goLightboxNext,
+  } = useReviewLightboxState(filteredImages);
   const lightboxCurrentReviewBusy =
     lightboxImage !== null && reviewingImageId === lightboxImage.id;
   const lightboxBusy =
@@ -658,44 +662,6 @@ export function ProjectResultsClient({
     window.addEventListener("resize", syncCollapsedImageCount);
     return () => window.removeEventListener("resize", syncCollapsedImageCount);
   }, []);
-
-  const openLightbox = useCallback((imageId: string) => {
-    setLightboxImageId(imageId);
-  }, []);
-
-  const closeLightbox = useCallback(() => {
-    setLightboxImageId(null);
-  }, []);
-
-  const goLightboxPrev = useCallback(() => {
-    if (filteredImages.length === 0 || lightboxIndex < 0) return;
-    const nextIndex = lightboxIndex > 0 ? lightboxIndex - 1 : filteredImages.length - 1;
-    setLightboxImageId(filteredImages[nextIndex].id);
-  }, [filteredImages, lightboxIndex]);
-
-  const goLightboxNext = useCallback(() => {
-    if (filteredImages.length === 0 || lightboxIndex < 0) return;
-    const nextIndex = lightboxIndex < filteredImages.length - 1 ? lightboxIndex + 1 : 0;
-    setLightboxImageId(filteredImages[nextIndex].id);
-  }, [filteredImages, lightboxIndex]);
-
-  useEffect(() => {
-    if (!lightboxImageId) return;
-    if (filteredImages.some((image) => image.id === lightboxImageId)) return;
-    const nextImageId = getNextImageIdAfterCurrentLeavesSequence(
-      previousFilteredImagesRef.current,
-      lightboxImageId,
-    );
-    if (nextImageId && filteredImages.some((image) => image.id === nextImageId)) {
-      setLightboxImageId(nextImageId);
-      return;
-    }
-    setLightboxImageId(filteredImages[0]?.id ?? null);
-  }, [filteredImages, lightboxImageId]);
-
-  useEffect(() => {
-    previousFilteredImagesRef.current = filteredImages;
-  }, [filteredImages]);
 
   useEffect(() => {
     setQuickCensorMode(false);
@@ -918,7 +884,7 @@ export function ProjectResultsClient({
         }
       });
     },
-    [allImages, filteredImages, lightboxImageId, resultFilter, sections, setImageFeatured, togglingImageId],
+    [allImages, filteredImages, lightboxImageId, resultFilter, sections, setImageFeatured, setLightboxImageId, togglingImageId],
   );
 
   const handleToggleFeatured2 = useCallback(
@@ -976,7 +942,7 @@ export function ProjectResultsClient({
         }
       });
     },
-    [allImages, filteredImages, lightboxImageId, resultFilter, sections, setImageFeatured2, togglingImageId],
+    [allImages, filteredImages, lightboxImageId, resultFilter, sections, setImageFeatured2, setLightboxImageId, togglingImageId],
   );
 
   const handleUndoMarkerToggle = useCallback(() => {
@@ -1026,7 +992,7 @@ export function ProjectResultsClient({
         setTogglingImageId(null);
       }
     });
-  }, [markerUndoStack, setImageFeatured, setImageFeatured2, togglingImageId]);
+  }, [markerUndoStack, setImageFeatured, setImageFeatured2, setLightboxImageId, togglingImageId]);
 
   const handleSetCover = useCallback(
     (imageId: string) => {
@@ -1150,6 +1116,7 @@ export function ProjectResultsClient({
       reviewingImageId,
       sections,
       setImageReviewStatus,
+      setLightboxImageId,
     ],
   );
 
@@ -1295,7 +1262,7 @@ export function ProjectResultsClient({
         setIsTrashingAll(false);
       }
     });
-  }, [isTrashingAll, project.id, project.title, startTransition, totalImages]);
+  }, [isTrashingAll, project.id, project.title, setLightboxImageId, startTransition, totalImages]);
 
   return (
     <SidebarProvider

@@ -241,3 +241,34 @@ test("project results marker removal keeps the filtered lightbox open and suppor
     "project results lightbox should bind plain Z to marker undo",
   );
 });
+
+test("project results keeps filtered lightbox cursor state in a focused hook", () => {
+  const source = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+  const hookSource = readSource("src/lib/use-review-lightbox-state.ts");
+
+  assert.match(
+    hookSource,
+    /export function useReviewLightboxState/,
+    "shared hook should own reusable lightbox cursor state",
+  );
+  assert.match(
+    hookSource,
+    /getNextImageIdAfterCurrentLeavesSequence/,
+    "shared hook should preserve filtered-sequence replacement behavior",
+  );
+  assert.match(
+    source,
+    /from "@\/lib\/use-review-lightbox-state";/,
+    "project results should import the focused lightbox hook",
+  );
+  assert.doesNotMatch(
+    source,
+    /previousFilteredImagesRef|useRef<ProjectResultsImageWithRun/,
+    "project results should not keep filtered lightbox history refs inline",
+  );
+  assert.doesNotMatch(
+    source,
+    /const \[lightboxImageId,\s*setLightboxImageId\] = useState/,
+    "project results should not own the lightbox image id state inline",
+  );
+});

@@ -355,6 +355,8 @@
 - Phase 7 slice 43 verification passed: red `node --import tsx --test tests/test-project-list-view-state.test.ts`, then green `node --import tsx --test tests/test-project-list-view-state.test.ts`, `node --import tsx --test tests/test-project-list-view-state.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1083 tests discovered, 1082 pass, 0 fail, 1 skipped.
 - Phase 7 slice 44 moved project detail section card rendering into `src/app/projects/project-section-card-components.tsx` with typed `ProjectSectionCardData` props. `src/app/projects/[projectId]/section-cards.tsx` still owns selection, drag/reorder, batch run/delete, folder move mutations, and route-specific action slots.
 - Phase 7 slice 44 verification passed: red `node --import tsx --test tests/test-project-section-card-components.test.ts`, then green `node --import tsx --test tests/test-project-section-card-components.test.ts`, `node --import tsx --test tests/test-project-section-card-components.test.ts tests/test-hard-navigation-for-image-heavy-pages.test.ts tests/test-run-submission-deferral.test.ts tests/test-project-detail-section-batch-size-save.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1084 tests discovered, 1083 pass, 0 fail, 1 skipped.
+- Phase 7 slice 45 moved project results filtered lightbox cursor, previous-sequence replacement, and next/previous navigation state into `src/lib/use-review-lightbox-state.ts`. `src/app/projects/[projectId]/results/project-results-client.tsx` still owns image mutation state, marker undo, quick-censor mode, and route-specific keyboard actions.
+- Phase 7 slice 45 verification passed: red `node --import tsx --test tests/test-project-results-lightbox-parity.test.ts`, then green `node --import tsx --test tests/test-project-results-lightbox-parity.test.ts`, `node --import tsx --test tests/test-project-results-lightbox-parity.test.ts tests/test-review-lightbox-optimistic-navigation.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1085 tests discovered, 1084 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -857,7 +859,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - [x] Define project page boundaries: list, create, detail, edit, batch-create, section edit, section results, project results.
 - [x] Move project list filtering/sorting state into hooks under a project UI module.
 - [x] Move section card rendering into shared project components with typed props.
-- [ ] Keep result lightbox state in `src/lib/review-lightbox-state.ts` or a focused hook.
+- [x] Keep result lightbox state in `src/lib/review-lightbox-state.ts` or a focused hook.
 - [ ] Split `project-results-client.tsx` into route container, toolbar/filter state, gallery/list component, lightbox adapter, mutation adapter.
 - [ ] Keep image-heavy navigation hard-navigation behavior covered by `test-hard-navigation-for-image-heavy-pages.test.ts`.
 - [ ] Keep G shortcut behavior covered by section/results tests.
