@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import test from "node:test";
 
 const repoRoot = process.cwd();
@@ -19,8 +20,10 @@ test("worker boundary doc records generation payload and repository ownership", 
   assert.match(doc, /src\/server\/worker\/payload-builder\.ts[\s\S]*owns generation prompt draft normalization/);
   assert.match(doc, /src\/server\/worker\/repository\.ts[\s\S]*owns generation run persistence/);
   assert.match(doc, /src\/server\/worker\/fallback-prompt-builder\.ts[\s\S]*last resort only/);
+  assert.match(doc, /src\/server\/worker\/training\/task-id\.ts[\s\S]*owns training worker task ID parsing/);
   assert.match(doc, /docs\/workflow\.api\.json[\s\S]*default standard workflow/);
   assert.match(doc, /Do not let repositories import payload builders/);
+  assert.match(doc, /Do not reintroduce worker task ID prefix parsing into task-api/);
   assert.match(doc, /Do not call the fallback prompt builder from run-executor/);
   assert.match(docsIndex, /docs\/worker-boundaries\.md/, "documentation index should point agents to worker boundaries");
 });
@@ -63,4 +66,54 @@ test("fallback prompt builder remains a ComfyUI validation last resort", () => {
   assert.match(comfyService, /3\) built-in SDXL txt2img fallback/);
   assert.match(comfyService, /function shouldUseStandardWorkflow\(\)[\s\S]*return true;/);
   assert.match(comfyService, /const standardPrompt = await resolveStandardWorkflowPrompt\(promptDraft\);[\s\S]*apiPrompt = standardPrompt \?\? buildFallbackPromptNodes\(promptDraft\);/);
+});
+
+test("training worker task id parsing lives in a dedicated boundary", async () => {
+  const taskIdPath = "src/server/worker/training/task-id.ts";
+  assert.ok(existsSync(join(repoRoot, taskIdPath)), `${taskIdPath} should own worker task ID parsing`);
+
+  const taskApi = readSource("src/server/worker/training/task-api.ts");
+  const taskIdSource = readSource(taskIdPath);
+  assert.match(taskApi, /from "@\/server\/worker\/training\/task-id"/);
+  assert.doesNotMatch(taskApi, /const GENERATION_WORKER_TASK_PREFIX/);
+  assert.doesNotMatch(taskApi, /function parseWorkerTaskId/);
+  assert.doesNotMatch(taskApi, /function workerTypeForTargetType/);
+  assert.match(taskIdSource, /export function parseWorkerTaskId/);
+  assert.match(taskIdSource, /export function getWorkerTaskId/);
+  assert.match(taskIdSource, /export function workerTypeForTargetType/);
+
+  const taskIdUrl = new URL(pathToFileURL(join(repoRoot, taskIdPath)));
+  taskIdUrl.searchParams.set("testImport", String(Date.now()));
+  const mod = await import(taskIdUrl.href);
+
+  assert.equal(
+    mod.getWorkerTaskId({ id: "gen-1", workerType: "image_generation" }),
+    "training-generation-worker-task-gen-1",
+  );
+  assert.equal(
+    mod.getGenerationWorkerTaskId("gen-2"),
+    "training-generation-worker-task-gen-2",
+  );
+  assert.equal(
+    mod.getTrainingRunWorkerTaskId("run-1"),
+    "training-run-worker-task-run-1",
+  );
+  assert.deepEqual(mod.parseWorkerTaskId("training-generation-worker-task-gen-1"), {
+    targetId: "gen-1",
+    targetType: "generationRun",
+    workerType: "image_generation",
+  });
+  assert.deepEqual(mod.parseWorkerTaskId("training-dataset-worker-task-revision-1"), {
+    targetId: "revision-1",
+    targetType: "datasetRevision",
+    workerType: "dataset_freeze",
+  });
+  assert.deepEqual(mod.parseWorkerTaskId("training-run-worker-task-run-1"), {
+    targetId: "run-1",
+    targetType: "trainingRun",
+    workerType: "training",
+  });
+  assert.equal(mod.parseWorkerTaskId("unknown-run-1"), null);
+  assert.equal(mod.workerTypeForTargetType("trainingRun"), "training");
+  assert.equal(mod.workerTypeForTargetType("unsupported"), null);
 });

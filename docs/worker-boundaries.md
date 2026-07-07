@@ -26,6 +26,14 @@ Current prompt selection order:
 
 Do not call the fallback prompt builder from run-executor, repositories, route handlers, or UI modules. If fallback usage becomes visible to users, add logging or audit at the ComfyUI validation boundary instead of broadening the fallback builder.
 
+## Training Worker Task API
+
+`src/server/worker/training/task-id.ts` owns training worker task ID parsing. It maps the generation, dataset freeze, and training run task prefixes to target IDs, target types, and worker types, and it builds the serialized worker task IDs returned by `src/server/worker/training/task-api.ts`.
+
+`src/server/worker/training/task-api.ts` remains the compatibility boundary for existing route handlers while the larger split continues. It may compose target discovery, leasing, heartbeat, completion, failure, and scheduler helpers, but it should not own pure task ID prefix parsing.
+
+Do not reintroduce worker task ID prefix parsing into task-api, route handlers, or CLI worker scripts. New worker task kinds should first extend the task ID boundary, then add route/service tests for lease, heartbeat, complete, and fail behavior.
+
 ## Verification
 
 ```bash

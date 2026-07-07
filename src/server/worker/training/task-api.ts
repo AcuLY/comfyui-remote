@@ -9,13 +9,15 @@ import {
   trainingWorkerTaskHeartbeatRequestSchema,
   trainingWorkerTaskLeaseRequestSchema,
 } from "@/lib/training/schemas";
-
-const GENERATION_WORKER_TASK_PREFIX = "training-generation-worker-task-";
-const DATASET_WORKER_TASK_PREFIX = "training-dataset-worker-task-";
-const TRAINING_WORKER_TASK_PREFIX = "training-run-worker-task-";
-
-type TrainingWorkerType = (typeof TRAINING_WORKER_TYPES)[number];
-type WorkerTargetType = "generationRun" | "datasetRevision" | "trainingRun";
+import {
+  getGenerationWorkerTaskId,
+  getTrainingRunWorkerTaskId,
+  getWorkerTaskId,
+  parseWorkerTaskId,
+  workerTypeForTargetType,
+  type TrainingWorkerType,
+  type WorkerTargetType,
+} from "@/server/worker/training/task-id";
 
 type WorkerTarget = {
   id: string;
@@ -48,56 +50,6 @@ function normalizeJson(value: unknown): Prisma.InputJsonValue {
   if (value === null || typeof value === "undefined") return {};
   if (typeof value === "object") return value as Prisma.InputJsonValue;
   return { value } as Prisma.InputJsonValue;
-}
-
-function getWorkerTaskPrefix(workerType: TrainingWorkerType) {
-  if (workerType === "training") return TRAINING_WORKER_TASK_PREFIX;
-  if (workerType === "dataset_freeze") return DATASET_WORKER_TASK_PREFIX;
-  return GENERATION_WORKER_TASK_PREFIX;
-}
-
-function getWorkerTaskId(target: WorkerTarget) {
-  return `${getWorkerTaskPrefix(target.workerType)}${target.id}`;
-}
-
-function parseWorkerTaskId(taskId: string): { targetId: string; targetType: WorkerTargetType; workerType: TrainingWorkerType } | null {
-  if (taskId.startsWith(GENERATION_WORKER_TASK_PREFIX)) {
-    return {
-      targetId: taskId.slice(GENERATION_WORKER_TASK_PREFIX.length),
-      targetType: "generationRun",
-      workerType: "image_generation",
-    };
-  }
-  if (taskId.startsWith(DATASET_WORKER_TASK_PREFIX)) {
-    return {
-      targetId: taskId.slice(DATASET_WORKER_TASK_PREFIX.length),
-      targetType: "datasetRevision",
-      workerType: "dataset_freeze",
-    };
-  }
-  if (taskId.startsWith(TRAINING_WORKER_TASK_PREFIX)) {
-    return {
-      targetId: taskId.slice(TRAINING_WORKER_TASK_PREFIX.length),
-      targetType: "trainingRun",
-      workerType: "training",
-    };
-  }
-  return null;
-}
-
-function getGenerationWorkerTaskId(taskId: string) {
-  return `${GENERATION_WORKER_TASK_PREFIX}${taskId}`;
-}
-
-function getTrainingRunWorkerTaskId(trainingRunId: string) {
-  return `${TRAINING_WORKER_TASK_PREFIX}${trainingRunId}`;
-}
-
-function workerTypeForTargetType(targetType: string): TrainingWorkerType | null {
-  if (targetType === "generationRun") return "image_generation";
-  if (targetType === "datasetRevision") return "dataset_freeze";
-  if (targetType === "trainingRun") return "training";
-  return null;
 }
 
 function serializeWorkerTask(target: WorkerTarget, input: SerializedWorkerTaskInput = {}) {

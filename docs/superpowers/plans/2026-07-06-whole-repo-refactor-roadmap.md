@@ -542,6 +542,8 @@
 - Phase 10 slice 136 verification passed: red `node --import tsx --test tests/test-training-prototype-governance.test.ts`, green `node --import tsx --test tests/test-training-prototype-governance.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-prototype-governance.test.ts tests/test-design-demo-governance.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1186 tests discovered, 1185 pass, 0 fail, 1 skipped.
 - Phase 11 slice 137 added `docs/worker-boundaries.md` and `tests/test-worker-boundary-governance.test.ts` to codify the generation worker split: `payload-builder.ts` owns prompt draft normalization, `repository.ts` owns run persistence, `run-executor.ts` orchestrates both, and `fallback-prompt-builder.ts` remains a ComfyUI validation last resort behind explicit prompts and the standard `docs/workflow.api.json` path.
 - Phase 11 slice 137 verification passed: red `node --import tsx --test tests/test-worker-boundary-governance.test.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts tests/test-run-submission-deferral.test.ts tests/test-run-recovery-poller-cap.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1189 tests discovered, 1188 pass, 0 fail, 1 skipped.
+- Phase 11 slice 138 extracted `src/server/worker/training/task-id.ts` from `src/server/worker/training/task-api.ts` so training worker task prefix parsing, worker task ID construction, and targetType-to-workerType mapping have a dedicated pure boundary before target discovery, leasing, heartbeat, completion, failure, and scheduler modules are split.
+- Phase 11 slice 138 verification passed: red `node --import tsx --test tests/test-worker-boundary-governance.test.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-worker-boundary-governance.test.ts tests/test-training-api-boundary.test.ts tests/test-training-api-routes.test.ts tests/test-training-worker-entrypoints.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1190 tests discovered, 1189 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1323,6 +1325,7 @@ Loading states remain colocated under their route segments for now; the later lo
 - `src/server/worker/repository.ts`
 - `src/server/worker/fallback-prompt-builder.ts`
 - `src/server/worker/training/task-api.ts`
+- `src/server/worker/training/task-id.ts`
 - `scripts/training/worker-queue.ts`
 - `scripts/training/worker-common.ts`
 - `scripts/training/image-worker.ts`
