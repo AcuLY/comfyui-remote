@@ -1,8 +1,9 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   failTrainingWorkerTask,
   mapTrainingWorkerTaskError,
 } from "@/server/worker/training/task-api";
+import { readJsonBody } from "@/server/http/request-json";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +16,9 @@ export async function POST(request: Request, context: WorkerTaskRouteContext) {
   let body: unknown;
 
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {

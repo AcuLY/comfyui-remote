@@ -145,6 +145,9 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/training/projects/[projectId]/text-revisions/route.ts`
 - `src/app/api/training/projects/[projectId]/reference-images/route.ts`
 - `src/app/api/training/projects/[projectId]/captions/generate/route.ts`
+- `src/app/api/training/worker/tasks/[taskId]/heartbeat/route.ts`
+- `src/app/api/training/worker/tasks/[taskId]/complete/route.ts`
+- `src/app/api/training/worker/tasks/[taskId]/fail/route.ts`
 
 ## Compatibility Exceptions
 

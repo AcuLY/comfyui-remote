@@ -286,6 +286,9 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/training/projects/[projectId]/text-revisions/route.ts",
     "src/app/api/training/projects/[projectId]/reference-images/route.ts",
     "src/app/api/training/projects/[projectId]/captions/generate/route.ts",
+    "src/app/api/training/worker/tasks/[taskId]/heartbeat/route.ts",
+    "src/app/api/training/worker/tasks/[taskId]/complete/route.ts",
+    "src/app/api/training/worker/tasks/[taskId]/fail/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -651,6 +654,27 @@ test("training project support mutations use shared JSON parsing", () => {
   assert.match(datasetRevisionsSource, /\bfailFromError\(/, "dataset revisions route should map parser errors through failFromError");
   assert.doesNotMatch(datasetRevisionsSource, /request\.json\(\)/, "dataset revisions route should not parse JSON directly");
   assert.doesNotMatch(datasetRevisionsSource, /JSON\.parse\(/, "dataset revisions route should not parse request text locally");
+});
+
+test("training worker task mutations use shared JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/training/worker/tasks/[taskId]/complete/route.ts",
+    "src/app/api/training/worker/tasks/[taskId]/fail/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
+
+  const heartbeatSource = readFileSync("src/app/api/training/worker/tasks/[taskId]/heartbeat/route.ts", "utf8");
+  assert.match(heartbeatSource, /from ["']@\/server\/http\/request-json["']/, "worker heartbeat route should import request JSON helpers");
+  assert.match(heartbeatSource, /readOptionalJsonObject\(request\)/, "worker heartbeat route should parse through readOptionalJsonObject");
+  assert.match(heartbeatSource, /\bfailFromError\(/, "worker heartbeat route should map parser errors through failFromError");
+  assert.doesNotMatch(heartbeatSource, /request\.json\(\)/, "worker heartbeat route should not parse JSON directly");
+  assert.doesNotMatch(heartbeatSource, /JSON\.parse\(/, "worker heartbeat route should not parse request text locally");
 });
 
 test("generation section batch delete route delegates destructive checks to project service", () => {
@@ -1264,6 +1288,32 @@ test("training project support mutations preserve invalid JSON response envelope
     }),
     await captionsGenerateRoute.POST(makeRequest("not-json"), {
       params: Promise.resolve({ projectId: "project-1" }),
+    }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("training worker task mutations preserve invalid JSON response envelope", async () => {
+  const workerTaskHeartbeatRoute = await import("../src/app/api/training/worker/tasks/[taskId]/heartbeat/route");
+  const workerTaskCompleteRoute = await import("../src/app/api/training/worker/tasks/[taskId]/complete/route");
+  const workerTaskFailRoute = await import("../src/app/api/training/worker/tasks/[taskId]/fail/route");
+
+  for (const response of [
+    await workerTaskHeartbeatRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ taskId: "task-1" }),
+    }),
+    await workerTaskCompleteRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ taskId: "task-1" }),
+    }),
+    await workerTaskFailRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ taskId: "task-1" }),
     }),
   ]) {
     assert.equal(response.status, 400);
