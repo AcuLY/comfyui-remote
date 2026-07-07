@@ -381,6 +381,8 @@
 - Phase 7 slice 56 verification passed: red `node --import tsx --test tests/test-preset-form-split.test.ts`, then green `node --import tsx --test tests/test-preset-form-split.test.ts tests/test-preset-save-queue.test.ts tests/test-preset-variant-save-optimization.test.ts`, `node --import tsx --test tests/test-preset-form-split.test.ts tests/test-preset-save-queue.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1100 tests discovered, 1099 pass, 0 fail, 1 skipped.
 - Phase 7 slice 57 moved preset variant bulk apply copy logic into `src/app/assets/presets/preset-variant-bulk-apply.ts`. `preset-form.tsx` still owns button handlers and save coordination, while prompt copy, LoRA update/append, blank-path no-op, nested clone helpers, and incomplete LoRA detection are covered as pure utilities.
 - Phase 7 slice 57 verification passed: red `node --import tsx --test tests/test-preset-variant-bulk-apply.test.ts`, then green `node --import tsx --test tests/test-preset-variant-bulk-apply.test.ts tests/test-preset-form-split.test.ts tests/test-preset-save-queue.test.ts`, `node --import tsx --test tests/test-preset-variant-bulk-apply.test.ts tests/test-preset-form-split.test.ts tests/test-preset-save-queue.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1105 tests discovered, 1104 pass, 0 fail, 1 skipped.
+- Phase 7 slice 58 moved current preset variant field editing into `src/app/assets/presets/preset-variant-editor.tsx`. `preset-form.tsx` now delegates linked-variant picker rendering, prompt fields, LoRA editors, apply-to-all controls, and change history while keeping variant state mutations and save coordination in the form container.
+- Phase 7 slice 58 verification passed: red `node --import tsx --test tests/test-preset-form-split.test.ts`, then green `node --import tsx --test tests/test-preset-form-split.test.ts`, green `node --import tsx --test tests/test-preset-form-split.test.ts tests/test-preset-variant-bulk-apply.test.ts tests/test-preset-save-queue.test.ts tests/test-preset-variant-save-optimization.test.ts tests/test-repo-inventory.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `npm run lint`, and `npm test` with 1106 tests discovered, 1105 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -941,7 +943,8 @@ Loading states remain colocated under their route segments for now; the later lo
   - [x] Save queue hook extracted to `src/app/assets/presets/use-preset-save-queue.ts` and covered by `tests/test-preset-save-queue.test.ts`.
   - [x] Variant list and DnD surface extracted to `src/app/assets/presets/preset-variant-list.tsx` and covered by `tests/test-preset-form-split.test.ts`.
   - [x] Bulk apply utilities extracted to `src/app/assets/presets/preset-variant-bulk-apply.ts` and covered by `tests/test-preset-variant-bulk-apply.test.ts`.
-  - [ ] Variant editor and action footer remain in `preset-form.tsx`.
+  - [x] Variant editor extracted to `src/app/assets/presets/preset-variant-editor.tsx` and covered by `tests/test-preset-form-split.test.ts`.
+  - [ ] Action footer/status surface remains in `preset-form.tsx`.
 - [x] Keep "apply to all variants" behavior tested for copy loop and save queue separately.
   - [x] Save queue behavior is tested separately for latest-payload coalescing, retry, handler refresh, and falsy payloads.
   - [x] Copy-loop/apply-to-all behavior is tested separately for prompt copy, LoRA update/append, blank-path no-op, incomplete LoRA detection, and nested clone helpers.

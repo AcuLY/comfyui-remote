@@ -1,18 +1,15 @@
 "use client";
 
-import { useState, useEffect, useTransition, useMemo } from "react";
+import { useState, useEffect, useTransition } from "react";
 import {
   Plus,
   X,
-  ChevronUp,
-  ChevronDown,
   ExternalLink,
+  ChevronUp,
   Loader2,
   CheckCircle2,
   AlertTriangle,
 } from "lucide-react";
-import { LoraBindingEditor } from "@/components/lora-binding-editor";
-import { PresetCascadePicker } from "@/components/preset-cascade-picker";
 import { toast } from "sonner";
 import type {
   PresetCategoryFull,
@@ -23,13 +20,11 @@ import {
   reorderPresetVariants,
 } from "@/lib/actions/preset-variant-crud";
 import { parseLoraBindings } from "@/lib/lora-types";
-import type { LinkedVariantRef, VariantDraft } from "./preset-types";
-import { PRESET_HISTORY_TABS } from "./preset-types";
-import { PresetChangeHistoryPanel } from "./change-history-panel";
-import { PresetVariantBulkEditDialog } from "./preset-variant-bulk-edit-dialog";
+import type { VariantDraft } from "./preset-types";
 import { toSlug } from "./group-utils";
 import { usePresetSaveQueue } from "./use-preset-save-queue";
 import { PresetVariantList } from "./preset-variant-list";
+import { PresetVariantEditor } from "./preset-variant-editor";
 import {
   applyLoraToPresetVariants,
   applyPromptToPresetVariants,
@@ -46,220 +41,6 @@ function uniqueSlug(base: string, usedSlugs: Set<string>) {
     suffix += 1;
   }
   return slug;
-}
-
-// ---------------------------------------------------------------------------
-// LinkedVariantsEditor — select linked variants from other presets
-// ---------------------------------------------------------------------------
-
-function LinkedVariantsEditor({
-  linkedVariants,
-  onChange,
-  currentPresetId,
-  allCategories,
-}: {
-  linkedVariants: LinkedVariantRef[];
-  onChange: (lv: LinkedVariantRef[]) => void;
-  currentPresetId?: string;
-  allCategories: PresetCategoryFull[];
-}) {
-  const [showPicker, setShowPicker] = useState(false);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Build filtered categories excluding current preset
-  const categoriesFiltered = useMemo(() => {
-    return allCategories
-      .map((cat) => ({
-        ...cat,
-        presets: cat.presets.filter((p) => p.id !== currentPresetId),
-      }))
-      .filter((cat) => cat.presets.length > 0);
-  }, [allCategories, currentPresetId]);
-
-  // Flat list with full variant data for display name + content resolution
-  const allItems = useMemo(() => {
-    const items: Array<{
-      presetId: string;
-      presetName: string;
-      variantId: string;
-      variantName: string;
-      categoryName: string;
-      displayName: string;
-      prompt: string;
-      negativePrompt: string | null;
-      lora1: ReturnType<typeof parseLoraBindings>;
-      lora2: ReturnType<typeof parseLoraBindings>;
-    }> = [];
-    for (const cat of categoriesFiltered) {
-      for (const preset of cat.presets) {
-        for (const v of preset.variants) {
-          items.push({
-            presetId: preset.id,
-            variantId: v.id,
-            presetName: preset.name,
-            variantName: v.name,
-            categoryName: cat.name,
-            displayName: preset.variants.length === 1
-              ? `${cat.name} / ${preset.name}`
-              : `${cat.name} / ${preset.name} / ${v.name}`,
-            prompt: v.prompt ?? "",
-            negativePrompt: v.negativePrompt,
-            lora1: parseLoraBindings(v.lora1),
-            lora2: parseLoraBindings(v.lora2),
-          });
-        }
-      }
-    }
-    return items;
-  }, [categoriesFiltered]);
-
-  // Resolve display + content for current linked variants
-  const linkedDisplay = linkedVariants.map((ref) => {
-    const item = allItems.find((a) => a.variantId === ref.variantId);
-    return {
-      ...ref,
-      displayName: item?.displayName ?? `未知变体 (${ref.variantId.slice(0, 8)}...)`,
-      prompt: item?.prompt ?? "",
-      negativePrompt: item?.negativePrompt,
-      lora1: item?.lora1 ?? [],
-      lora2: item?.lora2 ?? [],
-    };
-  });
-
-  function handleAdd(val: { presetId: string; variantId: string }) {
-    if (linkedVariants.some((lv) => lv.variantId === val.variantId)) return;
-    onChange([...linkedVariants, { presetId: val.presetId, variantId: val.variantId }]);
-  }
-
-  function handleRemove(variantId: string) {
-    onChange(linkedVariants.filter((lv) => lv.variantId !== variantId));
-  }
-
-  // Filter out already-linked variants from picker categories
-  const pickerCategories = useMemo(() => {
-    return categoriesFiltered.map((cat) => ({
-      ...cat,
-      presets: cat.presets.map((p) => ({
-        ...p,
-        variants: p.variants.filter((v) => !linkedVariants.some((lv) => lv.variantId === v.id)),
-      })).filter((p) => p.variants.length > 0),
-    })).filter((cat) => cat.presets.length > 0);
-  }, [categoriesFiltered, linkedVariants]);
-
-  return (
-    <div className="space-y-1.5">
-      <span className="text-[11px] font-medium text-zinc-500">关联变体</span>
-
-      {/* Current linked variants */}
-      {linkedDisplay.length > 0 && (
-        <div className="space-y-1">
-          {linkedDisplay.map((item) => {
-            const isExpanded = expandedId === item.variantId;
-            const hasContent = item.prompt || item.negativePrompt || item.lora1.length > 0 || item.lora2.length > 0;
-            return (
-              <div
-                key={item.variantId}
-                className="rounded-lg border border-white/5 bg-white/[0.02]"
-              >
-                <div className="flex items-center justify-between px-2.5 py-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedId(isExpanded ? null : item.variantId)}
-                    className="flex items-center gap-1.5 min-w-0 flex-1 text-left"
-                  >
-                    {hasContent && (
-                      <ChevronDown className={`size-3 shrink-0 text-zinc-500 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                    )}
-                    <span className="text-xs text-zinc-300 truncate">{item.displayName}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(item.variantId)}
-                    className="rounded p-0.5 text-zinc-600 hover:text-red-400"
-                  >
-                    <X className="size-3" />
-                  </button>
-                </div>
-                {/* Expanded preview: prompt + LoRA */}
-                {isExpanded && hasContent && (
-                  <div className="space-y-1.5 border-t border-white/5 px-2.5 py-2">
-                    {item.prompt && (
-                      <div>
-                        <span className="text-[10px] text-zinc-600">正面提示词</span>
-                        <div className="mt-0.5 rounded bg-black/20 px-2 py-1.5 text-xs text-zinc-400 whitespace-pre-wrap break-all max-h-24 overflow-y-auto">
-                          {item.prompt}
-                        </div>
-                      </div>
-                    )}
-                    {item.negativePrompt && (
-                      <div>
-                        <span className="text-[10px] text-zinc-600">负面提示词</span>
-                        <div className="mt-0.5 rounded bg-black/20 px-2 py-1.5 text-xs text-zinc-400 whitespace-pre-wrap break-all max-h-24 overflow-y-auto">
-                          {item.negativePrompt}
-                        </div>
-                      </div>
-                    )}
-                    {item.lora1.length > 0 && (
-                      <div>
-                        <span className="text-[10px] text-zinc-600">LoRA 1</span>
-                        <div className="mt-0.5 space-y-0.5">
-                          {item.lora1.map((l, i) => (
-                            <div key={i} className="flex items-center gap-1.5 text-xs text-zinc-500">
-                              <span className="truncate">{l.path.split(/[\\/]/).pop()}</span>
-                              <span className="shrink-0 text-zinc-600">{l.weight}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {item.lora2.length > 0 && (
-                      <div>
-                        <span className="text-[10px] text-zinc-600">LoRA 2</span>
-                        <div className="mt-0.5 space-y-0.5">
-                          {item.lora2.map((l, i) => (
-                            <div key={i} className="flex items-center gap-1.5 text-xs text-zinc-500">
-                              <span className="truncate">{l.path.split(/[\\/]/).pop()}</span>
-                              <span className="shrink-0 text-zinc-600">{l.weight}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {linkedVariants.length === 0 && !showPicker && (
-        <div className="text-xs text-zinc-600">无关联变体</div>
-      )}
-
-      {/* Full-width add button / picker */}
-      {showPicker ? (
-        <PresetCascadePicker
-          categories={pickerCategories}
-          value={null}
-          onChange={(val) => {
-            if (val) handleAdd({ presetId: val.presetId, variantId: val.variantId });
-          }}
-          placeholder="选择关联变体…"
-          presetCategoriesOnly
-          defaultOpen
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setShowPicker(true)}
-          className="w-full rounded-lg border border-dashed border-white/10 px-2 py-1.5 text-xs text-zinc-500 hover:border-white/20 hover:text-zinc-300 transition"
-        >
-          <Plus className="size-3 inline-block mr-1 -mt-0.5" />添加关联变体
-        </button>
-      )}
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -589,43 +370,8 @@ export function PresetForm({
   // For new presets, variants are saved after the preset is created
   // We need a post-save callback — handled by the parent's onSave flow
   const currentVariantKey = current.clientId ?? current.id ?? `draft-${currentIdx}`;
-  const applyAllButtonClass = "inline-flex shrink-0 items-center rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] text-zinc-400 transition hover:border-sky-500/30 hover:bg-sky-500/10 hover:text-sky-300";
   const isSaveBusy = saveStatus === "saving" || saveStatus === "queued" || isPending;
   const showSaveStatus = preset || saveStatus !== "idle";
-
-  function renderLoraApplyActions(key: "lora1" | "lora2") {
-    const bindings = current[key].filter((entry) => entry.path.trim());
-    if (bindings.length === 0) return null;
-
-    return (
-      <div className="space-y-1">
-        {bindings.map((entry, index) => {
-          const path = entry.path.trim();
-          return (
-            <div
-              key={`${path}:${index}`}
-              className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-white/5 bg-white/[0.02] px-2 py-1.5"
-            >
-              <div className="min-w-0 text-[11px] text-zinc-500">
-                <span className="block truncate text-zinc-400">{path.split(/[\\/]/).pop() || path}</span>
-                <span className="text-zinc-600">
-                  {entry.enabled ? "enabled" : "disabled"} / {entry.weight.toFixed(2)}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => applyLoraToAllVariants(key, entry)}
-                className={applyAllButtonClass}
-                title="Apply to all variants"
-              >
-                应用到所有变体
-              </button>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
 
   const formContent = (
     <div className="min-w-0 space-y-3 border-t border-white/5 px-3 py-3">
@@ -767,114 +513,23 @@ export function PresetForm({
           onReorder={handleVariantReorder}
         />
 
-        {/* Variant name */}
-        <div className="grid grid-cols-1 gap-2">
-          <label className="space-y-1">
-            <span className="text-[10px] text-zinc-500">变体名称</span>
-            <input
-              type="text"
-              value={current.name}
-              onChange={(e) => handleVariantNameChange(e.target.value)}
-              onBlur={handleAutoSave}
-              placeholder="变体名称"
-              className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-            />
-          </label>
-        </div>
-
-        <LinkedVariantsEditor
-          linkedVariants={current.linkedVariants}
-          onChange={(lv) => updateVariant(current.clientId, { linkedVariants: cloneLinkedVariants(lv) }, { autoSave: true })}
-          currentPresetId={preset?.id}
+        <PresetVariantEditor
+          current={current}
+          currentVariantKey={currentVariantKey}
+          variants={variants}
+          preset={preset}
           allCategories={allCategories}
+          onVariantNameChange={handleVariantNameChange}
+          onLinkedVariantsChange={(lv) => updateVariant(current.clientId, { linkedVariants: cloneLinkedVariants(lv) }, { autoSave: true })}
+          onPromptChange={(value) => updateVariant(current.clientId, { prompt: value })}
+          onNegativePromptChange={(value) => updateVariant(current.clientId, { negativePrompt: value })}
+          onLoraChange={(key, value) => updateVariantLoras(current.clientId, key, value)}
+          onAutoSave={handleAutoSave}
+          onApplyPromptToAllVariants={applyPromptToAllVariants}
+          onApplyBulkTextVariants={applyBulkTextVariants}
+          onApplyLoraToAllVariants={applyLoraToAllVariants}
         />
-
-        {/* Variant prompt fields */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] text-zinc-500">正面提示词</span>
-            <div className="flex shrink-0 items-center gap-1.5">
-              <PresetVariantBulkEditDialog
-                variants={variants}
-                defaultField="prompt"
-                onApply={applyBulkTextVariants}
-              />
-              <button
-                type="button"
-                onClick={() => applyPromptToAllVariants("prompt")}
-                className={applyAllButtonClass}
-                title="Apply to all variants"
-              >
-                应用到所有变体
-              </button>
-            </div>
-          </div>
-          <textarea
-            value={current.prompt}
-            onChange={(e) => updateVariant(current.clientId, { prompt: e.target.value })}
-            onBlur={handleAutoSave}
-            rows={3}
-            placeholder="positive prompt..."
-            className="cm-text-editor w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] text-zinc-500">负面提示词</span>
-            <div className="flex shrink-0 items-center gap-1.5">
-              <PresetVariantBulkEditDialog
-                variants={variants}
-                defaultField="negativePrompt"
-                onApply={applyBulkTextVariants}
-              />
-              <button
-                type="button"
-                onClick={() => applyPromptToAllVariants("negativePrompt")}
-                className={applyAllButtonClass}
-                title="Apply to all variants"
-              >
-                应用到所有变体
-              </button>
-            </div>
-          </div>
-          <textarea
-            value={current.negativePrompt}
-            onChange={(e) => updateVariant(current.clientId, { negativePrompt: e.target.value })}
-            onBlur={handleAutoSave}
-            rows={2}
-            placeholder="negative prompt..."
-            className="cm-text-editor w-full rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 text-xs text-zinc-200 outline-none focus:border-sky-500/30"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <span className="text-[11px] font-medium text-zinc-500">LoRA 1（第一阶段）</span>
-          <LoraBindingEditor
-            key={`${currentVariantKey}:lora1`}
-            bindings={current.lora1}
-            onChange={(v) => updateVariantLoras(current.clientId, "lora1", v)}
-          />
-          {renderLoraApplyActions("lora1")}
-        </div>
-
-        <div className="space-y-1">
-          <span className="text-[11px] font-medium text-zinc-500">LoRA 2（高清修复）</span>
-          <LoraBindingEditor
-            key={`${currentVariantKey}:lora2`}
-            bindings={current.lora2}
-            onChange={(v) => updateVariantLoras(current.clientId, "lora2", v)}
-          />
-          {renderLoraApplyActions("lora2")}
-        </div>
       </div>
-
-      {preset && (
-        <PresetChangeHistoryPanel
-          history={preset.changeHistory}
-          tabs={PRESET_HISTORY_TABS}
-        />
-      )}
     </div>
   );
 
