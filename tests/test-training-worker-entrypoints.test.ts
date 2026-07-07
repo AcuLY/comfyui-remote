@@ -70,6 +70,23 @@ test("training worker supervisor launches Training-named worker scripts", () => 
   );
 });
 
+test("training launcher worker keeps runtime behavior in an importable module", () => {
+  const entrypointPath = join(process.cwd(), "scripts/training/training-worker.ts");
+  const runtimePath = join(process.cwd(), "scripts/training/training-worker-runtime.ts");
+  assert.equal(existsSync(runtimePath), true, "training worker runtime module should exist");
+
+  const entrypointSource = readFileSync(entrypointPath, "utf8");
+  const runtimeSource = readFileSync(runtimePath, "utf8");
+  assert.match(entrypointSource, /from "\.\/training-worker-runtime"/);
+  assert.match(entrypointSource, /handleTask:\s*runTrainingTask/);
+  assert.doesNotMatch(entrypointSource, /from "node:child_process"/);
+  assert.doesNotMatch(entrypointSource, /async function runTrainingTask/);
+  assert.doesNotMatch(entrypointSource, /function createMockTrainingOutput/);
+  assert.match(runtimeSource, /export async function runTrainingTask/);
+  assert.match(runtimeSource, /local_wsl_sd_scripts/);
+  assert.match(runtimeSource, /createMockTrainingOutput/);
+});
+
 test("training worker scripts are independent from removed legacy modules", () => {
   const trainingScriptPaths = [
     "scripts/training/image-worker.ts",
