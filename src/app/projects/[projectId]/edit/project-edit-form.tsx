@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, Save } from "lucide-react";
-import { updateProject, type UpdateProjectInput } from "@/lib/actions";
+import { updateProject, type UpdateProjectInput } from "@/lib/actions/project";
 import { toast } from "sonner";
 import type { ProjectEditData, ProjectFormCategory } from "@/lib/server-data";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";

@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useRef, useEffect } from "react";
 import { Pencil, Check, X } from "lucide-react";
-import { renameSection } from "@/lib/actions";
+import { renameSection } from "@/lib/actions/section";
 import { toast } from "sonner";
 
 export function SectionNameEditor({

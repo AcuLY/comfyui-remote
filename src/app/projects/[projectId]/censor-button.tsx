@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Shield, Loader2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { censorProjectImages, type ProjectCensorMode } from "@/lib/actions";
+import { censorProjectImages, type ProjectCensorMode } from "@/lib/actions/censoring";
 
 export function CensorButton({ projectId }: { projectId: string }) {
   const router = useRouter();

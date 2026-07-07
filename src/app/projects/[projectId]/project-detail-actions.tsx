@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Play } from "lucide-react";
-import { runSection } from "@/lib/actions";
+import { runSection } from "@/lib/actions/run-execution";
 import { showRunSubmissionToast } from "@/lib/run-submission-toast";
 import { toast } from "sonner";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";

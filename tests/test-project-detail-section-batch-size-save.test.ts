@@ -35,3 +35,23 @@ test("section run button persists batch size changes whenever a projectId is ava
     "saving should not be limited to section-detail mode",
   );
 });
+
+test("project detail controls import server actions from focused modules", () => {
+  const runButton = readSource("src/app/projects/[projectId]/project-detail-actions.tsx");
+  const sectionNameEditor = readSource("src/app/projects/[projectId]/sections/[sectionId]/section-name-editor.tsx");
+  const editForm = readSource("src/app/projects/[projectId]/edit/project-edit-form.tsx");
+  const censorButton = readSource("src/app/projects/[projectId]/censor-button.tsx");
+
+  assert.match(runButton, /from "@\/lib\/actions\/run-execution";/);
+  assert.match(sectionNameEditor, /from "@\/lib\/actions\/section";/);
+  assert.match(editForm, /from "@\/lib\/actions\/project";/);
+  assert.match(censorButton, /from "@\/lib\/actions\/censoring";/);
+  for (const [label, source] of [
+    ["run button", runButton],
+    ["section name editor", sectionNameEditor],
+    ["edit form", editForm],
+    ["censor button", censorButton],
+  ] as const) {
+    assert.doesNotMatch(source, /from "@\/lib\/actions";/, `${label} should not import the full server-action barrel`);
+  }
+});
