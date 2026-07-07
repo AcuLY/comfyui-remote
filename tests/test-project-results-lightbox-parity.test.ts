@@ -90,6 +90,13 @@ test("project results lightbox exposes review and censor controls like section r
   );
 });
 
+test("project results import image review actions from focused module", () => {
+  const source = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
+
+  assert.match(source, /from "@\/lib\/actions\/image-review";/);
+  assert.doesNotMatch(source, /from "@\/lib\/actions";/);
+});
+
 test("project results review actions update local image state before awaiting the API", () => {
   const source = readSource("src/app/projects/[projectId]/results/project-results-client.tsx");
   const reviewLightboxImage = sourceSlice(

@@ -32,7 +32,7 @@ import { HardNavigationLink } from "@/components/hard-navigation-link";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { getPreferredScrollContainer } from "@/lib/scroll-container";
 import { NeighborNavigation } from "@/components/neighbor-navigation";
-import { censorImage } from "@/lib/actions";
+import { censorImage } from "@/lib/actions/image-review";
 import {
   submitReviewMutation,
   type ReviewMutationAction,

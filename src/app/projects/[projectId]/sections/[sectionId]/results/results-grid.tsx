@@ -18,7 +18,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { trashImages, runSection, censorImage } from "@/lib/actions";
+import { censorImage, trashImages } from "@/lib/actions/image-review";
+import { runSection } from "@/lib/actions/run-execution";
 import { showRunSubmissionToast } from "@/lib/run-submission-toast";
 import { BatchSizeQuickFill } from "@/components/batch-size-quick-fill";
 import { HardNavigationLink } from "@/components/hard-navigation-link";

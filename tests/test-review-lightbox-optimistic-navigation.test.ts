@@ -147,6 +147,23 @@ test("section results lightbox navigates optimistically before awaiting review a
   );
 });
 
+test("section results import image review and run actions from focused modules", () => {
+  const gridSource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-grid.tsx",
+    "utf8",
+  );
+  const gallerySource = readFileSync(
+    "src/app/projects/[projectId]/sections/[sectionId]/results/results-gallery.tsx",
+    "utf8",
+  );
+
+  assert.match(gridSource, /from "@\/lib\/actions\/image-review";/);
+  assert.match(gridSource, /from "@\/lib\/actions\/run-execution";/);
+  assert.match(gallerySource, /from "@\/lib\/actions\/image-review";/);
+  assert.doesNotMatch(gridSource, /from "@\/lib\/actions";/);
+  assert.doesNotMatch(gallerySource, /from "@\/lib\/actions";/);
+});
+
 test("queue review page shortcuts mirror results where matching queue actions exist", () => {
   const gridSource = readFileSync("src/app/queue/[runId]/review-grid.tsx", "utf8");
   const pageSource = readFileSync("src/app/queue/[runId]/page.tsx", "utf8");
