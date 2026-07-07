@@ -438,6 +438,26 @@ test("generation project and section API routes import actions from focused modu
   }
 });
 
+test("preset library category and folder API routes import actions from focused modules", () => {
+  for (const [routePath, actionModule] of [
+    ["src/app/api/preset-library/categories/route.ts", "@/lib/actions/preset-category"],
+    ["src/app/api/preset-library/categories/[categoryId]/route.ts", "@/lib/actions/preset-category"],
+    ["src/app/api/preset-library/categories/reorder/route.ts", "@/lib/actions/preset-category"],
+    ["src/app/api/preset-library/categories/[categoryId]/slot-template/route.ts", "@/lib/actions/preset-category"],
+    ["src/app/api/preset-library/categories/[categoryId]/sort-orders/route.ts", "@/lib/actions/preset-category"],
+    ["src/app/api/preset-library/categories/[categoryId]/groups/reorder/route.ts", "@/lib/actions/preset-group"],
+    ["src/app/api/preset-library/folders/route.ts", "@/lib/actions/preset-folder"],
+    ["src/app/api/preset-library/folders/[folderId]/route.ts", "@/lib/actions/preset-folder"],
+    ["src/app/api/preset-library/folders/[folderId]/move/route.ts", "@/lib/actions/preset-folder"],
+    ["src/app/api/preset-library/folders/reorder/route.ts", "@/lib/actions/preset-folder"],
+  ] as const) {
+    const source = readFileSync(routePath, "utf8");
+
+    assertImportsFrom(source, actionModule, routePath);
+    assert.doesNotMatch(source, /from ["']@\/lib\/actions["']/, `${routePath} should not import the full actions barrel`);
+  }
+});
+
 test("generation project mutations use shared raw JSON parsing", () => {
   for (const routePath of [
     "src/app/api/projects/route.ts",

@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { reorderPresetCategories } from "@/lib/actions";
+import { reorderPresetCategories } from "@/lib/actions/preset-category";
 import { readJsonBody } from "@/server/http/request-json";
 
 export async function POST(request: NextRequest) {

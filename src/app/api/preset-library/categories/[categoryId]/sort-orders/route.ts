@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { updateCategorySortOrders } from "@/lib/actions";
+import { updateCategorySortOrders } from "@/lib/actions/preset-category";
 import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {

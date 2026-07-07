@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { fail, failFromError, ok } from "@/lib/api-response";
-import { renamePresetFolder, deletePresetFolder } from "@/lib/actions";
+import { renamePresetFolder, deletePresetFolder } from "@/lib/actions/preset-folder";
 import { getPresetFolder } from "@/lib/server-data";
 import { readJsonBody } from "@/server/http/request-json";
 

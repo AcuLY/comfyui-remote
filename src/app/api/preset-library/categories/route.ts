@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { failFromError, ok } from "@/lib/api-response";
-import { createPresetCategory, type PresetCategoryInput } from "@/lib/actions";
+import { createPresetCategory, type PresetCategoryInput } from "@/lib/actions/preset-category";
 import { getPresetCategoriesWithPresets } from "@/lib/server-data";
 import { readJsonBody } from "@/server/http/request-json";
 
