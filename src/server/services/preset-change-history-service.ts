@@ -1,17 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import { stableStringify, toPrismaJson } from "./change-history-utils";
+import type {
+  PresetChangeDimension,
+  PresetGroupChangeDimension,
+  PresetHistoryEntry,
+} from "@/lib/change-history-types";
 
-export type PresetChangeDimension = "variants" | "content";
-export type PresetGroupChangeDimension = "meta" | "members";
-
-export type PresetHistoryEntry<Dimension extends string> = {
-  id: string;
-  dimension: Dimension;
-  title: string;
-  before: unknown;
-  after: unknown;
-  createdAt: string;
-};
+export type {
+  PresetChangeDimension,
+  PresetGroupChangeDimension,
+  PresetHistoryEntry,
+} from "@/lib/change-history-types";
 
 const HISTORY_LIMIT_PER_DIMENSION = 10;
 

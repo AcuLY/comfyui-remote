@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { ChangeDiffView } from "@/components/change-diff-view";
-import type {
-  PresetHistoryEntry,
-} from "@/server/services/preset-change-history-service";
+import type { PresetHistoryEntry } from "@/lib/change-history-types";
 import type { ChangeHistoryTabs } from "./preset-types";
 
 function formatHistoryDate(value: string) {

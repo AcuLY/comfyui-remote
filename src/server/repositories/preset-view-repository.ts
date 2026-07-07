@@ -8,10 +8,12 @@ import {
 import {
   groupPresetGroupHistory,
   groupPresetHistory,
-  type PresetChangeDimension,
-  type PresetGroupChangeDimension,
-  type PresetHistoryEntry,
 } from "@/server/services/preset-change-history-service";
+import type {
+  PresetChangeDimension,
+  PresetGroupChangeDimension,
+  PresetHistoryEntry,
+} from "@/lib/change-history-types";
 import {
   buildGenerationPresetWhere,
   isReservedTrainingResourceNotes,

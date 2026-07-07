@@ -2,16 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { ChangeDiffView } from "@/components/change-diff-view";
-import type { SectionChangeDimension } from "@/server/services/section-change-history-service";
+import type { SectionChangeDimension, SectionHistoryEntry } from "@/lib/change-history-types";
 
-type SectionChangeHistoryEntry = {
-  id: string;
-  dimension: SectionChangeDimension;
-  title: string;
-  before: unknown;
-  after: unknown;
-  createdAt: string;
-};
+type SectionChangeHistoryEntry = SectionHistoryEntry;
 
 type SectionChangeHistoryProps = {
   history: Record<SectionChangeDimension, SectionChangeHistoryEntry[]>;

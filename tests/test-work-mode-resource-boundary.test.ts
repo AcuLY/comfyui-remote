@@ -23,11 +23,15 @@ const trainingManifestSource = readFileSync(resolve(repoRoot, "src/app/api/train
 const generationProjectDetailSource = readFileSync(resolve(repoRoot, "src/server/repositories/project-view-repository/detail-view.ts"), "utf8");
 const generationSectionEditPageSource = readFileSync(resolve(repoRoot, "src/app/projects/[projectId]/sections/[sectionId]/page.tsx"), "utf8");
 const generationSectionEditActionSource = readOptionalSource("src/app/projects/[projectId]/sections/[sectionId]/actions.ts");
+const generationSectionChangeHistorySource = readFileSync(resolve(repoRoot, "src/app/projects/[projectId]/sections/[sectionId]/section-change-history.tsx"), "utf8");
 const generationQueuePageSource = readFileSync(resolve(repoRoot, "src/app/queue/page.tsx"), "utf8");
 const generationQueueDataRouteSource = readFileSync(resolve(repoRoot, "src/app/api/queue-data/route.ts"), "utf8");
 const generationQueueDataRepositorySource = readFileSync(resolve(repoRoot, "src/server/repositories/queue-data-repository.ts"), "utf8");
 const generationProjectListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/projects/route.ts"), "utf8");
 const generationPresetSortRulesPageSource = readFileSync(resolve(repoRoot, "src/app/assets/presets/sort-rules/page.tsx"), "utf8");
+const generationPresetTypesSource = readFileSync(resolve(repoRoot, "src/app/assets/presets/preset-types.ts"), "utf8");
+const generationPresetChangeHistoryPanelSource = readFileSync(resolve(repoRoot, "src/app/assets/presets/change-history-panel.tsx"), "utf8");
+const changeHistoryTypesSource = readOptionalSource("src/lib/change-history-types.ts");
 const generationPresetListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/presets/route.ts"), "utf8");
 const generationPresetLibraryCategoryRouteSource = readFileSync(resolve(repoRoot, "src/app/api/preset-library/categories/route.ts"), "utf8");
 const generationTemplateListRouteSource = readFileSync(resolve(repoRoot, "src/app/api/templates/route.ts"), "utf8");
@@ -436,6 +440,41 @@ test("generation section edit page delegates data reads and LoRA writes", () => 
     generationSectionEditActionSource,
     /saveSectionLoraConfigAction[\s\S]*saveSectionLoraConfig[\s\S]*revalidatePath/,
     "Generation section edit action should own LoRA revalidation after service persistence.",
+  );
+});
+
+test("client change history surfaces use client-safe shared types", () => {
+  for (const [label, source] of [
+    ["preset change-history panel", generationPresetChangeHistoryPanelSource],
+    ["preset type helpers", generationPresetTypesSource],
+    ["section change-history panel", generationSectionChangeHistorySource],
+  ] as const) {
+    assert.match(
+      source,
+      /@\/lib\/change-history-types/,
+      `${label} should import change-history types from a client-safe lib module.`,
+    );
+    assert.doesNotMatch(
+      source,
+      /@\/server\/services\/(?:preset|section)-change-history-service/,
+      `${label} should not import types from server services.`,
+    );
+  }
+
+  assert.match(
+    changeHistoryTypesSource,
+    /export type PresetChangeDimension = "variants" \| "content"/,
+    "Shared change-history types should expose preset dimensions.",
+  );
+  assert.match(
+    changeHistoryTypesSource,
+    /export type SectionChangeDimension = "runParams" \| "prompt" \| "lora"/,
+    "Shared change-history types should expose section dimensions.",
+  );
+  assert.match(
+    changeHistoryTypesSource,
+    /export type PresetHistoryEntry<Dimension extends string>/,
+    "Shared change-history types should expose generic history entries.",
   );
 });
 

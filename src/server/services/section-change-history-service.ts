@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { stableStringify, toPrismaJson } from "./change-history-utils";
+import type { SectionChangeDimension, SectionHistoryEntry } from "@/lib/change-history-types";
 
-export type SectionChangeDimension = "runParams" | "prompt" | "lora";
+export type { SectionChangeDimension, SectionHistoryEntry } from "@/lib/change-history-types";
 
 const HISTORY_LIMIT_PER_DIMENSION = 10;
 
@@ -72,15 +73,5 @@ export async function getSectionChangeHistory(sectionId: string) {
     }),
   );
 
-  return Object.fromEntries(entriesByDimension) as Record<
-    SectionChangeDimension,
-    Array<{
-      id: string;
-      dimension: SectionChangeDimension;
-      title: string;
-      before: unknown;
-      after: unknown;
-      createdAt: string;
-    }>
-  >;
+  return Object.fromEntries(entriesByDimension) as Record<SectionChangeDimension, SectionHistoryEntry[]>;
 }

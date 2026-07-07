@@ -1,7 +1,7 @@
 import type {
   PresetChangeDimension,
   PresetGroupChangeDimension,
-} from "@/server/services/preset-change-history-service";
+} from "@/lib/change-history-types";
 
 export type PresetQueryPatch = {
   category?: string | null;
