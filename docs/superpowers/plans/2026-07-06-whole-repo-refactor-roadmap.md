@@ -473,6 +473,8 @@
 - Phase 8 slice 102 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, initial focused workflow checks caught stale `SceneBlockCard` source markers, then green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1148 tests discovered, 1147 pass, 0 fail, 1 skipped.
 - Phase 8 slice 103 moved the project profile page into `src/features/training/ui/training-project-profile-page.tsx`. The focused page owns reference image editing/upload/delete, add-to-results state, profile draft state, profile save API calls, profile text history loading, and text revision restore UI while `training-project-pages.tsx` keeps a compatibility re-export.
 - Phase 8 slice 103 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1149 tests discovered, 1148 pass, 0 fail, 1 skipped.
+- Phase 8 slice 104 moved the project sections list into `src/features/training/ui/training-project-sections-page.tsx` and the shared section rail/workspace into `src/features/training/ui/training-section-workspace.tsx`. The focused sections page owns section cards, local add/copy/delete/reorder state, production project-section API calls, header add-section event handling, and section-grid actions while `training-project-pages.tsx` keeps a compatibility re-export and imports the shared workspace for section detail.
+- Phase 8 slice 104 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-section-workflow.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1150 tests discovered, 1149 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1116,7 +1118,7 @@ Loading states remain colocated under their route segments for now; the later lo
   - [x] Shared project-scoped run rows for overview, dataset revision, and run pages.
   - [x] Project detail overview.
   - [x] Profile page and text revision UI.
-  - [ ] Sections list page.
+  - [x] Sections list page.
   - [ ] Section detail page.
   - [ ] Generation compose page.
   - [ ] Project results page.

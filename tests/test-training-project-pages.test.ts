@@ -14,6 +14,8 @@ const projectDetailPagePath = resolve(featureUiDir, "training-project-detail-pag
 const projectDetailPageSource = existsSync(projectDetailPagePath) ? readFileSync(projectDetailPagePath, "utf8") : "";
 const projectProfilePagePath = resolve(featureUiDir, "training-project-profile-page.tsx");
 const projectProfilePageSource = existsSync(projectProfilePagePath) ? readFileSync(projectProfilePagePath, "utf8") : "";
+const projectSectionsPagePath = resolve(featureUiDir, "training-project-sections-page.tsx");
+const projectSectionsPageSource = existsSync(projectSectionsPagePath) ? readFileSync(projectSectionsPagePath, "utf8") : "";
 const projectPageShellPath = resolve(featureUiDir, "project-page-shell.tsx");
 const projectPageShellSource = existsSync(projectPageShellPath) ? readFileSync(projectPageShellPath, "utf8") : "";
 const trainingResultGridPath = resolve(featureUiDir, "training-result-grid.tsx");
@@ -110,6 +112,14 @@ test("training project profile page lives in a focused page module", () => {
   assert.match(projectProfilePageSource, /export function LoraTrainingProjectProfilePage/, "project profile implementation should live in its own module");
   assert.match(pagesSource, /export \{ LoraTrainingProjectProfilePage \} from "\.\/training-project-profile-page";/, "broad project pages module should retain a compatibility re-export");
   assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectProfilePage/, "broad project pages module should not keep the profile implementation inline");
+});
+
+test("training project sections page lives in a focused page module", () => {
+  assert.match(projectSectionsPageSource, /export function LoraTrainingProjectSectionsPage/, "project sections implementation should live in its own module");
+  assert.match(projectSectionsPageSource, /function SectionCard\b/, "section card rendering should move with the sections list page");
+  assert.match(pagesSource, /export \{ LoraTrainingProjectSectionsPage \} from "\.\/training-project-sections-page";/, "broad project pages module should retain a compatibility re-export");
+  assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectSectionsPage/, "broad project pages module should not keep the sections implementation inline");
+  assert.doesNotMatch(pagesSource, /\nfunction SectionCard\b/, "broad project pages module should not keep section cards inline");
 });
 
 test("training project page shell lives in a focused component module", () => {
@@ -699,12 +709,7 @@ test("training section detail saves through the formal HTTP API on production ro
 });
 
 test("training section list mutations use the formal HTTP APIs on production routes", () => {
-  const sectionsPageStart = pagesSource.indexOf("export function LoraTrainingProjectSectionsPage");
-  const sectionDetailStart = pagesSource.indexOf("export function LoraTrainingProjectSectionDetailPage");
-  assert.notEqual(sectionsPageStart, -1);
-  assert.notEqual(sectionDetailStart, -1);
-
-  const sectionsPageSource = pagesSource.slice(sectionsPageStart, sectionDetailStart);
+  const sectionsPageSource = projectSectionsPageSource;
 
   assert.match(sectionsPageSource, /usePathname/, "section list should detect whether it is running under production \\/training routes");
   assert.match(sectionsPageSource, /fetch\(`\/api\/training\/projects\/\$\{activeProject\.id\}\/sections`/, "section add and copy should call the formal project sections API");

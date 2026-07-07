@@ -8,6 +8,14 @@ const testDir = dirname(fileURLToPath(import.meta.url));
 const featureUiDir = resolve(testDir, "../src/features/training/ui");
 const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
 const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
+const projectSectionsPagePath = resolve(featureUiDir, "training-project-sections-page.tsx");
+const projectSectionsPageSource = existsSync(projectSectionsPagePath)
+  ? readFileSync(projectSectionsPagePath, "utf8")
+  : "";
+const sectionWorkspacePath = resolve(featureUiDir, "training-section-workspace.tsx");
+const sectionWorkspaceSource = existsSync(sectionWorkspacePath)
+  ? readFileSync(sectionWorkspacePath, "utf8")
+  : "";
 const referencePickerSource = readFileSync(resolve(featureUiDir, "reference-picker.tsx"), "utf8");
 const projectSectionDraftHookSource = readFileSync(resolve(featureUiDir, "use-project-section-draft.ts"), "utf8");
 const projectSectionSceneBlocksHookPath = resolve(featureUiDir, "use-project-section-scene-blocks.ts");
@@ -36,12 +44,24 @@ const generationTaskDraftHookSource = existsSync(generationTaskDraftHookPath)
   : "";
 const cssSource = readFileSync(resolve(featureUiDir, "training-project-pages.module.css"), "utf8");
 
-function sourceBetween(startMarker: string, endMarker: string) {
-  const start = pagesSource.indexOf(startMarker);
-  const end = pagesSource.indexOf(endMarker, start + startMarker.length);
+function sourceBetweenIn(source: string, startMarker: string, endMarker: string) {
+  const start = source.indexOf(startMarker);
+  const end = source.indexOf(endMarker, start + startMarker.length);
   assert.notEqual(start, -1, `${startMarker} should exist`);
   assert.notEqual(end, -1, `${endMarker} should exist after ${startMarker}`);
-  return pagesSource.slice(start, end);
+  return source.slice(start, end);
+}
+
+function sourceBetween(startMarker: string, endMarker: string) {
+  return sourceBetweenIn(pagesSource, startMarker, endMarker);
+}
+
+function sectionCardSource() {
+  return sourceBetweenIn(projectSectionsPageSource, "function SectionCard", "export function LoraTrainingProjectSectionsPage");
+}
+
+function projectSectionsPageBody() {
+  return projectSectionsPageSource;
 }
 
 function cssRule(className: string) {
@@ -63,13 +83,12 @@ function nestedFunctionSource(source: string, functionName: string) {
 }
 
 test("training section list uses the same management shell as design-demo sections", () => {
-  const sectionsPage = sourceBetween(
-    "export function LoraTrainingProjectSectionsPage",
-    "export function LoraTrainingProjectSectionDetailPage",
-  );
-  const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
+  const sectionsPage = projectSectionsPageBody();
+  const sectionCard = sectionCardSource();
 
   assert.match(sectionsPage, /TrainingSectionWorkspace/, "section list should render inside a rail + scroll workspace");
+  assert.match(sectionWorkspaceSource, /function TrainingSectionRail\b/, "section rail should live with the shared workspace component");
+  assert.match(sectionWorkspaceSource, /export function TrainingSectionWorkspace\b/, "section workspace should live in a focused component module");
   assert.match(sectionsPage, /activeSectionId/, "section workspace should know the active section");
   assert.match(sectionCard, /limit=\{4\}/, "section cards should keep fixed four-thumbnail result slots");
   assert.match(sectionCard, /Copy/, "section cards should expose an independent copy action");
@@ -99,11 +118,8 @@ test("training section list uses the project-demo container-driven two-column la
 });
 
 test("training section list copy and delete actions use HTTP-backed production mutations", () => {
-  const sectionsPage = sourceBetween(
-    "export function LoraTrainingProjectSectionsPage",
-    "export function LoraTrainingProjectSectionDetailPage",
-  );
-  const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
+  const sectionsPage = projectSectionsPageBody();
+  const sectionCard = sectionCardSource();
 
   assert.match(sectionsPage, /localSections/, "section list should keep a local editable section list");
   assert.match(sectionsPage, /isProductionTrainingRoute/, "section mutations should distinguish production /training routes from reusable demos");
@@ -120,10 +136,7 @@ test("training section list copy and delete actions use HTTP-backed production m
 });
 
 test("training section list mutation handlers guard concurrent actions before optimistic local state", () => {
-  const sectionsPage = sourceBetween(
-    "export function LoraTrainingProjectSectionsPage",
-    "export function LoraTrainingProjectSectionDetailPage",
-  );
+  const sectionsPage = projectSectionsPageBody();
 
   for (const functionName of ["handleCopySection", "handleDeleteSection", "handleReorderSections", "handleAddSection"]) {
     const handler = nestedFunctionSource(sectionsPage, functionName);
@@ -144,10 +157,7 @@ test("training section list mutation handlers guard concurrent actions before op
 });
 
 test("training section list keeps local section state scoped to the active project", () => {
-  const sectionsPage = sourceBetween(
-    "export function LoraTrainingProjectSectionsPage",
-    "export function LoraTrainingProjectSectionDetailPage",
-  );
+  const sectionsPage = projectSectionsPageBody();
 
   assert.match(sectionsPage, /projectId:\s*project\?\.id \?\? null/, "local section state should remember the source project id");
   assert.match(sectionsPage, /localSectionState\.projectId === project\.id \? localSectionState\.sections : project\.sections/, "section cards should fall back to the active project's sections after route changes");
@@ -157,11 +167,8 @@ test("training section list keeps local section state scoped to the active proje
 });
 
 test("training section list drag handles reorder through the project section API on production routes", () => {
-  const sectionsPage = sourceBetween(
-    "export function LoraTrainingProjectSectionsPage",
-    "export function LoraTrainingProjectSectionDetailPage",
-  );
-  const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
+  const sectionsPage = projectSectionsPageBody();
+  const sectionCard = sectionCardSource();
 
   assert.match(sectionsPage, /orderedSectionIds/, "section list should keep local section ordering state");
   assert.match(sectionsPage, /handleReorderSections/, "section list should define a local reorder handler");
@@ -174,10 +181,7 @@ test("training section list drag handles reorder through the project section API
 });
 
 test("training section copy inserts the duplicate directly after the source section", () => {
-  const sectionsPage = sourceBetween(
-    "export function LoraTrainingProjectSectionsPage",
-    "export function LoraTrainingProjectSectionDetailPage",
-  );
+  const sectionsPage = projectSectionsPageBody();
 
   assert.match(sectionsPage, /const sourceIndex = currentSections\.findIndex\(\(item\) => item\.id === section\.id\)/, "copy should find the source section position");
   assert.match(sectionsPage, /\.\.\.currentSections\.slice\(0, sourceIndex \+ 1\),\s*copy,\s*\.\.\.currentSections\.slice\(sourceIndex \+ 1\)/, "local section copy should stay adjacent to the source");
@@ -187,10 +191,7 @@ test("training section copy inserts the duplicate directly after the source sect
 });
 
 test("training section list can add a section through the project section API on production routes", () => {
-  const sectionsPage = sourceBetween(
-    "export function LoraTrainingProjectSectionsPage",
-    "export function LoraTrainingProjectSectionDetailPage",
-  );
+  const sectionsPage = projectSectionsPageBody();
 
   assert.match(sectionsPage, /handleAddSection/, "section list should define an add action");
   assert.match(sectionsPage, /新小节/, "local add action should create a readable draft section title");
@@ -208,7 +209,7 @@ test("training section list can add a section through the project section API on
 });
 
 test("training section list generation actions name the target section while detail pages leave the CTA to route headers", () => {
-  const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
+  const sectionCard = sectionCardSource();
   const detailPage = sourceBetween(
     "export function LoraTrainingProjectSectionDetailPage",
     "export function LoraTrainingGenerationComposePage",
@@ -227,7 +228,7 @@ test("training section list generation actions name the target section while det
 });
 
 test("training section cards keep enabled state as lightweight meta instead of a header badge", () => {
-  const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
+  const sectionCard = sectionCardSource();
 
   assert.doesNotMatch(
     sectionCard,
@@ -242,7 +243,7 @@ test("training section cards keep enabled state as lightweight meta instead of a
 });
 
 test("training section thumbnail links name the section results they open", () => {
-  const sectionCard = sourceBetween("function SectionCard", "export function LoraTrainingProjectSectionsPage");
+  const sectionCard = sectionCardSource();
 
   assert.match(
     sectionCard,
@@ -252,10 +253,7 @@ test("training section thumbnail links name the section results they open", () =
 });
 
 test("training section list scans existing section ids for local copy and draft ids", () => {
-  const sectionsPage = sourceBetween(
-    "export function LoraTrainingProjectSectionsPage",
-    "export function LoraTrainingProjectSectionDetailPage",
-  );
+  const sectionsPage = projectSectionsPageBody();
 
   assert.match(projectPageUtilsSource, /function nextProjectSectionCopyNumber/, "section copy ids should use a shared ordinal helper");
   assert.match(projectPageUtilsSource, /function nextProjectSectionDraftNumber/, "new section draft ids should use a shared ordinal helper");
