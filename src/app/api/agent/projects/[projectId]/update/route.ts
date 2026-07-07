@@ -1,5 +1,5 @@
 import { ActorType } from "@/lib/db-enums";
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   getProjectAgentContext,
   getProjectSectionDetail,
@@ -9,6 +9,7 @@ import {
   updateProject,
   updateProjectSection,
 } from "@/server/services/project-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ projectId: string }>;
@@ -89,8 +90,12 @@ export async function POST(request: Request, context: RouteContext) {
 
   let body: AgentProjectUpdateRequestBody;
   try {
-    body = parseRequestBody(await request.json());
+    body = parseRequestBody(await readJsonBody(request));
   } catch (error) {
+    if (error instanceof Error && typeof (error as { status?: unknown }).status === "number") {
+      return failFromError(error);
+    }
+
     const mapped = mapAgentProjectUpdateInputError(error);
     return fail(mapped.message, mapped.status, mapped.details);
   }

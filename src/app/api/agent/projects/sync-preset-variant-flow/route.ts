@@ -1,5 +1,6 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import { syncPresetVariantFlow } from "@/server/services/agent-preset-variant-flow-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 function mapFlowError(error: unknown) {
   const message = error instanceof Error ? error.message : "Failed to sync preset variants by project title";
@@ -26,9 +27,9 @@ function mapFlowError(error: unknown) {
 export async function POST(request: Request) {
   let body: unknown;
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {

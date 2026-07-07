@@ -217,6 +217,8 @@
 - Phase 3 slice 16 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, `node --import tsx --test tests/test-auto-censor-runner.test.ts` after an initial non-reproducible timeout-harness failure, and `npm test` with 1002 tests discovered, 1001 pass, 0 fail, 1 skipped.
 - Phase 3 slice 17 migrated review keep/trash and image cover route parsing in `src/app/api/runs/[runId]/review/**/route.ts` and `src/app/api/images/[imageId]/cover/route.ts` to `readJsonBody`/`readOptionalJsonObject` with `failFromError`, keeping review service errors mapped through `mapReviewError`.
 - Phase 3 slice 17 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 1004 tests discovered, 1003 pass, 0 fail, 1 skipped.
+- Phase 3 slice 18 migrated Agent API review, project update, variant switch, and preset sync flow route parsing in `src/app/api/agent/**/route.ts` to `readJsonBody`/`failFromError`, preserving each route's existing Agent/service error mapper.
+- Phase 3 slice 18 verification passed: `node --import tsx --test tests/test-api-request-json.test.ts tests/test-work-mode-resource-boundary.test.ts`, `npm run lint`, and `npm test` with 1006 tests discovered, 1005 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 

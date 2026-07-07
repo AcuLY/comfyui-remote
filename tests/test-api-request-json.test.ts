@@ -216,6 +216,11 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/runs/[runId]/review/keep/route.ts",
     "src/app/api/runs/[runId]/review/trash/route.ts",
     "src/app/api/images/[imageId]/cover/route.ts",
+    "src/app/api/agent/runs/[runId]/review/route.ts",
+    "src/app/api/agent/projects/[projectId]/switch-variants/route.ts",
+    "src/app/api/agent/projects/[projectId]/sync-preset-variants/route.ts",
+    "src/app/api/agent/projects/[projectId]/update/route.ts",
+    "src/app/api/agent/projects/sync-preset-variant-flow/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -355,6 +360,23 @@ test("review and image mutations use shared JSON parsing", () => {
   assert.match(coverRouteSource, /readOptionalJsonObject\(request\)/, "cover route should parse through readOptionalJsonObject");
   assert.match(coverRouteSource, /\bfailFromError\(/, "cover route should map parser errors through failFromError");
   assert.doesNotMatch(coverRouteSource, /request\.json\(\)/, "cover route should not parse JSON directly");
+});
+
+test("agent API mutations use shared raw JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/agent/runs/[runId]/review/route.ts",
+    "src/app/api/agent/projects/[projectId]/switch-variants/route.ts",
+    "src/app/api/agent/projects/[projectId]/sync-preset-variants/route.ts",
+    "src/app/api/agent/projects/[projectId]/update/route.ts",
+    "src/app/api/agent/projects/sync-preset-variant-flow/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
+  }
 });
 
 test("generation section batch delete route delegates destructive checks to project service", () => {
@@ -607,6 +629,38 @@ test("review and image mutations preserve invalid JSON response envelope", async
     await coverRoute.POST(makeRequest("not-json") as NextRequest, {
       params: Promise.resolve({ imageId: "image-1" }),
     }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("agent API mutations preserve invalid JSON response envelope", async () => {
+  const agentReviewRoute = await import("../src/app/api/agent/runs/[runId]/review/route");
+  const switchVariantsRoute = await import("../src/app/api/agent/projects/[projectId]/switch-variants/route");
+  const syncPresetVariantsRoute = await import("../src/app/api/agent/projects/[projectId]/sync-preset-variants/route");
+  const updateProjectRoute = await import("../src/app/api/agent/projects/[projectId]/update/route");
+  const syncPresetVariantFlowRoute = await import("../src/app/api/agent/projects/sync-preset-variant-flow/route");
+
+  for (const response of [
+    await agentReviewRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ runId: "run-1" }),
+    }),
+    await switchVariantsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await syncPresetVariantsRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await updateProjectRoute.POST(makeRequest("not-json"), {
+      params: Promise.resolve({ projectId: "project-1" }),
+    }),
+    await syncPresetVariantFlowRoute.POST(makeRequest("not-json")),
   ]) {
     assert.equal(response.status, 400);
     assert.deepEqual(await response.json(), {

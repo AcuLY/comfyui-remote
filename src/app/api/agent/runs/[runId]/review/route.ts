@@ -1,11 +1,12 @@
 import { ActorType } from "@/lib/db-enums";
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   getRunAgentContext,
   keepRunImages,
   mapReviewError,
   trashRunImages,
 } from "@/server/services/review-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ runId: string }>;
@@ -22,9 +23,9 @@ export async function POST(request: Request, context: RouteContext) {
 
   let body: AgentRunReviewRequestBody;
   try {
-    body = (await request.json()) as AgentRunReviewRequestBody;
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request) as AgentRunReviewRequestBody;
+  } catch (error) {
+    return failFromError(error);
   }
 
   if (typeof body.action !== "string") {
