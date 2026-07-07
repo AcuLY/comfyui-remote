@@ -1,5 +1,8 @@
 # ComfyUI Workflow System - Quick Reference
 
+Classification: runbook
+Current source: use `docs/index.md` first; current workflow contract lives in `docs/workflow.api.json`, worker boundaries live in `docs/worker-boundaries.md`, and runtime verification lives in `docs/local-verification.md`.
+
 ## 🎯 Three-Tier Architecture
 
 ```
@@ -293,4 +296,3 @@ GET /history/{prompt_id}
 - [`WORKFLOW_SYSTEM_ANALYSIS.md`](./WORKFLOW_SYSTEM_ANALYSIS.md) - Comprehensive deep dive
 - [`quick-reference.md`](./quick-reference.md) - General system overview
 - `src/server/services/comfyui-service.ts` - Service implementation
-

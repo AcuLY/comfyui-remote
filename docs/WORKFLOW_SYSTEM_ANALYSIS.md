@@ -1,5 +1,8 @@
 # ComfyUI Image Generation System - Workflow & Data Storage Analysis
 
+Classification: architecture reference
+Current source: use `docs/index.md` first; current workflow contract lives in `docs/workflow.api.json`, worker boundaries live in `docs/worker-boundaries.md`, and implementation ownership lives in `docs/repo-inventory.md`.
+
 ## Executive Summary
 
 This ComfyUI remote management system uses a sophisticated multi-layer approach to manage image generation workflows:
@@ -664,4 +667,3 @@ Via `ProjectSection.extraParams.comfyPrompt`:
 - [x] Historical data retention
 - [x] API routes for workflow access
 - [x] Async polling and completion handling
-

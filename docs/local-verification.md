@@ -1,6 +1,19 @@
 # 本机验证指南
 
+Classification: runbook
+Update trigger: auth token workflow, `npm run dev` / `next dev` startup, `next start` production verification, ComfyUI connectivity, protected pages, database bootstrap, or local end-to-end verification changes.
+
 从零开始搭建、运行并验证 ComfyUI Remote 的完整链路。
+
+## Service And Auth Matrix
+
+| Scope | Command or route | Verification | Boundary |
+| --- | --- | --- | --- |
+| Dev service | `npm run dev` or `next dev` | Open `http://localhost:3000/login` or another local route. | Dev-service start/stop/restart rules live in `agent-rules/dev-service.md`; do not upgrade this into production verification. |
+| Local production service | `npm run start` or `next start` after a production build | Verify the configured local production port, such as `/login`, through `agent-rules/deploy/verification.md`. | Only use this when the task is explicitly production-service verification or deploy flow. |
+| Auth token | `GET /api/auth/verify` | Read the token from project-root `.env`, set it as the expected auth cookie/header for protected pages, and verify the response without printing the token. | The token value must never be hard-coded, logged, or committed. |
+| Protected pages | `/projects`, `/queue`, `/assets/*`, `/settings/*`, and training pages when auth is enabled | Verify after `/api/auth/verify` succeeds; redirects to `/login` mean the auth context was not applied. | Keep local UI verification compatible with the `.env` token workflow in `AGENTS.md`. |
+| ComfyUI runtime | `COMFY_API_URL` and `/api/worker/status` | Confirm the worker status response reports ComfyUI connectivity before queue/run checks. | `/api/queue` is the review queue; active work state is owned by `/api/worker/status`, `/api/queue-data`, `pause-active`, and `resume-paused`. |
 
 ## 前置条件
 

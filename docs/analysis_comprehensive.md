@@ -1,5 +1,8 @@
 # ComfyUI Remote Codebase Analysis
 
+Classification: architecture reference
+Current source: use `docs/index.md` first; current workflow contract lives in `docs/workflow.api.json`, worker boundaries live in `docs/worker-boundaries.md`, and implementation ownership lives in `docs/repo-inventory.md`.
+
 ## Executive Summary
 
 The system processes image generation workflows through a three-stage pipeline:

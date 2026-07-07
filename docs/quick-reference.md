@@ -1,5 +1,8 @@
 # Quick Reference: Key File Paths & Functions
 
+Classification: runbook
+Current source: use `docs/index.md` first; current workflow contract lives in `docs/workflow.api.json`, worker boundaries live in `docs/worker-boundaries.md`, and generated file ownership lives in `docs/repo-inventory.md`.
+
 ## Critical Files
 
 | File | Purpose | Key Exports |

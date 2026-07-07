@@ -1,5 +1,8 @@
 # v0.5 Workflow 集成 & LoRA/采样器参数化 — 设计文档
 
+Classification: product/design reference
+Current source: use `docs/index.md` first; current workflow contract lives in `docs/workflow.api.json`, worker boundaries live in `docs/worker-boundaries.md`, and route/API contracts live in `docs/api/`.
+
 > 状态：✅ 已完成
 > 日期：2026-03-29
 

@@ -1,5 +1,8 @@
 # Development Progress
 
+Classification: historical record
+Current source: use `docs/index.md` first; current feature overview lives in `README.md`, current file ownership lives in `docs/repo-inventory.md`, and active refactor status lives in `docs/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md`.
+
 ## Project Overview
 
 ComfyUI Remote — 移动优先的 ComfyUI 管理后台，覆盖：

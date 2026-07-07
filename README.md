@@ -2,17 +2,20 @@
 
 移动优先的 ComfyUI 管理后台。在手机或任何浏览器上管理生图项目、批量审核图片、调整参数，并通过 Agent API / MCP 让 AI 直接操控工作流。
 
+文档入口：先读 [`docs/index.md`](docs/index.md)，再按 [`docs/documentation-map.md`](docs/documentation-map.md) 进入维护中的架构、运行手册、API、UI、测试和历史文档。生成的仓库清单在 [`docs/repo-inventory.md`](docs/repo-inventory.md)。
+
 ## ✨ 功能亮点
 
-- **项目管理** — 用统一分类系统（PresetCategory × Preset）组合创建批量生图项目
-- **宫格审图** — 在手机上滑动式多选，批量保留 / 删除，支持单张放大；操作后一键处理剩余并跳转下一组
+- **Generation 项目管理** — 用统一分类系统（PresetCategory × Preset）组合创建批量生图项目
+- **Review 宫格审图** — 在手机上滑动式多选，批量保留 / 删除，支持单张放大；操作后一键处理剩余并跳转下一组
 - **结果 Gallery** — 独立结果页展示小节所有运行图片，Lightbox 放大查看，支持精选标记（⭐）
-- **图片整合导出** — 一键将已保留图片转 JPG 打包 zip，精选图片单独输出到 pixiv/ 目录
+- **Export 图片整合导出** — 一键将已保留图片转 JPG 打包 zip，精选图片单独输出到 pixiv/ 目录
+- **Training 工作流** — LoRA training 项目、数据集修订、生成任务和训练运行由独立 feature/service 管理
 - **回收站** — 误删随时恢复，文件级 trash / restore
 - **参数编辑** — Project 级和 Section 级覆盖：prompt、LoRA、画幅、batch size、双 KSampler 参数
 - **LoRA 文件管理** — 磁盘目录浏览、上传、跨目录移动、备注；级联选择器替代传统下拉
 - **Workflow 模板** — 内置 SDXL txt2img / HiRes Fix，支持从 ComfyUI 导出 JSON 一键导入自定义模板
-- **Worker 引擎** — 自动消费队列、调用 ComfyUI API、下载输出、生成缩略图
+- **Comfy runtime / Worker 引擎** — 自动消费队列、调用 ComfyUI API、下载输出、生成缩略图
 - **审计日志 + 修订历史** — 全操作可追溯，区分人工 / AI / 系统，参数修改前自动快照
 - **Agent API** — 7 个 REST 端点，AI 可读取上下文、修改参数、触发运行、批量审图
 - **MCP Server** — 内置 Model Context Protocol 服务，Claude Desktop / Cursor 等直连使用
@@ -196,13 +199,15 @@ comfyui-remote/
 │   ├── export/                 #   图片整合导出输出
 │   └── models/                 #   模型文件（由 MODEL_BASE_DIR 指定，包含 loras/ 和 checkpoints/）
 ├── docs/                       # 文档
-│   ├── design-v0.1.md          #   产品与架构设计
-│   ├── design-v0.3-*.md        #   v0.3 Workflow 集成设计
-│   ├── handoff.md              #   接手文档 / 当前状态
-│   ├── agent-api.md            #   Agent API 完整说明
-│   ├── development-todo.md     #   开发进度记录
-│   ├── development-progress.md #   项目总览 + 版本历史
-│   └── local-verification.md   #   本机链路验证指南
+│   ├── index.md                #   read-first 文档入口
+│   ├── documentation-map.md    #   维护层级和历史/当前文档映射
+│   ├── repo-inventory.md       #   生成的全仓库治理清单
+│   ├── architecture/           #   当前模块边界、数据流、队列/Worker 语义
+│   ├── runbooks/               #   本地开发、部署、认证、ComfyUI、事故排查
+│   ├── api/                    #   Agent API、MCP、路由契约、workflow schema
+│   ├── ui/                     #   设计系统、页面模式、shell/navigation 规则
+│   ├── testing/                #   测试分组、fixture、DB bootstrap、验证矩阵
+│   └── archive/                #   已归档计划、旧 PRD、superseded handoff
 ├── prisma/                     # 数据库 schema + migration（含 PromptCategory / PromptPreset 模型）
 │   ├── schema.prisma           #   PostgreSQL schema
 │   ├── schema.sqlite.prisma    #   SQLite schema
@@ -248,13 +253,12 @@ ComfyUI 输出 → Worker 复制到 data/images/{project}/{section}/run-{N}/raw/
 
 | 文档 | 内容 |
 |------|------|
-| [`docs/design-v0.1.md`](docs/design-v0.1.md) | 产品设计、数据模型、页面规划、API 初稿 |
-| [`docs/design-v0.3-workflow-integration.md`](docs/design-v0.3-workflow-integration.md) | v0.3 Workflow 集成设计（LoRA 分区、KSampler、填充器） |
-| [`docs/handoff.md`](docs/handoff.md) | 代码组织、架构特点、完成度清单、接手指南 |
+| [`docs/index.md`](docs/index.md) | Agent read-first 入口，按需求指向当前文档 |
+| [`docs/documentation-map.md`](docs/documentation-map.md) | 当前/历史/生成文档分类和目标目录层级 |
+| [`docs/repo-inventory.md`](docs/repo-inventory.md) | 由脚本生成的全仓库文件治理清单 |
 | [`docs/agent-api.md`](docs/agent-api.md) | Agent API + MCP Server 完整使用说明 |
 | [`docs/local-verification.md`](docs/local-verification.md) | 本机端到端验证：seed → create project → enqueue → worker → output |
-| [`docs/development-todo.md`](docs/development-todo.md) | 开发进度与历史 |
-| [`docs/development-progress.md`](docs/development-progress.md) | 项目总览 + 页面/API 清单 + 版本历史 |
+| [`DESIGN.md`](DESIGN.md) | 当前 UI 方向和设计系统约束 |
 
 ## License
 

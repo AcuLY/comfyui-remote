@@ -2,6 +2,8 @@
 
 This file is the required entrypoint for this repository. Keep it short. Read `agent-rules/git.md` and `agent-rules/deploy/index.md` proactively on every task, then read other linked rule files when their trigger applies.
 
+Maintenance: this file uses manual synchronization from `agent-rules/**`. For workflow changes, update the source rule file and the rendered AGENTS.md summary in the same documentation batch.
+
 <!-- BEGIN:nextjs-agent-rules -->
 ## Next.js
 

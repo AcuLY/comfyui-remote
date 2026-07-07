@@ -1,5 +1,8 @@
 # Handoff
 
+Classification: historical record
+Current source: use `docs/index.md` first; current setup and feature overview live in `README.md`, current API contracts live in `docs/api/`, and current workflow rules live in `AGENTS.md` plus `agent-rules/**`.
+
 ## 这是什么
 ComfyUI Remote 是一个移动优先的 ComfyUI 管理后台。核心目标是把：
 - 项目管理

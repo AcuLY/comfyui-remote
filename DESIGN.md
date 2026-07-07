@@ -1,5 +1,8 @@
 # ComfyUI Manager Design System
 
+Classification: product/design reference
+Update trigger: shared UI direction, route shell, design-demo parity, token, layout, or accessibility changes.
+
 Updated: 2026-05-15
 
 This product UI uses a calm dual-theme workspace aesthetic: soft gradient atmosphere, translucent glass surfaces, compact data density, and restrained green actions. Light mode is the primary reference tone; dark mode should feel like the same product translated to dark surfaces, not a separate visual identity.

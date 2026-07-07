@@ -1,5 +1,8 @@
 # ComfyUI Manager 设计文档 v0.1
 
+Classification: product/design reference
+Current source: use `docs/index.md` first; current UI direction lives in `DESIGN.md` and `docs/ui/**`, current API contracts live in `docs/api/`, and current schema truth lives in `prisma/schema.prisma` plus `prisma/schema.sqlite.prisma`.
+
 > ⚠️ **本文档描述的是 v0.1 初始设计，已严重过时。** 当前实现使用 PresetCategory/Preset/PresetVariant 替代了 Character/ScenePreset/StylePreset，PositionRun 已改名为 Run，LoRA 改为二分区（lora1/lora2）。请以 Prisma schema 和代码为准。
 
 > **注意**: 本文档描述的是 v0.1 原始设计。v0.5 已将 Character / ScenePreset / StylePreset / PositionTemplate

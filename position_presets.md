@@ -1,3 +1,9 @@
+# Position Presets
+
+Classification: active product prompt reference
+Update trigger: product prompt taxonomy, generation preset semantics, or prompt language changes.
+Owner: product-prompt-reference
+
 pov纯手 1girl, pov, first person view
 直接1girl
 第三人称削弱

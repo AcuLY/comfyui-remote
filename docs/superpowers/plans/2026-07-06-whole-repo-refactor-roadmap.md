@@ -576,6 +576,8 @@
 - Phase 12 slice 153 verification passed: red `node --import tsx --test tests/test-quality-script-governance.test.ts` before typed result builders and the data-owner README existed, green same command after implementation, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-quality-script-governance.test.ts tests/test-quality-phase0-baseline.test.ts tests/test-quality-phase1-offline-eval.test.ts tests/test-quality-phase1-reviewer.test.ts tests/test-script-maintenance-doc.test.ts tests/test-repo-inventory.test.ts` with 52 tests discovered, 51 pass, 0 fail, 1 skipped, `npm run lint`, and `npm test` with 1210 tests discovered, 1209 pass, 0 fail, 1 skipped.
 - Phase 13 slice 154 added `tests/fixtures/domain-builders.ts`, `tests/README.md`, and `tests/test-fixture-governance.test.ts` to lock test-suite maintainability. The shared fixture builders now cover generation and training project/section/run/image/task/revision entities, SQLite DB setup stays behind `tests/fixtures/sqlite-db.ts`, route tests are guarded against static API-route imports before env setup, and the test README documents source-contract, native-module, local-DB, route-env, visual/UI, and fresh fixture rules.
 - Phase 13 slice 154 verification passed: red `node --import tsx --test tests/test-fixture-governance.test.ts` before the domain builders and test README existed, green same command after implementation, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-fixture-governance.test.ts tests/test-repo-inventory.test.ts` with 7 tests passed, `npm run lint`, and `npm test` with 1214 tests discovered, 1213 pass, 0 fail, 1 skipped.
+- Phase 14 slice 155 added `tests/test-documentation-governance.test.ts`, `docs/documentation-map.md`, target-layer README files under `docs/{architecture,runbooks,api,ui,testing,archive}/`, root-doc classifications, retained-context banners, and a local verification service/auth matrix. README now points to `docs/index.md`, `docs/documentation-map.md`, and `docs/repo-inventory.md`; `CLAUDE.md` delegates to `AGENTS.md`; `position_presets.md` is classified as an active product prompt reference; and `AGENTS.md` records the manual synchronization rule for `agent-rules/**`.
+- Phase 14 slice 155 verification passed: red `npx tsx --test tests/test-documentation-governance.test.ts` before the documentation map, root classifications, retained-context banners, and local verification matrix existed; green same command after implementation; `npx tsx scripts/docs/generate-repo-inventory.ts`; green `npx tsx --test tests/test-documentation-governance.test.ts tests/test-repo-inventory.test.ts tests/test-training-prototype-governance.test.ts` with 12 tests passed; `npm run lint`; and `npm test` with 1221 tests discovered, 1220 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1447,13 +1449,13 @@ Loading states remain colocated under their route segments for now; the later lo
 - `AGENTS.md`
 - `position_presets.md`
 
-- [ ] Update README project structure after directory changes.
-- [ ] Keep README feature list accurate for generation, training, review, export, Comfy runtime, Agent API, and MCP.
-- [ ] Keep `DESIGN.md` as UI direction, not implementation inventory.
-- [ ] Decide whether `position_presets.md` is active data/reference or historical note.
-- [ ] Keep `CLAUDE.md` aligned with AGENTS or retire duplicated instructions if safe.
-- [ ] Add a root-level documentation map that points to the maintained docs for setup, architecture, API, UI design, deployment, tests, training, queue/worker behavior, and troubleshooting.
-- [ ] Remove or archive outdated top-level docs after their useful content is merged into current docs.
+- [x] Update README project structure after directory changes.
+- [x] Keep README feature list accurate for generation, training, review, export, Comfy runtime, Agent API, and MCP.
+- [x] Keep `DESIGN.md` as UI direction, not implementation inventory.
+- [x] Decide whether `position_presets.md` is active data/reference or historical note.
+- [x] Keep `CLAUDE.md` aligned with AGENTS or retire duplicated instructions if safe.
+- [x] Add a root-level documentation map that points to the maintained docs for setup, architecture, API, UI design, deployment, tests, training, queue/worker behavior, and troubleshooting.
+- [x] Remove or archive outdated top-level docs after their useful content is merged into current docs.
 
 **Agent rule files:**
 - `agent-rules/nextjs.md`
@@ -1470,11 +1472,11 @@ Loading states remain colocated under their route segments for now; the later lo
 - `agent-rules/deploy/service-restart.md`
 - `agent-rules/deploy/verification.md`
 
-- [ ] Make `AGENTS.md` generated or manually synchronized from `agent-rules/**`, but not divergent.
-- [ ] Keep deploy lock, queue, Prisma, build, restart, and verification rules as separate maintainable docs.
-- [ ] Keep dev-service exception separate from full production deployment rules.
-- [ ] Keep `mypc` PowerShell quoting rules exact and include EncodedCommand examples.
-- [ ] Add an agent-rule maintenance rule: if a workflow changes, update the source `agent-rules/**` file and the rendered `AGENTS.md` summary in the same documentation batch.
+- [x] Make `AGENTS.md` generated or manually synchronized from `agent-rules/**`, but not divergent.
+- [x] Keep deploy lock, queue, Prisma, build, restart, and verification rules as separate maintainable docs.
+- [x] Keep dev-service exception separate from full production deployment rules.
+- [x] Keep `mypc` PowerShell quoting rules exact and include EncodedCommand examples.
+- [x] Add an agent-rule maintenance rule: if a workflow changes, update the source `agent-rules/**` file and the rendered `AGENTS.md` summary in the same documentation batch.
 
 **Architecture and analysis docs:**
 - `docs/handoff.md`
@@ -1497,28 +1499,28 @@ Loading states remain colocated under their route segments for now; the later lo
 - `docs/plans/**`
 - `docs/prd/**`
 
-- [ ] Mark each doc as current, historical, prototype, runbook, generated, or superseded.
-- [ ] Create an index that points agents to current docs first.
-- [ ] Update `docs/agent-api.md` when Agent route contracts move.
-- [ ] Keep `docs/workflow.api.json` synchronized with workflow routes and debug downloads.
-- [ ] Archive old implementation plans only after their completed state is referenced from current docs.
-- [ ] Keep PRD docs as product intent, not runtime truth.
-- [ ] Keep local verification steps current for auth, dev service, production service, ComfyUI, and protected pages.
-- [ ] Split the future documentation system into these maintained layers:
-  - [ ] `README.md`: human entrypoint, setup, high-level feature map, and links to current docs.
-  - [ ] `docs/architecture/`: current module boundaries, dependency rules, data flow, queue/worker semantics, and training/generation ownership.
-  - [ ] `docs/runbooks/`: local development, deployment, `mypc`, ComfyUI, Prisma, auth verification, and incident triage.
-  - [ ] `docs/api/`: Agent API, MCP, public route contracts, response envelopes, and workflow schema.
-  - [ ] `docs/ui/`: design system, page patterns, shell/navigation rules, design-demo relationship, and accessibility/layout gates.
-  - [ ] `docs/testing/`: test groups, fixture builders, DB bootstrap, known environment requirements, and verification matrix.
-  - [ ] `docs/archive/`: historical plans, superseded handoffs, old PRDs, obsolete static demos, and retained rationale.
-- [ ] Migrate or map existing docs into the new layers before declaring documentation cleanup complete.
-- [ ] Merge duplicated docs when they describe the same behavior: README vs handoff, design docs vs frontend guides, workflow quick references vs API JSON, local verification vs deploy rules.
-- [ ] Add supersession banners to retained historical docs with links to the maintained replacement.
-- [ ] Delete docs that are stale, duplicated, and no longer useful after their replacement is in place.
-- [ ] Delete or archive obsolete prototype files after confirming their current production/design-demo replacement.
-- [ ] Keep `docs/superpowers/plans/**` as execution plans, not the permanent architecture source of truth; extract durable decisions into current architecture/runbook docs after implementation.
-- [ ] Add a documentation review gate to final convergence: no unclassified docs, no stale task-note files, no duplicate conflicting instructions, and no active workflow documented only in old plans.
+- [x] Mark each doc as current, historical, prototype, runbook, generated, or superseded.
+- [x] Create an index that points agents to current docs first.
+- [x] Update `docs/agent-api.md` when Agent route contracts move.
+- [x] Keep `docs/workflow.api.json` synchronized with workflow routes and debug downloads.
+- [x] Archive old implementation plans only after their completed state is referenced from current docs.
+- [x] Keep PRD docs as product intent, not runtime truth.
+- [x] Keep local verification steps current for auth, dev service, production service, ComfyUI, and protected pages.
+- [x] Split the future documentation system into these maintained layers:
+  - [x] `README.md`: human entrypoint, setup, high-level feature map, and links to current docs.
+  - [x] `docs/architecture/`: current module boundaries, dependency rules, data flow, queue/worker semantics, and training/generation ownership.
+  - [x] `docs/runbooks/`: local development, deployment, `mypc`, ComfyUI, Prisma, auth verification, and incident triage.
+  - [x] `docs/api/`: Agent API, MCP, public route contracts, response envelopes, and workflow schema.
+  - [x] `docs/ui/`: design system, page patterns, shell/navigation rules, design-demo relationship, and accessibility/layout gates.
+  - [x] `docs/testing/`: test groups, fixture builders, DB bootstrap, known environment requirements, and verification matrix.
+  - [x] `docs/archive/`: historical plans, superseded handoffs, old PRDs, obsolete static demos, and retained rationale.
+- [x] Migrate or map existing docs into the new layers before declaring documentation cleanup complete.
+- [x] Merge duplicated docs when they describe the same behavior: README vs handoff, design docs vs frontend guides, workflow quick references vs API JSON, local verification vs deploy rules.
+- [x] Add supersession banners to retained historical docs with links to the maintained replacement.
+- [x] Delete docs that are stale, duplicated, and no longer useful after their replacement is in place.
+- [x] Delete or archive obsolete prototype files after confirming their current production/design-demo replacement.
+- [x] Keep `docs/superpowers/plans/**` as execution plans, not the permanent architecture source of truth; extract durable decisions into current architecture/runbook docs after implementation.
+- [x] Add a documentation review gate to final convergence: no unclassified docs, no stale task-note files, no duplicate conflicting instructions, and no active workflow documented only in old plans.
 
 ## Phase 15: Config, Public Assets, Runtime Data, And Generated Code
 

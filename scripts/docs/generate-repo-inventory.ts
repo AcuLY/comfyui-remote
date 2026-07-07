@@ -175,8 +175,13 @@ function getFileType(path: string, area: string): string {
 
 function getDocClassification(path: string): string {
   if (path === "docs/index.md") return "current documentation index";
+  if (path === "docs/documentation-map.md") return "current";
   if (path === INVENTORY_PATH) return "generated artifact";
   if (path === "docs/agent-api.md" || path === "docs/workflow.api.json" || path.startsWith("docs/api/")) return "API contract";
+  if (path.startsWith("docs/architecture/")) return "architecture reference";
+  if (path.startsWith("docs/runbooks/")) return "runbook";
+  if (path.startsWith("docs/testing/")) return "testing reference";
+  if (path.startsWith("docs/archive/")) return "historical record";
   if (path === "docs/local-verification.md" || path.includes("QUICK_REFERENCE") || path.includes("quick-reference")) return "runbook";
   if (path.includes("DESIGN") || path.includes("design") || path.includes("shadcn")) return "product/design reference";
   if (path.startsWith("docs/prototypes/")) return "prototype";
