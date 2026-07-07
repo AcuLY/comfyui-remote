@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { deleteProject } from "@/lib/actions";
+import { deleteProject } from "@/lib/actions/project";
 
 export function ProjectDeleteButton({
   projectId,

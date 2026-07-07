@@ -36,3 +36,16 @@ test("generation project archive UI is wired through the existing archive servic
   assert.match(types, /publishedAt\?: string \| null/);
   assert.match(types, /archivedAt\?: string \| null/);
 });
+
+test("project create and destructive controls import focused project actions", () => {
+  const archiveButton = readSource("src/app/projects/project-archive-button.tsx");
+  const deleteButton = readSource("src/app/projects/project-delete-button.tsx");
+  const projectForm = readSource("src/app/projects/new/project-form.tsx");
+
+  assert.match(archiveButton, /from "@\/lib\/actions\/project";/);
+  assert.match(deleteButton, /from "@\/lib\/actions\/project";/);
+  assert.match(projectForm, /from "@\/lib\/actions\/project";/);
+  assert.doesNotMatch(archiveButton, /from "@\/lib\/actions";/);
+  assert.doesNotMatch(deleteButton, /from "@\/lib\/actions";/);
+  assert.doesNotMatch(projectForm, /from "@\/lib\/actions";/);
+});

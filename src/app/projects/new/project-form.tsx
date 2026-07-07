@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus } from "lucide-react";
-import { createProject, createProjectFromExisting } from "@/lib/actions";
+import { createProject, createProjectFromExisting } from "@/lib/actions/project";
 import { toast } from "sonner";
 import type { ProjectFormCategory } from "@/lib/server-data";
 import { CheckpointCascadePicker } from "@/components/checkpoint-cascade-picker";

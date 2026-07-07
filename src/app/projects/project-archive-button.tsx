@@ -4,7 +4,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { archiveProject } from "@/lib/actions";
+import { archiveProject } from "@/lib/actions/project";
 
 export function ProjectArchiveButton({
   projectId,
