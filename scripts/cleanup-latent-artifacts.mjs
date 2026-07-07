@@ -3,7 +3,11 @@
 import { readdir, rm, stat } from "node:fs/promises";
 import { resolve } from "node:path";
 
-async function cleanupPath(path, summary) {
+function uniqueSorted(paths) {
+  return [...new Set(paths)].sort((a, b) => a.localeCompare(b));
+}
+
+async function collectLatentArtifacts(path, plan) {
   const entries = await readdir(path, { withFileTypes: true });
 
   for (const entry of entries) {
@@ -11,20 +15,34 @@ async function cleanupPath(path, summary) {
 
     if (entry.isDirectory()) {
       if (entry.name === "latents") {
-        await rm(entryPath, { recursive: true, force: true });
-        summary.latentDirectories += 1;
+        plan.delete.directories.push(entryPath);
         continue;
       }
 
-      await cleanupPath(entryPath, summary);
+      await collectLatentArtifacts(entryPath, plan);
       continue;
     }
 
     if (entry.name.endsWith(".latent")) {
-      await rm(entryPath, { force: true });
-      summary.latentFiles += 1;
+      plan.delete.files.push(entryPath);
     }
   }
+}
+
+async function deletePlannedLatentArtifacts(plan) {
+  for (const directory of plan.delete.directories) {
+    await rm(directory, { recursive: true, force: true });
+  }
+
+  for (const file of plan.delete.files) {
+    await rm(file, { force: true });
+  }
+
+  return {
+    roots: plan.roots.length,
+    latentDirectories: plan.delete.directories.length,
+    latentFiles: plan.delete.files.length,
+  };
 }
 
 async function main() {
@@ -33,10 +51,13 @@ async function main() {
     throw new Error("Usage: node scripts/cleanup-latent-artifacts.mjs <root> [root...]");
   }
 
-  const summary = {
-    roots: 0,
-    latentDirectories: 0,
-    latentFiles: 0,
+  const plan = {
+    action: "cleanup-latent-artifacts-plan",
+    roots: [],
+    delete: {
+      directories: [],
+      files: [],
+    },
   };
 
   for (const root of roots) {
@@ -56,10 +77,16 @@ async function main() {
       throw new Error(`Cleanup root is not a directory: ${rootPath}`);
     }
 
-    summary.roots += 1;
-    await cleanupPath(rootPath, summary);
+    plan.roots.push(rootPath);
+    await collectLatentArtifacts(rootPath, plan);
   }
 
+  plan.roots = uniqueSorted(plan.roots);
+  plan.delete.directories = uniqueSorted(plan.delete.directories);
+  plan.delete.files = uniqueSorted(plan.delete.files);
+
+  console.log(JSON.stringify(plan));
+  const summary = await deletePlannedLatentArtifacts(plan);
   console.log(JSON.stringify(summary));
 }
 

@@ -77,12 +77,23 @@ test("cleanup script treats missing roots as no-op", async () => {
       ["scripts/cleanup-latent-artifacts.mjs", missingRoot],
       { cwd: process.cwd() },
     );
-    const summary = JSON.parse(stdout) as {
-      latentDirectories: number;
-      latentFiles: number;
-      roots: number;
-    };
+    const [plan, summary] = stdout
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line)) as [
+      { action: string; roots: string[]; delete: { directories: string[]; files: string[] } },
+      { latentDirectories: number; latentFiles: number; roots: number },
+    ];
 
+    assert.deepEqual(plan, {
+      action: "cleanup-latent-artifacts-plan",
+      roots: [],
+      delete: {
+        directories: [],
+        files: [],
+      },
+    });
     assert.deepEqual(summary, {
       roots: 0,
       latentDirectories: 0,
