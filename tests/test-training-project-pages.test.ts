@@ -35,6 +35,10 @@ const projectCreatedDraftHookPath = resolve(featureUiDir, "use-project-created-d
 const projectCreatedDraftHookSource = existsSync(projectCreatedDraftHookPath)
   ? readFileSync(projectCreatedDraftHookPath, "utf8")
   : "";
+const projectSectionSeedsHookPath = resolve(featureUiDir, "use-project-section-seeds.ts");
+const projectSectionSeedsHookSource = existsSync(projectSectionSeedsHookPath)
+  ? readFileSync(projectSectionSeedsHookPath, "utf8")
+  : "";
 const projectSectionDraftHookPath = resolve(featureUiDir, "use-project-section-draft.ts");
 const projectSectionDraftHookSource = existsSync(projectSectionDraftHookPath)
   ? readFileSync(projectSectionDraftHookPath, "utf8")
@@ -1271,6 +1275,10 @@ test("training project create page manages initial section seeds locally", () =>
 
   const formSource = pagesSource.slice(formStart, detailStart);
 
+  assert.match(formSource, /useProjectSectionSeeds/, "project creation should delegate section seed state to the focused hook");
+  assert.match(projectSectionSeedsHookSource, /sectionSeedState/, "section seed hook should store seeds with template context");
+  assert.match(projectSectionSeedsHookSource, /setSectionSeeds/, "section seed hook should expose the seed update action");
+  assert.match(projectSectionSeedsHookSource, /sectionSeedState\.templateContextId === projectTemplateContextId \? sectionSeedState\.sections : initialSectionSeeds/, "section seeds should reset after template context changes");
   assert.match(formSource, /sectionSeeds/, "initial section seeds should render from local state");
   assert.match(formSource, /setSectionSeeds/, "copy/delete seed actions should update local state");
   assert.match(formSource, /handleCopySeedSection/, "initial section seeds should expose a copy handler");
@@ -1278,6 +1286,7 @@ test("training project create page manages initial section seeds locally", () =>
   assert.match(formSource, /sectionSeeds\.map/, "seed cards should render the local seed list");
   assert.match(formSource, /handleCopySeedSection\(section\)/, "copy button should call the seed copy handler");
   assert.match(formSource, /handleDeleteSeedSection\(section\.id\)/, "delete button should call the seed delete handler");
+  assert.doesNotMatch(formSource, /\n  const \[sectionSeedState, setSectionSeedState\]/, "project create page should not keep section seed state inline");
 });
 
 test("training project create seed copies scan existing copy ids instead of counting current matches", () => {
@@ -1490,6 +1499,12 @@ test("training project create form fields and training defaults stay scoped to t
   assert.notEqual(detailStart, -1);
 
   const formSource = pagesSource.slice(formStart, detailStart);
+  const scopedCreateStateSource = [
+    projectCreateFormHookSource,
+    projectCreateTrainingDefaultsHookSource,
+    projectSectionSeedsHookSource,
+    projectCreatedDraftHookSource,
+  ].join("\n");
 
   assert.match(formSource, /useProjectCreateForm/, "project create form should delegate editable fields to the focused hook");
   assert.match(projectCreateFormHookSource, /defaultProjectForm/, "project create form should have a per-template default form state");
@@ -1498,7 +1513,7 @@ test("training project create form fields and training defaults stay scoped to t
   assert.match(projectCreateTrainingDefaultsHookSource, /trainingDefaultsState/, "training defaults should be stored with template context");
   assert.match(projectCreateTrainingDefaultsHookSource, /defaultTrainingDefaults/, "training defaults should have a per-template fallback");
   assert.match(projectCreateTrainingDefaultsHookSource, /trainingDefaultsState\.templateContextId === projectTemplateContextId \? trainingDefaultsState : defaultTrainingDefaults/, "training defaults should reset after template context changes");
-  assert.match(formSource, /templateContextId:\s*projectTemplateContextId/, "context-scoped state updates should store the active template context");
+  assert.match(scopedCreateStateSource, /templateContextId:\s*projectTemplateContextId/, "context-scoped state updates should store the active template context");
   assert.doesNotMatch(formSource, /\.\.\.projectFormState,\s*templateContextId:\s*projectTemplateContextId,\s*templateTitle:/, "form fallback should not carry stale fields from another template context");
   assert.doesNotMatch(formSource, /\n  const \[projectFormState, setProjectFormState\]/, "project create page should not keep form state inline");
   assert.doesNotMatch(formSource, /\n  const \[trainingDefaultsState, setTrainingDefaultsState\]/, "project create page should not keep training default state inline");

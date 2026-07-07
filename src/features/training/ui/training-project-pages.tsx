@@ -101,6 +101,7 @@ import { useProjectCreatedDraft } from "./use-project-created-draft";
 import { useProjectSectionResults } from "./use-project-section-results";
 import { useProjectSectionSceneBlocks } from "./use-project-section-scene-blocks";
 import { useProjectSectionDraft } from "./use-project-section-draft";
+import { useProjectSectionSeeds } from "./use-project-section-seeds";
 import { useProjectReferenceUploadDrafts } from "./use-project-reference-upload-drafts";
 import { useProjectReferenceSelection } from "./use-project-reference-selection";
 import { useUrlSearch } from "./use-url-search";
@@ -768,11 +769,7 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
     previewProjectReference,
     selectedReferenceIds,
   } = useProjectReferenceSelection(projectTemplateContextId, fallbackProjectReference);
-  const [sectionSeedState, setSectionSeedState] = useState(() => ({
-    sections: initialSectionSeeds,
-    templateContextId: projectTemplateContextId,
-  }));
-  const sectionSeeds = sectionSeedState.templateContextId === projectTemplateContextId ? sectionSeedState.sections : initialSectionSeeds;
+  const { sectionSeeds, setSectionSeeds } = useProjectSectionSeeds(projectTemplateContextId, initialSectionSeeds);
   const { setTrainingDefaults, trainingDefaults } = useProjectCreateTrainingDefaults(projectTemplateContextId);
   const { createdProjectDraft, setCreatedProjectDraft } = useProjectCreatedDraft(projectTemplateContextId);
   const selectedProjectReferences = referenceSourceTree
@@ -814,17 +811,6 @@ export function LoraTrainingProjectFormPage({ data }: { data: TrainingAppData })
       cancelled = true;
     };
   }, [isProductionTrainingRoute]);
-
-  function setSectionSeeds(nextValue: LoraTrainingTemplateSeedSection[] | ((current: LoraTrainingTemplateSeedSection[]) => LoraTrainingTemplateSeedSection[])) {
-    setSectionSeedState((current) => {
-      const currentSections = current.templateContextId === projectTemplateContextId ? current.sections : sectionSeeds;
-      const nextSections = typeof nextValue === "function" ? nextValue(currentSections) : nextValue;
-      return {
-        sections: nextSections,
-        templateContextId: projectTemplateContextId,
-      };
-    });
-  }
 
   function handleSelectTemplate(templateTitle: string) {
     handleUpdateProjectForm("templateTitle", templateTitle);
