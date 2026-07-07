@@ -382,6 +382,20 @@ test("module-owned frontend pages do not import or link to the other module's re
   );
 });
 
+test("app page containers keep server imports behind API routes or action entrypoints", () => {
+  const appPageFiles = sourceFilesFromRoots("src/app").filter((path) => {
+    const relativePath = path.replace(`${repoRoot}/`, "");
+    if (relativePath.startsWith("src/app/api/")) return false;
+    return !/\/actions(?:-[a-z]+)?\.ts$/.test(relativePath);
+  });
+
+  assert.deepEqual(
+    findMatchingSources(appPageFiles, /from ["']@\/server|import\(["']@\/server/),
+    [],
+    "App page containers should delegate server-only imports through API routes, services, or explicit action entrypoints.",
+  );
+});
+
 test("generation preset sort rules page delegates ordinary category reads", () => {
   assert.match(
     generationPresetSortRulesPageSource,
