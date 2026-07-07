@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { resolveRouteFallback } from "../src/lib/route-fallback";
+import { inferWorkModeFromPathname } from "../src/lib/work-mode";
 
 test("missing preset group falls back to the preset manager", () => {
   assert.equal(resolveRouteFallback("/assets/preset-groups/missing-group"), "/assets/presets");
@@ -31,6 +32,20 @@ test("unknown child routes fall back by walking route parents", () => {
   assert.equal(resolveRouteFallback("/settings/monitor/details"), "/settings/monitor");
   assert.equal(resolveRouteFallback("/assets/presets/sort-rules/extra"), "/assets/presets/sort-rules");
   assert.equal(resolveRouteFallback("/unknown-feature/child"), "/queue");
+});
+
+test("fallback destinations stay aligned with work-mode route ownership", () => {
+  const trainingFallback = resolveRouteFallback("/training/projects/project-1/results/extra");
+  assert.equal(trainingFallback, "/training/projects/project-1/results");
+  assert.equal(inferWorkModeFromPathname(trainingFallback ?? ""), "lora_training");
+
+  const unknownTrainingFallback = resolveRouteFallback("/training/unknown-feature/child");
+  assert.equal(unknownTrainingFallback, "/training");
+  assert.equal(inferWorkModeFromPathname(unknownTrainingFallback ?? ""), "lora_training");
+
+  const generationFallback = resolveRouteFallback("/assets/presets/sort-rules/extra");
+  assert.equal(generationFallback, "/assets/presets/sort-rules");
+  assert.equal(inferWorkModeFromPathname(generationFallback ?? ""), "generation");
 });
 
 test("fallback skips API and static asset paths", () => {

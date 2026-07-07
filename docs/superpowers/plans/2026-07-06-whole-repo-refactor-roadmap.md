@@ -335,6 +335,8 @@
 - Phase 6 slice 33 verification passed: red `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, then green `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts`, `node --import tsx --test tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1068 tests discovered, 1067 pass, 0 fail, 1 skipped.
 - Phase 6 slice 34 consolidated preset replacement and sync preset variant flow UI API error extraction through the shared client-safe `src/lib/api-error-message.ts` helper while preserving the feature-specific wrapper exports.
 - Phase 6 slice 34 verification passed: red `node --import tsx --test tests/test-preset-section-replacement-ui.test.ts tests/test-sync-preset-variant-flow-ui.test.ts`, then green `node --import tsx --test tests/test-preset-section-replacement-ui.test.ts tests/test-sync-preset-variant-flow-ui.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, `node --import tsx --test tests/test-preset-section-replacement-ui.test.ts tests/test-sync-preset-variant-flow-ui.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1070 tests discovered, 1069 pass, 0 fail, 1 skipped.
+- Phase 6 slice 35 aligned route fallback behavior with work-mode route ownership by adding production Training route patterns to `src/lib/route-fallback.ts` and asserting fallback destinations remain in the inferred work mode.
+- Phase 6 slice 35 verification passed: red `node --import tsx --test tests/test-route-fallback.test.ts`, then green `node --import tsx --test tests/test-route-fallback.test.ts`, `node --import tsx --test tests/test-route-fallback.test.ts tests/test-work-mode-resource-boundary.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1071 tests discovered, 1070 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -761,7 +763,7 @@
 - [x] Move server-only re-export layer `server-data.ts` into a clearer server namespace or document it as RSC-only.
 - [x] Keep `logger.ts` server-safe and avoid importing it into browser components.
 - [x] Consolidate UI error extraction helpers for preset replacement and sync preset variant flow if their payload shape is the same.
-- [ ] Keep route fallback tests aligned with work-mode route behavior.
+- [x] Keep route fallback tests aligned with work-mode route behavior.
 - [ ] Keep character LoRA compatibility helpers until migration docs explicitly retire old forms/API clients.
 
 ## Phase 7: App Pages And Production UI Routes
