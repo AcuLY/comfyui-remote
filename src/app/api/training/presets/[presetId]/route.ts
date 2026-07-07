@@ -1,10 +1,11 @@
-import { fail, ok } from "@/lib/api-response";
+import { fail, failFromError, ok } from "@/lib/api-response";
 import {
   getTrainingSceneDescriptionPreset,
   deleteTrainingSceneDescriptionPreset,
   mapTrainingPresetError,
   updateTrainingSceneDescriptionPreset,
 } from "@/server/services/training/preset-service";
+import { readJsonBody } from "@/server/http/request-json";
 
 type RouteContext = {
   params: Promise<{ presetId: string }>;
@@ -26,10 +27,11 @@ export async function PATCH(request: Request, context: RouteContext) {
   const { presetId } = await context.params;
 
   let body: unknown;
+
   try {
-    body = await request.json();
-  } catch {
-    return fail("Invalid JSON body", 400);
+    body = await readJsonBody(request);
+  } catch (error) {
+    return failFromError(error);
   }
 
   try {

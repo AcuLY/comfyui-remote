@@ -235,6 +235,9 @@ test("route-handler template adopters use shared caught-error mapping", () => {
     "src/app/api/training/sections/[sectionId]/runs/route.ts",
     "src/app/api/training/blocks/[blockId]/route.ts",
     "src/app/api/training/blocks/[blockId]/detach/route.ts",
+    "src/app/api/training/presets/route.ts",
+    "src/app/api/training/presets/[presetId]/route.ts",
+    "src/app/api/training/presets/sort-rules/route.ts",
   ]) {
     const source = readFileSync(routePath, "utf8");
 
@@ -439,6 +442,21 @@ test("training section and block mutations use shared JSON parsing", () => {
     assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
     assert.doesNotMatch(source, /request\.json\(\)/, `${routePath} should not parse JSON directly`);
     assert.doesNotMatch(source, /JSON\.parse\(/, `${routePath} should not parse request text locally`);
+  }
+});
+
+test("training preset mutations use shared raw JSON parsing", () => {
+  for (const routePath of [
+    "src/app/api/training/presets/route.ts",
+    "src/app/api/training/presets/[presetId]/route.ts",
+    "src/app/api/training/presets/sort-rules/route.ts",
+  ]) {
+    const source = readFileSync(routePath, "utf8");
+
+    assert.match(source, /from ["']@\/server\/http\/request-json["']/, `${routePath} should import request JSON helpers`);
+    assert.match(source, /readJsonBody\(request\)/, `${routePath} should parse through readJsonBody`);
+    assert.match(source, /\bfailFromError\(/, `${routePath} should map parser errors through failFromError`);
+    assert.doesNotMatch(source, /await request\.json\(\)/, `${routePath} should not parse JSON directly`);
   }
 });
 
@@ -804,6 +822,28 @@ test("training section and block mutations preserve invalid JSON response envelo
     await blockDetachRoute.POST(makeRequest("not-json"), {
       params: Promise.resolve({ blockId: "block-1" }),
     }),
+  ]) {
+    assert.equal(response.status, 400);
+    assert.deepEqual(await response.json(), {
+      error: {
+        message: "Invalid JSON body",
+      },
+      ok: false,
+    });
+  }
+});
+
+test("training preset mutations preserve invalid JSON response envelope", async () => {
+  const presetsRoute = await import("../src/app/api/training/presets/route");
+  const presetRoute = await import("../src/app/api/training/presets/[presetId]/route");
+  const sortRulesRoute = await import("../src/app/api/training/presets/sort-rules/route");
+
+  for (const response of [
+    await presetsRoute.POST(makeRequest("not-json")),
+    await presetRoute.PATCH(makeRequest("not-json"), {
+      params: Promise.resolve({ presetId: "preset-1" }),
+    }),
+    await sortRulesRoute.POST(makeRequest("not-json")),
   ]) {
     assert.equal(response.status, 400);
     assert.deepEqual(await response.json(), {

@@ -104,6 +104,9 @@ The source-contract tests in `tests/test-api-request-json.test.ts` verify the cu
 - `src/app/api/training/sections/[sectionId]/runs/route.ts`
 - `src/app/api/training/blocks/[blockId]/route.ts`
 - `src/app/api/training/blocks/[blockId]/detach/route.ts`
+- `src/app/api/training/presets/route.ts`
+- `src/app/api/training/presets/[presetId]/route.ts`
+- `src/app/api/training/presets/sort-rules/route.ts`
 
 ## Compatibility Exceptions
 
