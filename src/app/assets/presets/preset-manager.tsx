@@ -44,19 +44,25 @@ import {
   createPreset,
   createPresetVariant,
   copyPreset,
-  getPresetUsage,
-  deletePresetCascade,
-  reorderPresetCategories,
   reorderPresets,
+} from "@/lib/actions/preset-variant-crud";
+import {
+  deletePresetCascade,
+  getPresetUsage,
+} from "@/lib/actions/preset-sync";
+import {
+  createPresetCategory,
+  deletePresetCategory,
+  reorderPresetCategories,
+  updatePresetCategory,
+} from "@/lib/actions/preset-category";
+import {
   moveToFolder,
   reorderPresetFolders,
-  deletePresetCategory,
   createPresetFolder,
   renamePresetFolder,
   deletePresetFolder,
-  createPresetCategory,
-  updatePresetCategory,
-} from "@/lib/actions";
+} from "@/lib/actions/preset-folder";
 import { parseLoraBindings, serializeLoraBindings } from "@/lib/lora-types";
 import { toast } from "sonner";
 import type { PresetQueryPatch } from "./preset-types";

@@ -66,3 +66,13 @@ test("creating a preset navigates to the new preset detail route", () => {
     "new preset creation should open the created preset detail page instead of refreshing back to the list",
   );
 });
+
+test("preset manager imports server actions from focused modules", () => {
+  const source = readSource("src/app/assets/presets/preset-manager.tsx");
+
+  assert.match(source, /from "@\/lib\/actions\/preset-variant-crud";/);
+  assert.match(source, /from "@\/lib\/actions\/preset-sync";/);
+  assert.match(source, /from "@\/lib\/actions\/preset-category";/);
+  assert.match(source, /from "@\/lib\/actions\/preset-folder";/);
+  assert.doesNotMatch(source, /from "@\/lib\/actions";/);
+});
