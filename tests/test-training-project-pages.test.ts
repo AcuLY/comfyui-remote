@@ -10,6 +10,8 @@ const featureRoot = resolve(testDir, "../src/features/training");
 const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
 const projectFormPagePath = resolve(featureUiDir, "training-project-form-page.tsx");
 const projectFormPageSource = existsSync(projectFormPagePath) ? readFileSync(projectFormPagePath, "utf8") : "";
+const projectDetailPagePath = resolve(featureUiDir, "training-project-detail-page.tsx");
+const projectDetailPageSource = existsSync(projectDetailPagePath) ? readFileSync(projectDetailPagePath, "utf8") : "";
 const projectPageShellPath = resolve(featureUiDir, "project-page-shell.tsx");
 const projectPageShellSource = existsSync(projectPageShellPath) ? readFileSync(projectPageShellPath, "utf8") : "";
 const trainingResultGridPath = resolve(featureUiDir, "training-result-grid.tsx");
@@ -96,6 +98,12 @@ test("training project form page lives in a focused page module", () => {
   assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectFormPage/, "broad project pages module should not keep the form page implementation inline");
 });
 
+test("training project detail overview page lives in a focused page module", () => {
+  assert.match(projectDetailPageSource, /export function LoraTrainingProjectDetailPage/, "project detail overview implementation should live in its own module");
+  assert.match(pagesSource, /export \{ LoraTrainingProjectDetailPage \} from "\.\/training-project-detail-page";/, "broad project pages module should retain a compatibility re-export");
+  assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectDetailPage/, "broad project pages module should not keep the detail overview implementation inline");
+});
+
 test("training project page shell lives in a focused component module", () => {
   assert.match(projectPageShellSource, /const PROJECT_TABS\b/, "project tab configuration should live with the project page shell");
   assert.match(projectPageShellSource, /function ProjectNav\b/, "project navigation should live with the project page shell");
@@ -128,12 +136,7 @@ test("training project fixtures model reference images, result pool captions, an
 });
 
 test("training project overview keeps subresource bodies out of the overview page", () => {
-  const overviewStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  assert.notEqual(overviewStart, -1);
-  assert.notEqual(profileStart, -1);
-
-  const overviewSource = pagesSource.slice(overviewStart, profileStart);
+  const overviewSource = projectDetailPageSource;
 
   assert.match(overviewSource, /最近产物/, "overview should expose recent outputs as a light entry point");
   assert.match(overviewSource, /训练入口/, "overview should expose the training entry point");
@@ -385,12 +388,7 @@ test("training project pages use product-facing dataset and template copy", () =
 });
 
 test("training project overview saves as template through the real template form route", () => {
-  const overviewStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  assert.notEqual(overviewStart, -1);
-  assert.notEqual(profileStart, -1);
-
-  const overviewSource = pagesSource.slice(overviewStart, profileStart);
+  const overviewSource = projectDetailPageSource;
 
   assert.doesNotMatch(overviewSource, /saveAsTemplateHref/, "overview should leave save-as-template link building to the route header");
   assert.doesNotMatch(overviewSource, /保存为模板/, "overview should not render a duplicate save-as-template CTA");
@@ -398,12 +396,7 @@ test("training project overview saves as template through the real template form
 });
 
 test("training project overview archives and restores the project locally", () => {
-  const overviewStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  assert.notEqual(overviewStart, -1);
-  assert.notEqual(profileStart, -1);
-
-  const overviewSource = pagesSource.slice(overviewStart, profileStart);
+  const overviewSource = projectDetailPageSource;
 
   assert.match(projectArchiveStateHookSource, /function useProjectArchiveState\b/, "overview archive state should live in a focused hook");
   assert.match(projectArchiveStateHookSource, /projectArchiveState/, "overview should keep local archive state for the current project");
@@ -419,12 +412,7 @@ test("training project overview archives and restores the project locally", () =
 });
 
 test("training project overview archives and restores through the formal HTTP API on production routes", () => {
-  const overviewStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
-  const profileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
-  assert.notEqual(overviewStart, -1);
-  assert.notEqual(profileStart, -1);
-
-  const overviewSource = pagesSource.slice(overviewStart, profileStart);
+  const overviewSource = projectDetailPageSource;
 
   assert.match(overviewSource, /usePathname/, "project overview should detect whether it is running under production \\/training routes");
   assert.match(overviewSource, /fetch\(`\/api\/training\/projects\/\$\{sourceProject\.id\}\/\$\{currentArchived \? "restore" : "archive"\}`/, "project overview should call the formal archive or restore API");
@@ -781,17 +769,15 @@ test("training section list mutations use the formal HTTP APIs on production rou
 });
 
 test("training project repeated object actions include the acted-on object name", () => {
-  const projectDetailStart = pagesSource.indexOf("export function LoraTrainingProjectDetailPage");
   const projectProfileStart = pagesSource.indexOf("export function LoraTrainingProjectProfilePage");
   const scopedPageStart = pagesSource.indexOf("export function LoraTrainingProjectScopedRunsPage");
-  assert.notEqual(projectDetailStart, -1);
   assert.notEqual(projectProfileStart, -1);
   assert.notEqual(scopedPageStart, -1);
 
   const gridSource = trainingResultGridSource;
   const runRowsSource = projectRunRowsSource;
   const newProjectSource = projectFormPageSource;
-  const projectDetailSource = pagesSource.slice(projectDetailStart, projectProfileStart);
+  const projectDetailSource = projectDetailPageSource;
   const scopedPageSource = pagesSource.slice(scopedPageStart);
 
   assert.match(gridSource, /ariaLabel=\{`保留训练结果：\$\{activeResult\.sourceLabel\}`\}/, "keep action should name the active training result");

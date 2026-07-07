@@ -469,6 +469,8 @@
 - Phase 8 slice 100 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1147 tests discovered, 1146 pass, 0 fail, 1 skipped.
 - Phase 8 slice 101 moved project-scoped run rows into `src/features/training/ui/project-run-rows.tsx`. The focused component owns `RunRows`, failed-run expansion/clamp behavior, copy fallback, retry/delete/cancel row actions, task thumbnails, and status labels while `training-project-pages.tsx` imports it for overview, dataset revision, and project-scoped run pages.
 - Phase 8 slice 101 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1147 tests discovered, 1146 pass, 0 fail, 1 skipped.
+- Phase 8 slice 102 moved the project detail overview into `src/features/training/ui/training-project-detail-page.tsx`. The focused page owns overview archive/restore state, recent run/result entry points, project profile and dataset CTAs, production archive API calls, and the overview `ProjectHeader` while `training-project-pages.tsx` keeps a compatibility re-export for route dispatch.
+- Phase 8 slice 102 verification passed: red `node --import tsx --test tests/test-training-project-pages.test.ts`, green `node --import tsx --test tests/test-training-project-pages.test.ts`, `npx tsx scripts/docs/generate-repo-inventory.ts`, initial focused workflow checks caught stale `SceneBlockCard` source markers, then green `node --import tsx --test tests/test-training-project-pages.test.ts tests/test-training-image-thumbnail-contract.test.ts tests/test-training-list-layout.test.ts tests/test-training-section-workflow.test.ts tests/test-repo-inventory.test.ts`, `npm run lint`, and `npm test` with 1148 tests discovered, 1147 pass, 0 fail, 1 skipped.
 
 ## Phase 1: Root Configuration And Tooling
 
@@ -1110,7 +1112,7 @@ Loading states remain colocated under their route segments for now; the later lo
   - [x] Shared project page shell for project tabs and headers.
   - [x] Shared training result grid for overview, results, and dataset pages.
   - [x] Shared project-scoped run rows for overview, dataset revision, and run pages.
-  - [ ] Project detail overview.
+  - [x] Project detail overview.
   - [ ] Profile page and text revision UI.
   - [ ] Sections list page.
   - [ ] Section detail page.

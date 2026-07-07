@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import type { ChangeEvent, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Archive,
   ArrowDown,
   ArrowUp,
   Check,
@@ -15,7 +14,6 @@ import {
   FileText,
   GripVertical,
   ImagePlus,
-  Layers,
   Play,
   Plus,
   Save,
@@ -83,7 +81,6 @@ import { useGenerationComposeForm } from "./use-generation-compose-form";
 import { useGenerationComposeReferenceSelection } from "./use-generation-compose-reference-selection";
 import { useGenerationSupplementalImages } from "./use-generation-supplemental-images";
 import { useGenerationTaskDraft } from "./use-generation-task-draft";
-import { useProjectArchiveState } from "./use-project-archive-state";
 import { useProjectSectionResults } from "./use-project-section-results";
 import { useProjectSectionSceneBlocks } from "./use-project-section-scene-blocks";
 import { useProjectSectionDraft } from "./use-project-section-draft";
@@ -227,130 +224,7 @@ function SceneBlockCard({
 }
 
 export { LoraTrainingProjectFormPage } from "./training-project-form-page";
-
-export function LoraTrainingProjectDetailPage({ data, projectId }: { data: TrainingAppData; projectId?: string }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { pushToast } = useDemoFeedback();
-  const training = useTraining(data);
-  const project = findProject(data, projectId);
-  const { isProjectArchived, setProjectArchived } = useProjectArchiveState(project?.id ?? null, project?.status === "archived");
-  const [isUpdatingProjectArchive, setIsUpdatingProjectArchive] = useState(false);
-  if (!project) return <EmptyPage title="没有训练项目数据" />;
-  const sourceProject = project;
-  const isProductionTrainingRoute = isProductionTrainingPath(pathname);
-  const activeProject: LoraTrainingProject = isProjectArchived
-    ? { ...sourceProject, status: "archived" }
-    : sourceProject.status === "archived"
-      ? { ...sourceProject, status: "ready" }
-      : sourceProject;
-  const recentRuns = training.runs.filter((run) => run.projectId === sourceProject.id).slice(0, 4);
-  const recentResults = sourceProject.resultPool.filter((result) => result.reviewStatus === "kept").slice(0, 4);
-  const latestRevision = sourceProject.datasetRevisions[0];
-
-  async function handleToggleProjectArchive() {
-    const currentArchived = isProjectArchived;
-    const nextArchived = !currentArchived;
-
-    const applyLocalArchiveState = () => {
-      setProjectArchived(nextArchived);
-    };
-
-    if (!isProductionTrainingRoute) {
-      applyLocalArchiveState();
-      pushToast({
-        tone: nextArchived ? "warning" : "success",
-        title: nextArchived ? "训练项目已归档" : "训练项目已恢复",
-        detail: sourceProject.title,
-      });
-      return;
-    }
-
-    if (isUpdatingProjectArchive) return;
-
-    setIsUpdatingProjectArchive(true);
-    try {
-      const response = await fetch(`/api/training/projects/${sourceProject.id}/${currentArchived ? "restore" : "archive"}`, {
-        method: "POST",
-      });
-      const payload = await response.json().catch(() => null);
-
-      if (!response.ok || !payload?.ok) {
-        pushToast({
-          tone: "error",
-          title: currentArchived ? "恢复失败" : "归档失败",
-          detail: payload?.error?.message ?? "训练项目状态更新请求失败",
-        });
-        return;
-      }
-
-      applyLocalArchiveState();
-      pushToast({
-        tone: nextArchived ? "warning" : "success",
-        title: nextArchived ? "训练项目已归档" : "训练项目已恢复",
-        detail: sourceProject.title,
-      });
-      router.refresh();
-    } catch (error) {
-      pushToast({
-        tone: "error",
-        title: currentArchived ? "恢复失败" : "归档失败",
-        detail: error instanceof Error ? error.message : "训练项目状态更新请求失败",
-      });
-    } finally {
-      setIsUpdatingProjectArchive(false);
-    }
-  }
-
-  return (
-    <div className={s.page}>
-      <ProjectHeader
-        active="overview"
-        project={activeProject}
-        subtitle={isProjectArchived ? `${sourceProject.profileSummary} · 已归档` : sourceProject.profileSummary}
-        actions={(
-          <Button
-            tone={isProjectArchived ? "subtle" : "danger"}
-            icon={Archive}
-            pending={isUpdatingProjectArchive}
-            onClick={handleToggleProjectArchive}
-          >
-            {isProjectArchived ? "恢复" : "归档"}
-          </Button>
-        )}
-      />
-      <div className={s.overviewGrid}>
-        <Panel title="角色资料">
-          <div className={s.stack}>
-            <p className={s.bodyText}>{sourceProject.profileSummary}</p>
-            <div className={s.heroStrip}>
-              <ImageListSmall images={sourceProject.referenceImages.map((reference) => reference.image)} limit={sourceProject.referenceImages.length} />
-            </div>
-            <ButtonLink href={`/training/projects/${sourceProject.id}/profile`} icon={FileText} ariaLabel={`编辑训练项目资料：${sourceProject.title}`}>
-              编辑资料
-            </ButtonLink>
-          </div>
-        </Panel>
-        <Panel title="训练入口" subtitle="总览只放启动判断，完整训练准备和冻结版本在数据集页处理。">
-          <div className={s.readinessSummary}>
-            <span><strong>{sourceProject.keptCount}</strong> 已保留</span>
-            <span><strong>{sourceProject.captionMissingCount}</strong> 缺说明文本</span>
-            <span><strong>{latestRevision?.version ?? sourceProject.datasetVersion}</strong> 当前版本</span>
-          </div>
-          <ButtonLink href={`/training/projects/${sourceProject.id}/dataset`} icon={Layers} tone="primary" ariaLabel={`打开训练项目数据集工作台：${sourceProject.title}`}>
-            打开数据集工作台
-          </ButtonLink>
-        </Panel>
-        <Panel title="最近任务">
-          <RunRows project={sourceProject} runs={recentRuns} />
-        </Panel>
-        <Panel title="最近产物" subtitle="只展示最近保留结果，完整审查在结果池。">
-          <TrainingResultGrid results={recentResults} title="最近产物" />
-        </Panel>
-      </div>
-    </div>
-  );
-}
+export { LoraTrainingProjectDetailPage } from "./training-project-detail-page";
 
 export function LoraTrainingProjectProfilePage({ data, projectId }: { data: TrainingAppData; projectId?: string }) {
   const pathname = usePathname();
