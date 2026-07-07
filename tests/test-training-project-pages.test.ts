@@ -10,6 +10,8 @@ const featureRoot = resolve(testDir, "../src/features/training");
 const pagesSource = readFileSync(resolve(featureUiDir, "training-project-pages.tsx"), "utf8");
 const projectFormPagePath = resolve(featureUiDir, "training-project-form-page.tsx");
 const projectFormPageSource = existsSync(projectFormPagePath) ? readFileSync(projectFormPagePath, "utf8") : "";
+const projectPageShellPath = resolve(featureUiDir, "project-page-shell.tsx");
+const projectPageShellSource = existsSync(projectPageShellPath) ? readFileSync(projectPageShellPath, "utf8") : "";
 const projectPageUtilsSource = readFileSync(resolve(featureUiDir, "project-page-utils.ts"), "utf8");
 const referencePickerPath = resolve(featureUiDir, "reference-picker.tsx");
 const referencePickerSource = existsSync(referencePickerPath) ? readFileSync(referencePickerPath, "utf8") : "";
@@ -88,6 +90,16 @@ test("training project form page lives in a focused page module", () => {
   assert.match(projectFormPageSource, /export function LoraTrainingProjectFormPage/, "project form page implementation should live in its own module");
   assert.match(pagesSource, /export \{ LoraTrainingProjectFormPage \} from "\.\/training-project-form-page";/, "broad project pages module should retain a compatibility re-export");
   assert.doesNotMatch(pagesSource, /export function LoraTrainingProjectFormPage/, "broad project pages module should not keep the form page implementation inline");
+});
+
+test("training project page shell lives in a focused component module", () => {
+  assert.match(projectPageShellSource, /const PROJECT_TABS\b/, "project tab configuration should live with the project page shell");
+  assert.match(projectPageShellSource, /function ProjectNav\b/, "project navigation should live with the project page shell");
+  assert.match(projectPageShellSource, /export function ProjectHeader\b/, "project header should live with the project page shell");
+  assert.match(pagesSource, /from "\.\/project-page-shell"/, "broad project pages module should import the shared project page shell");
+  assert.doesNotMatch(pagesSource, /\nconst PROJECT_TABS\b/, "project tab configuration should not stay inline in the broad project pages file");
+  assert.doesNotMatch(pagesSource, /\nfunction ProjectNav\b/, "project navigation should not stay inline in the broad project pages file");
+  assert.doesNotMatch(pagesSource, /\nfunction ProjectHeader\b/, "project header should not stay inline in the broad project pages file");
 });
 
 test("training project fixtures model reference images, result pool captions, and dataset snapshots", () => {

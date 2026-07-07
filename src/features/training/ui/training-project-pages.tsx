@@ -38,7 +38,6 @@ import { Checkbox } from "@/components/design-demo-ui/primitives/checkbox";
 import { EmptyPage } from "@/components/design-demo-ui/primitives/empty-page";
 import { Field } from "@/components/design-demo-ui/primitives/field";
 import { FloatingSelect } from "@/components/design-demo-ui/primitives/floating-select";
-import { PageHeader } from "@/components/design-demo-ui/primitives/page-header";
 import { Panel } from "@/components/design-demo-ui/primitives/panel";
 import { SegmentedControl } from "@/components/design-demo-ui/primitives/segmented-control";
 import { SortableList, useDemoSortable } from "@/components/design-demo-ui/primitives/sortable";
@@ -81,6 +80,7 @@ import {
   type TrainingProfileRevisionField,
   type TrainingTextRevisionItem,
 } from "./project-page-utils";
+import { ProjectHeader } from "./project-page-shell";
 import { ReferencePicker, type ReferenceSourceGroup } from "./reference-picker";
 import s from "./training-project-pages.module.css";
 import { useGenerationComposeForm } from "./use-generation-compose-form";
@@ -91,16 +91,6 @@ import { useProjectArchiveState } from "./use-project-archive-state";
 import { useProjectSectionResults } from "./use-project-section-results";
 import { useProjectSectionSceneBlocks } from "./use-project-section-scene-blocks";
 import { useProjectSectionDraft } from "./use-project-section-draft";
-
-const PROJECT_TABS = [
-  { key: "overview", label: "总览", path: "" },
-  { key: "profile", label: "资料", path: "/profile" },
-  { key: "sections", label: "小节", path: "/sections" },
-  { key: "results", label: "结果池", path: "/results" },
-  { key: "dataset", label: "数据集", path: "/dataset" },
-  { key: "generation", label: "生成任务", path: "/generation-tasks" },
-  { key: "training", label: "训练任务", path: "/training-runs" },
-] as const;
 
 const STATUS_ITEMS: Array<{ value: LoraTrainingTaskStatus; label: string }> = [
   { value: "completed", label: "完成" },
@@ -122,51 +112,6 @@ const PROJECT_RUN_ERROR_CLAMP_LINES = 3;
 
 function useTraining(data: TrainingAppData) {
   return buildLoraTrainingData(data);
-}
-
-function ProjectNav({ active, project }: { active: (typeof PROJECT_TABS)[number]["key"]; project: LoraTrainingProject }) {
-  const hrefForRoute = useRouteHref();
-  return (
-    <nav className={s.projectNav} aria-label="训练项目页面">
-      {PROJECT_TABS.map((item) => (
-        <Link
-          aria-current={item.key === active ? "page" : undefined}
-          className={cx(s.projectNavItem, item.key === active && s.projectNavItemActive)}
-          href={hrefForRoute(`/training/projects/${project.id}${item.path}`)}
-          key={item.key}
-        >
-          {item.label}
-        </Link>
-      ))}
-    </nav>
-  );
-}
-
-function ProjectHeader({
-  active,
-  actions,
-  project,
-  subtitle,
-  title,
-}: {
-  active: (typeof PROJECT_TABS)[number]["key"];
-  actions?: ReactNode;
-  project: LoraTrainingProject;
-  subtitle?: string;
-  title?: string;
-}) {
-  return (
-    <>
-      <PageHeader
-        back={{ href: "/training/projects", label: "返回训练项目" }}
-        eyebrow="LoRA 训练项目"
-        title={title ?? project.title}
-        subtitle={subtitle ?? project.profileSummary}
-        actions={actions}
-      />
-      <ProjectNav active={active} project={project} />
-    </>
-  );
 }
 
 function TrainingResultGrid({
