@@ -13,16 +13,19 @@ const ROOT_DOCS = {
 const DOCUMENTATION_MAP_PATH = "docs/documentation-map.md";
 const DOC_INDEX_PATH = "docs/index.md";
 const RETAINED_CONTEXT_DOCS = [
-  "docs/handoff.md",
-  "docs/development-progress.md",
-  "docs/development-todo.md",
+  "docs/archive/historical/handoff.md",
+  "docs/archive/historical/development-progress.md",
+  "docs/archive/historical/development-todo.md",
+  "docs/archive/historical/integration-test-plan.md",
+  "docs/archive/design-system/DESIGN_SYSTEM_SUMMARY.md",
+  "docs/archive/design-system/design-system-migration.md",
+  "docs/archive/design-system/shadcn-design-guide.md",
   "docs/design-v0.1.md",
   "docs/design-v0.3-workflow-integration.md",
   "docs/quick-reference.md",
   "docs/WORKFLOW_QUICK_REFERENCE.md",
   "docs/WORKFLOW_SYSTEM_ANALYSIS.md",
   "docs/analysis_comprehensive.md",
-  "docs/integration-test-plan.md",
 ] as const;
 
 function read(path: string): string {

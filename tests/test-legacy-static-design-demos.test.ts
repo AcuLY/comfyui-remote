@@ -20,25 +20,26 @@ test("legacy static design demos have documented archival or superseded status",
   const doc = readSource(legacyDocPath);
   const docsIndex = readSource("docs/index.md");
   const legacyFiles = [
-    "design-demos/README.md",
-    "design-demos/app.html",
-    "design-demos/full-demo.html",
-    "design-demos/index.html",
-    "design-demos/router.js",
-    "design-demos/design-system.css",
-    "design-demos/components/components.css",
-    "design-demos/v2-projects-page.html",
-    "design-demos/v2-queue-page.html",
-    "design-demos/v2-review-page.html",
-    "design-demos/pages-checklist.md",
-    "design-demos/style-audit-report.md",
+    "docs/archive/design-demos/README.md",
+    "docs/archive/design-demos/app.html",
+    "docs/archive/design-demos/full-demo.html",
+    "docs/archive/design-demos/index.html",
+    "docs/archive/design-demos/router.js",
+    "docs/archive/design-demos/design-system.css",
+    "docs/archive/design-demos/components/components.css",
+    "docs/archive/design-demos/v2-projects-page.html",
+    "docs/archive/design-demos/v2-queue-page.html",
+    "docs/archive/design-demos/v2-review-page.html",
+    "docs/archive/design-demos/pages-checklist.md",
+    "docs/archive/design-demos/style-audit-report.md",
   ];
 
   assert.match(doc, /\| file \| status \| replacement or current source \| production page informed \| next action \|/);
-  assert.match(doc, /future archive directory[\s\S]*docs\/archive\/design-demos\//);
+  assert.match(doc, /retained static files now live under `docs\/archive\/design-demos\/`/);
   assert.match(docsIndex, /docs\/ui\/legacy-static-design-demos\.md/);
 
   for (const file of legacyFiles) {
+    assert.ok(existsSync(join(repoRoot, file)), `${file} should exist in the archive`);
     assert.match(
       doc,
       new RegExp(`\\| \`${escapeRegExp(file)}\` \\| (archival|superseded by Next design-demo|retained active reference) \\|`),
@@ -55,7 +56,12 @@ test("legacy static design demos have documented archival or superseded status",
 });
 
 test("legacy todo tasks are carried forward before deleting todo.txt", () => {
-  assert.equal(existsSync(join(repoRoot, "design-demos/todo.txt")), false, "stale design-demos/todo.txt should be removed after migration");
+  assert.equal(existsSync(join(repoRoot, "design-demos")), false, "legacy design-demos root should be moved to docs/archive/design-demos");
+  assert.equal(
+    existsSync(join(repoRoot, "docs/archive/design-demos/todo.txt")),
+    false,
+    "stale design-demos/todo.txt should stay removed after migration",
+  );
 
   const doc = readSource(legacyDocPath);
   for (const carriedTask of [

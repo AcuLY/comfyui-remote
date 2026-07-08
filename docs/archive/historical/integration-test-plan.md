@@ -1,7 +1,7 @@
 # 集成测试计划 (Integration Test Plan)
 
 Classification: historical record
-Current source: use `docs/index.md` first; current test conventions live in `docs/testing/README.md` and `tests/README.md`, and active verification gates live in `docs/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md`.
+Current source: use `docs/index.md` first; current test conventions live in `docs/testing/README.md` and `tests/README.md`, and current verification entrypoints live in the relevant runbooks and package scripts.
 
 > 测试策略：小块集成测试，直接调用 Server Actions / Services，操作真实测试数据库，验证数据库状态和行为结果。
 > 不测试 UI 渲染，不测试 ComfyUI API（Mock 外部依赖）。

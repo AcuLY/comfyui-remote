@@ -1,7 +1,10 @@
 ﻿# 自动审图与兼容路由 PRD 总览
 
-本目录按阶段保存 PRD。上层技术方案见：
-`docs/plans/2026-05-17-auto-review-compatibility-router.md`
+Classification: historical record
+Current source: use `docs/index.md` first. This PRD set is retained as archived product intent; current behavior lives in code, tests, and maintained docs.
+
+本目录按阶段保存 PRD。上层历史技术方案见：
+`docs/archive/plans/2026-05-17-auto-review-compatibility-router.md`
 
 ## 阶段列表
 

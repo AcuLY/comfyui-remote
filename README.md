@@ -207,7 +207,7 @@ comfyui-remote/
 │   ├── api/                    #   Agent API、MCP、路由契约、workflow schema
 │   ├── ui/                     #   设计系统、页面模式、shell/navigation 规则
 │   ├── testing/                #   测试分组、fixture、DB bootstrap、验证矩阵
-│   └── archive/                #   已归档计划、旧 PRD、superseded handoff
+│   └── archive/                #   已归档计划、旧 PRD、superseded handoff、旧静态 demo
 ├── prisma/                     # 数据库 schema + migration（含 PromptCategory / PromptPreset 模型）
 │   ├── schema.prisma           #   PostgreSQL schema
 │   ├── schema.sqlite.prisma    #   SQLite schema

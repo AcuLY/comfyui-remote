@@ -1,5 +1,8 @@
 ﻿# 设计系统迁移指南
 
+Classification: historical record
+Current source: start at `docs/index.md`, then use `DESIGN.md`, `docs/frontend-design-guide.md`, and `docs/ui/**` first. This file is retained only as an archived migration note.
+
 > 从自定义样式迁移到 shadcn/ui + Tailwind CSS 4
 
 ---

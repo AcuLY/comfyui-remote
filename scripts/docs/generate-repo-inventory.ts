@@ -54,6 +54,13 @@ function getArea(path: string): string {
   if (path.startsWith("agent-rules/")) return "agent-rules";
   if (path.startsWith("config/")) return "config";
   if (path.startsWith("design-demos/")) return "design-demos";
+  if (path.startsWith("docs/archive/design-demos/")) return "docs/archive/design-demos";
+  if (path.startsWith("docs/archive/design-system/")) return "docs/archive/design-system";
+  if (path.startsWith("docs/archive/historical/")) return "docs/archive/historical";
+  if (path.startsWith("docs/archive/plans/")) return "docs/archive/plans";
+  if (path.startsWith("docs/archive/prd/")) return "docs/archive/prd";
+  if (path.startsWith("docs/archive/superpowers/plans/")) return "docs/archive/superpowers/plans";
+  if (path.startsWith("docs/archive/")) return "docs/archive";
   if (path.startsWith("docs/prototypes/")) return "docs/prototypes";
   if (path.startsWith("docs/prd/")) return "docs/prd";
   if (path.startsWith("docs/plans/auto-review-analysis/")) return "docs/plans/auto-review-analysis";
@@ -108,6 +115,10 @@ function getOwnerModule(path: string, area: string): string {
   if (area === ".codebuddy/skills" || area === ".codex/skills") return "agent-skills";
   if (path === "AGENTS.md" || path === "CLAUDE.md" || area.startsWith("agent-rules")) return "agent-workflow";
   if (path === "README.md" || path === "package.json" || path === "package-lock.json") return "root-project";
+  if (area.startsWith("docs/archive/design-demos") || area.startsWith("docs/archive/design-system")) return "ui-design-system";
+  if (area.startsWith("docs/archive/historical")) return "documentation-system";
+  if (area.startsWith("docs/archive/prd")) return "product-intent";
+  if (area.startsWith("docs/archive/plans") || area.startsWith("docs/archive/superpowers/plans")) return "execution-plans";
   if (path === "DESIGN.md" || path.includes("design") || path.includes("shadcn")) return "ui-design-system";
   if (path === "docs/index.md" || path === INVENTORY_PATH || area === "scripts/docs") return "documentation-system";
   if (
@@ -177,18 +188,17 @@ function getDocClassification(path: string): string {
   if (path === "docs/index.md") return "current documentation index";
   if (path === "docs/documentation-map.md") return "current";
   if (path === INVENTORY_PATH) return "generated artifact";
+  if (path.startsWith("docs/archive/")) return "historical record";
   if (path === "docs/agent-api.md" || path === "docs/workflow.api.json" || path.startsWith("docs/api/")) return "API contract";
   if (path.startsWith("docs/architecture/")) return "architecture reference";
   if (path.startsWith("docs/runbooks/")) return "runbook";
   if (path.startsWith("docs/testing/")) return "testing reference";
-  if (path.startsWith("docs/archive/")) return "historical record";
   if (path === "docs/local-verification.md" || path.includes("QUICK_REFERENCE") || path.includes("quick-reference")) return "runbook";
   if (path.includes("DESIGN") || path.includes("design") || path.includes("shadcn")) return "product/design reference";
   if (path.startsWith("docs/prototypes/")) return "prototype";
   if (path.startsWith("docs/prd/")) return "product intent";
   if (path.startsWith("docs/plans/auto-review-analysis/")) return "generated artifact";
   if (path.startsWith("docs/plans/") || path.startsWith("docs/superpowers/plans/")) return "historical plan";
-  if (path === "docs/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md") return "current execution plan";
   if (path.startsWith("docs/superpowers/specs/")) return "architecture reference";
   if (path.startsWith("docs/analysis/") || path.includes("analysis")) return "architecture reference";
   if (path.includes("handoff") || path.includes("development-")) return "historical record";
@@ -224,6 +234,7 @@ function getTargetRole(path: string, area: string, fileType: string): string {
   if (fileType === "generated code") return "regenerate from Prisma only; no manual edits";
   if (path === INVENTORY_PATH) return "generated inventory for every tracked file";
   if (path === "docs/index.md") return "current read-first documentation map";
+  if (path.startsWith("docs/archive/")) return "retained historical context with current replacement named";
   if (fileType === "doc" || path.startsWith("docs/")) return `classified as ${getDocClassification(path)} with owner and update trigger`;
   if (fileType === "prototype") return "map to production/design-demo route or archive in later batch";
   if (area.startsWith("src/app/api")) return "thin route adapter over services and shared response helpers";
@@ -240,6 +251,7 @@ function getTargetRole(path: string, area: string, fileType: string): string {
 function getAction(path: string, area: string, fileType: string): InventoryRow["action"] {
   if (fileType === "generated code") return ACTIONS.regenerate;
   if (path === INVENTORY_PATH) return ACTIONS.regenerate;
+  if (path.startsWith("docs/archive/")) return fileType === "doc" ? ACTIONS.documentOnly : ACTIONS.keep;
   if (fileType === "analysis data" || fileType === "prototype") return ACTIONS.archive;
   if (fileType === "doc" || path.startsWith("docs/") || path.endsWith(".md")) return ACTIONS.documentOnly;
   if (area.startsWith("src/app/api") || area.startsWith("src/server/repositories") || area.startsWith("src/server/services")) return ACTIONS.split;

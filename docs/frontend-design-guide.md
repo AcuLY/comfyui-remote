@@ -631,11 +631,7 @@ document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
 
 ## 🎯 实战示例
 
-详见 `design-demos/` 目录下的示例页面：
-- `demo-projects-page.html` - 项目列表页
-- `demo-queue-page.html` - 审核队列页
-- `demo-review-page.html` - 宫格审图页
-- `demo-settings-page.html` - 设置页
+当前可运行示例以 `src/app/design-demos/**` 和 `/design-demos` 路由为准。旧静态 HTML/CSS 示例已经归档到 `docs/archive/design-demos/**`，仅作历史参考。
 
 ---
 

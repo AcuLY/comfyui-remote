@@ -1,5 +1,8 @@
 ﻿# 前端设计系统 - 工作总结
 
+Classification: historical record
+Current source: use `src/app/design-demos/**`, `docs/design-demos-frontend-parity.md`, and `docs/ui/design-demo-governance.md` first. This directory is retained only as archived static demo context.
+
 > Superseded static demo summary. Current governance lives in `docs/ui/legacy-static-design-demos.md` and the routable implementation lives under `src/app/design-demos/**`.
 
 ## ✅ 已完成

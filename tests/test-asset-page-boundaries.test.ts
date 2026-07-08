@@ -7,7 +7,7 @@ function readSource(path: string) {
 }
 
 test("asset pages are split by resource type with explicit route boundaries", () => {
-  const roadmapSource = readSource("docs/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md");
+  const roadmapSource = readSource("docs/archive/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md");
   const modelsPageSource = readSource("src/app/assets/models/page.tsx");
   const lorasPageSource = readSource("src/app/assets/loras/page.tsx");
   const presetsPageSource = readSource("src/app/assets/presets/page.tsx");

@@ -1,5 +1,8 @@
 ﻿# ComfyUI Manager 设计系统（基于 shadcn/ui）
 
+Classification: historical record
+Current source: start at `docs/index.md`, then use `DESIGN.md`, `docs/frontend-design-guide.md`, and `docs/ui/**` first. This file is retained only as an archived shadcn-era guide.
+
 > 使用 Tailwind CSS 4 + shadcn/ui + @base-ui/react 的设计系统
 
 ---

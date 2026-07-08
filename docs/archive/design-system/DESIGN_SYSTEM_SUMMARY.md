@@ -1,5 +1,8 @@
 ﻿# 前端设计系统 - 完整总结
 
+Classification: historical record
+Current source: start at `docs/index.md`, then use `DESIGN.md`, `docs/frontend-design-guide.md`, and `docs/ui/**` first. This file is retained only as an archived migration summary.
+
 > ComfyUI Manager 基于 shadcn/ui + Tailwind CSS 4 的设计系统
 
 ---

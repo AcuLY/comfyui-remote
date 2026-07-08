@@ -134,7 +134,7 @@ ComfyUI Remote 是一个移动优先的 ComfyUI 管理后台。核心目标是�
 3. 看 `src/lib/server-data.ts` + `src/lib/actions.ts` 了解前端数据层
 4. 看 `src/server/` 了解 REST API 三层架构（services → repositories）
 5. 看 `docs/agent-api.md` 了解 Agent API 和 MCP 接口
-6. 看 `docs/development-todo.md` 了解下一步计划
+6. 看 `docs/index.md` 和 `docs/repo-inventory.md` 了解当前文档入口和文件归属；本 handoff 只保留历史上下文
 
 ## 本地运行
 ```bash
@@ -149,8 +149,8 @@ npm run dev                   # 启动开发服务器
 ## 文档索引
 - `design-v0.1.md`：整体设计文档（核心对象模型、页面设计、关键流程）
 - `design-v0.3-workflow-integration.md`：v0.3 Workflow 集成设计（已完成）
-- `development-progress.md`：当前项目状态总览
-- `development-todo.md`：完成记录和下一步计划
-- `agent-api.md`：Agent API + MCP Server 完整使用说明
-- `local-verification.md`：本机完整链路验证指南
-- `workflow.api.json`：标准 ComfyUI workflow 参考文件（v0.3 填充目标）
+- `docs/archive/historical/development-progress.md`：历史项目状态总览
+- `docs/archive/historical/development-todo.md`：历史完成记录和下一步计划
+- `docs/agent-api.md`：Agent API + MCP Server 完整使用说明
+- `docs/local-verification.md`：本机完整链路验证指南
+- `docs/workflow.api.json`：标准 ComfyUI workflow 参考文件（v0.3 填充目标）

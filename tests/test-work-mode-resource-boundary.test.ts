@@ -82,7 +82,7 @@ const generationActionsBarrelSource = readFileSync(resolve(repoRoot, "src/lib/ac
 const serverDataFacadeSource = readFileSync(resolve(repoRoot, "src/lib/server-data.ts"), "utf8");
 const loggerSource = readFileSync(resolve(repoRoot, "src/lib/logger.ts"), "utf8");
 const refactorRoadmapSource = readFileSync(
-  resolve(repoRoot, "docs/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md"),
+  resolve(repoRoot, "docs/archive/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md"),
   "utf8",
 );
 

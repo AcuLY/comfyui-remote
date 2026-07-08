@@ -11,13 +11,13 @@ This map separates active operating docs from historical notes and generated art
 | --- | --- | --- | --- |
 | `README.md` | current | Human entrypoint, setup, high-level feature map, and links to current docs. | `README.md`, `docs/index.md`, `docs/repo-inventory.md` |
 | `AGENTS.md` and `agent-rules/**` | runbook | Agent workflow entrypoint, git rules, dev-service rules, deploy lock, queue, Prisma, build, restart, verification, and `mypc` command quoting. | `AGENTS.md`, `agent-rules/git.md`, `agent-rules/dev-service.md`, `agent-rules/mypc-powershell.md`, `agent-rules/deploy/**` |
-| `docs/architecture/` | architecture reference | Current module boundaries, dependency rules, data flow, queue/worker semantics, and training/generation ownership. | `docs/worker-boundaries.md`, `docs/prisma-provider-matrix.md`, `docs/prisma-schema-compatibility.md`, `docs/analysis/**`, durable decisions extracted from `docs/superpowers/plans/**` |
+| `docs/architecture/` | architecture reference | Current module boundaries, dependency rules, data flow, queue/worker semantics, and training/generation ownership. | `docs/worker-boundaries.md`, `docs/prisma-provider-matrix.md`, `docs/prisma-schema-compatibility.md`, `docs/analysis/**`, durable decisions extracted from archived plans |
 | `docs/runbooks/` | runbook | Local development, deployment, `mypc`, ComfyUI, Prisma, auth verification, and incident triage. | `docs/local-verification.md`, `agent-rules/deploy/**`, `agent-rules/dev-service.md` |
 | `docs/api/` | API contract | Agent API, MCP, public route contracts, response envelopes, and workflow schema. | `docs/agent-api.md`, `docs/workflow.api.json`, `docs/api/route-handler-template.md` |
 | `docs/ui/` | product/design reference | Design system, page patterns, shell/navigation rules, design-demo relationship, accessibility, and layout gates. | `DESIGN.md`, `docs/frontend-design-guide.md`, `docs/ui/**`, `docs/design-demos-frontend-parity.md` |
 | `docs/testing/` | testing reference | Test groups, fixture builders, DB bootstrap, known environment requirements, and verification matrix. | `tests/README.md`, `tests/fixtures/**`, `docs/local-verification.md` |
-| `docs/archive/` | historical record | Historical plans, superseded handoffs, old PRDs, obsolete static demos, and retained rationale after replacement links exist. | `docs/plans/**`, `docs/prd/**`, `docs/development-progress.md`, superseded docs after banners are added |
-| `docs/superpowers/plans/` | historical record after completion | Execution plans only; durable architecture/runbook decisions must be extracted into current layers before a plan is treated as complete. | `docs/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md` |
+| `docs/archive/` | historical record | Historical plans, superseded handoffs, old PRDs, obsolete static demos, and retained rationale after replacement links exist. | `docs/archive/historical/**`, `docs/archive/plans/**`, `docs/archive/prd/**`, `docs/archive/design-system/**`, `docs/archive/design-demos/**`, `docs/archive/superpowers/plans/**` |
+| `docs/superpowers/plans/` | transient execution-plan staging | New execution plans may be written here while active. Completed plans must move to `docs/archive/superpowers/plans/**`, and durable architecture/runbook decisions must be extracted into current layers. | no completed plan is current truth here |
 | `docs/repo-inventory.md` | generated artifact | Generated file inventory with current role, target role, owner, and action columns. | Regenerate with `npx tsx scripts/docs/generate-repo-inventory.ts` |
 
 ## Classification Rules
@@ -38,8 +38,8 @@ This map separates active operating docs from historical notes and generated art
 
 | Duplicate area | Current authority | Retained context |
 | --- | --- | --- |
-| README vs handoff | `README.md` is the human entrypoint and `docs/index.md` is the agent read-first source. | `docs/handoff.md`, `docs/development-progress.md`, and `docs/development-todo.md` are historical records only. |
-| design docs vs frontend guides | `DESIGN.md`, `docs/frontend-design-guide.md`, and `docs/ui/**` own current UI direction. | `docs/design-v0.1.md`, `docs/design-v0.3-workflow-integration.md`, and migration summaries are retained as product/design context. |
+| README vs handoff | `README.md` is the human entrypoint and `docs/index.md` is the agent read-first source. | `docs/archive/historical/handoff.md`, `docs/archive/historical/development-progress.md`, and `docs/archive/historical/development-todo.md` are historical records only. |
+| design docs vs frontend guides | `DESIGN.md`, `docs/frontend-design-guide.md`, and `docs/ui/**` own current UI direction. | `docs/design-v0.1.md`, `docs/design-v0.3-workflow-integration.md`, and `docs/archive/design-system/**` are retained as product/design context. |
 | workflow quick references vs API JSON | `docs/workflow.api.json`, `docs/worker-boundaries.md`, and the workflow service tests own current workflow behavior. | `docs/quick-reference.md`, `docs/WORKFLOW_QUICK_REFERENCE.md`, `docs/WORKFLOW_SYSTEM_ANALYSIS.md`, and analysis notes are retained as architecture context. |
 | local verification vs deploy rules | `docs/local-verification.md` owns local verification, while `AGENTS.md` and `agent-rules/deploy/**` own production deployment workflow. | Older handoff/checklist wording must point to those current runbooks. |
 

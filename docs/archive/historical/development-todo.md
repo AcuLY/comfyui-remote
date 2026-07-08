@@ -1,7 +1,7 @@
 # Development Todo
 
 Classification: historical record
-Current source: use `docs/index.md` first; active work is tracked in `docs/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md`, and current ownership/status is generated in `docs/repo-inventory.md`.
+Current source: use `docs/index.md` first; current ownership/status is generated in `docs/repo-inventory.md`, and completed plans live under `docs/archive/**`.
 
 ## Completed (v0.1 → v0.2)
 
