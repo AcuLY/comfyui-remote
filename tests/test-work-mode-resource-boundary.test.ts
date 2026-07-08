@@ -154,11 +154,11 @@ function hasLoggerValueImport(source: string) {
 
 function extractSharedLibRoadmapRows() {
   const match = refactorRoadmapSource.match(
-    /\*\*Shared pure and client-safe libs:\*\*\n([\s\S]*?)\n- \[[ x]\] Mark each file as client-safe, server-only, or universal\./,
+    /\*\*Shared pure and client-safe libs:\*\*\r?\n([\s\S]*?)\r?\n- \[[ x]\] Mark each file as client-safe, server-only, or universal\./,
   );
   assert.ok(match?.[1], "Roadmap should include the Phase 6 shared-lib inventory section.");
   return match[1]
-    .split("\n")
+    .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) => line.startsWith("- `src/lib/"));
 }
