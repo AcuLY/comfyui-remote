@@ -3,11 +3,13 @@
 Classification: product/design reference
 Update trigger: shared UI direction, route shell, design-demo parity, token, layout, or accessibility changes.
 
-Updated: 2026-05-15
+Updated: 2026-07-08
+
+Placement: this root-level file is intentional. `docs/documentation-map.md` maps `DESIGN.md` into the maintained `docs/ui/` layer so human readers can find the active product/design direction from the repository root. Historical design-system summaries live under `docs/archive/design-system/**`.
 
 This product UI uses a calm dual-theme workspace aesthetic: soft gradient atmosphere, translucent glass surfaces, compact data density, and restrained green actions. Light mode is the primary reference tone; dark mode should feel like the same product translated to dark surfaces, not a separate visual identity.
 
-Reference baseline: the `/design-demos/runs/[runId]` review page. If this document conflicts with that page, follow the page first: fixed left navigation, useful content on the first screen, compact run metadata, a parameter information strip, and a focused review board for image decisions.
+Reference baseline: the `/design-demos/runs/[runId]` review page and the shared shell tokens in `src/components/design-demo-shell/app-shell.module.css`. If this document conflicts with live implementation details, treat `DESIGN.md` as the product/design direction and the CSS/module source as the exact token implementation to update or reconcile.
 
 ## 1. Visual Direction
 
@@ -32,7 +34,7 @@ Reference baseline: the `/design-demos/runs/[runId]` review page. If this docume
 - Border: `rgba(19, 24, 32, 0.075-0.18)`
 - Border strong: `rgba(19, 24, 32, 0.18)`
 - Primary green: `#047857` for text on light surfaces, with `rgba(4, 120, 87, 0.10)` backgrounds.
-- Secondary rose: `#f472b6` / `rgba(244, 114, 182, 0.08)` for non-primary categories.
+- Secondary rose: `#db2777` for text on light surfaces, with `rgba(244, 114, 182, 0.08)` backgrounds for non-primary categories.
 - Amber (warning): `#a16207` / `rgba(161, 98, 7, 0.10)` — used for warning states such as pager info.
 - Sky (cover marker): `#0369a1` / `rgba(3, 105, 161, 0.10)` — used for cover/front-page markers.
 - Red (danger): `#be123c` / `rgba(190, 18, 60, 0.10)` — used for destructive actions and error states.
@@ -228,7 +230,8 @@ Do not:
 ## 9. Implementation Notes For `/design-demos`
 
 - The routed demo shell should use this glass system while keeping all CSS inside `src/app/design-demos/**`.
-- Basic controls must use the existing primitives in `src/app/design-demos/shared/primitives/**` (`Button`, `ButtonLink`, `Field`, `FloatingSelect`, `Checkbox`, `Switch`, tabs, badges, feedback/toast, and comparable shared controls). Feature and page code must not hand-roll raw `<button>`, `<input>`, `<textarea>`, `<select>`, checkbox/switch, tab, badge, toast, or icon-button implementations unless the task is explicitly to create or update the shared primitive itself.
+- Shared route shell tokens live in `src/components/design-demo-shell/app-shell.module.css`; update that file together with this document when token values or theme hierarchy change.
+- Basic controls must use the existing primitives in `src/components/design-demo-ui/primitives/**` and feedback/media helpers in `src/components/design-demo-ui/**` (`Button`, `Field`, `FloatingSelect`, `Checkbox`, `Switch`, segmented controls, status badges, panels, feedback/toast, and comparable shared controls). Feature and page code must not hand-roll raw `<button>`, `<input>`, `<textarea>`, `<select>`, checkbox/switch, tab, badge, toast, or icon-button implementations unless the task is explicitly to create or update the shared primitive itself.
 - Shared demo primitives such as `.button` must be normalized after page-specific style imports when needed. Page styles may narrow layout or flex behavior, but must not override shared button height, text size, icon size, or tone scale.
 - Existing parity work should stay intact: `/runs`, `/projects`, `/presets`, `/models`, `/templates`, and settings routes remain routeable.
 - The shell can use mock data, but visible UI should read as final product state.

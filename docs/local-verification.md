@@ -44,12 +44,12 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/comfyui_manager"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 COMFY_API_URL="http://127.0.0.1:8188"
 MODEL_BASE_DIR="/path/to/ComfyUI/models"
-IMAGE_BASE_DIR="/path/to/ComfyUI/output"
+OUTPUT_BASE_PATH="/path/to/managed-or-comfy-output"
 ```
 
 - `COMFY_API_URL`：你的 ComfyUI API 地址
 - `MODEL_BASE_DIR`：ComfyUI 的模型目录，用于推导 `loras` 和 `checkpoints` 子目录
-- `IMAGE_BASE_DIR`：ComfyUI 的 output 目录（Worker 会先尝试从这里本地复制图片，失败后通过 HTTP 下载）
+- `OUTPUT_BASE_PATH`：图片 serving 根目录；默认读取项目 `data/images`，设计壳或本地验证需要展示外部输出时可指向对应目录。Worker 生成结果会写入 managed `data/images`，必要时通过 ComfyUI `/view` 下载输出。
 
 ## Step 2: 初始化数据库
 
@@ -143,8 +143,8 @@ Worker 会自动轮询并处理 `queued` 状态的 Run。Worker 会执行以下�
 
 ## Step 8: 回收站恢复
 
-1. 进入 `/trash`
-2. 可以看到被删除的图片
+1. 回到 `/queue`
+2. 切换到 `回收站` tab
 3. 点击恢复，图片文件移回原始路径，状态变回 `pending`
 
 ## 验证 Worker 状态
@@ -178,8 +178,8 @@ curl -X POST http://localhost:3000/api/agent/runs/<runId>/review \
 - 查看响应中的 `errorMessage` 字段获取详细信息
 
 ### 图片不显示
-- 确认 `IMAGE_BASE_DIR` 指向正确的 ComfyUI output 目录
-- 或者 Worker 会通过 HTTP 从 ComfyUI `/view` 接口下载图片
+- 确认 `OUTPUT_BASE_PATH` 指向当前需要展示的 managed image 根目录，或保留默认 `data/images`
+- 确认 Worker 能通过 HTTP 从 ComfyUI `/view` 接口下载输出并写入 managed image 目录
 
 ### 数据库连接失败
 - 确认 Docker 中的 PostgreSQL 正在运行：`docker compose ps`

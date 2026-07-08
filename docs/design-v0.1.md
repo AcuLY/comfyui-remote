@@ -7,7 +7,7 @@ Current source: use `docs/index.md` first; current UI direction lives in `DESIGN
 
 > **注意**: 本文档描述的是 v0.1 原始设计。v0.5 已将 Character / ScenePreset / StylePreset / PositionTemplate
 > 替换为统一的 PromptCategory + PromptPreset 系统。旧模型仅保留在 schema 中用于数据兼容，应用层已不再直接查询。
-> 详见 `development-progress.md` 和 `development-todo.md`。
+> Historical progress/todo notes are archived under `docs/archive/historical/development-progress.md` and `docs/archive/historical/development-todo.md`; current read-first routing lives in `docs/index.md`.
 
 ## 目标
 做一个移动优先的 ComfyUI 管理后台，用来：
@@ -391,6 +391,6 @@ Current source: use `docs/index.md` first; current UI direction lives in `DESIGN
 
 ## 实现状态
 
-> ✅ v0.1 和 v0.2 的所有功能均已实现。详见 `development-progress.md`。
+> ✅ v0.1 和 v0.2 的所有功能均已实现。历史进度记录见 `docs/archive/historical/development-progress.md`。
 >
 > v0.3 规划详见 `design-v0.3-workflow-integration.md`。

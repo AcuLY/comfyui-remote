@@ -67,7 +67,7 @@ export function getMcpServer(): McpServer {
       instructions: [
         "ComfyUI Remote MCP Server — manage AI image generation projects.",
         "Use tools to list/update projects, trigger runs, review images, and manage prompt blocks.",
-        "Use resources to read detailed context for projects, runs, workflows, and prompt blocks.",
+        "Use resources to read detailed context for projects, runs, and prompt blocks.",
         "Typical workflow: list_projects → get project context → update params → run → poll run context → review images.",
         "Prompt blocks: Each section's prompt is composed from ordered blocks (preset/custom).",
         "Use list_prompt_blocks + add/update/remove/reorder to manage blocks via MCP.",

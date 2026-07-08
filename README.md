@@ -6,19 +6,17 @@
 
 ## ✨ 功能亮点
 
-- **Generation 项目管理** — 用统一分类系统（PresetCategory × Preset）组合创建批量生图项目
-- **Review 宫格审图** — 在手机上滑动式多选，批量保留 / 删除，支持单张放大；操作后一键处理剩余并跳转下一组
-- **结果 Gallery** — 独立结果页展示小节所有运行图片，Lightbox 放大查看，支持精选标记（⭐）
-- **Export 图片整合导出** — 一键将已保留图片转 JPG 打包 zip，精选图片单独输出到 pixiv/ 目录
-- **Training 工作流** — LoRA training 项目、数据集修订、生成任务和训练运行由独立 feature/service 管理
-- **回收站** — 误删随时恢复，文件级 trash / restore
-- **参数编辑** — Project 级和 Section 级覆盖：prompt、LoRA、画幅、batch size、双 KSampler 参数
-- **LoRA 文件管理** — 磁盘目录浏览、上传、跨目录移动、备注；级联选择器替代传统下拉
-- **Workflow 模板** — 内置 SDXL txt2img / HiRes Fix，支持从 ComfyUI 导出 JSON 一键导入自定义模板
-- **Comfy runtime / Worker 引擎** — 自动消费队列、调用 ComfyUI API、下载输出、生成缩略图
+- **Generation 项目管理** — 用 Project、Section、Project Folder、Template、Preset Library 组织批量生图工作流
+- **Review 宫格审图** — 在手机上滑动式多选，批量保留 / 删除，支持单张放大、撤销和下一组跳转
+- **结果 Gallery / Export** — 小节和项目结果页展示运行图片，支持 p站、预览、封面标记，并导出 kept / pixiv / preview 文件
+- **Training 工作流** — LoRA Training 项目、数据集修订、生成任务、训练运行、训练预设和模板由独立 route / feature / service 管理
+- **模型文件管理** — `/assets/models` 管理 checkpoints 和 LoRA 文件；`/assets/loras` 是兼容跳转入口
+- **参数编辑** — Project / Section / Template 层覆盖 prompt blocks、LoRA、画幅、batch size、双 KSampler 参数
+- **Preset Library** — 分类、文件夹、预设、变体、预设组、排序规则、批量替换和 variant sync 流程
+- **Comfy runtime / Worker 引擎** — 队列、暂停/恢复、ComfyUI 进程监控、远端 target、输出清理、缩略图和打码任务
 - **审计日志 + 修订历史** — 全操作可追溯，区分人工 / AI / 系统，参数修改前自动快照
-- **Agent API** — 7 个 REST 端点，AI 可读取上下文、修改参数、触发运行、批量审图
-- **MCP Server** — 内置 Model Context Protocol 服务，Claude Desktop / Cursor 等直连使用
+- **Agent API** — `/api/agent/**` 高层 agent routes 加上完整 `/api/**` 自动化面；精确清单以 [`docs/agent-api.md`](docs/agent-api.md) 为准
+- **MCP Server** — `GET/POST/DELETE /api/mcp` Streamable HTTP transport；tool/resource 注册以 [`src/server/mcp/server.ts`](src/server/mcp/server.ts) 为准
 
 ## 🏗 技术栈
 
@@ -30,7 +28,7 @@
 | Worker | Node claim-based 执行引擎，对接 ComfyUI HTTP API |
 | AI 集成 | Agent REST API + MCP Server（`@modelcontextprotocol/sdk`） |
 | 图片处理 | sharp（缩略图 / JPG 转换）+ archiver（ZIP 打包） |
-| 存储 | 本地文件系统（图片 / LoRA / Workflow 模板） |
+| 存储 | 本地 managed images / export 目录 + 外部 `MODEL_BASE_DIR` 模型根目录 |
 
 ## 🚀 快速开始
 
@@ -96,18 +94,23 @@ DB_PROVIDER=sqlite DATABASE_URL="file:./data/comfyui.db" npm run dev
 |------|------|--------|-------------|------|
 | `DB_PROVIDER` | 否 | `postgresql` | `sqlite` | 数据库类型：`postgresql` / `sqlite` |
 | `DATABASE_URL` | 是 | — | `file:./data/comfyui.db` | 数据库连接字符串 |
+| `AUTH_TOKEN` | 生产建议 | — | — | 页面登录和 API header/cookie 认证 token；不要提交真实值 |
 | `COMFY_API_URL` | 否 | `http://127.0.0.1:8188` | `http://127.0.0.1:8188` | ComfyUI API 地址 |
-| `IMAGE_BASE_DIR` | 否 | — | `D:\ComfyUI\output` | ComfyUI 的默认输出目录。Worker 会从此目录本地复制生成的图片到 `data/images/`；不填则通过 HTTP 下载 |
+| `COMFY_TARGET_CONFIG_PATH` / `COMFY_ACTIVE_TARGET` | 否 | — | `config/comfy-targets.local.json` | 多 ComfyUI target / SSH tunnel 配置；示例见 `config/comfy-targets.example.json` |
 | `MODEL_BASE_DIR` | 否 | — | `D:\ComfyUI\models` | ComfyUI 模型根目录，用于推导 `loras` 和 `checkpoints` 子目录 |
+| `OUTPUT_BASE_PATH` | 否 | `data/images` | `D:\ComfyUI\output` | 前端/设计壳读取已生成图片时使用的 serving 根目录 |
 | `AUTO_CENSOR_MODEL_PATH` | 打码时必填 | — | `D:\Models\auto-censor.pt` | auto-censor YOLO `.pt` 模型绝对路径 |
 | `AUTO_CENSOR_PYTHON_CMD` | 否 | `python3` | `D:\venvs\auto-censor\Scripts\python.exe` | 运行 auto-censor runner 的 Python/venv 命令 |
 | `LOG_LEVEL` | 否 | `info` | `info` | 日志级别：`debug` / `info` / `warn` / `error` |
 | `LOG_FORMAT` | 否 | `pretty` | `pretty` | 输出格式：`pretty` / `json` |
 | `LOG_ENABLE_FILE` | 否 | `false` | `false` | 是否写入日志文件 |
+| `TRAINING_MANAGER_URL` / `TRAINING_MANAGER_TOKEN` | Training worker 时 | `http://127.0.0.1:3000` | — | 独立 Training worker 调用 Manager API 的地址和 token |
+
+`.env.example` 是环境变量清单；[`docs/local-verification.md`](docs/local-verification.md) 和 [`docs/runbooks/config-runtime-assets.md`](docs/runbooks/config-runtime-assets.md) 是本机验证和运行时路径的维护来源。
 
 ### 触发 Worker
 
-Worker 不是长驻进程，需要通过 HTTP 调用触发。推荐使用 Worker 自动轮询模式（在设置页开启），或通过 Agent API 触发运行。
+Generation Worker 通过 HTTP route / 队列控制触发，设置页的 ComfyUI 监控负责运行态观察和进程控制。Training worker 是独立 Node 进程，使用 `npm run training:workers` 或 `npm run training:workers:mock` 启动。
 
 ### 数据库命令
 
@@ -125,38 +128,29 @@ npm run db:bootstrap:sqlite
 
 ## 📱 页面一览
 
-| 页面 | 路径 | 功能 |
+| 入口 | 当前路径 | 功能 |
 |------|------|------|
-| 审核队列 | `/queue` | 待审核 Run 列表，按时间倒序 |
-| 宫格审图 | `/queue/:runId` | 多选 + 批量保留 / 删除 + 处理剩余跳转下一组 |
-| Project 列表 | `/projects` | 创建 / 编辑 / 复制 / 运行 |
-| 创建 Project | `/projects/new` | 选择各提示词分类的预设模板 |
-| Project 详情 | `/projects/:projectId` | Section 列表 + 缩略图条 + 运行 + 图片整合导出 |
-| Project 编辑 | `/projects/:projectId/edit` | 参数编辑表单 |
-| Section 编辑 | `/projects/:projectId/sections/:sectionId` | 运行参数 + Prompt Block + LoRA 编辑 |
-| 结果 Gallery | `/projects/:projectId/sections/:sectionId/results` | 全部运行结果 + Lightbox + 精选标记 |
-| 回收站 | `/trash` | 已删除图片 + 恢复按钮 |
-| LoRA 管理 | `/assets/loras` | 文件管理器：浏览 / 上传 / 移动 / 备注 |
-| 提示词管理 | `/assets/prompts` | 提示词分类与预设管理 |
-| 设置首页 | `/settings` | 各管理入口 |
-| 模板管理 | `/settings/templates` | 项目模板列表 + 创建 / 编辑 |
-| Workflow 管理 | `/settings/workflows` | 模板列表 + 从 ComfyUI JSON 导入 |
+| 首页 | `/` → `/queue` | 根路由直接进入审核队列 |
+| 审核队列 | `/queue`, `/queue/:runId` | 待审核 Run 列表、宫格审图、批量保留/废弃、lightbox |
+| Generation Projects | `/projects`, `/projects/new`, `/projects/new/from-existing`, `/projects/:projectId/**` | 项目列表、创建、复制、详情、编辑、批量创建、小节编辑和结果页 |
+| 模型文件 | `/assets/models` | checkpoints / LoRA 文件浏览、上传、移动、hash、备注；`/assets/loras` 兼容跳转到这里 |
+| Preset Library | `/assets/presets/**`, `/assets/preset-groups/:groupId` | 分类、文件夹、预设、变体、预设组、排序规则 |
+| Project Templates | `/assets/templates/**` | 模板列表、创建、编辑、模板小节编辑 |
+| Settings | `/settings`, `/settings/logs`, `/settings/monitor` | SFW toggle、日志查看、ComfyUI 监控和启停控制 |
+| Training | `/training/**` | Training runs、projects、dataset、generation tasks、training presets、training templates |
+| Design demos | `/design-demos/**` | 路由化设计壳和组件实验室；不是生产路由真相 |
+| Auth | `/login` | token 登录页 |
 
 ## 🤖 AI 集成
 
 ### Agent REST API
 
-7 个专为 AI Agent 设计的端点，详见 [`docs/agent-api.md`](docs/agent-api.md)：
+Agent 使用两层 HTTP 面：
 
-| 方法 | 端点 | 功能 |
-|------|------|------|
-| GET | `/api/agent/projects` | 列出 Project（搜索 / 状态筛选） |
-| GET | `/api/agent/projects/:id/context` | 获取 Project 完整上下文 |
-| POST | `/api/agent/projects/:id/update` | 修改 Project 参数 |
-| POST | `/api/agent/projects/:id/run-all` | 触发所有 enabled Section |
-| POST | `/api/agent/sections/:id/run` | 触发单个 Section |
-| GET | `/api/agent/runs/:id/context` | 获取 Run 结果上下文 |
-| POST | `/api/agent/runs/:id/review` | 批量审核图片 |
+- `/api/agent/**`：项目/运行上下文、批量更新、run-all、section run、review、preset variant switch/sync 等高层工作流。
+- `/api/**`：projects、project folders、sections、queue、images、preset library、models、templates、training、worker、logs、MCP 等完整 route surface。
+
+精确端点、请求体和响应约定详见 [`docs/agent-api.md`](docs/agent-api.md)。不要把 README 当作 API contract。
 
 ### MCP Server
 
@@ -174,30 +168,28 @@ npm run db:bootstrap:sqlite
 }
 ```
 
-**11 个 Tools**：`list_projects` · `update_project` · `update_project_section` · `run_all_sections` · `run_section` · `review_images` · `list_section_blocks` · `add_section_block` · `update_section_block` · `remove_section_block` · `reorder_section_blocks`
-
-**6 个 Resources**（`comfyui://` URI scheme）：Project 上下文 · Run 上下文 · Workflow 模板列表 / 详情 · 修订历史列表 / 快照
+当前 MCP tools/resources 由 [`src/server/mcp/server.ts`](src/server/mcp/server.ts) 注册，并在 [`docs/agent-api.md`](docs/agent-api.md) 的 MCP section 维护。它们覆盖 project listing/update/run、run review、prompt blocks 和 `comfyui://` context resources。
 
 ## 🔧 Workflow 模板系统
 
-模板文件位于 `config/workflows/*.json`，包含元数据 + 变量定义 + ComfyUI 节点图。
+当前标准 ComfyUI API workflow 由 [`docs/workflow.api.json`](docs/workflow.api.json) 和 `src/server/services/workflow-prompt-builder.ts` 维护。
 
-- 内置模板：`sdxl-txt2img`（基础 SDXL）、`sdxl-txt2img-hires`（HiRes Fix）
-- 支持 `{{variable}}` 占位符，Worker 执行时自动替换
-- Prompt 解析优先级：自定义 comfyPrompt > workflowTemplateId > 内置 SDXL fallback
-- 导入：在 `/settings/workflows` 页面粘贴或上传 ComfyUI「Save (API Format)」导出的 JSON，系统自动识别可参数化字段
+- `docs/workflow.api.json` 是默认 SDXL/HiRes graph contract。
+- `src/server/services/workflow-prompt-builder.ts` 根据 project/section 参数填充 prompt、negative prompt、LoRA、尺寸、batch 和双 KSampler。
+- `GET /api/runs/:runId/workflow` 可下载提交给 ComfyUI 的 workflow，debug variant 由 `workflow-debug-download` 生成。
+- Workflow 行为的当前说明在 [`docs/worker-boundaries.md`](docs/worker-boundaries.md)、[`docs/workflow.api.json`](docs/workflow.api.json) 和 [`docs/agent-api.md`](docs/agent-api.md)。
 
 ## 📁 项目结构
 
 ```
 comfyui-remote/
 ├── config/                     # 配置文件
-│   ├── path-maps.json          #   LoRA 分类 → 目录映射
-│   └── workflows/*.json        #   Workflow 模板
+│   ├── comfy-targets.example.json # ComfyUI target / SSH tunnel 示例
+│   └── path-maps.json             # 路径映射
 ├── data/                       # 运行时数据（git ignored）
 │   ├── images/                 #   管理的图片文件
 │   ├── export/                 #   图片整合导出输出
-│   └── models/                 #   模型文件（由 MODEL_BASE_DIR 指定，包含 loras/ 和 checkpoints/）
+│   └── loras/                  #   本地示例/临时 LoRA 运行数据；生产模型根目录由 MODEL_BASE_DIR 指定
 ├── docs/                       # 文档
 │   ├── index.md                #   read-first 文档入口
 │   ├── documentation-map.md    #   维护层级和历史/当前文档映射
@@ -208,37 +200,40 @@ comfyui-remote/
 │   ├── ui/                     #   设计系统、页面模式、shell/navigation 规则
 │   ├── testing/                #   测试分组、fixture、DB bootstrap、验证矩阵
 │   └── archive/                #   已归档计划、旧 PRD、superseded handoff、旧静态 demo
-├── prisma/                     # 数据库 schema + migration（含 PromptCategory / PromptPreset 模型）
+├── prisma/                     # 数据库 schema + migration（PostgreSQL / SQLite）
 │   ├── schema.prisma           #   PostgreSQL schema
 │   ├── schema.sqlite.prisma    #   SQLite schema
 │   └── migrate-presets.ts      #   旧数据迁移脚本（Character/Scene/Style → PromptPreset）
 ├── src/
 │   ├── app/                    # Next.js App Router
-│   │   ├── (pages)             #   20+ 个页面
-│   │   └── api/                #   50+ 个 API 路由
+│   │   ├── assets/ projects/ queue/ settings/ training/ design-demos/
+│   │   └── api/                #   route handlers for app, agent, training, MCP, worker, assets
 │   ├── components/             # 通用 UI 组件
 │   │   ├── lora-cascade-picker.tsx  # LoRA 级联目录选择器
 │   │   ├── lora-list-editor.tsx     # LoRA 列表编辑器
 │   │   ├── section-editor.tsx       # 小节编辑器（blocks + LoRA）
 │   │   └── ...
 │   ├── lib/                    # 共享工具
-│   │   ├── actions.ts          #   Server Actions
-│   │   ├── server-data.ts      #   数据查询函数
+│   │   ├── actions.ts          #   compatibility barrel
+│   │   ├── actions/            #   Server Actions by domain
+│   │   ├── server-data.ts      #   RSC / route data loaders
 │   │   ├── lora-types.ts       #   LoRA / KSampler 类型定义
 │   │   └── types.ts            #   通用类型定义
 │   ├── server/
-│   │   ├── services/           #   10+ 个 Service（业务逻辑 + 校验）
-│   │   ├── repositories/       #   5 个 Repository（数据库访问）
+│   │   ├── services/           #   业务服务、Comfy/worker/training orchestration、校验
+│   │   ├── repositories/       #   数据库访问和资源边界
 │   │   ├── worker/             #   Worker 执行引擎
 │   │   └── mcp/                #   MCP Server
-│   └── scripts/                # Seed 脚本
+│   └── scripts/                # Seed / helper scripts
+├── scripts/                    # Repo maintenance, quality, DB, training worker scripts
 └── docker-compose.yml          # PostgreSQL
 ```
 
 ### 两套数据访问路径
 
-1. **Server Actions**（`actions.ts` + `server-data.ts`）— 前端 RSC 直接调用，简单快速
-2. **REST API**（`api/` → `services/` → `repositories/`）— 完整输入校验，供外部 / Agent 调用
+1. **Server Actions / RSC loaders**（`src/lib/actions/**`, `src/lib/server-data.ts`, route-local loaders）— production UI 内部调用。
+2. **REST API**（`src/app/api/**` → `src/server/services/**` → `src/server/repositories/**` → `prisma`）— 外部、Agent、worker、Training 和 UI client mutation 的 HTTP surface。
+3. **MCP**（`/api/mcp` → `src/server/mcp/server.ts`）— MCP clients 通过 tools/resources 复用 agent-facing services。
 
 ### 图片生命周期
 

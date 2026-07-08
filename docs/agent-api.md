@@ -345,7 +345,7 @@ Deletes one prompt block.
 | `POST` | `/api/runs/:runId/cancel` | none | cancels a queued/running run |
 | `POST` | `/api/runs/:runId/review/keep` | `{ "imageIds": ["..."] }` | marks images kept |
 | `POST` | `/api/runs/:runId/review/trash` | `{ "imageIds": ["..."], "reason": "optional" }` | trashes images |
-| `GET` | `/api/trash` | none | lists trashed images |
+| `GET` | `/api/queue-data?includeTrash=1&trashPage=1&trashPageSize=20` | none | queue refresh payload with paginated trash items |
 | `POST` | `/api/images/:imageId/restore` | none | restores one trashed image |
 | `POST` | `/api/images/:imageId/featured` | `{ "featured": true }` | toggles p站 flag; enabling also returns `reviewStatus: "kept"` |
 | `POST` | `/api/images/:imageId/featured2` | `{ "featured2": true }` | toggles 预览 flag; enabling also returns `reviewStatus: "kept"` |
@@ -540,6 +540,34 @@ Training-owned resources are projects, runs, scene-description presets, and temp
 | `GET` | `/api/audit-logs` | audit logs |
 | `GET` | `/api/path-maps` | configured path mappings |
 | `GET/POST/DELETE` | `/api/mcp` | MCP streamable HTTP endpoint |
+
+## MCP Server
+
+MCP transport is served at `GET/POST/DELETE /api/mcp`. The source of truth for registered tools and resources is `src/server/mcp/server.ts`; keep this section synchronized when that file changes.
+
+Current tools:
+
+| Tool | Purpose |
+| --- | --- |
+| `list_projects` | list projects with optional search, status, and pending-review filters |
+| `update_project` | update project-level parameters such as aspect ratio and batch size |
+| `update_project_section` | update section prompt/runtime parameters |
+| `run_all_sections` | enqueue all enabled sections in a project |
+| `run_section` | enqueue one section in a project |
+| `review_images` | keep or trash images from a run |
+| `list_prompt_blocks` | list ordered prompt blocks for a section |
+| `add_prompt_block` | add a custom or preset-sourced prompt block |
+| `update_prompt_block` | update prompt block content, order, or preset identity metadata |
+| `remove_prompt_block` | delete a prompt block |
+| `reorder_prompt_blocks` | set prompt block order for a section |
+
+Current resources:
+
+| Resource | URI template | Purpose |
+| --- | --- | --- |
+| `project-context` | `comfyui://projects/{projectId}/context` | full project context with sections, latest runs, and prompt overview |
+| `run-context` | `comfyui://runs/{runId}/context` | full run context with generated images and review status |
+| `section-blocks` | `comfyui://sections/{sectionId}/blocks` | ordered prompt blocks for one section |
 
 ## Agent-Specific Endpoints
 

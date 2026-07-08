@@ -46,12 +46,63 @@ test("root docs declare their maintained role and point to the documentation map
   for (const feature of ["generation", "training", "review", "export", "Comfy runtime", "Agent API", "MCP"]) {
     assert.match(readme, new RegExp(feature, "i"), `README feature map must mention ${feature}`);
   }
+  for (const staleReadmeClaim of [
+    /7 个专为 AI Agent/,
+    /11 个 Tools/,
+    /6 个 Resources/,
+    /list_section_blocks|add_section_block|update_section_block|remove_section_block|reorder_section_blocks/,
+    /\/settings\/workflows/,
+    /\/settings\/templates/,
+    /\/assets\/prompts/,
+    /\|\s*回收站\s*\|\s*`\/trash`/,
+    /IMAGE_BASE_DIR/,
+  ]) {
+    assert.doesNotMatch(readme, staleReadmeClaim, `README must not keep stale claim ${staleReadmeClaim}`);
+  }
 
   assert.match(design, /Classification: product\/design reference/);
+  assert.match(design, /root-level file is intentional/);
+  assert.match(design, /src\/components\/design-demo-shell\/app-shell\.module\.css/);
+  assert.match(design, /src\/components\/design-demo-ui\/primitives\/\*\*/);
   assert.doesNotMatch(design, /implementation inventory/i);
 
   assert.match(claude, /AGENTS\.md is the source of truth/);
   assert.match(positionPresets, /Classification: active product prompt reference/);
+});
+
+test("agent API docs stay synchronized with MCP registry and current trash surface", () => {
+  const agentApi = read("docs/agent-api.md");
+  const mcpSource = read("src/server/mcp/server.ts");
+
+  for (const toolName of [
+    "list_projects",
+    "update_project",
+    "update_project_section",
+    "run_all_sections",
+    "run_section",
+    "review_images",
+    "list_prompt_blocks",
+    "add_prompt_block",
+    "update_prompt_block",
+    "remove_prompt_block",
+    "reorder_prompt_blocks",
+  ]) {
+    assert.match(mcpSource, new RegExp(`"${toolName}"`), `${toolName} must remain registered in MCP source`);
+    assert.match(agentApi, new RegExp(`\\\`${toolName}\\\``), `${toolName} must be documented in agent API docs`);
+  }
+
+  for (const resourceUri of [
+    "comfyui://projects/{projectId}/context",
+    "comfyui://runs/{runId}/context",
+    "comfyui://sections/{sectionId}/blocks",
+  ]) {
+    assert.match(mcpSource, new RegExp(resourceUri.replace(/[{}]/g, "\\$&")));
+    assert.match(agentApi, new RegExp(resourceUri.replace(/[{}]/g, "\\$&")));
+  }
+
+  assert.doesNotMatch(agentApi, /GET`\s*\|\s*`\/api\/trash`/, "trash is no longer a standalone API route");
+  assert.match(agentApi, /\/api\/queue-data\?includeTrash=1/, "trash listing must route through queue-data refresh");
+  assert.doesNotMatch(mcpSource, /resources to read detailed context for projects, runs, workflows, and prompt blocks/);
 });
 
 test("documentation map defines the maintained layers and classifies root docs", () => {
