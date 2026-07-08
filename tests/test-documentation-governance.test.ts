@@ -39,14 +39,44 @@ test("root docs declare their maintained role and point to the documentation map
   const claude = read(ROOT_DOCS.claude);
   const positionPresets = read(ROOT_DOCS.positionPresets);
 
+  assert.match(readme, /Classification: current/, "README must declare its documentation class");
+  assert.match(readme, /Update trigger:/, "README must declare when it changes");
   assert.match(readme, /docs\/index\.md/, "README must point agents to the read-first index");
   assert.match(readme, /docs\/documentation-map\.md/, "README must point to the documentation map");
   assert.match(readme, /docs\/repo-inventory\.md/, "README must point to generated inventory");
+  for (const maintainedSource of [
+    ".env.example",
+    "docs/local-verification.md",
+    "docs/runbooks/config-runtime-assets.md",
+    "docs/agent-api.md",
+    "docs/api/README.md",
+    "docs/workflow.api.json",
+    "src/server/mcp/server.ts",
+    "DESIGN.md",
+    "docs/ui/README.md",
+    "docs/prisma-provider-matrix.md",
+    "docs/prisma-schema-compatibility.md",
+    "docs/worker-boundaries.md",
+    "AGENTS.md",
+  ]) {
+    assert.match(readme, new RegExp(maintainedSource.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `README must route ${maintainedSource} readers to the maintained source`);
+  }
 
   for (const feature of ["generation", "training", "review", "export", "Comfy runtime", "Agent API", "MCP"]) {
     assert.match(readme, new RegExp(feature, "i"), `README feature map must mention ${feature}`);
   }
   for (const staleReadmeClaim of [
+    /##\s*📱?\s*页面一览/,
+    /##\s*📁?\s*项目结构/,
+    /###\s*环境变量/,
+    /##\s*🔧?\s*Workflow 模板系统/,
+    /###\s*图片生命周期/,
+    /\/projects\/:projectId\/\*\*/,
+    /AUTO_CENSOR_PYTHON_CMD/,
+    /LOG_ENABLE_FILE/,
+    /\|\s*入口\s*\|\s*当前路径\s*\|\s*功能\s*\|/,
+    /src\/app\/\s*# Next\.js App Router/,
+    /comfyui-remote\/\n├──/,
     /7 个专为 AI Agent/,
     /11 个 Tools/,
     /6 个 Resources/,
