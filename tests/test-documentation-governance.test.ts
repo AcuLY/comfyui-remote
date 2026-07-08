@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import test from "node:test";
 
 const ROOT_DOCS = {
@@ -33,6 +34,51 @@ function read(path: string): string {
   return readFileSync(path, "utf8");
 }
 
+function listFiles(root: string, fileName: string): string[] {
+  const files: string[] = [];
+
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    const path = join(root, entry.name);
+
+    if (entry.isDirectory()) {
+      files.push(...listFiles(path, fileName));
+      continue;
+    }
+
+    if (entry.name === fileName) {
+      files.push(path);
+    }
+  }
+
+  return files.sort();
+}
+
+function appRouteFromPage(path: string): string {
+  const rel = path.replace(/^src\/app\//, "").replace(/\/page\.tsx$/, "");
+
+  if (rel === "" || rel === "page.tsx") {
+    return "/";
+  }
+
+  return `/${rel
+    .replace(/\[\[\.\.\.([^\]]+)\]\]/g, ":$1*")
+    .replace(/\[\.\.\.([^\]]+)\]/g, ":$1*")
+    .replace(/\[([^\]]+)\]/g, ":$1")}`;
+}
+
+function apiRouteFromRouteFile(path: string): string {
+  const rel = path.replace(/^src\/app\/api\//, "").replace(/\/route\.ts$/, "");
+
+  return `/api/${rel
+    .replace(/\[\[\.\.\.([^\]]+)\]\]/g, ":$1...")
+    .replace(/\[\.\.\.([^\]]+)\]/g, ":$1...")
+    .replace(/\[([^\]]+)\]/g, ":$1")}`;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 test("root docs declare their maintained role and point to the documentation map", () => {
   const readme = read(ROOT_DOCS.readme);
   const design = read(ROOT_DOCS.design);
@@ -62,7 +108,7 @@ test("root docs declare their maintained role and point to the documentation map
     assert.match(readme, new RegExp(maintainedSource.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `README must route ${maintainedSource} readers to the maintained source`);
   }
 
-  for (const feature of ["生图", "训练", "审核", "导出", "Comfy 运行态", "智能体接口", "MCP"]) {
+  for (const feature of ["生图", "训练", "审核", "导出", "Comfy 运行态", "Agent API", "MCP"]) {
     assert.match(readme, new RegExp(feature, "i"), `README feature map must mention ${feature}`);
   }
   for (const staleReadmeClaim of [
@@ -70,26 +116,16 @@ test("root docs declare their maintained role and point to the documentation map
     /Keep README stable/,
     /Do not add exact page inventories/,
     /Re-run `npx tsx scripts\/docs\/generate-repo-inventory\.ts`/,
-    /##\s*📱?\s*页面一览/,
-    /##\s*📁?\s*项目结构/,
-    /###\s*环境变量/,
-    /##\s*🔧?\s*Workflow 模板系统/,
-    /###\s*图片生命周期/,
-    /\/projects\/:projectId\/\*\*/,
-    /AUTO_CENSOR_PYTHON_CMD/,
-    /LOG_ENABLE_FILE/,
-    /\|\s*入口\s*\|\s*当前路径\s*\|\s*功能\s*\|/,
-    /src\/app\/\s*# Next\.js App Router/,
-    /comfyui-remote\/\n├──/,
     /7 个专为 AI Agent/,
-    /11 个 Tools/,
     /6 个 Resources/,
-    /list_section_blocks|add_section_block|update_section_block|remove_section_block|reorder_section_blocks/,
     /\/settings\/workflows/,
     /\/settings\/templates/,
     /\/assets\/prompts/,
     /\|\s*回收站\s*\|\s*`\/trash`/,
     /IMAGE_BASE_DIR/,
+    /AUTO_CENSOR_PYTHON_CMD`\s*\|\s*否\s*\|\s*`python3`/,
+    /LOG_ENABLE_FILE/,
+    /config\/workflows\/\*\.json/,
   ]) {
     assert.doesNotMatch(readme, staleReadmeClaim, `README must not keep stale claim ${staleReadmeClaim}`);
   }
@@ -102,6 +138,64 @@ test("root docs declare their maintained role and point to the documentation map
 
   assert.match(claude, /AGENTS\.md is the source of truth/);
   assert.match(positionPresets, /Classification: active product prompt reference/);
+});
+
+test("README current route and MCP facts match source", () => {
+  const readme = read(ROOT_DOCS.readme);
+  const routeFiles = listFiles("src/app/api", "route.ts");
+  const pageRoutes = listFiles("src/app", "page.tsx").map(appRouteFromPage);
+  const mcpSource = read("src/server/mcp/server.ts");
+
+  const apiEndpoints = routeFiles.flatMap((path) => {
+    const methods = [...read(path).matchAll(/export async function (GET|POST|PUT|PATCH|DELETE)/g)].map((match) => match[1]);
+    return methods.map((method) => ({ method, route: apiRouteFromRouteFile(path) }));
+  });
+  const countByPrefix = (predicate: (route: string) => boolean) =>
+    apiEndpoints.filter(({ route }) => predicate(route)).length;
+  const agentEndpoints = apiEndpoints.filter(({ route }) => route.startsWith("/api/agent/"));
+  const toolNames = [...mcpSource.matchAll(/server\.tool\(\s*"([^"]+)"/g)].map((match) => match[1]);
+  const resourceUris = [...mcpSource.matchAll(/new ResourceTemplate\("([^"]+)"/g)].map((match) => match[1]);
+
+  assert.match(readme, new RegExp(`当前源码里有 ${pageRoutes.length} 个 .*page\\.tsx`));
+  assert.match(readme, new RegExp(`当前源码里有 ${routeFiles.length} 个 .*route\\.ts`));
+  assert.match(readme, new RegExp(`导出 ${apiEndpoints.length} 个 HTTP 方法入口`));
+
+  for (const route of [
+    "/",
+    "/queue/:runId",
+    "/projects/:projectId/sections/:sectionId/results",
+    "/assets/templates/:templateId/sections/:sectionIndex",
+    "/training/:route*",
+    "/design-demos/:route*",
+  ]) {
+    assert.ok(pageRoutes.includes(route), `${route} must be present in source page routes`);
+    assert.match(readme, new RegExp(escapeRegExp(route)), `${route} must be listed in README page overview`);
+  }
+
+  const areaCounts = [
+    ["`/api/agent/**`", countByPrefix((route) => route.startsWith("/api/agent/"))],
+    ["`/api/training/**`", countByPrefix((route) => route.startsWith("/api/training/"))],
+    ["`/api/preset-library/**`", countByPrefix((route) => route.startsWith("/api/preset-library/"))],
+    ["`/api/queue/**` / `/api/queue-data`", countByPrefix((route) => route.startsWith("/api/queue"))],
+  ] as const;
+  for (const [label, count] of areaCounts) {
+    assert.match(readme, new RegExp(`${escapeRegExp(label)}\\s*\\|\\s*${count}\\s*\\|`), `${label} count must match source`);
+  }
+
+  assert.match(readme, new RegExp(`/api/agent/\\*\\*.*${agentEndpoints.length} 个 HTTP 方法入口`, "s"));
+  for (const { method, route } of agentEndpoints) {
+    assert.match(readme, new RegExp(`\\|\\s*\\\`${method}\\\`\\s*\\|\\s*\\\`${escapeRegExp(route)}\\\``), `${method} ${route} must be documented in README`);
+  }
+
+  assert.match(readme, new RegExp(`当前 MCP 注册 ${toolNames.length} 个 tools`));
+  for (const toolName of toolNames) {
+    assert.match(readme, new RegExp(`\\\`${toolName}\\\``), `${toolName} must be listed in README`);
+  }
+
+  assert.match(readme, new RegExp(`当前 MCP 注册 ${resourceUris.length} 个 resources`));
+  for (const uri of resourceUris) {
+    assert.match(readme, new RegExp(`\\\`${escapeRegExp(uri)}\\\``), `${uri} must be listed in README`);
+  }
 });
 
 test("agent API docs stay synchronized with MCP registry and current trash surface", () => {
