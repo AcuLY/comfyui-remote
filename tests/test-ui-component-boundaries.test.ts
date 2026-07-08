@@ -98,12 +98,14 @@ test("dialog and cascade pickers keep labeled modal surfaces and portal owners",
 });
 
 test("copy buttons and toast text behavior stay under regression tests", () => {
-  const toastCopyTest = readSource("tests/test-toast-copy-button.test.ts");
   const notificationCopyTest = readSource("tests/test-notification-copy-button.test.ts");
   const appShell = readSource("src/components/app-shell.tsx");
 
-  assert.match(toastCopyTest, /global notification toasts expose a copy button/, "toast copy behavior should have a regression test");
   assert.match(notificationCopyTest, /app shell mounts the notification copy button enhancement/, "notification copy mounting should have a regression test");
+  assert.match(notificationCopyTest, /querySelectorAll/, "notification copy tests should cover Sonner toast discovery");
+  assert.match(notificationCopyTest, /cloneNode/, "notification copy tests should protect copied toast text extraction");
+  assert.match(notificationCopyTest, /navigator/, "notification copy tests should protect Clipboard API usage");
+  assert.match(notificationCopyTest, /execCommand/, "notification copy tests should protect the fallback copy path");
   assert.match(notificationCopyTest, /copy button needs an accessible label/, "copy-button accessibility labels should be tested");
   assert.match(appShell, /toast: "!pr-20"/, "toast layout should reserve room for copy and close controls");
 });

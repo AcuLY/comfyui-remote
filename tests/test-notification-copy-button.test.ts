@@ -32,8 +32,10 @@ test("notification copy enhancement inserts a copy button immediately before Son
 
   assert.match(source, /querySelectorAll(?:<HTMLElement>)?\(["']\[data-sonner-toast\]["']\)/, "component should inspect Sonner toast nodes");
   assert.match(source, /querySelector(?:<HTMLElement>)?\(["']\[data-close-button\]["']\)/, "component should find each Sonner close button");
+  assert.match(source, /data-notification-copy-button/, "copy buttons should be marked for deduping");
   assert.match(source, /insertBefore\(copyButton,\s*closeButton\)/, "copy button should sit immediately before the close button in DOM order");
   assert.match(source, /aria-label",\s*"复制通知信息"/, "copy button needs an accessible label");
+  assert.match(source, /cloneNode\(true\)/, "copied text should clone toast contents before filtering controls");
   assert.match(source, /navigator\.clipboard\.writeText/, "copy button should copy notification text to the clipboard");
   assert.match(source, /const copied = document\.execCommand\("copy"\)/, "fallback copy should check whether the browser copy command succeeded");
   assert.match(source, /if \(!copied\) \{[\s\S]*Clipboard copy failed/, "fallback copy should surface copy failures instead of showing a false success state");

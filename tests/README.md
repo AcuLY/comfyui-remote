@@ -20,6 +20,8 @@ Source contract tests inspect file text to protect architecture boundaries that 
 
 Tests named `test-*-source`, `test-*-boundary`, `test-*-governance`, and source-scanning sections inside broader route or UI suites are source contract tests. Runtime behavior tests should import modules or call services/routes directly instead of scanning source text.
 
+Default `npm test` also runs colocated design-demo regression tests under `src/app/design-demos/**/*.test.{ts,mjs}` and `src/components/design-demo-ui/**/*.test.{ts,mjs}`. Keep these tests near their source modules when their value comes from local component, route, or CSS contracts; move them to `tests/` only when they become repo-level contracts.
+
 ## Route And Environment Order
 
 Route tests must import route modules only after test env vars are set. Set `AUTH_TOKEN`, `DB_PROVIDER`, `DATABASE_URL`, or other required process env values before `await import("../src/app/api/.../route")`, and restore changed env values in `finally` blocks when the test mutates global process state.

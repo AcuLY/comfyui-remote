@@ -12,3 +12,4 @@ Current mapped sources:
 - `docs/ui/component-boundaries.md`
 - `docs/ui/design-demo-governance.md`
 - `docs/ui/legacy-static-design-demos.md`
+- `docs/ui/project-page-boundaries.md`
