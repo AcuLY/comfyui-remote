@@ -118,14 +118,28 @@ test("buildPhase1ReviewerPrompt isolates metadata as JSON data instead of instru
 });
 
 test("resolvePhase1ReviewerImagePath resolves project-root-relative filePath and thumbPath", () => {
-  const projectRoot = path.join("/tmp", "phase1-project-root");
+  const projectRoot = path.join(tmpdir(), "phase1-project-root");
   const row = labeledRow({ filePath: "outputs/a.png", thumbPath: "thumbs/a.webp" });
+  const absoluteImagePath = path.resolve(projectRoot, "absolute/a.jpg");
 
   assert.equal(resolvePhase1ReviewerImagePath(row, projectRoot, "filePath"), path.join(projectRoot, "outputs/a.png"));
   assert.equal(resolvePhase1ReviewerImagePath(row, projectRoot, "thumbPath"), path.join(projectRoot, "thumbs/a.webp"));
   assert.equal(
-    resolvePhase1ReviewerImagePath(labeledRow({ filePath: "/absolute/a.jpg" }), projectRoot, "filePath"),
-    "/absolute/a.jpg",
+    resolvePhase1ReviewerImagePath(labeledRow({ filePath: absoluteImagePath }), projectRoot, "filePath"),
+    path.normalize(absoluteImagePath),
+  );
+});
+
+test("resolvePhase1ReviewerImagePath handles Windows drive paths on native Windows and WSL hosts", () => {
+  const projectRoot = path.join(tmpdir(), "phase1-project-root");
+  const windowsImagePath = String.raw`C:\Users\phase1\image.png`;
+  const expectedPath = process.platform === "win32"
+    ? path.normalize(windowsImagePath)
+    : path.join("/mnt", "c", "Users", "phase1", "image.png");
+
+  assert.equal(
+    resolvePhase1ReviewerImagePath(labeledRow({ filePath: windowsImagePath }), projectRoot, "filePath"),
+    expectedPath,
   );
 });
 

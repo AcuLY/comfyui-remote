@@ -637,6 +637,8 @@ function safeErrorSummary(error: unknown): string {
 }
 
 function windowsPathToWslPath(rawPath: string): string {
+  if (process.platform === "win32") return rawPath;
+
   const match = rawPath.match(/^([A-Za-z]):[\\/](.*)$/);
   if (!match) return rawPath;
   const drive = match[1].toLowerCase();
