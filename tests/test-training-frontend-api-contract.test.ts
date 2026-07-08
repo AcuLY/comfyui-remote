@@ -65,7 +65,7 @@ async function listRouteFiles(dir: string): Promise<string[]> {
 
 function routeFileToTrainingApiPath(filePath: string) {
   const root = join(process.cwd(), "src", "app", "api", "training");
-  const routeRelativePath = relative(root, filePath);
+  const routeRelativePath = relative(root, filePath).replace(/\\/g, "/");
   if (routeRelativePath === "route.ts") return "/api/training";
 
   const routePath = routeRelativePath.replace(/\/route\.ts$/, "");

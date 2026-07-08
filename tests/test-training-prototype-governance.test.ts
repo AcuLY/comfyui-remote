@@ -19,7 +19,7 @@ function sourceFilesUnder(path: string): string[] {
   if (!existsSync(absolutePath)) return [];
 
   return readdirSync(absolutePath).flatMap((entry) => {
-    const childPath = join(path, entry);
+    const childPath = [path, entry].join("/");
     const childAbsolutePath = join(repoRoot, childPath);
     const stat = statSync(childAbsolutePath);
     if (stat.isDirectory()) return sourceFilesUnder(childPath);

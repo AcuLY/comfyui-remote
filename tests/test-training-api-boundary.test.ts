@@ -66,7 +66,7 @@ function listTextFiles(root: string) {
 }
 
 function relativePath(path: string) {
-  return relative(repoRoot, path);
+  return relative(repoRoot, path).replace(/\\/g, "/");
 }
 
 function sourceContainsToken(source: string, token: string) {

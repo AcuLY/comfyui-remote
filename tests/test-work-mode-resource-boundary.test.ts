@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import test from "node:test";
 
 import {
@@ -113,14 +113,14 @@ function findMatchingSources(paths: string[], pattern: RegExp) {
   return paths
     .map((path) => ({ path, source: readFileSync(path, "utf8") }))
     .filter(({ source }) => pattern.test(source))
-    .map(({ path }) => path.replace(`${repoRoot}/`, ""));
+    .map(({ path }) => relative(repoRoot, path).replace(/\\/g, "/"));
 }
 
 function findSourcesWithPredicate(paths: string[], predicate: (source: string) => boolean) {
   return paths
     .map((path) => ({ path, source: readFileSync(path, "utf8") }))
     .filter(({ source }) => predicate(source))
-    .map(({ path }) => path.replace(`${repoRoot}/`, ""));
+    .map(({ path }) => relative(repoRoot, path).replace(/\\/g, "/"));
 }
 
 function sourceFilesFromRoots(...roots: string[]) {
@@ -542,7 +542,7 @@ test("module-owned frontend pages do not import or link to the other module's re
 
 test("app page containers keep server imports behind API routes or action entrypoints", () => {
   const appPageFiles = sourceFilesFromRoots("src/app").filter((path) => {
-    const relativePath = path.replace(`${repoRoot}/`, "");
+    const relativePath = relative(repoRoot, path).replace(/\\/g, "/");
     if (relativePath.startsWith("src/app/api/")) return false;
     return !/\/(?:actions(?:-[a-z]+)?|server-data)\.ts$/.test(relativePath);
   });

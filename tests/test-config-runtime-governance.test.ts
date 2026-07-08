@@ -25,7 +25,9 @@ function gitLsFiles(paths: readonly string[]): string[] {
 function rgFiles(pattern: string, paths: readonly string[]): string[] {
   try {
     const output = execFileSync("rg", ["-l", pattern, ...paths], { encoding: "utf8" }).trim();
-    return output ? output.split("\n").sort((left, right) => left.localeCompare(right)) : [];
+    return output
+      ? output.split("\n").map((filePath) => filePath.replace(/\\/g, "/")).sort((left, right) => left.localeCompare(right))
+      : [];
   } catch (error) {
     const status = (error as { status?: number }).status;
     if (status === 1) return [];

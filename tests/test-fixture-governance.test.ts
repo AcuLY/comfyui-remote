@@ -103,6 +103,7 @@ test("better-sqlite3 direct setup stays behind the shared sqlite fixture", () =>
   })
     .trim()
     .split("\n")
+    .map((filePath) => filePath.replace(/\\/g, "/"))
     .filter(Boolean)
     .filter((filePath) => filePath !== "tests/fixtures/sqlite-db.ts")
     .filter((filePath) => filePath !== "tests/test-fixture-governance.test.ts")
