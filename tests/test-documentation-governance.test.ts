@@ -39,8 +39,8 @@ test("root docs declare their maintained role and point to the documentation map
   const claude = read(ROOT_DOCS.claude);
   const positionPresets = read(ROOT_DOCS.positionPresets);
 
-  assert.match(readme, /Classification: current/, "README must declare its documentation class");
-  assert.match(readme, /Update trigger:/, "README must declare when it changes");
+  assert.match(readme, /分类：当前文档/, "README must declare its documentation class");
+  assert.match(readme, /更新触发：/, "README must declare when it changes");
   assert.match(readme, /docs\/index\.md/, "README must point agents to the read-first index");
   assert.match(readme, /docs\/documentation-map\.md/, "README must point to the documentation map");
   assert.match(readme, /docs\/repo-inventory\.md/, "README must point to generated inventory");
@@ -62,10 +62,14 @@ test("root docs declare their maintained role and point to the documentation map
     assert.match(readme, new RegExp(maintainedSource.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `README must route ${maintainedSource} readers to the maintained source`);
   }
 
-  for (const feature of ["generation", "training", "review", "export", "Comfy runtime", "Agent API", "MCP"]) {
+  for (const feature of ["生图", "训练", "审核", "导出", "Comfy 运行态", "智能体接口", "MCP"]) {
     assert.match(readme, new RegExp(feature, "i"), `README feature map must mention ${feature}`);
   }
   for (const staleReadmeClaim of [
+    /##\s*文档规则/,
+    /Keep README stable/,
+    /Do not add exact page inventories/,
+    /Re-run `npx tsx scripts\/docs\/generate-repo-inventory\.ts`/,
     /##\s*📱?\s*页面一览/,
     /##\s*📁?\s*项目结构/,
     /###\s*环境变量/,

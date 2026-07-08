@@ -1,30 +1,30 @@
 # ComfyUI Remote
 
-Classification: current
-Update trigger: product entrypoint, setup path, maintained source map, or documentation ownership changes.
+分类：当前文档
+更新触发：产品入口、启动路径、维护来源映射或文档归属发生变化。
 
-ComfyUI Remote is a mobile-first management app for ComfyUI generation work. It organizes generation projects, review queues, asset libraries, training workflows, Comfy runtime control, and automation surfaces for agents.
+ComfyUI Remote 是面向移动端优先使用的 ComfyUI 管理后台，用来组织生图项目、审核队列、素材库、训练流程、Comfy 运行态控制，以及给智能体使用的自动化接口。
 
-This README is the human entrypoint. Agents should start with [`docs/index.md`](docs/index.md), then use [`docs/documentation-map.md`](docs/documentation-map.md) and the generated [`docs/repo-inventory.md`](docs/repo-inventory.md) to find the current source of truth. Do not treat this file as the route, API, environment-variable, or repository-structure inventory.
+这个文件只作为人的入口页。智能体应先读 [`docs/index.md`](docs/index.md)，再通过 [`docs/documentation-map.md`](docs/documentation-map.md) 和生成的 [`docs/repo-inventory.md`](docs/repo-inventory.md) 找到当前事实来源。不要把这里当作路由、接口、环境变量或仓库结构清单。
 
-## What This App Owns
+## 当前边界
 
-- Generation workspace: projects, sections, prompt blocks, LoRA and sampler parameters, templates, and preset-driven batch runs.
-- Review and export: queue review, image keep/discard decisions, lightbox review, result galleries, and export workflows.
-- Asset library: model files, LoRA files, preset categories, preset folders, preset variants, preset groups, and project templates.
-- Training workspace: LoRA training projects, dataset revision, generation tasks, training runs, worker queues, presets, and templates.
-- Comfy runtime: ComfyUI target configuration, queue/worker execution, process monitoring, generated image handling, thumbnails, and optional auto-censor post-processing.
-- Agent API and MCP: high-level `/api/agent/**` workflows, broader `/api/**` automation routes, and the streamable HTTP MCP server at `/api/mcp`.
+- 生图工作区：项目、小节、提示词块、LoRA 与采样参数、模板，以及基于预设的批量运行。
+- 审核与导出：队列审核、图片保留或废弃、放大查看、结果图库和导出流程。
+- 素材库：模型文件、LoRA 文件、预设分类、预设文件夹、预设变体、预设组和项目模板。
+- 训练工作区：LoRA 训练项目、数据集修订、生成任务、训练运行、工作队列、训练预设和训练模板。
+- Comfy 运行态：ComfyUI 目标配置、队列与执行器、进程监控、生成图片管理、缩略图，以及可选的自动打码后处理。
+- 智能体接口与 MCP：高层 `/api/agent/**` 工作流、完整 `/api/**` 自动化路由，以及 `/api/mcp` 的可流式 HTTP MCP 服务。
 
-## Start Locally
+## 本地启动
 
-Prerequisites:
+前置要求：
 
 - Node.js 20+
-- A reachable ComfyUI instance, normally `http://127.0.0.1:8188`
-- PostgreSQL through Docker, or SQLite for a lighter local setup
+- 可访问的 ComfyUI 实例，通常是 `http://127.0.0.1:8188`
+- 使用 Docker 提供 PostgreSQL，或使用 SQLite 做轻量本地环境
 
-PostgreSQL path:
+PostgreSQL 路径：
 
 ```bash
 cp .env.example .env
@@ -34,7 +34,7 @@ npm run db:bootstrap
 npm run dev
 ```
 
-SQLite path:
+SQLite 路径：
 
 ```bash
 cp .env.example .env
@@ -43,41 +43,34 @@ DB_PROVIDER=sqlite DATABASE_URL="file:./data/comfyui.db" npm run db:bootstrap:sq
 DB_PROVIDER=sqlite DATABASE_URL="file:./data/comfyui.db" npm run dev
 ```
 
-Open `http://localhost:3000` after the dev server starts. For auth, protected pages, ComfyUI checks, dev vs production service boundaries, and verification commands, use [`docs/local-verification.md`](docs/local-verification.md).
+开发服务启动后打开 `http://localhost:3000`。认证、受保护页面、ComfyUI 连通性、开发服务与生产服务边界、验证命令，请看 [`docs/local-verification.md`](docs/local-verification.md)。
 
-## Maintained Sources
+## 维护来源
 
-| Need | Current source |
+| 需要确认的内容 | 当前来源 |
 | --- | --- |
-| Documentation routing and classification | [`docs/index.md`](docs/index.md), [`docs/documentation-map.md`](docs/documentation-map.md), [`docs/repo-inventory.md`](docs/repo-inventory.md) |
-| Local setup and runtime config | [`.env.example`](.env.example), [`docs/local-verification.md`](docs/local-verification.md), [`docs/runbooks/config-runtime-assets.md`](docs/runbooks/config-runtime-assets.md) |
-| Agent API, route contracts, MCP, and workflow JSON | [`docs/agent-api.md`](docs/agent-api.md), [`docs/api/README.md`](docs/api/README.md), [`docs/workflow.api.json`](docs/workflow.api.json), [`src/server/mcp/server.ts`](src/server/mcp/server.ts) |
-| UI and product design direction | [`DESIGN.md`](DESIGN.md), [`docs/frontend-design-guide.md`](docs/frontend-design-guide.md), [`docs/ui/README.md`](docs/ui/README.md) |
-| Database and Prisma provider behavior | [`docs/prisma-provider-matrix.md`](docs/prisma-provider-matrix.md), [`docs/prisma-schema-compatibility.md`](docs/prisma-schema-compatibility.md), [`prisma/schema.prisma`](prisma/schema.prisma), [`prisma/schema.sqlite.prisma`](prisma/schema.sqlite.prisma) |
-| Training current implementation | [`src/app/training/[[...route]]/page.tsx`](src/app/training/[[...route]]/page.tsx), [`src/features/training`](src/features/training), [`src/server/services/training`](src/server/services/training), [`docs/prototypes/README.md`](docs/prototypes/README.md) |
-| Queue, worker, and deployment workflow | [`docs/worker-boundaries.md`](docs/worker-boundaries.md), [`AGENTS.md`](AGENTS.md), [`agent-rules`](agent-rules) |
+| 文档入口、分类和归属 | [`docs/index.md`](docs/index.md)、[`docs/documentation-map.md`](docs/documentation-map.md)、[`docs/repo-inventory.md`](docs/repo-inventory.md) |
+| 本地配置和运行时路径 | [`.env.example`](.env.example)、[`docs/local-verification.md`](docs/local-verification.md)、[`docs/runbooks/config-runtime-assets.md`](docs/runbooks/config-runtime-assets.md) |
+| 智能体接口、路由契约、MCP 和工作流 JSON | [`docs/agent-api.md`](docs/agent-api.md)、[`docs/api/README.md`](docs/api/README.md)、[`docs/workflow.api.json`](docs/workflow.api.json)、[`src/server/mcp/server.ts`](src/server/mcp/server.ts) |
+| 界面与产品设计方向 | [`DESIGN.md`](DESIGN.md)、[`docs/frontend-design-guide.md`](docs/frontend-design-guide.md)、[`docs/ui/README.md`](docs/ui/README.md) |
+| 数据库和 Prisma Provider 行为 | [`docs/prisma-provider-matrix.md`](docs/prisma-provider-matrix.md)、[`docs/prisma-schema-compatibility.md`](docs/prisma-schema-compatibility.md)、[`prisma/schema.prisma`](prisma/schema.prisma)、[`prisma/schema.sqlite.prisma`](prisma/schema.sqlite.prisma) |
+| 训练当前实现 | [`src/app/training/[[...route]]/page.tsx`](src/app/training/[[...route]]/page.tsx)、[`src/features/training`](src/features/training)、[`src/server/services/training`](src/server/services/training)、[`docs/prototypes/README.md`](docs/prototypes/README.md) |
+| 队列、执行器和部署流程 | [`docs/worker-boundaries.md`](docs/worker-boundaries.md)、[`AGENTS.md`](AGENTS.md)、[`agent-rules`](agent-rules) |
 
-## Common Commands
+## 常用命令
 
-| Command | Purpose |
+| 命令 | 用途 |
 | --- | --- |
-| `npm run dev` | Start the local Next.js dev server. |
-| `npm run build` | Build the production Next.js app. |
-| `npm run start` | Start the built production app. |
-| `npm run test` | Run the repository test suite. |
-| `npm run lint` | Run ESLint. |
-| `npm run db:bootstrap` | Initialize the PostgreSQL development database. |
-| `npm run db:bootstrap:sqlite` | Initialize the SQLite development database. |
-| `npm run training:workers` | Start real training worker processes. |
-| `npm run training:workers:mock` | Start mock training workers for local workflow checks. |
+| `npm run dev` | 启动本地开发服务。 |
+| `npm run build` | 构建生产应用。 |
+| `npm run start` | 启动已构建的生产应用。 |
+| `npm run test` | 运行仓库测试。 |
+| `npm run lint` | 运行 ESLint。 |
+| `npm run db:bootstrap` | 初始化 PostgreSQL 开发数据库。 |
+| `npm run db:bootstrap:sqlite` | 初始化 SQLite 开发数据库。 |
+| `npm run training:workers` | 启动真实训练工作进程。 |
+| `npm run training:workers:mock` | 启动用于本地流程检查的模拟训练工作进程。 |
 
-## Documentation Policy
+## 许可
 
-- Keep README stable and short. It should route readers to maintained sources rather than duplicate volatile facts.
-- Do not add exact page inventories, API endpoint counts, MCP tool counts, environment-variable default tables, or large repository trees here.
-- When behavior changes, update the owning source from the table above and adjust [`docs/index.md`](docs/index.md) or [`docs/documentation-map.md`](docs/documentation-map.md) only if ownership changes.
-- Re-run `npx tsx scripts/docs/generate-repo-inventory.ts` when tracked files are added, removed, renamed, or moved.
-
-## License
-
-Private project.
+私有项目。
