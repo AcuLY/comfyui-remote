@@ -8,16 +8,22 @@ the design can continue on another device without relying on conversation contex
 
 - Branch: `codex/harness-doc-governance-handoff-20260710`
 - Base commit: `74080ce3` (`docs: specify documentation governance rebuild`)
+- First handoff commit: `d5ff645c` (`docs: preserve harness design handoff`), pushed
 - Runtime/deployment: not touched
 - Formal child apply: not started
 - Handoff evidence: non-normative until incorporated into the active OpenSpec artifacts
+- Target information architecture: approved
+- Exact child artifact digest approval: not recorded; parent tasks 2.6 and 2.7 remain open
+- Parent OpenSpec pin, approval-record, and stage-order prerequisites: not implemented
 
 Resume by reading, in order:
 
 1. `openspec/changes/establish-agent-harness/{proposal.md,specs/agent-harness/spec.md,design.md,tasks.md}`
 2. `openspec/changes/rebuild-documentation-governance/{proposal.md,specs/documentation-governance/spec.md,design.md,tasks.md}`
 3. this handoff
-4. `evidence/pretooluse-file-access-poc/README.md`
+4. [`session-materials/README.md`](session-materials/README.md), then its decision and
+   information-architecture drafts
+5. [`pretooluse-file-access-poc/README.md`](pretooluse-file-access-poc/README.md)
 
 ## Program goal and boundaries
 
@@ -39,6 +45,18 @@ writes, ports, stores, identities, and teardown lifecycle.
 OpenSpec is the sole significant-change lifecycle. There is no parallel `PLANS.md`,
 ExecPlan, Superpowers plan, or hand-maintained implementation-plan system. This file
 is a handoff/evidence record, not another plan authority.
+
+## Decision status matrix
+
+| Topic | Status | Continuation rule |
+| --- | --- | --- |
+| Harness program order and OpenSpec-only significant-change lifecycle | Confirmed | Preserve documentation governance, observability, engineering standards, then convergence. |
+| Documentation information architecture, authority split, archive/prototype removal, and deferred directories | Confirmed target | The exact written child artifacts still require digest-bound review before apply. |
+| Fast/full docs checks, diagnostic levels, `contract`/`review`, and detailed parser semantics | Audit proposal, not yet formal | Reconcile with the current child spec/design/tasks before seeking artifact approval. |
+| Explicit `$docs-audit` Skill; no audit rules in `AGENTS.md`; no controlled `docs:read` or docs MCP gateway | Confirmed interaction choices | Resolve the remaining Skill-versus-runbook artifact conflict before apply. |
+| Coarse, offline PreToolUse path-match experiment and data isolation | Confirmed experiment boundary | Treat as attempted-access evidence only; production design and stage ownership remain open. |
+| Impeccable installation and schema/tool coupling | Deferred independent change | Do not install or reshape root `DESIGN.md` in this child. |
+| Observability, engineering standards, and final convergence implementation details | Not yet designed | Present each stage's fresh repository-validated design to the user before its artifacts/apply. |
 
 ## Confirmed documentation architecture decisions
 
@@ -74,11 +92,13 @@ that must not be lost are:
 - Impeccable installation, generated files, hooks, detectors, and root `DESIGN.md`
   schema conversion remain a later independent OpenSpec change.
 
-The ignored repository-understanding drafts remain useful factual input but are not
-tracked truth:
+The original ignored drafts have now been preserved under tracked, non-normative
+evidence so another device receives the complete factual and decision inputs:
 
-- `.tmp/repo-understanding-deep-2026-07-08.md`
-- `.tmp/repo-understanding-2026-07-08.md`
+- [`session-materials/harness-design-decisions-2026-07-10.md`](session-materials/harness-design-decisions-2026-07-10.md)
+- [`session-materials/harness-docs-ia-draft-2026-07-10.md`](session-materials/harness-docs-ia-draft-2026-07-10.md)
+- [`session-materials/repo-understanding-deep-2026-07-08.md`](session-materials/repo-understanding-deep-2026-07-08.md)
+- [`session-materials/repo-understanding-2026-07-08.md`](session-materials/repo-understanding-2026-07-08.md)
 
 Every claim migrated from them must be revalidated against code, schemas, tests,
 runtime evidence when required, and Git history. Uncertain current behavior or product
@@ -109,6 +129,15 @@ child artifacts:
 - the required documentation job runs on every protected merge path without a docs-only
   path filter because source changes can invalidate documentation contracts.
 
+The formal reconciliation still needs to define governed scope and exclusions (including
+OpenSpec, project skills, `src/**.md`, and testing documentation), exact fast-to-full
+escalation rules, the `contract`/`review` disposition carrier, GFM anchor and code-block
+semantics, legacy live-reference parsing, external-link behavior, diagnostic exit codes
+`0/1/2`, and the difference between local before/after non-writing proof and clean-CI
+absolute cleanliness. Warnings may cover only heuristic facts that cannot be proved
+deterministically; they must not downgrade an existing required contract. Every warning
+and semantic finding must receive an explicit disposition before stage acceptance.
+
 The repository currently has no `docs:check` script and no checked-in GitHub Actions
 workflow. The current repo-inventory test is already stale because the new OpenSpec
 files are not in its generated output. Existing generators write directly and need a
@@ -125,15 +154,24 @@ may call deterministic scope-selection and evidence scripts, but the semantic ju
 remains in the Skill workflow. Scheduled execution can be designed later without
 turning normal tasks into mandatory audit sessions.
 
+The existing proposal/spec/design/tasks still describe
+`docs/runbooks/documentation-audit.md` as the executable workflow. This conflicts with
+the confirmed Skill interaction and must be reconciled before artifact approval. A
+supporting runbook may remain reference material only if the Skill is unambiguously the
+single invocation surface. Although ordinary development does not automatically invoke
+the audit, documentation migration batches, archive/prototype deletion, authority
+cutovers, and final stage acceptance must explicitly run the approved semantic audit.
+
 Do not implement a custom controlled `docs:read` CLI or documentation MCP gateway. The
 user rejected that approach.
 
 ## File-access observability decision
 
-The metric semantics changed from "document read frequency" to the more defensible
-"repository file access frequency". The intended source is a coarse Codex
-`PreToolUse` hook that observes supported tool calls and records calls whose structured
-arguments or shell command contain paths resolving inside the current repository.
+The requested metric moved away from "document read frequency". The defensible PoC
+semantics are `file_access_attempt_total` or `pretooluse_path_match_total`: a coarse
+Codex `PreToolUse` hook observes supported tool calls and records calls whose structured
+arguments or shell command contain paths resolving inside the current repository. It
+does not prove that the tool succeeded or that a file was actually opened or understood.
 
 Requirements confirmed in conversation:
 
@@ -148,13 +186,18 @@ Requirements confirmed in conversation:
 
 The exact production directory names, retention, rotation, per-worktree identity,
 concurrency strategy, and whether this belongs to documentation governance or the later
-observability child remain open. Do not silently choose them during apply.
+observability child remain open. The current child explicitly excludes observability
+implementation. Decide ownership first; if it belongs to observability, keep this PoC
+only as future-child input and do not expand the current child's normative scope.
 
 ## PreToolUse spike result
 
-The spike in `evidence/pretooluse-file-access-poc/` was developed test-first in an
-ignored nested Git repository and then exercised with the installed
-`codex-cli 0.142.5`.
+The spike now preserved in
+[`pretooluse-file-access-poc/`](pretooluse-file-access-poc/README.md) was developed
+test-first in an ignored nested Git repository and then exercised with the installed
+`codex-cli 0.142.5`. The tracked directory is a sanitized copy; it deliberately excludes
+the nested `.git`, real logs/session hash, Python cache, mutated runtime files, and the
+original machine's trust entry.
 
 Unit verification:
 
@@ -208,6 +251,12 @@ Observed result:
 The successful run also proves that automatic `AGENTS.md` loading is not represented by
 this hook path: only supported tool calls were observed.
 
+The tracked evidence includes sanitized initial fixture files and exact source/config
+shapes. It is sufficient for the seven Python tests and offline aggregation. A fresh
+device still needs its own project-trust bootstrap and an account-available model for a
+manual Codex E2E. Windows was not tested, the POSIX hook has no `commandWindows`, and a
+deterministic one-command cross-platform assertion remains future work.
+
 ## Interpretation and limitations
 
 The PoC establishes feasibility, not production readiness.
@@ -245,13 +294,47 @@ Formal, already committed and pushed artifacts:
 - parent change: `openspec/changes/establish-agent-harness/**`
 - documentation child: `openspec/changes/rebuild-documentation-governance/**`
 - base commit: `74080ce3`
+- first handoff commit: `d5ff645c`
 
 New handoff branch artifacts:
 
 - this handoff;
+- the complete decision log, information-architecture draft, and both repository-
+  understanding drafts under `session-materials/**`;
 - non-normative hook source and tests;
 - exact hook configuration shape used by the spike;
+- sanitized fixture files used by the spike;
 - sanitized event and aggregate examples.
+
+## Verification baseline at handoff
+
+- Focused governance command:
+  `node --import tsx --test tests/test-documentation-governance.test.ts tests/test-repo-inventory.test.ts tests/test-prisma-schema-compatibility-doc.test.ts`.
+  It currently reports 16 passes and one expected pre-apply failure because
+  `docs/repo-inventory.md` does not include the new OpenSpec/evidence paths.
+- The complete `npm test` suite was not run for this evidence-only handoff.
+- Repository-pinned OpenSpec does not exist yet; parent task 1.1 remains open. Bootstrap
+  strict validation uses explicit `npx @fission-ai/openspec@1.5.0` only as temporary
+  evidence, not as the final reproducible integration. The completeness pass ran
+  `npx --yes @fission-ai/openspec@1.5.0 validate --all --strict --no-interactive` and
+  both active changes passed.
+- The preserved PoC ran all seven Python tests successfully and regenerated an offline
+  aggregate byte-identical to the sanitized expected file.
+- `npm run docs:check` and a checked-in documentation CI workflow do not exist yet.
+- No migration, generator rewrite, inventory regeneration, runtime check, deployment,
+  database operation, or `mypc` mutation was performed.
+
+## Known artifact conflicts to resolve before approval
+
+1. Make the explicitly invoked `$docs-audit` Skill the single execution surface, and
+   either demote the audit runbook to supporting reference or remove it.
+2. Reconcile audit-proposed warnings and `review` triggers with the current specification's
+   required changed-source contracts; do not turn deterministic blockers into warnings.
+3. Decide the PreToolUse PoC's stage ownership before changing any normative artifact.
+4. Use attempted-access/path-match naming consistently; never report real reads or
+   comprehension.
+5. Define the PoC's final archival or transfer disposition before the documentation child
+   is archived.
 
 No root documentation, `agent-rules/**`, current `docs/**`, product code, runtime service,
 database, deployment state, or `mypc` state was changed during this session.
@@ -259,15 +342,14 @@ database, deployment state, or `mypc` state was changed during this session.
 ## Recommended next actions after resume
 
 1. Review this handoff and the spike; do not treat sample code as approved production code.
-2. Decide whether file-access logging belongs in the current documentation child or is
+2. Decide whether PreToolUse path-match logging belongs in the current documentation child or is
    only an input to the later `build-agent-observability` child, preserving stage order.
 3. Decide the exact `$docs-audit` Skill contract: invocation syntax, supported scopes,
    evidence precedence, report location, user-escalation boundary, and scheduling owner.
 4. Decide offline log/store mechanics and retention after cross-platform concurrency and
    overhead tests.
-5. Revise the active OpenSpec artifacts to incorporate only the accepted decisions:
-   independent Skill audit, no `AGENTS.md` audit rule, no controlled read gateway, and
-   accurately qualified file-access telemetry.
+5. Revise the active OpenSpec artifacts only after resolving the conflicts above. If the
+   telemetry work belongs to observability, do not add it to the current child's scope.
 6. Run strict OpenSpec validation and present the exact revised artifacts for user review
    before apply.
 
