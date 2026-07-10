@@ -32,7 +32,7 @@ The approved program must start with documentation governance, preserve Training
 
 ### 1. Use one parent change and just-in-time child changes
 
-`establish-agent-harness` owns cross-stage invariants and stays active until all stages are complete. `rebuild-documentation-governance` is the planned first child, but it is not created while the target documentation information architecture is being co-designed. Its proposal, specs, design, and tasks are authored after that structure is approved. Observability, engineering standards, and final convergence receive detailed artifacts only after the preceding stage is accepted.
+`establish-agent-harness` owns cross-stage invariants and stays active until all stages are complete. `rebuild-documentation-governance` is the first child and was created only after the target documentation information architecture was approved. Its exact proposal, specs, design, and tasks still require user review before apply. Observability, engineering standards, and final convergence receive detailed artifacts only after the preceding stage is accepted.
 
 Each child change is verified and archived independently when its stage is accepted. The parent delta is a program completion contract: it is not partially synchronized into living specs, and it is archived only after the complete program is implemented. Current documentation records capabilities that have actually landed while the parent remains active.
 
@@ -93,7 +93,7 @@ The future system must be self-hosted and implementation-identical locally and o
 ## Program Data Flow
 
 1. Documentation-architecture discovery compares repository-specific target trees and produces an explicitly approved information architecture.
-2. The documentation-governance child is then fully specified from that approved structure and, when applied, produces verified living specs, historical migration records, and blocking documentation checks.
+2. The documentation-governance child is then fully specified from that approved structure and, when applied, reconstructs verified current documentation, deletes obsolete sources after extraction, preserves recovery through Git and OpenSpec archives, and enables blocking documentation checks.
 3. The observability stage reads that ownership map, proposes a fresh design, and produces agent-queryable runtime evidence and performance baselines.
 4. The engineering-standards stage uses the knowledge map and telemetry evidence to define repository-wide automated and manual rules.
 5. Final convergence updates maintained docs and living specs from implemented reality, validates all changes, and activates unified blocking CI.
@@ -129,7 +129,7 @@ The future system must be self-hosted and implementation-identical locally and o
 2. Compare repository-specific documentation structures and obtain explicit user approval of the target information architecture.
 3. Create `rebuild-documentation-governance` and write its complete proposal, specs, design, and tasks from that approved structure.
 4. Obtain user review of the exact written OpenSpec artifact revisions and record their approval.
-5. Create the detailed implementation plan for the OpenSpec foundation and documentation governance only.
+5. Complete and approve the documentation-governance child `tasks.md`; do not create a parallel ExecPlan or detailed implementation-plan file.
 6. Apply and accept documentation governance.
 7. Propose each later child change at its approved stage gate.
 8. Verify and archive the parent only after final convergence.
@@ -142,7 +142,7 @@ This parent change introduces OpenSpec as the future planning authority. It does
 
 ## Deferred Stage Decisions
 
-- Documentation directory structure: resolved with the user before complete documentation-governance specs, design, or tasks are authored.
+- Documentation directory structure: approved with the user on 2026-07-10 and formalized by `rebuild-documentation-governance`; later artifact edits still require exact-revision review before apply.
 - Observability technologies and budgets: resolved by the observability stage proposal after documentation governance is accepted.
 - Engineering tools and thresholds: resolved by the engineering-standards stage proposal after observability is accepted.
 - Final documentation and unified CI cutover details: resolved by the final convergence proposal.

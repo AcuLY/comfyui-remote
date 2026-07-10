@@ -6,13 +6,13 @@
 
 ## 2. Documentation Structure and Governance Specification Gate
 
-- [ ] 2.1 Reverify the current documentation inventory, authority map, module boundaries, generated artifacts, and historical surfaces needed to compare target structures.
-- [ ] 2.2 Present two or three repository-specific documentation information architectures with exact trees, ownership, routing, lifecycle, OpenSpec boundaries, and migration trade-offs.
-- [ ] 2.3 Obtain explicit user approval for the target tree before authoring complete documentation-governance specs, design, or tasks.
-- [ ] 2.4 Create `rebuild-documentation-governance` and author its complete proposal, specs, design, and tasks from the approved structure.
-- [ ] 2.5 Ensure the child routes significant future changes through the approved OpenSpec entrypoints and records the boundary in the repository agent map.
+- [x] 2.1 Reverify the current documentation inventory, authority map, module boundaries, generated artifacts, and historical surfaces needed to compare target structures.
+- [x] 2.2 Present two or three repository-specific documentation information architectures with exact trees, ownership, routing, lifecycle, OpenSpec boundaries, and migration trade-offs.
+- [x] 2.3 Obtain explicit user approval for the target tree before authoring complete documentation-governance specs, design, or tasks.
+- [x] 2.4 Create `rebuild-documentation-governance` and author its complete proposal, specs, design, and tasks from the approved structure.
+- [x] 2.5 Ensure the child routes significant future changes through the approved OpenSpec entrypoints and records the boundary in the repository agent map.
 - [ ] 2.6 Obtain user review of the exact child artifacts and record approval against their content digests.
-- [ ] 2.7 Create and approve the detailed implementation plan for the OpenSpec foundation and documentation governance only.
+- [ ] 2.7 Approve the child `tasks.md` as the only implementation task plan for the OpenSpec foundation and documentation-governance stage; do not create a parallel Plan artifact.
 - [ ] 2.8 Apply the documentation-governance child change in verified batches under its own tasks.
 - [ ] 2.9 Record user acceptance against the applied revision and verification evidence, then archive the child only after its blocking documentation gate is required and green.
 

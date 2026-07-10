@@ -30,7 +30,7 @@ None.
 
 ## Related Changes
 
-- `rebuild-documentation-governance` will be created only after the repository-specific documentation information architecture is approved.
+- `rebuild-documentation-governance` is the first child and is authored from the repository-specific documentation information architecture approved on 2026-07-10; its exact artifact revision still requires user review before apply.
 - `build-agent-observability` will be proposed only after documentation governance is accepted.
 - `enforce-engineering-standards` will be proposed only after the observability stage is accepted.
 
