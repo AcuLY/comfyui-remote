@@ -46,6 +46,28 @@ Each child change is verified and archived independently when its stage is accep
 
 OpenSpec owns artifact dependencies, its native status/validate/instructions/archive commands, the upstream agent apply/verify workflows, and generic recovery semantics. The repository adds checks only for explicit approval validity, documentation authority, deploy/queue safety, and telemetry isolation.
 
+The repository pins `@fission-ai/openspec` exactly in `package.json` and the lockfile and
+invokes the local binary through stable package scripts. A small, non-writing program gate
+uses `openspec/changes/establish-agent-harness/program.json` only for repository-specific
+parent/child stage ordering; it does not duplicate OpenSpec lifecycle state. Approval and
+acceptance records live under the parent program's `approvals/**` and `acceptances/**`
+directories. They bind an immutable full Git revision and the exact sorted proposal,
+`specs/**/*.md`, design, and tasks artifact set, then hash canonical Git blob bytes so Windows
+line-ending conversion cannot invalidate an otherwise identical revision. Candidate creation
+fails if a normative artifact differs from the named revision. The gate can print an approval
+candidate, but it never manufactures a user decision or performs apply, verify, or archive.
+
+The gate stores the raw digest of the approved `tasks.md` snapshot and a second semantic plan
+digest that normalizes only checkbox markers at already approved task positions. Apply may
+toggle those markers to record progress; any task text, identity, order, nesting, addition, or
+deletion changes the semantic digest and requires renewed approval.
+
+Because this repository gate does not yet exist, parent foundation tasks 1.1-1.4 use one
+bounded bootstrap path. The user must explicitly approve an immutable parent revision, those
+four tasks, and a decision reference before implementation. Once the gate passes, it writes
+and revalidates that bootstrap decision as a durable record. The exception cannot authorize
+the documentation child, later stages, or any additional parent work.
+
 **Rationale:** A parallel state machine would duplicate upstream behavior and drift as OpenSpec evolves.
 
 **Alternative considered:** Implement a custom harness lifecycle. Rejected as unnecessary and contrary to the requested OpenSpec adoption.
@@ -70,9 +92,13 @@ The order is documentation governance, observability, engineering standards, the
 
 ### 5. Require stage-specific approval
 
-Approval of the brainstormed program authorizes drafting the parent and first child artifacts; it does not authorize apply. Every child, including documentation governance, requires explicit user review of its exact proposal, spec, design, and tasks before apply. The approval record binds the change identifier, artifact content digests, approval scope, and decision reference. Any post-approval artifact content change invalidates the record and requires renewed approval.
+Approval of the brainstormed program authorizes drafting the parent and first child artifacts; it does not authorize apply. Every child, including documentation governance, requires explicit user review of its exact proposal, spec, design, and tasks before apply. The approval record binds the change identifier, artifact content digests, approval scope, and decision reference. Any post-approval semantic artifact content change invalidates the record and requires renewed approval.
 
 Planning approval and stage acceptance are distinct repository-specific gates around the upstream OpenSpec lifecycle. Acceptance is recorded only after the approved revision is applied, required verification evidence is presented, and the user explicitly accepts the stage. These gates do not introduce a competing generic change state machine.
+
+The exact approved tasks snapshot remains preserved even while apply records progress in the
+live `tasks.md`. Only checkbox-state transitions at pre-existing task positions are normalized
+for approval validity; every semantic plan edit requires renewed approval.
 
 **Rationale:** The user explicitly requires design confirmation before each later phase, and the relevant baseline will change after each accepted stage.
 
@@ -86,7 +112,13 @@ Before implementation, each child enumerates its governed scope, violation inven
 
 ### 7. Fix observability invariants now, defer implementation choices
 
-The future system must be self-hosted and implementation-identical locally and on `mypc`: the same versioned instrumentation, telemetry schema, stack components, and query semantics are used, with only environment-specific configuration. Local and production reads and writes are isolated, and every worktree receives its own ports, collector, telemetry stores, service identifiers, and teardown lifecycle. The concrete products, deployment packaging, sampling, retention, dashboards, and budgets remain child-stage decisions.
+The future system must be self-hosted and implementation-identical locally, in CI, and on `mypc`: the same versioned instrumentation, telemetry schema, stack components, and query semantics are used, with only environment-specific configuration. Local, CI, and production reads and writes are isolated, and every worktree receives its own ports, collector, telemetry stores, service identifiers, and teardown lifecycle. CI receives the same isolation treatment and fails closed if it is configured with production endpoints, credentials, identities, or storage. The concrete products, deployment packaging, sampling, retention, dashboards, and budgets remain child-stage decisions.
+
+The documentation child may preserve a sanitized PreToolUse path-match spike only as
+non-normative future-stage evidence. The observability child decides whether any equivalent
+signal should exist after fresh cross-platform, concurrency, retention, privacy, overhead,
+and isolation design. Until then it is described only as attempted path matching, never as a
+proven file read or comprehension metric.
 
 **Rationale:** These are program constraints, not vendor choices. They ensure local agent validation can prove production behavior without contaminating production data.
 
@@ -120,17 +152,18 @@ The future system must be self-hosted and implementation-identical locally and o
 - **Long time to first full harness** → Keep child stages independently reviewable and commit in small verified batches.
 - **OpenSpec upstream changes** → Pin the CLI/integration during phase 1 and update it through an explicit change.
 - **Parent/child relationship is repository-specific** → Add a narrow validation rule instead of replacing OpenSpec's lifecycle.
+- **Cross-platform digest drift** → Hash canonical Git blobs for an approved revision rather than line-ending-converted worktree bytes.
 - **Hard cutover exposes large legacy debt** → Inventory and size the debt before implementation, but do not preserve permanent exceptions.
 - **Later stages are underspecified today** → Treat their technology choices as deliberately deferred stage-gate decisions, not omissions in current specs.
 
 ## Migration Plan
 
-1. Commit the parent program artifacts after strict bootstrap validation with `@fission-ai/openspec` 1.5.0.
-2. Compare repository-specific documentation structures and obtain explicit user approval of the target information architecture.
-3. Create `rebuild-documentation-governance` and write its complete proposal, specs, design, and tasks from that approved structure.
-4. Obtain user review of the exact written OpenSpec artifact revisions and record their approval.
-5. Complete and approve the documentation-governance child `tasks.md`; do not create a parallel ExecPlan or detailed implementation-plan file.
-6. Apply and accept documentation governance.
+1. Commit and strictly validate the parent revision that defines the bounded foundation.
+2. Obtain explicit bootstrap approval for parent tasks 1.1-1.4 only, implement and verify the repository gate, then durably revalidate that decision.
+3. Compare repository-specific documentation structures and obtain explicit user approval of the target information architecture.
+4. Create `rebuild-documentation-governance` and write its complete proposal, specs, design, and tasks from that approved structure.
+5. Obtain user review of the exact written child artifacts and record their normal-gate approval.
+6. Apply and accept documentation governance without a parallel plan.
 7. Propose each later child change at its approved stage gate.
 8. Verify and archive the parent only after final convergence.
 

@@ -17,10 +17,18 @@ The repository SHALL establish the agent harness through ordered, independently 
 ### Requirement: Independent stage proposals and approval
 Every harness stage, including documentation governance, MUST be represented by its own OpenSpec proposal, specs, design, and tasks based on the current repository baseline, and MUST receive explicit user approval of the exact artifact revision before apply.
 
+The approval SHALL retain raw digests for the exact approved artifact snapshot and a semantic task-plan digest that normalizes only existing Markdown checkbox state. During apply, changing `[ ]` to `[x]` or back at an already approved task position MAY record progress without invalidating the plan; changing task text, order, identity, nesting, or adding/removing a task SHALL invalidate approval.
+
 #### Scenario: Stage approval is recorded
 - **WHEN** the user approves a child change for apply
 - **THEN** the approval record SHALL identify the change, artifact content digests, approval scope, and decision reference
 - **AND** planning approval SHALL NOT be treated as post-implementation acceptance
+
+#### Scenario: An approval candidate is generated
+- **WHEN** the repository prepares an exact-revision approval candidate
+- **THEN** it SHALL enumerate the sorted proposal, all specification deltas, design, and tasks from one immutable full Git revision
+- **AND** hash canonical Git blob bytes rather than line-ending-converted worktree bytes
+- **AND** refuse the candidate when any normative artifact differs from that revision
 
 #### Scenario: Stage artifacts are ready but not approved
 - **WHEN** a later-stage change has complete planning artifacts but no explicit user approval
@@ -30,6 +38,25 @@ Every harness stage, including documentation governance, MUST be represented by 
 - **WHEN** content in an approved proposal, spec, design, or task plan changes
 - **THEN** the previous approval SHALL be considered stale
 - **AND** the revised artifacts SHALL require new user approval
+
+#### Scenario: Approved task progress changes
+- **WHEN** apply changes only the checkbox state at an existing approved task position
+- **THEN** the raw tasks artifact SHALL differ from the approved snapshot
+- **BUT** the semantic task-plan digest SHALL remain valid
+- **AND** any other tasks content change SHALL still make approval stale
+
+### Requirement: One bounded bootstrap approval establishes the repository gate
+Before the repository-specific approval gate exists, parent foundation tasks 1.1 through 1.4 MUST receive explicit user approval bound to one immutable parent artifact revision, the bounded foundation scope, and a durable decision reference. This bootstrap approval SHALL authorize only repository-pinned OpenSpec, the approval/acceptance gate, the static stage manifest, and their tests; it SHALL NOT authorize the documentation child or any later-stage apply.
+
+#### Scenario: The foundation gate does not exist yet
+- **WHEN** parent foundation implementation is ready to begin
+- **THEN** the exact committed parent artifact revision and tasks 1.1 through 1.4 SHALL be presented for explicit user approval
+- **AND** implementation SHALL remain blocked until that decision exists
+
+#### Scenario: The repository gate becomes available
+- **WHEN** parent foundation tasks 1.1 through 1.4 are implemented and verified
+- **THEN** the bootstrap decision SHALL be written as a durable record and revalidated against its original source revision and decision reference
+- **AND** every child or later stage SHALL use the normal repository gate without a bootstrap exception
 
 ### Requirement: Stage acceptance is evidence-backed
 Every child stage SHALL receive explicit user acceptance only after its approved artifact revision is applied and its required verification evidence passes.
@@ -95,7 +122,7 @@ Each harness stage SHALL clear all existing violations in its scope before enabl
 - **THEN** the stage-specific checks SHALL become required on every protected merge path before stage acceptance
 
 ### Requirement: Isomorphic and isolated observability invariant
-The future observability stage SHALL be self-hosted and SHALL use the same versioned instrumentation, telemetry schema, stack implementation, and query semantics locally and on `mypc`, while isolating local, per-worktree, and production reads, writes, resources, identities, and lifecycles.
+The future observability stage SHALL be self-hosted and SHALL use the same versioned instrumentation, telemetry schema, stack implementation, and query semantics locally, in CI, and on `mypc`, while isolating local, CI, per-worktree, and production reads, writes, resources, identities, and lifecycles.
 
 #### Scenario: Multiple worktrees are observed concurrently
 - **WHEN** two or more worktrees run the application and observability stack
@@ -105,6 +132,12 @@ The future observability stage SHALL be self-hosted and SHALL use the same versi
 - **WHEN** an agent validates observability behavior locally
 - **THEN** the implementation and query semantics SHALL match production
 - **AND** local telemetry SHALL NOT be written to production storage
+
+#### Scenario: CI validates observability
+- **WHEN** CI starts instrumentation or queries telemetry
+- **THEN** it SHALL use CI-owned identities, ports, endpoints, credentials, and storage
+- **AND** any production endpoint, credential, service identity, or storage location SHALL fail closed before access
+- **AND** CI teardown SHALL NOT delete local, worktree, or production telemetry
 
 #### Scenario: Environment configuration crosses an isolation boundary
 - **WHEN** a local or worktree stack is configured with a production endpoint, credential, storage location, or service identity
@@ -136,6 +169,11 @@ The program SHALL create detailed observability, engineering-standards, and fina
 - **WHEN** detailed observability implementation artifacts would otherwise be created
 - **THEN** the agent SHALL defer them until documentation governance is accepted
 - **AND** retain only the already approved program invariants
+
+#### Scenario: An observability spike exists in an earlier child
+- **WHEN** non-normative instrumentation evidence was preserved during documentation governance
+- **THEN** the future observability child SHALL revalidate its semantics, platform support, privacy, isolation, retention, and performance against the fresh baseline
+- **AND** SHALL NOT treat the earlier spike as approved production code or an acceptance shortcut
 
 ### Requirement: Program completion reflects implemented reality
 The parent harness change SHALL be verified and archived only after all approved child stages are implemented, accepted, and reflected in current documentation and living specs.

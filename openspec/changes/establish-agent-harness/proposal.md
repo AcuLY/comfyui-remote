@@ -7,9 +7,10 @@ The repository already contains useful agent rules, documentation maps, tests, a
 - **BREAKING**: Adopt OpenSpec as the required lifecycle for significant feature, architecture, performance, and engineering-policy changes.
 - Establish a parent harness program with documentation governance first, observability second, engineering standards third, and documentation/CI convergence last.
 - Require each later stage to present a fresh proposal, spec, design, and tasks for explicit user approval before apply.
-- Require local, worktree, and production verification to use agent-legible evidence while preserving strict data isolation.
-- Treat self-hosting, implementation-identical local/production observability, per-worktree isolation, and hard-cutover enforcement as approved program constraints; later child changes still choose the concrete stacks and thresholds.
+- Require local, CI, worktree, and production verification to use agent-legible evidence while preserving strict data isolation.
+- Treat self-hosting, implementation-identical local/CI/production observability, per-worktree isolation, and hard-cutover enforcement as approved program constraints; later child changes still choose the concrete stacks and thresholds.
 - Require repository-specific automated gates only where OpenSpec itself does not cover domain constraints such as deployment safety, queue handling, approval validity, and telemetry isolation.
+- Require one explicit, revision-bound bootstrap approval for parent foundation tasks 1.1-1.4 because the repository gate does not yet exist; prohibit that exception for every child and later stage.
 - Keep generic artifact dependencies, apply, verify, archive, and recovery behavior aligned with the installed OpenSpec version rather than inventing a parallel lifecycle.
 
 ## Capabilities
@@ -32,6 +33,8 @@ None.
 
 - `rebuild-documentation-governance` is the first child and is authored from the repository-specific documentation information architecture approved on 2026-07-10; its exact artifact revision still requires user review before apply.
 - `build-agent-observability` will be proposed only after documentation governance is accepted.
+  Its fresh design SHALL re-evaluate the non-normative PreToolUse path-match spike preserved
+  by the documentation child; the spike is evidence, not approved instrumentation.
 - `enforce-engineering-standards` will be proposed only after the observability stage is accepted.
 
 ## Impact

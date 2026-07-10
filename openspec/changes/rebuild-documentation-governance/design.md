@@ -22,7 +22,7 @@ The approved design constraints are:
 **Goals:**
 
 - Establish a concise, progressively disclosed, agent-legible current knowledge base.
-- Give every maintained document one explicit owner, authority, update trigger, evidence contract, and verification route.
+- Give every maintained document one explicit owner, authority, typed source relationships, evidence contract, and verification route.
 - Replace path heuristics and duplicated maps with per-document metadata plus a small machine policy.
 - Provide one deterministic non-writing documentation command locally and in CI.
 - Provide a repeatable semantic audit for meaning that software cannot prove.
@@ -37,6 +37,8 @@ The approved design constraints are:
 - Force a generated/reference directory taxonomy before operating evidence supports it.
 - Make a linter pretend to prove semantic correctness.
 - Promote ignored `.tmp/**` synthesis directly into current documentation.
+- Add a controlled `docs:read` CLI, documentation MCP gateway, scheduled semantic audit, or automatic ordinary-development `$docs-audit` trigger.
+- Install or productionize the preserved PreToolUse path-match spike during documentation governance.
 
 ## Decisions
 
@@ -52,6 +54,12 @@ The fixed core is:
 ├── PRODUCT.md
 ├── DESIGN.md
 ├── CLAUDE.md                         # compatibility pointer only
+├── .codex/
+│   └── skills/
+│       └── docs-audit/
+│           ├── SKILL.md              # only semantic-audit invocation surface
+│           ├── agents/openai.yaml
+│           └── references/evidence-contract.md
 ├── openspec/
 │   ├── config.yaml
 │   ├── specs/
@@ -103,7 +111,6 @@ The fixed core is:
     │   └── design-demo-governance.md
     ├── runbooks/
     │   ├── README.md
-    │   ├── documentation-audit.md
     │   ├── git-delivery.md
     │   ├── development/
     │   │   ├── README.md
@@ -148,7 +155,6 @@ document:
   owner: <stable owner id>
   authority: <normalized subject and authority kind>
   readWhen: [<task triggers>]
-  updateWhen: [<source globs or semantic triggers>]
   sources: [<code, schema, test, or root-contract paths>]
   verifiedBy: [<non-writing command or test>]
 ```
@@ -157,7 +163,7 @@ Runbooks additionally require environment, risk, recovery, and last-verification
 
 Root files use path-specific profiles so `AGENTS.md` stays concise and a future Impeccable frontmatter extension can coexist with the core `DESIGN.md` contract. OpenSpec artifacts are excluded from this frontmatter schema and validated by the pinned OpenSpec integration.
 
-`policy.yaml` owns allowed paths, profile assignments, required landing pages, controlled root/detail relationships, forbidden legacy paths, and changed-source documentation mappings. It does not list every document's owner and values. `repo-inventory.md` is derived from tracked paths and resolved metadata; it is not an independent authority.
+`policy.yaml` owns allowed paths, profile assignments, required landing pages, controlled root/detail relationships, forbidden legacy paths, the finite governed-scope matrix, and exact changed-source documentation relationships. Each relationship is either `contract`, with a deterministic non-writing verifier and blocking failure semantics, or `review`, with an owner and reason that produces a non-blocking semantic-review warning. It does not list every document's owner and values. `repo-inventory.md` is derived from tracked paths and resolved metadata; it is not an independent authority.
 
 **Alternative considered:** A central manifest with one row per document. Rejected because it would duplicate instance metadata and become another hand-maintained map.
 
@@ -165,39 +171,114 @@ Root files use path-specific profiles so `AGENTS.md` stays concise and a future 
 
 ### 3. Separate deterministic validation from semantic audit
 
-`npm run docs:check` is a non-writing orchestration entrypoint implemented under `scripts/docs/**`. It uses the repository's pinned runtime and OpenSpec integration, requires no network, and runs the same components locally and in CI:
+`npm run docs:check` is the one non-writing orchestration entrypoint implemented under
+`scripts/docs/**`. Full mode is the default, the acceptance mode, and the CI mode. An
+explicit fast mode starts from a valid merge base and closes over changed documents,
+navigation neighbors, owners, source relationships, generators, and OpenSpec parents. It
+automatically escalates to full when the merge base is missing, policy/schema/OpenSpec/Skill/
+generator code changes, a document moves or is deleted, root/navigation authority changes,
+or the impact closure cannot be proved complete.
 
-1. enumerate tracked governed paths with Git;
-2. parse frontmatter and validate the applicable schema profile;
-3. validate `policy.yaml`, allowed topology, required `README.md` files, and forbidden paths;
-4. parse Markdown links and headings, validate relative targets and anchors, and build the navigation graph;
+Full mode always evaluates the entire current structural graph and runs every deterministic
+contract, generator, OpenSpec, and Skill verifier. When a comparison revision exists, it uses
+the changed set to select semantic `review` warnings. Without one, it conservatively treats
+every `review` relationship as matched and labels the warning with missing-base evidence. CI
+and stage acceptance always pass an explicit comparison revision.
+
+Both modes use the repository-pinned runtime and OpenSpec integration, require no network,
+and share one engine:
+
+1. enumerate tracked paths with Git and resolve the finite scope matrix;
+2. parse frontmatter and validate the applicable current-document profile;
+3. validate `policy.yaml`, allowed topology, required `README.md` files, and forbidden live paths;
+4. parse GFM links and headings with GitHub-compatible duplicate-heading slugs;
 5. verify root-to-current reachability and required reverse links;
-6. evaluate changed-source/update-trigger coverage against the merge base when one is available;
-7. run existing generator check adapters without writing output;
-8. run pinned OpenSpec validation;
-9. emit stable diagnostics containing rule ID, file, location, reason, and remediation;
-10. exit nonzero on any violation and prove a clean worktree after execution.
+6. evaluate typed `contract` and `review` source relationships;
+7. run existing generator and source-contract adapters without writing output;
+8. run pinned OpenSpec and project-Skill validation;
+9. emit deterministically sorted human or JSON diagnostics;
+10. compare a content-aware before/after repository snapshot and reject any checker write.
 
-Writing generators remain separate commands. An unchanged document whose update trigger matched must still receive a reviewable verification update under the policy; silently ignoring the trigger is not allowed.
+The diagnostic schema is `ruleId`, `severity`, repository-relative `path`, `location`,
+`evidence`, `remediation`, and `owner`. Exit `0` means no deterministic error, `1` means
+repository rule violations, and `2` means the checker or configuration failed. Warnings are
+reserved for heuristic review facts and never downgrade a deterministic contract. Writing
+generators remain separate commands.
 
-The semantic audit lives in `docs/runbooks/documentation-audit.md`. For each file or mixed section it records, in the active change's task/verification evidence rather than a permanent docs ledger:
+Local non-writing proof compares the before/after tracked diff, staged diff, and untracked
+path/content fingerprint, so an already dirty user worktree is valid if the checker adds no
+change. CI starts and ends clean. Its required full-mode job runs on every protected merge
+path without a docs-only path filter because a source-only change can invalidate a contract.
 
-- claim category: current implementation, approved target, or historical intent;
-- evidence from source, schemas, tests, runtime, and Git;
-- current owner and authority;
-- conflicts or missing evidence;
-- action: keep, rewrite, move, split, merge, extract-delete, delete, or user decision;
-- verification performed after the action.
+The finite scope matrix is:
 
-Mechanical corrections with exactly one supported answer may proceed. Authority, product direction, partial implementation, deletion of potentially current knowledge, or conflicting evidence is escalated. This keeps CI deterministic while making semantic review executable by agents.
+| Surface | Deterministic governance | Semantic/current authority |
+| --- | --- | --- |
+| Root entrypoints and approved `docs/**` | Metadata, topology, GFM links/anchors, navigation, typed relationships, generators | Current documentation; eligible for explicit `$docs-audit` |
+| `openspec/**` | Pinned OpenSpec validation and applicable internal links | Target/history according to lifecycle; excluded from current frontmatter/navigation |
+| Project Skills such as `.codex/skills/**` | Repository-pinned Agent Skills metadata, bundled-reference links, path safety, forward-test evidence | Workflow authority only for explicitly invoked Skill; not current docs |
+| Registered `src/**.md` and `tests/**.md` | Explicit policy registration plus applicable links/contracts | Source-adjacent knowledge only; migrate or delete unregistered files |
+| Fixtures, samples, and OpenSpec evidence | Path containment and intentional-fixture rules | Non-current evidence; excluded from live-reference/navigation findings |
+
+Markdown parsing uses a GFM AST rather than regex. Fenced and indented code, inline code,
+HTML comments, negative fixtures, and non-current OpenSpec evidence do not create live path
+references or navigation edges. Internal relative targets and anchors are blocking; external
+reachability, age heuristics, suspected duplicates, and prose quality remain offline warnings
+or semantic findings rather than flaky network blockers.
+
+Project-Skill validation does not depend on a user's global Skill Creator install. The child
+adds exact direct `js-yaml` `4.1.1` development dependency and a repository-owned
+`scripts/skills/validate.mjs`, exposed as
+`npm run skills:check -- .codex/skills/docs-audit`. That offline command validates the Agent
+Skills core frontmatter/folder contract, contained references, and this repository's
+explicit-only activation rule; `docs:check` calls the same command path.
+
+The semantic audit is the project-local `$docs-audit` Skill under
+`.codex/skills/docs-audit/**`, not a runbook and not an `AGENTS.md` trigger. Its contract is:
+
+- discovery: frontmatter describes only explicit user or approved OpenSpec-task invocation,
+  so generic source/documentation edits do not implicitly activate it;
+- invocation: `$docs-audit changed`, `$docs-audit paths <repo-relative paths>`,
+  `$docs-audit change <id>`, or `$docs-audit full`; an omitted scope safely chooses changed
+  scope or escalates to full;
+- operation: `report` by default writes nothing; `record` writes only the explicitly named
+  `openspec/changes/<id>/evidence/docs-audit/**` report; `fix` authorizes scoped document and
+  evidence writes;
+- evidence precedence: current source/schema/tests and required runtime evidence, then an
+  approved active target, then Git/OpenSpec history;
+- findings: claim category, owner, evidence, conflict, confidence, disposition, verification,
+  and any `user-decision-required` boundary;
+- reports: ad hoc runs return findings in the task without a permanent ledger; an approved
+  OpenSpec task must name `record` or `fix` and its contained output before evidence is written;
+- review: a fixer cannot sign its own semantic pass; an independent agent/reviewer reruns the
+  same scope, or the result remains `review-required`;
+- scheduling: none in this stage; any recurring audit requires a later approved change.
+
+The Skill may call deterministic scope and evidence scripts, but it does not introduce a
+controlled `docs:read` CLI or documentation MCP gateway. Mechanical corrections with exactly
+one supported answer may proceed only in explicit fix mode. Authority, product direction,
+partial implementation, deletion of potentially current knowledge, missing runtime evidence,
+or conflicting interpretations are escalated. Ordinary source or documentation changes do not
+auto-run the Skill. `review` relationship warnings are disposed during an explicit audit or
+stage-acceptance review; every warning and semantic finding must be dispositioned before this
+stage is accepted.
+
+The Skill itself follows skill TDD: capture baseline failures without the Skill, write the
+minimal workflow, validate its package with the repository-pinned command, rerun the same
+scenarios with it, test report/record/fix path boundaries independently, and forward-test
+fresh agents on representative current/target/history conflicts before adoption.
 
 **Alternative considered:** Encode semantic correctness in tests. Rejected because current tests already demonstrate that a test can preserve obsolete structure while meaning remains wrong.
+
+**Alternative considered:** Keep `docs/runbooks/documentation-audit.md` as a second entrypoint.
+Rejected because it would split invocation and rule authority; detailed reusable material stays
+inside the Skill's `references/**` instead.
 
 ### 4. Treat governance tests as consumers of policy
 
 `tests/test-documentation-governance.test.ts` and related tests are implementation inputs, not authority. They are rewritten around schema/policy fixtures and public `docs:check` behavior. Tests no longer assert that specific legacy paths must exist merely because they existed when the test was written.
 
-Every critical rule has one valid fixture and one controlled invalid fixture. High-value counterexamples include missing metadata, broken links and anchors, orphan current docs, invalid root/detail authority, stale update triggers, forbidden legacy paths, stale generator output, and malformed OpenSpec relationships.
+Every critical rule has one valid fixture and one controlled invalid fixture. High-value counterexamples include missing metadata, broken links and anchors, duplicate GFM headings, code-block false references, orphan current docs, invalid root/detail authority, stale contracts, review warnings, forbidden live legacy paths, stale generator output, malformed OpenSpec relationships, unsafe fast-scope narrowing, and checker exit-code separation.
 
 **Alternative considered:** Preserve all current tests and shape the migration around them. Rejected because multiple tests currently depend on archived or prototype files that the approved architecture deletes.
 
@@ -209,6 +290,7 @@ The migration map is:
 | --- | --- |
 | `README.md` | Keep as human entrypoint; remove volatile inventories and route to owner docs. |
 | `AGENTS.md` + `agent-rules/**` | Rebuild policy in `AGENTS.md`, procedures in runbooks, update every consumer, then delete `agent-rules/**`. |
+| semantic documentation audit | Create and forward-test `.codex/skills/docs-audit/**` as the only explicit audit entrypoint; do not create an audit runbook or `AGENTS.md` trigger. |
 | `docs/index.md` + `docs/documentation-map.md` | Merge human routing into `docs/README.md`; move machine rules into `_meta/policy.yaml`; delete duplicates. |
 | `docs/analysis/**`, worker/Prisma boundary docs | Verify and split into `docs/architecture/**`; delete superseded sources. |
 | `docs/ui/**`, frontend guide, design parity docs | Split verified visual knowledge into root/design docs and code ownership into architecture; remove duplicate sources. |
@@ -227,7 +309,7 @@ The move of `workflow.api.json` is runtime-affecting even though it is motivated
 
 ### 6. Make agent-policy migration atomic
 
-The new runbooks are created and verified before old rule files are deleted. In one cutover batch, `AGENTS.md`, `CLAUDE.md`, `openspec/config.yaml`, root/docs routers, generator classification, governance tests, and all current links switch to the new paths. Only then is `agent-rules/**` removed.
+The new runbooks are created and verified before old rule files are deleted. In one cutover batch, `AGENTS.md`, `CLAUDE.md`, `openspec/config.yaml`, root/docs routers, generator classification, governance tests, and all current links switch to the new paths. Only then is `agent-rules/**` removed. `$docs-audit` remains an explicitly invoked Skill outside ordinary `AGENTS.md` trigger routing; OpenSpec migration and acceptance tasks name the invocation when it is required.
 
 During semantic verification, hardcoded environment facts are rechecked instead of copied blindly: local-versus-`mypc` deployment, Windows paths, ports, public URL, log names, Prisma `db push`, queue authentication and recovery, and service restart targeting. Uncertain major policy is presented to the user. Default commit/push and deployment behavior remains unchanged unless separately approved.
 
@@ -235,11 +317,11 @@ During semantic verification, hardcoded environment facts are rechecked instead 
 
 Archive migration uses `git ls-files docs/archive` at implementation start as the complete input set. Each semantic batch must reach one of two outcomes: verified current information has been integrated into an owner and its consumers pass, or the source has no current value. The final gate requires no tracked archive/history path and no live reference. Git preserves recovery; OpenSpec archive preserves change artifacts.
 
-Prototype cleanup does not require design preservation because the user explicitly discarded the entire set. Before deletion, a source scan proves production does not import prototype assets. Prototype-only tests and mappings are removed; current Training routes and behaviors remain protected by production tests and current docs.
+Prototype cleanup does not require design preservation because the user explicitly discarded the entire set. Before deletion, a source scan proves production does not import prototype assets. Prototype-only tests and mappings are removed; current Training routes, the shared navigation mode toggle, and peer-work-mode behavior remain protected by production tests and current docs.
 
 ### 8. Activate documentation-specific CI only at zero violations
 
-The implementation may run `docs:check` locally while migration is in progress, but stage acceptance requires zero violations and a checked-in doc-specific CI job using the exact command in a clean checkout. Evidence includes success, a controlled negative fixture failure, restored success, and confirmation that the check is required on protected merge paths.
+The implementation may run fast or full `docs:check` locally while migration is in progress, but stage acceptance requires zero deterministic errors, explicit disposition of every warning and semantic finding, and a checked-in doc-specific CI job using full mode from a clean start to a clean end. Evidence includes success, a controlled negative fixture failure, restored success, no documentation-only path filter, and confirmation that the check is required on every protected merge path.
 
 This is narrower than the final harness CI convergence. It protects documentation immediately without prematurely choosing observability or engineering-standard jobs.
 
@@ -249,6 +331,21 @@ This is narrower than the final harness CI convergence. It protects documentatio
 
 The documentation stage establishes root `PRODUCT.md`/`DESIGN.md` and detailed design routing that can support Impeccable later, but it does not change root `DESIGN.md` to the Impeccable six-section schema or create `.impeccable/**`, `.agents/skills/impeccable/**`, `.codex/hooks.json`, detector baselines, or sidecar checks. That integration must revalidate the then-current repository in its own change.
 
+### 10. Transfer the PreToolUse spike to the observability stage without adopting it
+
+The sanitized `pretooluse-file-access-poc/**` remains under this change's evidence directory
+as a non-normative feasibility record. This child does not install its hook, change ignore
+rules, create live logs/stats, add documentation requirements, or use it for acceptance. Its
+sample field `access_total` is interpreted only as a legacy attempted path-match count; it
+does not prove tool success, filesystem reads, or model comprehension.
+
+When this child is archived, the evidence remains recoverable with the archive. After
+documentation governance is accepted, `build-agent-observability` may reference the archived
+path or copy a digest-bound snapshot, then must freshly decide signal ownership and validate
+Windows/POSIX parsing, concurrent writers, crash recovery, retention, privacy, overhead,
+environment/worktree/service/run identity, fail-closed storage isolation, and teardown. No
+offline store or retention mechanics are selected in this stage.
+
 ## Data Flow
 
 ```text
@@ -256,9 +353,10 @@ tracked files + current source/tests/schemas + active OpenSpec changes + Git his
   -> governed-path enumeration
   -> metadata/profile resolution
   -> topology/link/reachability graph
-  -> deterministic docs:check findings
-  -> semantic section audit for meaning
+  -> deterministic docs:check errors and review warnings
+  -> explicitly invoked $docs-audit for selected semantic scope
   -> current-owner rewrite or extract/delete decision
+  -> independent semantic review when fixes were applied
   -> owning tests/runtime verification
   -> regenerated in-place inventory
   -> zero-violation local docs:check
@@ -269,6 +367,8 @@ tracked files + current source/tests/schemas + active OpenSpec changes + Git his
 ## Error Handling
 
 - Invalid metadata, topology, links, or OpenSpec structure blocks migration acceptance with deterministic diagnostics.
+- A repository rule violation exits `1`; an engine/configuration failure exits `2`; neither is hidden as a warning.
+- An unsafe fast-scope calculation escalates to full mode instead of skipping uncertain checks.
 - Conflicting evidence blocks only the affected semantic rewrite and is escalated; it is not resolved by choosing the newest prose file.
 - Missing required runtime evidence prevents the affected claim from becoming current truth.
 - A failed mixed-content migration keeps the original file until all current owner replacements for that batch are verified.
@@ -277,15 +377,17 @@ tracked files + current source/tests/schemas + active OpenSpec changes + Git his
 - Prototype deletion fails if production source imports prototype assets or current Training coverage regresses.
 - Generator check mode must never repair drift automatically; it reports the separate write command.
 - Missing branch-protection authority leaves the required-check task incomplete and is reported as an external action.
+- An explicitly authorized audit fix without an independent review remains `review-required` and cannot pass.
 
 ## Verification
 
 - Validate proposal, design, specs, and tasks with the repository-pinned OpenSpec version in strict, non-interactive mode.
-- Unit-test metadata parsing, schema profiles, path normalization, policy validation, Markdown links/anchors, graph reachability, trigger matching, and generator check mode.
+- Unit-test metadata parsing, schema profiles, path normalization, scope resolution, policy validation, GFM links/anchors, graph reachability, `contract`/`review` matching, diagnostic formats/exit codes, fast-to-full escalation, repository snapshot preservation, and generator check mode.
 - Exercise valid and invalid fixtures for every critical docs rule.
 - Run focused source-contract tests after each migration batch and the full repository suite before cutover.
-- Run the semantic audit navigation exercise: `AGENTS.md -> docs/README.md -> owner README -> detail/runbook/test` for representative architecture, Generation, Training, shared resource, deployment, API, design, and testing tasks.
-- Prove `npm run docs:check` is deterministic, network-free, non-writing, and identical in local and CI execution.
+- Baseline-test `$docs-audit` without the Skill, implement the minimal Skill, validate its package, rerun the same scenarios, and forward-test fresh agents on representative current/target/history conflicts and independent-review boundaries.
+- Run the explicit semantic audit navigation exercise: `AGENTS.md -> docs/README.md -> owner README -> detail/runbook/test` for representative architecture, Generation, Training, shared resource, deployment, API, design, and testing tasks.
+- Prove `npm run docs:check` full/fast behavior is deterministic, network-free, non-writing in an already dirty local checkout, and full-mode-equivalent in clean CI.
 - Prove `rg`/tracked-file checks contain no live `agent-rules`, archive, history, prototype, legacy Superpowers planning, or non-OpenSpec plan authority.
 - Verify the runtime-template relocation with loader, generation workflow, build, and applicable deployment checks.
 - Require explicit user review of the exact OpenSpec artifact revision before apply and explicit acceptance after verification.
@@ -294,7 +396,8 @@ tracked files + current source/tests/schemas + active OpenSpec changes + Git his
 
 - **Semantic migration scope is large** → Use small domain batches, explicit evidence, and owner-specific verification; do not reduce scope by retaining stale compatibility directories.
 - **Metadata becomes bureaucratic** → Keep instance fields limited to routing, authority, evidence, triggers, and verification; derive inventories rather than duplicating them.
-- **Changed-source triggers create false positives** → Map at owner/module granularity and permit a reviewable verification-only update, never a silent bypass.
+- **Changed-source relationships create false positives** → Keep deterministic `contract` mappings narrow; represent heuristic ownership signals as non-blocking `review` warnings and require explicit acceptance disposition.
+- **A Skill becomes hidden policy** → Require explicit `$docs-audit` invocation, keep rules out of `AGENTS.md`, and forward-test discovery and scope behavior.
 - **Deleting historical files loses convenient browsing** → Git and OpenSpec retain recovery while current agents avoid stale default context.
 - **API/testing paths may later fit another taxonomy** → Keep them as verified current owners now and revisit only with observed harness evidence.
 - **CI branch settings may require external access** → Treat configuration proof as an explicit acceptance gate.
@@ -302,17 +405,19 @@ tracked files + current source/tests/schemas + active OpenSpec changes + Git his
 
 ## Migration Plan
 
-1. Complete the parent OpenSpec pinning, exact-artifact approval, and stage-order prerequisites before child apply.
-2. Freeze a read-only `git ls-files` baseline and run current tests to capture known failures without treating them as target authority.
-3. Add `_meta` schema, policy, templates, deterministic check components, and counterexample fixtures.
-4. Establish root and directory routers, then rebuild current architecture, product, design, API, testing, and runbook knowledge in evidence-reviewed batches.
-5. Perform the atomic `AGENTS.md`/runbook cutover and remove `agent-rules/**`.
-6. Remove legacy non-OpenSpec plan/spec surfaces and relocate non-plan data out of `docs/plans/**`.
-7. Extract current value from all archive items, update dependent tests/consumers, and delete `docs/archive/**`.
-8. Remove prototype-specific consumers and delete all `docs/prototypes/**` files.
-9. Move runtime/config assets out of documentation ownership in isolated verified batches.
-10. Rebuild the in-place inventory, clear every deterministic and semantic finding, and run the full verification suite.
-11. Add and prove the required documentation CI check, present evidence for user acceptance, and archive the child under OpenSpec only after acceptance.
+1. Complete the parent repository-pinned OpenSpec, digest-bound approval/acceptance gate, stage manifest, and tests.
+2. Validate this exact revised artifact set, obtain and record explicit user approval, then keep child apply blocked if any digest changes.
+3. Freeze a read-only `git ls-files` baseline and run current tests to capture known failures without treating them as target authority.
+4. Add `_meta` schema, typed relationship policy, finite scope matrix, templates, deterministic full/fast check components, and counterexample fixtures.
+5. Baseline-test, create, validate, and forward-test the explicit `$docs-audit` Skill before using it for migration decisions.
+6. Establish root and directory routers, then rebuild current architecture, product, design, API, testing, and runbook knowledge in evidence-reviewed batches.
+7. Perform the atomic `AGENTS.md`/runbook cutover and remove `agent-rules/**` without adding an audit trigger.
+8. Remove legacy non-OpenSpec plan/spec surfaces and relocate non-plan data out of `docs/plans/**`.
+9. Extract current value from all archive items, update dependent tests/consumers, and delete `docs/archive/**`.
+10. Remove prototype-specific consumers and delete all `docs/prototypes/**` files while preserving the shared Training mode toggle.
+11. Move runtime/config assets out of documentation ownership in isolated verified batches.
+12. Rebuild the in-place inventory, clear every deterministic error, disposition every warning and semantic finding, and run the full verification suite.
+13. Add and prove the required full-mode documentation CI check, present evidence for user acceptance, preserve the PoC as future observability evidence, and archive the child under OpenSpec only after acceptance.
 
 Rollback is commit- and batch-scoped. Each migration batch keeps its source until replacements and consumers pass. Revert only the failed batch, preserve unrelated worktree changes, and never use broad destructive reset commands.
 
@@ -322,4 +427,4 @@ This change intentionally rewrites the documentation control plane and current k
 
 ## Open Questions
 
-No information-architecture decision remains open. During apply, any factual conflict about current product behavior, deployment policy, runtime ownership, or partial implementation is handled through the semantic-audit user-decision path rather than silently resolved in implementation.
+No information-architecture or handoff-design decision remains unresolved in this revision. The `$docs-audit` contract, deterministic check modes and diagnostics, typed relationship model, finite scope/parser semantics, dirty-worktree proof, CI surface, and PoC transfer are proposed targets pending explicit approval of this exact artifact revision. During apply, any factual conflict about current product behavior, deployment policy, runtime ownership, or partial implementation is handled through the semantic-audit user-decision path rather than silently resolved in implementation.

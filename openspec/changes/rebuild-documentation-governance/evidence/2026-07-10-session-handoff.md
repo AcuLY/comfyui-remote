@@ -356,3 +356,57 @@ database, deployment state, or `mypc` state was changed during this session.
 Do not begin documentation migration, observability implementation, engineering
 standards, Impeccable integration, deployment, or production instrumentation merely
 because this handoff exists.
+
+## Post-resume design resolution — 2026-07-10
+
+The continuation branch was fetched and reviewed on Windows. The formal parent and child
+artifacts were revised for exact-revision review; this section records the resolution of the
+handoff questions without turning this evidence file into normative authority.
+
+- The PreToolUse path-match spike belongs to the future `build-agent-observability` design.
+  The documentation child keeps the sanitized files only as non-normative attempted-match
+  evidence, installs nothing, and transfers no acceptance credit. The future child must
+  revalidate platform support, concurrency, crash recovery, retention, privacy, overhead,
+  identity, isolation, and teardown.
+- `.codex/skills/docs-audit/**` is the proposed single explicit semantic-audit surface.
+  `AGENTS.md` has no audit rule or auto-trigger; there is no audit runbook, controlled
+  `docs:read` CLI, documentation MCP gateway, scheduler, or permanent audit ledger.
+- The proposed Skill accepts changed, explicit paths, active OpenSpec change, and full scopes;
+  `report` writes nothing, `record` writes only explicitly named active-change evidence, and
+  `fix` authorizes scoped document mutation. Independent review is required before a changed
+  scope passes.
+- The deterministic check remains one `npm run docs:check` engine. Full is the safe default
+  and required CI/acceptance mode; explicit fast mode escalates to full whenever impact
+  closure is unsafe. Human/JSON diagnostics share stable fields and exit codes `0/1/2` for
+  success, rule violation, and tool/configuration failure.
+- Full mode without a comparison base runs every deterministic verifier and emits all
+  semantic `review` relationships as missing-base warnings; CI and acceptance provide an
+  explicit base. Project-Skill validation uses a repository-owned offline command rather than
+  a developer's global Skill Creator installation.
+- Source relationships are typed as blocking machine-provable `contract` mappings or
+  non-blocking owned `review` warnings. Ordinary development does not auto-run the Skill.
+  Every warning and semantic finding still requires explicit disposition before stage
+  acceptance, and a deterministic contract cannot be downgraded.
+- Local non-writing proof compares complete before/after repository state and therefore
+  permits pre-existing dirty or untracked work. CI starts and ends clean, runs full mode on
+  every protected merge path, and has no docs-only path filter.
+- The parent foundation proposal now pins OpenSpec exactly, hashes canonical Git blob bytes
+  for approvals, preserves raw tasks snapshots while normalizing only checkbox progress, and
+  uses a narrow stage manifest/gate without duplicating lifecycle state. One explicit bounded
+  bootstrap approval authorizes only parent foundation tasks 1.1-1.4, after which every child
+  uses the normal gate.
+
+These are proposed target decisions pending an immutable commit and explicit user approval of
+the exact parent/child artifact revision. Child apply, documentation migration, hook
+installation, runtime work, and deployment remain blocked.
+
+Post-resume verification before commit:
+
+- temporary strict OpenSpec validation with `@fission-ai/openspec` 1.5.0 passed both active
+  changes;
+- the focused documentation suite reported 15 passes and two existing baseline failures:
+  the root `/` route assertion in the rewritten README contract and the intentionally stale
+  repository inventory that does not yet include the new OpenSpec/evidence paths;
+- all seven preserved PoC unit tests passed under Windows Python, which does not supply the
+  missing `commandWindows`, PowerShell parsing, concurrency, retention, isolation, or real
+  Codex E2E evidence.

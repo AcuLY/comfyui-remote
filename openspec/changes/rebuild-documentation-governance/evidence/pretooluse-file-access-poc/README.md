@@ -4,6 +4,13 @@ This is a non-production, non-normative spike preserved for continuation. It pro
 a project-local Codex `PreToolUse` hook can heuristically recognize repository-local
 paths and write offline events without a metrics service.
 
+Stage ownership is resolved: this directory is input for the future
+`build-agent-observability` design, not an implementation or acceptance artifact for
+`rebuild-documentation-governance`. Do not install or expand it during the documentation
+child. The sample aggregate field `access_total` is a legacy prototype name and means only
+an attempted PreToolUse repository-path match; it does not prove tool success, a filesystem
+read, or model comprehension.
+
 ## Contents
 
 - `file_access_hook.py`: path matcher, NDJSON writer, and offline JSON aggregator.
@@ -49,6 +56,11 @@ The successful spike used:
 Windows behavior was not tested. In particular, the hook uses POSIX command
 substitution, has no `commandWindows` variant, and the append/concurrency behavior has
 not been verified on Windows.
+
+The later observability change must also define and test rotation/retention, malformed or
+partial-line recovery, atomic aggregation, environment/repository/worktree/service/run
+identity, storage ownership and collision checks, fail-closed cross-environment isolation,
+privacy, teardown, and measured overhead before adopting any equivalent signal.
 
 ## Isolated end-to-end reconstruction
 
