@@ -42,9 +42,9 @@ instruction for the real repository.
 
 Do not commit real `logs/**` or `stats/**`. The examples are sanitized evidence only.
 
-## Tested environment
+## Tested environments
 
-The successful spike used:
+The original successful spike used:
 
 - macOS/Darwin on arm64;
 - Python 3.14.0; the script requires Python 3.11 or newer because it imports
@@ -53,9 +53,21 @@ The successful spike used:
 - `codex-cli 0.142.5`;
 - a model available to the original account at the time of the run.
 
-Windows behavior was not tested. In particular, the hook uses POSIX command
-substitution, has no `commandWindows` variant, and the append/concurrency behavior has
-not been verified on Windows.
+A Windows continuation on 2026-07-11 used Windows 11, Python 3.11.9, and
+`codex-cli 0.142.2`, whose local feature catalog reports hooks as stable. The test ran
+two new ephemeral Codex tasks from this already trusted repository with a temporary
+project `.codex/hooks.json`; the file was deleted immediately afterward, the real NDJSON
+log stayed outside the repository and was deleted after the assertions, and no hook was
+installed persistently.
+
+The temporary handler set its POSIX `command` to `exit 91` and supplied the Python
+recorder only through `commandWindows`. A `cat` command produced one
+`Bash/read/<fixture guide path>` event, proving that the project hook loaded and that the
+Windows override ran. Native PowerShell `Get-Content -LiteralPath` produced a second
+event for the same repository-relative file, but the current classifier labeled it
+`access`, not `read`. Windows path detection is therefore feasible, while PowerShell
+operation classification remains incomplete. Windows multi-process append/concurrency
+behavior was not tested.
 
 The later observability change must also define and test rotation/retention, malformed or
 partial-line recovery, atomic aggregation, environment/repository/worktree/service/run
@@ -81,6 +93,6 @@ account, then expect exactly three matched tool-call events: a `read` for
 Normalize timestamps and session hashes before comparing with `sample/**`.
 
 This recipe is feasibility evidence, not a deterministic cross-platform acceptance
-test. Model availability, Codex trust UX, and hook schemas can change; Windows parity
-and a one-command normalized assertion remain open work for the future observability
-change.
+test. Model availability, Codex trust UX, and hook schemas can change. PowerShell command
+classification, Windows concurrency, and a one-command normalized assertion remain open
+work for the future observability change.

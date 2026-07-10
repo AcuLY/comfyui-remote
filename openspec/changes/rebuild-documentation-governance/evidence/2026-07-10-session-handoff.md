@@ -410,3 +410,38 @@ Post-resume verification before commit:
 - all seven preserved PoC unit tests passed under Windows Python, which does not supply the
   missing `commandWindows`, PowerShell parsing, concurrency, retention, isolation, or real
   Codex E2E evidence.
+
+## Windows PreToolUse continuation — 2026-07-11
+
+The resumed task was corrected back to the interrupted hook experiment before any parent
+foundation or documentation migration work began. The earlier evidence already proved one
+real macOS Codex run; the missing platform result was a real Windows Codex hook invocation.
+
+Fresh local evidence used Windows 11, Python 3.11.9, and the installed `codex-cli 0.142.2`.
+The local CLI reports hooks as stable, accepts `commandWindows`, and sends shell hooks the
+canonical `tool_name: "Bash"` with `tool_input.command` on Windows. The experiment used two
+ephemeral, read-only Codex tasks in the already trusted repository. A temporary project
+`.codex/hooks.json` was removed immediately after the test, and the raw NDJSON remained in
+the system temporary directory rather than the repository before being deleted after the
+assertions.
+
+Observed results:
+
+- the POSIX handler was deliberately `exit 91`, while only `commandWindows` invoked the
+  Python recorder; the resulting log therefore proves the Windows override was selected;
+- `cat <fixture guide path>` completed successfully and produced one `Bash/read` event for
+  the exact repository-relative file;
+- native `Get-Content -LiteralPath <fixture guide path>` also completed successfully and
+  produced a second event for that file, but the prototype categorized it as generic
+  `access`, exposing the missing PowerShell read-command classification;
+- both events contained only timestamp, truncated session hash, tool name, operation,
+  repository-relative path/match kind, schema version, and coverage class; they contained
+  no raw command, prompt, output, absolute path, raw session id, or file content;
+- the temporary hook configuration was deleted and the five unrelated untracked
+  `scripts/*.ts` files remained untouched.
+
+This closes the narrow feasibility question: a Codex `PreToolUse` hook can detect a Windows
+tool-call attempt that names a repository file. It does not prove tool success, an actual
+filesystem read, or model comprehension. PowerShell semantic classification, Windows
+concurrency, retention, crash recovery, isolation, privacy policy, overhead, and a stable
+one-command cross-platform assertion remain future `build-agent-observability` work.
