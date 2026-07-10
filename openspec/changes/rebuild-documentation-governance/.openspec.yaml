@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-07-10
+goal: Create an agent-legible current-truth knowledge system before later
+  harness stages begin.

@@ -1,0 +1,44 @@
+schema: spec-driven
+
+context: |
+  Repository: comfyui-remote, a private Next.js control plane for two peer work modes:
+  ComfyUI generation and LoRA Training. Models and settings are shared resources.
+
+  Required workflow entrypoint: AGENTS.md. Read agent-rules/git.md and
+  agent-rules/deploy/index.md before every task, then follow triggered rules.
+
+  Knowledge boundaries: tracked current docs, generated artifacts, OpenSpec living specs,
+  active changes, prototypes, and historical records must remain distinguishable. Files in
+  .tmp are scratch evidence only and never current truth.
+
+  Evidence model: current behavior is established from source, schemas, tests, and required
+  runtime verification; target behavior comes from user-approved OpenSpec changes; historical
+  intent comes from Git history and original design artifacts. Keep these categories separate.
+
+  Harness program order: documentation governance and verified historical migration first;
+  observability second; engineering standards third; final documentation convergence and
+  unified blocking CI last. Later stages require fresh user-approved designs before apply.
+
+  Preserve unrelated worktree changes. Do not deploy documentation-only changes. Training is
+  a peer work mode, not a generation submodule or demo.
+
+rules:
+  proposal:
+    - State non-goals and related parent or child changes.
+    - Separate current problems, target capabilities, and historical migration work.
+    - Name affected current-truth docs, generated artifacts, and operational boundaries.
+    - Do not treat approval of the harness program as approval to apply later stage changes.
+  specs:
+    - Use SHALL or MUST requirements with at least one concrete Scenario per requirement.
+    - Specify observable behavior and acceptance contracts, not implementation preferences.
+    - Never describe unimplemented or unverified behavior as current truth.
+    - Preserve the distinction between current implementation, approved target, and history.
+  design:
+    - Include context, goals, non-goals, decisions, alternatives, data flow, error handling, verification, rollback, and documentation impact.
+    - Identify evidence sources and every point that requires explicit user judgment.
+    - Keep later-stage technical choices open until that stage receives separate approval.
+  tasks:
+    - Use small, ordered, independently verifiable task groups.
+    - Include validation, documentation synchronization, and OpenSpec verification tasks.
+    - Do not schedule implementation for an unapproved later stage.
+    - Preserve repository deployment, queue, lock, and Git boundaries.
