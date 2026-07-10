@@ -5,7 +5,8 @@ The repository SHALL establish the agent harness through ordered, independently 
 
 #### Scenario: Program starts with documentation governance
 - **WHEN** the harness program begins implementation
-- **THEN** documentation governance SHALL be the first applied child change
+- **THEN** the repository-specific documentation information architecture SHALL be approved before the documentation-governance child is fully specified
+- **AND** documentation governance SHALL be the first applied child change
 - **AND** observability and engineering-standards implementation SHALL remain out of scope
 
 #### Scenario: A later stage is requested early
@@ -125,6 +126,11 @@ The future observability stage SHALL be self-hosted and SHALL use the same versi
 
 ### Requirement: Child changes are created just in time
 The program SHALL create detailed observability, engineering-standards, and final-convergence artifacts only when the preceding stage is accepted and the user has reviewed the new baseline and options.
+
+#### Scenario: Documentation structure is not approved
+- **WHEN** the repository-specific target documentation tree, ownership, authority, navigation, lifecycle, and OpenSpec boundary remain undecided
+- **THEN** `rebuild-documentation-governance` SHALL NOT be created
+- **AND** complete documentation-governance specs, design, and tasks SHALL NOT be authored
 
 #### Scenario: Documentation governance is still active
 - **WHEN** detailed observability implementation artifacts would otherwise be created
