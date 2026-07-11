@@ -633,8 +633,9 @@ export async function createPhase0BaselineFromSqlite(
     projectRoot,
     options.exclusionPath ??
       path.join(
-        "docs",
-        "plans",
+        "tests",
+        "fixtures",
+        "quality",
         "auto-review-analysis",
         "reference-section-exclusions.json",
       ),
@@ -832,7 +833,7 @@ export async function loadManualExclusions(
 }
 
 export function getDefaultPhase0OutputDir(projectRoot = process.cwd()): string {
-  return path.join(projectRoot, "docs", "plans", "auto-review-analysis");
+  return path.join(projectRoot, "reports", "quality", "auto-review-analysis");
 }
 
 export function getDefaultPhase0SummaryPath(projectRoot = process.cwd()): string {

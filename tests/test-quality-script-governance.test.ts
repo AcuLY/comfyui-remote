@@ -13,8 +13,10 @@ const QUALITY_SERVER_FILES = [
   "src/server/quality/phase0-baseline.ts",
   "src/server/quality/phase1-offline-eval.ts",
 ] as const;
-const QUALITY_ANALYSIS_DIR = "docs/plans/auto-review-analysis";
-const QUALITY_ANALYSIS_README = `${QUALITY_ANALYSIS_DIR}/README.md`;
+const QUALITY_REPORT_DIR = "reports/quality/auto-review-analysis";
+const QUALITY_FIXTURE =
+  "tests/fixtures/quality/auto-review-analysis/reference-section-exclusions.json";
+const QUALITY_ANALYSIS_DOC = "docs/testing/quality-analysis.md";
 
 test("quality report CSV serialization stays centralized in shared csv-utils", () => {
   const csvUtilsSource = readFileSync("src/server/quality/csv-utils.ts", "utf8");
@@ -65,8 +67,8 @@ test("quality CLI scripts expose typed result builders for their JSON output", (
   }
 });
 
-test("quality analysis data files document owner and regeneration policy", () => {
-  const readme = readFileSync(QUALITY_ANALYSIS_README, "utf8");
+test("quality analysis reports and fixture have explicit owners", () => {
+  const readme = readFileSync(QUALITY_ANALYSIS_DOC, "utf8");
   const documentedFiles = new Map<string, string[]>();
 
   for (const line of readme.split("\n")) {
@@ -78,13 +80,14 @@ test("quality analysis data files document owner and regeneration policy", () =>
     documentedFiles.set(cells[0].replace(/^`|`$/g, ""), cells);
   }
 
-  const trackedDataFiles = execFileSync("git", ["ls-files", QUALITY_ANALYSIS_DIR], {
-    encoding: "utf8",
-  })
+  const trackedDataFiles = execFileSync(
+    "git",
+    ["ls-files", QUALITY_REPORT_DIR, QUALITY_FIXTURE],
+    { encoding: "utf8" },
+  )
     .trim()
     .split("\n")
     .filter(Boolean)
-    .filter((filePath) => filePath !== QUALITY_ANALYSIS_README)
     .filter((filePath) => /\.(?:csv|json|md)$/i.test(filePath))
     .sort((left, right) => left.localeCompare(right));
 
@@ -92,7 +95,7 @@ test("quality analysis data files document owner and regeneration policy", () =>
   assert.deepEqual(
     trackedDataFiles.filter((filePath) => !documentedFiles.has(filePath)),
     [],
-    `${QUALITY_ANALYSIS_README} must document every tracked quality analysis data file`,
+    `${QUALITY_ANALYSIS_DOC} must document every tracked quality analysis data file`,
   );
 
   for (const filePath of trackedDataFiles) {

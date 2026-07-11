@@ -30,11 +30,11 @@
   "statsSignature": "03d61352f65a1f6744c8c060eec895179a1f387deafca489d854e6402973e529",
   "sourceDb": "/mnt/d/Luca/Code/MyProject/comfyui-manager/prisma/data/comfyui.db",
   "reportPaths": {
-    "labeledImagesCsv": "/mnt/d/Luca/Code/MyProject/comfyui-manager/docs/plans/auto-review-analysis/phase0-labeled-images.csv",
-    "aggregateCsv": "/mnt/d/Luca/Code/MyProject/comfyui-manager/docs/plans/auto-review-analysis/valid-projects-trash-rate-by-section.csv",
-    "sectionProjectCsv": "/mnt/d/Luca/Code/MyProject/comfyui-manager/docs/plans/auto-review-analysis/valid-projects-trash-rate-by-section-project.csv",
-    "markdown": "/mnt/d/Luca/Code/MyProject/comfyui-manager/docs/plans/auto-review-analysis/valid-projects-trash-rate-by-section.md",
-    "summaryJson": "/mnt/d/Luca/Code/MyProject/comfyui-manager/docs/plans/auto-review-analysis/valid-projects-trash-rate-summary.json"
+    "labeledImagesCsv": "/mnt/d/Luca/Code/MyProject/comfyui-manager/reports/quality/auto-review-analysis/phase0-labeled-images.csv",
+    "aggregateCsv": "/mnt/d/Luca/Code/MyProject/comfyui-manager/reports/quality/auto-review-analysis/valid-projects-trash-rate-by-section.csv",
+    "sectionProjectCsv": "/mnt/d/Luca/Code/MyProject/comfyui-manager/reports/quality/auto-review-analysis/valid-projects-trash-rate-by-section-project.csv",
+    "markdown": "/mnt/d/Luca/Code/MyProject/comfyui-manager/reports/quality/auto-review-analysis/valid-projects-trash-rate-by-section.md",
+    "summaryJson": "/mnt/d/Luca/Code/MyProject/comfyui-manager/reports/quality/auto-review-analysis/valid-projects-trash-rate-summary.json"
   },
   "top20Raw": [
     {

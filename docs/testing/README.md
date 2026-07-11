@@ -9,3 +9,5 @@ Current mapped sources:
 - `tests/README.md`
 - `tests/fixtures/**`
 - `docs/local-verification.md`
+- [`quality-analysis.md`](quality-analysis.md) for quality evaluation fixtures, reports,
+  and regeneration commands.
