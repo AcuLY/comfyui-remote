@@ -445,3 +445,27 @@ tool-call attempt that names a repository file. It does not prove tool success, 
 filesystem read, or model comprehension. PowerShell semantic classification, Windows
 concurrency, retention, crash recovery, isolation, privacy policy, overhead, and a stable
 one-command cross-platform assertion remain future `build-agent-observability` work.
+
+## Simplified local Hook authorization - 2026-07-11
+
+After reviewing the Windows result, the user explicitly narrowed and authorized the next
+experiment: stop classifying read, search, write, or PowerShell commands; count every matched
+repository path as one coarse access attempt; and write directly to ignored repository-local
+`logs/**` and `metrics/**` without a running application or telemetry service.
+
+The authorized successor is limited to `.codex/hooks.json`, a standard-library recorder,
+focused tests, ignored runtime output, and the repository-maintenance documentation required
+for those tracked files. It stores no raw command, prompt, output, file content, absolute path,
+or raw session id. This is a separately authorized local experiment, not documentation-
+governance acceptance, not the start of the full observability child, and not evidence that a
+tool call succeeded or that an agent read or understood a file. The append-only NDJSON is the
+canonical rough record; aggregate freshness under overlapping Hook processes remains explicitly
+outside this experiment rather than reintroducing the deferred concurrency work.
+
+The installed successor then passed a real Windows Codex E2E with `codex-cli 0.142.2`: a new
+ephemeral read-only task loaded the tracked project manifest, selected `commandWindows`, and
+executed one native `Get-Content -LiteralPath` call for the fixture guide. The command exited
+zero, the NDJSON event contained only `occurred_at`, `paths`, `schema_version`, `session_hash`,
+and `signal`, and the aggregate recorded that repository-relative path once. Both generated
+files remained ignored and untracked. Hook trust was bypassed only for this automated E2E;
+normal tasks still require explicit per-machine review.

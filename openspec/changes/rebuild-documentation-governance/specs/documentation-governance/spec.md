@@ -333,9 +333,11 @@ This documentation-specific gate SHALL not preselect the later unified repositor
 ### Requirement: Deferred placeholders and future integrations remain honest
 `docs/QUALITY_SCORE.md`, `docs/RELIABILITY.md`, and `docs/SECURITY.md` SHALL initially contain only purpose, deferred status, owner, activation stage, and authority boundaries. They SHALL NOT claim unverified scores, SLOs, security models, or backlog authority.
 
-Impeccable installation, root `DESIGN.md` schema conversion, sidecar generation, hooks, detectors, critique reports, and CI integration SHALL remain outside this change and require a separate approved OpenSpec change. Observability and engineering-standard content SHALL likewise remain deferred to their approved stages.
+Impeccable installation, root `DESIGN.md` schema conversion, sidecar generation, Impeccable hooks, detectors, critique reports, and CI integration SHALL remain outside this change and require a separate approved OpenSpec change. Observability and engineering-standard content SHALL likewise remain deferred to their approved stages, except for the separately authorized local path-match experiment recorded by the parent change.
 
 The sanitized PreToolUse path-match spike under this change's evidence directory SHALL remain non-normative and uninstalled, and SHALL be excluded as documentation-governance implementation, instrumentation, CI input, or acceptance evidence. A pre-archive hygiene task MAY confirm those boundaries without adopting the spike. It SHALL be interpreted only as attempted repository-path matching, not successful file access or comprehension. When this child is archived, the evidence SHALL remain recoverable there; the later observability child MAY reference or copy a digest-bound snapshot only after fresh design and revalidation.
+
+The separately user-authorized root Hook successor SHALL remain outside this child. Its tracked Hook and recorder MAY produce only ignored repository-local `logs/**` and `metrics/**`; their existence SHALL NOT count as documentation-governance implementation, instrumentation, or acceptance evidence.
 
 #### Scenario: A placeholder is read before activation
 - **WHEN** an agent opens a deferred placeholder
@@ -356,3 +358,8 @@ The sanitized PreToolUse path-match spike under this change's evidence directory
 - **WHEN** an agent reviews the preserved hook source, sample events, or aggregate field named `access_total`
 - **THEN** it SHALL treat them as non-production feasibility evidence for attempted path matches
 - **AND** SHALL NOT install, expand, or accept them as documentation-governance instrumentation
+
+#### Scenario: The separately authorized successor Hook is encountered
+- **WHEN** an agent encounters `.codex/hooks.json`, `scripts/observability/agent_file_access_hook.py`, or ignored local access-attempt data
+- **THEN** it SHALL treat them as the user's bounded service-free experiment outside this child
+- **AND** SHALL NOT infer successful reads, comprehension, production observability acceptance, or permission to expand the experiment

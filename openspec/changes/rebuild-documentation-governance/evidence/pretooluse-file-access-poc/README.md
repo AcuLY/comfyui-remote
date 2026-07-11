@@ -6,10 +6,12 @@ paths and write offline events without a metrics service.
 
 Stage ownership is resolved: this directory is input for the future
 `build-agent-observability` design, not an implementation or acceptance artifact for
-`rebuild-documentation-governance`. Do not install or expand it during the documentation
-child. The sample aggregate field `access_total` is a legacy prototype name and means only
-an attempted PreToolUse repository-path match; it does not prove tool success, a filesystem
-read, or model comprehension.
+`rebuild-documentation-governance`. This preserved script is not the installed implementation.
+After the Windows continuation, the user separately authorized the simplified root successor
+at `scripts/observability/agent_file_access_hook.py`; it is an out-of-child local experiment,
+not adoption of this evidence copy. The sample aggregate field `access_total` is a legacy
+prototype name and means only an attempted PreToolUse repository-path match; it does not
+prove tool success, a filesystem read, or model comprehension.
 
 ## Contents
 

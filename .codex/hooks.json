@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 scripts/observability/agent_file_access_hook.py record --root .",
+            "commandWindows": "python scripts/observability/agent_file_access_hook.py record --root .",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

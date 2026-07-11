@@ -10,7 +10,7 @@ This is the read-first map for agents working in this repository. Detailed file 
 | documentation map | `docs/documentation-map.md`, `docs/repo-inventory.md` | current map plus generated artifact | documentation-system | tracked file moves, new maintained docs, classification changes, or archive decisions | documentation governance tests and inventory check |
 | local development | `docs/local-verification.md` | runbook | agent-workflow | local auth, dev service, or verification command changes | local command named in the runbook |
 | database/Prisma | `docs/prisma-provider-matrix.md`, `docs/prisma-schema-compatibility.md`, `prisma.config.ts`, `prisma/schema.prisma`, `prisma/schema.sqlite.prisma` | runbook plus current schema source | data-model | Prisma provider, schema, migration, generated client, or DB bootstrap changes | Prisma generate and schema compatibility tests |
-| config/runtime assets | `docs/runbooks/config-runtime-assets.md`, `config/path-maps.json`, `config/comfy-targets.example.json`, `.gitignore` | runbook plus current config source | runtime-config | config schema, generated Prisma output, public assets, runtime ignore policy, or local DB fixture decisions | config/runtime governance tests |
+| config/runtime assets | `docs/runbooks/config-runtime-assets.md`, `config/path-maps.json`, `config/comfy-targets.example.json`, `.codex/hooks.json`, `.gitignore` | runbook plus current config source | runtime-config | config schema, Hook telemetry paths, generated Prisma output, public assets, runtime ignore policy, or local DB fixture decisions | config/runtime governance tests |
 | script maintenance | `docs/script-maintenance.md`, `scripts/**`, `src/scripts/**` | runbook plus current script source | maintenance-scripts | script purpose, input, output, dry-run, exit code, or entrypoint changes | script maintenance doc test |
 | deployment | `AGENTS.md`, `agent-rules/deploy/index.md`, `agent-rules/git.md` | runbook | agent-workflow | deploy, queue, git, lock, build, or restart workflow changes | deploy-rule review and runtime status gate |
 | API contracts | `docs/api/route-handler-template.md`, `docs/agent-api.md`, `docs/workflow.api.json`, `src/server/mcp/server.ts` | API contract | agent-api | Agent API, MCP, workflow schema, route template, or response envelope changes | route and MCP contract tests |
@@ -26,7 +26,7 @@ This is the read-first map for agents working in this repository. Detailed file 
 - Preferred page dependency direction: `src/app/* route/page -> src/features or src/components -> src/lib client-safe helpers`.
 - `src/features/*` and `src/components/*` must not import server-only modules such as `src/server/**`, `src/lib/db.ts`, `src/lib/prisma.ts`, or Node built-ins.
 - `src/generated/**` is generated from Prisma and must be regenerated, not manually edited.
-- `.next/**`, `data/**`, `logs/**`, `.tmp/**`, `server-dev-*.log`, `server-prod-*.log`, `build-prod*.log`, `.deploy.lock/**`, and local DB files are runtime artifacts.
+- `.next/**`, `data/**`, `logs/**`, `metrics/**`, `.tmp/**`, `server-dev-*.log`, `server-prod-*.log`, `build-prod*.log`, `.deploy.lock/**`, and local DB files are runtime artifacts.
 
 ## Documentation Classes
 

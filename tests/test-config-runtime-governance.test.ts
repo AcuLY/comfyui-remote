@@ -68,6 +68,7 @@ test("runtime config runbook documents path maps, Comfy targets, generated code,
     "regenerate",
     "data/comfyui.db",
     "prisma/data/comfyui.db",
+    "metrics/agent-file-access.json",
     "runtime data, not fixtures",
     "do not track",
   ]) {
@@ -81,13 +82,14 @@ test("unused default public SVG assets are removed after source references are c
 });
 
 test("runtime-only directories and local DB files are ignored and untracked", () => {
-  assert.deepEqual(gitLsFiles(["data", "prisma/data", "logs", ".tmp", ".deploy.lock"]), []);
+  assert.deepEqual(gitLsFiles(["data", "prisma/data", "logs", "metrics", ".tmp", ".deploy.lock"]), []);
 
   for (const ignoredPath of [
     ".deploy.lock/owner.json",
     ".next/cache/file",
     "data/comfyui.db",
     "logs/app.log",
+    "metrics/agent-file-access.json",
     ".tmp/runtime.json",
     "server-dev-3000.log",
     "server-dev-3000.err.log",

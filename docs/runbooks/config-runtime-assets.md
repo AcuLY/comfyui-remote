@@ -1,7 +1,7 @@
 # Config, Runtime Assets, And Generated Code
 
 Classification: runbook
-Update trigger: config schema changes, ComfyUI target resolution changes, runtime artifact policy changes, public asset additions/removals, generated Prisma output changes, or local DB fixture decisions.
+Update trigger: config schema changes, ComfyUI target resolution changes, agent telemetry path changes, runtime artifact policy changes, public asset additions/removals, generated Prisma output changes, or local DB fixture decisions.
 
 This runbook owns non-code artifact policy for configuration files, generated Prisma clients, public assets, and runtime-only local files.
 
@@ -44,12 +44,17 @@ Runtime-only local areas are ignored and must not be committed:
 - `.next/**`
 - `data/**`
 - `logs/**`
+- `metrics/**`
 - `.tmp/**`
 - `.deploy.lock/**`
 - `server-dev-*.log`
 - `server-prod-*.log`
 - `build-prod*.log`
 - local DB files such as `data/comfyui.db` and `prisma/data/comfyui.db`
+
+The project `PreToolUse` hook writes privacy-limited raw path-match attempts to `logs/agent-file-access.ndjson` and rebuilds coarse per-path counts in `metrics/agent-file-access.json`. Both are local runtime data and stay untracked. The append-only NDJSON is the experiment's source of truth; the aggregate JSON is a best-effort convenience snapshot and may briefly undercount overlapping Hook processes because concurrency coordination is intentionally outside this rough experiment. The signal does not prove that a tool call succeeded, that a file was read, or that an agent understood its contents. It also cannot observe files Codex loads implicitly unless a supported tool call names their path.
+
+Each developer must review and approve the tracked project Hook through Codex's Hook trust flow; do not copy machine-specific trust state. Start a new Codex task after changing the manifest so the project configuration is loaded cleanly.
 
 `data/comfyui.db` and `prisma/data/comfyui.db` are runtime data, not fixtures; do not track them. Tests that need SQLite state should create fresh temp DB/file fixtures through `tests/fixtures/sqlite-db.ts` or an equivalent per-test temp setup.
 

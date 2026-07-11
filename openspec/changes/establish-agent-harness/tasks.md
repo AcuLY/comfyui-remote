@@ -23,6 +23,10 @@
 - [ ] 2.8 Apply the documentation-governance child change in verified batches under its own tasks.
 - [ ] 2.9 Record user acceptance against the applied revision and verification evidence, then archive the child only after its blocking documentation gate is required and green.
 
+## Inter-stage Authorized Experiment
+
+- [x] E.1 Record the user's separately authorized coarse local PreToolUse path-match experiment as non-production evidence; keep its service-free implementation and ignored data outside documentation-governance acceptance and observability-stage progress.
+
 ## 3. Observability Stage Gate
 
 - [ ] 3.1 After documentation governance is accepted, capture a fresh runtime and performance baseline.

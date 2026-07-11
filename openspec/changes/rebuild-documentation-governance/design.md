@@ -32,13 +32,13 @@ The approved design constraints are:
 **Non-Goals:**
 
 - Choose or implement observability technology, performance budgets, engineering standards, or the later unified CI design.
-- Install or run Impeccable, rewrite root `DESIGN.md` into its final Impeccable schema, or introduce hooks and detector output.
+- Install or run Impeccable, rewrite root `DESIGN.md` into its final Impeccable schema, or introduce Impeccable hooks and detector output.
 - Introduce a new historical documentation store or custom historical-migration schema.
 - Force a generated/reference directory taxonomy before operating evidence supports it.
 - Make a linter pretend to prove semantic correctness.
 - Promote ignored `.tmp/**` synthesis directly into current documentation.
 - Add a controlled `docs:read` CLI, documentation MCP gateway, scheduled semantic audit, or automatic ordinary-development `$docs-audit` trigger.
-- Install or productionize the preserved PreToolUse path-match spike during documentation governance.
+- Install or productionize the preserved PreToolUse path-match spike as documentation-governance instrumentation. A separately user-authorized root successor may run only as the bounded local experiment recorded in the parent change.
 
 ## Decisions
 
@@ -329,15 +329,18 @@ This is narrower than the final harness CI convergence. It protects documentatio
 
 `QUALITY_SCORE.md`, `RELIABILITY.md`, and `SECURITY.md` contain only metadata, purpose, deferred state, activation owner/stage, and authority boundaries. Findings and proposed work go to OpenSpec, not placeholder backlogs.
 
-The documentation stage establishes root `PRODUCT.md`/`DESIGN.md` and detailed design routing that can support Impeccable later, but it does not change root `DESIGN.md` to the Impeccable six-section schema or create `.impeccable/**`, `.agents/skills/impeccable/**`, `.codex/hooks.json`, detector baselines, or sidecar checks. That integration must revalidate the then-current repository in its own change.
+The documentation stage establishes root `PRODUCT.md`/`DESIGN.md` and detailed design routing that can support Impeccable later, but it does not change root `DESIGN.md` to the Impeccable six-section schema or create `.impeccable/**`, `.agents/skills/impeccable/**`, Impeccable Hook configuration, detector baselines, or sidecar checks. That integration must revalidate the then-current repository in its own change. The independent coarse path-match Hook is not an Impeccable integration.
 
 ### 10. Transfer the PreToolUse spike to the observability stage without adopting it
 
 The sanitized `pretooluse-file-access-poc/**` remains under this change's evidence directory
-as a non-normative feasibility record. This child does not install its hook, change ignore
-rules, create live logs/stats, add documentation requirements, or use it for acceptance. Its
-sample field `access_total` is interpreted only as a legacy attempted path-match count; it
-does not prove tool success, filesystem reads, or model comprehension.
+as a non-normative feasibility record. This child does not directly install that preserved
+script or use it for acceptance. After the Windows continuation, the user separately
+authorized a simplified root successor with no operation taxonomy or service dependency.
+That successor writes only ignored `logs/**` and `metrics/**`, is outside this child's
+implementation and acceptance, and does not make the evidence copy normative. The legacy
+sample field `access_total` and the successor field `access_attempt_total` both mean only an
+attempted path match; neither proves tool success, filesystem reads, or model comprehension.
 
 When this child is archived, the evidence remains recoverable with the archive. After
 documentation governance is accepted, `build-agent-observability` may reference the archived

@@ -114,10 +114,15 @@ Before implementation, each child enumerates its governed scope, violation inven
 
 The future system must be self-hosted and implementation-identical locally, in CI, and on `mypc`: the same versioned instrumentation, telemetry schema, stack components, and query semantics are used, with only environment-specific configuration. Local, CI, and production reads and writes are isolated, and every worktree receives its own ports, collector, telemetry stores, service identifiers, and teardown lifecycle. CI receives the same isolation treatment and fails closed if it is configured with production endpoints, credentials, identities, or storage. The concrete products, deployment packaging, sampling, retention, dashboards, and budgets remain child-stage decisions.
 
-The documentation child may preserve a sanitized PreToolUse path-match spike only as
-non-normative future-stage evidence. The observability child decides whether any equivalent
-signal should exist after fresh cross-platform, concurrency, retention, privacy, overhead,
-and isolation design. Until then it is described only as attempted path matching, never as a
+The documentation child preserves the sanitized PreToolUse path-match spike only as
+non-normative future-stage evidence. On 2026-07-11 the user separately authorized one narrow
+successor experiment before documentation acceptance: a tracked project Hook and standard-
+library recorder may write ignored repository-local NDJSON and aggregate JSON files, with no
+service and no read/search/write taxonomy. This exception is outside documentation-governance
+implementation and does not start or satisfy the observability stage. The later observability
+child still decides whether any equivalent signal becomes durable harness instrumentation
+after fresh cross-platform, concurrency, retention, privacy, overhead, and isolation design.
+Both the archived spike and the successor signal mean only attempted path matching, never a
 proven file read or comprehension metric.
 
 **Rationale:** These are program constraints, not vendor choices. They ensure local agent validation can prove production behavior without contaminating production data.

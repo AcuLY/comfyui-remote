@@ -160,6 +160,8 @@ The future observability stage SHALL be self-hosted and SHALL use the same versi
 ### Requirement: Child changes are created just in time
 The program SHALL create detailed observability, engineering-standards, and final-convergence artifacts only when the preceding stage is accepted and the user has reviewed the new baseline and options.
 
+A narrowly bounded experiment MAY run earlier only when the user explicitly authorizes its exact scope, its outputs remain local and untracked, and the active artifacts record that it neither starts nor satisfies the later stage.
+
 #### Scenario: Documentation structure is not approved
 - **WHEN** the repository-specific target documentation tree, ownership, authority, navigation, lifecycle, and OpenSpec boundary remain undecided
 - **THEN** `rebuild-documentation-governance` SHALL NOT be created
@@ -169,6 +171,13 @@ The program SHALL create detailed observability, engineering-standards, and fina
 - **WHEN** detailed observability implementation artifacts would otherwise be created
 - **THEN** the agent SHALL defer them until documentation governance is accepted
 - **AND** retain only the already approved program invariants
+
+#### Scenario: The user authorizes a local path-match experiment early
+- **WHEN** the user explicitly requests a service-free, coarse `PreToolUse` repository-path counter while documentation governance remains active
+- **THEN** the experiment's runtime components SHALL be limited to the project Hook, standard-library recorder, and ignored local `logs/**` and `metrics/**` outputs
+- **AND** the repository MAY add only the focused tests and maintenance documentation required to verify and govern those components
+- **AND** the signal SHALL omit operation taxonomy, raw commands, prompts, outputs, file contents, absolute paths, and raw session identifiers
+- **AND** the experiment SHALL remain unapproved input to the future observability child rather than completing any observability stage task
 
 #### Scenario: An observability spike exists in an earlier child
 - **WHEN** non-normative instrumentation evidence was preserved during documentation governance

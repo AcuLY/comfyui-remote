@@ -32,7 +32,7 @@ None.
 - This change does not implement or select the later observability stack, performance budgets, engineering-standard tools, code-style thresholds, or final unified repository CI.
 - This change does not install Impeccable or create its project skills, hooks, configuration, generated design sidecar, or critique reports.
 - This change does not add a controlled `docs:read` CLI, documentation MCP gateway, scheduled semantic-audit job, or automatic `$docs-audit` trigger.
-- This change does not install or productionize the preserved PreToolUse path-match spike; that evidence is transferred for fresh review by the later `build-agent-observability` change.
+- This change does not install or productionize the preserved PreToolUse path-match spike; that evidence is transferred for fresh review by the later `build-agent-observability` change. The separately user-authorized root Hook successor is an out-of-child local experiment and is not documentation-governance implementation or acceptance evidence.
 - This change does not create a new historical-document store; Git history and OpenSpec archives retain past artifacts after verified current knowledge is extracted.
 - This change does not force a generated-versus-reference directory taxonomy before the harness has produced evidence that the distinction improves maintenance.
 - Ignored `.tmp/**` drafts remain evidence for authoring and are never promoted directly into current truth.

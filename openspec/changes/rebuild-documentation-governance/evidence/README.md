@@ -8,8 +8,9 @@ documentation, an implementation plan, or an additional lifecycle.
 - `session-materials/` preserves the full decision log, information-architecture draft,
   and both repository-understanding drafts that previously existed only under `.tmp/**`.
 - `pretooluse-file-access-poc/` preserves the isolated attempted-path-match telemetry spike
-  only as future input to `build-agent-observability`; it is not installed, accepted, or
-  required by the documentation child.
+  only as future input to `build-agent-observability`; the preserved copy is not installed,
+  accepted, or required by the documentation child. The separately authorized root successor
+  is a bounded local experiment outside this evidence directory and outside child acceptance.
 
 Any accepted requirement must be incorporated into the normal OpenSpec proposal,
 specification, design, and tasks before apply. Generated runtime logs and statistics
