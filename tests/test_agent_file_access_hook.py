@@ -182,8 +182,8 @@ class AgentFileAccessHookTest(unittest.TestCase):
     def test_record_appends_raw_event_and_refreshes_atomic_metrics(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            log_path = root / "logs" / "agent-file-access.ndjson"
-            metrics_path = root / "metrics" / "agent-file-access.json"
+            log_path = root / "logs" / "harness" / "agent-file-access.ndjson"
+            metrics_path = root / "metrics" / "harness" / "agent-file-access.json"
             first_event = {
                 "schema_version": 1,
                 "occurred_at": "2026-07-11T00:00:00+00:00",
@@ -259,8 +259,8 @@ class AgentFileAccessHookTest(unittest.TestCase):
             )
 
             self.assertEqual(result.returncode, 0, result.stderr)
-            log_path = root / "logs" / "agent-file-access.ndjson"
-            metrics_path = root / "metrics" / "agent-file-access.json"
+            log_path = root / "logs" / "harness" / "agent-file-access.ndjson"
+            metrics_path = root / "metrics" / "harness" / "agent-file-access.json"
             self.assertTrue(log_path.exists())
             self.assertEqual(
                 json.loads(metrics_path.read_text(encoding="utf-8"))["paths"],

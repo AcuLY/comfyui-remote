@@ -18,8 +18,8 @@ from typing import Any
 
 SCHEMA_VERSION = 1
 SIGNAL_NAME = "pretooluse_path_match"
-DEFAULT_LOG_PATH = Path("logs/agent-file-access.ndjson")
-DEFAULT_METRICS_PATH = Path("metrics/agent-file-access.json")
+DEFAULT_LOG_PATH = Path("logs/harness/agent-file-access.ndjson")
+DEFAULT_METRICS_PATH = Path("metrics/harness/agent-file-access.json")
 
 
 def _string_values(value: Any) -> list[str]:
