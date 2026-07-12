@@ -28,6 +28,8 @@ function gitOutput(root: string, ...args: string[]): string {
 async function createRepository(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "docs-check-"));
   await cp(FIXTURE, root, { recursive: true });
+  const fixturePolicy = join(root, "docs", "_meta", "policy.yaml");
+  await writeFile(fixturePolicy, (await readFile(fixturePolicy, "utf8")).replace(/\r\n?/g, "\n"));
   await writeFile(join(root, ".gitignore"), "node_modules/\n");
   await writeFile(
     join(root, "package.json"),
