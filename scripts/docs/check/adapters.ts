@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import type { CommandAdapter, ContractAdapter, ContractAdapterKind, Diagnostic, GovernancePolicy } from "./model";
 
@@ -92,7 +92,7 @@ function runContract(root: string, adapter: ContractAdapter): Diagnostic[] {
     ? localLoader
     : join(checkerRoot, "node_modules", "tsx", "dist", "loader.mjs");
   if (!existsSync(loader)) throw new Error(`Pinned tsx loader is missing for contract adapter ${adapter.id}.`);
-  const result = run(root, ["node", runner, testFile, loader]);
+  const result = run(root, ["node", "--import", pathToFileURL(loader).href, runner, testFile]);
   let payload: ContractEnvelope;
   try {
     payload = JSON.parse(result.stdout) as ContractEnvelope;

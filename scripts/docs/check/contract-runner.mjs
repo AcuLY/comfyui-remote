@@ -1,6 +1,5 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 import { run } from "node:test";
 
 function errorChain(error) {
@@ -51,21 +50,26 @@ async function execute(testFile) {
   if (!existsSync(absoluteTest)) {
     return envelope("tool", [], null, `Controlled contract test is missing: ${testFile}`);
   }
-  const requestedLoader = process.argv[3];
-  const tsxLoader = requestedLoader && existsSync(requestedLoader)
-    ? requestedLoader
-    : resolve(root, "node_modules", "tsx", "dist", "loader.mjs");
   const stream = run({
     files: [absoluteTest],
     concurrency: 1,
-    execArgv: existsSync(tsxLoader) ? ["--import", pathToFileURL(tsxLoader).href] : [],
   });
   const failures = [];
   let summary = null;
+  const legacySummary = { tests: 0, passed: 0, failed: 0 };
   for await (const event of stream) {
-    if (event.type === "test:fail") failures.push(failureRecord(event.data));
+    if (event.type === "test:pass") {
+      legacySummary.tests += 1;
+      legacySummary.passed += 1;
+    }
+    if (event.type === "test:fail") {
+      legacySummary.tests += 1;
+      legacySummary.failed += 1;
+      failures.push(failureRecord(event.data));
+    }
     if (event.type === "test:summary") summary = event.data?.counts ?? null;
   }
+  summary ??= legacySummary.tests > 0 ? legacySummary : null;
   if (!summary) {
     return envelope("tool", failures, null, "Node test runner returned no structured summary.");
   }
