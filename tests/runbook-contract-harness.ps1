@@ -66,7 +66,7 @@ function Get-PowerShellBlocks([string]$RelativePath) {
   $source = Get-Content -LiteralPath $path -Raw -Encoding utf8
   return @([regex]::Matches(
       $source,
-      '(?ms)^[ \t]*```powershell[ \t]*\r?\n(?<code>.*?)^[ \t]*```[ \t]*$'
+      '(?ms)^[ \t]*```powershell[ \t]*\r?\n(?<code>.*?)^[ \t]*```[ \t]*\r?$'
     ) |
     ForEach-Object { $_.Groups['code'].Value })
 }
