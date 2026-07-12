@@ -1,0 +1,18 @@
+schemaVersion: 1
+document:
+  type: router
+  status: current
+  owner: documentation-governance
+  authority:
+    subject: repository/inventory
+    kind: reference
+  readWhen:
+    - locating tracked repository surfaces
+  sources:
+    - scripts/docs/generate-repo-inventory.ts
+  verifiedBy:
+    - npm run docs:check
+  generator: scripts/docs/generate-repo-inventory.ts
+  inputs:
+    - src/**
+  regenerate: npx tsx scripts/docs/generate-repo-inventory.ts

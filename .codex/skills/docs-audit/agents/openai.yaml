@@ -1,0 +1,7 @@
+interface:
+  display_name: "Documentation Audit"
+  short_description: "Audit documentation against repository evidence"
+  default_prompt: "Use $docs-audit to audit the requested documentation scope and report evidence-backed findings."
+
+policy:
+  allow_implicit_invocation: false

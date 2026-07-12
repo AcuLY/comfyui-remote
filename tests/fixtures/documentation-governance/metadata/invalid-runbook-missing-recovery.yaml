@@ -1,0 +1,18 @@
+schemaVersion: 1
+document:
+  type: runbook
+  status: current
+  owner: deployment-operations
+  authority:
+    subject: operations/deployment
+    kind: operational
+  readWhen:
+    - deploying the production service
+  sources:
+    - package.json
+  verifiedBy:
+    - npm run docs:check
+  environment:
+    - local-windows
+  risk: Do not broaden process termination beyond this project.
+  lastVerified: "2026-07-12"

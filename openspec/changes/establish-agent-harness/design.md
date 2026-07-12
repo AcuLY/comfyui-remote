@@ -32,7 +32,7 @@ The approved program must start with documentation governance, preserve Training
 
 ### 1. Use one parent change and just-in-time child changes
 
-`establish-agent-harness` owns cross-stage invariants and stays active until all stages are complete. `rebuild-documentation-governance` is the first child and was created only after the target documentation information architecture was approved. Its exact proposal, specs, design, and tasks still require user review before apply. Observability, engineering standards, and final convergence receive detailed artifacts only after the preceding stage is accepted.
+`establish-agent-harness` owns cross-stage invariants and stays active until all stages are complete. `rebuild-documentation-governance` is the first child and was created only after the target documentation information architecture was approved. The user reviewed its design decisions and authorized apply on 2026-07-12; a material scope or design change requires renewed confirmation. Observability, engineering standards, and final convergence receive detailed artifacts only after the preceding stage is accepted.
 
 Each child change is verified and archived independently when its stage is accepted. The parent delta is a program completion contract: it is not partially synchronized into living specs, and it is archived only after the complete program is implemented. Current documentation records capabilities that have actually landed while the parent remains active.
 
@@ -44,29 +44,14 @@ Each child change is verified and archived independently when its stage is accep
 
 ### 2. Follow OpenSpec for generic lifecycle behavior
 
-OpenSpec owns artifact dependencies, its native status/validate/instructions/archive commands, the upstream agent apply/verify workflows, and generic recovery semantics. The repository adds checks only for explicit approval validity, documentation authority, deploy/queue safety, and telemetry isolation.
+OpenSpec owns artifact dependencies, its native status/validate/instructions/archive commands, the upstream agent apply/verify workflows, and generic recovery semantics. The repository adds checks only for stage ordering, documentation authority, deploy/queue safety, and telemetry isolation.
 
 The repository pins `@fission-ai/openspec` exactly in `package.json` and the lockfile and
-invokes the local binary through stable package scripts. A small, non-writing program gate
-uses `openspec/changes/establish-agent-harness/program.json` only for repository-specific
-parent/child stage ordering; it does not duplicate OpenSpec lifecycle state. Approval and
-acceptance records live under the parent program's `approvals/**` and `acceptances/**`
-directories. They bind an immutable full Git revision and the exact sorted proposal,
-`specs/**/*.md`, design, and tasks artifact set, then hash canonical Git blob bytes so Windows
-line-ending conversion cannot invalidate an otherwise identical revision. Candidate creation
-fails if a normative artifact differs from the named revision. The gate can print an approval
-candidate, but it never manufactures a user decision or performs apply, verify, or archive.
-
-The gate stores the raw digest of the approved `tasks.md` snapshot and a second semantic plan
-digest that normalizes only checkbox markers at already approved task positions. Apply may
-toggle those markers to record progress; any task text, identity, order, nesting, addition, or
-deletion changes the semantic digest and requires renewed approval.
-
-Because this repository gate does not yet exist, parent foundation tasks 1.1-1.4 use one
-bounded bootstrap path. The user must explicitly approve an immutable parent revision, those
-four tasks, and a decision reference before implementation. Once the gate passes, it writes
-and revalidates that bootstrap decision as a durable record. The exception cannot authorize
-the documentation child, later stages, or any additional parent work.
+invokes the local binary through stable package scripts. `openspec/README.md` documents the
+native workflow. The parent change and repository context state the serial stage order; they
+do not store or replace OpenSpec lifecycle state. A concise evidence note may preserve the
+user's authorization and the CLI baseline for a stage, but it is not an approval database,
+digest gate, or source of lifecycle truth.
 
 **Rationale:** A parallel state machine would duplicate upstream behavior and drift as OpenSpec evolves.
 
@@ -92,13 +77,9 @@ The order is documentation governance, observability, engineering standards, the
 
 ### 5. Require stage-specific approval
 
-Approval of the brainstormed program authorizes drafting the parent and first child artifacts; it does not authorize apply. Every child, including documentation governance, requires explicit user review of its exact proposal, spec, design, and tasks before apply. The approval record binds the change identifier, artifact content digests, approval scope, and decision reference. Any post-approval semantic artifact content change invalidates the record and requires renewed approval.
+Approval of the brainstormed program authorizes drafting the parent and first child artifacts; it does not authorize every later stage. Before a child is applied, the user reviews its OpenSpec proposal, specs, design, and tasks and explicitly authorizes that stage. Material scope or design changes are presented again rather than hidden in task progress.
 
-Planning approval and stage acceptance are distinct repository-specific gates around the upstream OpenSpec lifecycle. Acceptance is recorded only after the approved revision is applied, required verification evidence is presented, and the user explicitly accepts the stage. These gates do not introduce a competing generic change state machine.
-
-The exact approved tasks snapshot remains preserved even while apply records progress in the
-live `tasks.md`. Only checkbox-state transitions at pre-existing task positions are normalized
-for approval validity; every semantic plan edit requires renewed approval.
+Planning authorization and stage acceptance are distinct decisions around the upstream OpenSpec lifecycle. Acceptance occurs only after implementation and required verification evidence are presented and the user explicitly accepts the stage. A concise evidence note may record either decision without creating a competing generic state machine.
 
 **Rationale:** The user explicitly requires design confirmation before each later phase, and the relevant baseline will change after each accepted stage.
 
@@ -139,7 +120,7 @@ proven file read or comprehension metric.
 
 - Generic change and recovery behavior follows the installed OpenSpec version.
 - An unmet stage dependency blocks the later child change before apply.
-- Any artifact content digest change invalidates repository-specific approval.
+- A material scope or design change is surfaced for renewed user confirmation.
 - Evidence conflicts remain explicit and do not get resolved by copying one source into another.
 - Runtime-affecting work continues to obey existing queue, lock, build, restart, and verification rules.
 - A defect discovered after archive is handled by a corrective change rather than rewriting history.
@@ -147,7 +128,7 @@ proven file read or comprehension metric.
 ## Verification
 
 - `openspec validate --all --strict --no-interactive` must pass for program artifacts.
-- The planning artifacts are bootstrap-validated with `@fission-ai/openspec` 1.5.0 through `npx`; phase 1 replaces this bootstrap command with a repository-pinned, reproducible integration before apply.
+- Repository package scripts invoke the exactly pinned `@fission-ai/openspec` 1.5.0 binary.
 - Program rules must have scenario coverage for ordering, approval, evidence boundaries, hard cutover, lifecycle delegation, and telemetry isolation.
 - Each child change defines its own executable acceptance suite before apply.
 - The parent change cannot archive until every required child stage is accepted and current documentation reflects the implemented system.
@@ -156,21 +137,19 @@ proven file read or comprehension metric.
 
 - **Long time to first full harness** → Keep child stages independently reviewable and commit in small verified batches.
 - **OpenSpec upstream changes** → Pin the CLI/integration during phase 1 and update it through an explicit change.
-- **Parent/child relationship is repository-specific** → Add a narrow validation rule instead of replacing OpenSpec's lifecycle.
-- **Cross-platform digest drift** → Hash canonical Git blobs for an approved revision rather than line-ending-converted worktree bytes.
+- **Parent/child relationship is repository-specific** → Keep the serial stage order explicit in the parent change and repository OpenSpec guide instead of replacing OpenSpec's lifecycle.
 - **Hard cutover exposes large legacy debt** → Inventory and size the debt before implementation, but do not preserve permanent exceptions.
 - **Later stages are underspecified today** → Treat their technology choices as deliberately deferred stage-gate decisions, not omissions in current specs.
 
 ## Migration Plan
 
-1. Commit and strictly validate the parent revision that defines the bounded foundation.
-2. Obtain explicit bootstrap approval for parent tasks 1.1-1.4 only, implement and verify the repository gate, then durably revalidate that decision.
-3. Compare repository-specific documentation structures and obtain explicit user approval of the target information architecture.
-4. Create `rebuild-documentation-governance` and write its complete proposal, specs, design, and tasks from that approved structure.
-5. Obtain user review of the exact written child artifacts and record their normal-gate approval.
-6. Apply and accept documentation governance without a parallel plan.
-7. Propose each later child change at its approved stage gate.
-8. Verify and archive the parent only after final convergence.
+1. Pin OpenSpec, expose the native lifecycle through package scripts, and strictly validate the parent and child artifacts.
+2. Compare repository-specific documentation structures and obtain explicit user approval of the target information architecture.
+3. Create `rebuild-documentation-governance` and write its complete proposal, specs, design, and tasks from that approved structure.
+4. Record the user's stage-scoped apply authorization as concise evidence.
+5. Apply, verify, and accept documentation governance without a parallel plan.
+6. Propose each later child change only after the preceding stage is accepted.
+7. Verify and archive the parent only after final convergence.
 
 Rollback for this planning-only batch is removal of the newly introduced OpenSpec artifacts before they are adopted; it does not require runtime deployment or service changes.
 
@@ -180,7 +159,7 @@ This parent change introduces OpenSpec as the future planning authority. It does
 
 ## Deferred Stage Decisions
 
-- Documentation directory structure: approved with the user on 2026-07-10 and formalized by `rebuild-documentation-governance`; later artifact edits still require exact-revision review before apply.
+- Documentation directory structure: approved with the user on 2026-07-10 and formalized by `rebuild-documentation-governance`; material scope or design changes still require renewed review.
 - Observability technologies and budgets: resolved by the observability stage proposal after documentation governance is accepted.
 - Engineering tools and thresholds: resolved by the engineering-standards stage proposal after observability is accepted.
 - Final documentation and unified CI cutover details: resolved by the final convergence proposal.

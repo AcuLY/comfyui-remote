@@ -1,0 +1,44 @@
+schemaVersion: 1
+governedRoots: [docs]
+rootEntrypoints: [README.md]
+scope:
+  - id: root
+    kind: current
+    include: [README.md]
+    frontmatter: documentation
+    links: true
+    navigation: true
+profiles:
+  - id: root
+    include: [README.md]
+    schemaProfile: router
+requiredLandingPages: [docs/README.md]
+navigation:
+  roots: [README.md]
+  owners:
+    - landing: docs/README.md
+      include: [docs/**/*.md]
+      reverseLinkRequired: true
+forbiddenLivePaths:
+  - path: docs/archive/**
+    owner: documentation-governance
+    replacement: docs/README.md
+relationships:
+  - id: inventory
+    kind: contract
+    sources: [docs/**]
+    documents: [docs/repo-inventory.md]
+    owner: documentation-governance
+    verifier: repo-inventory
+adapters:
+  openspec:
+    enabled: true
+  skills:
+    enabled: true
+    paths: [.codex/skills, .codebuddy/skills]
+  generators:
+    - id: repo-inventory
+      command: [tsx, scripts/docs/generate-repo-inventory.ts, --check]
+      owner: documentation-governance
+      output: docs/repo-inventory.md
+  contracts: []

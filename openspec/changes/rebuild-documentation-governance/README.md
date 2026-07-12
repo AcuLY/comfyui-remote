@@ -10,10 +10,9 @@ Evidence below this directory is non-normative and does not replace the proposal
 specification, design, or tasks.
 
 The post-resume formal artifact revision resolves the handoff's Skill/check/PoC design
-conflicts and passes temporary `@fission-ai/openspec` 1.5.0 strict validation. It remains
-pending an immutable commit, bounded parent-foundation bootstrap approval, the repository-
-pinned gate, and explicit child exact-revision approval. Apply and documentation migration
-are still blocked.
+conflicts and passes repository-pinned `@fission-ai/openspec` 1.5.0 strict validation. On
+2026-07-12 the user explicitly authorized this change's apply workflow. Continue through
+this change's `tasks.md`; later harness stages remain out of scope.
 
 The complete tracked conversation inputs and scratch drafts are indexed at
 [`evidence/session-materials/README.md`](evidence/session-materials/README.md).

@@ -1,40 +1,40 @@
 ## 1. Apply Gate and Read-Only Baseline
 
 - [x] 1.1 Reconcile the paused-session handoff into this artifact revision: explicit `$docs-audit`, typed `contract`/`review` relationships, full/fast checks, stable diagnostics, finite scope/parser semantics, dirty-worktree proof, CI surface, and observability-owned PreToolUse evidence.
-- [ ] 1.2 Verify that parent tasks 1.1-1.5 have completed repository-pinned OpenSpec, canonical-digest approval/acceptance tooling, stage-order prerequisites, tests, and durable bootstrap revalidation; stop child apply if any prerequisite is incomplete.
-- [ ] 1.3 Strictly validate and present this exact child proposal, spec, design, and tasks revision to the user before any migration mutation.
-- [ ] 1.4 After explicit user approval, record the exact sorted artifact set, canonical Git blob digests, apply scope, decision reference, and approval time; reject stale or absent approval.
-- [ ] 1.5 Enumerate root docs, `docs/**`, `agent-rules/**`, OpenSpec artifacts/evidence, project Skills, source-adjacent Markdown, documentation generators, governance tests, runtime assets stored under docs, and all inbound live references with `git ls-files` and non-writing searches.
-- [ ] 1.6 Capture the current documentation-check, focused governance-test, OpenSpec validation, and full-test baselines, distinguishing pre-existing failures from target requirements.
-- [ ] 1.7 Divide apply work into narrow owner-based batches with explicit verification and rollback commands; preserve unrelated worktree changes and submit completed batches without accumulating unrelated dirt.
+- [x] 1.2 Verify the parent has completed the repository-pinned OpenSpec integration, native lifecycle guide, and serial stage-order contract without a parallel lifecycle state machine.
+- [x] 1.3 Strictly validate the child proposal, spec, design, and tasks and confirm OpenSpec reports the apply workflow ready.
+- [x] 1.4 Record the user's explicit, stage-scoped apply authorization and CLI baseline as concise evidence.
+- [x] 1.5 Enumerate root docs, `docs/**`, `agent-rules/**`, OpenSpec artifacts/evidence, project Skills, source-adjacent Markdown, documentation generators, governance tests, runtime assets stored under docs, and all inbound live references with `git ls-files` and non-writing searches.
+- [x] 1.6 Capture the current documentation-check, focused governance-test, OpenSpec validation, and full-test baselines, distinguishing pre-existing failures from target requirements.
+- [x] 1.7 Divide apply work into narrow owner-based batches with explicit verification and rollback commands; preserve unrelated worktree changes and submit completed batches without accumulating unrelated dirt.
 
 ## 2. Documentation Metadata Control Plane
 
-- [ ] 2.1 Create `docs/_meta/README.md`, `documentation.schema.json`, `policy.yaml`, and the approved `document.md`, `directory-readme.md`, and `runbook.md` templates.
-- [ ] 2.2 Define common router, architecture, product, design, API, testing, runbook, placeholder, root-file, and existing-generator metadata profiles without creating a per-file central registry.
-- [ ] 2.3 Encode the finite scope matrix, allowed documentation roots, mandatory `README.md` landing pages, root/detail relationships, forbidden live legacy paths, OpenSpec/Skill/evidence/source-adjacent rules, and typed `contract`/`review` source relationships in `policy.yaml`.
-- [ ] 2.4 Add runbook-specific environment, risk, recovery, and last-verification requirements and deferred-placeholder requirements to the schema.
-- [ ] 2.5 Add metadata parsing, profile selection, schema validation, and path-normalization tests using positive and negative fixtures.
+- [x] 2.1 Create `docs/_meta/README.md`, `documentation.schema.json`, `policy.yaml`, and the approved `document.md`, `directory-readme.md`, and `runbook.md` templates.
+- [x] 2.2 Define common router, architecture, product, design, API, testing, runbook, placeholder, root-file, and existing-generator metadata profiles without creating a per-file central registry.
+- [x] 2.3 Encode the finite scope matrix, allowed documentation roots, mandatory `README.md` landing pages, root/detail relationships, forbidden live legacy paths, OpenSpec/Skill/evidence/source-adjacent rules, and typed `contract`/`review` source relationships in `policy.yaml`.
+- [x] 2.4 Add runbook-specific environment, risk, recovery, and last-verification requirements and deferred-placeholder requirements to the schema.
+- [x] 2.5 Add metadata parsing, profile selection, schema validation, and path-normalization tests using positive and negative fixtures.
 
 ## 3. Deterministic Documentation Check
 
 - [ ] 3.1 Write failing tests first for Git-backed scope enumeration, diagnostic ordering/schema, exit `0/1/2`, and content-aware preservation of an already dirty worktree; then implement the shared non-writing engine under `scripts/docs/**`.
-- [ ] 3.2 Implement full mode as the default/acceptance mode and an explicit merge-base fast mode that computes the complete impact closure and escalates to full on every unsafe narrowing condition; full mode without a base runs all deterministic verifiers and emits every `review` relationship as a missing-base warning, while CI/acceptance require an explicit base.
-- [ ] 3.3 Implement allowed-topology, required-landing-page, finite-scope, forbidden-live-path, root/detail, OpenSpec, project-Skill, evidence, and source-adjacent policy checks.
-- [ ] 3.4 Implement GFM relative-link and GitHub-compatible duplicate-anchor parsing with precise source locations, excluding code, comments, negative fixtures, and non-current evidence from live-reference semantics.
-- [ ] 3.5 Build the navigation graph and enforce root-to-current reachability plus required reverse links only for current descriptive documentation.
-- [ ] 3.6 Implement `contract` relationship blocking verification and non-blocking owned `review` warnings against the merge base; never downgrade a deterministic contract or auto-run `$docs-audit`.
-- [ ] 3.7 Refactor existing documentation generators to expose separate write and exact non-writing check modes without moving outputs into a new generated directory.
-- [ ] 3.8 Add check adapters for the existing repository inventory, Prisma compatibility documentation, route/API/MCP/configuration contracts, and other verified generator-owned artifacts discovered in the baseline.
-- [ ] 3.9 Add exact direct `js-yaml` `4.1.1`, implement repository-owned `scripts/skills/validate.mjs`, expose `npm run skills:check -- .codex/skills/docs-audit`, and integrate that offline validator plus repository-pinned OpenSpec strict validation into `docs:check`.
-- [ ] 3.10 Expose one stable `npm run docs:check` command with full/fast and human/JSON options; keep external reachability offline and non-blocking.
+- [x] 3.2 Implement full mode as the default/acceptance mode and an explicit merge-base fast mode that computes the complete impact closure and escalates to full on every unsafe narrowing condition; full mode without a base runs all deterministic verifiers and emits every `review` relationship as a missing-base warning, while CI/acceptance require an explicit base.
+- [x] 3.3 Implement allowed-topology, required-landing-page, finite-scope, forbidden-live-path, root/detail, OpenSpec, project-Skill, evidence, and source-adjacent policy checks.
+- [x] 3.4 Implement GFM relative-link and GitHub-compatible duplicate-anchor parsing with precise source locations, excluding code, comments, negative fixtures, and non-current evidence from live-reference semantics.
+- [x] 3.5 Build the navigation graph and enforce root-to-current reachability plus required reverse links only for current descriptive documentation.
+- [x] 3.6 Implement `contract` relationship blocking verification and non-blocking owned `review` warnings against the merge base; never downgrade a deterministic contract or auto-run `$docs-audit`.
+- [x] 3.7 Refactor existing documentation generators to expose separate write and exact non-writing check modes without moving outputs into a new generated directory.
+- [x] 3.8 Add check adapters for the existing repository inventory, Prisma compatibility documentation, route/API/MCP/configuration contracts, and other verified generator-owned artifacts discovered in the baseline.
+- [x] 3.9 Add exact direct `js-yaml` `4.1.1`, implement repository-owned `scripts/skills/validate.mjs`, expose `npm run skills:check -- .codex/skills/docs-audit`, and integrate that offline validator plus repository-pinned OpenSpec strict validation into `docs:check`.
+- [x] 3.10 Expose one stable `npm run docs:check` command with full/fast and human/JSON options; keep external reachability offline and non-blocking.
 - [ ] 3.11 Add valid and invalid fixtures for metadata, scope, topology, links, duplicate anchors, code-block false references, reachability, reverse links, contract/review mappings, missing-base full behavior, fast escalation, diagnostics/exit codes, forbidden live paths, generator drift, malformed OpenSpec relationships, and Skill metadata/references.
 
 ## 4. Explicit `$docs-audit` Skill
 
 - [ ] 4.1 Create representative baseline scenarios without the Skill for current/target/history confusion, missing runtime proof, duplicate authority, unsafe operations, fix authorization, and self-review; record the observed failures before writing Skill content.
-- [ ] 4.2 Initialize `.codex/skills/docs-audit/**` with the approved Agent Skills tooling; write frontmatter that triggers only on explicit user or approved OpenSpec-task invocation, then implement changed, paths, OpenSpec change, and full scopes with write-free `report`, contained evidence-only `record`, and explicit scoped `fix` operations.
-- [ ] 4.3 Put evidence precedence, finding schema, dispositions, escalation, report-location and path-containment rules, and independent-review boundary in the Skill and its one-level references; do not create an audit runbook, `AGENTS.md` trigger, controlled read CLI, MCP gateway, scheduler, or permanent ledger.
+- [x] 4.2 Initialize `.codex/skills/docs-audit/**` with the approved Agent Skills tooling; write frontmatter that triggers only on explicit user or approved OpenSpec-task invocation, then implement changed, paths, OpenSpec change, and full scopes with write-free `report`, contained evidence-only `record`, and explicit scoped `fix` operations.
+- [x] 4.3 Put evidence precedence, finding schema, dispositions, escalation, report-location and path-containment rules, and independent-review boundary in the Skill and its one-level references; do not create an audit runbook, `AGENTS.md` trigger, controlled read CLI, MCP gateway, scheduler, or permanent ledger.
 - [ ] 4.4 Validate the Skill package with `npm run skills:check`, test report/record/fix writes independently, and rerun the same baseline scenarios until agents preserve uncertainty, enforce authorization/containment, and refuse self-signoff.
 - [ ] 4.5 Forward-test fresh agents on one root router, one architecture document, one Training document, and one deployment rule; independently review changes and close discovered workflow gaps.
 - [ ] 4.6 Perform representative navigation exercises from `AGENTS.md` through docs routers to owner docs and verification entrypoints, recording dead ends and duplicate authority for later batches without making `$docs-audit` an ordinary navigation trigger.
@@ -76,13 +76,13 @@
 - [ ] 8.1 Audit legacy `docs/superpowers/specs/**`, implementation notes, plan files, PRDs, handoffs, and progress records; extract only verified current knowledge into current docs or living specs.
 - [ ] 8.2 Explicitly invoke `$docs-audit paths docs/superpowers docs/plans record`, write only `openspec/changes/rebuild-documentation-governance/evidence/docs-audit/task-8-planning-cutover.md`, and independently review every extract/relocation/deletion disposition before removal.
 - [ ] 8.3 Remove all Superpowers planning/spec authority, `PLANS.md`, ExecPlan routes, and non-OpenSpec plan instructions after current replacements pass.
-- [ ] 8.4 Split `docs/plans/auto-review-analysis/**` into benchmark/config inputs owned by tests/config and generated analysis outputs owned by a non-plan artifact location; update quality code, scripts, tests, and documentation.
+- [x] 8.4 Split `docs/plans/auto-review-analysis/**` into benchmark/config inputs owned by tests/config and generated analysis outputs owned by a non-plan artifact location; update quality code, scripts, tests, and documentation.
 - [ ] 8.5 Delete `docs/plans/**` after proving no remaining item is an active plan or misowned runtime/test artifact and no current link routes agents there.
 - [ ] 8.6 Update the parent harness artifacts to replace every extra detailed-plan instruction with the child OpenSpec `tasks.md` lifecycle and to state that historical recovery uses Git/OpenSpec archives.
 
 ## 9. Extract and Delete the Current Archive
 
-- [ ] 9.1 Freeze the complete `git ls-files docs/archive` input list for reconciliation and group it by historical notes, design system/demos, plans, PRDs, and legacy Superpowers plans.
+- [x] 9.1 Freeze the complete `git ls-files docs/archive` input list for reconciliation and group it by historical notes, design system/demos, plans, PRDs, and legacy Superpowers plans.
 - [ ] 9.2 Before deleting each frozen archive group, explicitly invoke `$docs-audit paths <frozen archive group> record`, write only `openspec/changes/rebuild-documentation-governance/evidence/docs-audit/task-9-<group>.md`, and independently review the extraction/deletion dispositions.
 - [ ] 9.3 Audit historical handoff/progress/todo/integration material, extract any verified current operational or testing facts, and delete the sources.
 - [ ] 9.4 Audit archived design-system and static-demo material, extract any verified current visual or implementation boundary, and delete the sources.

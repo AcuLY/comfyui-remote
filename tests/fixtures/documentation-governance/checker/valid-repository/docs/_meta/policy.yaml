@@ -1,0 +1,60 @@
+schemaVersion: 1
+governedRoots:
+  - docs
+rootEntrypoints:
+  - README.md
+scope:
+  - id: current
+    kind: current
+    include:
+      - README.md
+      - docs/**/*.md
+    exclude:
+      - docs/_meta/**
+    frontmatter: documentation
+    links: true
+    navigation: true
+  - id: governance-meta
+    kind: meta
+    include:
+      - docs/_meta/**
+    frontmatter: none
+    links: false
+    navigation: false
+profiles:
+  - id: root-router
+    include: [README.md, docs/README.md]
+    schemaProfile: router
+  - id: architecture
+    include: [docs/**/*.md]
+    exclude: [docs/README.md, docs/_meta/**]
+    schemaProfile: architecture
+requiredLandingPages:
+  - docs/README.md
+navigation:
+  roots: [README.md]
+  owners:
+    - id: docs
+      landing: docs/README.md
+      include: [docs/**/*.md]
+      exclude: [docs/README.md, docs/_meta/**]
+      reverseLinkRequired: true
+forbiddenLivePaths:
+  - path: docs/archive/**
+    owner: documentation
+    replacement: docs/README.md
+relationships:
+  - id: source-review
+    kind: review
+    sources: [src/**/*.ts]
+    documents: [docs/guide.md]
+    owner: documentation
+    reason: Source changes may require a semantic review.
+adapters:
+  openspec:
+    enabled: true
+  skills:
+    enabled: true
+    paths: [.codex/skills]
+  generators: []
+  contracts: []

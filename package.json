@@ -8,6 +8,12 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --import tsx --test \"tests/*.test.ts\" \"src/app/design-demos/**/*.test.ts\" \"src/app/design-demos/**/*.test.mjs\" \"src/components/design-demo-ui/**/*.test.ts\" \"src/components/design-demo-ui/**/*.test.mjs\"",
+    "docs:check": "tsx scripts/docs/check.ts",
+    "skills:check": "node scripts/skills/validate.mjs",
+    "openspec:status": "openspec status",
+    "openspec:instructions": "openspec instructions",
+    "openspec:validate": "openspec validate --all --strict --no-interactive",
+    "openspec:archive": "openspec archive",
     "prisma:generate": "DB_PROVIDER=postgresql prisma generate",
     "prisma:generate:sqlite": "DB_PROVIDER=sqlite prisma generate",
     "prisma:generate:all": "DB_PROVIDER=postgresql prisma generate && DB_PROVIDER=sqlite prisma generate",
@@ -54,17 +60,26 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@fission-ai/openspec": "1.5.0",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^7.6.13",
+    "@types/js-yaml": "4.0.9",
     "@types/node": "^20",
     "@types/pg": "^8.20.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "ajv": "8.20.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "github-slugger": "2.0.0",
+    "js-yaml": "4.1.1",
+    "minimatch": "10.2.5",
     "prisma": "^7.5.0",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "unified": "11.0.5"
   }
 }

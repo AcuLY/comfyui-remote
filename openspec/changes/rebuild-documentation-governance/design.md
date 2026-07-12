@@ -393,7 +393,7 @@ tracked files + current source/tests/schemas + active OpenSpec changes + Git his
 - Prove `npm run docs:check` full/fast behavior is deterministic, network-free, non-writing in an already dirty local checkout, and full-mode-equivalent in clean CI.
 - Prove `rg`/tracked-file checks contain no live `agent-rules`, archive, history, prototype, legacy Superpowers planning, or non-OpenSpec plan authority.
 - Verify the runtime-template relocation with loader, generation workflow, build, and applicable deployment checks.
-- Require explicit user review of the exact OpenSpec artifact revision before apply and explicit acceptance after verification.
+- Require explicit user authorization before apply and explicit acceptance after verification.
 
 ## Risks / Trade-offs
 
@@ -408,8 +408,8 @@ tracked files + current source/tests/schemas + active OpenSpec changes + Git his
 
 ## Migration Plan
 
-1. Complete the parent repository-pinned OpenSpec, digest-bound approval/acceptance gate, stage manifest, and tests.
-2. Validate this exact revised artifact set, obtain and record explicit user approval, then keep child apply blocked if any digest changes.
+1. Complete the parent repository-pinned OpenSpec integration, native lifecycle guide, and serial stage-order contract.
+2. Strictly validate the child artifacts and record the user's stage-scoped apply authorization as concise evidence.
 3. Freeze a read-only `git ls-files` baseline and run current tests to capture known failures without treating them as target authority.
 4. Add `_meta` schema, typed relationship policy, finite scope matrix, templates, deterministic full/fast check components, and counterexample fixtures.
 5. Baseline-test, create, validate, and forward-test the explicit `$docs-audit` Skill before using it for migration decisions.
@@ -430,4 +430,4 @@ This change intentionally rewrites the documentation control plane and current k
 
 ## Open Questions
 
-No information-architecture or handoff-design decision remains unresolved in this revision. The `$docs-audit` contract, deterministic check modes and diagnostics, typed relationship model, finite scope/parser semantics, dirty-worktree proof, CI surface, and PoC transfer are proposed targets pending explicit approval of this exact artifact revision. During apply, any factual conflict about current product behavior, deployment policy, runtime ownership, or partial implementation is handled through the semantic-audit user-decision path rather than silently resolved in implementation.
+No information-architecture or handoff-design decision remains unresolved in this revision. The user authorized apply on 2026-07-12. During apply, any factual conflict about current product behavior, deployment policy, runtime ownership, or partial implementation is handled through the semantic-audit user-decision path rather than silently resolved in implementation.

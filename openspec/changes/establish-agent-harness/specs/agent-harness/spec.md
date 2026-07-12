@@ -15,59 +15,32 @@ The repository SHALL establish the agent harness through ordered, independently 
 - **AND** report the unmet stage dependency
 
 ### Requirement: Independent stage proposals and approval
-Every harness stage, including documentation governance, MUST be represented by its own OpenSpec proposal, specs, design, and tasks based on the current repository baseline, and MUST receive explicit user approval of the exact artifact revision before apply.
-
-The approval SHALL retain raw digests for the exact approved artifact snapshot and a semantic task-plan digest that normalizes only existing Markdown checkbox state. During apply, changing `[ ]` to `[x]` or back at an already approved task position MAY record progress without invalidating the plan; changing task text, order, identity, nesting, or adding/removing a task SHALL invalidate approval.
+Every harness stage, including documentation governance, MUST be represented by its own OpenSpec proposal, specs, design, and tasks based on the current repository baseline, and MUST receive explicit user authorization before apply.
 
 #### Scenario: Stage approval is recorded
 - **WHEN** the user approves a child change for apply
-- **THEN** the approval record SHALL identify the change, artifact content digests, approval scope, and decision reference
+- **THEN** concise evidence SHALL identify the change and authorized scope
 - **AND** planning approval SHALL NOT be treated as post-implementation acceptance
-
-#### Scenario: An approval candidate is generated
-- **WHEN** the repository prepares an exact-revision approval candidate
-- **THEN** it SHALL enumerate the sorted proposal, all specification deltas, design, and tasks from one immutable full Git revision
-- **AND** hash canonical Git blob bytes rather than line-ending-converted worktree bytes
-- **AND** refuse the candidate when any normative artifact differs from that revision
 
 #### Scenario: Stage artifacts are ready but not approved
 - **WHEN** a later-stage change has complete planning artifacts but no explicit user approval
 - **THEN** apply SHALL remain blocked
 
-#### Scenario: Approved artifacts change
-- **WHEN** content in an approved proposal, spec, design, or task plan changes
-- **THEN** the previous approval SHALL be considered stale
-- **AND** the revised artifacts SHALL require new user approval
-
-#### Scenario: Approved task progress changes
-- **WHEN** apply changes only the checkbox state at an existing approved task position
-- **THEN** the raw tasks artifact SHALL differ from the approved snapshot
-- **BUT** the semantic task-plan digest SHALL remain valid
-- **AND** any other tasks content change SHALL still make approval stale
-
-### Requirement: One bounded bootstrap approval establishes the repository gate
-Before the repository-specific approval gate exists, parent foundation tasks 1.1 through 1.4 MUST receive explicit user approval bound to one immutable parent artifact revision, the bounded foundation scope, and a durable decision reference. This bootstrap approval SHALL authorize only repository-pinned OpenSpec, the approval/acceptance gate, the static stage manifest, and their tests; it SHALL NOT authorize the documentation child or any later-stage apply.
-
-#### Scenario: The foundation gate does not exist yet
-- **WHEN** parent foundation implementation is ready to begin
-- **THEN** the exact committed parent artifact revision and tasks 1.1 through 1.4 SHALL be presented for explicit user approval
-- **AND** implementation SHALL remain blocked until that decision exists
-
-#### Scenario: The repository gate becomes available
-- **WHEN** parent foundation tasks 1.1 through 1.4 are implemented and verified
-- **THEN** the bootstrap decision SHALL be written as a durable record and revalidated against its original source revision and decision reference
-- **AND** every child or later stage SHALL use the normal repository gate without a bootstrap exception
+#### Scenario: Material stage scope changes during apply
+- **WHEN** implementation reveals a material scope or design change beyond the authorized stage
+- **THEN** the agent SHALL update the OpenSpec artifacts and request renewed user confirmation
+- **AND** ordinary task progress SHALL remain recorded in `tasks.md`
 
 ### Requirement: Stage acceptance is evidence-backed
-Every child stage SHALL receive explicit user acceptance only after its approved artifact revision is applied and its required verification evidence passes.
+Every child stage SHALL receive explicit user acceptance only after its authorized scope is applied and its required verification evidence passes.
 
 #### Scenario: Implementation is verified but not accepted
-- **WHEN** a child change has passing verification but no explicit user acceptance bound to that revision and evidence
+- **WHEN** a child change has passing verification but no explicit user acceptance of the presented result and evidence
 - **THEN** the child SHALL NOT be considered accepted for the next stage dependency
 
 #### Scenario: A child is accepted
 - **WHEN** the user accepts the applied revision after reviewing its required verification evidence
-- **THEN** the acceptance record SHALL identify the change revision, verification evidence, and decision reference
+- **THEN** the acceptance evidence SHALL identify the change and verification evidence
 - **AND** upstream OpenSpec archive behavior MAY proceed
 
 ### Requirement: Evidence categories remain distinct
@@ -96,7 +69,7 @@ The repository SHALL use OpenSpec for significant feature, architecture, perform
 - **AND** SHALL NOT create a competing generic lifecycle
 
 ### Requirement: Repository-specific safety constraints extend OpenSpec
-The harness SHALL add repository-specific checks only where domain safety is not provided by OpenSpec, including queue safety, deployment locks, approval validity, documentation authority, and telemetry isolation.
+The harness SHALL add repository-specific checks only where domain safety is not provided by OpenSpec, including stage ordering, queue safety, deployment locks, documentation authority, and telemetry isolation.
 
 #### Scenario: A runtime-affecting stage reaches deployment work
 - **WHEN** implementation requires build, restart, target-machine sync, queue interruption, or public verification

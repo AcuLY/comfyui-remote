@@ -9,8 +9,7 @@ The repository already contains useful agent rules, documentation maps, tests, a
 - Require each later stage to present a fresh proposal, spec, design, and tasks for explicit user approval before apply.
 - Require local, CI, worktree, and production verification to use agent-legible evidence while preserving strict data isolation.
 - Treat self-hosting, implementation-identical local/CI/production observability, per-worktree isolation, and hard-cutover enforcement as approved program constraints; later child changes still choose the concrete stacks and thresholds.
-- Require repository-specific automated gates only where OpenSpec itself does not cover domain constraints such as deployment safety, queue handling, approval validity, and telemetry isolation.
-- Require one explicit, revision-bound bootstrap approval for parent foundation tasks 1.1-1.4 because the repository gate does not yet exist; prohibit that exception for every child and later stage.
+- Require repository-specific checks only where OpenSpec itself does not cover domain constraints such as stage ordering, deployment safety, queue handling, documentation authority, and telemetry isolation.
 - Keep generic artifact dependencies, apply, verify, archive, and recovery behavior aligned with the installed OpenSpec version rather than inventing a parallel lifecycle.
 
 ## Capabilities
@@ -31,7 +30,7 @@ None.
 
 ## Related Changes
 
-- `rebuild-documentation-governance` is the first child and is authored from the repository-specific documentation information architecture approved on 2026-07-10; its exact artifact revision still requires user review before apply.
+- `rebuild-documentation-governance` is the first child and is authored from the repository-specific documentation information architecture approved on 2026-07-10. The user authorized its OpenSpec apply workflow on 2026-07-12.
 - `build-agent-observability` will be proposed only after documentation governance is accepted.
   Its fresh design SHALL re-evaluate the non-normative PreToolUse path-match spike preserved
   by the documentation child; the spike is evidence, not approved instrumentation.

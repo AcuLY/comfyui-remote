@@ -1,0 +1,21 @@
+schemaVersion: 1
+document:
+  type: runbook
+  status: current
+  owner: deployment-operations
+  authority:
+    subject: operations/deployment
+    kind: operational
+  readWhen:
+    - deploying the production service
+  sources:
+    - package.json
+    - agent-rules/deploy/index.md
+  verifiedBy:
+    - npm run docs:check
+  environment:
+    - local-windows
+    - mypc-production
+  risk: Do not mutate queue or service state before acquiring the deployment boundary.
+  recovery: "#failure-handling-and-recovery"
+  lastVerified: "2026-07-12"
