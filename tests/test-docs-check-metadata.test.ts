@@ -68,6 +68,17 @@ type DocumentationPolicy = {
   schemaVersion: number;
   governedRoots: string[];
   rootEntrypoints: string[];
+  language: {
+    requiredLanguage: string;
+    firstPartyMarkdown: { include: string[]; exclude: string[] };
+    allowedAscii: string[];
+    metadataExcludedFields: string[];
+    dataPayloadExceptions: Array<{
+      path: string;
+      kind: string;
+      headingDepth: number;
+    }>;
+  };
   scope: PolicyScope[];
   profiles: PolicyProfile[];
   requiredLandingPages: string[];
@@ -214,6 +225,51 @@ test("policy defines finite non-overlapping scope and explicit profile selection
     "DESIGN.md",
     "CLAUDE.md",
   ]);
+  assert.equal(policy.language.requiredLanguage, "zh-CN");
+  assert.deepEqual(policy.language.firstPartyMarkdown.include, ["*.md", "**/*.md"]);
+  for (const exception of [
+    ".codebuddy/skills/ui-ux-pro-max/**",
+    ".codex/skills/ui-ux-pro-max/**",
+    "tests/fixtures/**",
+    "openspec/changes/rebuild-documentation-governance/evidence/pretooluse-file-access-poc/fixture/**",
+  ]) {
+    assert.ok(policy.language.firstPartyMarkdown.exclude.includes(exception));
+  }
+  assert.deepEqual(policy.language.allowedAscii, [
+    "repository-path",
+    "command",
+    "inline-code",
+    "fenced-code",
+    "protocol-field",
+    "openspec-structure-keyword",
+  ]);
+  for (const field of [
+    "schemaVersion",
+    "name",
+    "document.type",
+    "document.status",
+    "document.owner",
+    "document.authority.subject",
+    "document.authority.kind",
+    "document.sources",
+    "document.verifiedBy",
+    "document.recovery",
+    "document.verificationState",
+    "document.lastVerified",
+    "document.generator",
+    "document.inputs",
+    "document.regenerate",
+    "document.check",
+    "document.activation.stage",
+    "document.activation.owner",
+  ]) {
+    assert.ok(policy.language.metadataExcludedFields.includes(field));
+  }
+  assert.deepEqual(policy.language.dataPayloadExceptions, [{
+    path: "docs/product/shared-resources/position-presets.md",
+    kind: "paragraph-after-heading",
+    headingDepth: 3,
+  }]);
   assertUnique(policy.scope.map(({ id }) => id), "scope ids");
   assertUnique(policy.profiles.map(({ id }) => id), "profile ids");
 
@@ -298,6 +354,7 @@ test("policy encodes required navigation owners and forbidden legacy surfaces", 
     "ARCHITECTURE.md",
     "PRODUCT.md",
     "DESIGN.md",
+    "CLAUDE.md",
     "docs/README.md",
   ]);
   assertUnique(policy.navigation.owners.map(({ landing }) => landing), "owner landing pages");
@@ -442,11 +499,20 @@ test("control plane contains only schema, policy, README, and approved templates
   }
 
   const runbook = parseTemplateFrontmatter("docs/_meta/templates/runbook.md").document as UnknownMap;
-  for (const key of ["environment", "risk", "recovery", "lastVerified"]) {
+  for (const key of [
+    "environment",
+    "risk",
+    "recovery",
+    "verificationState",
+    "lastVerified",
+  ]) {
     assert.ok(key in runbook, `runbook template must include ${key}`);
   }
+  assert.equal(runbook.verificationState, "not-exercised");
+  assert.equal(runbook.lastVerified, null);
 
   const readme = readFileSync("docs/_meta/README.md", "utf8");
-  assert.match(readme, /Do not add a per-file owner registry/);
-  assert.match(readme, /never invokes `\$docs-audit` automatically/);
+  assert.match(readme, /不要在这里新增逐文件 owner 注册表/);
+  assert.match(readme, /绝不会自动调用 `\$docs-audit`/);
+  assert.match(readme, /静态审查或非写入合同测试必须使用 `not-exercised` 与 `null`/);
 });

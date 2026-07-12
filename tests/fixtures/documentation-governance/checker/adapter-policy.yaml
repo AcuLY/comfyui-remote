@@ -1,6 +1,14 @@
 schemaVersion: 1
 governedRoots: [docs]
 rootEntrypoints: [README.md]
+language:
+  requiredLanguage: zh-CN
+  firstPartyMarkdown:
+    include: ["*.md", "**/*.md"]
+    exclude: []
+  allowedAscii: [repository-path, command, inline-code, fenced-code, protocol-field, openspec-structure-keyword]
+  metadataExcludedFields: [schemaVersion, name, document.type, document.status, document.owner, document.authority.subject, document.authority.kind, document.sources, document.verifiedBy, document.recovery, document.verificationState, document.lastVerified, document.generator, document.inputs, document.regenerate, document.check, document.activation.stage, document.activation.owner]
+  dataPayloadExceptions: []
 scope:
   - id: root
     kind: current

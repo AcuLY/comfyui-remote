@@ -1,112 +1,82 @@
 ---
 name: docs-audit
-description: Explicitly audit repository documentation against current source, schemas, tests, required runtime evidence, approved OpenSpec targets, and history. Use only when the user or an approved OpenSpec task explicitly invokes $docs-audit for changed, paths, change, or full scope in report, record, or fix mode; never trigger it automatically for ordinary documentation or source edits.
+description: 仅在用户或已批准 OpenSpec 任务明确指定已变更范围、路径范围、变更范围或完整范围，并显式调用 $docs-audit 的报告、记录或修复模式时，才根据当前源码、schema、测试、必要运行时证据、已批准 OpenSpec 目标和历史记录审计仓库文档；该 Skill 只能显式调用，普通文档或源码编辑绝不自动触发。
 ---
 
-# Documentation Audit
+# 文档审计
 
-Audit documentation semantics that deterministic checks cannot prove: stale claims, missing
-coverage, duplicate authority, partial implementation, unsafe runbook steps, and confusion
-between current behavior, an approved target, and historical intent.
+审计确定性检查无法证明的文档语义：过期声明、覆盖缺口、重复权威、部分实现、不安全 runbook 步骤，以及当前行为、已批准目标和历史意图之间的混淆。
 
-Read [references/evidence-contract.md](references/evidence-contract.md) before every audit. Use
-its evidence categories, finding schema, dispositions, escalation rules, and report shape.
+每次审计前阅读 [证据合同](references/evidence-contract.md)，使用其中的证据类别、finding schema、disposition、升级规则和报告结构。
 
-## Parse the explicit invocation
+## 解析显式调用
 
-Require an explicit `$docs-audit` invocation from the user or an approved OpenSpec task. Do not
-infer invocation from ordinary source edits, documentation edits, `docs:check` warnings, or this
-Skill's presence in the repository. Do not schedule or recur.
+要求用户或已批准 OpenSpec 任务显式调用 `$docs-audit`。不得从普通源码编辑、文档编辑、`docs:check` 警告或本 Skill 存在于仓库中推断调用。不得安排定时或重复运行。
 
-Accept one scope:
+接受一种范围：
 
-- `changed`: audit changed governed documents and their complete policy-defined impact closure
-  from a safe merge base. Escalate to `full` if the base or closure is unsafe.
-- `paths <repo-relative paths...>`: audit only the named files/directories and the evidence
-  needed to validate their claims. Treat a named directory as authorization to read its
-  descendants, not as authorization to edit them.
-- `change <openspec-id>`: audit an active OpenSpec change, its declared affected documentation,
-  and the current evidence needed to distinguish target behavior from implementation.
-- `full`: audit the complete governed documentation scope.
+- `changed`：从安全 merge base 审计已变更的受治理文档及其由 policy 定义的完整影响闭包。base 或闭包不安全时升级为 `full`。
+- `paths <repo-relative paths...>`：只审计指定文件/目录及验证其声明所需的证据。指定目录只授权读取后代，不授权编辑。
+- `change <openspec-id>`：审计活动 OpenSpec 变更、其声明受影响文档，以及区分目标行为与实现所需的当前证据。
+- `full`：审计完整受治理文档范围。
 
-If the explicit invocation omits scope, choose `changed` only when a safe merge base and complete
-impact closure are available; otherwise use `full` and state why.
+显式调用省略范围时，只有在安全 merge base 和完整影响闭包都可用时才选择 `changed`；否则使用 `full` 并说明原因。
 
-Accept one operation:
+接受一种操作：
 
-- `report` is the default and writes nothing.
-- `record <repo-relative-evidence-path>` writes only the explicitly named evidence report for an
-  approved OpenSpec task. It never edits audited documents.
-- `fix <explicitly-user-authorized-paths...>` may edit only paths the user explicitly authorized
-  in the current task. An OpenSpec task alone does not broaden fix authorization.
+- `report` 是默认操作，不写入任何内容。
+- `record <repo-relative-evidence-path>` 只为已批准 OpenSpec 任务写入显式命名的证据报告，绝不编辑被审计文档。
+- `fix <explicitly-user-authorized-paths...>` 只能编辑用户在当前任务中显式授权的路径。OpenSpec 任务本身不会扩大 `fix` 授权。
 
-Reject an ambiguous scope, operation, output path, or authorization instead of guessing.
+<!-- 测试契约锚点：OpenSpec 任务本身不会扩大 fix 授权 -->
 
-## Enforce path containment
+范围、操作、输出路径或授权不明确时拒绝执行，不得猜测。
 
-1. Resolve the repository root with Git.
-2. Normalize every requested, output, and writable path relative to that root.
-3. Reject absolute paths, traversal, paths whose resolved existing ancestor escapes the root,
-   and aliases or links that would write outside the root.
-4. For `record`, require the exact named path to be under
-   `openspec/changes/<current-change-id>/evidence/docs-audit/`. Require the change ID to match the
-   approved task. Reject a directory-only output, a different change, or any second write.
-5. For `fix`, freeze the exact user-authorized writable set before editing. A directory authorizes
-   descendants only when the user explicitly authorized that directory as the fix scope.
+## 强制路径限制
 
-Capture the complete pre-existing tracked, staged, and untracked worktree state. Preserve every
-path outside the allowed write set. Never use broad restore, reset, clean, or add commands.
+1. 使用 Git 解析仓库根目录。
+2. 相对仓库根规范化每个请求路径、输出路径和可写路径。
+3. 拒绝绝对路径、路径穿越、已有祖先解析后逃出仓库根的路径，以及会写到仓库外的别名或链接。
+4. 对 `record`，要求精确命名路径位于 `openspec/changes/<current-change-id>/evidence/docs-audit/` 下；要求变更 ID 与已批准任务匹配；拒绝仅目录输出、其他变更或第二处写入。
+5. 对 `fix`，编辑前冻结精确的用户授权可写集合。只有用户明确把目录授权为 `fix` 范围时，该目录才授权其后代。
 
-## Execute the audit
+<!-- 测试契约锚点：要求 change ID 与已批准任务匹配 -->
 
-1. **Resolve scope.** Enumerate the selected documents, owners, source relationships, navigation
-   neighbors, relevant OpenSpec artifacts, and required verification entrypoints. Record the
-   merge base or the reason for full escalation.
-2. **Run the deterministic gate.** Run `npm run docs:check` through its documented full or safe
-   fast mode before semantic review. Stop on checker/configuration failure. Keep ordinary rule
-   violations in the audit report and continue semantic analysis where evidence remains usable.
-3. **Classify evidence.** Separate verified current implementation, approved-but-unimplemented
-   target behavior, historical intent, and unresolved claims. Never use newer prose as proof by
-   itself.
-4. **Audit meaning.** Check factual freshness, owner coverage, duplicate authority, partial
-   implementation, executable operational steps, source/test/document conflicts, and historical
-   material presented as current. Obtain runtime evidence when the claim cannot be established
-   statically; preserve uncertainty when it is unavailable.
-5. **Produce findings.** Use the evidence contract. Give every finding an action and resolution,
-   cite repository-relative evidence with a precise locator, and name its owner and verification.
-6. **Apply the selected operation.** Follow the write rules below and compare the resulting
-   worktree state with the captured baseline.
-7. **Rerun verification after a fix.** Run the owning checks, the deterministic documentation
-   gate, and the same semantic audit scope. Do not widen scope merely to make a finding pass.
-8. **Require independent review after a fix.** Hand the same scope and evidence contract to a
-   separate agent or human reviewer. Never sign off your own semantic correction. If independent
-   review is unavailable, leave the result `review-required` and do not claim a passing audit.
+采集完整的既有已跟踪、已暂存和未跟踪工作树状态。保留允许写入集合外的每条路径。绝不使用宽泛的 `restore`、`reset`、`clean` 或 `add` 命令。
 
-## Apply operation boundaries
+<!-- 测试契约锚点：采集完整既有 tracked、staged 和 untracked worktree 状态 -->
 
-### Report
+## 执行审计
 
-Return the report in the invoking task. Write no repository file, cache, ledger, or evidence
-artifact. Verify the complete worktree state is unchanged from the captured baseline.
+1. **解析范围。** 枚举选中文档、owner、来源关系、导航相邻项、相关 OpenSpec 工件和必要验证入口。记录合并基准或升级为 `full` 的原因。
+2. **运行确定性门禁。** 语义审查前，按文档定义的 `full` 或安全 `fast` 模式运行 `npm run docs:check`。检查器或配置失败时停止。把普通规则违规保留在审计报告中；证据仍可用时继续语义分析。
+3. **分类证据。** 分离已验证当前实现、已批准但未实施的目标行为、历史意图和未解决声明。绝不把更新的正文自身当作证明。
+4. **审计含义。** 检查事实新鲜度、owner 覆盖、重复权威、部分实现、可执行操作步骤、source/test/document 冲突，以及被当作当前事实的历史材料。声明无法静态确定时取得 runtime evidence；不可用时保留不确定性。
+5. **生成问题项。** 使用证据合同。为每个 `finding` 给出 `action` 和 `resolution`，以精确定位符引用仓库相对证据，并标明 owner 和验证方式。
+6. **执行选定操作。** 遵守下方写入规则，并将结果工作树状态与已采集基线比较。
+7. **`fix` 后重新验证。** 运行责任方检查、确定性文档门禁和相同语义审计范围。不得仅为让 `finding` 通过而扩大范围。
+8. **`fix` 后要求独立审查。** 把相同范围与证据合同交给独立 Agent 或人工审查者。绝不签署自己的语义修正。无法独立审查时，结果保持 `review-required`，不得声称审计通过。
 
-### Record
+<!-- 测试契约锚点：fix 后重新验证 -->
 
-Require an approved OpenSpec task to name the exact contained evidence path. Write only the
-report at that path. Leave audited documents and every other path unchanged. Do not create a
-permanent cross-change ledger.
+## 应用操作边界
 
-### Fix
+### 报告（`report`，无写入）
 
-Edit only explicitly user-authorized paths and only when static or required runtime evidence
-supports one high-confidence correction. Do not decide product direction, authority ownership,
-partial-implementation policy, deletion of potentially current knowledge, or a conflict with
-multiple reasonable interpretations. Escalate those findings.
+在调用任务中返回报告。不写任何仓库文件、缓存、台账或证据工件。验证完整工作树状态与采集基线一致。
 
-Do not write an audit record during `fix` unless the invocation separately names and authorizes
-the contained evidence path. Report all writes, reruns, and the independent-review state.
+### 记录（`record`，仅限定证据）
 
-## Refuse unsupported completion
+要求已批准 OpenSpec 任务命名精确且受路径限制约束的证据路径。只在该路径写报告。保持被审计文档和其他所有路径不变。不得创建跨变更的永久台账。
 
-Do not report a semantic pass when deterministic failures remain in scope, findings lack an
-explicit resolution, required evidence is missing, writes escaped authorization, a fix has not
-been rerun, or the fixer has not received independent review.
+### 修复（`fix`，仅显式授权路径）
+
+只编辑用户显式授权的路径，且仅在静态或必要运行时证据支持一个高置信度修正时编辑。不得决定产品方向、权威归属、部分实现策略、删除可能含当前知识的材料，或处理有多个合理解释的冲突；这些 `finding` 必须升级。
+
+除非调用另行命名并授权受路径限制约束的证据路径，否则 `fix` 期间不得写审计记录。报告所有写入、重跑和独立审查状态。
+
+<!-- 测试契约锚点：`fix` 期间不得写 audit record -->
+
+## 拒绝不受支持的完成状态
+
+范围内仍有确定性失败、`finding` 缺少显式 `resolution`、必要证据缺失、写入超出授权、`fix` 尚未重跑，或修复者尚未获得独立审查时，不得报告语义通过。

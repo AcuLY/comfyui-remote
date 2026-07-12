@@ -1,28 +1,28 @@
-## Phase 0 historical baseline
+## Phase 0 历史基线
 
-- Pass: true
-- Valid projects: 7 (叶瞬光, 大乔, 安魂曲, 洛茜, 花火, 西格莉卡, 零)
-- Labeled images: 3668
-- Canonical sections: 68
-- Manual exclusions loaded: 单人 · 拎鞋, 第一人称 · 胸压
-- Sort-order variance verified: true
-- DB mutated: false
-- Reproducible: true
+- 通过：`true`
+- 有效项目：7（叶瞬光, 大乔, 安魂曲, 洛茜, 花火, 西格莉卡, 零）
+- 已标注图片：3668
+- 规范分区：68
+- 已加载手动排除项：单人 · 拎鞋, 第一人称 · 胸压
+- 已验证排序差异：`true`
+- 数据库已修改：`false`
+- 可复现：`true`
 
-### Acceptance verification
+### 验收验证
 
-| Criterion | Status |
+| 验收条件 | 状态 |
 | --- | --- |
-| valid_reference_projects_only | PASS |
-| labeled_images_min_1000 | PASS |
-| manual_exclusions_loaded | PASS |
-| sort_order_variance_verified | PASS |
-| db_not_mutated | PASS |
-| reproducible | PASS |
+| `valid_reference_projects_only` | `PASS` |
+| `labeled_images_min_1000` | `PASS` |
+| `manual_exclusions_loaded` | `PASS` |
+| `sort_order_variance_verified` | `PASS` |
+| `db_not_mutated` | `PASS` |
+| `reproducible` | `PASS` |
 
-### Trash rate by canonical section
+### 按规范分区统计的废弃率
 
-| canonicalSectionName | projectCoverage | labeled | kept | trashed | trashRate | keepRate | flags | positions |
+| 规范分区 | 项目覆盖数 | 已标注 | 已保留 | 已废弃 | 废弃率 | 保留率 | 标记 | 位置 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |
 | 第三人称 · 站姿后入 | 1 | 9 | 0 | 9 | 1 | 0 | low_sample_lt20;low_project_coverage_lt5 | 洛茜:32 |
 | 第三人称 · 背后跪姿手交 | 7 | 109 | 11 | 98 | 0.8991 | 0.1009 |  | 叶瞬光:12,大乔:11,安魂曲:12,洛茜:14,花火:11,西格莉卡:13,零:13 |

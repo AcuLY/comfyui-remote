@@ -1,19 +1,11 @@
-# Documentation-governance evidence
+# 文档治理 evidence
 
-This directory contains non-normative investigation and handoff material for the
-active `rebuild-documentation-governance` change. It is not current repository
-documentation, an implementation plan, or an additional lifecycle.
+本目录保存活动变更 `rebuild-documentation-governance` 的非规范性调查与交接材料。它不是当前仓库文档、implementation plan 或额外生命周期。
 
-- `2026-07-10-session-handoff.md` records the paused design state and continuation route.
-- `session-materials/` preserves the full decision log, information-architecture draft,
-  and both repository-understanding drafts that previously existed only under `.tmp/**`.
-- `pretooluse-file-access-poc/` preserves the isolated attempted-path-match telemetry spike
-  only as future input to `build-agent-observability`; the preserved copy is not installed,
-  accepted, or required by the documentation child. The separately authorized root successor
-  is a bounded local experiment outside this evidence directory and outside child acceptance.
+- `2026-07-10-session-handoff.md` 记录暂停时的设计状态和续接路径。
+- `session-materials/` 保存完整决策日志、信息架构草稿，以及此前只存在于 `.tmp/**` 下的两份仓库理解草稿。
+- `pretooluse-file-access-poc/` 只把隔离的路径匹配尝试遥测实验保留为未来 `build-agent-observability` 输入；保留副本既未安装，也不是文档治理子变更已接受或必需的实现。另行授权的根级后继实验是证据目录和子变更验收之外的受限本地实验。
 
-Any accepted requirement must be incorporated into the normal OpenSpec proposal,
-specification, design, and tasks before apply. Generated runtime logs and statistics
-remain untracked; only sanitized examples are preserved here.
-Any future reuse of the spike must reference this archived evidence or a digest-bound copy
-and be freshly designed and validated by the later observability child.
+任何获接受要求都必须在 `apply` 前纳入正常 OpenSpec 提案、规范、设计和任务。生成式运行时日志与统计保持不受跟踪；这里只保留已脱敏示例。
+
+未来若复用该实验，必须引用已归档 evidence 或 digest-bound 副本，并由后续可观测性子变更重新设计和验证。

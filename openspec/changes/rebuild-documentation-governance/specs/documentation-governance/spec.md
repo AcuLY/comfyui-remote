@@ -1,365 +1,385 @@
 ## ADDED Requirements
 
-### Requirement: Approved documentation architecture
-The repository SHALL implement the user-approved documentation architecture with root `README.md`, `AGENTS.md`, `ARCHITECTURE.md`, `PRODUCT.md`, and `DESIGN.md` entrypoints; current product, architecture, detailed design, and runbook layers under `docs/**`; a minimal `docs/_meta/**` governance control plane; an explicitly invoked repository Skill at `.codex/skills/docs-audit/**`; and honest `QUALITY_SCORE.md`, `RELIABILITY.md`, and `SECURITY.md` placeholders.
+### Requirement: 已批准的文档架构
+仓库 `SHALL` 实施用户批准的文档架构：以根 `README.md`、`AGENTS.md`、`ARCHITECTURE.md`、`PRODUCT.md` 和 `DESIGN.md` 为入口；在 `docs/**` 下建立当前产品、架构、详细设计和运行手册层；建立最小 `docs/_meta/**` 治理控制面；在 `.codex/skills/docs-audit/**` 提供必须显式调用的仓库 Skill；并提供诚实的 `QUALITY_SCORE.md`、`RELIABILITY.md` 和 `SECURITY.md` 占位文档。
 
-Every retained documentation directory SHALL use `README.md` as its landing page. The target SHALL NOT contain a parallel `FRONTEND.md`, `PLANS.md`, `docs/exec-plans/**`, `docs/history/**`, `docs/archive/**`, or `docs/prototypes/**` surface.
+每个保留的文档目录都必须以 `README.md` 作为入口页。目标结构不得包含平行 `FRONTEND.md`、`PLANS.md`、`docs/exec-plans/**`、`docs/history/**`、`docs/archive/**` 或 `docs/prototypes/**` 表面。
 
-#### Scenario: An agent enters the repository
-- **WHEN** the agent opens the root documentation entrypoints
-- **THEN** it SHALL find the project, agent-policy, architecture, product, and design maps at the approved root paths
-- **AND** detailed current knowledge SHALL be reachable through `docs/README.md`
+#### Scenario: Agent 进入仓库
+- **WHEN** Agent 打开根文档入口
+- **THEN** 必须在已批准根路径找到项目、智能体策略、架构、产品与设计地图
+- **AND** 详细当前知识必须可从 `docs/README.md` 到达
 
-#### Scenario: A retained documentation directory is inspected
-- **WHEN** a directory contains maintained documentation
-- **THEN** it SHALL expose a `README.md` landing page declaring the directory purpose, authority, read triggers, and child routes
+#### Scenario: 检查保留的文档目录
+- **WHEN** 一个目录包含维护中的文档
+- **THEN** 必须提供 `README.md` 入口页，声明目录目的、权威、读取触发条件和子路由
 
-#### Scenario: A forbidden parallel layer is introduced
-- **WHEN** a tracked change adds or restores a forbidden documentation or planning surface
-- **THEN** documentation validation SHALL fail with the conflicting path and approved owner
+#### Scenario: 引入禁止的平行层
+- **WHEN** 已跟踪变更新增或恢复禁止的文档或规划表面
+- **THEN** 文档校验必须失败，并报告冲突路径与已批准 owner
 
-### Requirement: Evidence categories and authority remain explicit
-Governed knowledge SHALL distinguish verified current implementation, approved target behavior in active OpenSpec changes, and historical intent available through Git or archived OpenSpec changes. No category SHALL silently replace another.
+### Requirement: 证据类别与权威保持显式
+受治理知识 `SHALL` 区分已验证当前实现、活动 OpenSpec 变更中的已批准目标行为，以及可从 Git 或已归档 OpenSpec 变更恢复的历史意图。任何类别都不得静默取代另一类别。
 
-Current descriptive documentation SHALL explain verified implemented behavior; it SHALL NOT claim an approved but unimplemented target as current. OpenSpec SHALL remain authoritative for proposed behavior, change design, implementation tasks, verification, and change archive.
+当前描述性文档必须解释已验证实现行为，不得把已批准但未实施的目标声明为当前事实。OpenSpec 必须继续作为拟议行为、变更设计、实施任务、验证和变更归档的权威。
 
-#### Scenario: Old design intent conflicts with implementation
-- **WHEN** historical material differs from current source, schemas, tests, or required runtime evidence
-- **THEN** maintained documentation SHALL describe the verified current behavior
-- **AND** historical intent SHALL remain recoverable through Git without being copied into a current-history directory
+#### Scenario: 旧设计意图与实现冲突
+- **WHEN** 历史材料与当前源码、schema、测试或必要 runtime evidence 不同
+- **THEN** 维护文档必须描述已验证当前行为
+- **AND** 历史意图必须可通过 Git 恢复，不得复制进 current-history 目录
 
-#### Scenario: An approved target is not implemented
-- **WHEN** an active OpenSpec change describes behavior that has not been applied and verified
-- **THEN** current descriptive documentation SHALL NOT present that behavior as implemented
-- **AND** readers SHALL be routed to the active change for the proposed target
+#### Scenario: 已批准目标尚未实施
+- **WHEN** 活动 OpenSpec 变更描述了尚未 `apply` 和验证的行为
+- **THEN** 当前描述性文档不得把该行为表述为已实施
+- **AND** 必须把读者路由到对应活动变更查看拟议目标
 
-### Requirement: Progressive disclosure and navigable knowledge graph
-`AGENTS.md` SHALL stay a concise policy-and-routing entrypoint. `docs/README.md` and directory `README.md` files SHALL progressively route agents to the smallest task-relevant current source without duplicating full downstream content.
+### Requirement: 渐进披露与可导航知识图
+`AGENTS.md` `SHALL` 保持为简洁的策略与路由入口。`docs/README.md` 和各目录 `README.md` 必须渐进地把 Agent 路由到任务所需的最小当前来源，不重复下游完整内容。
 
-Every maintained current document SHALL be reachable from an approved entrypoint, and every detail document SHALL link back to its owning landing page or governing root contract.
+每个维护中的当前文档都必须能从已批准入口到达；每个详情文档都必须反向链接到其责任方入口页或治理根契约。
 
-#### Scenario: An agent starts a scoped task
-- **WHEN** the task matches a declared read trigger
-- **THEN** `AGENTS.md` or `docs/README.md` SHALL identify the next required owner document or runbook
-- **AND** unrelated documentation SHALL not be mandatory reading
+#### Scenario: Agent 开始限定范围的任务
+- **WHEN** 任务匹配声明的读取触发条件
+- **THEN** `AGENTS.md` 或 `docs/README.md` 必须指出下一份必要责任方文档或运行手册
+- **AND** 不得强制读取无关文档
 
-#### Scenario: A current document becomes orphaned
-- **WHEN** no approved root or directory entrypoint reaches a maintained document
-- **THEN** documentation validation SHALL fail and report the missing routing edge
+#### Scenario: 当前文档成为孤立项
+- **WHEN** 没有已批准根入口或目录入口能到达维护文档
+- **THEN** 文档校验必须失败并报告缺失路由边
 
-#### Scenario: A detail document duplicates its root contract
-- **WHEN** a detail document attempts to redefine root product, architecture, design, or policy authority instead of linking to it
-- **THEN** the semantic audit SHALL report duplicate authority for resolution
+#### Scenario: 详情文档重复根契约
+- **WHEN** 详情文档尝试重新定义根产品、架构、设计或策略权威，而不是链接到根契约
+- **THEN** 语义审计必须报告重复权威供处理
 
-### Requirement: Minimal machine-governance control plane
-`docs/_meta/**` SHALL contain only the documentation-governance README, machine-readable document schema, structural/link policy, and current-document authoring templates. It SHALL NOT contain product or architecture facts, a manually synchronized per-file registry, generated audit reports, OpenSpec artifact templates, or a second planning lifecycle.
+### Requirement: 最小机器治理控制面
+`docs/_meta/**` `SHALL` 只包含文档治理 README、机器可读文档 schema、结构与链接策略和当前文档编写模板。不得包含产品或架构事实、人工同步的逐文件登记表、生成式审计报告、OpenSpec 工件模板或第二规划生命周期。
 
-Per-document metadata SHALL be authoritative at the document instance. The `_meta` schema and policy SHALL define valid profiles and constraints without duplicating every document's instance values. Exact source-to-document relationships SHALL be typed as deterministic `contract` relationships or semantic `review` relationships rather than sharing one ambiguous update-trigger meaning.
+逐文档元数据在文档实例处拥有权威。`_meta` schema 与策略定义有效配置和约束，但不重复每个文档的实例值。精确的源码到文档关系必须类型化为确定性 `contract` 或语义 `review`，不能共享含糊的更新触发含义。
 
-#### Scenario: A governed document is added or changed
-- **WHEN** documentation validation reads the document
-- **THEN** its applicable profile, owner, authority, status, read triggers, typed source relationships, evidence, and verification contract SHALL resolve without path-guessing ambiguity
+#### Scenario: 新增或修改受治理文档
+- **WHEN** 文档校验读取该文档
+- **THEN** 其适用配置、责任方、权威、状态、读取触发条件、类型化来源关系、证据和验证契约必须无需猜测路径即可解析
 
-#### Scenario: A runbook is validated
-- **WHEN** a document uses the runbook profile
-- **THEN** its metadata SHALL additionally identify the applicable environment, risk boundary, last verification state, and recovery path
+#### Scenario: 校验 runbook
+- **WHEN** 文档使用 runbook profile
+- **THEN** 元数据还必须标明适用环境、风险边界、最后验证状态和恢复路径
 
-#### Scenario: A generated artifact already exists
-- **WHEN** an existing document is owned by a generator
-- **THEN** its metadata SHALL identify the generator, source inputs, regeneration command, and non-writing check
-- **AND** this SHALL NOT require moving it into a generated directory
+#### Scenario: 已存在生成工件
+- **WHEN** 现有文档由 generator 所有
+- **THEN** 元数据必须标明生成器、源码输入、重新生成命令和非写入检查
+- **AND** 不得因此要求把文档移入 generated 目录
 
-#### Scenario: A source relationship is declared
-- **WHEN** policy maps a source path to maintained documentation
-- **THEN** the mapping SHALL declare either `contract` with a deterministic non-writing verifier or `review` with a reason and owner
-- **AND** a required deterministic contract SHALL NOT be downgraded to a warning or semantic review
+#### Scenario: 声明来源关系
+- **WHEN** 策略将源码路径映射到维护文档
+- **THEN** 映射必须声明带确定性非写入验证器的 `contract`，或带理由与责任方的 `review`
+- **AND** 必要确定性契约不得降级为警告或语义审查
 
-### Requirement: OpenSpec is the only significant-change lifecycle
-The repository SHALL use OpenSpec proposal, behavior specs, change design, tasks, apply, verification, and archive conventions as the only lifecycle for significant changes. Legacy Superpowers specs, implementation notes, execution plans, PRDs acting as plans, and `docs/plans/**` planning authority SHALL be extracted or relocated by ownership and then removed.
+### Requirement: OpenSpec 是唯一重要变更生命周期
+仓库 `SHALL` 以 OpenSpec 提案、行为规范、变更设计、任务、`apply`、验证和归档约定作为重要变更的唯一生命周期。遗留 `Superpowers` 规范、实施说明、执行计划、充当计划的 PRD 和 `docs/plans/**` 规划权威必须按归属提取或迁移，然后删除。
 
-The child change's `tasks.md` SHALL be the complete implementation task plan for this stage; no separate ExecPlan, `PLANS.md`, or detailed implementation-plan artifact SHALL be created.
+本子变更 `tasks.md` 必须是本阶段完整实施任务计划；不得创建独立 ExecPlan、`PLANS.md` 或详细实施计划工件。
 
-#### Scenario: Significant work is proposed
-- **WHEN** work changes a capability, architecture, performance contract, or repository-wide policy
-- **THEN** the work SHALL be represented by an OpenSpec change before implementation
-- **AND** no parallel plan or spec document SHALL become authoritative
+#### Scenario: 提出重要工作
+- **WHEN** 工作修改能力、架构、性能契约或全仓策略
+- **THEN** 实施前必须以 OpenSpec 变更表示
+- **AND** 不得让平行 plan 或 spec 文档成为权威
 
-#### Scenario: Legacy planning content contains a current fact
-- **WHEN** semantic audit verifies that the fact still describes implemented behavior
-- **THEN** the fact SHALL be rewritten into its current owner document or living spec
-- **AND** the legacy planning artifact SHALL then be deleted
+#### Scenario: 遗留规划内容包含当前事实
+- **WHEN** 语义审计验证某事实仍描述已实施行为
+- **THEN** 必须把该事实重写进其当前 owner 文档或现行 spec
+- **AND** 随后删除遗留规划工件
 
-#### Scenario: A non-plan dataset is stored below docs/plans
-- **WHEN** audit proves the files are runtime inputs, benchmark fixtures, or generated analysis outputs rather than plans
-- **THEN** they SHALL be relocated to their code, test-fixture, configuration, or artifact owner
-- **AND** `docs/plans/**` SHALL not remain as a naming exception
+#### Scenario: 非 plan 数据集存于 docs/plans
+- **WHEN** 审计证明文件是运行时输入、基准 fixture 或生成式分析输出，而不是计划
+- **THEN** 必须把它们迁移到代码、测试 fixture、配置或工件责任方
+- **AND** 不得保留 `docs/plans/**` 作为命名例外
 
-### Requirement: Agent policy and runbook authority are separated
-`AGENTS.md` SHALL be the only authority for mandatory ordinary-development agent workflow policy, including triggers, default behavior, prohibitions, and safety boundaries. `docs/runbooks/**` SHALL be the only authority for executable operational procedures, commands, expected results, failure handling, and recovery. The explicitly invoked `$docs-audit` Skill SHALL own its semantic-audit workflow and SHALL NOT be copied into `AGENTS.md` or exposed as a second runbook entrypoint.
+### Requirement: Agent 策略与 runbook 权威分离
+`AGENTS.md` `SHALL` 是普通开发强制 Agent 工作流策略的唯一权威，包括触发条件、默认行为、禁止项和安全边界。`docs/runbooks/**` 必须是可执行操作步骤、命令、预期结果、失败处理和恢复的唯一权威。显式调用的 `$docs-audit` Skill 必须拥有自身语义审计工作流，且不得复制进 `AGENTS.md` 或暴露为第二运行手册入口。
 
-After policy and procedure have been verified in their new owners, `agent-rules/**` SHALL be deleted atomically with all documentation, OpenSpec configuration, generator, and test references to it. No compatibility stub or manually synchronized projection SHALL remain.
+新责任方中的策略与步骤验证通过后，必须将 `agent-rules/**` 与所有引用它的文档、OpenSpec 配置、生成器和测试原子删除。不得保留兼容桩或人工同步投影。
 
-#### Scenario: A task has no operational trigger
-- **WHEN** an agent reads `AGENTS.md` for a task that does not involve Git delivery, local service work, deployment, authentication, or another declared operation
-- **THEN** the agent SHALL receive the applicable hard boundaries without loading unrelated runbook commands
-
-#### Scenario: A deployment operation is triggered
-- **WHEN** the task requires production build, synchronization, queue interruption, service restart, or public verification
-- **THEN** `AGENTS.md` SHALL require the applicable deployment runbook
-- **AND** the runbook SHALL contain the executable sequence and recovery behavior
+#### Scenario: 任务没有操作 trigger
+- **WHEN** Agent 为不涉及 Git 交付、本地服务、部署、认证或其他已声明操作的任务读取 `AGENTS.md`
+- **THEN** Agent 必须获得适用硬边界，而无需加载无关运行手册命令
+
+#### Scenario: 触发部署操作
+- **WHEN** 任务需要生产构建、同步、队列中断、服务重启或公开验证
+- **THEN** `AGENTS.md` 必须要求读取适用部署运行手册
+- **AND** 运行手册必须包含可执行序列和恢复行为
 
-#### Scenario: Migration of agent rules completes
-- **WHEN** the new policy and runbooks pass their contract and navigation tests
-- **THEN** `agent-rules/**` and every live reference to it SHALL be absent from the tracked repository
+#### Scenario: Agent 规则迁移完成
+- **WHEN** 新策略与运行手册通过契约和导航测试
+- **THEN** 已跟踪仓库中必须不存在 `agent-rules/**` 及其任何 live reference
 
-#### Scenario: Ordinary development changes documentation or source
-- **WHEN** no user request or approved OpenSpec task explicitly invokes `$docs-audit`
-- **THEN** `AGENTS.md`, source mappings, and documentation routers SHALL NOT auto-run the Skill
-- **AND** deterministic contract checks and non-blocking review diagnostics MAY still run through `docs:check`
+#### Scenario: 普通开发修改文档或源码
+- **WHEN** 用户请求或已批准 OpenSpec 任务均未显式调用 `$docs-audit`
+- **THEN** `AGENTS.md`、来源映射与文档路由不得自动运行 Skill
+- **AND** `docs:check` 仍可运行确定性契约检查与非阻断审查诊断
 
-### Requirement: Explicit repository Skill for semantic documentation audit
-The repository SHALL provide `.codex/skills/docs-audit/**` as the single explicitly invoked `$docs-audit` execution surface for semantic defects not provable by deterministic tooling, including stale claims, missing coverage, duplicate authority, partial implementation, invalid runbook steps, and current-versus-target confusion. It SHALL NOT add a controlled `docs:read` CLI, documentation MCP gateway, automatic ordinary-development trigger, or scheduled audit job.
+### Requirement: 用于文档语义审计的显式仓库 Skill
+仓库 `SHALL` 提供 `.codex/skills/docs-audit/**` 作为必须显式调用的唯一 `$docs-audit` 执行表面，处理确定性工具无法证明的语义缺陷，包括过时声明、覆盖缺失、重复权威、部分实现、无效运行手册步骤和当前与目标混淆。不得增加受控 `docs:read` CLI、文档 MCP 网关、普通开发自动触发器或定时审计作业。
 
-Invocation SHALL accept one of `changed`, explicit repository-relative `paths`, active OpenSpec `change <id>`, or `full` scope. `report` SHALL be the default operation and write nothing. Explicit `record` MAY write only the scoped audit evidence named by an approved OpenSpec task under that change's `evidence/docs-audit/**`; it SHALL NOT edit audited documents. High-confidence document mutation SHALL require an explicit `fix` operation and independent semantic review before the same scope can pass. The audit SHALL examine source, schemas, tests, Git history, and required runtime evidence; categorize claims as current implementation, approved target, or historical intent; and produce one of `keep`, `rewrite`, `move`, `split`, `merge`, `extract-delete`, `delete`, or `user-decision-required` for the audited scope.
-
-Ad hoc audits SHALL return their report in the invoking task without writing a permanent ledger. An approved OpenSpec task that requires durable evidence SHALL explicitly invoke `record` or `fix` and name the contained evidence path. Scheduling remains a future separately approved decision.
+调用必须接受 `changed`、显式仓库相对 `paths`、活动 OpenSpec `change <id>` 或 `full` 范围。`report` 是默认操作且不写入。显式 `record` 只能写已批准 OpenSpec 任务在该变更的 `evidence/docs-audit/**` 下命名的限定审计证据，不得编辑被审计文档。高置信度文档修改必须使用显式 `fix` 操作，并在同一范围通过前接受独立语义审查。审计必须检查源码、schema、测试、Git 历史与必要运行时证据；把声明分类为当前实现、已批准目标或历史意图；并对审计范围生成 `keep`、`rewrite`、`move`、`split`、`merge`、`extract-delete`、`delete` 或 `user-decision-required` 处置。
+
+临时审计在调用任务中返回报告，不写永久台账。需要持久证据的已批准 OpenSpec 任务必须显式调用 `record` 或 `fix` 并命名限定证据路径。调度留给未来另行批准的决策。
 
-#### Scenario: Static evidence proves one current correction
-- **WHEN** source, schema, tests, or unambiguous Git history support exactly one current-behavior correction
-- **THEN** read-only audit SHALL propose that correction with cited evidence
-- **AND** explicit `fix` mode MAY apply it, run the owning verification, and require independent review
+#### Scenario: 静态证据证明唯一当前修正
+- **WHEN** 源码、schema、测试或无歧义 Git 历史只支持一个当前行为修正
+- **THEN** 只读审计必须提出该修正并引用证据
+- **AND** 显式 `fix` 模式可以应用修正、运行责任方验证并要求独立审查
 
-#### Scenario: Evidence is conflicting or incomplete
-- **WHEN** more than one interpretation remains reasonable, required runtime evidence is unavailable, or the decision changes product direction or authority
-- **THEN** the agent SHALL preserve the uncertainty
-- **AND** request user judgment before rewriting current truth
+#### Scenario: 证据冲突或不完整
+- **WHEN** 仍有多个合理解释、必要运行时证据不可用，或决策改变产品方向或权威
+- **THEN** Agent 必须保留不确定性
+- **AND** 重写当前事实前请求用户判断
 
-#### Scenario: Structural checks pass but meaning is stale
-- **WHEN** a document has valid metadata and links but contradicts verified behavior or contains an unsafe operational sequence
-- **THEN** semantic audit SHALL fail that scope and identify the conflicting claim and evidence
+#### Scenario: 结构检查通过但语义过时
+- **WHEN** 文档 metadata 与 link 有效，但和已验证行为矛盾或包含不安全操作序列
+- **THEN** 语义审计必须让该范围失败，并指出冲突声明与证据
 
-#### Scenario: A semantic audit is requested without a scope
-- **WHEN** the user explicitly invokes `$docs-audit` without a narrower scope
-- **THEN** the Skill SHALL use changed scope when a safe merge base exists
-- **AND** SHALL use full scope when the changed impact closure cannot be established safely
+#### Scenario: 请求语义审计但未给 scope
+- **WHEN** 用户显式调用 `$docs-audit` 但没有更窄 scope
+- **THEN** 存在安全 merge base 时 Skill 必须使用 changed scope
+- **AND** 无法安全建立变更影响闭包时必须使用完整范围
 
-#### Scenario: A high-confidence finding is fixed
-- **WHEN** an explicitly authorized audit applies a correction with one evidence-supported answer
-- **THEN** a separate agent or reviewer SHALL verify the changed scope against the same evidence contract
-- **AND** the fixer SHALL NOT sign its own semantic pass
+#### Scenario: 修复高置信度 finding
+- **WHEN** 显式授权的审计应用一个有证据支持唯一答案的修正
+- **THEN** 独立 Agent 或审查者必须按相同证据合同验证变更范围
+- **AND** 修复者不得签署自己的语义通过
 
-#### Scenario: An OpenSpec task requests an audit record
-- **WHEN** an approved task explicitly invokes `$docs-audit ... record` and names its evidence output
-- **THEN** the Skill MAY write only that contained audit evidence
-- **AND** SHALL leave audited documents and every other path unchanged
+#### Scenario: OpenSpec 任务请求审计记录
+- **WHEN** 已批准任务显式调用 `$docs-audit ... record` 并命名证据输出
+- **THEN** Skill 只能写该限定审计证据
+- **AND** 必须保持被审计文档及其他所有 path 不变
 
-#### Scenario: No write operation is authorized
-- **WHEN** `$docs-audit` is invoked without `record` or `fix`
-- **THEN** the Skill SHALL write no repository file
+#### Scenario: 未授权写操作
+- **WHEN** 调用 `$docs-audit` 时没有 `record` 或 `fix`
+- **THEN** Skill 不得写任何仓库文件
 
-#### Scenario: Independent review is unavailable
-- **WHEN** an audit applied changes but no independent reviewer can run
-- **THEN** the result SHALL remain `review-required`
-- **AND** SHALL NOT be recorded as a passing semantic audit
+#### Scenario: 无法进行独立审查
+- **WHEN** 审计已应用修改，但没有独立审查者可运行
+- **THEN** 结果必须保持 `review-required`
+- **AND** 不得记录为通过的语义审计
 
-### Requirement: Current documentation is reconstructed from evidence
-Every retained current document SHALL be reviewed at section level against its owning implementation, schemas, tests, and required runtime behavior. Content SHALL be moved by knowledge ownership rather than by mechanical directory rename, and duplicate current authority SHALL be eliminated.
+### Requirement: 根据证据重建当前文档
+每个保留的当前文档 `SHALL` 逐节对照责任方实现、schema、测试与必要运行时行为审查。内容按知识归属移动，而非机械目录改名；必须消除重复当前权威。
 
-Code or configuration changes that match a deterministic `contract` relationship SHALL update and reverify the owned document or satisfy its exact non-writing no-content-change verifier in the same change. A matched semantic `review` relationship SHALL emit a non-blocking review diagnostic; it SHALL NOT auto-run `$docs-audit`, but every such diagnostic SHALL receive an explicit disposition before documentation-stage acceptance.
+匹配确定性 `contract` 关系的代码或配置变更，必须在同一变更中更新并重新验证责任方文档，或满足其精确非写入无内容变化验证器。匹配语义 `review` 关系必须生成非阻断审查诊断，不得自动运行 `$docs-audit`；但阶段验收前每条诊断都必须有显式处置。
 
-#### Scenario: A mixed legacy document is migrated
-- **WHEN** one file contains product intent, architecture, operational commands, and obsolete implementation notes
-- **THEN** each verified section SHALL move to the corresponding product, architecture, or runbook owner
-- **AND** obsolete or unverified sections SHALL not be copied as current truth
+#### Scenario: 迁移混合遗留文档
+- **WHEN** 一个文件同时包含产品意图、架构、操作命令和过时实施说明
+- **THEN** 每个已验证章节必须移到对应产品、架构或运行手册责任方
+- **AND** 过时或未验证章节不得复制为当前事实
 
-#### Scenario: An owning source changes
-- **WHEN** a changed path matches a document's deterministic `contract` relationship
-- **THEN** local and CI validation SHALL require the owning documentation update or exact no-content-change proof
-- **AND** fail when the required contract is absent or stale
+#### Scenario: 责任方源码变化
+- **WHEN** 变更路径匹配文档的确定性 `contract` 关系
+- **THEN** 本地与 CI 校验必须要求责任方文档更新或精确的无内容变化证明
+- **AND** 必要契约缺失或过时时必须失败
 
-#### Scenario: A semantic review relationship matches
-- **WHEN** a changed path matches a `review` relationship
-- **THEN** deterministic validation SHALL emit an owned warning with the relationship evidence
-- **AND** ordinary development SHALL NOT automatically invoke `$docs-audit`
+#### Scenario: 匹配语义审查关系
+- **WHEN** 变更路径匹配 `review` 关系
+- **THEN** 确定性校验必须生成带责任方与关系证据的警告
+- **AND** 普通开发不得自动调用 `$docs-audit`
 
-### Requirement: Archive knowledge is extracted and the archive is deleted
-Every tracked item under `docs/archive/**` at migration baseline SHALL be reviewed for still-valid current knowledge. Verified durable knowledge SHALL be incorporated into its current owner before the source is deleted; content without current value SHALL be deleted without a replacement document.
+### Requirement: 提取 archive 知识并删除 archive
+迁移基线中 `docs/archive/**` 下每个已跟踪项 `SHALL` 接受是否仍含有效当前知识的审查。已验证持久知识必须在源删除前纳入当前责任方；没有当前价值的内容直接删除，不创建替代文档。
 
-The completed repository SHALL contain no `docs/archive/**`, no `docs/history/**`, no live link to either path, and no code or test that treats deleted historical material as current authority. Git and OpenSpec archives SHALL provide historical recovery.
+完成后的仓库不得包含 `docs/archive/**`、`docs/history/**`、指向任一路径的实时链接，也不得有代码或测试把已删除历史材料视为当前权威。Git 与 OpenSpec 归档提供历史恢复。
 
-#### Scenario: A test reads an archived roadmap as authority
-- **WHEN** migration finds a test, script, or current document reading an archived file
-- **THEN** the still-valid contract SHALL first move to current code, tests, policy, or descriptive documentation
-- **AND** the consumer SHALL be updated before archive deletion
+#### Scenario: 测试把归档路线图当作权威
+- **WHEN** 迁移发现测试、脚本或当前文档读取归档文件
+- **THEN** 仍有效契约必须先移到当前代码、测试、策略或描述性文档
+- **AND** archive 删除前必须更新 consumer
 
-#### Scenario: Archived content has no current value
-- **WHEN** evidence shows the content is obsolete, abandoned, duplicated, or never implemented
-- **THEN** it SHALL be deleted without creating a history replacement
+#### Scenario: Archive 内容没有当前价值
+- **WHEN** 证据表明内容已过时、放弃、重复或从未实施
+- **THEN** 必须删除，不创建历史替代项
 
-#### Scenario: Archive deletion is proposed complete
-- **WHEN** the final archive batch is removed
-- **THEN** tracked-file and reference checks SHALL prove zero archive/history files and zero live references
+#### Scenario: 宣布 archive 删除完成
+- **WHEN** 最后 archive 批次被删除
+- **THEN** tracked-file 与 reference check 必须证明 archive/history 文件和 live reference 均为零
 
-### Requirement: Training prototypes are discarded
-All tracked files under `docs/prototypes/**`, including Training HTML, CSS, JavaScript, images, fonts, and prototype metadata, SHALL be deleted. Prototype-specific route maps, inventory classifications, documentation links, and governance tests SHALL also be removed or replaced with current production contracts.
+### Requirement: 丢弃 Training 原型
+本变更 `SHALL` 删除 `docs/prototypes/**` 下全部已跟踪文件，包括 Training HTML、CSS、JavaScript、图像、字体和原型元数据。还必须删除原型专用路由映射、清单分类、文档链接与治理测试，或改写为当前生产契约。
 
-Training SHALL remain documented as a production work mode peer to Generation, selected through the shared navigation mode toggle, and production source SHALL not depend on deleted prototype assets.
+文档必须继续把 Training 作为与 Generation 平级、通过共享导航模式切换选择的生产工作模式；生产源码不得依赖已删除原型资产。
 
-#### Scenario: Prototype deletion begins
-- **WHEN** the prototype surface is removed
-- **THEN** validation SHALL first prove that production source does not import or load prototype-only assets
-- **AND** current Training behavior SHALL remain covered by production source and tests
+#### Scenario: 开始删除 prototype
+- **WHEN** 删除 prototype 表面
+- **THEN** 校验必须先证明生产源码不导入或加载原型专用资产
+- **AND** 当前 Training 行为必须继续由生产源码与测试覆盖
 
-#### Scenario: A prototype-only governance test remains
-- **WHEN** a test requires deleted prototype files or mappings to exist
-- **THEN** the test SHALL be deleted or rewritten to verify a current production boundary
+#### Scenario: 仍有原型专用治理测试
+- **WHEN** 测试要求已删除原型文件或映射存在
+- **THEN** 必须删除该测试，或重写为验证当前生产边界
 
-#### Scenario: Prototype cleanup completes
-- **WHEN** the cleanup is declared complete
-- **THEN** no tracked prototype file, prototype-specific live link, or history copy SHALL remain
-- **AND** production verification SHALL preserve the shared navigation mode toggle between Generation and Training
+#### Scenario: Prototype 清理完成
+- **WHEN** 宣布清理完成
+- **THEN** 不得保留已跟踪原型文件、原型专用实时链接或历史副本
+- **AND** 生产验证必须保留 Generation 与 Training 之间的共享导航模式切换
 
-### Requirement: Generated and reference directory taxonomy is deferred
-This change SHALL NOT create `docs/generated/**` or `docs/references/**` or mechanically move documents merely to impose that distinction. Existing generated and reference-like material SHALL remain at a verified current owner unless another approved migration reason applies.
+### Requirement: 延后 generated 与 reference 目录分类
+本变更 `SHALL NOT` 创建 `docs/generated/**` 或 `docs/references/**`，也不得只为强制该区分而机械移动文档。除非有其他已批准迁移理由，现有生成式与参考资料类材料必须留在已验证当前责任方。
 
-The documentation policy SHALL retain enough provenance to validate existing generators and hand-maintained evidence without deciding a permanent directory taxonomy. A later OpenSpec change SHALL use observed maintenance evidence before introducing either directory.
+文档策略必须保留足够来源信息，以便在不决定永久目录分类的情况下验证现有生成器和人工维护证据。后续 OpenSpec 变更必须依据观察到的维护证据再引入任一目录。
 
-#### Scenario: Existing generated inventory is validated
-- **WHEN** its source or generator changes
-- **THEN** the existing artifact SHALL be regenerated or checked in its current approved location
-- **AND** this stage SHALL not create a generated directory solely for it
+#### Scenario: 校验现有生成式清单
+- **WHEN** 其源码或生成器变化
+- **THEN** 必须在当前已批准位置重新生成或检查现有工件
+- **AND** 本阶段不得仅为它创建 generated 目录
 
-#### Scenario: A document could be called a reference
-- **WHEN** the document has a clear current product, architecture, API, testing, or runbook owner
-- **THEN** it SHALL remain with that owner during this stage
+#### Scenario: 文档可称为 reference
+- **WHEN** 文档已有明确当前产品、架构、API、测试或运行手册责任方
+- **THEN** 本阶段必须留在该责任方下
 
-### Requirement: Finite governed scope and Markdown semantics
-The documentation policy SHALL enumerate a finite scope matrix. Root entrypoints and approved `docs/**` current knowledge SHALL receive documentation metadata, topology, navigation, relationship, and semantic-audit governance. OpenSpec artifacts SHALL receive pinned OpenSpec validation and internal-link checks but no current-document frontmatter or navigation authority. Project Skills SHALL receive Agent Skills validation and internal-link checks but no documentation frontmatter. Source-adjacent Markdown such as `src/**.md` and `tests/**.md` SHALL be explicitly registered, migrated, or deleted rather than admitted by an unrestricted catch-all.
+### Requirement: 有限治理 scope 与 Markdown 语义
+文档策略 `SHALL` 列出有限范围矩阵。根入口与已批准 `docs/**` 当前知识接受文档元数据、拓扑、导航、关系和语义审计治理。OpenSpec 工件接受固定 OpenSpec 校验和内部链接检查，但不接受当前文档 frontmatter 或导航权威。项目 Skill 接受 Agent Skill 校验与内部链接检查，但不加文档 frontmatter。`src/**.md`、`tests/**.md` 等源码相邻 Markdown 必须显式注册、迁移或删除，不能由无限制通配规则接纳。
 
-Markdown validation SHALL use GitHub-Flavored Markdown parsing and GitHub-compatible heading slugs, including duplicate-heading suffixes. Fenced or indented code, inline code, HTML comments, and non-current OpenSpec evidence SHALL not create live path references or navigation edges. Internal relative links and anchors SHALL be deterministic; external link reachability, document age, suspected prose duplication, and prose quality SHALL not become network-dependent blockers.
+Markdown 校验必须使用 GitHub 风格 Markdown 解析和 GitHub 兼容标题 slug，包括重复标题后缀。围栏或缩进代码、行内代码、HTML 注释和非当前 OpenSpec 证据不得创建实时路径引用或导航边。内部相对链接与锚点必须确定；外部链接可达性、文档年龄、疑似正文重复与正文质量不得成为依赖网络的阻断项。
 
-#### Scenario: An OpenSpec artifact is checked
-- **WHEN** a proposal, spec, design, task, or evidence file is in scope
-- **THEN** pinned OpenSpec and applicable internal-link validation SHALL run
-- **AND** the artifact SHALL NOT be treated as current descriptive documentation or required to join the current navigation graph
+#### Scenario: 检查 OpenSpec artifact
+- **WHEN** 提案、规范、设计、任务或证据文件位于范围内
+- **THEN** 必须运行固定 OpenSpec 和适用 internal-link validation
+- **AND** 不得把工件视为当前描述性文档，也不得要求加入当前导航图
 
-#### Scenario: A project Skill is checked
-- **WHEN** a tracked project Skill is in scope
-- **THEN** the repository-pinned offline `npm run skills:check` command SHALL validate Agent Skills metadata, bundled-reference reachability, and repository-path safety
-- **AND** the Skill SHALL NOT receive current-document frontmatter
+#### Scenario: 检查项目 Skill
+- **WHEN** 已跟踪项目 Skill 位于范围内
+- **THEN** 仓库固定离线 `npm run skills:check` 必须校验 Agent Skill 元数据、随包参考资料可达性和仓库路径安全
+- **AND** Skill 不得获得 current-document frontmatter
 
-#### Scenario: A forbidden legacy path appears only as evidence
-- **WHEN** a forbidden path is quoted in a code example, negative fixture, or non-current OpenSpec evidence
-- **THEN** it SHALL NOT count as a live reference
-- **AND** a link, policy field, source/config consumer, or current-document route to that path SHALL still fail
+#### Scenario: 禁止遗留路径只作为证据出现
+- **WHEN** 禁止路径被引用在代码示例、负向 fixture 或非当前 OpenSpec 证据中
+- **THEN** 不得计为 live reference
+- **AND** 指向该路径的链接、策略字段、源码或配置使用方或当前文档路由仍必须失败
 
-### Requirement: Deterministic non-writing documentation gate
-The repository SHALL expose one stable `npm run docs:check` engine used locally and in CI. Full mode SHALL be the safe default and the required acceptance/CI mode. An explicit fast mode MAY compute a changed-scope impact closure from a valid merge base, but SHALL escalate to full when the base is unavailable, policy/schema/OpenSpec/Skill/generator code changes, documents move or are deleted, root/navigation authority changes, or impact cannot be bounded safely. Full mode SHALL always run every current-state structural, contract, generator, OpenSpec, and Skill check. With no comparison base, it SHALL conservatively emit every semantic `review` relationship as a warning rather than skip review coverage; CI and stage-acceptance invocations SHALL provide an explicit comparison revision. The engine SHALL run without network access, produce deterministic results, and preserve the complete pre-existing worktree state.
+### Requirement: 确定性非写入文档门禁
+仓库 `SHALL` 公开一个稳定 `npm run docs:check` 引擎供本地与 CI 使用。`full` 模式必须是安全默认和必要验收与 CI 模式。显式 `fast` 模式可以从有效合并基准计算变更范围影响闭包；但基准不可用、策略、schema、OpenSpec、Skill 或生成器代码变化、文档移动或删除、根目录或导航权威变化，或无法安全限定影响时，必须升级到 `full`。`full` 模式始终运行所有当前状态结构、契约、生成器、OpenSpec 与 Skill 检查。无比较基准时，必须保守地把每个语义 `review` 关系作为警告发出，而非跳过审查覆盖；CI 和阶段验收调用必须提供显式比较修订版。引擎必须无网络运行、结果确定，并保留完整既有工作树状态。
 
-The gate SHALL validate applicable metadata profiles, the finite scope matrix, allowed structure, required landing pages, GFM relative links and anchors, root-to-owner reachability, required reverse links, forbidden live legacy paths, OpenSpec structure, `contract` and `review` relationships, source-derived contract synchronization, and freshness of existing generator-owned artifacts.
+门禁必须校验适用元数据配置、有限范围矩阵、允许结构、必需入口页、GFM 相对链接与锚点、根目录到责任方可达性、必需反向链接、禁止实时遗留路径、OpenSpec 结构、`contract` 与 `review` 关系、源码派生契约同步，以及现有生成器所有工件的新鲜度。
 
-Human and JSON diagnostics SHALL share a stable schema with rule identifier, `error` or `warning` severity, repository-relative path, location, evidence, remediation, and owner, sorted deterministically. Exit `0` means no deterministic error, exit `1` means rule violations, and exit `2` means tool/configuration failure. Warnings MAY represent heuristic review facts only and SHALL NOT downgrade a required deterministic contract.
+人类可读与 JSON 诊断必须共享稳定 schema，包括规则标识、`error`/`warning` 严重性、仓库相对路径、位置、证据、修复建议和责任方，并确定性排序。退出 `0` 表示没有确定性错误，`1` 表示规则违规，`2` 表示工具或配置失败。警告只能表示启发式审查事实，不得降级必要确定性契约。
 
-#### Scenario: Documentation is valid
-- **WHEN** the local documentation check runs on a compliant checkout
-- **THEN** it SHALL exit successfully
-- **AND** a before/after snapshot SHALL prove it changed no tracked, staged, or pre-existing untracked content even when the checkout was already dirty
+#### Scenario: 文档有效
+- **WHEN** 本地文档检查在合规检出中运行
+- **THEN** 必须成功退出
+- **AND** 即使检出已经很脏，前后快照也必须证明没有改变已跟踪、已暂存或原有未跟踪内容
 
-#### Scenario: A document violates a deterministic rule
-- **WHEN** metadata, structure, navigation, links, anchors, relationship coverage, OpenSpec validity, or generated freshness is invalid
-- **THEN** the command SHALL exit `1` with the stable file, location, rule identifier, evidence, owner, and remediation fields
+#### Scenario: 文档违反确定性规则
+- **WHEN** 元数据、结构、导航、链接、锚点、关系覆盖、OpenSpec 有效性或生成文件新鲜度无效
+- **THEN** 命令必须以 `1` 退出，并提供稳定文件、位置、规则标识、证据、责任方与修复建议字段
 
-#### Scenario: Fast scope is unsafe
-- **WHEN** fast mode cannot establish a complete impacted-document and contract closure
-- **THEN** the same engine SHALL run full mode rather than silently skip checks
+#### Scenario: Fast scope 不安全
+- **WHEN** `fast` 模式无法建立完整受影响文档与契约闭包
+- **THEN** 同一引擎必须运行 `full` 模式，不得静默跳过检查
 
-#### Scenario: Full mode has no comparison revision
-- **WHEN** full mode cannot resolve a merge base and no explicit base is supplied
-- **THEN** it SHALL run every deterministic current-state verifier
-- **AND** emit every semantic `review` relationship as an owned warning with missing-base evidence
+#### Scenario: `Full` 模式没有比较修订版
+- **WHEN** `full` 模式无法解析合并基准且未提供显式基准
+- **THEN** 必须运行所有确定性当前状态验证器
+- **AND** 将每个语义 `review` 关系作为带责任方与缺少基准证据的警告发出
 
-#### Scenario: The checker itself fails
-- **WHEN** configuration cannot be parsed, Git state cannot be inspected, or a required adapter crashes
-- **THEN** the command SHALL exit `2`
-- **AND** SHALL distinguish the tool failure from repository rule violations
+#### Scenario: 检查器自身失败
+- **WHEN** 配置无法解析、Git 状态无法检查或必要适配器崩溃
+- **THEN** 命令必须以 `2` 退出
+- **AND** 必须将工具失败与仓库规则违规区分
 
-#### Scenario: A generator is stale
-- **WHEN** existing source inputs no longer match a committed generator-owned document
-- **THEN** check mode SHALL fail without rewriting the document
-- **AND** identify the separate regeneration command
+#### Scenario: Generator 输出过时
+- **WHEN** 现有源码输入不再匹配已提交生成器所有的文档
+- **THEN** check mode 必须失败且不得重写文档
+- **AND** 必须指出独立重新生成命令
 
-#### Scenario: A volatile contract drifts
-- **WHEN** documented route, method, request/response, schema, MCP, or configuration inventory differs from its owning source
-- **THEN** the source-contract check SHALL fail with the mismatched contract and owner
-- **AND** handwritten explanation SHALL not become an unverified second inventory
+#### Scenario: 易变 contract 漂移
+- **WHEN** 已记录路由、方法、请求与响应、schema、MCP 或配置清单与责任方源码不同
+- **THEN** source-contract check 必须失败并指出不匹配 contract 与 owner
+- **AND** 手写解释不得成为未经验证的第二 inventory
 
-### Requirement: Governance tests prove target contracts rather than preserve legacy structure
-Documentation-governance tests SHALL be derived from the approved schema and policy. Existing tests SHALL be rewritten or removed when they hard-code obsolete paths, stale content, duplicate authority, historical documents, or implementation details that are not part of the target contract.
+### Requirement: 治理测试证明目标契约而非保留遗留结构
+文档治理测试 `SHALL` 从已批准 schema 与策略派生。当现有测试硬编码过时路径、过时内容、重复权威、历史文档或不属于目标契约的实施细节时，必须重写或删除。
 
-Every critical deterministic rule family SHALL include a valid fixture and a counterexample that demonstrates failure.
+每个关键确定性规则族都必须包含有效 fixture 和证明失败的反例。
 
-#### Scenario: An old test requires agent-rules or archive files
-- **WHEN** the approved target deletes those paths
-- **THEN** the old assertion SHALL not block migration
-- **AND** replacement coverage SHALL verify the new AGENTS/runbook or current-authority contract
+#### Scenario: 旧测试要求 agent-rules 或 archive 文件
+- **WHEN** 已批准目标删除这些 path
+- **THEN** 旧断言不得阻断迁移
+- **AND** 替代覆盖必须验证新 `AGENTS.md`、运行手册或当前权威契约
 
-#### Scenario: A linter regression stops detecting a violation
-- **WHEN** metadata, broken-link, orphan, forbidden-path, relationship, or generated-drift validation is weakened
-- **THEN** the corresponding negative fixture SHALL fail the test suite
+#### Scenario: 静态检查器回退后不再发现违规
+- **WHEN** 元数据、断链、孤立项、禁止路径、关系或生成文件漂移校验被削弱
+- **THEN** 对应负向 fixture 必须使测试套件失败
 
-### Requirement: Documentation-specific CI hard cutover
-After all in-scope legacy violations are cleared, a checked-in documentation CI job SHALL run the exact local non-writing gate in full mode from a clean checkout, prove a clean end state, and become required on every protected merge path without a documentation-only path filter. The stage SHALL NOT retain permanent legacy allowlists or call a warning-only job complete. Every warning and semantic-audit finding in the acceptance scope SHALL have an explicit evidence-backed disposition, while every deterministic error SHALL be resolved.
+### Requirement: 文档专用 CI 硬切换
+清除全部范围内遗留违规后，纳入仓库的文档 CI 作业 `SHALL` 从干净检出运行与本地完全一致的非写入 `full` 模式门禁，证明干净结束状态，并在每条受保护合并路径成为必需项，且没有仅文档路径过滤器。阶段不得保留永久遗留白名单，也不得把仅警告作业视为完成。验收范围中每个警告与语义审计问题项都必须有显式、有证据的处置；每个确定性错误都必须解决。
 
-This documentation-specific gate SHALL not preselect the later unified repository CI design.
+该文档专用门禁不得预先选择后续统一仓库 CI 设计。
 
-#### Scenario: Cleanup is incomplete
-- **WHEN** deterministic violations, required semantic decisions, forbidden paths, or migration references remain
-- **THEN** the documentation stage SHALL not be accepted or archived
+#### Scenario: 清理未完成
+- **WHEN** 仍有确定性违规、必要语义决策、禁止路径或迁移引用
+- **THEN** 文档阶段不得验收或归档
 
-#### Scenario: Blocking CI is enabled
-- **WHEN** the documentation gate is proposed for acceptance
-- **THEN** evidence SHALL include a successful clean-start/clean-end full run with the protected comparison revision, a controlled counterexample failure, a restored successful run, no docs-only path filter, and required-check configuration
+#### Scenario: 启用阻断式 CI
+- **WHEN** 文档门禁提交验收
+- **THEN** 证据必须包含使用受保护比较修订版的成功干净开始与干净结束完整运行、受控反例失败、恢复后的成功运行、无仅文档路径过滤器以及必需检查配置
 
-#### Scenario: A warning remains at acceptance
-- **WHEN** a heuristic review warning or semantic-audit finding remains after cleanup
-- **THEN** the acceptance evidence SHALL record its owner, evidence, and explicit disposition
-- **AND** SHALL NOT relabel a deterministic contract failure as a warning
+#### Scenario: 验收时仍有警告
+- **WHEN** 清理后仍有启发式审查警告或语义审计问题项
+- **THEN** 验收证据必须记录其责任方、证据与显式处置
+- **AND** 不得把确定性契约失败改称警告
 
-#### Scenario: Required-check permission is unavailable
-- **WHEN** repository settings cannot be changed with available authority
-- **THEN** the missing external action SHALL be reported
-- **AND** the blocking-gate task SHALL remain incomplete
+#### Scenario: 没有 required-check 配置权限
+- **WHEN** 可用权限无法修改仓库设置
+- **THEN** 必须报告缺少的外部操作
+- **AND** 阻断门禁任务必须保持未完成
 
-### Requirement: Deferred placeholders and future integrations remain honest
-`docs/QUALITY_SCORE.md`, `docs/RELIABILITY.md`, and `docs/SECURITY.md` SHALL initially contain only purpose, deferred status, owner, activation stage, and authority boundaries. They SHALL NOT claim unverified scores, SLOs, security models, or backlog authority.
+### Requirement: 延后占位文档与未来集成保持诚实
+`docs/QUALITY_SCORE.md`、`docs/RELIABILITY.md` 和 `docs/SECURITY.md` 初始 `SHALL` 只包含目的、延后状态、责任方、激活阶段与权威边界。不得声称未经验证的分数、SLO、安全模型或待办权威。
 
-Impeccable installation, root `DESIGN.md` schema conversion, sidecar generation, Impeccable hooks, detectors, critique reports, and CI integration SHALL remain outside this change and require a separate approved OpenSpec change. Observability and engineering-standard content SHALL likewise remain deferred to their approved stages, except for the separately authorized local path-match experiment recorded by the parent change.
+`Impeccable` 安装、根 `DESIGN.md` schema 转换、旁车生成、`Impeccable` Hook、检测器、评议报告与 CI 集成必须保持在本变更范围外，并需要独立批准 OpenSpec 变更。可观测性和工程规范内容同样延后到已批准阶段；父变更另行记录的本地路径匹配实验除外。
 
-The sanitized PreToolUse path-match spike under this change's evidence directory SHALL remain non-normative and uninstalled, and SHALL be excluded as documentation-governance implementation, instrumentation, CI input, or acceptance evidence. A pre-archive hygiene task MAY confirm those boundaries without adopting the spike. It SHALL be interpreted only as attempted repository-path matching, not successful file access or comprehension. When this child is archived, the evidence SHALL remain recoverable there; the later observability child MAY reference or copy a digest-bound snapshot only after fresh design and revalidation.
+本变更证据目录下已脱敏 PreToolUse 路径匹配实验必须保持非规范且未安装，并排除为文档治理实现、插桩、CI 输入或验收证据。归档前卫生检查任务可以确认边界，但不得采用实验。它只能解释为尝试匹配仓库路径，不能解释为成功文件访问或理解。子变更归档后证据随归档可恢复；后续可观测性子变更只有在重新设计和验证后，才可引用或复制绑定摘要的快照。
 
-The separately user-authorized root Hook successor SHALL remain outside this child. Its tracked Hook and recorder MAY produce only ignored repository-local `logs/**` and `metrics/**`; their existence SHALL NOT count as documentation-governance implementation, instrumentation, or acceptance evidence.
+用户另行授权的根级 Hook 后继实验必须保持在本子变更外。其已跟踪 Hook 与记录器只能生成被忽略的仓库本地 `logs/**` 与 `metrics/**`；这些文件的存在不得计为文档治理实现、插桩或验收证据。
 
-#### Scenario: A placeholder is read before activation
-- **WHEN** an agent opens a deferred placeholder
-- **THEN** it SHALL clearly state that no current metric, SLO, or security contract is being asserted
-- **AND** route proposed work through OpenSpec
+#### Scenario: 激活前读取占位文档
+- **WHEN** Agent 打开延后占位文档
+- **THEN** 必须明确说明没有断言当前指标、SLO 或安全契约
+- **AND** 将拟议工作路由到 OpenSpec
 
-#### Scenario: Impeccable-compatible files are planned
-- **WHEN** this change establishes root product/design placement and detailed design routing
-- **THEN** it SHALL preserve a viable future integration boundary
-- **BUT** SHALL not install, execute, or enforce Impeccable artifacts
+#### Scenario: 规划 Impeccable-compatible 文件
+- **WHEN** 本变更建立根产品与设计位置和详细设计路由
+- **THEN** 必须保留可行的未来集成边界
+- **BUT** 不得安装、执行或强制 `Impeccable` 工件
 
-#### Scenario: A later stage has not been approved
-- **WHEN** documentation governance encounters desired observability or engineering-policy content
-- **THEN** it SHALL record only the current verified boundary or placeholder
-- **AND** defer implementation choices to the later user-approved change
+#### Scenario: 后续阶段尚未批准
+- **WHEN** 文档治理遇到期望的可观测性或工程策略内容
+- **THEN** 只能记录当前已验证边界或占位文档
+- **AND** 实现选择必须延后到后续用户批准的变更
 
-#### Scenario: The PreToolUse spike is encountered during this child
-- **WHEN** an agent reviews the preserved hook source, sample events, or aggregate field named `access_total`
-- **THEN** it SHALL treat them as non-production feasibility evidence for attempted path matches
-- **AND** SHALL NOT install, expand, or accept them as documentation-governance instrumentation
+#### Scenario: 子变更期间遇到 PreToolUse 实验
+- **WHEN** Agent 审查保留的 Hook 源码、样例事件或名为 `access_total` 的聚合字段
+- **THEN** 必须将其视为路径匹配尝试的非生产可行性证据
+- **AND** 不得安装、扩展或接受为 documentation-governance instrumentation
 
-#### Scenario: The separately authorized successor Hook is encountered
-- **WHEN** an agent encounters `.codex/hooks.json`, `scripts/observability/agent_file_access_hook.py`, or ignored local access-attempt data
-- **THEN** it SHALL treat them as the user's bounded service-free experiment outside this child
-- **AND** SHALL NOT infer successful reads, comprehension, production observability acceptance, or permission to expand the experiment
+#### Scenario: 遇到另行授权的后继 Hook
+- **WHEN** Agent 遇到 `.codex/hooks.json`、`scripts/observability/agent_file_access_hook.py` 或被忽略的本地访问尝试数据
+- **THEN** 必须将其视为用户授权、无服务、位于本子变更外的受限实验
+- **AND** 不得推断成功读取、理解、生产可观测性验收或扩展实验的权限
+
+### Requirement: 第一方文档默认使用简体中文
+最终保留的第一方维护文档 `SHALL` 以简体中文书写 Markdown 正文、标题、表格说明，以及 frontmatter 中面向人的字符串。稳定技术形式是明确例外，包括技术标识、命令、路径、代码符号、路由、API/MCP/协议字段、第三方 Skill 原文、测试 fixture、数据载荷，以及 OpenSpec 解析器所需结构词。例外不得成为保留整段英文解释正文的借口。
+
+`npm run docs:check` 必须包含确定性、非写入、结构感知的语言门禁。它必须只在受治理第一方文档的正文节点与面向人 frontmatter 字段中检查语言；围栏或行内代码、链接目标、机器字段和已声明技术 token 必须按类别排除。英文解释正文回归必须以错误阻断本地 `full` 检查与 CI，并提供稳定路径、位置、证据、修复建议和责任方。实现不得依赖宽泛逐文件白名单。
+
+#### Scenario: 第一方当前文档包含英文解释正文
+- **WHEN** 受治理文档的正文或面向人 frontmatter 字段新增非例外英文句子
+- **THEN** 文档门禁必须失败，并定位该句子与 owner
+- **AND** 该违规解决前文档阶段不得验收
+
+#### Scenario: 文档包含合法技术英文
+- **WHEN** 英文只出现在技术标识、命令、路径、协议字段、代码、路由、第三方 Skill、测试 fixture、数据载荷或 OpenSpec 结构 token 中
+- **THEN** 语言门禁不得要求翻译或改写该内容
+- **AND** 同一文档中的人类解释正文仍必须为简体中文
+
+#### Scenario: 语言门禁提交验收
+- **WHEN** 任务 `12.6` 提交完成
+- **THEN** 证据必须包含中文正文有效 fixture、英文解释无效 fixture 和技术例外 fixture
+- **AND** 必须证明本地与 CI 使用同一非写入检查器阻止英文正文回归

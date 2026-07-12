@@ -1,10 +1,8 @@
-# Legacy documentation input baseline — 2026-07-12
+# 遗留文档输入基线 — 2026-07-12
 
-Captured with `git ls-files` before deletion. This is reconciliation evidence, not current
-product authority. Every item remains recoverable from Git after its verified current facts
-have an owner.
+删除前使用 `git ls-files` 采集。这是核对证据，不是当前产品权威。各项已验证当前事实有责任方后，仍可从 Git 恢复原项。
 
-## Archive: design demos and design system
+## 归档：设计演示与设计系统
 
 - `docs/archive/design-demos/README.md`
 - `docs/archive/design-demos/app.html`
@@ -22,10 +20,9 @@ have an owner.
 - `docs/archive/design-system/design-system-migration.md`
 - `docs/archive/design-system/shadcn-design-guide.md`
 
-Disposition: verify any still-current visual rules against production components and CSS,
-extract them into `DESIGN.md` and `docs/design/**`, then delete all files.
+处理结论：对照生产组件与 CSS 验证仍有效的视觉规则，提取到 `DESIGN.md` 和 `docs/design/**`，然后删除全部文件。
 
-## Archive: historical handoff and test plan
+## 归档：历史交接与测试计划
 
 - `docs/archive/README.md`
 - `docs/archive/historical/development-progress.md`
@@ -33,11 +30,9 @@ extract them into `DESIGN.md` and `docs/design/**`, then delete all files.
 - `docs/archive/historical/handoff.md`
 - `docs/archive/historical/integration-test-plan.md`
 
-Disposition: extract only facts confirmed by current source, schemas, tests, or required
-runtime evidence into current owners; do not carry progress percentages, old next steps, or
-planned tests forward as current truth.
+处理结论：只把由当前源码、schema、测试或必要运行时证据确认的事实提取到当前责任方；不把进度百分比、旧的下一步或计划测试延续为当前事实。
 
-## Archive: implementation plans and Training designs
+## 归档：实施计划与 Training 设计
 
 - `docs/archive/plans/2026-05-17-auto-review-compatibility-router.md`
 - `docs/archive/plans/2026-05-17-phase0-baseline-implementation.md`
@@ -48,11 +43,9 @@ planned tests forward as current truth.
 - `docs/archive/plans/2026-06-07-manager-lora-training-final-technical-design.md`
 - `docs/archive/plans/2026-06-08-manager-lora-training-frontend-alignment.md`
 
-Disposition: current quality-pipeline behavior belongs to `docs/testing/**`; current Training
-product, architecture, API, and design behavior must be rebuilt from production source and
-tests. Unimplemented intent is discarded or proposed again through OpenSpec.
+处理结论：当前质量流水线行为属于 `docs/testing/**`；当前 Training 产品、架构、API 和设计行为必须从生产源码与测试重建。未实施意图直接丢弃，或重新通过 OpenSpec 提议。
 
-## Archive: quality PRDs
+## Archive：质量 PRD
 
 - `docs/archive/prd/auto-review-compatibility-router/README.md`
 - `docs/archive/prd/auto-review-compatibility-router/phase-0-historical-baseline-prd.md`
@@ -64,10 +57,9 @@ tests. Unimplemented intent is discarded or proposed again through OpenSpec.
 - `docs/archive/prd/auto-review-compatibility-router/phase-6-lora-compatibility-benchmark-prd.md`
 - `docs/archive/prd/auto-review-compatibility-router/phase-7-cold-character-training-prd.md`
 
-Disposition: keep only Phase 0/1 behavior proven by the current quality source/tests. Do not
-promote later PRD phases into current documentation.
+处理结论：只保留当前质量源码与测试证明的 Phase 0/1 行为。不得把后续 PRD 阶段提升为当前文档。
 
-## Archive: Superpowers plans
+## 归档：`Superpowers` 计划
 
 - `docs/archive/superpowers/plans/2026-05-21-queue-pause-resume.md`
 - `docs/archive/superpowers/plans/2026-05-25-project-archive-comfy-cleanup.md`
@@ -75,11 +67,9 @@ promote later PRD phases into current documentation.
 - `docs/archive/superpowers/plans/2026-06-11-bulk-preset-section-replacement.md`
 - `docs/archive/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md`
 
-Disposition: queue safety, project archive/output cleanup, auto-censor, and preset replacement
-facts move only when current source/tests prove them. The refactor roadmap is never current
-architecture authority.
+处理结论：只有当前源码与测试证明时，才迁移队列安全、项目归档与输出清理、自动审查和预设替换事实。重构路线图永远不是当前架构权威。
 
-## Training prototypes
+## Training 原型
 
 - `docs/prototypes/README.md`
 - `docs/prototypes/assets/fonts/geist-latin.woff2`
@@ -110,10 +100,9 @@ architecture authority.
 - `docs/prototypes/manager-lora-training-templates-prototype.html`
 - `docs/prototypes/manager-lora-training-training-detail-prototype.html`
 
-Disposition: delete the complete prototype surface after production Training routes, shared
-mode navigation, and current owner docs are verified. Do not preserve a history copy.
+处理结论：验证生产 Training 路由、共享模式导航和当前责任方文档后，删除完整原型表面。不保留历史副本。
 
-## Parallel planning surfaces
+## 平行规划表面
 
 - `docs/plans/auto-review-analysis/README.md`
 - `docs/superpowers/QUEUE_PAUSE_RESUME_IMPLEMENTATION.md`
@@ -121,5 +110,4 @@ mode navigation, and current owner docs are verified. Do not preserve a history 
 - `docs/superpowers/specs/2026-06-02-auto-censor-mosaic-design.md`
 - `docs/superpowers/specs/2026-06-11-bulk-preset-section-replacement-design.md`
 
-Disposition: quality fixtures/reports are relocated to their test/report owners; verified
-runtime behavior moves to current architecture/runbooks. Delete all parallel plan/spec paths.
+处理结论：把质量 fixture 与报告迁移到测试和报告责任方；已验证运行时行为迁移到当前架构与运行手册。删除全部平行计划与规范路径。

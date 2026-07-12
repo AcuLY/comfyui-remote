@@ -1,7 +1,7 @@
 interface:
-  display_name: "Documentation Audit"
-  short_description: "Audit documentation against repository evidence"
-  default_prompt: "Use $docs-audit to audit the requested documentation scope and report evidence-backed findings."
+  display_name: "文档审计"
+  short_description: "根据当前仓库证据审计文档语义、所有权与权威边界问题"
+  default_prompt: "使用 $docs-audit 审计指定文档范围，并报告有证据支持的 finding。"
 
 policy:
   allow_implicit_invocation: false

@@ -5,17 +5,17 @@ document:
   status: current
   owner: documentation
   authority: fixture architecture
-  readWhen: [testing the documentation checker]
+  readWhen: [测试文档检查器时]
   sources: [src/example.ts]
   verifiedBy: [npm run docs:check]
 ---
 
-# Guide
+# 指南
 
-[Documentation home](README.md)
+[文档首页](README.md)
 
-## Duplicate
+## 重复标题
 
-## Duplicate
+## 重复标题
 
-[Second duplicate heading](#duplicate-1)
+[第二个重复标题](#重复标题-1)

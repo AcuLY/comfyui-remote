@@ -1,50 +1,39 @@
-# OpenSpec workflow
+# OpenSpec 工作流
 
-OpenSpec is the only planning lifecycle for significant feature, architecture,
-performance, and repository-policy changes in this repository. The CLI is pinned in
-`package.json`; use the package scripts so local and CI runs use the same version.
+本仓库中，涉及重要功能、架构、性能和仓库策略的变更只能使用 OpenSpec 规划生命周期。CLI 版本固定在 `package.json` 中；请通过包脚本运行，确保本地与 CI 使用同一版本。
 
-## Native lifecycle
+## 原生生命周期
 
-1. Inspect artifact readiness:
+1. 检查工件就绪状态：
 
    ```powershell
    npm run openspec:status -- --change <change-id> --json
    ```
 
-2. Read the upstream apply instructions and listed context files:
+2. 阅读上游应用指令及其列出的上下文文件：
 
    ```powershell
    npm run openspec:instructions -- apply --change <change-id> --json
    ```
 
-3. Implement the pending items in that change's `tasks.md`, mark progress there, and
-   verify the behavior required by its specs and design. OpenSpec 1.5.0 has no separate
-   CLI `apply` or `verify` command; those are agent workflows driven by `status` and
-   `instructions apply`.
+3. 实现该变更 `tasks.md` 中的待办项，在文件内标记进度，并验证 specs 与 design 要求的行为。OpenSpec 1.5.0 没有独立的 CLI `apply` 或 `verify` 命令；二者是由 `status` 和 `instructions apply` 驱动的 Agent 工作流。
 
-4. Strictly validate all active changes and living specs:
+4. 严格校验所有活动变更和现行 specs：
 
    ```powershell
    npm run openspec:validate
    ```
 
-5. After implementation, verification, and explicit user acceptance, archive through
-   the native command:
+5. 实现与验证完成并获得用户明确验收后，通过原生命令归档：
 
    ```powershell
    npm run openspec:archive -- <change-id> --yes
    ```
 
-   Do not use `--skip-specs` or `--no-validate` for normal completion.
+   正常完成时不得使用 `--skip-specs` 或 `--no-validate`。
 
-## Harness stage order
+## Harness 阶段顺序
 
-The harness is delivered serially: documentation governance, observability,
-engineering standards, then final documentation and CI convergence. A later-stage
-change may be drafted or applied only after the preceding stage has been verified and
-accepted. The active parent change, `establish-agent-harness`, owns that ordering;
-OpenSpec owns artifact dependencies and lifecycle state.
+Harness 必须依次交付：文档治理、可观测性、工程规范，最后是文档与 CI 收口。只有前一阶段完成验证并获得验收后，才能起草或实施后一阶段变更。活动父变更 `establish-agent-harness` 负责该顺序；OpenSpec 负责工件依赖和生命周期状态。
 
-User authorization is recorded as concise evidence inside the relevant change. It is
-not a second approval database, digest gate, or replacement for OpenSpec.
+用户授权以简洁证据记录在对应变更中。该证据不是第二套审批数据库、摘要门禁，也不取代 OpenSpec。

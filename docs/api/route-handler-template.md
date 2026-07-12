@@ -1,15 +1,33 @@
-# API Route Handler Template
+---
+schemaVersion: 1
+document:
+  type: api
+  status: current
+  owner: api-contracts
+  authority:
+    subject: json-route-handler-pattern
+    kind: reference
+  readWhen:
+    - 新增或迁移普通 JSON 路由处理器时
+    - 检查路由的请求解析与错误响应封装时
+  sources:
+    - src/lib/api-response.ts
+    - src/server/http/request-json.ts
+  verifiedBy:
+    - node --import tsx --test tests/test-api-request-json.test.ts tests/test-documentation-governance.test.ts
+---
 
-This is the source pattern for new or migrated `src/app/api/**/route.ts` handlers.
+# API 路由处理器模板
 
-## Template
+新增或迁移普通 JSON 处理器时使用本模式。流式路由或兼容端点只有在其调用方已经验证后才能改写，不能仅为套用模板而迁移。
 
-1. Import response helpers from `src/lib/api-response.ts`.
-2. Parse request bodies through `src/server/http/request-json.ts` helpers when the body must be JSON.
-3. Validate route-level fields before invoking services or actions.
-4. Call one focused service, repository-backed action, or server workflow function.
-5. Return `ok(data, init?)` for success and `fail(...)` only for explicit local validation branches.
-6. In `catch` blocks, return `failFromError(error, fallbackMessage?, fallbackStatus?)` so status-bearing parser and service errors keep their response envelope.
+## 实现模式
+
+1. 用 `readJsonObject` 解析必需的 JSON 对象；如果请求契约更窄，则使用与之匹配的共享解析器。
+2. 调用应用行为前，先校验路由层字段。
+3. 只调用一个聚焦服务、由仓储支持的动作或服务端工作流函数。
+4. 成功时返回 `ok(data, init?)`；只有明确的本地校验分支才直接调用 `fail(...)`。
+5. 在 `catch` 中调用 `failFromError(...)`，让受控解析错误与服务错误保留状态码和 `details`。
 
 ```ts
 import { fail, failFromError, ok } from "@/lib/api-response";
@@ -19,8 +37,9 @@ export async function POST(request: Request) {
   try {
     const body = await readJsonObject(request);
     const name = body.name;
+
     if (typeof name !== "string" || !name.trim()) {
-      return fail("name is required", 400);
+      return fail("name 为必填项", 400);
     }
 
     const result = await runServiceAction({ name });
@@ -31,132 +50,15 @@ export async function POST(request: Request) {
 }
 ```
 
-## Current Adopters
+聚焦的源码契约测试会直接从源码发现当前采用者；不要把易变的采用者文件清单复制到本文档。
 
-The source-contract tests in `tests/test-api-request-json.test.ts` verify the current low-risk adopters:
+## 受控兼容例外
 
-- `src/app/api/templates/route.ts`
-- `src/app/api/templates/[templateId]/route.ts`
-- `src/app/api/preset-library/folders/route.ts`
-- `src/app/api/preset-library/folders/[folderId]/move/route.ts`
-- `src/app/api/projects/[projectId]/save-as-template/route.ts`
-- `src/app/api/queue/resume-paused/route.ts`
-- `src/app/api/image-review/route.ts`
-- `src/app/api/projects/route.ts`
-- `src/app/api/projects/[projectId]/route.ts`
-- `src/app/api/project-folders/route.ts`
-- `src/app/api/project-folders/[folderId]/route.ts`
-- `src/app/api/project-folders/move/route.ts`
-- `src/app/api/project-folders/reorder/route.ts`
-- `src/app/api/projects/[projectId]/sections/route.ts`
-- `src/app/api/projects/[projectId]/sections/[sectionId]/route.ts`
-- `src/app/api/projects/[projectId]/sections/reorder/route.ts`
-- `src/app/api/projects/[projectId]/run/route.ts`
-- `src/app/api/projects/[projectId]/sections/[sectionId]/run/route.ts`
-- `src/app/api/projects/[projectId]/sections/[sectionId]/blocks/route.ts`
-- `src/app/api/projects/[projectId]/sections/[sectionId]/blocks/[blockId]/route.ts`
-- `src/app/api/projects/[projectId]/sections/[sectionId]/import-preset/route.ts`
-- `src/app/api/projects/[projectId]/sections/[sectionId]/switch-variant/route.ts`
-- `src/app/api/projects/[projectId]/sections/[sectionId]/create-from-template/route.ts`
-- `src/app/api/projects/[projectId]/apply-param/route.ts`
-- `src/app/api/projects/[projectId]/preset-replacements/route.ts`
-- `src/app/api/projects/[projectId]/sections/batch-delete/route.ts`
-- `src/app/api/templates/[templateId]/import/route.ts`
-- `src/app/api/templates/[templateId]/preset-replacements/route.ts`
-- `src/app/api/templates/[templateId]/sections/[sectionId]/route.ts`
-- `src/app/api/preset-library/categories/route.ts`
-- `src/app/api/preset-library/categories/[categoryId]/route.ts`
-- `src/app/api/preset-library/categories/reorder/route.ts`
-- `src/app/api/preset-library/categories/[categoryId]/slot-template/route.ts`
-- `src/app/api/preset-library/categories/[categoryId]/sort-orders/route.ts`
-- `src/app/api/preset-library/categories/[categoryId]/groups/reorder/route.ts`
-- `src/app/api/preset-library/folders/[folderId]/route.ts`
-- `src/app/api/preset-library/folders/reorder/route.ts`
-- `src/app/api/preset-library/groups/route.ts`
-- `src/app/api/preset-library/groups/[groupId]/route.ts`
-- `src/app/api/preset-library/groups/[groupId]/members/route.ts`
-- `src/app/api/preset-library/groups/[groupId]/members/reorder/route.ts`
-- `src/app/api/preset-library/presets/route.ts`
-- `src/app/api/preset-library/presets/reorder/route.ts`
-- `src/app/api/preset-library/presets/[presetId]/route.ts`
-- `src/app/api/preset-library/presets/[presetId]/variants/route.ts`
-- `src/app/api/preset-library/presets/[presetId]/variants/reorder/route.ts`
-- `src/app/api/preset-library/variants/[variantId]/route.ts`
-- `src/app/api/runs/[runId]/review/keep/route.ts`
-- `src/app/api/runs/[runId]/review/trash/route.ts`
-- `src/app/api/images/[imageId]/cover/route.ts`
-- `src/app/api/agent/runs/[runId]/review/route.ts`
-- `src/app/api/agent/projects/[projectId]/switch-variants/route.ts`
-- `src/app/api/agent/projects/[projectId]/sync-preset-variants/route.ts`
-- `src/app/api/agent/projects/[projectId]/update/route.ts`
-- `src/app/api/agent/projects/sync-preset-variant-flow/route.ts`
-- `src/app/api/training/projects/route.ts`
-- `src/app/api/training/projects/[projectId]/route.ts`
-- `src/app/api/training/projects/reorder/route.ts`
-- `src/app/api/training/projects/[projectId]/profile/route.ts`
-- `src/app/api/training/projects/[projectId]/save-as-template/route.ts`
-- `src/app/api/training/projects/[projectId]/sections/route.ts`
-- `src/app/api/training/projects/[projectId]/sections/[sectionId]/route.ts`
-- `src/app/api/training/projects/[projectId]/sections/reorder/route.ts`
-- `src/app/api/training/sections/[sectionId]/route.ts`
-- `src/app/api/training/sections/[sectionId]/blocks/route.ts`
-- `src/app/api/training/sections/[sectionId]/blocks/reorder/route.ts`
-- `src/app/api/training/sections/[sectionId]/runs/route.ts`
-- `src/app/api/training/blocks/[blockId]/route.ts`
-- `src/app/api/training/blocks/[blockId]/detach/route.ts`
-- `src/app/api/training/presets/route.ts`
-- `src/app/api/training/presets/[presetId]/route.ts`
-- `src/app/api/training/presets/sort-rules/route.ts`
-- `src/app/api/training/scene-description/categories/route.ts`
-- `src/app/api/training/scene-description/categories/[categoryId]/route.ts`
-- `src/app/api/training/scene-description/folders/route.ts`
-- `src/app/api/training/scene-description/folders/[folderId]/route.ts`
-- `src/app/api/training/scene-description/presets/[presetId]/cascade/route.ts`
-- `src/app/api/training/reference-images/[imageId]/route.ts`
-- `src/app/api/training/reference-images/[imageId]/add-to-results/route.ts`
-- `src/app/api/training/image-results/[imageResultId]/route.ts`
-- `src/app/api/training/image-results/[imageResultId]/review/route.ts`
-- `src/app/api/training/image-results/[imageResultId]/caption/route.ts`
-- `src/app/api/training/generation-outputs/[outputId]/apply/route.ts`
-- `src/app/api/training/templates/route.ts`
-- `src/app/api/training/templates/reorder/route.ts`
-- `src/app/api/training/templates/[templateId]/route.ts`
-- `src/app/api/training/templates/[templateId]/projects/route.ts`
-- `src/app/api/training/templates/[templateId]/sections/route.ts`
-- `src/app/api/training/templates/[templateId]/sections/[sectionId]/route.ts`
-- `src/app/api/training/templates/[templateId]/sections/reorder/route.ts`
-- `src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/route.ts`
-- `src/app/api/training/templates/[templateId]/sections/[sectionId]/blocks/reorder/route.ts`
-- `src/app/api/training/templates/[templateId]/blocks/[blockId]/route.ts`
-- `src/app/api/training/projects/[projectId]/generation-tasks/route.ts`
-- `src/app/api/training/generation-tasks/[taskId]/route.ts`
-- `src/app/api/training/generation-tasks/[taskId]/inputs/route.ts`
-- `src/app/api/training/generation-tasks/[taskId]/cancel/route.ts`
-- `src/app/api/training/worker/generation-tasks/[taskId]/complete/route.ts`
-- `src/app/api/training/worker/generation-tasks/[taskId]/fail/route.ts`
-- `src/app/api/training/section-runs/[runId]/cancel/route.ts`
-- `src/app/api/training/projects/[projectId]/training-runs/route.ts`
-- `src/app/api/training/training-runs/[trainingRunId]/create-preset/route.ts`
-- `src/app/api/training/training-runs/[trainingRunId]/cancel/route.ts`
-- `src/app/api/training/worker/training-runs/[trainingRunId]/complete/route.ts`
-- `src/app/api/training/worker/training-runs/[trainingRunId]/fail/route.ts`
-- `src/app/api/training/worker/training-runs/[trainingRunId]/progress/route.ts`
-- `src/app/api/training/projects/[projectId]/dataset-revisions/route.ts`
-- `src/app/api/training/projects/[projectId]/text-revisions/route.ts`
-- `src/app/api/training/projects/[projectId]/reference-images/route.ts`
-- `src/app/api/training/projects/[projectId]/captions/generate/route.ts`
-- `src/app/api/training/worker/tasks/[taskId]/heartbeat/route.ts`
-- `src/app/api/training/worker/tasks/[taskId]/complete/route.ts`
-- `src/app/api/training/worker/tasks/[taskId]/fail/route.ts`
-- `src/app/api/models/move/route.ts`
-- `src/app/api/models/notes/route.ts`
-- `src/app/api/loras/move/route.ts`
-- `src/app/api/loras/notes/route.ts`
+- `src/app/api/logs/route.ts` 仅在解析 JSONL 日志行时于路由内调用 `JSON.parse`，不会用它解析 HTTP 请求体。
+- `src/app/api/queue-data/route.ts` 保留由调用方约束的原始 JSON 响应结构，是受控的路由内 `NextResponse.json(...)` 例外。流式处理器可以为非 JSON 载荷返回 `new NextResponse(stream, ...)`，同时仍用共享辅助函数生成 JSON 错误响应。
 
-## Compatibility Exceptions
+这些例外只是窄范围源码契约，不授权新处理器绕过共享解析器或响应封装辅助函数。
 
-Some routes have intentionally legacy response shapes. `src/app/api/auth/verify/route.ts` keeps flat `{ error: string }` failures and `{ ok: true }` success because `src/app/login/page.tsx` consumes that contract. It still parses via `readJsonBody` and formats through `flatFail`/`okOnly`.
+## 上级入口
 
-`src/app/api/logs/route.ts` is a parser exception: its `JSON.parse(line)` handles JSONL log line parsing for file-log entries, not request-body parsing. Source-contract tests require this to be the only route-local `JSON.parse` exception and require route request bodies to go through `src/server/http/request-json.ts`.
-
-`src/app/api/queue-data/route.ts` is a response-shape exception: it returns the legacy raw JSON response shape consumed by the queue UI and documented Agent API. It is the only route that may call `NextResponse.json(...)` directly; file-streaming routes may still return `new NextResponse(stream, ...)` for non-JSON payloads while using shared helpers for JSON errors.
+- [API 文档](README.md)

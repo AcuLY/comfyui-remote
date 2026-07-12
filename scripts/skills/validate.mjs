@@ -192,7 +192,8 @@ function validateSkill(workspaceRoot, input) {
   if (!description || description.length > 1024 || description.includes("<") || description.includes(">")) {
     diagnostics.push(diagnostic("skill/description", relativeSkillPath, "Description is missing, too long, or contains angle brackets.", "Use a clear description of at most 1024 characters."));
   }
-  if (basename(skillRoot) === "docs-audit" && (!description.includes("$docs-audit") || !/explicit/i.test(description))) {
+  const declaresExplicitInvocation = /explicit/i.test(description) || description.includes("显式调用");
+  if (basename(skillRoot) === "docs-audit" && (!description.includes("$docs-audit") || !declaresExplicitInvocation)) {
     diagnostics.push(diagnostic("skill/explicit-description", relativeSkillPath, "docs-audit description must state explicit invocation and name $docs-audit.", "Describe only explicit user or approved OpenSpec-task invocation."));
   }
   if (!frontmatter.body.trim()) {

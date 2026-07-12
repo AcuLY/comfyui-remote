@@ -5,11 +5,11 @@ document:
   status: current
   owner: documentation
   authority: repository entrypoint
-  readWhen: [entering the repository]
+  readWhen: [进入仓库时]
   sources: []
   verifiedBy: [npm run docs:check]
 ---
 
-# Fixture Repository
+# Fixture 仓库
 
-[Documentation](docs/README.md)
+[文档](docs/README.md)

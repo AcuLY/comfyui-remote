@@ -1,18 +1,11 @@
 # rebuild-documentation-governance
 
-Rebuild the repository documentation governance, migrate verified current knowledge, remove obsolete archive and prototype surfaces, and enforce agent-friendly documentation gates.
+重建仓库文档治理，迁移已验证的当前知识，删除过时的 archive 与 prototype 表面，并执行适合 Agent 使用的文档门禁。
 
-## Paused-session handoff
+## 暂停会话交接
 
-The 2026-07-10 design session was paused before apply. Continue from
-[`evidence/2026-07-10-session-handoff.md`](evidence/2026-07-10-session-handoff.md).
-Evidence below this directory is non-normative and does not replace the proposal,
-specification, design, or tasks.
+2026-07-10 的设计会话在 `apply` 前暂停。请从 [`evidence/2026-07-10-session-handoff.md`](evidence/2026-07-10-session-handoff.md) 继续。此目录下的证据均为非规范性材料，不能取代提案、规范、设计或任务。
 
-The post-resume formal artifact revision resolves the handoff's Skill/check/PoC design
-conflicts and passes repository-pinned `@fission-ai/openspec` 1.5.0 strict validation. On
-2026-07-12 the user explicitly authorized this change's apply workflow. Continue through
-this change's `tasks.md`; later harness stages remain out of scope.
+恢复后形成的正式工件修订版已解决交接中 Skill、检查器与 PoC 的设计冲突，并通过仓库固定的 `@fission-ai/openspec` 1.5.0 严格校验。用户已于 2026-07-12 明确授权本变更的 `apply` 工作流。后续以本变更 `tasks.md` 为准；后续 Harness 阶段仍不在范围内。
 
-The complete tracked conversation inputs and scratch drafts are indexed at
-[`evidence/session-materials/README.md`](evidence/session-materials/README.md).
+完整的已跟踪会话输入和临时草稿索引位于 [`evidence/session-materials/README.md`](evidence/session-materials/README.md)。

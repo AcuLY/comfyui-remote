@@ -186,6 +186,82 @@ test("docs checker distinguishes rule violations from configuration failures", a
   }
 });
 
+test("first-party Markdown parse failures cannot bypass the language gate outside governed scope", async () => {
+  const root = await createRepository();
+  try {
+    const report = join(root, "reports", "quality", "report.md");
+    await mkdir(dirname(report), { recursive: true });
+    await writeFile(report, "---\ntitle: missing closing delimiter\nEnglish report body\n");
+    await git(root, "add", "reports/quality/report.md");
+
+    const result = runChecker(root, ["--format", "json"]);
+    assert.equal(result.status, 1, result.stderr || result.stdout);
+    const payload = JSON.parse(result.stdout);
+    assert.ok(
+      payload.diagnostics.some((item: { ruleId: string; path: string }) =>
+        item.ruleId === "language/markdown-parse" && item.path === "reports/quality/report.md"),
+      JSON.stringify(payload.diagnostics),
+    );
+
+    await writeFile(report, "# 中文报告\n\n```text\nEnglish payload without a closing fence\n");
+    await git(root, "add", "reports/quality/report.md");
+    const unclosedFence = runChecker(root, ["--format", "json"]);
+    assert.equal(unclosedFence.status, 1, unclosedFence.stderr || unclosedFence.stdout);
+    const unclosedPayload = JSON.parse(unclosedFence.stdout);
+    assert.ok(
+      unclosedPayload.diagnostics.some((item: { ruleId: string; path: string; evidence: string }) =>
+        item.ruleId === "language/markdown-parse"
+        && item.path === "reports/quality/report.md"
+        && item.evidence.includes("closing fence")),
+      JSON.stringify(unclosedPayload.diagnostics),
+    );
+
+    await writeFile(report, "# 中文报告\n\n> ```text\n> English hidden prose\n");
+    await git(root, "add", "reports/quality/report.md");
+    const unclosedQuote = runChecker(root, ["--format", "json"]);
+    assert.equal(unclosedQuote.status, 1, unclosedQuote.stderr || unclosedQuote.stdout);
+    assert.ok(
+      JSON.parse(unclosedQuote.stdout).diagnostics.some((item: { ruleId: string; path: string }) =>
+        item.ruleId === "language/markdown-parse" && item.path === "reports/quality/report.md"),
+      unclosedQuote.stdout,
+    );
+
+    await writeFile(report, "# 中文报告\n\n- ```text\n  English code payload\n  ```\n");
+    await git(root, "add", "reports/quality/report.md");
+    const closedList = runChecker(root, ["--format", "json"]);
+    assert.equal(closedList.status, 0, closedList.stderr || closedList.stdout);
+    assert.equal(
+      JSON.parse(closedList.stdout).diagnostics.some((item: { ruleId: string; path: string }) =>
+        item.ruleId === "language/markdown-parse" && item.path === "reports/quality/report.md"),
+      false,
+      closedList.stdout,
+    );
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("uppercase Markdown extensions remain inside finite scope and the language gate", async () => {
+  const root = await createRepository();
+  try {
+    await writeFile(join(root, "REPORT.MD"), "# English report\n");
+    await git(root, "add", "REPORT.MD");
+
+    const result = runChecker(root, ["--format", "json"]);
+    assert.equal(result.status, 1, result.stderr || result.stdout);
+    const payload = JSON.parse(result.stdout);
+    for (const ruleId of ["scope/unregistered", "language/required-language"]) {
+      assert.ok(
+        payload.diagnostics.some((item: { ruleId: string; path: string }) =>
+          item.ruleId === ruleId && item.path === "REPORT.MD"),
+        `${ruleId}: ${JSON.stringify(payload.diagnostics)}`,
+      );
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("an explicit comparison base must resolve and share history with HEAD", async () => {
   const root = await createRepository();
   const unrelated = await mkdtemp(join(tmpdir(), "docs-check-unrelated-"));
@@ -335,6 +411,11 @@ test("policy and metadata schema typos fail as tool configuration errors", async
     assert.equal(scopeTypo.status, 2, scopeTypo.stderr || scopeTypo.stdout);
     assert.match(JSON.parse(scopeTypo.stdout).diagnostics[0].evidence, /unknown key.*frontmatterTypo/i);
 
+    await writeFile(policyPath, policy.replace("requiredLanguage: zh-CN", "requiredLanguage: en-US"));
+    const invalidLanguage = runChecker(root, ["--format", "json"]);
+    assert.equal(invalidLanguage.status, 2, invalidLanguage.stderr || invalidLanguage.stdout);
+    assert.match(JSON.parse(invalidLanguage.stdout).diagnostics[0].evidence, /requiredLanguage must equal zh-CN/i);
+
     await writeFile(policyPath, policy);
     const schemaPath = join(root, "docs", "_meta", "documentation.schema.json");
     const schema = JSON.parse(await readFile(schemaPath, "utf8"));
@@ -434,19 +515,19 @@ test("docs checker validates links, anchors, reachability, and reverse links", a
   try {
     const guidePath = join(root, "docs", "guide.md");
     const source = await readFile(guidePath, "utf8");
-    await writeFile(guidePath, source.replace("[Documentation home](README.md)", "No owner link."));
+    await writeFile(guidePath, source.replace("[文档首页](README.md)", "没有上级入口。"));
     const reverse = runChecker(root, ["--format", "json"]);
     assert.equal(reverse.status, 1);
     const reverseRules = JSON.parse(reverse.stdout).diagnostics.map((item: { ruleId: string }) => item.ruleId);
     assert.ok(reverseRules.includes("navigation/reverse-link"));
 
-    await writeFile(guidePath, source.replace("# Guide", "# Guide\n\n[bad anchor](#not-present)"));
+    await writeFile(guidePath, source.replace("# 指南", "# 指南\n\n[错误锚点](#not-present)"));
     const anchor = runChecker(root, ["--format", "json"]);
     assert.equal(anchor.status, 1);
     assert.ok(JSON.parse(anchor.stdout).diagnostics.some((item: { ruleId: string }) => item.ruleId === "links/anchor-missing"));
 
     await mkdir(join(root, "docs", "orphan"), { recursive: true });
-    await writeFile(join(root, "docs", "orphan", "README.md"), source.replace("# Guide", "# Orphan"));
+    await writeFile(join(root, "docs", "orphan", "README.md"), source.replace("# 指南", "# 孤立文档"));
     await git(root, "add", "docs/orphan/README.md");
     const orphan = runChecker(root, ["--format", "json"]);
     assert.equal(orphan.status, 1);
@@ -487,7 +568,7 @@ test("fast impact closure excludes unrelated legacy errors, catches related erro
 
     const guidePath = join(root, "docs", "guide.md");
     const guide = await readFile(guidePath, "utf8");
-    await writeFile(guidePath, `${guide}\nBenign changed detail.\n`);
+    await writeFile(guidePath, `${guide}\n无害的详情变更。\n`);
     const bounded = runChecker(root, ["--mode", "fast", "--base", "HEAD", "--format", "json"]);
     assert.equal(bounded.status, 0, bounded.stderr || bounded.stdout);
     const boundedPayload = JSON.parse(bounded.stdout);
@@ -497,7 +578,22 @@ test("fast impact closure excludes unrelated legacy errors, catches related erro
       false,
     );
 
-    await writeFile(guidePath, `${guide}\n[related missing target](missing.md)\n`);
+    await writeFile(guidePath, `${guide}\n# English changed heading\n`);
+    const languageViolation = runChecker(root, ["--mode", "fast", "--base", "HEAD", "--format", "json"]);
+    assert.equal(languageViolation.status, 1, languageViolation.stderr || languageViolation.stdout);
+    const languagePayload = JSON.parse(languageViolation.stdout);
+    assert.equal(languagePayload.effectiveMode, "fast");
+    assert.ok(
+      languagePayload.diagnostics.some(
+        (item: { ruleId: string; path: string }) => item.ruleId === "language/required-language" && item.path === "docs/guide.md",
+      ),
+    );
+    assert.equal(
+      languagePayload.diagnostics.some((item: { path: string }) => item.path === "docs/unrelated.md"),
+      false,
+    );
+
+    await writeFile(guidePath, `${guide}\n[相关缺失目标](missing.md)\n`);
     const related = runChecker(root, ["--mode", "fast", "--base", "HEAD", "--format", "json"]);
     assert.equal(related.status, 1, related.stderr || related.stdout);
     const relatedPayload = JSON.parse(related.stdout);

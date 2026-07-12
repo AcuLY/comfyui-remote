@@ -1,7 +1,5 @@
 # establish-agent-harness
 
-Establish the repository-wide agent harness program and stage governance.
+建立覆盖整个仓库的 Agent Harness 计划及阶段治理。
 
-The paused 2026-07-10 parent/child design session, complete source drafts, verification
-baseline, and continuation route are preserved in the documentation child at
-[`../rebuild-documentation-governance/evidence/2026-07-10-session-handoff.md`](../rebuild-documentation-governance/evidence/2026-07-10-session-handoff.md).
+2026-07-10 暂停的父/子设计会话、完整源草稿、验证基线和续接路径保存在文档治理子变更的 [`../rebuild-documentation-governance/evidence/2026-07-10-session-handoff.md`](../rebuild-documentation-governance/evidence/2026-07-10-session-handoff.md) 中。

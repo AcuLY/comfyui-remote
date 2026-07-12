@@ -1,51 +1,53 @@
 ## Why
 
-The repository's documentation contains overlapping entrypoints, stale plans, prototype-only material, hand-maintained inventories, misplaced operational knowledge, and governance tests that sometimes preserve the old structure instead of proving current truth. Documentation governance must become a small, agent-legible system before observability or repository-wide engineering standards can be designed against it.
+仓库文档包含重叠入口、过期计划、仅供 prototype 使用的材料、人工维护的清单、归属错误的操作知识，以及有时只保留旧结构而未证明当前事实的治理测试。在据此设计可观测性或全仓工程规范之前，文档治理必须成为一个小型、Agent 可理解的系统。
 
 ## What Changes
 
-- **BREAKING**: Replace the current documentation layout with the approved root entrypoints and layered `docs/` structure, using short routers and progressive disclosure from `AGENTS.md` and `docs/README.md`.
-- **BREAKING**: Split mandatory ordinary-development agent policy from operational procedure: make `AGENTS.md` the only ordinary-development workflow policy authority, move executable detail into `docs/runbooks/**`, then remove `agent-rules/**` without compatibility stubs.
-- **BREAKING**: Extract every still-valid fact from `docs/archive/**`, update all consumers that incorrectly treat historical files as current authority, and then delete the entire archive rather than recreating it as `docs/history/**`.
-- **BREAKING**: Delete the complete Training static-prototype surface under `docs/prototypes/**` and remove prototype-specific routing, inventory, and test contracts; production source and verified current documentation remain authoritative for Training as a peer work mode.
-- Establish root `README.md`, `AGENTS.md`, `ARCHITECTURE.md`, `PRODUCT.md`, and `DESIGN.md` authority boundaries; keep the root design contract compatible with a separately approved future Impeccable integration.
-- Establish current product, architecture, detailed design, and runbook layers; add honest placeholder contracts for `QUALITY_SCORE.md`, `RELIABILITY.md`, and `SECURITY.md` without inventing later-stage content.
-- Add a minimal `docs/_meta/**` machine-governance control plane containing the documentation schema, structural/link policy, and authoring templates.
-- Add one deterministic, non-writing documentation-check engine with full and safely bounded changed-scope modes, stable human/JSON diagnostics, and the same full blocking CI check for metadata, structure, entrypoint reachability, links, anchors, forbidden legacy paths, OpenSpec validity, source contracts, and owned generated-file freshness where generators already exist.
-- Add an explicitly invoked repository Skill at `.codex/skills/docs-audit/**` as the single semantic-audit execution surface for stale claims, incomplete coverage, duplicate authority, invalid operational steps, and conflicts between source, tests, documentation, and historical intent. Ordinary development SHALL NOT auto-run it, and `AGENTS.md` SHALL NOT contain its rules or triggers.
-- Reconstruct maintained documentation from current code, schemas, tests, Git history, and required runtime evidence; treat existing governance tests as changeable implementation inputs and rewrite or remove assertions that encode obsolete structure or incorrect authority.
-- Keep existing generated and reference-like documents in their verified owner locations during this stage; do not introduce `docs/generated/**` or `docs/references/**` until operating evidence justifies that split through a later OpenSpec change.
-- Use OpenSpec proposal, specs, design, tasks, verification, and archive artifacts as the only significant-change lifecycle; do not retain or create a parallel `PLANS.md`, `docs/plans/**`, or Superpowers planning authority.
+- **重大不兼容变更**：用已批准的根入口与分层 `docs/` 结构取代当前文档布局，从 `AGENTS.md` 和 `docs/README.md` 通过简短路由渐进披露知识。
+- **重大不兼容变更**：分离普通开发强制 Agent 策略与操作步骤：将 `AGENTS.md` 设为唯一普通开发工作流策略权威，把可执行细节移到 `docs/runbooks/**`，再删除 `agent-rules/**`，不留兼容桩。
+- **重大不兼容变更**：从 `docs/archive/**` 提取所有仍有效事实，更新错误地把历史文件视为当前权威的使用方，然后删除整个归档，不将其重建为 `docs/history/**`。
+- **重大不兼容变更**：删除 `docs/prototypes/**` 下全部 Training 静态原型表面及其专用路由、清单和测试契约；Training 作为平级工作模式的权威来自生产源码和已验证当前文档。
+- 建立根 `README.md`、`AGENTS.md`、`ARCHITECTURE.md`、`PRODUCT.md` 和 `DESIGN.md` 的权威边界；保持根设计契约可兼容未来另行批准的 `Impeccable` 集成。
+- 建立当前产品、架构、详细设计和运行手册层；为 `QUALITY_SCORE.md`、`RELIABILITY.md` 与 `SECURITY.md` 增加诚实的占位契约，不虚构后续阶段内容。
+- 规定第一方维护文档的正文和 frontmatter 人类可读字符串默认使用简体中文；技术标识、命令、路径、协议字段、第三方 Skill、测试 fixture、数据载荷和 OpenSpec 结构词是明确例外，并增加自动门禁阻止英文正文回归。
+- 增加最小 `docs/_meta/**` 机器治理控制面，只包含文档 schema、结构/链接策略和编写模板。
+- 增加一个确定性、非写入文档检查引擎，支持 full 与可安全限定的 changed scope，提供稳定 human/JSON 诊断；本地与 CI 使用同一 full 阻断检查，覆盖 metadata、结构、入口可达性、链接、anchor、禁止遗留路径、OpenSpec 有效性、源码契约，以及已有 generator 所有的生成文件新鲜度。
+- 在 `.codex/skills/docs-audit/**` 增加一个必须显式调用的仓库 Skill，作为语义审计的唯一执行表面，用于过期声明、覆盖缺口、重复权威、无效操作步骤，以及源码、测试、文档和历史意图之间的冲突。普通开发不得自动运行它，`AGENTS.md` 不得包含其规则或触发器。
+- 根据当前代码、schema、测试、Git 历史和必要运行时证据重建维护文档；将现有治理测试视为可修改的实施输入，重写或删除固化过时结构或错误权威的断言。
+- 本阶段把现有 generated 与 reference-like 文档保留在已验证 owner 位置；只有后续 OpenSpec 变更在运维证据证明拆分有益后，才能引入 `docs/generated/**` 或 `docs/references/**`。
+- 仅使用 OpenSpec 提案、规范、设计、任务、验证和归档工件作为重要变更生命周期；不得保留或创建平行的 `PLANS.md`、`docs/plans/**` 或 `Superpowers` 规划权威。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `documentation-governance`: Defines the approved knowledge architecture, authority boundaries, verified migration and deletion rules, deterministic documentation gates, agent semantic-audit workflow, and local/CI enforcement contract.
+- `documentation-governance`：定义已批准知识架构、权威边界、已验证迁移与删除规则、确定性文档门禁、Agent 语义审计工作流，以及本地/CI 执行契约。
 
 ### Modified Capabilities
 
-None.
+无。
 
-## Non-goals
+## 非目标
 
-- This change does not implement or select the later observability stack, performance budgets, engineering-standard tools, code-style thresholds, or final unified repository CI.
-- This change does not install Impeccable or create its project skills, hooks, configuration, generated design sidecar, or critique reports.
-- This change does not add a controlled `docs:read` CLI, documentation MCP gateway, scheduled semantic-audit job, or automatic `$docs-audit` trigger.
-- This change does not install or productionize the preserved PreToolUse path-match spike; that evidence is transferred for fresh review by the later `build-agent-observability` change. The separately user-authorized root Hook successor is an out-of-child local experiment and is not documentation-governance implementation or acceptance evidence.
-- This change does not create a new historical-document store; Git history and OpenSpec archives retain past artifacts after verified current knowledge is extracted.
-- This change does not force a generated-versus-reference directory taxonomy before the harness has produced evidence that the distinction improves maintenance.
-- Ignored `.tmp/**` drafts remain evidence for authoring and are never promoted directly into current truth.
+- 本变更不实施或选择后续可观测性栈、性能预算、工程规范工具、代码风格阈值或最终统一仓库 CI。
+- 本变更不安装 `Impeccable`，也不创建其项目 Skill、Hook、配置、生成式设计旁车或评议报告。
+- 本变更不增加受控 `docs:read` CLI、文档 MCP 网关、定时语义审计任务或自动 `$docs-audit` 触发器。
+- 本变更不安装或生产化已保留的 PreToolUse 路径匹配实验；该证据交给后续 `build-agent-observability` 重新审查。用户另行授权的根 Hook 后继实验位于子变更之外，既不是文档治理实施，也不是验收证据。
+- 本变更不创建新的历史文档存储；已验证当前知识提取后，Git 历史与 OpenSpec 归档继续保留旧工件。
+- 本变更不在 Harness 产生运维证据前强制区分 generated 与 reference 目录。
+- 被忽略的 `.tmp/**` 草稿只作为编写证据，绝不直接提升为当前事实。
+- 简体中文要求不改写技术标识、命令、路径、协议字段、第三方 Skill 内容、测试 fixture 或数据载荷，也不翻译 OpenSpec 解析器所需结构词。
 
-## Related Changes
+## 相关变更
 
-- Parent: `establish-agent-harness`.
-- Future, separately approved changes: Impeccable integration, `build-agent-observability`, `enforce-engineering-standards`, and final documentation/CI convergence.
+- 父变更：`establish-agent-harness`。
+- 未来另行批准的变更：`Impeccable` 集成、`build-agent-observability`、`enforce-engineering-standards` 和最终文档/CI 收口。
 
 ## Impact
 
-- Affects root documentation, `AGENTS.md`, `CLAUDE.md`, `agent-rules/**`, `docs/**`, `.codex/skills/docs-audit/**`, OpenSpec configuration and parent artifacts, documentation scripts, package scripts, documentation/source-contract tests, and a checked-in documentation CI workflow.
-- Removes `docs/archive/**`, `docs/prototypes/**`, legacy planning/spec surfaces outside OpenSpec, and all live references to those paths after verified extraction.
-- Updates existing generated artifacts such as `docs/repo-inventory.md` and their generators in place; their directory taxonomy remains deferred.
-- May update code or configuration references for non-document runtime assets incorrectly stored under `docs/**`, but any runtime-affecting migration remains subject to the repository's normal build, queue, deployment, and verification boundaries.
-- Does not itself change Generation or Training product behavior.
+- 影响根文档、`AGENTS.md`、`CLAUDE.md`、`agent-rules/**`、`docs/**`、`.codex/skills/docs-audit/**`、OpenSpec 配置与父工件、文档脚本、包脚本、文档/源码契约测试，以及纳入仓库的文档 CI 工作流。
+- 在完成已验证提取后，删除 `docs/archive/**`、`docs/prototypes/**`、OpenSpec 外的遗留规划/spec 表面及其全部 live reference。
+- 原地更新 `docs/repo-inventory.md` 等现有生成工件及其 generator；目录分类仍延后决定。
+- 可能更新归属错误且存于 `docs/**` 下的非文档运行时资产的代码或配置引用；任何影响运行时的迁移仍必须遵循仓库正常构建、队列、部署和验证边界。
+- 不改变 Generation 或 Training 产品行为。

@@ -8,31 +8,31 @@ document:
     subject: <normalized-subject-id>
     kind: reference
   readWhen:
-    - <task trigger that makes this document relevant>
+    - <需要阅读本文档的任务触发条件>
   sources:
     - <repository/path/to/evidence>
   verifiedBy:
-    - <non-writing command or test>
+    - <非写入命令或测试>
 ---
 
-# <Document title>
+# <文档标题>
 
-## Purpose
+## 目的
 
-State the task this document supports and the smallest useful scope.
+说明本文档支持的任务，以及最小的有效范围。
 
-## Authority and boundaries
+## 权威性与边界
 
-State what this file owns, what it only routes to, and which higher-level contract wins on conflict.
+说明本文件负责哪些内容、只导航到哪些内容，以及发生冲突时以哪个上级契约为准。
 
-## Current contract
+## 当前契约
 
-Describe only verified current behavior. Proposed changes belong to OpenSpec; historical intent remains in Git or archived OpenSpec changes.
+只描述已经验证的当前行为。拟议变更归 OpenSpec 管理；历史意图保留在 Git 或已归档的 OpenSpec 变更中。
 
-## Verification
+## 验证
 
-Explain what the frontmatter verification proves and any evidence limitation.
+说明 frontmatter 中的验证能够证明什么，以及证据存在哪些限制。
 
-## Related documentation
+## 相关文档
 
-- [Owning landing page](./README.md)
+- [返回所属文档区域](../README.md)

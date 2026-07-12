@@ -33,6 +33,25 @@ test("repository Skill validator accepts a contained explicit-only docs-audit pa
   }
 });
 
+test("repository Skill validator accepts a Chinese explicit-invocation description", async () => {
+  const root = await createSkillRoot();
+  try {
+    const skillPath = join(root, ".codex", "skills", "docs-audit", "SKILL.md");
+    await writeFile(
+      skillPath,
+      (await readFile(skillPath, "utf8")).replace(
+        "Explicitly audit repository documentation only when the user or an approved OpenSpec task invokes $docs-audit.",
+        "仅在用户或已批准 OpenSpec 任务显式调用 $docs-audit 时审计仓库文档。",
+      ),
+    );
+    const result = run(root);
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.deepEqual(JSON.parse(result.stdout).summary, { errors: 0, warnings: 0 });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("repository Skill validator reports broken and escaping bundled references", async () => {
   const root = await createSkillRoot();
   try {

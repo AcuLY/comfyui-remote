@@ -1,177 +1,177 @@
 ## ADDED Requirements
 
-### Requirement: Staged harness program
-The repository SHALL establish the agent harness through ordered, independently approved stages: documentation governance and verified historical migration, observability, engineering standards, and final documentation/CI convergence.
+### Requirement: 分阶段 Harness 计划
+仓库 `SHALL` 按顺序、经独立批准的阶段建立 Agent Harness：文档治理与已验证历史迁移、可观测性、工程规范，最后完成文档/CI 收口。
 
-#### Scenario: Program starts with documentation governance
-- **WHEN** the harness program begins implementation
-- **THEN** the repository-specific documentation information architecture SHALL be approved before the documentation-governance child is fully specified
-- **AND** documentation governance SHALL be the first applied child change
-- **AND** observability and engineering-standards implementation SHALL remain out of scope
+#### Scenario: 计划从文档治理开始
+- **WHEN** Harness 计划开始实施
+- **THEN** 必须先批准仓库专用文档信息架构，才能完整编写文档治理子变更
+- **AND** 文档治理必须是第一个实施的子变更
+- **AND** 可观测性和工程规范实施必须保持在范围外
 
-#### Scenario: A later stage is requested early
-- **WHEN** an agent is asked to apply observability, engineering standards, or final convergence before the preceding stage is accepted
-- **THEN** the agent SHALL stop before implementation
-- **AND** report the unmet stage dependency
+#### Scenario: 后续阶段被提前请求
+- **WHEN** 前一阶段尚未验收，Agent 就被要求实施可观测性、工程规范或最终收口
+- **THEN** Agent 必须在实施前停止
+- **AND** 报告尚未满足的阶段依赖
 
-### Requirement: Independent stage proposals and approval
-Every harness stage, including documentation governance, MUST be represented by its own OpenSpec proposal, specs, design, and tasks based on the current repository baseline, and MUST receive explicit user authorization before apply.
+### Requirement: 独立阶段提案与批准
+每个 Harness 阶段（包括文档治理）`MUST` 基于当时仓库基线，以独立 OpenSpec proposal、specs、design 和 tasks 表示，并在 `apply` 前取得用户明确授权。
 
-#### Scenario: Stage approval is recorded
-- **WHEN** the user approves a child change for apply
-- **THEN** concise evidence SHALL identify the change and authorized scope
-- **AND** planning approval SHALL NOT be treated as post-implementation acceptance
+#### Scenario: 记录阶段批准
+- **WHEN** 用户批准一个子变更进入 `apply`
+- **THEN** 简洁证据必须标明变更和授权范围
+- **AND** 不得把规划批准视为实施后的验收
 
-#### Scenario: Stage artifacts are ready but not approved
-- **WHEN** a later-stage change has complete planning artifacts but no explicit user approval
-- **THEN** apply SHALL remain blocked
+#### Scenario: 阶段工件就绪但未批准
+- **WHEN** 后续阶段变更已有完整规划工件，但没有用户明确批准
+- **THEN** `apply` 必须继续阻断
 
-#### Scenario: Material stage scope changes during apply
-- **WHEN** implementation reveals a material scope or design change beyond the authorized stage
-- **THEN** the agent SHALL update the OpenSpec artifacts and request renewed user confirmation
-- **AND** ordinary task progress SHALL remain recorded in `tasks.md`
+#### Scenario: `apply` 期间阶段范围发生实质变化
+- **WHEN** 实施揭示超出已授权阶段的实质性范围或设计变化
+- **THEN** Agent 必须更新 OpenSpec 工件并请求用户重新确认
+- **AND** 普通任务进度必须继续记录在 `tasks.md`
 
-### Requirement: Stage acceptance is evidence-backed
-Every child stage SHALL receive explicit user acceptance only after its authorized scope is applied and its required verification evidence passes.
+### Requirement: 阶段验收以证据为基础
+每个子阶段 `SHALL` 仅在授权范围已实施且所需验证证据通过后，取得用户明确验收。
 
-#### Scenario: Implementation is verified but not accepted
-- **WHEN** a child change has passing verification but no explicit user acceptance of the presented result and evidence
-- **THEN** the child SHALL NOT be considered accepted for the next stage dependency
+#### Scenario: 实施已验证但未验收
+- **WHEN** 子变更验证通过，但用户尚未明确接受提交的结果和证据
+- **THEN** 下一阶段依赖不得把该子变更视为已验收
 
-#### Scenario: A child is accepted
-- **WHEN** the user accepts the applied revision after reviewing its required verification evidence
-- **THEN** the acceptance evidence SHALL identify the change and verification evidence
-- **AND** upstream OpenSpec archive behavior MAY proceed
+#### Scenario: 子变更获得验收
+- **WHEN** 用户审查必要验证证据后接受已实施 revision
+- **THEN** 验收证据必须标明变更及验证证据
+- **AND** 可以继续执行上游 OpenSpec archive 行为
 
-### Requirement: Evidence categories remain distinct
-The harness SHALL distinguish current implementation facts, approved target behavior, and historical intent, and SHALL prevent evidence from one category from silently replacing another.
+### Requirement: 证据类别保持独立
+Harness `SHALL` 区分当前实现事实、已批准目标行为和历史意图，并防止任一类别的证据静默取代另一类别。
 
-#### Scenario: Current code differs from an old design
-- **WHEN** a historical design conflicts with current source, schema, tests, or verified runtime behavior
-- **THEN** the current behavior and historical intent SHALL be recorded separately
-- **AND** the old design SHALL NOT be promoted into living specs without an approved target change
+#### Scenario: 当前代码与旧设计不同
+- **WHEN** 历史设计与当前源码、schema、测试或已验证运行时行为冲突
+- **THEN** 必须分别记录当前行为与历史意图
+- **AND** 未经批准的目标变更不得把旧设计提升为现行 specs
 
-#### Scenario: A target is not implemented yet
-- **WHEN** an approved active change describes behavior that is not implemented and verified
-- **THEN** that behavior SHALL remain in the active change
-- **AND** SHALL NOT appear as current behavior in living specs or current documentation
+#### Scenario: 目标尚未实施
+- **WHEN** 已批准的活动变更描述了尚未实施和验证的行为
+- **THEN** 该行为必须留在活动变更中
+- **AND** 不得作为当前行为出现在现行 specs 或当前文档中
 
-### Requirement: OpenSpec owns the significant-change lifecycle
-The repository SHALL use OpenSpec for significant feature, architecture, performance, and engineering-policy changes, while following the installed OpenSpec artifact, apply, verify, and archive conventions.
+### Requirement: OpenSpec 负责重要变更生命周期
+仓库 `SHALL` 使用 OpenSpec 处理重要功能、架构、性能和工程策略变更，并遵循已安装 OpenSpec 的工件、`apply`、`verify` 与 `archive` 约定。
 
-#### Scenario: A significant change is proposed
-- **WHEN** a change adds a capability, changes architecture, alters performance contracts, or changes repository-wide policy
-- **THEN** the work SHALL be represented by an OpenSpec change before implementation
+#### Scenario: 提出重要变更
+- **WHEN** 变更新增能力、修改架构、改变性能契约或修改全仓策略
+- **THEN** 实施前必须以 OpenSpec 变更表示该工作
 
-#### Scenario: Generic lifecycle behavior is needed
-- **WHEN** the repository needs status, dependency, apply, verification, archive, or standard recovery behavior
-- **THEN** it SHALL use the installed OpenSpec conventions
-- **AND** SHALL NOT create a competing generic lifecycle
+#### Scenario: 需要通用生命周期行为
+- **WHEN** 仓库需要状态、依赖、应用、验证、归档或标准恢复行为
+- **THEN** 必须使用已安装的 OpenSpec 约定
+- **AND** 不得创建竞争性的通用生命周期
 
-### Requirement: Repository-specific safety constraints extend OpenSpec
-The harness SHALL add repository-specific checks only where domain safety is not provided by OpenSpec, including stage ordering, queue safety, deployment locks, documentation authority, and telemetry isolation.
+### Requirement: 仓库专用安全约束扩展 OpenSpec
+Harness `SHALL` 只在 OpenSpec 未提供领域安全时增加仓库专用检查，包括阶段顺序、队列安全、部署锁、文档权威和遥测隔离。
 
-#### Scenario: A runtime-affecting stage reaches deployment work
-- **WHEN** implementation requires build, restart, target-machine sync, queue interruption, or public verification
-- **THEN** the existing repository deployment rules SHALL remain authoritative
+#### Scenario: 影响运行时的阶段进入部署工作
+- **WHEN** 实施需要构建、重启、目标机器同步、队列中断或公开验证
+- **THEN** 现有仓库部署规则必须继续作为权威
 
-#### Scenario: A documentation-only artifact change completes
-- **WHEN** a change only creates or revises planning and documentation artifacts
-- **THEN** production deployment SHALL NOT be required
+#### Scenario: 仅文档工件的变更完成
+- **WHEN** 变更只创建或修改规划和文档工件
+- **THEN** 不得要求生产部署
 
-### Requirement: Hard-cutover quality gates
-Each harness stage SHALL clear all existing violations in its scope before enabling blocking enforcement, without permanent legacy allowlists or warning-only exceptions.
+### Requirement: 硬切换质量门禁
+每个 Harness 阶段 `MUST` 先清除其范围内全部现有违规，再启用阻断式执行；不得保留永久遗留白名单或仅警告例外。
 
-#### Scenario: A child defines its enforcement contract
-- **WHEN** a child change is prepared for apply
-- **THEN** it SHALL enumerate a finite governed scope, the complete violation inventory for that scope, a non-writing verification command, and the exact local and CI blocking surfaces
+#### Scenario: 子变更定义执行契约
+- **WHEN** 子变更准备进入 `apply`
+- **THEN** 必须列出有限治理范围、该范围的完整违规清单、非写入验证命令，以及精确的本地与 CI 阻断表面
 
-#### Scenario: Existing violations remain
-- **WHEN** a stage still has unresolved pre-existing violations in the rules it introduces
-- **THEN** that stage SHALL NOT be accepted or archived
+#### Scenario: 仍有现有违规
+- **WHEN** 阶段引入的规则仍有未解决的既有违规
+- **THEN** 该阶段不得验收或归档
 
-#### Scenario: Stage violations reach zero
-- **WHEN** all existing and newly introduced violations in the stage scope are resolved and verification is green
-- **THEN** the stage-specific checks SHALL become required on every protected merge path before stage acceptance
+#### Scenario: 阶段违规归零
+- **WHEN** 阶段范围内既有与新增违规全部解决且验证为绿色
+- **THEN** 阶段专用检查必须在验收前成为每条受保护合并路径的必需项
 
-### Requirement: Isomorphic and isolated observability invariant
-The future observability stage SHALL be self-hosted and SHALL use the same versioned instrumentation, telemetry schema, stack implementation, and query semantics locally, in CI, and on `mypc`, while isolating local, CI, per-worktree, and production reads, writes, resources, identities, and lifecycles.
+### Requirement: 同构且隔离的可观测性不变量
+未来可观测性阶段 `SHALL` 自托管，并在本地、CI 和 `mypc` 使用相同的版本化插桩、遥测 schema、栈实现与查询语义，同时隔离本地、CI、各工作树和生产的读写、资源、身份及生命周期。
 
-#### Scenario: Multiple worktrees are observed concurrently
-- **WHEN** two or more worktrees run the application and observability stack
-- **THEN** each SHALL use isolated application ports, collectors, telemetry stores, identifiers, and teardown lifecycles
+#### Scenario: 多个工作树被并发观测
+- **WHEN** 两个或更多工作树同时运行应用与可观测性栈
+- **THEN** 每个工作树必须使用独立应用端口、收集器、遥测存储、标识和清理生命周期
 
-#### Scenario: Local validation compares with production
-- **WHEN** an agent validates observability behavior locally
-- **THEN** the implementation and query semantics SHALL match production
-- **AND** local telemetry SHALL NOT be written to production storage
+#### Scenario: 本地验证与生产比较
+- **WHEN** Agent 在本地验证可观测性行为
+- **THEN** 实现与查询语义必须和生产一致
+- **AND** 本地遥测不得写入生产存储
 
-#### Scenario: CI validates observability
-- **WHEN** CI starts instrumentation or queries telemetry
-- **THEN** it SHALL use CI-owned identities, ports, endpoints, credentials, and storage
-- **AND** any production endpoint, credential, service identity, or storage location SHALL fail closed before access
-- **AND** CI teardown SHALL NOT delete local, worktree, or production telemetry
+#### Scenario: CI 验证可观测性
+- **WHEN** CI 启动插桩或查询遥测
+- **THEN** 必须使用 CI 自有身份、端口、endpoint、凭据和存储
+- **AND** 任何生产端点、凭据、服务身份或存储位置都必须在访问前以封闭方式失败
+- **AND** CI 清理不得删除本地、工作树或生产遥测
 
-#### Scenario: Environment configuration crosses an isolation boundary
-- **WHEN** a local or worktree stack is configured with a production endpoint, credential, storage location, or service identity
-- **THEN** telemetry startup and access SHALL fail with an actionable isolation error
-- **AND** SHALL NOT fall back to cross-environment reads or writes
+#### Scenario: 环境配置跨越隔离边界
+- **WHEN** 本地或工作树栈被配置为使用生产端点、凭据、存储位置或服务身份
+- **THEN** 遥测启动与访问必须失败，并返回可操作的隔离错误
+- **AND** 不得退回到跨环境读写
 
-#### Scenario: Worktree resources collide
-- **WHEN** a worktree's derived ports, identifiers, collector, or storage resources collide with another worktree or production
-- **THEN** that worktree's observability startup SHALL fail before using the conflicting resource
+#### Scenario: 工作树资源冲突
+- **WHEN** 工作树派生的端口、标识、收集器或存储资源与另一工作树或生产冲突
+- **THEN** 该工作树的可观测性启动必须在使用冲突资源前失败
 
-#### Scenario: A worktree is torn down
-- **WHEN** an agent tears down one worktree's observability stack
-- **THEN** deletion SHALL be scoped to that worktree identity
-- **AND** telemetry for other worktrees and production SHALL remain intact
+#### Scenario: 清理一个工作树
+- **WHEN** Agent 清理某个工作树的可观测性栈
+- **THEN** 删除必须限定到该工作树身份
+- **AND** 其他工作树和生产的遥测必须保持完整
 
-#### Scenario: Telemetry from a prior run remains stored
-- **WHEN** an agent queries data after a worktree or service restart
-- **THEN** environment, worktree, service, and run identity SHALL distinguish stale telemetry from the current run
+#### Scenario: 先前运行的遥测仍在存储中
+- **WHEN** Agent 在工作树或服务重启后查询数据
+- **THEN** 环境、工作树、服务和运行身份必须能区分旧遥测与当前运行
 
-### Requirement: Child changes are created just in time
-The program SHALL create detailed observability, engineering-standards, and final-convergence artifacts only when the preceding stage is accepted and the user has reviewed the new baseline and options.
+### Requirement: 子变更按需创建
+计划 `SHALL` 只在前一阶段验收且用户审查新基线和方案后，创建详细的可观测性、工程规范和最终收口工件。
 
-A narrowly bounded experiment MAY run earlier only when the user explicitly authorizes its exact scope, its outputs remain local and untracked, and the active artifacts record that it neither starts nor satisfies the later stage.
+只有用户明确授权精确范围、输出保持本地且不受跟踪，并且活动工件记录该实验既不启动也不完成后续阶段时，才可提前运行边界狭窄的实验。
 
-#### Scenario: Documentation structure is not approved
-- **WHEN** the repository-specific target documentation tree, ownership, authority, navigation, lifecycle, and OpenSpec boundary remain undecided
-- **THEN** `rebuild-documentation-governance` SHALL NOT be created
-- **AND** complete documentation-governance specs, design, and tasks SHALL NOT be authored
+#### Scenario: 文档结构未批准
+- **WHEN** 仓库专用目标文档树、所有权、权威、导航、生命周期和 OpenSpec 边界尚未确定
+- **THEN** 不得创建 `rebuild-documentation-governance`
+- **AND** 不得编写完整的文档治理 specs、design 和 tasks
 
-#### Scenario: Documentation governance is still active
-- **WHEN** detailed observability implementation artifacts would otherwise be created
-- **THEN** the agent SHALL defer them until documentation governance is accepted
-- **AND** retain only the already approved program invariants
+#### Scenario: 文档治理仍在活动
+- **WHEN** 原本将创建详细可观测性实施工件
+- **THEN** Agent 必须将其推迟到文档治理验收之后
+- **AND** 只保留已经批准的计划不变量
 
-#### Scenario: The user authorizes a local path-match experiment early
-- **WHEN** the user explicitly requests a service-free, coarse `PreToolUse` repository-path counter while documentation governance remains active
-- **THEN** the experiment's runtime components SHALL be limited to the project Hook, standard-library recorder, and ignored local `logs/**` and `metrics/**` outputs
-- **AND** the repository MAY add only the focused tests and maintenance documentation required to verify and govern those components
-- **AND** the signal SHALL omit operation taxonomy, raw commands, prompts, outputs, file contents, absolute paths, and raw session identifiers
-- **AND** the experiment SHALL remain unapproved input to the future observability child rather than completing any observability stage task
+#### Scenario: 用户提前授权本地路径匹配实验
+- **WHEN** 文档治理仍在活动期间，用户明确要求无服务、粗粒度的 `PreToolUse` 仓库路径计数器
+- **THEN** 实验运行时组件必须限制为项目 Hook、仅使用标准库的记录器，以及被忽略的本地 `logs/**` 和 `metrics/**` 输出
+- **AND** 仓库只能增加验证和治理这些组件所需的聚焦测试与维护文档
+- **AND** 信号必须省略操作分类、原始命令、prompt、输出、文件内容、绝对路径和原始会话标识
+- **AND** 实验仍是未来可观测性子变更的未批准输入，不得完成任何可观测性阶段任务
 
-#### Scenario: An observability spike exists in an earlier child
-- **WHEN** non-normative instrumentation evidence was preserved during documentation governance
-- **THEN** the future observability child SHALL revalidate its semantics, platform support, privacy, isolation, retention, and performance against the fresh baseline
-- **AND** SHALL NOT treat the earlier spike as approved production code or an acceptance shortcut
+#### Scenario: 较早子变更中存在可观测性实验
+- **WHEN** 文档治理期间保留了非规范性插桩证据
+- **THEN** 未来可观测性子变更必须根据新基线重新验证其语义、平台支持、隐私、隔离、保留与性能
+- **AND** 不得把早期实验视为已批准生产代码或验收捷径
 
-### Requirement: Program completion reflects implemented reality
-The parent harness change SHALL be verified and archived only after all approved child stages are implemented, accepted, and reflected in current documentation and living specs.
+### Requirement: 计划完成状态反映实际实现
+父 Harness 变更 `MUST` 等到所有已批准子阶段都已实施、验收并反映在当前文档和现行 specs 中，才可验证和归档。
 
-#### Scenario: A child stage is incomplete
-- **WHEN** any required child change is active, unaccepted, or not reflected in current documentation
-- **THEN** the parent change SHALL remain active
+#### Scenario: 子阶段未完成
+- **WHEN** 任一必要子变更仍在活动、未验收或未反映到当前文档
+- **THEN** 父变更必须保持活动
 
-#### Scenario: All stages are complete
-- **WHEN** documentation governance, observability, engineering standards, and final convergence are implemented and accepted
-- **THEN** the parent change MAY be verified and archived under OpenSpec conventions
+#### Scenario: 所有阶段完成
+- **WHEN** 文档治理、可观测性、工程规范和最终收口均已实施并验收
+- **THEN** 可以按 OpenSpec 约定验证并归档父变更
 
-### Requirement: The parent delta is synchronized only at program completion
-The long-running parent change SHALL NOT be partially synchronized or archived into living specs while it still contains unimplemented stage requirements; accepted child changes SHALL be archived independently as their durable current truth.
+### Requirement: 父变更增量仅在计划完成时同步
+长期运行的父变更只要仍包含未实施阶段要求，就 `SHALL NOT` 部分同步或归档到现行 specs；已验收子变更应独立归档为其持久当前事实。
 
-#### Scenario: An early child is accepted
-- **WHEN** documentation governance or another child stage is complete while later parent requirements remain unimplemented
-- **THEN** the child MAY be archived under OpenSpec conventions
-- **AND** the parent delta SHALL remain active without partial living-spec promotion
+#### Scenario: 早期子阶段获得验收
+- **WHEN** 文档治理或另一子阶段已完成，但父变更仍有后续要求未实施
+- **THEN** 可以按 OpenSpec 约定归档该子变更
+- **AND** 父变更增量必须保持活动，不得部分提升到现行 specs

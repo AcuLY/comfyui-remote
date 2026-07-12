@@ -11,8 +11,50 @@ rootEntrypoints:
   - DESIGN.md
   - CLAUDE.md
 
-# Scope entries are finite governance surfaces, not document-instance records.
-# A tracked path may resolve to at most one scope entry.
+language:
+  requiredLanguage: zh-CN
+  firstPartyMarkdown:
+    include:
+      - '*.md'
+      - '**/*.md'
+    exclude:
+      - .codebuddy/skills/ui-ux-pro-max/**
+      - .codex/skills/ui-ux-pro-max/**
+      - tests/fixtures/**
+      - openspec/changes/rebuild-documentation-governance/evidence/pretooluse-file-access-poc/fixture/**
+  allowedAscii:
+    - repository-path
+    - command
+    - inline-code
+    - fenced-code
+    - protocol-field
+    - openspec-structure-keyword
+  metadataExcludedFields:
+    - schemaVersion
+    - name
+    - document.type
+    - document.status
+    - document.owner
+    - document.authority.subject
+    - document.authority.kind
+    - document.sources
+    - document.verifiedBy
+    - document.recovery
+    - document.verificationState
+    - document.lastVerified
+    - document.generator
+    - document.inputs
+    - document.regenerate
+    - document.check
+    - document.activation.stage
+    - document.activation.owner
+  dataPayloadExceptions:
+    - path: docs/product/shared-resources/position-presets.md
+      kind: paragraph-after-heading
+      headingDepth: 3
+
+# scope 条目表示有限治理表面，不是逐文档实例记录。
+# 一个受跟踪路径最多只能匹配一个 scope 条目。
 scope:
   - id: current-root
     include:
@@ -94,9 +136,8 @@ scope:
     links: false
     navigation: false
 
-# Profile selection is explicit and must resolve to exactly one schema $defs key.
-# README matching is kept separate from detail matching; no type is inferred from a
-# path substring by checker code.
+# profile 选择必须显式完成，并且只能解析到一个 schema $defs 键。
+# README 匹配与详情文档匹配彼此独立；检查器不得从路径子串推断文档类型。
 profiles:
   - id: root-files
     include:
@@ -185,8 +226,9 @@ navigation:
     - ARCHITECTURE.md
     - PRODUCT.md
     - DESIGN.md
+    - CLAUDE.md
     - docs/README.md
-  # When owner patterns overlap, the longest matching landing path owns the file.
+  # owner 模式重叠时，由匹配路径最长的 landing 负责该文件。
   owners:
     - landing: docs/architecture/README.md
       include:
@@ -258,28 +300,28 @@ forbiddenLivePaths:
     replacement: openspec/changes/**
   - path: agent-rules/**
     owner: agent-policy
-    replacement: AGENTS.md and docs/runbooks/**
+    replacement: AGENTS.md 与 docs/runbooks/**
   - path: docs/index.md
     owner: documentation-governance
     replacement: docs/README.md
   - path: docs/documentation-map.md
     owner: documentation-governance
-    replacement: docs/README.md and docs/_meta/policy.yaml
+    replacement: docs/README.md 与 docs/_meta/policy.yaml
   - path: docs/exec-plans/**
     owner: documentation-governance
     replacement: openspec/changes/**
   - path: docs/history/**
     owner: documentation-governance
-    replacement: Git history and archived OpenSpec changes
+    replacement: Git 历史与已归档的 OpenSpec 变更
   - path: docs/archive/**
     owner: documentation-governance
-    replacement: Git history and archived OpenSpec changes
+    replacement: Git 历史与已归档的 OpenSpec 变更
   - path: docs/prototypes/**
     owner: product-design
-    replacement: verified production source and current design documentation
+    replacement: 已验证的生产源码与当前设计文档
   - path: docs/plans/**
     owner: documentation-governance
-    replacement: openspec/changes/** or the owning test/config/artifact path
+    replacement: openspec/changes/** 或所属测试、配置、产物路径
   - path: docs/superpowers/**
     owner: documentation-governance
     replacement: openspec/changes/**
@@ -290,8 +332,8 @@ forbiddenLivePaths:
     owner: workflow-configuration
     replacement: config/workflows/standard-workflow.api.json
 
-# `contract` is blocking and names a controlled adapter. `review` is a warning
-# requiring an owned semantic disposition; it never starts $docs-audit itself.
+# `contract` 是阻断项，并指向受控 adapter。`review` 是警告项，
+# 必须由责任方完成语义处置；它本身绝不会启动 $docs-audit。
 relationships:
   - id: repository-inventory-freshness
     kind: contract
@@ -355,7 +397,7 @@ relationships:
       - docs/api/**
       - docs/architecture/system/agent-interfaces.md
     owner: api-contracts
-    reason: API routes or MCP registrations can change maintained interface claims.
+    reason: API 路由或 MCP 注册变化可能使已维护的接口声明失效。
 
   - id: queue-and-worker-review
     kind: review
@@ -367,7 +409,7 @@ relationships:
       - docs/architecture/system/execution/queue-worker.md
       - docs/runbooks/deployment/queue-safety.md
     owner: queue-runtime
-    reason: Queue execution or recovery changes require semantic review of architecture and operations.
+    reason: Queue 执行或恢复变化需要对架构与操作文档进行语义审查。
 
   - id: design-surface-review
     kind: review
@@ -379,7 +421,7 @@ relationships:
       - DESIGN.md
       - docs/design/**
     owner: product-design
-    reason: User-visible structure or interaction changes may invalidate maintained design guidance.
+    reason: 用户可见结构或交互变化可能使已维护的设计指引失效。
 
 adapters:
   openspec:
@@ -397,7 +439,7 @@ adapters:
         - --check
       owner: documentation-governance
       output: docs/repo-inventory.md
-      remediation: Run npx tsx scripts/docs/generate-repo-inventory.ts, review the diff, and rerun docs:check.
+      remediation: 运行 npx tsx scripts/docs/generate-repo-inventory.ts，审查 diff，再重新运行 docs:check。
     - id: prisma-schema-compatibility
       command:
         - tsx
@@ -405,15 +447,15 @@ adapters:
         - --check
       owner: data-architecture
       output: docs/prisma-schema-compatibility.md
-      remediation: Run npx tsx scripts/docs/generate-prisma-schema-compatibility.ts, review the diff, and rerun docs:check.
+      remediation: 运行 npx tsx scripts/docs/generate-prisma-schema-compatibility.ts，审查 diff，再重新运行 docs:check。
   contracts:
     - id: route-api-mcp-documentation
       kind: route-api-mcp-documentation
       owner: api-contracts
       output: docs/api/README.md
-      remediation: Run node --import tsx --test tests/test-documentation-governance.test.ts and repair the current route, API, or MCP contract.
+      remediation: 运行 node --import tsx --test tests/test-documentation-governance.test.ts，并修复当前路由、API 或 MCP 合同。
     - id: runtime-configuration-documentation
       kind: runtime-configuration-documentation
       owner: runtime-configuration
       output: docs/runbooks/README.md
-      remediation: Run node --import tsx --test tests/test-config-runtime-governance.test.ts and repair the current runtime-configuration contract.
+      remediation: 运行 node --import tsx --test tests/test-config-runtime-governance.test.ts，并修复当前运行时配置合同。

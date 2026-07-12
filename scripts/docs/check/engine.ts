@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 
 import { runConfiguredAdapters } from "./adapters";
@@ -6,6 +6,7 @@ import { assertPolicySchemaProfiles, loadMetadataValidator, loadPolicy } from ".
 import { scanForbiddenConsumers } from "./consumers";
 import { sortDiagnostics } from "./diagnostics";
 import { listTrackedPaths, resolveComparison } from "./git";
+import { isFirstPartyMarkdown, languageDiagnosticsForDocument } from "./language";
 import { parseMarkdownDocument } from "./markdown";
 import type {
   CheckOptions,
@@ -115,7 +116,7 @@ export function addGeneratedOwnershipDiagnostics(input: {
 
 function shouldBeRegistered(path: string, policy: GovernancePolicy): boolean {
   if (policy.governedRoots.some((root) => path === root || path.startsWith(`${root}/`))) return true;
-  if (!path.endsWith(".md")) return false;
+  if (!path.toLowerCase().endsWith(".md")) return false;
   if (!path.includes("/")) return true;
   if ((path.startsWith("src/") || path.startsWith("tests/")) && !path.startsWith("tests/fixtures/")) return true;
   return false;
@@ -222,7 +223,7 @@ function resolveScopeAssignments(trackedPaths: string[], policy: GovernancePolic
 function currentDocuments(assigned: Map<string, ScopeRule>): Set<string> {
   return new Set(
     [...assigned]
-      .filter(([path, scope]) => path.endsWith(".md") && scope.kind === "current")
+      .filter(([path, scope]) => path.toLowerCase().endsWith(".md") && scope.kind === "current")
       .map(([path]) => path),
   );
 }
@@ -331,7 +332,7 @@ function addMetadataDiagnostics(input: {
 }): Set<string> {
   const current = new Set<string>();
   for (const [path, scope] of input.assigned) {
-    if (!path.endsWith(".md")) continue;
+    if (!path.toLowerCase().endsWith(".md")) continue;
     if (scope.kind === "current") current.add(path);
     if (input.diagnosticPaths && !input.diagnosticPaths.has(path)) continue;
     let parsed: ParsedMarkdownDocument;
@@ -402,6 +403,47 @@ function addMetadataDiagnostics(input: {
   return current;
 }
 
+function addLanguageDiagnostics(input: {
+  root: string;
+  trackedPaths: string[];
+  policy: GovernancePolicy;
+  diagnostics: Diagnostic[];
+  diagnosticPaths: Set<string> | null;
+  cache: Map<string, ParsedMarkdownDocument>;
+}): void {
+  for (const path of input.trackedPaths) {
+    if (!isFirstPartyMarkdown(path, input.policy)) continue;
+    if (input.diagnosticPaths && !input.diagnosticPaths.has(path)) continue;
+    if (!existsSync(absolutePath(input.root, path))) continue;
+    let parsed: ParsedMarkdownDocument;
+    try {
+      parsed = parseDocument(input.root, path, input.cache);
+    } catch (error) {
+      const alreadyReported = input.diagnostics.some(
+        (diagnostic) => diagnostic.path === path && diagnostic.ruleId === "metadata/frontmatter-parse",
+      );
+      if (!alreadyReported) {
+        input.diagnostics.push({
+          ruleId: "language/markdown-parse",
+          severity: "error",
+          path,
+          location: { line: 1, column: 1 },
+          evidence: error instanceof Error ? error.message : String(error),
+          remediation: "Repair the Markdown or YAML frontmatter so the required-language check can inspect it.",
+          owner: "documentation-governance",
+        });
+      }
+      continue;
+    }
+    input.diagnostics.push(...languageDiagnosticsForDocument({
+      path,
+      document: parsed,
+      policy: input.policy,
+      owner: metadataOwner(parsed.metadata),
+    }));
+  }
+}
+
 function addLinkAndGraphDiagnostics(input: {
   root: string;
   tracked: Set<string>;
@@ -414,7 +456,7 @@ function addLinkAndGraphDiagnostics(input: {
 }): Map<string, Set<string>> {
   const graph = new Map<string, Set<string>>();
   for (const [path, scope] of input.assigned) {
-    if (!scope.links || !path.endsWith(".md")) continue;
+    if (!scope.links || !path.toLowerCase().endsWith(".md")) continue;
     let parsed: ParsedMarkdownDocument;
     try {
       parsed = parseDocument(input.root, path, input.cache);
@@ -455,7 +497,7 @@ function addLinkAndGraphDiagnostics(input: {
         continue;
       }
       if (input.current.has(target)) edges.add(target);
-      if (resolved.anchor !== null && target.endsWith(".md")) {
+      if (resolved.anchor !== null && target.toLowerCase().endsWith(".md")) {
         let targetDocument: ParsedMarkdownDocument;
         try {
           targetDocument = parseDocument(input.root, target, input.cache);
@@ -692,6 +734,14 @@ export async function runDocsCheck(options: CheckOptions): Promise<CheckResult> 
     diagnosticPaths,
     cache,
     validate: metadataValidator.validate,
+  });
+  addLanguageDiagnostics({
+    root: options.root,
+    trackedPaths,
+    policy,
+    diagnostics,
+    diagnosticPaths,
+    cache,
   });
   const graph = addLinkAndGraphDiagnostics({
     root: options.root,

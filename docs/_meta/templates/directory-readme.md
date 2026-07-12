@@ -8,29 +8,29 @@ document:
     subject: <normalized-area-id>
     kind: router
   readWhen:
-    - <task trigger for this documentation area>
+    - <需要进入本文档区域的任务触发条件>
   sources:
-    - <root contract or source path>
+    - <repository/path/to/root-contract>
   verifiedBy:
     - npm run docs:check
 ---
 
-# <Area name>
+# <文档区域名称>
 
-## Purpose and authority
+## 目的与权威性
 
-State the area's purpose, what its children may own, and which root or parent contract remains authoritative.
+说明本区域的目的、下级文档可以负责哪些内容，以及哪个根契约或上级契约仍具权威性。
 
-## Read this area when
+## 何时阅读本区域
 
-- <Concrete task trigger>
+- <具体任务触发条件>
 
-## Routes
+## 导航
 
-| Task | Read | Why |
+| 任务 | 阅读 | 原因 |
 | --- | --- | --- |
-| <Task> | [<Child title>](./<child>.md) | <Owned detail> |
+| <任务> | `<child-document-path>` | <该文档负责的细节> |
 
-## Parent route
+## 上级导航
 
-- [Back to the owning documentation area](../README.md)
+- [返回文档治理控制面](../README.md)

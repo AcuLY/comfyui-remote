@@ -1,19 +1,19 @@
-# ComfyUI Remote 当前项目理解快照
+# ComfyUI 远程当前项目理解快照
 
 生成日期：2026-07-08
 
-本文是一次仓库级探索后的临时工作底稿，原位置在 `.tmp/`。现为跨设备续作而归档为 OpenSpec 非规范性 evidence；它不是新的正式文档，也不应该被当成长期 source of truth。它的作用是先把“代码实际在做什么”和“现有文档哪里漂移”沉淀下来，供下一步清理 `README.md`、`docs/**`、`DESIGN.md` 和归档历史文档时使用。
+本文是一次仓库级探索后的临时工作底稿，原位置在 `.tmp/`。现为跨设备续作而归档为 OpenSpec 非规范性证据；它不是新的正式文档，也不应该被当成长期事实源。它的作用是先把“代码实际在做什么”和“现有文档哪里漂移”沉淀下来，供下一步清理 `README.md`、`docs/**`、`DESIGN.md` 和归档历史文档时使用。
 
 ## 0. 总体判断
 
-这个仓库现在不是一个单纯的 ComfyUI Web 面板，也不是一个只面向人工操作的 Next.js 项目。它更准确地说是一个围绕 ComfyUI 的本地/私有生产控制台，包含四条主线：
+这个仓库现在不是一个单纯的 ComfyUI 网页面板，也不是一个只面向人工操作的 Next.js 项目。它更准确地说是一个围绕 ComfyUI 的本地/私有生产控制台，包含四条主线：
 
-1. 生图项目管理：Project、Section、Template、Preset、Preset Group、LoRA 绑定、Prompt Block、运行参数、Run、Image Result、Review。
-2. 队列和 ComfyUI 执行：将项目配置解析成稳定的 prompt draft，填充 `docs/workflow.api.json`，提交到 ComfyUI，轮询结果，落盘图片和缩略图。
+1. 生图项目管理：项目、小节、模板、预设、预设分组、LoRA 绑定、Prompt 区块、运行参数、运行、图像结果、审查。
+2. 队列和 ComfyUI 执行：将项目配置解析成稳定的 prompt 草稿，填充 `docs/workflow.api.json`，提交到 ComfyUI，轮询结果，落盘图片和缩略图。
 3. 训练工作流：`/training/**` 作为独立但共享资产体系的训练控制台，管理训练项目、角色资料、场景描述、生成任务、数据集修订、训练运行和 worker 队列。
-4. Agent / MCP / API 自动化：HTTP API 与 MCP 工具都不是附属示例，而是仓库的一等控制面，目标是让 agent 可以读取上下文、修改项目、运行 section、审图、操作 prompt blocks。
+4. 智能体 / MCP / API 自动化：HTTP API 与 MCP 工具都不是附属示例，而是仓库的一等控制面，目标是让智能体可以读取上下文、修改项目、运行小节、审图、操作 prompt 区块。
 
-因此，正式文档不应该再把项目描述成“7 个 Agent API 端点的小工具”或“简单图片管理器”。当前代码的事实已经明显大于早期 README 和若干旧 docs 的描述。
+因此，正式文档不应该再把项目描述成“7 个智能体 API 端点的小工具”或“简单图片管理器”。当前代码的事实已经明显大于早期 README 和若干旧文档的描述。
 
 ## 1. 本次探索依据
 
@@ -50,7 +50,7 @@
 - `docs/local-verification.md`
 - `docs/runbooks/config-runtime-assets.md`
 
-本次没有把每个 React 组件、每个 route handler 和每篇历史文档逐字读完，但已经完成了仓库结构、路由、API、数据模型、服务层、训练层、MCP 层、核心 docs 的横向覆盖，并对关键路径源码做了抽样确认。后续正式文档清理应继续以这份底稿为索引逐块落地，而不是直接凭旧 README 改写。
+本次没有把每个 React 组件、每个路由处理器和每篇历史文档逐字读完，但已经完成了仓库结构、路由、API、数据模型、服务层、训练层、MCP 层、核心文档的横向覆盖，并对关键路径源码做了抽样确认。后续正式文档清理应继续以这份底稿为索引逐块落地，而不是直接凭旧 README 改写。
 
 ## 2. 仓库事实快照
 
@@ -82,13 +82,13 @@
 代码规模统计：
 
 - `src/app/**/page.tsx` 生成的页面路由约 28 个。
-- `src/app/api/**/route.ts` 有 194 个 route 文件。
-- API route handler 导出的 HTTP method entrypoint 约 261 个。
-- Prisma 主 schema 有 54 个 model、5 个 enum。
-- SQLite schema 对应 54 个 model，但 enum 以字符串兼容方式保存。
+- `src/app/api/**/route.ts` 有 194 个路由文件。
+- API 路由处理器导出的 HTTP 方法入口约 261 个。
+- Prisma 主 schema 有 54 个模型、5 个枚举。
+- SQLite schema 对应 54 个模型，但枚举以字符串兼容方式保存。
 - `tests/` 下约 159 个文件，覆盖了 API、服务、治理规则、训练、队列、schema 兼容等内容。
 
-需要注意：API 数字是按代码文件和 method export 统计，不等同于产品文案里应该出现的“接口数”。正式 README 不建议写精确数量；如果必须写，应由脚本生成并明确统计口径。
+需要注意：API 数字是按代码文件和方法导出统计，不等同于产品文案里应该出现的“接口数”。正式 README 不建议写精确数量；如果必须写，应由脚本生成并明确统计口径。
 
 ## 3. 当前路由面
 
@@ -97,7 +97,7 @@
 - 首页与项目列表：`/`、`/projects`
 - 项目创建和复制：`/projects/new`、`/projects/new/from-existing`、`/projects/:projectId/batch-create`
 - 项目详情与编辑：`/projects/:projectId`、`/projects/:projectId/edit`
-- Section 编辑和结果：`/projects/:projectId/sections/:sectionId`、`/projects/:projectId/sections/:sectionId/results`
+- 小节编辑和结果：`/projects/:projectId/sections/:sectionId`、`/projects/:projectId/sections/:sectionId/results`
 - 项目结果总览：`/projects/:projectId/results`
 - 队列与审图：`/queue`、`/queue/:runId`
 - 资产和预设库：`/assets/presets`、`/assets/presets/:presetId`、`/assets/preset-groups/:groupId`、`/assets/presets/sort-rules`
@@ -106,15 +106,15 @@
 - 训练控制台：`/training/**`
 - 设置和监控：`/settings`、`/settings/logs`、`/settings/monitor`
 - 登录：`/login`
-- 旧设计 demo 入口：`/design-demos/**`
+- 旧设计演示入口：`/design-demos/**`
 
-`/training/**` 是 catch-all 路由，由 `src/features/training/routes.ts` 中的 route registry 驱动。当前 registry 覆盖 runs、generation run detail、training run detail、projects、project detail、profile、sections、section detail、generation compose、generation results、dataset、dataset revision、training runs、generation tasks、presets、preset detail、preset sort/new、templates、template edit/new/section 等约 24 个训练子页面。
+`/training/**` 是通配路由，由 `src/features/training/routes.ts` 中的路由登记表驱动。当前登记表覆盖运行、Generation 运行详情、Training 运行详情、项目、项目详情、profile、小节、小节详情、Generation 编排、Generation 结果、数据集、数据集修订、Training 运行、Generation 任务、预设、预设详情、预设排序与新建、模板及模板编辑、新建与小节等约 24 个训练子页面。
 
 ## 4. API 和自动化控制面
 
-API 已远超旧 README 所说的 7 个 Agent 端点。
+API 已远超旧 README 所说的 7 个智能体端点。
 
-按 prefix 粗略分组，当前 API 涵盖：
+按前缀粗略分组，当前 API 涵盖：
 
 - `/api/agent/**`
 - `/api/auth/**`
@@ -138,7 +138,7 @@ API 已远超旧 README 所说的 7 个 Agent 端点。
 - `/api/training/**`
 - `/api/worker/**`
 
-当前 Agent HTTP 端点至少包括：
+当前智能体 HTTP 端点至少包括：
 
 - `GET /api/agent/projects`
 - `GET /api/agent/projects/:projectId/context`
@@ -165,56 +165,56 @@ MCP 不是过时实验。`src/server/mcp/server.ts` 当前暴露的工具包括�
 - `remove_prompt_block`
 - `reorder_prompt_blocks`
 
-MCP resources 包括：
+MCP 资源包括：
 
 - `comfyui://projects/{projectId}/context`
 - `comfyui://runs/{runId}/context`
 - `comfyui://sections/{sectionId}/blocks`
 
-`docs/agent-api.md` 是目前比 README 更接近事实的 API 文档，但仍需要和代码生成的 route 清单做一次交叉校验，避免遗漏新训练接口、项目模板接口、preset-library 接口和 MCP 工具变化。
+`docs/agent-api.md` 是目前比 README 更接近事实的 API 文档，但仍需要和代码生成的路由清单做一次交叉校验，避免遗漏新训练接口、项目模板接口、preset-library 接口和 MCP 工具变化。
 
 ## 5. 数据模型理解
 
 Prisma 数据模型大致可以分成以下域：
 
-- Preset Library：`PresetCategory`、`Preset`、`PresetVariant`、`PresetVariantLink`、`PresetGroup`、`PresetGroupMember`、`PresetCategorySlot`、`PresetFolder`、变更日志等。
-- Generation Template：`ProjectTemplate`、`ProjectTemplateSection`、`ProjectTemplatePresetBinding`、`TemplateSectionPresetBinding`、`TemplateSectionPromptBlock`、`TemplateSectionManualLoraEntry`、模板 folder。
-- Generation Project：`Project`、`ProjectSection`、`ProjectPresetBinding`、`SectionPresetBinding`、`SectionPromptBlock`、`SectionManualLoraEntry`、项目 folder、section folder、section change log。
-- Run / Image / Review：`Run`、`ImageResult`、`TrashRecord`、`CensoringTask`。
+- 预设资源库：`PresetCategory`、`Preset`、`PresetVariant`、`PresetVariantLink`、`PresetGroup`、`PresetGroupMember`、`PresetCategorySlot`、`PresetFolder`、变更日志等。
+- Generation 模板：`ProjectTemplate`、`ProjectTemplateSection`、`ProjectTemplatePresetBinding`、`TemplateSectionPresetBinding`、`TemplateSectionPromptBlock`、`TemplateSectionManualLoraEntry`、模板目录。
+- Generation 项目：`Project`、`ProjectSection`、`ProjectPresetBinding`、`SectionPresetBinding`、`SectionPromptBlock`、`SectionManualLoraEntry`、项目目录、小节目录、小节变更日志。
+- 运行 / 图像 / 审查：`Run`、`ImageResult`、`TrashRecord`、`CensoringTask`。
 - Training：`TrainingProject`、`TrainingCharacterProfile`、`TrainingCharacterImage`、`TrainingArtifact`、`TrainingSection`、`TrainingSceneDescriptionBlock`、`TrainingSectionRun`、`TrainingImageResult`、`TrainingGenerationTask`、`TrainingGenerationInputReference`、`TrainingGenerationTaskOutput`、`TrainingDatasetRevision`、`TrainingDatasetRevisionItem`、`TrainingRun`、`TrainingTextRevision`。
-- Training Preset / Template：`TrainingSceneDescriptionPresetCategory`、`TrainingSceneDescriptionPresetFolder`、`TrainingSceneDescriptionPreset`、`TrainingTemplate`、`TrainingTemplateSection`、`TrainingTemplateSectionSceneDescriptionBlock`。
-- Asset / Ops：`LoraAsset`、`AuditLog`、`GpuTaskLock`。
+- Training 预设 / 模板：`TrainingSceneDescriptionPresetCategory`、`TrainingSceneDescriptionPresetFolder`、`TrainingSceneDescriptionPreset`、`TrainingTemplate`、`TrainingTemplateSection`、`TrainingTemplateSectionSceneDescriptionBlock`。
+- 资产 / 运维：`LoraAsset`、`AuditLog`、`GpuTaskLock`。
 
-PostgreSQL schema 使用 Prisma enum，包括 `JobStatus`、`RunStatus`、`ReviewStatus`、`ActorType`、`PromptBlockType`。SQLite schema 为兼容本地环境，将这些 enum 字段保存为 string。正式文档应继续保留 `docs/prisma-provider-matrix.md` 和 `docs/prisma-schema-compatibility.md`，它们属于高价值维护文档。
+PostgreSQL schema 使用 Prisma 枚举，包括 `JobStatus`、`RunStatus`、`ReviewStatus`、`ActorType`、`PromptBlockType`。SQLite schema 为兼容本地环境，将这些枚举字段保存为字符串。正式文档应继续保留 `docs/prisma-provider-matrix.md` 和 `docs/prisma-schema-compatibility.md`，它们属于高价值维护文档。
 
 ## 6. 核心架构路径
 
 普通生图路径：
 
-1. UI 页面或 Agent API 创建/更新 Project、Section、Prompt Blocks、Preset Bindings、运行参数。
+1. UI 页面或智能体 API 创建/更新项目、小节、Prompt 区块、预设绑定、运行参数。
 2. `src/server/services/project-service.ts` 做输入校验和服务编排。
-3. `src/server/repositories/project-repository/**` 负责数据库读写、project detail、agent context、enqueue 等。
-4. queue 提交时创建 `Run`，保存 resolved config snapshot。
+3. `src/server/repositories/project-repository/**` 负责数据库读写、项目详情、智能体上下文、入队等。
+4. 队列提交时创建 `Run`，保存已解决配置 snapshot。
 5. `src/server/worker/payload-builder.ts` 将 snapshot 规范化为 `ComfyPromptDraft`。
-6. `src/server/services/workflow-prompt-builder.ts` 用 `docs/workflow.api.json` 填充 ComfyUI workflow。
-7. `src/server/services/comfyui-service.ts` 提交 `/prompt`，轮询 history，解析输出。
-8. `src/server/services/image-result-service.ts` 下载图片、转 JPEG、生成缩略图、写入 `data/images/**` 并创建 `ImageResult`。
+6. `src/server/services/workflow-prompt-builder.ts` 用 `docs/workflow.api.json` 填充 ComfyUI 工作流。
+7. `src/server/services/comfyui-service.ts` 提交 `/prompt`，轮询历史，解析输出。
+8. `src/server/services/image-result-service.ts` 下载图片、转 `JPEG`、生成缩略图、写入 `data/images/**` 并创建 `ImageResult`。
 9. 审图由 `src/server/services/review-service.ts` 处理 keep/trash/restore/cover/feature 等状态变更。
 
 训练路径：
 
-1. `/training/**` 统一进入 catch-all route。
+1. `/training/**` 统一进入 catch-all 路由。
 2. `src/features/training/routes.ts` 根据 path 匹配训练子页面和数据加载器。
-3. route loader 通过 snapshot/read service 组装 UI 所需数据。
-4. 训练相关写操作和 task 创建经由 `/api/training/**`。
-5. `scripts/training/worker-queue.ts` 启动 image generation、dataset freeze、training worker。
-6. worker 通过训练 task schema 进行 lease、heartbeat、complete、fail 等生命周期管理。
+3. 路由 loader 通过 snapshot/read 服务组装 UI 所需数据。
+4. 训练相关写操作和任务创建经由 `/api/training/**`。
+5. `scripts/training/worker-queue.ts` 启动图像 generation、数据集冻结、training worker。
+6. worker 通过训练任务 schema 进行租约、心跳、完整、失败等生命周期管理。
 
 控制面路径：
 
-1. 人工 UI、HTTP API、Agent API、MCP 工具共享同一批服务层和 repository。
+1. 人工 UI、HTTP API、智能体 API、MCP 工具共享同一批服务层和仓库。
 2. 鉴权集中在 token/cookie 机制：`AUTH_TOKEN` 可通过 Bearer、`x-api-token` 或 `auth_token` cookie 使用。
-3. Comfy 进程启停类接口存在更严格的本地访问边界，不能简单当作公网 API。
+3. ComfyUI 进程启停类接口存在更严格的本地访问边界，不能简单当作公网 API。
 
 ## 7. 配置和运行资产
 
@@ -232,7 +232,7 @@ PostgreSQL schema 使用 Prisma enum，包括 `JobStatus`、`RunStatus`、`Revie
 - `LORA_ASSETS_DIR`
 - `CHECKPOINTS_DIR`
 - `AUTO_CENSOR_PYTHON_CMD`
-- Comfy launch/autostart/restart/GPU/logging/checkpoint/auth 相关变量
+- ComfyUI 启动、自动启动、重启、`GPU`、日志、checkpoint 与认证相关变量
 
 `.gitignore` 已明确排除：
 
@@ -243,28 +243,28 @@ PostgreSQL schema 使用 Prisma enum，包括 `JobStatus`、`RunStatus`、`Revie
 - `.deploy.lock/`
 - `.next/`
 - 生成的 Prisma client
-- SQLite DB 文件
-- runtime logs 和 generated caches
+- SQLite 数据库文件
+- runtime 日志和 generated 缓存
 
-`docs/runbooks/config-runtime-assets.md` 是当前比较有价值的运行资产边界文档。正式文档整理时应保留它，但需要把 README 中重复、易漂移的环境变量默认值表降级为指向该 runbook 和 `.env.example`。
+`docs/runbooks/config-runtime-assets.md` 是当前比较有价值的运行资产边界文档。正式文档整理时应保留它，但需要把 README 中重复、易漂移的环境变量默认值表降级为指向该运行手册和 `.env.example`。
 
 ## 8. UI 与设计文档状态
 
 根目录 `DESIGN.md` 当前从文档组织角度是“可解释但需要重新定位”的文件：
 
 - 它确实被 `docs/index.md` 当成 UI/设计入口之一引用。
-- 但根目录放 `DESIGN.md` 会和 `README.md`、`AGENTS.md`、`docs/ui/**`、旧设计系统文档形成并列，读者不容易判断谁是 current truth。
+- 但根目录放 `DESIGN.md` 会和 `README.md`、`AGENTS.md`、`docs/ui/**`、旧设计系统文档形成并列，读者不容易判断谁是当前事实。
 - 用户提到的 `docs/DESIGN_SYSTEM_SUMMARY.md`、`docs/design-system-migration.md`、`docs/shadcn-design-guide.md` 与 `DESIGN.md` / `docs/ui/**` 有重叠，这个判断基本成立。
 
 建议的目标状态不是简单删除 `DESIGN.md`，而是先确认它的当前事实含量：
 
 - 如果它仍是 UI 当前规范，应把它保留为唯一设计入口，并让 `docs/ui/**` 只承载细分主题。
-- 如果它已经过时，应将仍有效内容合并进 `docs/ui/README.md` 或 `docs/ui/frontend-guide.md`，再把 `DESIGN.md` 降级为跳转或移入 archive。
-- 不应该继续让多个设计系统总结文件同时位于 current docs 入口层。
+- 如果它已经过时，应将仍有效内容合并进 `docs/ui/README.md` 或 `docs/ui/frontend-guide.md`，再把 `DESIGN.md` 降级为跳转或移入归档。
+- 不应该继续让多个设计系统总结文件同时位于当前文档入口层。
 
 ## 9. 现有文档健康判断
 
-高价值且应保留的 current truth 层：
+高价值且应保留的当前事实层：
 
 - `AGENTS.md`
 - `agent-rules/**`
@@ -279,15 +279,15 @@ PostgreSQL schema 使用 Prisma enum，包括 `JobStatus`、`RunStatus`、`Revie
 - `docs/prisma-schema-compatibility.md`
 - `docs/runbooks/config-runtime-assets.md`
 - `docs/ui/**` 中仍由当前 UI 使用的规范
-- API、Prisma、runbook、worker boundary、UI governance 类文档
+- API、Prisma、运行手册、worker 边界、UI 治理类文档
 
-需要警惕的 current tree 漂移：
+需要警惕的当前树漂移：
 
-- `README.md` 仍包含容易漂移的精确数字和实现细节，例如 Agent API 数量、training API 计数、完整路由面或功能枚举。
-- `docs/local-verification.md` 仍有早期文案痕迹，例如 Character / Scene / Style 这类旧流程命名，需要结合当前 Project / Section / Preset / Training 页面重写。
-- `docs/agent-api.md` 比 README 新，但它需要从代码重新生成或校对 endpoint 覆盖面。
-- `docs/index.md` 当前仍引用 `docs/prototypes/README.md` 作为训练产品设计入口，这会让 prototype 与 current truth 的边界不清。
-- `docs/documentation-map.md` 已经写出了“旧 plans/PRDs 应进 archive”的治理原则，但仓库实际文件分布还没有完全执行。
+- `README.md` 仍包含容易漂移的精确数字和实现细节，例如智能体 API 数量、training API 计数、完整路由面或功能枚举。
+- `docs/local-verification.md` 仍有早期文案痕迹，例如角色、场景、风格这类旧流程命名，需要结合当前项目、小节、预设和 Training 页面重写。
+- `docs/agent-api.md` 比 README 新，但它需要从代码重新生成或校对端点覆盖面。
+- `docs/index.md` 当前仍引用 `docs/prototypes/README.md` 作为训练产品设计入口，这会让原型与当前事实的边界不清。
+- `docs/documentation-map.md` 已经写出了“旧 plans/PRDs 应进归档”的治理原则，但仓库实际文件分布还没有完全执行。
 
 明确更像历史或归档资料的文档：
 
@@ -305,10 +305,10 @@ PostgreSQL schema 使用 Prisma enum，包括 `JobStatus`、`RunStatus`、`Revie
 - `docs/design-v0.3-workflow-integration.md`
 - `design-demos/*.html`
 
-这类文件不是完全没有价值，但不应该继续和 current docs 平铺在 `docs/` 顶层，也不应该被新 agent 当成当前行为依据。正式清理时应分三种处理：
+这类文件不是完全没有价值，但不应该继续和当前文档平铺在 `docs/` 顶层，也不应该被新智能体当成当前行为依据。正式清理时应分三种处理：
 
-1. 仍有历史追溯价值：移动到 `docs/archive/**` 并加 archive banner。
-2. 内容已被 current docs 吸收：删除或移到 archive 后在索引里注明替代文档。
+1. 仍有历史追溯价值：移动到 `docs/archive/**` 并加归档横幅。
+2. 内容已被当前文档吸收：删除或移到归档后在索引里注明替代文档。
 3. 仍有事实未被吸收：先把事实合并到新的干净文档，再归档原文件。
 
 ## 10. README 的正确角色
@@ -320,45 +320,45 @@ PostgreSQL schema 使用 Prisma enum，包括 `JobStatus`、`RunStatus`、`Revie
 - 用简短但具体的语言说明这个项目是什么。
 - 说明本地启动、数据库、ComfyUI 连接、登录 token 的最小路径。
 - 说明主要产品面：项目生图、队列审图、preset/template、training、agent/MCP。
-- 链接到 owner docs，但不要复制大量 volatile 表格。
-- 对 API 可以写“Agent API、MCP、training API、preset-library API 等”，并链接 `docs/agent-api.md` 和 route docs，而不是写死“7 个端点”。
-- 对环境变量可以写“以 `.env.example` 和运行资产 runbook 为准”，但仍保留足够的新手启动信息。
+- 链接到责任方文档，但不要复制大量易变表格。
+- 对 API 可以写“智能体 API、MCP、training API、preset-library API 等”，并链接 `docs/agent-api.md` 和路由文档，而不是写死“7 个端点”。
+- 对环境变量可以写“以 `.env.example` 和运行资产运行手册为准”，但仍保留足够的新手启动信息。
 
 不适合直接出现在 README 的内容：
 
-- “不要添加精确 page inventories、API endpoint counts、MCP tool counts、环境变量默认值表”的维护规则。这些属于 `docs/documentation-map.md` 或文档治理说明，不适合作为读者入口文案。
+- “不要添加精确页面清单、API 端点数量、MCP 工具数量、环境变量默认值表”的维护规则。这些属于 `docs/documentation-map.md` 或文档治理说明，不适合作为读者入口文案。
 - 大型目录树。
 - 自动生成的完整 API 表。
-- 过细的训练内部 task schema。
+- 过细的训练内部任务 schema。
 
 ## 11. 下一步正式文档清理建议
 
 第一批应该做的是“用当前代码重建核心文档”，而不是只移动旧文件：
 
 1. 重写 `README.md`：保留项目说明和启动价值，移除错误数量和过旧功能描述，补上 training、MCP、preset-library、队列审图、双数据库现实。
-2. 重写或校正 `docs/agent-api.md`：从 route files 和 MCP server 反推当前 Agent/API 控制面，并明确哪些是 Agent 稳定接口、哪些是普通内部 API。
-3. 重写 `docs/local-verification.md`：按当前 Next 16、Prisma provider、auth token、ComfyUI、training worker、queue/review 页面重新组织。
+2. 重写或校正 `docs/agent-api.md`：从路由文件和 MCP server 反推当前 Agent/API 控制面，并明确哪些是智能体稳定接口、哪些是普通内部 API。
+3. 重写 `docs/local-verification.md`：按当前 Next 16、Prisma provider、认证 token、ComfyUI、Training worker、队列与审查页面重新组织。
 4. 整理 UI/design：决定 `DESIGN.md` 是否仍是根入口；合并 `docs/DESIGN_SYSTEM_SUMMARY.md`、`docs/design-system-migration.md`、`docs/shadcn-design-guide.md` 中仍有效内容。
-5. 执行 archive：把历史 plan、PRD、prototype、superpowers plan、旧 workflow quick reference、旧 design v0.x 等移入 `docs/archive/**`，并在 `docs/index.md` 只保留 current truth 入口。
-6. 更新 `docs/documentation-map.md`：让它描述清楚 current docs、archive docs、generated docs、runtime runbooks 的边界。
+5. 执行归档：把历史计划、PRD、原型、`superpowers` 计划、旧工作流快速参考资料、旧 design v0.x 等移入 `docs/archive/**`，并在 `docs/index.md` 只保留当前事实入口。
+6. 更新 `docs/documentation-map.md`：让它描述清楚当前文档、归档文档、generated 文档、runtime 运行手册的边界。
 7. 重新生成 `docs/repo-inventory.md`：只要发生文件移动、删除、重命名，就运行 `npx tsx scripts/docs/generate-repo-inventory.ts`。
 
 这次清理的验收标准应该是：
 
 - 新读者从 README 能在 5 分钟内知道项目是什么、怎么启动、看哪些主文档。
-- Agent 从 `AGENTS.md`、`docs/index.md`、`docs/documentation-map.md` 能判断 current truth，而不会误读旧 plan。
-- 所有 `docs/` 顶层文件都有明确身份：入口、架构、API、runbook、UI、testing、archive 索引，不能再混入任务笔记和历史快照。
-- 被归档文档不再被 current docs 当作当前行为依据引用。
+- 智能体从 `AGENTS.md`、`docs/index.md`、`docs/documentation-map.md` 能判断当前事实，而不会误读旧计划。
+- 所有 `docs/` 顶层文件都有明确身份：入口、架构、API、运行手册、UI、testing、归档索引，不能再混入任务笔记和历史快照。
+- 被归档文档不再被当前文档当作当前行为依据引用。
 
 ## 12. 尚需二次核验的问题
 
 以下内容本次已经发现风险，但还需要正式改文档前逐项核验：
 
-- README 中 `/api/training/**` 数量与代码统计口径存在差异。本次按 prefix 包含 `/api/training` root route 时统计为 117；README 中见到的数字是 116。需要决定 README 是否继续保留数字。如果不保留，则把精确数量移到生成清单。
+- README 中 `/api/training/**` 数量与代码统计口径存在差异。本次按前缀包含 `/api/training` 根目录路由时统计为 117；README 中见到的数字是 116。需要决定 README 是否继续保留数字。如果不保留，则把精确数量移到生成清单。
 - `docs/local-verification.md` 的页面验证流程是否还匹配当前 UI。
 - `DESIGN.md` 的设计规范是否仍被当前组件遵守。
-- `design-demos/*.html` 是否还有任何仍作为当前设计验收的文件；如果只是历史 demo，应全部归档或删除断链引用。
-- `docs/prototypes/**` 中是否仍有训练产品事实没有被 `docs/training/**` 或新的 current training docs 吸收。
-- `docs/plans/**` 中是否有仍未合并到 current docs 的架构决策。
+- `design-demos/*.html` 是否还有任何仍作为当前设计验收的文件；如果只是历史演示，应全部归档或删除断链引用。
+- `docs/prototypes/**` 中是否仍有训练产品事实没有被 `docs/training/**` 或新的当前 training 文档吸收。
+- `docs/plans/**` 中是否有仍未合并到当前文档的架构决策。
 
-这份底稿的结论是：仓库当前最大问题不是“缺一个索引”，而是 current truth 与历史计划、原型、迁移笔记混在一起。下一步应以代码为准重写核心入口文档，然后再物理归档旧文档。
+这份底稿的结论是：仓库当前最大问题不是“缺一个索引”，而是当前事实与历史计划、原型、迁移笔记混在一起。下一步应以代码为准重写核心入口文档，然后再物理归档旧文档。

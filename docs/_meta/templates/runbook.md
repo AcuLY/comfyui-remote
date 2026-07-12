@@ -8,45 +8,46 @@ document:
     subject: <normalized-operational-subject>
     kind: operational
   readWhen:
-    - <operation that requires this procedure>
+    - <需要本流程的操作>
   sources:
     - <repository/path/to/runtime-contract>
   verifiedBy:
-    - <non-writing command or test>
+    - <非写入命令或测试>
   environment:
-    - <local-windows-or-target-environment>
-  risk: <state boundary and action that must not be broadened>
-  recovery: "#failure-handling-and-recovery"
-  lastVerified: <YYYY-MM-DD>
+    - <执行环境>
+  risk: <不得扩大的状态边界与操作>
+  recovery: "#故障处理与恢复"
+  verificationState: not-exercised
+  lastVerified: null
 ---
 
-# <Runbook title>
+# <运行手册标题>
 
-## Use when
+## 适用场景
 
-State the exact trigger and explicitly excluded operations.
+说明精确触发条件，并明确排除的操作。
 
-## Preconditions
+## 前置条件
 
-- <Required state, authority, lock, credential, or safety check>
+- <所需状态、授权、锁、凭据或安全检查>
 
-## Procedure
+## 操作步骤
 
-1. Run `<exact command or action>`.
-2. Confirm `<observable expected result>` before continuing.
+1. 运行 `<精确命令或操作>`。
+2. 继续前确认 `<可观察的预期结果>`。
 
-## Expected result
+## 预期结果
 
-State the observable success condition.
+说明可观察的成功条件。
 
-## Failure handling and recovery
+## 故障处理与恢复
 
-Describe how to stop safely, preserve unrelated state, and restore only this operation's changes.
+说明如何安全停止、保留无关状态，并且只恢复本次操作造成的变更。
 
-## Verification
+## 验证状态
 
-Record the non-writing proof path and update `lastVerified` only after the procedure is exercised in the declared environment.
+精确记录在所声明环境中实际演练过哪些步骤。证据仅来自静态审查或非写入合同测试时，必须保留 `verificationState: not-exercised` 和 `lastVerified: null`。只有流程本身经过实际演练后，才能设置 `verificationState: exercised` 与 `YYYY-MM-DD` 日期；未演练的变体必须在本节明确标注。
 
-## Parent route
+## 上级导航
 
-- [Back to the owning runbook area](./README.md)
+- [返回文档治理控制面](../README.md)

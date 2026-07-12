@@ -65,6 +65,31 @@ export type SourceRelationship = {
   verifier?: string;
 };
 
+export type LanguageAllowedAsciiKind =
+  | "repository-path"
+  | "command"
+  | "inline-code"
+  | "fenced-code"
+  | "protocol-field"
+  | "openspec-structure-keyword";
+
+export type LanguageDataPayloadException = {
+  path: string;
+  kind: "paragraph-after-heading";
+  headingDepth: number;
+};
+
+export type LanguagePolicy = {
+  requiredLanguage: "zh-CN";
+  firstPartyMarkdown: {
+    include: string[];
+    exclude: string[];
+  };
+  allowedAscii: LanguageAllowedAsciiKind[];
+  metadataExcludedFields: string[];
+  dataPayloadExceptions: LanguageDataPayloadException[];
+};
+
 export type CommandAdapter = {
   id: string;
   command: string[];
@@ -89,6 +114,7 @@ export type GovernancePolicy = {
   schemaVersion: number;
   governedRoots: string[];
   rootEntrypoints: string[];
+  language: LanguagePolicy;
   scope: ScopeRule[];
   profiles: ProfileRule[];
   requiredLandingPages: string[];
@@ -111,6 +137,15 @@ export type ParsedMarkdownLink = {
   location: DiagnosticLocation;
 };
 
+export type MarkdownHumanTextBlock = {
+  kind: "metadata" | "heading" | "paragraph" | "table-cell" | "html";
+  text: string;
+  location: DiagnosticLocation;
+  metadataField?: string;
+  headingDepth?: number;
+  afterHeadingDepth?: number;
+};
+
 export type ParsedMarkdownDocument = {
   path: string;
   metadata: unknown;
@@ -119,6 +154,7 @@ export type ParsedMarkdownDocument = {
   anchors: Set<string>;
   links: ParsedMarkdownLink[];
   liveText: string;
+  humanTextBlocks: MarkdownHumanTextBlock[];
 };
 
 export type CheckOptions = {

@@ -1,49 +1,49 @@
-## 1. OpenSpec Program Foundation
+## 1. OpenSpec 计划基础
 
-- [x] 1.1 Pin `@fission-ai/openspec` exactly at `1.5.0` in `package.json` and the lockfile and expose stable local-bin package scripts.
-- [x] 1.2 Document the verified native status, instructions, validate, and archive commands plus the upstream agent apply/verify workflow in `openspec/README.md`.
-- [x] 1.3 State the serial harness stage order in the parent artifacts, OpenSpec repository context, and OpenSpec guide without creating a parallel lifecycle state machine.
-- [x] 1.4 Record the documentation child's stage-scoped apply authorization and repository-pinned CLI baseline as concise evidence.
+- [x] 1.1 在 `package.json` 和锁文件中将 `@fission-ai/openspec` 精确固定为 `1.5.0`，并提供稳定的本地可执行文件包脚本。
+- [x] 1.2 在 `openspec/README.md` 中记录已验证的原生状态、指令、校验与归档命令，以及上游 Agent 的 `apply` 与 `verify` 工作流。
+- [x] 1.3 在父工件、OpenSpec 仓库上下文和 OpenSpec 指南中声明串行 Harness 阶段顺序，且不创建平行生命周期状态机。
+- [x] 1.4 将文档治理子变更的阶段范围 `apply` 授权及仓库固定 CLI 基线记录为简洁证据。
 
-## 2. Documentation Structure and Governance Specification Gate
+## 2. 文档结构与治理规范门禁
 
-- [x] 2.1 Reverify the current documentation inventory, authority map, module boundaries, generated artifacts, and historical surfaces needed to compare target structures.
-- [x] 2.2 Present two or three repository-specific documentation information architectures with exact trees, ownership, routing, lifecycle, OpenSpec boundaries, and migration trade-offs.
-- [x] 2.3 Obtain explicit user approval for the target tree before authoring complete documentation-governance specs, design, or tasks.
-- [x] 2.4 Create `rebuild-documentation-governance` and author its complete proposal, specs, design, and tasks from the approved structure.
-- [ ] 2.5 Ensure the child routes significant future changes through the approved OpenSpec entrypoints and records the boundary in the repository agent map.
-- [x] 2.6 Obtain user review of the documentation-governance design decisions and explicit authorization to begin its OpenSpec apply workflow.
-- [x] 2.7 Use the child `tasks.md` as the only implementation task plan for documentation governance; do not create a parallel Plan artifact.
-- [ ] 2.8 Apply the documentation-governance child change in verified batches under its own tasks.
-- [ ] 2.9 Record user acceptance against the applied revision and verification evidence, then archive the child only after its blocking documentation gate is required and green.
+- [x] 2.1 重新核验当前文档清单、权威地图、模块边界、生成工件及比较目标结构所需的历史表面。
+- [x] 2.2 提交两到三个仓库专用文档信息架构方案，包含精确目录树、所有权、路由、生命周期、OpenSpec 边界和迁移取舍。
+- [x] 2.3 在编写完整文档治理 specs、design 或 tasks 之前，取得用户对目标目录树的明确批准。
+- [x] 2.4 创建 `rebuild-documentation-governance`，并基于已批准结构编写完整 proposal、specs、design 和 tasks。
+- [ ] 2.5 确保子变更通过已批准的 OpenSpec 入口路由后续重要变更，并在仓库 Agent 地图中记录该边界。
+- [x] 2.6 取得用户对文档治理设计决策的审查，并明确授权开始其 OpenSpec `apply` 工作流。
+- [x] 2.7 仅使用子变更的 `tasks.md` 作为文档治理实施任务计划，不创建平行 Plan 工件。
+- [ ] 2.8 按子变更自身 tasks 分批实施并验证文档治理。
+- [ ] 2.9 针对已实施 revision 与验证证据记录用户验收；仅在阻断式文档门禁已设为必需并全绿后归档子变更。
 
-## Inter-stage Authorized Experiment
+## 阶段间已授权实验
 
-- [x] E.1 Record the user's separately authorized coarse local PreToolUse path-match experiment as non-production evidence; keep its service-free implementation and ignored data outside documentation-governance acceptance and observability-stage progress.
+- [x] E.1 将用户另行授权的粗粒度本地 PreToolUse 路径匹配实验记录为非生产证据；其无服务实现和被忽略数据必须排除在文档治理验收及可观测性阶段进度之外。
 
-## 3. Observability Stage Gate
+## 3. 可观测性阶段门禁
 
-- [ ] 3.1 After documentation governance is accepted, capture a fresh runtime and performance baseline.
-- [ ] 3.2 Present two or three observability design options that preserve the approved self-hosted, local/CI/production isomorphism and per-worktree isolation invariants, and re-evaluate the preserved PreToolUse path-match spike as unapproved input.
-- [ ] 3.3 Create, validate, and obtain user approval for `build-agent-observability` artifacts before apply.
-- [ ] 3.4 Apply, verify, and obtain user acceptance for the approved observability child change.
+- [ ] 3.1 文档治理验收后，采集新的运行时和性能基线。
+- [ ] 3.2 提交两到三个可观测性设计方案，维持已批准的自托管、本地/CI/生产同构及逐工作树隔离约束，并将保留的 PreToolUse 路径匹配实验作为未批准输入重新评估。
+- [ ] 3.3 在 `apply` 前创建并校验 `build-agent-observability` 工件，取得用户批准。
+- [ ] 3.4 实施并验证已批准的可观测性子变更，取得用户验收。
 
-## 4. Engineering Standards Stage Gate
+## 4. 工程规范阶段门禁
 
-- [ ] 4.1 After observability is accepted, capture a fresh repository-wide style, dependency, complexity, test, and architecture baseline.
-- [ ] 4.2 Present two or three engineering-standards design options with automated and human-review trade-offs.
-- [ ] 4.3 Create, validate, and obtain user approval for `enforce-engineering-standards` artifacts before apply.
-- [ ] 4.4 Clear all in-scope legacy violations, apply blocking enforcement, and obtain user acceptance.
+- [ ] 4.1 可观测性验收后，采集新的全仓风格、依赖、复杂度、测试和架构基线。
+- [ ] 4.2 提交两到三个工程规范设计方案，说明自动化与人工审查的取舍。
+- [ ] 4.3 在 `apply` 前创建并校验 `enforce-engineering-standards` 工件，取得用户批准。
+- [ ] 4.4 清除范围内全部遗留违规，启用阻断式门禁，并取得用户验收。
 
-## 5. Final Documentation and CI Convergence
+## 5. 最终文档与 CI 收口
 
-- [ ] 5.1 Propose and obtain user approval for the final documentation-convergence and unified-CI change.
-- [ ] 5.2 Update maintained architecture, module, observability, standards, runbook, and testing documentation from implemented reality.
-- [ ] 5.3 Verify living specs and archive completed child changes under OpenSpec conventions.
-- [ ] 5.4 Enable the unified blocking CI only after every gate is green locally and in CI.
+- [ ] 5.1 为最终文档收口与统一 CI 变更提交方案并取得用户批准。
+- [ ] 5.2 根据已实施现实更新维护中的架构、模块、可观测性、规范、runbook 和测试文档。
+- [ ] 5.3 按 OpenSpec 约定验证现行 specs 并归档已完成的子变更。
+- [ ] 5.4 仅在本地与 CI 所有门禁均为绿色后启用统一阻断式 CI。
 
-## 6. Parent Completion
+## 6. 父计划完成条件
 
-- [ ] 6.1 Verify that all required child stages are accepted and no unapproved future behavior appears as current truth.
-- [ ] 6.2 Run strict OpenSpec validation and the repository's full harness verification suite.
-- [ ] 6.3 Obtain final user acceptance and archive `establish-agent-harness` last.
+- [ ] 6.1 验证所有必要子阶段均已验收，且当前事实中不存在未经批准的未来行为。
+- [ ] 6.2 运行严格 OpenSpec 校验和仓库完整 Harness 验证套件。
+- [ ] 6.3 取得最终用户验收，并最后归档 `establish-agent-harness`。

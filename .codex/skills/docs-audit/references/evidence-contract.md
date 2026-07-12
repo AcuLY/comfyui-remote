@@ -1,77 +1,64 @@
-# Documentation Audit Evidence Contract
+# 文档审计证据合同
 
-Apply this contract to every `$docs-audit` report, record, fix, and independent review.
+对每次 `$docs-audit` 的 `report`、`record`、`fix` 和独立审查应用本合同。
 
-## Evidence precedence
+## 证据优先级
 
-Use evidence in this order while preserving conflicts rather than silently overriding them:
+按以下顺序使用证据；冲突必须保留，不得静默覆盖：
 
-1. **Current implementation:** current source, schemas, focused tests, generated contracts, and
-   required runtime evidence. Treat tests as evidence, not authority, when they encode a legacy
-   structure or contradict implementation.
-2. **Approved target:** the active OpenSpec proposal, spec, design, and tasks authorized for the
-   current stage. Describe it as target behavior until implementation and verification prove it
-   is current.
-3. **Historical intent:** Git history and archived OpenSpec or historical documents. Use history
-   to explain intent or locate facts to reverify; never promote it directly to current truth.
-4. **Unresolved:** classify a claim as unresolved when evidence conflicts, required runtime proof
-   is absent, or more than one interpretation remains reasonable.
+1. **当前实现：** 当前源码、schema、聚焦测试、生成契约和必要 runtime evidence。测试若编码遗留结构或与实现矛盾，只能作为证据，不能作为权威。
+2. **已批准目标：** 当前阶段已授权的活动 OpenSpec proposal、spec、design 和 tasks。在实施与验证证明其成为当前行为前，只能描述为目标行为。
+3. **历史意图：** Git 历史及已归档 OpenSpec 或历史文档。历史只用于解释意图或定位待重新验证事实，绝不能直接提升为当前事实。
+4. **未解决：** 证据冲突、缺少必要运行时证明，或仍有多个合理解释时，将声明分类为未解决。
 
-Do not expose secrets or copy sensitive runtime values into findings. Cite the owning path,
-command, or sanitized result instead.
+不得在 `finding` 中暴露秘密或复制敏感运行时值。改为引用责任方路径、命令或已脱敏结果。
 
-## Finding schema
+## Finding schema（字段结构）
 
-Give each finding these fields:
+为每个 finding 提供以下字段：
 
-- `id`: stable, scope-local identifier.
-- `path` and `location`: repository-relative document path and precise heading/line/claim locator.
-- `claim`: concise statement being evaluated.
-- `claimCategory`: `current`, `target`, `history`, or `unresolved`.
-- `owner`: current owner ID or `user-decision-required` when ownership itself is disputed.
-- `evidence`: ordered repository-relative citations or sanitized runtime commands/results, each
-  labeled current, target, or history.
-- `conflict`: the contradictory or missing evidence, or `none`.
-- `confidence`: `high`, `medium`, or `low`, with a reason.
-- `action`: one of `keep`, `rewrite`, `move`, `split`, `merge`, `extract-delete`, `delete`, or
-  `user-decision-required`.
-- `resolution`: one of `open`, `fixed`, `accepted-current`, `historical-only`,
-  `duplicate-removed`, `deferred-to-openspec`, `user-decision-required`, or `review-required`.
-- `verification`: non-writing command, test, runtime check, or reviewer needed to close it.
+- `id`：稳定、scope 内唯一的标识。
+- `path` 与 `location`：仓库相对文档路径和精确标题、行号或声明定位符。
+- `claim`：正在评估的简洁声明。
+- `claimCategory`：`current`、`target`、`history` 或 `unresolved`。
+- `owner`：当前责任方 ID；归属本身有争议时使用 `user-decision-required`。
+- `evidence`：按顺序排列的仓库相对引用或已脱敏运行时命令与结果，每项标记 `current`、`target` 或 `history`。
+- `conflict`：矛盾或缺失的证据；没有时为 `none`。
+- `confidence`：`high`、`medium` 或 `low`，并说明理由。
+- `action`：`keep`、`rewrite`、`move`、`split`、`merge`、`extract-delete`、`delete` 或 `user-decision-required` 之一。
+- `resolution`：`open`、`fixed`、`accepted-current`、`historical-only`、`duplicate-removed`、`deferred-to-openspec`、`user-decision-required` 或 `review-required` 之一。
+- `verification`：关闭该 `finding` 所需的非写入命令、测试、运行时检查或审查者。
 
-Use `high` only when one correction is supported by current evidence. Confidence does not grant
-write authorization.
+只有当前证据支持唯一修正时才使用 `high`。Confidence 不授予写入权限。
 
-## Escalation boundaries
+## 升级边界
 
-Use `user-decision-required` and preserve the source when a finding would:
+`Finding` 涉及以下行为时，使用 `user-decision-required` 并保留来源：
 
-- choose or change product direction;
-- assign disputed authority or ownership;
-- describe partial implementation as intentionally complete;
-- delete material that may contain unextracted current knowledge;
-- select between multiple reasonable interpretations;
-- rely on unavailable required runtime evidence;
-- change a safety-critical operational rule without verified recovery evidence.
+- 选择或改变产品方向；
+- 分配有争议的权威或归属；
+- 把部分实现描述为有意完成；
+- 删除可能含尚未提取当前知识的材料；
+- 在多个合理解释中做选择；
+- 依赖不可用的必要 runtime evidence；
+- 在没有已验证恢复证据时修改安全关键型操作规则。
 
-Use `deferred-to-openspec` for desired future behavior that is not an approved current target.
-Use `review-required` after any fix until a separate agent or human reruns the same scope. The
-fixing agent must never change that result to a passing semantic decision by itself.
+期望的未来行为若不是已批准当前目标，使用 `deferred-to-openspec`。任何 `fix` 后都使用 `review-required`，直到独立 Agent 或人工审查者重新运行相同范围。修复者绝不能自行把该结果改成通过的语义决定。
 
-## Report shape
+<!-- 测试契约锚点：Fixer 绝不能自行把该结果改成通过的语义决定。 -->
 
-Return or record these sections in order:
+## 报告结构
 
-1. **Invocation:** explicit caller, scope, operation, comparison base, and any full escalation.
-2. **Write boundary:** allowed writes and captured pre-existing worktree state.
-3. **Deterministic check:** command, exit class, diagnostics summary, and tool failures.
-4. **Evidence reviewed:** current, target, history, and runtime sources.
-5. **Findings:** deterministically ordered by path, location, then ID.
-6. **Writes:** exact changed paths, or `none` for report/record aside from the named record.
-7. **Verification:** owning checks and same-scope rerun results.
-8. **Independent review:** reviewer identity/status and final resolution; use `review-required`
-   when unavailable.
-9. **Decisions needed:** unresolved questions requiring the user.
+按以下顺序返回或记录各部分：
 
-A scope passes only when deterministic errors are zero, every finding has a closed resolution,
-all writes stayed contained, fix verification passed, and any fix received independent review.
+1. **调用：** 显式调用方、范围、操作、比较基准及任何向 `full` 的升级。
+2. **写入边界：** 允许写入和已采集既有工作树状态。
+3. **确定性检查：** 命令、退出类别、诊断摘要和工具失败。
+4. **已审查证据：** `current`、`target`、`history` 和运行时来源。
+5. **`Finding`：** 按路径、位置、ID 确定性排序。
+6. **写入：** 精确变更路径；`report` 与 `record` 除命名记录外使用 `none`。
+7. **验证：** 责任方检查与同范围重跑结果。
+8. **独立审查：** 审查者身份与状态以及最终处置；不可用时使用 `review-required`。
+9. **待决策项：** 需要用户处理的未解决问题。
+
+只有确定性错误为零、每个 `finding` 都有已关闭的 `resolution`、所有写入均受路径限制约束、`fix` 验证通过且任何 `fix` 已获独立审查时，范围才能通过。

@@ -1,43 +1,41 @@
 ## Why
 
-The repository already contains useful agent rules, documentation maps, tests, and logging pieces, but they do not form a coherent harness that keeps knowledge current, makes runtime behavior queryable, and enforces repository-wide architecture. A staged, evidence-backed program is needed so agent throughput can increase without multiplying stale documentation, opaque performance failures, or structural drift.
+仓库已经具备有价值的 Agent 规则、文档地图、测试和日志组件，但它们尚未形成一个能够持续保持知识最新、让运行时行为可查询并强制执行全仓架构的完整 Harness。需要一个分阶段、以证据为基础的计划，才能在提升 Agent 吞吐量的同时，避免过期文档、不透明的性能故障和结构漂移同步增长。
 
 ## What Changes
 
-- **BREAKING**: Adopt OpenSpec as the required lifecycle for significant feature, architecture, performance, and engineering-policy changes.
-- Establish a parent harness program with documentation governance first, observability second, engineering standards third, and documentation/CI convergence last.
-- Require each later stage to present a fresh proposal, spec, design, and tasks for explicit user approval before apply.
-- Require local, CI, worktree, and production verification to use agent-legible evidence while preserving strict data isolation.
-- Treat self-hosting, implementation-identical local/CI/production observability, per-worktree isolation, and hard-cutover enforcement as approved program constraints; later child changes still choose the concrete stacks and thresholds.
-- Require repository-specific checks only where OpenSpec itself does not cover domain constraints such as stage ordering, deployment safety, queue handling, documentation authority, and telemetry isolation.
-- Keep generic artifact dependencies, apply, verify, archive, and recovery behavior aligned with the installed OpenSpec version rather than inventing a parallel lifecycle.
+- **重大不兼容变更**：将 OpenSpec 作为重要功能、架构、性能和工程策略变更的强制生命周期。
+- 建立父级 Harness 计划，依次推进文档治理、可观测性、工程规范，最后完成文档/CI 收口。
+- 要求每个后续阶段在实施前提交新的 proposal、spec、design 和 tasks，并取得用户明确批准。
+- 要求本地、CI、工作树与生产验证使用 Agent 可理解的证据，同时维持严格的数据隔离。
+- 将自托管、本地/CI/生产实现一致的可观测性、逐工作树隔离和硬切换式门禁作为已批准的计划级约束；具体技术栈和阈值仍由后续子变更决定。
+- 仅在 OpenSpec 未覆盖阶段顺序、部署安全、队列处理、文档权威和遥测隔离等领域约束时，增加仓库专用检查。
+- 通用工件依赖、`apply`、`verify`、`archive` 和恢复行为遵循已安装的 OpenSpec 版本，不再发明平行生命周期。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `agent-harness`: Governs the repository-wide harness program, stage ordering, approval boundaries, evidence rules, and cross-stage completion contract.
+- `agent-harness`：治理全仓 Harness 计划、阶段顺序、批准边界、证据规则和跨阶段完成契约。
 
 ### Modified Capabilities
 
-None.
+无。
 
-## Non-goals
+## 非目标
 
-- This parent change does not choose the detailed observability stack or engineering-rule toolchain.
-- This parent change does not authorize applying observability or engineering-standards work before their separate approvals.
-- This parent change does not promote scratch drafts or unverified historical designs into current truth.
+- 父变更现在不选择具体可观测性技术栈或工程规则工具链。
+- 父变更不授权在各自单独批准之前实施可观测性或工程规范工作。
+- 父变更不把临时草稿或未经验证的历史设计提升为当前事实。
 
-## Related Changes
+## 相关变更
 
-- `rebuild-documentation-governance` is the first child and is authored from the repository-specific documentation information architecture approved on 2026-07-10. The user authorized its OpenSpec apply workflow on 2026-07-12.
-- `build-agent-observability` will be proposed only after documentation governance is accepted.
-  Its fresh design SHALL re-evaluate the non-normative PreToolUse path-match spike preserved
-  by the documentation child; the spike is evidence, not approved instrumentation.
-- `enforce-engineering-standards` will be proposed only after the observability stage is accepted.
+- `rebuild-documentation-governance` 是第一个子变更，源自 2026-07-10 批准的仓库专用文档信息架构；用户已于 2026-07-12 授权其 OpenSpec `apply` 工作流。
+- `build-agent-observability` 只会在文档治理验收后提出。其新 design 必须重新评估文档治理子变更保留的非规范性 PreToolUse 路径匹配实验；该实验仅是证据，不是已批准的插桩方案。
+- `enforce-engineering-standards` 只会在可观测性阶段验收后提出。
 
 ## Impact
 
-- Adds repository-local OpenSpec configuration and change artifacts.
-- Will eventually affect `AGENTS.md`, `agent-rules/**`, `docs/**`, documentation tooling, CI, runtime observability, and code-quality enforcement through separately approved child changes.
-- Does not change application runtime behavior in this parent proposal.
+- 增加仓库本地 OpenSpec 配置和变更工件。
+- 后续通过分别批准的子变更影响 `AGENTS.md`、`agent-rules/**`、`docs/**`、文档工具、CI、运行时可观测性和代码质量门禁。
+- 本父提案不改变应用运行时行为。

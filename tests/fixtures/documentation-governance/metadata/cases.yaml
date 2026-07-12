@@ -8,7 +8,16 @@ cases:
   - file: valid-runbook.yaml
     profile: runbook
     valid: true
+  - file: valid-runbook-not-exercised.yaml
+    profile: runbook
+    valid: true
   - file: invalid-runbook-missing-recovery.yaml
+    profile: runbook
+    valid: false
+  - file: invalid-runbook-exercised-with-null-date.yaml
+    profile: runbook
+    valid: false
+  - file: invalid-runbook-not-exercised-with-date.yaml
     profile: runbook
     valid: false
   - file: valid-placeholder.yaml

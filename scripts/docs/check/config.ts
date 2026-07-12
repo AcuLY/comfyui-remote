@@ -9,6 +9,8 @@ import type {
   ContractAdapterKind,
   ForbiddenLivePath,
   GovernancePolicy,
+  LanguageAllowedAsciiKind,
+  LanguagePolicy,
   NavigationOwner,
   ProfileRule,
   ScopeRule,
@@ -72,6 +74,139 @@ function bool(value: unknown, fallback: boolean, label: string): boolean {
   if (value === undefined) return fallback;
   if (typeof value !== "boolean") throw new Error(`${label} must be a boolean.`);
   return value;
+}
+
+const SUPPORTED_ALLOWED_ASCII_KINDS = [
+  "repository-path",
+  "command",
+  "inline-code",
+  "fenced-code",
+  "protocol-field",
+  "openspec-structure-keyword",
+] as const satisfies readonly LanguageAllowedAsciiKind[];
+
+const SUPPORTED_METADATA_EXCLUDED_FIELDS = [
+  "schemaVersion",
+  "name",
+  "document.type",
+  "document.status",
+  "document.owner",
+  "document.authority.subject",
+  "document.authority.kind",
+  "document.sources",
+  "document.verifiedBy",
+  "document.recovery",
+  "document.verificationState",
+  "document.lastVerified",
+  "document.generator",
+  "document.inputs",
+  "document.regenerate",
+  "document.check",
+  "document.activation.stage",
+  "document.activation.owner",
+] as const;
+
+function normalizeLanguage(value: unknown): LanguagePolicy {
+  const language = record(value, "policy.language");
+  assertAllowedKeys(language, "policy.language", [
+    "requiredLanguage",
+    "firstPartyMarkdown",
+    "allowedAscii",
+    "metadataExcludedFields",
+    "dataPayloadExceptions",
+  ]);
+  assertRequiredKeys(language, "policy.language", [
+    "requiredLanguage",
+    "firstPartyMarkdown",
+    "allowedAscii",
+    "metadataExcludedFields",
+    "dataPayloadExceptions",
+  ]);
+  if (language.requiredLanguage !== "zh-CN") {
+    throw new Error("policy.language.requiredLanguage must equal zh-CN.");
+  }
+
+  const firstParty = record(language.firstPartyMarkdown, "policy.language.firstPartyMarkdown");
+  assertAllowedKeys(firstParty, "policy.language.firstPartyMarkdown", ["include", "exclude"]);
+  assertRequiredKeys(firstParty, "policy.language.firstPartyMarkdown", ["include", "exclude"]);
+  const include = requiredStrings(firstParty.include, "policy.language.firstPartyMarkdown.include");
+  const exclude = strings(firstParty.exclude, "policy.language.firstPartyMarkdown.exclude", []);
+  if (include.some((pattern) => !pattern.toLowerCase().includes(".md"))) {
+    throw new Error("policy.language.firstPartyMarkdown.include must contain only Markdown patterns.");
+  }
+
+  const allowedAscii = rawStrings(language.allowedAscii, "policy.language.allowedAscii") as LanguageAllowedAsciiKind[];
+  const supported = new Set<string>(SUPPORTED_ALLOWED_ASCII_KINDS);
+  const unknown = allowedAscii.filter((kind) => !supported.has(kind));
+  if (unknown.length > 0) {
+    throw new Error(`policy.language.allowedAscii contains unsupported kind(s): ${[...new Set(unknown)].sort().join(", ")}.`);
+  }
+  if (new Set(allowedAscii).size !== allowedAscii.length) {
+    throw new Error("policy.language.allowedAscii must not contain duplicates.");
+  }
+  const missing = SUPPORTED_ALLOWED_ASCII_KINDS.filter((kind) => !allowedAscii.includes(kind));
+  if (missing.length > 0) {
+    throw new Error(`policy.language.allowedAscii is missing required kind(s): ${missing.join(", ")}.`);
+  }
+
+  const metadataExcludedFields = rawStrings(
+    language.metadataExcludedFields,
+    "policy.language.metadataExcludedFields",
+  );
+  const supportedMetadataFields = new Set<string>(SUPPORTED_METADATA_EXCLUDED_FIELDS);
+  const unknownMetadataFields = metadataExcludedFields.filter((field) => !supportedMetadataFields.has(field));
+  if (unknownMetadataFields.length > 0) {
+    throw new Error(`policy.language.metadataExcludedFields contains unsupported field(s): ${[...new Set(unknownMetadataFields)].sort().join(", ")}.`);
+  }
+  if (new Set(metadataExcludedFields).size !== metadataExcludedFields.length) {
+    throw new Error("policy.language.metadataExcludedFields must not contain duplicates.");
+  }
+  const missingMetadataFields = SUPPORTED_METADATA_EXCLUDED_FIELDS.filter(
+    (field) => !metadataExcludedFields.includes(field),
+  );
+  if (missingMetadataFields.length > 0) {
+    throw new Error(`policy.language.metadataExcludedFields is missing required field(s): ${missingMetadataFields.join(", ")}.`);
+  }
+
+  if (!Array.isArray(language.dataPayloadExceptions)) {
+    throw new Error("policy.language.dataPayloadExceptions must be an array.");
+  }
+  const seenPayloadExceptions = new Set<string>();
+  const dataPayloadExceptions = language.dataPayloadExceptions.map((item, index) => {
+    const label = `policy.language.dataPayloadExceptions[${index}]`;
+    const entry = record(item, label);
+    assertAllowedKeys(entry, label, ["path", "kind", "headingDepth"]);
+    assertRequiredKeys(entry, label, ["path", "kind", "headingDepth"]);
+    const pathValue = String(entry.path ?? "");
+    const path = normalizedPolicyPath(pathValue, `${label}.path`);
+    if (!path.toLowerCase().endsWith(".md") || ["*", "?", "{", "}", "[", "]"].some((token) => path.includes(token))) {
+      throw new Error(`${label}.path must name one exact Markdown file.`);
+    }
+    if (entry.kind !== "paragraph-after-heading") {
+      throw new Error(`${label}.kind must equal paragraph-after-heading.`);
+    }
+    if (!Number.isInteger(entry.headingDepth) || Number(entry.headingDepth) < 1 || Number(entry.headingDepth) > 6) {
+      throw new Error(`${label}.headingDepth must be an integer from 1 through 6.`);
+    }
+    const key = `${path}\0${entry.kind}\0${entry.headingDepth}`;
+    if (seenPayloadExceptions.has(key)) {
+      throw new Error("policy.language.dataPayloadExceptions must not contain duplicates.");
+    }
+    seenPayloadExceptions.add(key);
+    return {
+      path,
+      kind: "paragraph-after-heading" as const,
+      headingDepth: Number(entry.headingDepth),
+    };
+  });
+
+  return {
+    requiredLanguage: "zh-CN",
+    firstPartyMarkdown: { include, exclude },
+    allowedAscii,
+    metadataExcludedFields,
+    dataPayloadExceptions,
+  };
 }
 
 function normalizeScope(value: unknown): ScopeRule[] {
@@ -287,6 +422,7 @@ export function loadPolicy(root: string, policyPath = "docs/_meta/policy.yaml"):
     "schemaVersion",
     "governedRoots",
     "rootEntrypoints",
+    "language",
     "scope",
     "profiles",
     "requiredLandingPages",
@@ -299,6 +435,7 @@ export function loadPolicy(root: string, policyPath = "docs/_meta/policy.yaml"):
     "schemaVersion",
     "governedRoots",
     "rootEntrypoints",
+    "language",
     "scope",
     "profiles",
     "requiredLandingPages",
@@ -326,6 +463,7 @@ export function loadPolicy(root: string, policyPath = "docs/_meta/policy.yaml"):
     schemaVersion: 1,
     governedRoots: requiredStrings(raw.governedRoots, "policy.governedRoots"),
     rootEntrypoints: requiredStrings(raw.rootEntrypoints, "policy.rootEntrypoints"),
+    language: normalizeLanguage(raw.language),
     scope: normalizeScope(raw.scope),
     profiles: normalizeProfiles(raw.profiles),
     requiredLandingPages: requiredStrings(raw.requiredLandingPages, "policy.requiredLandingPages"),

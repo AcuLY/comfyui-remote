@@ -41,7 +41,7 @@ export function resolveEffectiveMode(input: {
     for (const path of [change.oldPath, change.path].filter((value): value is string => Boolean(value))) {
       if (
         UNSAFE_EXACT.has(path)
-        || path.endsWith("/README.md")
+        || path.toLowerCase().endsWith("/readme.md")
         || /^tests\/test-docs-check-.*\.test\.ts$/.test(path)
         || path === "tests/test-skills-check.test.ts"
         || UNSAFE_PREFIXES.some((prefix) => path.startsWith(prefix))

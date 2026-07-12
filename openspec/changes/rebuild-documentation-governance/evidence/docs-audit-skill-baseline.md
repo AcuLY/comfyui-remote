@@ -1,36 +1,28 @@
-# `$docs-audit` pre-Skill control baseline
+# `$docs-audit` 引入 Skill 前的对照基线
 
-Captured: 2026-07-12
+采集时间：2026-07-12
 
-Scope: repository state at `HEAD` before `.codex/skills/docs-audit/**` existed
+范围：`.codex/skills/docs-audit/**` 出现前的 `HEAD` 仓库状态
 
-Method: read-only tracked-file and reference inspection
+方法：只读 tracked-file 与 reference 检查
 
-This is a control baseline for the semantic-audit workflow. It records concrete repository
-scenarios and the absence of a contained execution contract; it does not claim that historical
-documents are currently correct. No fresh-agent behavioral result is claimed in this baseline.
+这是语义审计工作流的对照基线。它记录具体仓库场景和受路径限制约束的执行合同缺失；不声称历史文档当前正确。本基线不声称全新 Agent 行为结果。
 
-## Control absence
+## 对照能力缺失
 
-`git cat-file -e HEAD:.codex/skills/docs-audit/SKILL.md` exited `128` with
-`.codex/skills/docs-audit/SKILL.md` present only in the working tree and not in `HEAD`. Before the
-new package, the repository had no single explicit Skill contract for scope selection,
-report/record/fix writes, evidence precedence, finding dispositions, or independent review.
+`git cat-file -e HEAD:.codex/skills/docs-audit/SKILL.md` 以 `128` 退出；`.codex/skills/docs-audit/SKILL.md` 当时只存在于工作树，不在 `HEAD` 中。引入新包前，仓库没有单一显式 Skill 合同来约束范围选择、报告/记录/修复写入、证据优先级、问题处置或独立审查。
 
-## Baseline scenarios
+## 基线场景
 
-| ID | Repository evidence | Uncontrolled pre-Skill failure |
+| ID | 仓库 evidence | Skill 引入前的不受控失败 |
 | --- | --- | --- |
-| `B1-current-target-history` | `docs/index.md` routes Training through both `docs/prototypes/README.md` prototype intent and production source; `tests/test-asset-page-boundaries.test.ts` and `tests/test-work-mode-resource-boundary.test.ts` read an archived roadmap. | No semantic workflow forced current implementation, approved target, and historical intent to be classified separately before making a claim. |
-| `B2-missing-runtime-proof` | `docs/local-verification.md` and `agent-rules/deploy/**` contain environment-, service-, queue-, database-, and recovery-sensitive instructions. | No semantic workflow required runtime-dependent claims to stay unresolved when fresh runtime evidence was unavailable. |
-| `B3-duplicate-authority` | `docs/index.md`, `docs/documentation-map.md`, and `docs/repo-inventory.md` overlap as navigation/classification surfaces. | No finding schema required an owner, conflict, merge/delete disposition, and verification before treating one surface as authoritative. |
-| `B4-unsafe-operations` | Deployment and local-verification documents contain executable build, process, database, and queue operations. | Deterministic path/link checks alone could not prove that an operational sequence, failure stop, and recovery path were safe and current. |
-| `B5-fix-authorization` | No tracked `$docs-audit` package existed in `HEAD`. | There was no repository Skill boundary separating write-free report, one-path OpenSpec evidence record, and explicitly user-authorized fixes. |
-| `B6-self-review` | No tracked `$docs-audit` package existed in `HEAD`. | There was no repository Skill rule preventing the fixing agent from signing its own semantic pass or requiring `review-required` when independent review was unavailable. |
+| `B1-current-target-history` | `docs/index.md` 同时把 Training 路由到 `docs/prototypes/README.md` 的原型意图和生产源码；`tests/test-asset-page-boundaries.test.ts` 与 `tests/test-work-mode-resource-boundary.test.ts` 读取归档路线图。 | 在作出声明前，没有语义工作流强制分别分类当前实现、已批准目标和历史意图。 |
+| `B2-missing-runtime-proof` | `docs/local-verification.md` 与 `agent-rules/deploy/**` 含依赖环境、服务、队列、数据库和恢复的指令。 | 缺少新运行时证据时，没有语义工作流要求依赖运行时的声明保持未解决。 |
+| `B3-duplicate-authority` | `docs/index.md`、`docs/documentation-map.md` 和 `docs/repo-inventory.md` 作为 navigation/classification 表面相互重叠。 | 将某一表面视为 authority 前，没有 finding schema 要求提供 owner、conflict、merge/delete disposition 和 verification。 |
+| `B4-unsafe-operations` | 部署与本地验证文档包含可执行构建、进程、数据库和队列操作。 | 仅确定性路径与链接检查无法证明操作序列、失败停止与恢复路径安全且当前有效。 |
+| `B5-fix-authorization` | `HEAD` 中没有已跟踪的 `$docs-audit` 包。 | 没有仓库 Skill 边界区分无写入报告、单路径 OpenSpec 证据记录和用户显式授权修复。 |
+| `B6-self-review` | `HEAD` 中没有已跟踪的 `$docs-audit` 包。 | 没有仓库 Skill 规则禁止修复者签署自己的语义通过，也没有规则在无法独立审查时要求 `review-required`。 |
 
-## Adoption comparison
+## 采用后的比较要求
 
-The new Skill is expected to be checked against the same six scenarios. Package validation and
-contract tests prove that the workflow is present; a later forward test with fresh agents is
-still required to demonstrate behavior on real migration batches. This baseline must not be
-rewritten as a passing forward-test result.
+新 Skill 预期使用相同六个场景检查。包校验与契约测试证明工作流存在；仍需后续使用全新 Agent 前向测试，证明其在实际迁移批次中的行为。不得把本基线重写为已通过的前向测试结果。

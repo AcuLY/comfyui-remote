@@ -8,7 +8,7 @@ function readSource(path: string) {
 }
 
 test("standard workflow and builder no longer save latents", () => {
-  const workflow = readSource("docs/workflow.api.json");
+  const workflow = readSource("config/workflows/standard-workflow.api.json");
   const builder = readSource("src/server/services/workflow-prompt-builder.ts");
 
   assert.doesNotMatch(workflow, /SaveLatent/);

@@ -5,13 +5,13 @@ document:
   status: current
   owner: documentation
   authority: documentation router
-  readWhen: [looking for current documentation]
+  readWhen: [查找当前文档时]
   sources: [README.md]
   verifiedBy: [npm run docs:check]
 ---
 
-# Documentation
+# 文档
 
-[Repository home](../README.md)
+[仓库首页](../README.md)
 
-[Guide](guide.md)
+[指南](guide.md)
