@@ -66,7 +66,7 @@ document:
 
 ## 验证状态
 
-当前 `verifiedBy` 只证明源码合同、运行手册路由、受控 PowerShell 控制流和确定性文档门禁；它不执行锁操作、队列写入、数据库同步、构建、重启、部署拉取、公开 HTTPS 验证或队列恢复。完成一次真实部署并保存获授权的脱敏证据前，本区域不得声称已经实际演练。
+本区域已于 2026-07-13 完成一次获授权的真实生产演练：获取并分阶段更新部署锁、两次执行双 worker 零活动门、在同卷独立工作树构建候选、按原端口切换 `next start`、完成本地与公开 HTTPS 验证，并在零暂停批次下跳过恢复后释放锁。该次没有 schema 变化，因此数据库同步保持未演练；Generation 暂停/恢复、Training 活跃阻断、自动回滚、锁竞争和 SSH 启动变体也没有发生。脱敏范围和剩余未演练分支见 `openspec/changes/rebuild-documentation-governance/evidence/2026-07-13-workflow-production-migration.md`。
 
 ## 上级导航
 

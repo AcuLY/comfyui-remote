@@ -22,8 +22,8 @@ document:
     - 已重启的 Windows Next.js 生产目标，以及公开部署时对应的 HTTPS 表面
   risk: 验证必须使用真实监听；只有通过验证后才能恢复已记录 Generation 批次或释放部署锁。
   recovery: "#故障处理与恢复"
-  verificationState: not-exercised
-  lastVerified: null
+  verificationState: exercised
+  lastVerified: "2026-07-13"
 ---
 
 # 部署验证
@@ -98,7 +98,7 @@ document:
 
 ## 验证状态
 
-完整部署验证流程尚未实际演练。当前 `verifiedBy` 只证明源码响应合同、测试环境中的认证行为和受控 PowerShell 清理边界，不证明真实本地或公开服务的登录、静态资源、受保护页面、两类 worker 状态、ComfyUI 可达性与 TLS 均已通过。没有获授权的脱敏运行证据时，公开验证状态必须保持未完成。
+完整部署验证流程已于 2026-07-13 在获授权生产切换中演练。本地 `http://127.0.0.1:3000` 与公开 `https://comfy.bgmss.fun` 均通过登录页、13 个静态资源、认证、受保护页面、Generation/Training 状态和 ComfyUI 可达性检查，公开证书使用正常校验且链验证成功。删除旧工作流兼容副本后，只读工作流下载和公开登录再次返回 `200`。TLS 失败、静态资源失败、认证失败及验证后回滚分支本次未触发，继续由故障规则和测试覆盖。脱敏证据见 `openspec/changes/rebuild-documentation-governance/evidence/2026-07-13-workflow-production-migration.md`。
 
 ## 上级导航
 

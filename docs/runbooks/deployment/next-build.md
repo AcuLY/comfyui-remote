@@ -25,8 +25,8 @@ document:
     - 已获取部署锁、且可在同一卷创建相邻临时目录的 Windows 生产检出
   risk: 只在同卷的独立分离式干净工作树中生成候选工件；构建期间绝不读取、写入、删除或重命名活跃检出的 .next。
   recovery: "#故障处理与恢复"
-  verificationState: not-exercised
-  lastVerified: null
+  verificationState: exercised
+  lastVerified: "2026-07-13"
 ---
 
 # Next.js 生产候选构建
@@ -106,6 +106,17 @@ document:
    $savedDbProviderExists = Test-Path Env:DB_PROVIDER
    $savedDbProvider = $env:DB_PROVIDER
 
+   function Invoke-LoggedBuildCommand(
+     [string]$Label,
+     [string]$CommandLine,
+     [string]$FailureMessage
+   ) {
+     Add-Content -LiteralPath $buildLog -Value "`n=== $Label ===" -Encoding utf8
+     $loggedCommand = "$CommandLine >> `"$buildLog`" 2>&1"
+     & $env:ComSpec /d /s /c $loggedCommand
+     if ($LASTEXITCODE -ne 0) { throw $FailureMessage }
+   }
+
    try {
      if (Test-Path -LiteralPath $sourceEnv -PathType Leaf) {
        Copy-Item -LiteralPath $sourceEnv -Destination $candidateEnv -ErrorAction Stop
@@ -113,18 +124,26 @@ document:
 
      Push-Location -LiteralPath $candidateWorktree
      try {
-       & npm ci --no-audit --no-fund *> $buildLog
-       if ($LASTEXITCODE -ne 0) { throw "候选依赖安装失败；检查专用构建日志。" }
+       Invoke-LoggedBuildCommand `
+         -Label "安装依赖" `
+         -CommandLine "npm ci --no-audit --no-fund" `
+         -FailureMessage "候选依赖安装失败；检查专用构建日志。"
        $env:DB_PROVIDER = "postgresql"
-       & npx prisma generate *>> $buildLog
-       if ($LASTEXITCODE -ne 0) { throw "候选 PostgreSQL Prisma client 生成失败。" }
+       Invoke-LoggedBuildCommand `
+         -Label "生成 PostgreSQL Prisma client" `
+         -CommandLine "npx prisma generate" `
+         -FailureMessage "候选 PostgreSQL Prisma client 生成失败。"
        $env:DB_PROVIDER = "sqlite"
-       & npx prisma generate *>> $buildLog
-       if ($LASTEXITCODE -ne 0) { throw "候选 SQLite Prisma client 生成失败。" }
+       Invoke-LoggedBuildCommand `
+         -Label "生成 SQLite Prisma client" `
+         -CommandLine "npx prisma generate" `
+         -FailureMessage "候选 SQLite Prisma client 生成失败。"
        if ($savedDbProviderExists) { $env:DB_PROVIDER = $savedDbProvider }
        else { Remove-Item Env:DB_PROVIDER -ErrorAction SilentlyContinue }
-       & npx next build --webpack *>> $buildLog
-       if ($LASTEXITCODE -ne 0) { throw "候选生产构建失败；检查专用构建日志。" }
+       Invoke-LoggedBuildCommand `
+         -Label "生成 Next.js 生产候选" `
+         -CommandLine "npx next build --webpack" `
+         -FailureMessage "候选生产构建失败；检查专用构建日志。"
      } finally {
        Pop-Location
      }
@@ -192,11 +211,12 @@ document:
 - 候选构建失败时不得重启生产服务。活跃 `$repo\.next` 和生产 `node_modules` 未被接触，因此服务继续使用旧工件；保留部署锁、构建日志、候选工作树和已记录 Generation 批次进行诊断。
 - `Another next build process is already running` 只允许在候选工作树内诊断。证明没有候选构建进程后，也只能处理 `$candidateWorktree\.next\lock`；绝不能查看或删除活跃 `$repo\.next\lock`。
 - 失败路径始终恢复调用方原有 `DB_PROVIDER` 并移除候选 `.env` 副本。确认路径归属和诊断证据后，只递归清理精确候选 `node_modules` 与两套 `src/generated` 目录，再用 `git worktree remove` 清理候选工作树；不得使用 `--force` 掩盖未知文件。
+- Windows PowerShell 会把某些原生命令的标准错误输出包装成 `NativeCommandError`；依赖弃用警告不能代替进程退出码。候选命令必须通过 `Invoke-LoggedBuildCommand` 在 `cmd.exe` 内合并日志，并只以 `$LASTEXITCODE` 判定成功或失败。
 - `$candidateNext` 已生成但尚未切换时，生产状态没有改变。可以保留它供本次部署重试，或在核对精确路径后清理；绝不能在旧监听仍存在时替换 `$repo\.next`。
 
 ## 验证状态
 
-本流程尚未实际演练。当前 `verifiedBy` 只静态检查分离式工作树、同卷路径、独立依赖安装、候选构建命令、活跃工件隔离和清理边界，不执行依赖安装、生产构建、工件移动、临时配置复制或工作树创建与删除。
+本流程已于 2026-07-13 在同卷分离式工作树演练独立 `npm ci`、两套 Prisma client 生成、`next build --webpack`、候选工件移出和临时工作树清理；构建期间活跃 `.next` 的 `BUILD_ID` 保持不变。首次调用暴露了 PowerShell 把 npm 弃用警告提升为终止异常的问题，锁和旧服务保持不变；改用本页当前的日志命令包装后成功完成候选构建。并发构建阻断、安装真实失败和候选不完整恢复路径仍只由静态合同覆盖。脱敏证据见 `openspec/changes/rebuild-documentation-governance/evidence/2026-07-13-workflow-production-migration.md`。
 
 ## 上级导航
 

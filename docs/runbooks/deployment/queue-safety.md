@@ -28,8 +28,8 @@ document:
     - 已获取部署锁且可访问已认证生产 Manager 端点的环境
   risk: 本部署流程无法暂停 Training；任何活跃 Training 工作都会阻止升级，并且只允许恢复本次部署记录的 Generation 批次。
   recovery: "#故障处理与恢复"
-  verificationState: not-exercised
-  lastVerified: null
+  verificationState: exercised
+  lastVerified: "2026-07-13"
 ---
 
 # 部署队列安全
@@ -199,7 +199,7 @@ document:
 
 ## 验证状态
 
-本流程尚未实际演练。当前 `verifiedBy` 只通过源码、聚焦测试和受控 PowerShell 合同验证双 worker 门禁、部分暂停响应和有范围 Generation 恢复，不读取真实队列载荷，也不执行队列修改。
+本流程已于 2026-07-13 在生产部署锁内演练双 worker 门：构建前和重启前均通过已认证端点读取 Generation 与 Training，四次活动计数均为零，因此按本手册跳过暂停和恢复，锁中没有写入任何批次。真实暂停、部分失败记录、Training 活跃阻断和有范围恢复分支仍未在生产执行，继续由聚焦测试与受控合同覆盖。脱敏证据见 `openspec/changes/rebuild-documentation-governance/evidence/2026-07-13-workflow-production-migration.md`。
 
 ## 上级导航
 

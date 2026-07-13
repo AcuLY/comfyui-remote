@@ -22,8 +22,8 @@ document:
     - 本地 Windows 生产检出，或通过 SSH 到达的同一 mypc 检出
   risk: 只停止精确的仓库范围 Next.js 生产进程树；旧监听消失后才切换同卷候选工件，并在原监听端口启动替代服务。
   recovery: "#故障处理与恢复"
-  verificationState: not-exercised
-  lastVerified: null
+  verificationState: exercised
+  lastVerified: "2026-07-13"
 ---
 
 # 生产服务与工件重启
@@ -249,7 +249,7 @@ document:
 
 ## 验证状态
 
-本流程尚未实际演练。当前 `verifiedBy` 只检查仓库范围进程筛选、唯一端口保留、停服后工件切换顺序、启动命令和受控 PowerShell 合同，不停止或启动任何真实进程，不移动真实 `.next`，也不执行 SSH 启动路径。
+本流程已于 2026-07-13 在本地 Windows 生产检出演练：只停止唯一的仓库范围 `next start` 进程树，确认旧监听消失后备份旧 `.next`、切换候选工件，并在原端口 `3000` 启动新实例；新 `BUILD_ID` 与候选一致，完整验证后才关闭回滚窗口。该次没有触发自动回滚，也没有执行通过 SSH 向 `mypc` 启动服务的变体；这些路径继续由受控合同覆盖。脱敏证据见 `openspec/changes/rebuild-documentation-governance/evidence/2026-07-13-workflow-production-migration.md`。
 
 ## 上级导航
 

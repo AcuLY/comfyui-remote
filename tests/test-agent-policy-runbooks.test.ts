@@ -227,6 +227,9 @@ test("provider, cache, process, and log boundaries remain grounded in repository
   assert.match(build, /CommandLine -like "\*\$candidateBuildPrefix\*"/);
   assert.match(build, /Push-Location -LiteralPath \$candidateWorktree/);
   assert.match(build, /npm ci --no-audit --no-fund/);
+  assert.match(build, /function Invoke-LoggedBuildCommand/);
+  assert.match(build, /& \$env:ComSpec \/d \/s \/c \$loggedCommand/);
+  assert.doesNotMatch(buildBlock, /& npm ci --no-audit --no-fund \*>/);
   assert.match(build, /\$env:DB_PROVIDER = "postgresql"/);
   assert.match(build, /\$env:DB_PROVIDER = "sqlite"/);
   assert.doesNotMatch(buildBlock, /prisma db push/);
@@ -236,14 +239,14 @@ test("provider, cache, process, and log boundaries remain grounded in repository
   assertInOrder(build, [
     "worktree add --detach $candidateWorktree $deploymentCommit",
     "Push-Location -LiteralPath $candidateWorktree",
-    "& npm ci --no-audit --no-fund",
+    '-CommandLine "npm ci --no-audit --no-fund"',
     '$env:DB_PROVIDER = "postgresql"',
-    "& npx prisma generate",
+    '-CommandLine "npx prisma generate"',
     '$env:DB_PROVIDER = "sqlite"',
-    "& npx prisma generate",
+    '-CommandLine "npx prisma generate"',
     "if ($savedDbProviderExists) { $env:DB_PROVIDER = $savedDbProvider }",
     "else { Remove-Item Env:DB_PROVIDER -ErrorAction SilentlyContinue }",
-    "& npx next build --webpack",
+    '-CommandLine "npx next build --webpack"',
     "Move-Item -LiteralPath $worktreeNext -Destination $candidateNext",
     "worktree remove $candidateWorktree",
   ]);
@@ -349,7 +352,13 @@ test("no unexercised runbook publishes a verification date", () => {
   }
 
   assert.ok(runbooks.length >= 10);
-  assert.deepEqual(exercised, []);
+  assert.deepEqual(exercised.sort(), [
+    "docs/runbooks/deployment/lock.md",
+    "docs/runbooks/deployment/next-build.md",
+    "docs/runbooks/deployment/queue-safety.md",
+    "docs/runbooks/deployment/service-restart.md",
+    "docs/runbooks/deployment/verification.md",
+  ].sort());
 });
 
 test("the current runbook router does not expose the superseded config runtime page", () => {

@@ -19,8 +19,8 @@ document:
     - 将要执行运行时部署操作的 Windows 生产检出
   risk: 锁必须覆盖目标端的每次部署修改；部署失败或未完整恢复时必须保留锁。
   recovery: "#故障处理与恢复"
-  verificationState: not-exercised
-  lastVerified: null
+  verificationState: exercised
+  lastVerified: "2026-07-13"
 ---
 
 # 部署锁
@@ -154,7 +154,7 @@ document:
 
 ## 验证状态
 
-本流程尚未实际演练。当前 `verifiedBy` 只通过静态检查和受控 PowerShell 合同验证锁范围、忽略规则、重试边界、元数据合同和释放条件，不获取、等待、写入或释放真实部署锁。
+本流程已于 2026-07-13 在生产检出完成一次真实演练：原子获取锁，持续记录 worker 门、候选构建、重启、验证和回滚窗口阶段；候选构建首次中断时保留锁，恢复后只在完整验证、零暂停批次和清理完成后按 owner/token 释放。该次没有发生锁竞争，因此退避等待、超时和其他 owner 恢复路径仍只由合同测试覆盖。脱敏证据见 `openspec/changes/rebuild-documentation-governance/evidence/2026-07-13-workflow-production-migration.md`。
 
 ## 上级导航
 
