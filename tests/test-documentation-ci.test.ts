@@ -22,9 +22,9 @@ test("documentation CI is unfiltered, comparison-based, and non-writing", () => 
   const job = workflow.jobs["documentation-governance"];
   assert.equal(job["runs-on"], "windows-latest");
   assert.ok(job.steps.some((step) =>
-    step.uses === "actions/checkout@v4" && step.with?.["fetch-depth"] === 0));
+    step.uses === "actions/checkout@v5" && step.with?.["fetch-depth"] === 0));
   assert.ok(job.steps.some((step) =>
-    step.uses === "actions/setup-node@v4" && step.with?.["node-version"] === "20.19"));
+    step.uses === "actions/setup-node@v5" && step.with?.["node-version"] === "20.19"));
   assert.ok(job.steps.some((step) => step.run === "npm ci"));
 
   const commands = job.steps.map((step) => step.run ?? "").join("\n");
