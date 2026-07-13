@@ -9,7 +9,10 @@ const WORKFLOW_PATH = ".github/workflows/documentation-governance.yml";
 test("documentation CI is unfiltered, comparison-based, and non-writing", () => {
   const source = readFileSync(WORKFLOW_PATH, "utf8");
   const workflow = yaml.load(source) as {
-    on: Record<string, unknown>;
+    on: {
+      push: { branches: string[] };
+      pull_request: unknown;
+    };
     jobs: Record<string, {
       "runs-on": string;
       steps: Array<{ uses?: string; with?: Record<string, unknown>; run?: string; env?: Record<string, string> }>;
@@ -17,6 +20,7 @@ test("documentation CI is unfiltered, comparison-based, and non-writing", () => 
   };
 
   assert.deepEqual(Object.keys(workflow.on).sort(), ["pull_request", "push"]);
+  assert.deepEqual(workflow.on.push.branches, ["main"]);
   assert.doesNotMatch(source, /^\s*paths(?:-ignore)?:/m);
 
   const job = workflow.jobs["documentation-governance"];
