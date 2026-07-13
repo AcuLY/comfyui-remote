@@ -185,6 +185,7 @@ document:
 | `openspec/changes/rebuild-documentation-governance/evidence/2026-07-12-documentation-ci-verification.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/2026-07-12-hook-experiment-handoff.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/2026-07-12-legacy-input-baseline.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
+| `openspec/changes/rebuild-documentation-governance/evidence/2026-07-13-branch-protection-verification.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/README.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/docs-audit-skill-baseline.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/docs-audit/task-10-prototypes.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |

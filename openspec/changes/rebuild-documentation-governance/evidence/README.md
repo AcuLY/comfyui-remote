@@ -5,6 +5,7 @@
 - `2026-07-10-session-handoff.md` 记录暂停时的设计状态和续接路径。
 - `2026-07-12-documentation-ci-verification.md` 记录本地主工作树非写入、干净检出、受控失败与恢复，以及真实 `GitHub Actions` 阶段成功证据；该 `push` 运行不替代受保护比较基准上的最终验收运行。
 - `2026-07-12-hook-experiment-handoff.md` 确认隔离 `PreToolUse` 尝试与另行授权根级后继实验的身份、数据隔离和后续责任方。
+- `2026-07-13-branch-protection-verification.md` 记录经用户明确授权启用的 `main` 分支保护、必需检查身份和最小配置；它关闭任务 `13.6`，但不把保护生效前的 CI 运行解释为任务 `13.5` 的最终证据。
 - `docs-audit/` 保存 OpenSpec 任务显式调用 `$docs-audit` 产生的限定记录；`task-13-final-acceptance.md` 当前仍是未通过且必须在修复后重跑的最终完整审计草稿。
 - `session-materials/` 保存完整决策日志、信息架构草稿，以及此前只存在于 `.tmp/**` 下的两份仓库理解草稿。
 - `pretooluse-file-access-poc/` 只把隔离的路径匹配尝试遥测实验保留为未来 `build-agent-observability` 输入；保留副本既未安装，也不是文档治理子变更已接受或必需的实现。另行授权的根级后继实验是证据目录和子变更验收之外的受限本地实验。
