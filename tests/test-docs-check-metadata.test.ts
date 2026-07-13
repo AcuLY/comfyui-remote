@@ -227,14 +227,10 @@ test("policy defines finite non-overlapping scope and explicit profile selection
   ]);
   assert.equal(policy.language.requiredLanguage, "zh-CN");
   assert.deepEqual(policy.language.firstPartyMarkdown.include, ["*.md", "**/*.md"]);
-  for (const exception of [
-    ".codebuddy/skills/ui-ux-pro-max/**",
-    ".codex/skills/ui-ux-pro-max/**",
+  assert.deepEqual(policy.language.firstPartyMarkdown.exclude, [
     "tests/fixtures/**",
     "openspec/changes/rebuild-documentation-governance/evidence/pretooluse-file-access-poc/fixture/**",
-  ]) {
-    assert.ok(policy.language.firstPartyMarkdown.exclude.includes(exception));
-  }
+  ]);
   assert.deepEqual(policy.language.allowedAscii, [
     "repository-path",
     "command",

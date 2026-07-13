@@ -49,7 +49,7 @@ document:
 | 暂存、提交、推送或任何 Git 交付，包括明确不部署 | [Git 交付](docs/runbooks/git-delivery.md) |
 | 启动、停止、重启或定位 `next dev` | [开发服务](docs/runbooks/development/dev-service.md) |
 | 为全新本地开发检出初始化数据库 | [本地数据库初始化](docs/runbooks/development/database-bootstrap.md) |
-| 本地登录、认证、受保护页面、worker 状态或 ComfyUI 只读验证 | [本地验证](docs/runbooks/development/local-verification.md) |
+| 本地登录、认证、受保护页面、worker 状态或 ComfyUI 验证（含 SSH 隧道副作用预检） | [本地验证](docs/runbooks/development/local-verification.md) |
 | 手工运行会写入仓库文件、本地文件或数据库的维护脚本 | [维护脚本](docs/runbooks/script-maintenance.md) |
 | 生产构建、部署拉取、`next start` 重启、`Prisma` 同步、队列暂停/恢复、`.next` 清理或公开验证 | [生产部署](docs/runbooks/deployment/README.md) |
 | 同时涉及生产与开发服务 | 先读[生产部署](docs/runbooks/deployment/README.md)，完成生产流程后再读[开发服务](docs/runbooks/development/dev-service.md) |

@@ -189,8 +189,17 @@ test("provider, cache, process, and log boundaries remain grounded in repository
   ]);
   assertSources("docs/runbooks/development/README.md", ["AGENTS.md"]);
   assertSources("docs/runbooks/development/dev-service.md", ["AGENTS.md"]);
-  assertSources("docs/runbooks/deployment/next-build.md", ["AGENTS.md"]);
-  assertSources("docs/runbooks/deployment/service-restart.md", ["AGENTS.md"]);
+  assertSources("docs/runbooks/deployment/next-build.md", [
+    "AGENTS.md",
+    "prisma.config.ts",
+    "prisma/schema.prisma",
+    "prisma/schema.sqlite.prisma",
+    "node_modules/next/dist/build/index.js",
+  ]);
+  assertSources("docs/runbooks/deployment/service-restart.md", [
+    "AGENTS.md",
+    "docs/runbooks/deployment/next-build.md",
+  ]);
   assertSources("docs/runbooks/deployment/queue-safety.md", [
     "src/proxy.ts",
     "src/lib/actions/run-lifecycle.ts",
@@ -210,16 +219,60 @@ test("provider, cache, process, and log boundaries remain grounded in repository
   assert.match(database, /DB_PROVIDER 与目标 DATABASE_URL 冲突/);
 
   const build = read("docs/runbooks/deployment/next-build.md");
-  assert.match(build, /保留 `\.next\/cache`/);
-  assert.match(build, /不得运行 `Remove-Item -Recurse -Force \.next`/);
-  assertInOrder(build, ["Push-Location -LiteralPath $repo", "& npx next build --webpack", "Pop-Location"]);
+  const buildBlock = powershellBlocks(build).find((block) =>
+    block.includes("# runbook-contract: deployment-next-build"),
+  );
+  assert.ok(buildBlock);
+  assert.match(build, /worktree add --detach \$candidateWorktree \$deploymentCommit/);
+  assert.match(build, /CommandLine -like "\*\$candidateBuildPrefix\*"/);
+  assert.match(build, /Push-Location -LiteralPath \$candidateWorktree/);
+  assert.match(build, /npm ci --no-audit --no-fund/);
+  assert.match(build, /\$env:DB_PROVIDER = "postgresql"/);
+  assert.match(build, /\$env:DB_PROVIDER = "sqlite"/);
+  assert.doesNotMatch(buildBlock, /prisma db push/);
+  assert.match(build, /Move-Item -LiteralPath \$worktreeNext -Destination \$candidateNext/);
+  assert.match(build, /worktree remove \$candidateWorktree/);
+  assert.match(build, /构建期间绝不读取、写入、删除或重命名活跃检出的 \.next/);
+  assertInOrder(build, [
+    "worktree add --detach $candidateWorktree $deploymentCommit",
+    "Push-Location -LiteralPath $candidateWorktree",
+    "& npm ci --no-audit --no-fund",
+    '$env:DB_PROVIDER = "postgresql"',
+    "& npx prisma generate",
+    '$env:DB_PROVIDER = "sqlite"',
+    "& npx prisma generate",
+    "if ($savedDbProviderExists) { $env:DB_PROVIDER = $savedDbProvider }",
+    "else { Remove-Item Env:DB_PROVIDER -ErrorAction SilentlyContinue }",
+    "& npx next build --webpack",
+    "Move-Item -LiteralPath $worktreeNext -Destination $candidateNext",
+    "worktree remove $candidateWorktree",
+  ]);
+  assert.doesNotMatch(build, /Push-Location -LiteralPath \$repo\s+[\s\S]{0,160}& npx next build/);
 
   const production = read("docs/runbooks/deployment/service-restart.md");
   assert.match(production, /CommandLine -like "\*\$repo\*"/);
   assert.match(production, /CommandLine -match 'next\.\*\\bstart\\b'/);
   assert.match(production, /Stop-Process -Id \$process\.ProcessId/);
+  assert.match(production, /\$servicePorts = @\(\$oldListeners[\s\S]*Sort-Object -Unique/);
+  assert.match(production, /\$servicePort = \[int\]\$servicePorts\[0\]/);
+  assert.match(production, /\$expectedCandidateNext = \[System\.IO\.Path\]::GetFullPath/);
+  assert.match(production, /\[string\]::Equals\(\s*\$candidateNext,\s*\$expectedCandidateNext,/);
+  assert.match(production, /required-server-files\.json/);
+  assert.match(production, /\$candidateServerFiles\.config\.distDir -ne "\.next"/);
+  assert.match(production, /Move-Item -LiteralPath \$activeNext -Destination \$backupNext/);
+  assert.match(production, /Move-Item -LiteralPath \$candidateNext -Destination \$activeNext/);
+  assert.match(production, /npx next start -p \$servicePort/);
   assert.match(production, /> server\.log 2> server\.err\.log/);
   assert.doesNotMatch(production, /server-prod(?:\.err)?\.log/);
+  assertInOrder(production, [
+    "# runbook-contract: production-artifact-preflight",
+    "# runbook-contract: production-service-stop",
+    "旧生产监听仍未消失",
+    "# runbook-contract: production-artifact-swap",
+    "Move-Item -LiteralPath $activeNext -Destination $backupNext",
+    "Move-Item -LiteralPath $candidateNext -Destination $activeNext",
+    "npx next start -p $servicePort",
+  ]);
 
   const development = read("docs/runbooks/development/dev-service.md");
   assert.match(development, /CommandLine -like "\*\$repo\*"/);
@@ -229,8 +282,14 @@ test("provider, cache, process, and log boundaries remain grounded in repository
 
 test("local verification clears every token-derived object in a finally block", () => {
   const source = read("docs/runbooks/development/local-verification.md");
+  assertSources("docs/runbooks/development/local-verification.md", [
+    "src/app/api/worker/status/route.ts",
+    "src/server/services/comfyui-service.ts",
+    "src/server/services/comfy-ssh.ts",
+  ]);
   const authBlock = powershellBlocks(source).find((block) => block.includes("$authRequest = @{"));
   assert.ok(authBlock);
+  assert.match(authBlock, /\$sshTunnelPreflight -notin/);
   assertInOrder(authBlock, ["try {", "$authResponse = Invoke-RestMethod", "} finally {"]);
   assert.match(authBlock, /\$session\.Cookies = \[System\.Net\.CookieContainer\]::new\(\)/);
   for (const variable of [
@@ -244,6 +303,9 @@ test("local verification clears every token-derived object in a finally block", 
     assert.match(authBlock, new RegExp(`Remove-Variable[\\s\\S]*\\b${variable}\\b`));
   }
   assert.match(authBlock, /\$envPath = Join-Path \$repo "\.env"/);
+  assert.match(source, /detached: true/);
+  assert.match(source, /目前没有公开停止 API/);
+  assert.match(source, /必须在请求前完成授权/);
   assert.match(source, /verificationState: not-exercised/);
   assert.match(source, /lastVerified: null/);
 });

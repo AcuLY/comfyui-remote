@@ -316,6 +316,7 @@ Invoke-ContractCase "队列恢复跳过空集合并精确核对批次" {
 Invoke-ContractCase "本地认证成功与失败都会清除 token 派生状态" {
   $block = Get-ContractBlock "docs/runbooks/development/local-verification.md" "local-authentication-verification"
   $base = "http://127.0.0.1:3000"
+  $sshTunnelPreflight = $null
   $script:authMode = "success"
   $script:authSession = $null
   $script:authEnvPath = $null
@@ -359,6 +360,12 @@ Invoke-ContractCase "本地认证成功与失败都会清除 token 派生状态"
     throw "未预期的认证 mock URI。"
   }
 
+  $preflightError = $null
+  try { . $block } catch { $preflightError = $_ }
+  Assert-Contract ($null -ne $preflightError) "未完成 SSH 隧道副作用预检时必须在认证前失败。"
+  Assert-Contract ($null -eq $script:authEnvPath) "副作用预检失败时不得读取 .env。"
+
+  $sshTunnelPreflight = "无需创建进程"
   . $block
   $expectedEnvPath = Join-Path $repoRoot ".env"
   Assert-Contract ($script:authEnvPath -eq $expectedEnvPath) "AUTH_TOKEN 必须从精确仓库根 .env 读取。"
@@ -427,7 +434,7 @@ Invoke-ContractCase "数据库同步固定仓库 cwd 并恢复临时环境" {
   }
 }
 
-Invoke-ContractCase "生产重启只停止精确进程树并使用固定日志名" {
+Invoke-ContractCase "生产重启只停止精确进程树并保留非默认端口" {
   $discover = Get-ContractBlock "docs/runbooks/deployment/service-restart.md" "production-service-discovery"
   $stop = Get-ContractBlock "docs/runbooks/deployment/service-restart.md" "production-service-stop"
   $start = Get-ContractBlock "docs/runbooks/deployment/service-restart.md" "production-service-start"
@@ -438,7 +445,7 @@ Invoke-ContractCase "生产重启只停止精确进程树并使用固定日志�
     [pscustomobject]@{ ProcessId = 300; ParentProcessId = 1; CreationDate = "20260712010300"; CommandLine = "D:\Other next start" }
   )
   $script:listeners = @(
-    [pscustomobject]@{ LocalPort = 3000; OwningProcess = 101 },
+    [pscustomobject]@{ LocalPort = 4317; OwningProcess = 101 },
     [pscustomobject]@{ LocalPort = 4000; OwningProcess = 200 }
   )
   $script:stoppedPids = @()
@@ -476,6 +483,7 @@ Invoke-ContractCase "生产重启只停止精确进程树并使用固定日志�
   Assert-Contract (-not $prodPids.Contains(200)) "不得纳入同仓库 next dev。"
   Assert-Contract (-not $prodPids.Contains(300)) "不得纳入其他仓库 next start。"
   Assert-Contract ($oldListeners.Count -eq 1 -and $oldListeners[0].OwningProcess -eq 101) "监听必须属于选中生产树。"
+  Assert-Contract ($servicePort -eq 4317) "必须从旧监听保留非默认服务端口。"
 
   $script:listeners = @()
   . $stop
@@ -485,8 +493,48 @@ Invoke-ContractCase "生产重启只停止精确进程树并使用固定日志�
   . $start
   Assert-Contract ($script:startInvocation.FilePath -eq "cmd.exe") "生产服务必须通过 cmd.exe 启动。"
   Assert-Contract ($script:startInvocation.WindowStyle -eq "Hidden") "生产服务必须使用隐藏窗口。"
+  Assert-Contract ($script:startInvocation.ArgumentList -match 'next start -p 4317') "生产服务必须显式复用旧监听端口。"
   Assert-Contract ($script:startInvocation.ArgumentList -match '> server\.log 2> server\.err\.log$') "必须保留 server.log/server.err.log。"
   Assert-Contract ($script:startInvocation.ArgumentList -notmatch 'server-prod') "不得改用未经验证的 server-prod 日志名。"
+}
+
+Invoke-ContractCase "候选工件只在临时同卷夹具中预检和切换" {
+  $preflight = Get-ContractBlock "docs/runbooks/deployment/service-restart.md" "production-artifact-preflight"
+  $swap = Get-ContractBlock "docs/runbooks/deployment/service-restart.md" "production-artifact-swap"
+  $fixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) "comfyui-runbook-$([guid]::NewGuid().ToString('N'))"
+  $repo = Join-Path $fixtureRoot "comfyui-manager"
+  $deploymentId = "fixture-deployment"
+  $candidateNext = Join-Path $fixtureRoot ".comfyui-manager-next-$deploymentId"
+  $activeNext = Join-Path $repo ".next"
+
+  try {
+    [void](New-Item -ItemType Directory -Path $activeNext -Force)
+    [void](New-Item -ItemType Directory -Path (Join-Path $candidateNext "server") -Force)
+    [void](New-Item -ItemType Directory -Path (Join-Path $candidateNext "static") -Force)
+    Set-Content -LiteralPath (Join-Path $activeNext "BUILD_ID") -Value "old-build" -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $candidateNext "BUILD_ID") -Value "candidate-build" -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $candidateNext "build-manifest.json") -Value "{}" -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $candidateNext "routes-manifest.json") -Value "{}" -Encoding utf8
+    Set-Content -LiteralPath (Join-Path $candidateNext "required-server-files.json") -Value '{"config":{"distDir":".next"}}' -Encoding utf8
+
+    . $preflight
+    Assert-Contract ($candidateBuildId -eq "candidate-build") "预检必须读取候选 BUILD_ID。"
+    Assert-Contract ($previousBuildId -eq "old-build") "预检必须读取当前 BUILD_ID。"
+    Assert-Contract (-not (Test-Path -LiteralPath $backupNext)) "预检不得提前移动活跃工件。"
+
+    . $swap
+    Assert-Contract ((Get-Content -LiteralPath (Join-Path $activeNext "BUILD_ID") -Raw -Encoding utf8).Trim() -eq "candidate-build") "切换后活跃路径必须包含候选工件。"
+    Assert-Contract ((Get-Content -LiteralPath (Join-Path $backupNext "BUILD_ID") -Raw -Encoding utf8).Trim() -eq "old-build") "切换后备份路径必须保留旧工件。"
+  } finally {
+    if (Test-Path -LiteralPath $fixtureRoot) {
+      $resolvedFixture = (Microsoft.PowerShell.Management\Resolve-Path -LiteralPath $fixtureRoot).Path
+      $resolvedTemp = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\')
+      if (-not $resolvedFixture.StartsWith("$resolvedTemp\", [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "拒绝清理临时目录之外的夹具。"
+      }
+      Remove-Item -LiteralPath $resolvedFixture -Recurse -Force
+    }
+  }
 }
 
 if ($script:failures.Count -gt 0) {

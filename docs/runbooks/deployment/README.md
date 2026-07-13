@@ -60,8 +60,8 @@ document:
 | 获取、等待、保留或释放互斥锁 | [部署锁](./lock.md) | 负责原子目录锁与失败状态。 |
 | 根据 Generation 与 Training 活动设置门禁 | [队列安全](./queue-safety.md) | Training 没有部署暂停/恢复路径；只允许恢复已记录的 Generation 批次。 |
 | 同步发生变化的 Prisma schema | [数据库同步](./database-sync.md) | 从真实目标选择 SQLite 或 PostgreSQL，不改写 `.env`。 |
-| 生成 Next.js 工件 | [Next.js 构建](./next-build.md) | 防止竞争构建并保留 `.next/cache`。 |
-| 替换生产进程 | [服务重启](./service-restart.md) | 只停止本仓库的 `next start` 进程。 |
+| 生成 Next.js 候选工件 | [Next.js 构建](./next-build.md) | 在同卷独立 Git 工作树中构建，构建期间不接触活跃 `.next`。 |
+| 替换生产进程与工件 | [服务重启](./service-restart.md) | 只停止本仓库的 `next start` 进程，在旧监听消失后切换候选工件并保留原端口。 |
 | 证明已部署服务可用 | [部署验证](./verification.md) | 发现监听端口，并检查本地/公开路由、静态资源、认证、worker 与 ComfyUI。 |
 
 ## 验证状态

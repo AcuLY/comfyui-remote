@@ -10,7 +10,7 @@
 - **重大不兼容变更**：删除 `docs/prototypes/**` 下全部 Training 静态原型表面及其专用路由、清单和测试契约；Training 作为平级工作模式的权威来自生产源码和已验证当前文档。
 - 建立根 `README.md`、`AGENTS.md`、`ARCHITECTURE.md`、`PRODUCT.md` 和 `DESIGN.md` 的权威边界；保持根设计契约可兼容未来另行批准的 `Impeccable` 集成。
 - 建立当前产品、架构、详细设计和运行手册层；为 `QUALITY_SCORE.md`、`RELIABILITY.md` 与 `SECURITY.md` 增加诚实的占位契约，不虚构后续阶段内容。
-- 规定第一方维护文档的正文和 frontmatter 人类可读字符串默认使用简体中文；技术标识、命令、路径、协议字段、第三方 Skill、测试 fixture、数据载荷和 OpenSpec 结构词是明确例外，并增加自动门禁阻止英文正文回归。
+- 规定全部受治理 Markdown 的正文和 frontmatter 人类可读字符串默认使用简体中文，项目内兼容 Skill 也不例外；技术标识、命令、路径、协议字段、测试 fixture、数据载荷和 OpenSpec 结构词是明确例外，并增加自动门禁阻止英文正文回归。
 - 增加最小 `docs/_meta/**` 机器治理控制面，只包含文档 schema、结构/链接策略和编写模板。
 - 增加一个确定性、非写入文档检查引擎，支持 full 与可安全限定的 changed scope，提供稳定 human/JSON 诊断；本地与 CI 使用同一 full 阻断检查，覆盖 metadata、结构、入口可达性、链接、anchor、禁止遗留路径、OpenSpec 有效性、源码契约，以及已有 generator 所有的生成文件新鲜度。
 - 在 `.codex/skills/docs-audit/**` 增加一个必须显式调用的仓库 Skill，作为语义审计的唯一执行表面，用于过期声明、覆盖缺口、重复权威、无效操作步骤，以及源码、测试、文档和历史意图之间的冲突。普通开发不得自动运行它，`AGENTS.md` 不得包含其规则或触发器。
@@ -37,7 +37,7 @@
 - 本变更不创建新的历史文档存储；已验证当前知识提取后，Git 历史与 OpenSpec 归档继续保留旧工件。
 - 本变更不在 Harness 产生运维证据前强制区分 generated 与 reference 目录。
 - 被忽略的 `.tmp/**` 草稿只作为编写证据，绝不直接提升为当前事实。
-- 简体中文要求不改写技术标识、命令、路径、协议字段、第三方 Skill 内容、测试 fixture 或数据载荷，也不翻译 OpenSpec 解析器所需结构词。
+- 简体中文要求不改写技术标识、命令、路径、协议字段、测试 fixture 或数据载荷，也不翻译 OpenSpec 解析器所需结构词；纳入仓库的 Skill 人类说明必须使用简体中文。
 
 ## 相关变更
 

@@ -18,8 +18,6 @@ language:
       - '*.md'
       - '**/*.md'
     exclude:
-      - .codebuddy/skills/ui-ux-pro-max/**
-      - .codex/skills/ui-ux-pro-max/**
       - tests/fixtures/**
       - openspec/changes/rebuild-documentation-governance/evidence/pretooluse-file-access-poc/fixture/**
   allowedAscii:

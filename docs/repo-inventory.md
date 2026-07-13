@@ -57,9 +57,6 @@ document:
 | `.codebuddy/skills/ui-ux-pro-max/data/ui-reasoning.csv` | `.codebuddy` | `repository-maintainers` | 结构化数据 | `compatibility-skill` | 治理策略 |
 | `.codebuddy/skills/ui-ux-pro-max/data/ux-guidelines.csv` | `.codebuddy` | `repository-maintainers` | 结构化数据 | `compatibility-skill` | 治理策略 |
 | `.codebuddy/skills/ui-ux-pro-max/data/web-interface.csv` | `.codebuddy` | `repository-maintainers` | 结构化数据 | `compatibility-skill` | 治理策略 |
-| `.codebuddy/skills/ui-ux-pro-max/scripts/__pycache__/core.cpython-314.pyc` | `.codebuddy` | `repository-maintainers` | 仓库文件 | `compatibility-skill` | 治理策略 |
-| `.codebuddy/skills/ui-ux-pro-max/scripts/__pycache__/design_system.cpython-314.pyc` | `.codebuddy` | `repository-maintainers` | 仓库文件 | `compatibility-skill` | 治理策略 |
-| `.codebuddy/skills/ui-ux-pro-max/scripts/__pycache__/search.cpython-314.pyc` | `.codebuddy` | `repository-maintainers` | 仓库文件 | `compatibility-skill` | 治理策略 |
 | `.codebuddy/skills/ui-ux-pro-max/scripts/core.py` | `.codebuddy` | `repository-maintainers` | 源码 | `compatibility-skill` | 治理策略 |
 | `.codebuddy/skills/ui-ux-pro-max/scripts/design_system.py` | `.codebuddy` | `repository-maintainers` | 源码 | `compatibility-skill` | 治理策略 |
 | `.codebuddy/skills/ui-ux-pro-max/scripts/search.py` | `.codebuddy` | `repository-maintainers` | 源码 | `compatibility-skill` | 治理策略 |
@@ -185,10 +182,13 @@ document:
 | `openspec/changes/rebuild-documentation-governance/evidence/2026-07-10-session-handoff.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/2026-07-12-apply-authorization.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/2026-07-12-apply-baseline.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
+| `openspec/changes/rebuild-documentation-governance/evidence/2026-07-12-documentation-ci-verification.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
+| `openspec/changes/rebuild-documentation-governance/evidence/2026-07-12-hook-experiment-handoff.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/2026-07-12-legacy-input-baseline.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/README.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/docs-audit-skill-baseline.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/docs-audit/task-10-prototypes.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
+| `openspec/changes/rebuild-documentation-governance/evidence/docs-audit/task-13-final-acceptance.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/docs-audit/task-6-current-knowledge-followup.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/docs-audit/task-6-current-knowledge.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/rebuild-documentation-governance/evidence/docs-audit/task-6-design-demo-source-adjacent.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |

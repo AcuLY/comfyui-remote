@@ -200,24 +200,24 @@ test("the position preset exception covers only prompt paragraphs after level-th
   );
 });
 
-test("first-party scope excludes only declared third-party and fixture surfaces", () => {
+test("中文文档范围只排除声明的测试 fixture", () => {
   const policy = loadPolicy(process.cwd());
   for (const path of [
-    ".codebuddy/skills/ui-ux-pro-max/SKILL.md",
-    ".codex/skills/ui-ux-pro-max/SKILL.md",
     "tests/fixtures/documentation-governance/language/invalid-english.md",
     "openspec/changes/rebuild-documentation-governance/evidence/pretooluse-file-access-poc/fixture/AGENTS.md",
   ]) {
-    assert.equal(isFirstPartyMarkdown(path, policy), false, `${path} must be an explicit exception`);
+    assert.equal(isFirstPartyMarkdown(path, policy), false, `${path} 必须是显式 fixture 例外`);
   }
   for (const path of [
     "README.md",
     ".codex/skills/docs-audit/SKILL.md",
+    ".codex/skills/ui-ux-pro-max/SKILL.md",
+    ".codebuddy/skills/ui-ux-pro-max/SKILL.md",
     "docs/archive/legacy.md",
     "openspec/changes/rebuild-documentation-governance/design.md",
     "reports/quality/report.md",
     "REPORT.MD",
   ]) {
-    assert.equal(isFirstPartyMarkdown(path, policy), true, `${path} must remain in first-party scope`);
+    assert.equal(isFirstPartyMarkdown(path, policy), true, `${path} 必须保留在中文文档范围内`);
   }
 });
