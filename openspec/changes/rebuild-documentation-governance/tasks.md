@@ -121,6 +121,6 @@
 - [x] 13.4 证明本地检查保持完整的既有已跟踪、已暂存与未跟踪状态，CI 以干净状态开始并以干净状态结束，且不存在禁止实时遗留路径、重复策略权威或非 OpenSpec 规划权威。
 - [x] 13.5 采集一次以受保护合并目标为比较基准、包含最终目标树的成功 `full` 模式干净检出 CI，以及受控规则失败、工具失败和恢复后的成功运行。
 - [x] 13.6 将文档作业设为每条受保护合并路径的必需项；若权限不足，保持本任务未完成并报告精确外部操作。
-- [ ] 13.7 使用已批准比较修订版显式调用 `$docs-audit full record`，只写入 `openspec/changes/rebuild-documentation-governance/evidence/docs-audit/task-13-final-acceptance.md`；独立审查结果，再提交最终目标树、迁移核对、审计处置、本地与 CI 证据、运行时资产验证和剩余风险供用户明确阶段验收。
+- [x] 13.7 使用已批准比较修订版显式调用 `$docs-audit full record`，只写入 `openspec/changes/rebuild-documentation-governance/evidence/docs-audit/task-13-final-acceptance.md`；独立审查结果，再提交最终目标树、迁移核对、审计处置、本地与 CI 证据、运行时资产验证和剩余风险供用户明确阶段验收。
 - [x] 13.8 归档前确认已脱敏 PreToolUse 实验仍是非规范性路径匹配尝试证据，并非直接安装的实现；确认另行授权的根级后继实验仍保持实时数据被忽略且在子变更验收外，并记录后续可观测性子变更必须重新验证两项输入。
-- [ ] 13.9 用户验收后，按 OpenSpec 约定归档 `rebuild-documentation-governance`，更新父阶段状态，但不开始可观测性实施。
+- [ ] 13.9 用户验收后，按 OpenSpec 约定归档 `rebuild-documentation-governance`，更新缩减后父变更的完成依赖，但不自动归档父变更或开始任何未来能力。
