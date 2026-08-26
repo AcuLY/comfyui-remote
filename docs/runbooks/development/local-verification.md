@@ -28,8 +28,8 @@ document:
     - 已运行 Next.js 开发或生产服务的本地 Windows 检出
   risk: 认证后的应用数据探测不写队列或数据库，但 Generation worker 状态 GET 在 SSH 自动隧道目标下可能创建分离式 ssh 操作系统进程；必须事前分类并授权。
   recovery: "#故障处理与恢复"
-  verificationState: not-exercised
-  lastVerified: null
+  verificationState: exercised
+  lastVerified: "2026-07-13"
 ---
 
 # 本地验证
@@ -144,7 +144,7 @@ document:
 
 ## 验证状态
 
-本流程整体尚未实际演练，因此 frontmatter 保持 `verificationState: not-exercised` 与 `lastVerified: null`。当前 `verifiedBy` 证明源码响应合同、测试环境中的认证行为、SSH 隧道事前门禁和受控 PowerShell 清理边界，但不证明已对真实服务完整执行 Cookie 会话、两类 worker 状态、ComfyUI 可达性或分离式 SSH 隧道创建与恢复。
+本流程已于 2026-07-13 在真实本地生产服务上演练登录路由、Cookie 会话认证、Generation 与 Training 两类 worker 状态，以及 ComfyUI 可达性检查；演练时活跃目标不需要创建 SSH 隧道。当前 `verifiedBy` 继续覆盖源码响应合同、测试环境中的认证行为、SSH 隧道事前门禁和受控 PowerShell 清理边界。启用自动隧道的 SSH 目标、分离式 SSH 隧道创建、精确归属和恢复仍未实际演练，不能从本次状态提升为已验证行为。
 
 ## 上级导航
 

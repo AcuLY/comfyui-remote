@@ -173,6 +173,7 @@ document:
 | `openspec/changes/establish-agent-harness/.openspec.yaml` | `openspec` | `repository-maintainers` | 结构化数据 | `openspec` | 治理策略 |
 | `openspec/changes/establish-agent-harness/README.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/establish-agent-harness/design.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
+| `openspec/changes/establish-agent-harness/evidence/2026-08-26-project-reset-inventory.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/establish-agent-harness/proposal.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/establish-agent-harness/specs/agent-harness/spec.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |
 | `openspec/changes/establish-agent-harness/tasks.md` | `openspec` | `repository-maintainers` | `Markdown` 文档 | `openspec` | 治理策略 |

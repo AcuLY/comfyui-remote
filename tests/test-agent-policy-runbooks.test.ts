@@ -309,8 +309,9 @@ test("local verification clears every token-derived object in a finally block", 
   assert.match(source, /detached: true/);
   assert.match(source, /目前没有公开停止 API/);
   assert.match(source, /必须在请求前完成授权/);
-  assert.match(source, /verificationState: not-exercised/);
-  assert.match(source, /lastVerified: null/);
+  assert.match(source, /verificationState: exercised/);
+  assert.match(source, /lastVerified: "2026-07-13"/);
+  assert.match(source, /启用自动隧道的 SSH 目标[\s\S]*仍未实际演练/);
 });
 
 test("every current runbook document validates against its selected strict profile", () => {
@@ -353,11 +354,14 @@ test("no unexercised runbook publishes a verification date", () => {
 
   assert.ok(runbooks.length >= 10);
   assert.deepEqual(exercised.sort(), [
+    "docs/runbooks/development/local-verification.md",
     "docs/runbooks/deployment/lock.md",
     "docs/runbooks/deployment/next-build.md",
     "docs/runbooks/deployment/queue-safety.md",
     "docs/runbooks/deployment/service-restart.md",
     "docs/runbooks/deployment/verification.md",
+    "docs/runbooks/git-delivery.md",
+    "docs/runbooks/script-maintenance.md",
   ].sort());
 });
 

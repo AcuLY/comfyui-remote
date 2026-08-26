@@ -36,10 +36,12 @@ test("script maintenance is a current task runbook instead of an exhaustive lega
   assert.equal(document?.type, "runbook");
   assert.equal(document?.status, "current");
   assert.equal(document?.owner, "repository-maintenance");
-  assert.equal(document?.verificationState, "not-exercised");
-  assert.equal(document?.lastVerified, null);
+  assert.equal(document?.verificationState, "exercised");
+  assert.equal(document?.lastVerified, "2026-07-14");
   assert.match(source, /^# 维护脚本$/m);
   assert.match(source, /不维护每个可导入内部模块的文件清单/);
+  assert.match(source, /仓库清单生成分支已于 2026-07-14 在真实受跟踪目标上演练/);
+  assert.match(source, /真实数据库操作均未实际演练/);
   assert.doesNotMatch(source, /Script Maintenance Matrix|docs\/script-maintenance\.md/);
 });
 
