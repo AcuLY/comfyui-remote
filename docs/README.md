@@ -46,6 +46,10 @@ document:
 | 修改文档 schema、策略或模板 | [文档控制平面](_meta/README.md) | 仅负责机械治理 |
 | 提议重大变更 | [OpenSpec](../openspec/README.md) | 提案、设计、任务、验证和归档生命周期 |
 
+## 已批准的新版目标
+
+- [全新重建决策与 Figma 设计](../openspec/changes/rebuild-application/README.md)：本轮完整功能去留、领域/API、技术栈、数据迁移及页面先设计后实施的确认结论。新版尚未实施，不取代上表中描述旧版真实运行行为的文档。
+
 ## 生成入口与延期入口
 
 - [仓库清单](repo-inventory.md)由受版本控制的仓库内容和治理元数据生成。
