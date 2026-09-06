@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="ComfyUI Manager 新版基础设计：可交互的色彩、字体、尺寸和基础组件审核样本。" />
+    <link rel="icon" href="data:," />
+    <title>基础设计 · ComfyUI Manager</title>
+    <script>
+      try {
+        const saved = JSON.parse(localStorage.getItem('cm-prototype-preference-v1') || '{}');
+        const preference = ['light', 'dark'].includes(saved.theme) ? saved.theme : 'system';
+        document.documentElement.dataset.theme = preference === 'system'
+          ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : preference;
+        document.documentElement.dataset.module = saved.module === 'training' ? 'training' : 'image';
+        document.documentElement.dataset.density = ['compact', 'relaxed'].includes(saved.density) ? saved.density : 'standard';
+      } catch {
+        document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="../src/main.jsx"></script>
+  </body>
+</html>

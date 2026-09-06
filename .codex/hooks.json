@@ -12,6 +12,33 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .impeccable/prototype-hook.mjs",
+            "commandWindows": "node .impeccable/prototype-hook.mjs",
+            "timeout": 5,
+            "statusMessage": "Checking prototype design"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .impeccable/prototype-hook.mjs",
+            "commandWindows": "node .impeccable/prototype-hook.mjs",
+            "timeout": 30,
+            "statusMessage": "Prototype design pass"
+          }
+        ]
+      }
     ]
   }
 }

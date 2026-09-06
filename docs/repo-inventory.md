@@ -30,6 +30,64 @@ document:
 
 | 路径 | 顶层区域 | 责任方 | 文件类型 | 分类 | 分类依据 |
 | --- | --- | --- | --- | --- | --- |
+| `.agents/skills/impeccable/LICENSE` | `.agents` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/SKILL.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/agents/impeccable_asset_producer.toml` | `.agents` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/agents/impeccable_documenter.toml` | `.agents` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/agents/impeccable_finish_reviewer.toml` | `.agents` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/agents/impeccable_manual_edit_applier.toml` | `.agents` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/agents/openai.yaml` | `.agents` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/adapt.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/adapt.native.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/android.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/animate.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/audit.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/audit.native.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/bolder.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/clarify.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/colorize.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/craft-floor.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/craft.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/critique.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/degraded/asset-producer.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/degraded/documenter.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/degraded/finish-reviewer.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/degraded/manual-edit-applier.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/delight.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/distill.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/doctor.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/document.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/extract.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/harden.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/hooks.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/init.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/ios.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/layout.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/live-setup.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/live.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/new-work.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/onboard.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/operate.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/optimize.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/overdrive.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/polish.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/quieter.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/routing.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/shape.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/typeset.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/visualize.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/scripts/VERSION` | `.agents` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/scripts/bin/.gitignore` | `.agents` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/scripts/command-metadata.json` | `.agents` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/scripts/data/font-index-failures.json` | `.agents` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/scripts/data/font-index.json` | `.agents` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/scripts/impeccable` | `.agents` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/scripts/impeccable.cmd` | `.agents` | `repository-maintainers` | 脚本 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/scripts/live-browser-dom.js` | `.agents` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/scripts/live-browser-ignores.js` | `.agents` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/scripts/live-browser-session.js` | `.agents` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/scripts/live-browser.js` | `.agents` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/scripts/modern-screenshot.umd.js` | `.agents` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `.claude/settings.json` | `.claude` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
 | `.codebuddy/settings.json` | `.codebuddy` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
 | `.codebuddy/skills/ui-ux-pro-max/SKILL.md` | `.codebuddy` | `repository-maintainers` | `Markdown` 文档 | `compatibility-skill` | 治理策略 |
@@ -96,6 +154,10 @@ document:
 | `.env.example` | `root` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
 | `.github/workflows/documentation-governance.yml` | `.github` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
 | `.gitignore` | `root` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
+| `.impeccable/.gitignore` | `.impeccable` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
+| `.impeccable/installation.json` | `.impeccable` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
+| `.impeccable/prototype-hook.mjs` | `.impeccable` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `.impeccable/surfaces/docs-design-prototypes-foundations-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `AGENTS.md` | `root` | `agent-policy` | `Markdown` 文档 | `router` | 文档元数据 |
 | `ARCHITECTURE.md` | `root` | `system-architecture` | `Markdown` 文档 | `architecture` | 文档元数据 |
 | `CLAUDE.md` | `root` | `agent-policy` | `Markdown` 文档 | `router` | 文档元数据 |
@@ -138,6 +200,18 @@ document:
 | `docs/design/design-demo-governance.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/interaction-and-motion.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/layout-and-density.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/prototypes/.gitignore` | `docs` | `repository-maintainers` | 仓库文件 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/.impeccable/design.json` | `docs` | `repository-maintainers` | 结构化数据 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/README.md` | `docs` | `product-design` | `Markdown` 文档 | `router` | 文档元数据 |
+| `docs/design/prototypes/design-foundations.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/prototypes/foundations/README.md` | `docs` | `product-design` | `Markdown` 文档 | `router` | 文档元数据 |
+| `docs/design/prototypes/foundations/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/package-lock.json` | `docs` | `repository-maintainers` | 结构化数据 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/package.json` | `docs` | `repository-maintainers` | 结构化数据 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/src/main.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/src/prototype.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/src/tokens.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/vite.config.js` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/responsive-and-accessibility.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/review-workbench.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/prisma-schema-compatibility.md` | `docs` | `data-architecture` | `Markdown` 文档 | `architecture` | 文档元数据 |

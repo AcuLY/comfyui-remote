@@ -19,6 +19,8 @@ language:
       - '**/*.md'
     exclude:
       - tests/fixtures/**
+      # 官方第三方技能按上游原文安装，不纳入第一方中文文档规则。
+      - .agents/skills/impeccable/**
       - openspec/changes/rebuild-documentation-governance/evidence/pretooluse-file-access-poc/fixture/**
   allowedAscii:
     - repository-path
@@ -85,6 +87,20 @@ scope:
     frontmatter: documentation
     links: true
     navigation: true
+
+  - id: design-prototype-assets
+    include:
+      - docs/design/prototypes/.gitignore
+      - docs/design/prototypes/.impeccable/design.json
+      - docs/design/prototypes/package.json
+      - docs/design/prototypes/package-lock.json
+      - docs/design/prototypes/vite.config.js
+      - docs/design/prototypes/**/*.html
+      - docs/design/prototypes/src/**/*.{css,jsx}
+    kind: prototype-source
+    frontmatter: none
+    links: false
+    navigation: false
 
   - id: documentation-control-plane
     include:
