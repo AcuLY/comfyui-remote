@@ -10,6 +10,8 @@ function readSource(path: string) {
 test("generation project archive UI is wired through the existing archive service", () => {
   const actions = readSource("src/lib/actions/project.ts");
   const archiveButton = readSource("src/app/projects/project-archive-button.tsx");
+  const archiveService = readSource("src/server/services/project-archive-service.ts");
+  const archiveDoc = readSource("docs/product/generation/project-archive.md");
   const projectList = readSource("src/app/projects/projects-client.tsx");
   const listRepository = readSource("src/server/repositories/project-view-repository/list-view.ts");
   const types = readSource("src/lib/types.ts");
@@ -23,6 +25,20 @@ test("generation project archive UI is wired through the existing archive servic
   assert.match(archiveButton, /archiveProject\(projectId\)/);
   assert.match(archiveButton, /项目已归档/);
   assert.match(archiveButton, /归档项目/);
+  assert.match(archiveButton, /await archiveProject\(projectId\);/);
+  assert.doesNotMatch(archiveButton, /(?:const|let)\s+\w+\s*=\s*await archiveProject\(projectId\)/);
+  assert.match(archiveDoc, /当前 `ProjectArchiveButton` 丢弃该返回值/);
+  assert.match(projectList, /已归档 · 文件已清理/);
+  assert.match(archiveDoc, /只是当前乐观界面状态，不是全部文件已删除的证据/);
+
+  const managedCleanup = archiveService.slice(
+    archiveService.indexOf("// 4. Delete managed image directory"),
+    archiveService.indexOf("// 5. Delete ComfyUI output directories"),
+  );
+  assert.match(managedCleanup, /resolveDataPath\("images", project\.slug\)/);
+  assert.match(managedCleanup, /rm\(managedImageDir, \{ recursive: true, force: true \}\)/);
+  assert.doesNotMatch(managedCleanup, /isPathInsideDirectory/);
+  assert.match(archiveDoc, /没有再次调用 `isPathInsideDirectory` 做路径包含关系校验/);
 
   assert.match(projectList, /ProjectArchiveButton/);
   assert.match(projectList, /showArchived/);

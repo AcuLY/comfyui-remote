@@ -1,11 +1,11 @@
 /**
  * Workflow Prompt Builder (v0.5)
  *
- * Fills the standard `docs/workflow.api.json` template with per-section
+ * Fills `config/workflows/standard-workflow.api.json` with per-section
  * parameters (prompts, dimensions, LoRAs, KSampler settings, output path)
  * and returns a ready-to-submit ComfyUI API prompt graph.
  *
- * Node mapping (from workflow.api.json):
+ * Node mapping (from config/workflows/standard-workflow.api.json):
  *
  *   1    Checkpoint Loader
  *   511  positive prompt (Text Multiline)
@@ -28,7 +28,7 @@ import { DEFAULT_KSAMPLER1, DEFAULT_KSAMPLER2 } from "@/lib/lora-types";
 // ---------------------------------------------------------------------------
 
 export type WorkflowBuildInput = {
-  /** Deep-cloned workflow.api.json content (caller must deep-clone before passing) */
+  /** Deep-cloned standard workflow content (caller must deep-clone before passing) */
   workflowTemplate: Record<string, unknown>;
   positivePrompt: string;
   negativePrompt: string;

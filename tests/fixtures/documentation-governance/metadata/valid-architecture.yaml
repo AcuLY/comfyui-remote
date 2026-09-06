@@ -1,0 +1,15 @@
+schemaVersion: 1
+document:
+  type: architecture
+  status: current
+  owner: system-architecture
+  authority:
+    subject: architecture/system
+    kind: reference
+  readWhen:
+    - changing a system boundary
+  sources:
+    - src/server/worker/repository.ts
+    - prisma/schema.prisma
+  verifiedBy:
+    - npm run docs:check

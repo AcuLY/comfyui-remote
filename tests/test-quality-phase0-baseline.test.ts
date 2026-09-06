@@ -454,7 +454,10 @@ test("writePhase0BaselineReports writes deterministic CSV, Markdown, and summary
     assert.match(aggregateCsv, /单人 · 拎鞋/);
     assert.match(labeledCsv, /projectId,projectTitle,sectionId,sectionName,canonicalSectionName,sortOrder,runId,imageId,filePath,thumbPath,reviewStatus,checkpointName,loraConfigSummary,sourceFlags/);
     assert.match(labeledCsv, /manual_excluded/);
-    assert.match(markdown, /## Phase 0 historical baseline/);
+    assert.match(markdown, /## Phase 0 历史基线/);
+    assert.match(markdown, /### 验收验证/);
+    assert.match(markdown, /### 按规范分区统计的废弃率/);
+    assert.doesNotMatch(markdown, /## Phase 0 historical baseline/);
     assert.match(markdown, /单人 · 拎鞋/);
     assert.equal(summaryJson.phase, 0);
     assert.equal(summaryJson.validProjects, 7);

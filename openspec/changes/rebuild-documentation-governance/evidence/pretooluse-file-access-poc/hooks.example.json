@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/file_access_hook.py\" record --root \"$(git rev-parse --show-toplevel)\" --log \"$(git rev-parse --show-toplevel)/logs/file-access.ndjson\"",
+            "timeout": 5,
+            "statusMessage": "Recording repo-local file access"
+          }
+        ]
+      }
+    ]
+  }
+}

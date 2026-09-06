@@ -1,0 +1,25 @@
+{
+  "provider": "codex",
+  "scope": "project",
+  "upstream": "https://github.com/pbakaus/impeccable",
+  "website": "https://impeccable.style",
+  "license": "Apache-2.0",
+  "installedOn": "2026-09-07",
+  "skillVersion": "4.2.1",
+  "installerPackage": "impeccable@4.0.3",
+  "engineVersion": "0.1.2",
+  "installCommand": "npx --yes impeccable@4.0.3 install --providers=codex --scope=project --no-hooks --yes",
+  "skillPath": ".agents/skills/impeccable",
+  "hookAdapter": ".impeccable/prototype-hook.mjs",
+  "hookScope": "docs/design/prototypes/",
+  "notes": [
+    "BangumiStaffStats was inspected read-only; its installed skill is 4.0.2.",
+    "The official installer supplied this project's compiled skill payload; no Bangumi product context, design tokens, or surface briefs were copied.",
+    "The project hook adapter preserves the existing file-access hook and forwards only prototype edits to the official engine.",
+    "The platform engine is an ignored local installation artifact. The bundled launcher can download pinned engine 0.1.2 on another machine.",
+    "Codex may require approval of the added project hook in /hooks. Manual detector commands are available independently.",
+    "Installation does not approve design proposals or migrate the production frontend.",
+    "Trailing whitespace in three upstream reference Markdown files was normalized for git diff --check; semantic content is unchanged.",
+    "The Codex provider default prompt explicitly names $impeccable to satisfy the repository skill validator."
+  ]
+}

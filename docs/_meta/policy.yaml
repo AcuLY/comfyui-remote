@@ -1,0 +1,475 @@
+schemaVersion: 1
+
+governedRoots:
+  - docs
+
+rootEntrypoints:
+  - README.md
+  - AGENTS.md
+  - ARCHITECTURE.md
+  - PRODUCT.md
+  - DESIGN.md
+  - CLAUDE.md
+
+language:
+  requiredLanguage: zh-CN
+  firstPartyMarkdown:
+    include:
+      - '*.md'
+      - '**/*.md'
+    exclude:
+      - tests/fixtures/**
+      # 官方第三方技能按上游原文安装，不纳入第一方中文文档规则。
+      - .agents/skills/impeccable/**
+      - openspec/changes/rebuild-documentation-governance/evidence/pretooluse-file-access-poc/fixture/**
+  allowedAscii:
+    - repository-path
+    - command
+    - inline-code
+    - fenced-code
+    - protocol-field
+    - openspec-structure-keyword
+  metadataExcludedFields:
+    - schemaVersion
+    - name
+    - document.type
+    - document.status
+    - document.owner
+    - document.authority.subject
+    - document.authority.kind
+    - document.sources
+    - document.verifiedBy
+    - document.recovery
+    - document.verificationState
+    - document.lastVerified
+    - document.generator
+    - document.inputs
+    - document.regenerate
+    - document.check
+    - document.activation.stage
+    - document.activation.owner
+  dataPayloadExceptions:
+    - path: docs/product/shared-resources/position-presets.md
+      kind: paragraph-after-heading
+      headingDepth: 3
+
+# scope 条目表示有限治理表面，不是逐文档实例记录。
+# 一个受跟踪路径最多只能匹配一个 scope 条目。
+scope:
+  - id: current-root
+    include:
+      - README.md
+      - AGENTS.md
+      - ARCHITECTURE.md
+      - PRODUCT.md
+      - DESIGN.md
+      - CLAUDE.md
+    kind: current
+    frontmatter: documentation
+    links: true
+    navigation: true
+
+  - id: current-docs
+    include:
+      - docs/README.md
+      - docs/QUALITY_SCORE.md
+      - docs/RELIABILITY.md
+      - docs/SECURITY.md
+      - docs/repo-inventory.md
+      - docs/prisma-schema-compatibility.md
+      - docs/architecture/**/*.md
+      - docs/product/**/*.md
+      - docs/design/**/*.md
+      - docs/runbooks/**/*.md
+      - docs/api/**/*.md
+      - docs/testing/**/*.md
+    kind: current
+    frontmatter: documentation
+    links: true
+    navigation: true
+
+  - id: design-prototype-assets
+    include:
+      - docs/design/prototypes/.gitignore
+      - docs/design/prototypes/.impeccable/design.json
+      - docs/design/prototypes/package.json
+      - docs/design/prototypes/package-lock.json
+      - docs/design/prototypes/vite.config.js
+      - docs/design/prototypes/**/*.html
+      - docs/design/prototypes/src/**/*.{css,jsx}
+    kind: prototype-source
+    frontmatter: none
+    links: false
+    navigation: false
+
+  - id: documentation-control-plane
+    include:
+      - docs/_meta/**
+    kind: control-plane
+    frontmatter: none
+    links: true
+    navigation: false
+
+  - id: openspec-lifecycle
+    include:
+      - openspec/**
+    kind: openspec
+    frontmatter: none
+    links: true
+    navigation: false
+
+  - id: project-skills
+    include:
+      - .codex/skills/**
+    kind: skill
+    frontmatter: skill
+    links: true
+    navigation: false
+
+  - id: compatibility-skills
+    include:
+      - .codebuddy/skills/**
+    kind: compatibility-skill
+    frontmatter: skill
+    links: true
+    navigation: false
+
+  - id: registered-source-adjacent
+    include:
+      - tests/README.md
+    kind: source-adjacent
+    frontmatter: none
+    links: true
+    navigation: false
+
+  - id: documentation-governance-fixtures
+    include:
+      - tests/fixtures/documentation-governance/**
+    kind: fixture
+    frontmatter: none
+    links: false
+    navigation: false
+
+# profile 选择必须显式完成，并且只能解析到一个 schema $defs 键。
+# README 匹配与详情文档匹配彼此独立；检查器不得从路径子串推断文档类型。
+profiles:
+  - id: root-files
+    include:
+      - README.md
+      - AGENTS.md
+      - ARCHITECTURE.md
+      - PRODUCT.md
+      - DESIGN.md
+      - CLAUDE.md
+    schemaProfile: root-file
+
+  - id: routers
+    include:
+      - docs/README.md
+      - docs/{architecture,product,design,runbooks,api,testing}/**/README.md
+    schemaProfile: router
+
+  - id: architecture-details
+    include:
+      - docs/architecture/**/!(README).md
+    schemaProfile: architecture
+
+  - id: product-details
+    include:
+      - docs/product/**/!(README).md
+    schemaProfile: product
+
+  - id: design-details
+    include:
+      - docs/design/**/!(README).md
+    schemaProfile: design
+
+  - id: api-details
+    include:
+      - docs/api/**/!(README).md
+    schemaProfile: api
+
+  - id: testing-details
+    include:
+      - docs/testing/**/!(README).md
+    schemaProfile: testing
+
+  - id: runbook-details
+    include:
+      - docs/runbooks/**/!(README).md
+    schemaProfile: runbook
+
+  - id: deferred-placeholders
+    include:
+      - docs/QUALITY_SCORE.md
+      - docs/RELIABILITY.md
+      - docs/SECURITY.md
+    schemaProfile: placeholder
+
+  - id: existing-generated-documents
+    include:
+      - docs/repo-inventory.md
+      - docs/prisma-schema-compatibility.md
+    schemaProfile: existing-generator
+
+requiredLandingPages:
+  - docs/README.md
+  - docs/architecture/README.md
+  - docs/architecture/system/README.md
+  - docs/architecture/system/execution/README.md
+  - docs/architecture/domains/README.md
+  - docs/architecture/domains/generation/README.md
+  - docs/architecture/domains/training/README.md
+  - docs/architecture/domains/shared-resources/README.md
+  - docs/product/README.md
+  - docs/product/generation/README.md
+  - docs/product/training/README.md
+  - docs/product/shared-resources/README.md
+  - docs/design/README.md
+  - docs/runbooks/README.md
+  - docs/runbooks/development/README.md
+  - docs/runbooks/deployment/README.md
+  - docs/runbooks/mypc/README.md
+  - docs/api/README.md
+  - docs/testing/README.md
+
+navigation:
+  roots:
+    - README.md
+    - AGENTS.md
+    - ARCHITECTURE.md
+    - PRODUCT.md
+    - DESIGN.md
+    - CLAUDE.md
+    - docs/README.md
+  # owner 模式重叠时，由匹配路径最长的 landing 负责该文件。
+  owners:
+    - landing: docs/architecture/README.md
+      include:
+        - docs/architecture/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/architecture/system/README.md
+      include:
+        - docs/architecture/system/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/architecture/system/execution/README.md
+      include:
+        - docs/architecture/system/execution/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/architecture/domains/README.md
+      include:
+        - docs/architecture/domains/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/product/README.md
+      include:
+        - docs/product/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/product/generation/README.md
+      include:
+        - docs/product/generation/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/product/training/README.md
+      include:
+        - docs/product/training/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/product/shared-resources/README.md
+      include:
+        - docs/product/shared-resources/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/design/README.md
+      include:
+        - docs/design/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/runbooks/README.md
+      include:
+        - docs/runbooks/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/runbooks/development/README.md
+      include:
+        - docs/runbooks/development/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/runbooks/deployment/README.md
+      include:
+        - docs/runbooks/deployment/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/runbooks/mypc/README.md
+      include:
+        - docs/runbooks/mypc/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/api/README.md
+      include:
+        - docs/api/**/*.md
+      reverseLinkRequired: true
+    - landing: docs/testing/README.md
+      include:
+        - docs/testing/**/*.md
+      reverseLinkRequired: true
+
+forbiddenLivePaths:
+  - path: FRONTEND.md
+    owner: documentation-governance
+    replacement: DESIGN.md
+  - path: PLANS.md
+    owner: documentation-governance
+    replacement: openspec/changes/**
+  - path: agent-rules/**
+    owner: agent-policy
+    replacement: AGENTS.md 与 docs/runbooks/**
+  - path: docs/index.md
+    owner: documentation-governance
+    replacement: docs/README.md
+  - path: docs/documentation-map.md
+    owner: documentation-governance
+    replacement: docs/README.md 与 docs/_meta/policy.yaml
+  - path: docs/exec-plans/**
+    owner: documentation-governance
+    replacement: openspec/changes/**
+  - path: docs/history/**
+    owner: documentation-governance
+    replacement: Git 历史与已归档的 OpenSpec 变更
+  - path: docs/archive/**
+    owner: documentation-governance
+    replacement: Git 历史与已归档的 OpenSpec 变更
+  - path: docs/prototypes/**
+    owner: product-design
+    replacement: 已验证的生产源码与当前设计文档
+  - path: docs/plans/**
+    owner: documentation-governance
+    replacement: openspec/changes/** 或所属测试、配置、产物路径
+  - path: docs/superpowers/**
+    owner: documentation-governance
+    replacement: openspec/changes/**
+  - path: position_presets.md
+    owner: shared-resources
+    replacement: docs/product/shared-resources/README.md
+  - path: docs/workflow.api.json
+    owner: workflow-configuration
+    replacement: config/workflows/standard-workflow.api.json
+
+# `contract` 是阻断项，并指向受控 adapter。`review` 是警告项，
+# 必须由责任方完成语义处置；它本身绝不会启动 $docs-audit。
+relationships:
+  - id: repository-inventory-freshness
+    kind: contract
+    sources:
+      - '**'
+    documents:
+      - docs/repo-inventory.md
+    owner: documentation-governance
+    verifier: repo-inventory
+
+  - id: prisma-schema-compatibility
+    kind: contract
+    sources:
+      - prisma/schema.prisma
+      - prisma/schema.sqlite.prisma
+      - scripts/docs/generate-prisma-schema-compatibility.ts
+    documents:
+      - docs/prisma-schema-compatibility.md
+    owner: data-architecture
+    verifier: prisma-schema-compatibility
+
+  - id: route-api-mcp-documentation-contract
+    kind: contract
+    sources:
+      - src/app/**/page.tsx
+      - src/app/api/**/route.ts
+      - src/proxy.ts
+      - src/server/mcp/**
+    documents:
+      - README.md
+      - docs/api/**
+      - docs/architecture/system/agent-interfaces.md
+    owner: api-contracts
+    verifier: route-api-mcp-documentation
+
+  - id: runtime-configuration-documentation-contract
+    kind: contract
+    sources:
+      - .env.example
+      - .gitignore
+      - config/**
+      - prisma/**
+      - public/**
+      - src/generated/**
+      - src/lib/env.ts
+      - scripts/observability/**
+      - src/server/services/comfy-target.ts
+      - src/server/services/runtime-data-path.ts
+      - tests/test_agent_file_access_hook.py
+    documents:
+      - docs/runbooks/**
+    owner: runtime-configuration
+    verifier: runtime-configuration-documentation
+
+  - id: api-and-agent-interface-review
+    kind: review
+    sources:
+      - src/app/api/**/route.ts
+      - src/server/mcp/**
+    documents:
+      - docs/api/**
+      - docs/architecture/system/agent-interfaces.md
+    owner: api-contracts
+    reason: API 路由或 MCP 注册变化可能使已维护的接口声明失效。
+
+  - id: queue-and-worker-review
+    kind: review
+    sources:
+      - src/server/worker/**
+      - src/server/services/queue-*.ts
+      - src/app/api/queue*/**
+    documents:
+      - docs/architecture/system/execution/queue-worker.md
+      - docs/runbooks/deployment/queue-safety.md
+    owner: queue-runtime
+    reason: Queue 执行或恢复变化需要对架构与操作文档进行语义审查。
+
+  - id: design-surface-review
+    kind: review
+    sources:
+      - src/app/**/*.tsx
+      - src/components/**/*.tsx
+      - src/**/*.css
+    documents:
+      - DESIGN.md
+      - docs/design/**
+    owner: product-design
+    reason: 用户可见结构或交互变化可能使已维护的设计指引失效。
+
+adapters:
+  openspec:
+    enabled: true
+  skills:
+    enabled: true
+    paths:
+      - .codex/skills
+      - .codebuddy/skills
+  generators:
+    - id: repo-inventory
+      command:
+        - tsx
+        - scripts/docs/generate-repo-inventory.ts
+        - --check
+      owner: documentation-governance
+      output: docs/repo-inventory.md
+      remediation: 运行 npx tsx scripts/docs/generate-repo-inventory.ts，审查 diff，再重新运行 docs:check。
+    - id: prisma-schema-compatibility
+      command:
+        - tsx
+        - scripts/docs/generate-prisma-schema-compatibility.ts
+        - --check
+      owner: data-architecture
+      output: docs/prisma-schema-compatibility.md
+      remediation: 运行 npx tsx scripts/docs/generate-prisma-schema-compatibility.ts，审查 diff，再重新运行 docs:check。
+  contracts:
+    - id: route-api-mcp-documentation
+      kind: route-api-mcp-documentation
+      owner: api-contracts
+      output: docs/api/README.md
+      remediation: 运行 node --import tsx --test tests/test-documentation-governance.test.ts，并修复当前路由、API 或 MCP 合同。
+    - id: runtime-configuration-documentation
+      kind: runtime-configuration-documentation
+      owner: runtime-configuration
+      output: docs/runbooks/README.md
+      remediation: 运行 node --import tsx --test tests/test-config-runtime-governance.test.ts，并修复当前运行时配置合同。

@@ -1,0 +1,52 @@
+schemaVersion: 1
+governedRoots: [docs]
+rootEntrypoints: [README.md]
+language:
+  requiredLanguage: zh-CN
+  firstPartyMarkdown:
+    include: ["*.md", "**/*.md"]
+    exclude: []
+  allowedAscii: [repository-path, command, inline-code, fenced-code, protocol-field, openspec-structure-keyword]
+  metadataExcludedFields: [schemaVersion, name, document.type, document.status, document.owner, document.authority.subject, document.authority.kind, document.sources, document.verifiedBy, document.recovery, document.verificationState, document.lastVerified, document.generator, document.inputs, document.regenerate, document.check, document.activation.stage, document.activation.owner]
+  dataPayloadExceptions: []
+scope:
+  - id: root
+    kind: current
+    include: [README.md]
+    frontmatter: documentation
+    links: true
+    navigation: true
+profiles:
+  - id: root
+    include: [README.md]
+    schemaProfile: router
+requiredLandingPages: [docs/README.md]
+navigation:
+  roots: [README.md]
+  owners:
+    - landing: docs/README.md
+      include: [docs/**/*.md]
+      reverseLinkRequired: true
+forbiddenLivePaths:
+  - path: docs/archive/**
+    owner: documentation-governance
+    replacement: docs/README.md
+relationships:
+  - id: inventory
+    kind: contract
+    sources: [docs/**]
+    documents: [docs/repo-inventory.md]
+    owner: documentation-governance
+    verifier: repo-inventory
+adapters:
+  openspec:
+    enabled: true
+  skills:
+    enabled: true
+    paths: [.codex/skills, .codebuddy/skills]
+  generators:
+    - id: repo-inventory
+      command: [tsx, scripts/docs/generate-repo-inventory.ts, --check]
+      owner: documentation-governance
+      output: docs/repo-inventory.md
+  contracts: []

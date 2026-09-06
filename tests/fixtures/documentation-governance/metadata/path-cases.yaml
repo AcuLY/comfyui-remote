@@ -1,0 +1,16 @@
+valid:
+  - README.md
+  - .codex/skills/docs-audit/SKILL.md
+  - docs/architecture/system/context.md
+  - docs/reference with spaces/example.md
+invalid:
+  - /absolute.md
+  - C:/absolute.md
+  - ../outside.md
+  - docs/../outside.md
+  - docs\\windows-separator.md
+  - docs//double-separator.md
+  - ./docs/not-normalized.md
+  - docs/./not-normalized.md
+  - docs/*.md
+  - docs/trailing/

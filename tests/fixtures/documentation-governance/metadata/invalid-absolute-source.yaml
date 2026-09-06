@@ -1,0 +1,14 @@
+schemaVersion: 1
+document:
+  type: architecture
+  status: current
+  owner: system-architecture
+  authority:
+    subject: architecture/system
+    kind: reference
+  readWhen:
+    - changing a system boundary
+  sources:
+    - C:/outside/repository.ts
+  verifiedBy:
+    - npm run docs:check

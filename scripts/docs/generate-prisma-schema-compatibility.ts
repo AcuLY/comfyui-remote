@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 const POSTGRES_SCHEMA = "prisma/schema.prisma";
@@ -13,63 +13,63 @@ type FieldReference = {
 };
 
 const RELATION_SCOPE_MODELS = [
-  { model: "PresetVariantLink", parentScope: "sourceVariantId", role: "linked preset variant edge" },
-  { model: "ProjectPresetBinding", parentScope: "projectId", role: "project-level preset binding" },
+  { model: "PresetVariantLink", parentScope: "sourceVariantId", role: "关联预设变体边" },
+  { model: "ProjectPresetBinding", parentScope: "projectId", role: "项目级预设绑定" },
   {
     model: "ProjectTemplatePresetBinding",
     parentScope: "projectTemplateId",
-    role: "template-level preset binding",
+    role: "模板级预设绑定",
   },
-  { model: "SectionPresetBinding", parentScope: "projectSectionId", role: "section preset binding" },
+  { model: "SectionPresetBinding", parentScope: "projectSectionId", role: "分区预设绑定" },
   {
     model: "TemplateSectionPresetBinding",
     parentScope: "projectTemplateSectionId",
-    role: "template-section preset binding",
+    role: "模板分区预设绑定",
   },
-  { model: "SectionManualLoraEntry", parentScope: "projectSectionId", role: "section manual LoRA entry" },
+  { model: "SectionManualLoraEntry", parentScope: "projectSectionId", role: "分区手动 LoRA 条目" },
   {
     model: "TemplateSectionManualLoraEntry",
     parentScope: "projectTemplateSectionId",
-    role: "template-section manual LoRA entry",
+    role: "模板分区手动 LoRA 条目",
   },
 ] as const;
 const LEGACY_COMPATIBILITY_SURFACES = [
   {
-    surface: "linked variant JSON",
+    surface: "关联变体 JSON",
     ownerFields: "`PresetVariant.linkedVariants`",
-    replacement: "`PresetVariantLink` relation rows",
-    decision: "removed schema storage",
-    guard: "`tests/test-zero-redundancy-preset-resolver.test.ts` ignores legacy JSON in favor of relation rows",
+    replacement: "`PresetVariantLink` 关系记录",
+    decision: "已移除 schema 存储",
+    guard: "`tests/test-zero-redundancy-preset-resolver.test.ts` 忽略旧版 JSON，并以关系记录为准",
   },
   {
-    surface: "legacy project section prompt fields",
+    surface: "旧版项目分区提示词字段",
     ownerFields:
       "`ProjectSection.positivePrompt`, `ProjectSection.negativePrompt`, `ProjectSection.promptBlocks`, `ProjectSection.loraConfig`",
-    replacement: "`SectionPromptBlock`, `SectionPresetBinding`, `SectionManualLoraEntry`, and immutable run snapshots",
-    decision: "removed schema storage",
-    guard: "`tests/test-zero-redundancy-no-legacy-fields.test.ts` blocks schema and runtime source reintroduction",
+    replacement: "`SectionPromptBlock`、`SectionPresetBinding`、`SectionManualLoraEntry` 与不可变运行快照",
+    decision: "已移除 schema 存储",
+    guard: "`tests/test-zero-redundancy-no-legacy-fields.test.ts` 阻止在 schema 与运行时源码中重新引入这些字段",
   },
   {
-    surface: "legacy template section prompt fields",
+    surface: "旧版模板分区提示词字段",
     ownerFields: "`ProjectTemplateSection.promptBlocks`, `ProjectTemplateSection.loraConfig`",
-    replacement: "`TemplateSectionPromptBlock`, `TemplateSectionPresetBinding`, and `TemplateSectionManualLoraEntry`",
-    decision: "removed schema storage",
-    guard: "`tests/test-zero-redundancy-template-resolver.test.ts` keeps template saves relation-backed",
+    replacement: "`TemplateSectionPromptBlock`、`TemplateSectionPresetBinding` 与 `TemplateSectionManualLoraEntry`",
+    decision: "已移除 schema 存储",
+    guard: "`tests/test-zero-redundancy-template-resolver.test.ts` 确保模板保存由关系记录支撑",
   },
   {
-    surface: "deprecated seed policy payload",
-    ownerFields: "`seedPolicy` singular in resolver/snapshot compatibility payloads",
+    surface: "已弃用的种子策略载荷",
+    ownerFields: "解析器/快照兼容载荷中的单数 `seedPolicy`",
     replacement: "`seedPolicy1`, `seedPolicy2`",
-    decision: "read-only compatibility input",
-    guard: "`tests/test-zero-redundancy-section-resolver.test.ts` preserves two-stage seed policy output",
+    decision: "只读兼容输入",
+    guard: "`tests/test-zero-redundancy-section-resolver.test.ts` 保留两阶段种子策略输出",
   },
   {
-    surface: "legacy character LoRA prompt values",
+    surface: "旧版角色 LoRA 提示词值",
     ownerFields:
       "`TrainingCharacterProfile.loraUsagePrompt`, `TrainingCharacterProfile.characterDetailPrompt`, `TrainingGenerationTaskOutput.loraUsagePromptSnapshot`",
-    replacement: "`loraUsagePromptGenerationTaskId`, `characterDetailPromptGenerationTaskId`, and task output snapshots",
-    decision: "retained active training data",
-    guard: "training schema fields stay provider-compatible until the training data model is split in a later batch",
+    replacement: "`loraUsagePromptGenerationTaskId`、`characterDetailPromptGenerationTaskId` 与任务输出快照",
+    decision: "保留的活动训练数据",
+    guard: "在后续批次拆分训练数据模型前，Training schema 字段保持跨提供方兼容",
   },
 ] as const;
 
@@ -147,11 +147,11 @@ function ownerDomain(model: string): string {
 function row(model: string): string {
   return [
     `\`${model}\``,
-    ownerDomain(model),
+    `\`${ownerDomain(model)}\``,
     `\`${POSTGRES_SCHEMA}\``,
     `\`${SQLITE_SCHEMA}\``,
-    "shared in PostgreSQL and SQLite",
-    "keep-compatible; update both schemas or document provider-specific difference",
+    "PostgreSQL 与 SQLite 共享",
+    "保持兼容；同时更新两个 schema，或记录提供方专属差异",
   ].join(" | ");
 }
 
@@ -166,7 +166,7 @@ function enumMappingRow(
     .map((field) => {
       const sqliteField = sqliteFields.get(`${field.model}.${field.field}`);
       if (!sqliteField) {
-        return `\`${field.model}.${field.field}: missing\``;
+        return `\`${field.model}.${field.field}: 缺失\``;
       }
       const defaultMatch = sqliteField.attributes.match(/@default\(([^)]+)\)/);
       const defaultText = defaultMatch ? ` @default(${defaultMatch[1]})` : "";
@@ -179,7 +179,7 @@ function enumMappingRow(
     values.map((value) => `\`${value}\``).join(", "),
     postgresFieldNames,
     sqliteFieldNames,
-    "PostgreSQL uses Prisma enum columns; SQLite stores equivalent strings and must keep values/defaults synchronized.",
+    "PostgreSQL 使用 Prisma 枚举列；SQLite 存储等价字符串，并且必须同步值与默认值。",
   ].join(" | ");
 }
 
@@ -187,7 +187,7 @@ function relationScopeRow(entry: (typeof RELATION_SCOPE_MODELS)[number]): string
   const postgresDirectives = modelDirectives(POSTGRES_SCHEMA, entry.model);
   const sqliteDirectives = modelDirectives(SQLITE_SCHEMA, entry.model);
   const formatDirectives = (directives: string[]) =>
-    directives.length === 0 ? "row id only" : directives.map((directive) => `\`${directive}\``).join(", ");
+    directives.length === 0 ? "仅有记录 ID" : directives.map((directive) => `\`${directive}\``).join(", ");
 
   return [
     `\`${entry.model}\``,
@@ -195,7 +195,7 @@ function relationScopeRow(entry: (typeof RELATION_SCOPE_MODELS)[number]): string
     `\`${entry.parentScope}\``,
     formatDirectives(postgresDirectives),
     formatDirectives(sqliteDirectives),
-    "Keep parent-scoped uniqueness and lookup indexes synchronized across providers.",
+    "在各数据库提供方之间同步父级范围唯一性与查询索引。",
   ].join(" | ");
 }
 
@@ -227,46 +227,85 @@ const legacyCompatibilityRows = LEGACY_COMPATIBILITY_SURFACES.map((entry) =>
 );
 
 const output = [
-  "# Prisma Schema Compatibility Checklist",
+  "---",
+  "schemaVersion: 1",
+  "document:",
+  "  type: architecture",
+  "  status: current",
+  "  owner: data-architecture",
+  "  authority:",
+  "    subject: prisma-schema-compatibility",
+  "    kind: reference",
+  "  readWhen:",
+  "    - 变更 Prisma 模型或数据库提供方兼容性时",
+  "  sources:",
+  "    - prisma/schema.prisma",
+  "    - prisma/schema.sqlite.prisma",
+  "    - scripts/docs/generate-prisma-schema-compatibility.ts",
+  "  verifiedBy:",
+  "    - npx tsx scripts/docs/generate-prisma-schema-compatibility.ts --check",
+  "  generator: scripts/docs/generate-prisma-schema-compatibility.ts",
+  "  inputs:",
+  "    - prisma/schema.prisma",
+  "    - prisma/schema.sqlite.prisma",
+  "  regenerate: npx tsx scripts/docs/generate-prisma-schema-compatibility.ts",
+  "  check: npx tsx scripts/docs/generate-prisma-schema-compatibility.ts --check",
+  "---",
   "",
-  "Generated by `scripts/docs/generate-prisma-schema-compatibility.ts`. Re-run after adding, removing, or renaming Prisma models.",
+  "# Prisma Schema 兼容性检查表",
   "",
-  "## Shared Models",
+  "本文件由 `scripts/docs/generate-prisma-schema-compatibility.ts` 生成。新增、删除或重命名 Prisma 模型后，请重新运行该脚本。",
   "",
-  "| model | owner domain | PostgreSQL schema | SQLite schema | compatibility status | action |",
+  "## 共享模型",
+  "",
+  "| 模型 | 责任领域 | PostgreSQL schema | SQLite schema | 兼容状态 | 操作 |",
   "| --- | --- | --- | --- | --- | --- |",
   ...sharedModels.map((model) => `| ${row(model)} |`),
   "",
-  "## Provider Enum Mapping",
+  "## 数据库提供方枚举映射",
   "",
-  "| enum | PostgreSQL values | PostgreSQL fields | SQLite fields | compatibility action |",
+  "| 枚举 | PostgreSQL 值 | PostgreSQL 字段 | SQLite 字段 | 兼容操作 |",
   "| --- | --- | --- | --- | --- |",
   ...enumRows.map((row) => `| ${row} |`),
   "",
-  "## Relation Scope And Uniqueness",
+  "## 关系范围与唯一性",
   "",
-  "| relation model | role | parent scope | PostgreSQL constraints | SQLite constraints | compatibility action |",
+  "| 关系模型 | 作用 | 父级范围 | PostgreSQL 约束 | SQLite 约束 | 兼容操作 |",
   "| --- | --- | --- | --- | --- | --- |",
   ...relationScopeRows.map((row) => `| ${row} |`),
   "",
-  "## Legacy Compatibility Field Audit",
+  "## 旧版兼容字段审计",
   "",
-  "| surface | owner fields | replacement or current owner | decision | guard |",
+  "| 表面 | 原有字段 | 替代项或当前责任方 | 决策 | 防回退测试 |",
   "| --- | --- | --- | --- | --- |",
   ...legacyCompatibilityRows.map((row) => `| ${row} |`),
   "",
-  "## Provider-Only Models",
+  "## 数据库提供方专属模型",
   "",
-  postgresOnlyModels.length === 0 ? "- PostgreSQL-only models: none" : `- PostgreSQL-only models: ${postgresOnlyModels.join(", ")}`,
-  sqliteOnlyModels.length === 0 ? "- SQLite-only models: none" : `- SQLite-only models: ${sqliteOnlyModels.join(", ")}`,
+  postgresOnlyModels.length === 0 ? "- PostgreSQL 专属模型：无" : `- PostgreSQL 专属模型：${postgresOnlyModels.join(", ")}`,
+  sqliteOnlyModels.length === 0 ? "- SQLite 专属模型：无" : `- SQLite 专属模型：${sqliteOnlyModels.join(", ")}`,
   "",
-  "## Checklist Rule",
+  "## 检查规则",
   "",
-  "- Shared model changes must update both `prisma/schema.prisma` and `prisma/schema.sqlite.prisma` in the same batch.",
-  "- Provider-specific differences must be documented in `docs/prisma-provider-matrix.md` or in the batch notes before merging.",
-  "- Regenerate both clients with `npm run prisma:generate:all` after schema changes.",
+  "- 变更共享模型时，必须在同一批次更新 `prisma/schema.prisma` 与 `prisma/schema.sqlite.prisma`。",
+  "- 合并前，必须确认本文件的“数据库提供方专属模型”章节已由生成器更新，并在对应 OpenSpec 变更或批次说明中记录无法由 schema 自动表达的差异。",
+  "- schema 变更后，使用 `npm run prisma:generate:all` 重新生成两个客户端。",
   "",
 ].join("\n");
 
-mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
-writeFileSync(OUTPUT_PATH, output);
+const args = process.argv.slice(2);
+const unknownArgs = args.filter((arg) => arg !== "--check");
+if (unknownArgs.length > 0) {
+  throw new Error(`Unknown argument(s): ${unknownArgs.join(", ")}`);
+}
+
+if (args.includes("--check")) {
+  const current = existsSync(OUTPUT_PATH) ? readFileSync(OUTPUT_PATH, "utf8").replaceAll("\r\n", "\n") : null;
+  if (current !== output) {
+    console.error(`${OUTPUT_PATH} is stale; run npx tsx scripts/docs/generate-prisma-schema-compatibility.ts to regenerate it.`);
+    process.exitCode = 1;
+  }
+} else {
+  mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
+  writeFileSync(OUTPUT_PATH, output);
+}

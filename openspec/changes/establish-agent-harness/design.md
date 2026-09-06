@@ -1,148 +1,99 @@
 ## Context
 
-`comfyui-remote` has evolved into a large private control plane with two peer work modes: ComfyUI generation and LoRA Training. It already has a short `AGENTS.md`, workflow rules, documentation maps, a generated repository inventory, many source-contract tests, a structured logger, runtime status routes, and scattered architectural guards. Those pieces are useful but do not yet create a closed harness:
+文档治理子变更已经建立当前文档控制面、OpenSpec 固定入口、文档 CI、运行手册和生产配置迁移。父 Harness 原计划在其后串行实施可观测性、工程规范与统一 CI，但这些阶段从未取得独立实施批准，也没有形成已验证当前能力。
 
-- documentation structure and semantics still drift;
-- runtime performance cannot be traced end to end;
-- code and module rules are not enforced repository-wide;
-- there is no checked-in CI workflow covering the complete system;
-- old design plans and current behavior are still easy for agents to conflate.
-
-The approved program must start with documentation governance, preserve Training as a peer work mode, use OpenSpec for significant changes, keep later technical choices behind explicit stage approvals, and avoid mixing local/worktree/production observability data.
+与此同时，仓库需要继续生产使用，并准备重新决定产品范围和前端方向。继续维持原长期父计划会让过时基线和未实施目标阻塞新的产品决策。用户于 2026-08-26 选择先收口文档治理、缩减父 Harness，并生成现有工作表面的只读处置清单。
 
 ## Goals / Non-Goals
 
-**Goals:**
+**目标：**
 
-- Establish a durable parent program for documentation governance, observability, engineering standards, and final convergence.
-- Make the ordering and approval boundaries mechanically legible to agents.
-- Separate current facts, approved targets, and historical intent.
-- Use OpenSpec's upstream lifecycle while adding only repository-specific safety rules.
-- Reach blocking gates through a clean hard cutover rather than permanent legacy exemptions.
+- 让父变更只描述已经落地或仍需验收的真实范围。
+- 保留 OpenSpec 生命周期、证据分类和仓库运维安全边界。
+- 完成文档治理子变更的最终审计，并保留用户验收门。
+- 明确取消未实施阶段，而不是把它们标成完成或当前能力。
+- 为后续人工处置保留脱敏、只读的工作树与运行资产清单。
 
-**Non-Goals:**
+**非目标：**
 
-- Select the detailed observability backend, sampling, retention, dashboards, or performance budgets now.
-- Select the detailed formatter, dependency checker, complexity thresholds, or review matrix now.
-- Treat the parent program as approval to apply future child stages.
-- Convert scratch drafts or unverified historical content directly into living specs.
-- Deploy any runtime change as part of authoring this program specification.
+- 不设计或实施产品重构。
+- 不选择未来可观测性、工程规范或 CI 方案。
+- 不修改 PreToolUse Hook、应用源码、schema、服务、队列或生产数据。
+- 不执行任何清理、删除、`git stash apply/drop`、`git worktree prune` 或历史改写。
 
 ## Decisions
 
-### 1. Use one parent change and just-in-time child changes
+### 1. 缩减而不是继续原四阶段计划
 
-`establish-agent-harness` owns cross-stage invariants and stays active until all stages are complete. `rebuild-documentation-governance` is the first child and was created only after the target documentation information architecture was approved. Its exact proposal, specs, design, and tasks still require user review before apply. Observability, engineering standards, and final convergence receive detailed artifacts only after the preceding stage is accepted.
+本父变更只保留 OpenSpec、文档治理、证据边界和运维安全基础。原计划中的可观测性、工程规范与统一 CI 阶段被取消，不再作为父变更完成条件。
 
-Each child change is verified and archived independently when its stage is accepted. The parent delta is a program completion contract: it is not partially synchronized into living specs, and it is archived only after the complete program is implemented. Current documentation records capabilities that have actually landed while the parent remains active.
+**理由：** 它们未获独立实施批准，且产品重构会改变其基线。继续保留会制造虚假承诺；把未实施任务勾成完成则会制造虚假当前能力。
 
-**Rationale:** This keeps the program coherent without freezing later technical choices against an outdated baseline.
+**替代方案：** 原样冻结长期父计划。否决原因是活动工件会持续把已取消工作表示为已批准目标。
 
-**Alternative considered:** Create all child changes immediately. Rejected because the user requires a fresh design review before each later stage and empty future artifacts would create false certainty.
+### 2. 未来能力必须另立变更
 
-**Alternative considered:** Partially synchronize the long-running parent delta after each stage. Rejected because partial synchronization could promote not-yet-implemented program requirements into living current truth; independently archived child specs provide the durable per-stage truth instead.
+未来若重新提出可观测性、工程规范或 CI 统一，必须从当时源码、运行时和产品边界重新采集证据，创建独立 OpenSpec，并重新取得用户批准。本父变更不提供隐含授权、固定技术不变量或阶段捷径。
 
-### 2. Follow OpenSpec for generic lifecycle behavior
+### 3. 文档治理保持独立验收
 
-OpenSpec owns artifact dependencies, its native status/validate/instructions/archive commands, the upstream agent apply/verify workflows, and generic recovery semantics. The repository adds checks only for explicit approval validity, documentation authority, deploy/queue safety, and telemetry isolation.
+`rebuild-documentation-governance` 继续按自身任务完成最终语义审计。只有用户看到最终树、验证和交付状态后明确验收，才能执行其归档。父变更的范围缩减不替代子变更验收。
 
-**Rationale:** A parallel state machine would duplicate upstream behavior and drift as OpenSpec evolves.
+### 4. 保留当前、目标与历史的区别
 
-**Alternative considered:** Implement a custom harness lifecycle. Rejected as unnecessary and contrary to the requested OpenSpec adoption.
+- 当前：源码、schema、测试、已维护文档和必要运行时证据。
+- 目标：当前用户已批准、仍在活动 OpenSpec 范围内的行为。
+- 历史：Git 历史、旧父计划文本和已归档证据。
 
-### 3. Preserve three evidence categories
+被取消的未来阶段转为历史意图，不得出现在当前文档或现行 specs 中。
 
-- Current behavior: source, schemas, tests, and required runtime evidence.
-- Approved target: active, user-approved OpenSpec changes.
-- Historical intent: Git history and original artifacts.
+### 5. 清单只记录，不处置
 
-No category silently overrides another. A conflict becomes an explicit evidence or decision state.
+处置清单记录 Git 工作树、Git 暂存快照、个人脚本、运行资产和已知路径漂移，并为后续任务提供 `keep`、`review` 或 `remove-later` 建议。建议不是删除授权；任何实际处置必须重新核对精确目标并取得相应授权。
 
-**Rationale:** The repository contains old designs that are implemented, modified, partial, abandoned, or never built. Collapsing these states would corrupt living specs.
+### 6. 仓库安全继续独立生效
 
-### 4. Apply stages serially
+OpenSpec 不替代 `AGENTS.md` 与运行手册。任何未来 Git、构建、数据库、服务、队列或部署工作仍必须遵守其当前权威流程。纯文档收口不触发生产部署。
 
-The order is documentation governance, observability, engineering standards, then final documentation/CI convergence. Each stage produces a trusted baseline consumed by the next.
+## 数据流
 
-**Rationale:** Observability and architectural rules need reliable domain and ownership maps; final documentation must describe the implementation that actually landed.
+1. 审查并验证现有 runbook 演练状态修正。
+2. 完成 `$docs-audit full record` 的限定证据与独立复核，关闭子任务 `13.7`。
+3. 记录只读处置清单，不执行任何建议动作。
+4. 运行文档、OpenSpec、Skill、测试和 Git 范围验证。
+5. 提交并推送纯文档收口；不部署。
+6. 用户审查最终结果后，另行决定子变更和父变更归档。
 
-**Alternative considered:** Run all tracks in parallel. Rejected because cross-track vocabulary, module ownership, telemetry naming, and rule boundaries would diverge before the knowledge model stabilizes.
+## 错误处理
 
-### 5. Require stage-specific approval
+- 任何处置对象边界不清时只记录 `review`，不得猜测或清理。
+- 验证失败时保持任务未完成，修复只限当前授权文档范围。
+- 用户尚未验收时不得归档子变更或父变更。
+- 未来工作不得从已取消阶段继承批准。
 
-Approval of the brainstormed program authorizes drafting the parent and first child artifacts; it does not authorize apply. Every child, including documentation governance, requires explicit user review of its exact proposal, spec, design, and tasks before apply. The approval record binds the change identifier, artifact content digests, approval scope, and decision reference. Any post-approval artifact content change invalidates the record and requires renewed approval.
+## 验证
 
-Planning approval and stage acceptance are distinct repository-specific gates around the upstream OpenSpec lifecycle. Acceptance is recorded only after the approved revision is applied, required verification evidence is presented, and the user explicitly accepts the stage. These gates do not introduce a competing generic change state machine.
-
-**Rationale:** The user explicitly requires design confirmation before each later phase, and the relevant baseline will change after each accepted stage.
-
-### 6. Use hard-cutover enforcement per stage
-
-Before implementation, each child enumerates its governed scope, violation inventory, non-writing proof command, and blocking surface. The stage clears all violations within that finite scope and then enables blocking enforcement. A CI workflow may run in trial mode while cleanup proceeds, but the stage is not accepted until the check is actually required. There is no permanent baseline allowance, ratchet exception, or warning-only mode.
-
-**Rationale:** The requested target is one coherent standard across the whole repository rather than a long-lived two-tier system.
-
-**Trade-off:** Upfront cleanup is larger and stage completion takes longer.
-
-### 7. Fix observability invariants now, defer implementation choices
-
-The future system must be self-hosted and implementation-identical locally and on `mypc`: the same versioned instrumentation, telemetry schema, stack components, and query semantics are used, with only environment-specific configuration. Local and production reads and writes are isolated, and every worktree receives its own ports, collector, telemetry stores, service identifiers, and teardown lifecycle. The concrete products, deployment packaging, sampling, retention, dashboards, and budgets remain child-stage decisions.
-
-**Rationale:** These are program constraints, not vendor choices. They ensure local agent validation can prove production behavior without contaminating production data.
-
-## Program Data Flow
-
-1. Documentation-architecture discovery compares repository-specific target trees and produces an explicitly approved information architecture.
-2. The documentation-governance child is then fully specified from that approved structure and, when applied, reconstructs verified current documentation, deletes obsolete sources after extraction, preserves recovery through Git and OpenSpec archives, and enables blocking documentation checks.
-3. The observability stage reads that ownership map, proposes a fresh design, and produces agent-queryable runtime evidence and performance baselines.
-4. The engineering-standards stage uses the knowledge map and telemetry evidence to define repository-wide automated and manual rules.
-5. Final convergence updates maintained docs and living specs from implemented reality, validates all changes, and activates unified blocking CI.
-
-## Error Handling
-
-- Generic change and recovery behavior follows the installed OpenSpec version.
-- An unmet stage dependency blocks the later child change before apply.
-- Any artifact content digest change invalidates repository-specific approval.
-- Evidence conflicts remain explicit and do not get resolved by copying one source into another.
-- Runtime-affecting work continues to obey existing queue, lock, build, restart, and verification rules.
-- A defect discovered after archive is handled by a corrective change rather than rewriting history.
-
-## Verification
-
-- `openspec validate --all --strict --no-interactive` must pass for program artifacts.
-- The planning artifacts are bootstrap-validated with `@fission-ai/openspec` 1.5.0 through `npx`; phase 1 replaces this bootstrap command with a repository-pinned, reproducible integration before apply.
-- Program rules must have scenario coverage for ordering, approval, evidence boundaries, hard cutover, lifecycle delegation, and telemetry isolation.
-- Each child change defines its own executable acceptance suite before apply.
-- The parent change cannot archive until every required child stage is accepted and current documentation reflects the implemented system.
-
-## Risks / Trade-offs
-
-- **Long time to first full harness** → Keep child stages independently reviewable and commit in small verified batches.
-- **OpenSpec upstream changes** → Pin the CLI/integration during phase 1 and update it through an explicit change.
-- **Parent/child relationship is repository-specific** → Add a narrow validation rule instead of replacing OpenSpec's lifecycle.
-- **Hard cutover exposes large legacy debt** → Inventory and size the debt before implementation, but do not preserve permanent exceptions.
-- **Later stages are underspecified today** → Treat their technology choices as deliberately deferred stage-gate decisions, not omissions in current specs.
+- `npm run docs:check -- --mode full --base origin/main`
+- `node --import tsx --test tests/test-agent-policy-runbooks.test.ts tests/test-script-maintenance-doc.test.ts`
+- `npm run openspec:validate`
+- `npm run skills:check -- .codex/skills/docs-audit`
+- `git diff --check`
 
 ## Migration Plan
 
-1. Commit the parent program artifacts after strict bootstrap validation with `@fission-ai/openspec` 1.5.0.
-2. Compare repository-specific documentation structures and obtain explicit user approval of the target information architecture.
-3. Create `rebuild-documentation-governance` and write its complete proposal, specs, design, and tasks from that approved structure.
-4. Obtain user review of the exact written OpenSpec artifact revisions and record their approval.
-5. Complete and approve the documentation-governance child `tasks.md`; do not create a parallel ExecPlan or detailed implementation-plan file.
-6. Apply and accept documentation governance.
-7. Propose each later child change at its approved stage gate.
-8. Verify and archive the parent only after final convergence.
+1. 收敛文档治理最终审计并提交用户验收。
+2. 更新父工件和仓库 OpenSpec 指南，使取消范围不再表现为已批准目标。
+3. 保存只读处置清单。
+4. 用户验收后按 OpenSpec 原生命令分别归档已完成变更。
 
-Rollback for this planning-only batch is removal of the newly introduced OpenSpec artifacts before they are adopted; it does not require runtime deployment or service changes.
+本计划不包含运行时迁移，因此没有生产回滚动作。文档缺陷通过后续纠正性变更处理，不改写已归档历史。
 
-## Documentation Impact
+## Risks / Trade-offs
 
-This parent change introduces OpenSpec as the future planning authority. It does not yet rewrite `AGENTS.md` or `docs/**`; those changes belong to the approved documentation-governance child after the target information architecture is co-designed.
+- **取消后失去原长期路线连续性**：Git 历史保留原工件；未来变更重新基于真实状态设计。
+- **保留 Hook 可能继续造成概念噪声**：本次不修改它，只在清单中标为后续复核；不得称为生产可观测性。
+- **清单可能随运行状态漂移**：文件注明采集日期，并要求实际处置前重新核对。
 
-## Deferred Stage Decisions
+## 文档影响
 
-- Documentation directory structure: approved with the user on 2026-07-10 and formalized by `rebuild-documentation-governance`; later artifact edits still require exact-revision review before apply.
-- Observability technologies and budgets: resolved by the observability stage proposal after documentation governance is accepted.
-- Engineering tools and thresholds: resolved by the engineering-standards stage proposal after observability is accepted.
-- Final documentation and unified CI cutover details: resolved by the final convergence proposal.
+更新本父变更、`openspec/config.yaml` 和 `openspec/README.md`。当前产品、架构和运行手册不因本次范围缩减改写。

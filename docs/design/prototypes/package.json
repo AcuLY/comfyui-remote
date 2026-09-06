@@ -1,0 +1,23 @@
+{
+  "name": "comfyui-manager-design-prototypes",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5178 --strictPort",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 5178 --strictPort"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "5.3.0",
+    "@fontsource-variable/noto-sans-sc": "5.3.0",
+    "@fontsource/ibm-plex-mono": "5.3.0",
+    "primeicons": "7.0.0",
+    "primereact": "10.9.9",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "vite": "8.2.2"
+  }
+}

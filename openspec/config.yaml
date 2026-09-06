@@ -1,44 +1,42 @@
 schema: spec-driven
 
 context: |
-  Repository: comfyui-remote, a private Next.js control plane for two peer work modes:
-  ComfyUI generation and LoRA Training. Models and settings are shared resources.
+  仓库：comfyui-remote。它是私有 Next.js 控制平面，包含两个平级工作模式：
+  ComfyUI Generation 与 LoRA Training；模型与设置是共享资源。
 
-  Required workflow entrypoint: AGENTS.md. Read agent-rules/git.md and
-  agent-rules/deploy/index.md before every task, then follow triggered rules.
+  普通开发工作流的唯一入口是 AGENTS.md。开始任务时先阅读它，再按其中的
+  trigger 路由进入相应 docs/runbooks/** 操作手册。
 
-  Knowledge boundaries: tracked current docs, generated artifacts, OpenSpec living specs,
-  active changes, prototypes, and historical records must remain distinguishable. Files in
-  .tmp are scratch evidence only and never current truth.
+  知识边界：已跟踪的当前文档、生成产物、OpenSpec 现行规范、活跃变更、
+  原型和历史记录必须保持可区分。.tmp 中的内容只是临时证据，绝不是当前事实。
 
-  Evidence model: current behavior is established from source, schemas, tests, and required
-  runtime verification; target behavior comes from user-approved OpenSpec changes; historical
-  intent comes from Git history and original design artifacts. Keep these categories separate.
+  证据模型：当前行为来自源码、schema、测试和必需的运行时验证；目标行为来自
+  用户已批准的 OpenSpec 变更；历史意图来自 Git 历史和原始设计材料。不得混淆这些类别。
 
-  Harness program order: documentation governance and verified historical migration first;
-  observability second; engineering standards third; final documentation convergence and
-  unified blocking CI last. Later stages require fresh user-approved designs before apply.
+  当前 Harness 范围只收口已落地的 OpenSpec、文档治理、证据分类和仓库运维安全基础。
+  2026-08-26 已取消尚未实施的可观测性、工程规范和统一 CI 父计划范围；未来若重新提出，
+  必须基于当时仓库基线另立 OpenSpec 并重新取得用户批准。
 
-  Preserve unrelated worktree changes. Do not deploy documentation-only changes. Training is
-  a peer work mode, not a generation submodule or demo.
+  保留无关工作树改动。纯文档变更不部署。Training 是平级工作模式，
+  不是 Generation 的子模块或演示功能。
 
 rules:
   proposal:
-    - State non-goals and related parent or child changes.
-    - Separate current problems, target capabilities, and historical migration work.
-    - Name affected current-truth docs, generated artifacts, and operational boundaries.
-    - Do not treat approval of the harness program as approval to apply later stage changes.
+    - 明确列出非目标以及相关父变更或子变更。
+    - 区分当前问题、目标能力和历史迁移工作。
+    - 指明受影响的当前权威文档、生成产物和操作边界。
+    - 不得把历史 Harness 总计划或已取消范围视为未来变更的实施批准。
   specs:
-    - Use SHALL or MUST requirements with at least one concrete Scenario per requirement.
-    - Specify observable behavior and acceptance contracts, not implementation preferences.
-    - Never describe unimplemented or unverified behavior as current truth.
-    - Preserve the distinction between current implementation, approved target, and history.
+    - Requirement 使用 SHALL 或 MUST，并且每项至少包含一个具体 Scenario。
+    - 规定可观察行为和验收合同，不规定实现偏好。
+    - 绝不能把未实现或未验证的行为描述为当前事实。
+    - 保持当前实现、已批准目标和历史记录之间的区别。
   design:
-    - Include context, goals, non-goals, decisions, alternatives, data flow, error handling, verification, rollback, and documentation impact.
-    - Identify evidence sources and every point that requires explicit user judgment.
-    - Keep later-stage technical choices open until that stage receives separate approval.
+    - 包含上下文、目标、非目标、决策、替代方案、数据流、错误处理、验证、回滚和文档影响。
+    - 标明证据来源，以及每个需要用户明确判断的决策点。
+    - 对任何未来能力保持技术选择开放，直到对应独立变更获得批准。
   tasks:
-    - Use small, ordered, independently verifiable task groups.
-    - Include validation, documentation synchronization, and OpenSpec verification tasks.
-    - Do not schedule implementation for an unapproved later stage.
-    - Preserve repository deployment, queue, lock, and Git boundaries.
+    - 使用范围小、有顺序且可独立验证的任务组。
+    - 包含验证、文档同步和 OpenSpec 校验任务。
+    - 不得安排已取消或尚未批准的未来能力实施。
+    - 保留仓库既有的部署、队列、锁和 Git 边界。

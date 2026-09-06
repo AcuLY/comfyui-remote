@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-UI/UX Pro Max Search - BM25 search engine for UI/UX style guides
-Usage: python search.py "<query>" [--domain <domain>] [--stack <stack>] [--max-results 3]
-       python search.py "<query>" --design-system [-p "Project Name"]
-       python search.py "<query>" --design-system --persist [-p "Project Name"] [--page "dashboard"]
+UI/UX Pro Max 搜索：用于检索 UI/UX 风格指南的 BM25 搜索引擎。
+用法：python search.py "<查询>" [--domain <领域>] [--stack <技术栈>] [--max-results 3]
+      python search.py "<查询>" --design-system [-p "项目名称"]
+      python search.py "<查询>" --design-system --persist [-p "项目名称"] [--page "dashboard"]
 
-Domains: style, prompt, color, chart, landing, product, ux, typography
-Stacks: html-tailwind, react, nextjs
+领域：style、color、chart、landing、product、ux、typography、icons、react、web
+技术栈：以 AVAILABLE_STACKS 为准。
 
-Persistence (Master + Overrides pattern):
-  --persist    Save design system to design-system/MASTER.md
-  --page       Also create a page-specific override file in design-system/pages/
+持久化（主文件与页面覆盖模式）：
+  --persist    保存到 design-system/<project-slug>/MASTER.md
+  --page       同时创建 design-system/<project-slug>/pages/<page-slug>.md
 """
 
 import argparse
@@ -25,6 +25,13 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 if sys.stderr.encoding and sys.stderr.encoding.lower() != 'utf-8':
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+
+
+class ChineseHelpFormatter(argparse.HelpFormatter):
+    """将 argparse 的固定用法前缀显示为中文。"""
+
+    def _format_usage(self, *args, **kwargs):
+        return super()._format_usage(*args, **kwargs).replace("usage: ", "用法：", 1)
 
 
 def format_output(result):
@@ -54,20 +61,27 @@ def format_output(result):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="UI Pro Max Search")
-    parser.add_argument("query", help="Search query")
-    parser.add_argument("--domain", "-d", choices=list(CSV_CONFIG.keys()), help="Search domain")
-    parser.add_argument("--stack", "-s", choices=AVAILABLE_STACKS, help="Stack-specific search (html-tailwind, react, nextjs)")
-    parser.add_argument("--max-results", "-n", type=int, default=MAX_RESULTS, help="Max results (default: 3)")
-    parser.add_argument("--json", action="store_true", help="Output as JSON")
+    parser = argparse.ArgumentParser(
+        description="搜索 UI/UX 指南或生成设计系统建议",
+        add_help=False,
+        formatter_class=ChineseHelpFormatter,
+    )
+    parser._positionals.title = "位置参数"
+    parser._optionals.title = "选项"
+    parser.add_argument("-h", "--help", action="help", help="显示此帮助信息并退出")
+    parser.add_argument("query", help="搜索查询")
+    parser.add_argument("--domain", "-d", choices=list(CSV_CONFIG.keys()), help="搜索领域")
+    parser.add_argument("--stack", "-s", choices=AVAILABLE_STACKS, help="按技术栈搜索")
+    parser.add_argument("--max-results", "-n", type=int, default=MAX_RESULTS, help="最大结果数（默认：3）")
+    parser.add_argument("--json", action="store_true", help="以 JSON 格式输出")
     # Design system generation
-    parser.add_argument("--design-system", "-ds", action="store_true", help="Generate complete design system recommendation")
-    parser.add_argument("--project-name", "-p", type=str, default=None, help="Project name for design system output")
-    parser.add_argument("--format", "-f", choices=["ascii", "markdown"], default="ascii", help="Output format for design system")
+    parser.add_argument("--design-system", "-ds", action="store_true", help="生成完整的设计系统建议")
+    parser.add_argument("--project-name", "-p", type=str, default=None, help="设计系统输出所用的项目名称")
+    parser.add_argument("--format", "-f", choices=["ascii", "markdown"], default="ascii", help="设计系统的输出格式")
     # Persistence (Master + Overrides pattern)
-    parser.add_argument("--persist", action="store_true", help="Save design system to design-system/MASTER.md (creates hierarchical structure)")
-    parser.add_argument("--page", type=str, default=None, help="Create page-specific override file in design-system/pages/")
-    parser.add_argument("--output-dir", "-o", type=str, default=None, help="Output directory for persisted files (default: current directory)")
+    parser.add_argument("--persist", action="store_true", help="保存到 design-system/<project-slug>/MASTER.md")
+    parser.add_argument("--page", type=str, default=None, help="创建 design-system/<project-slug>/pages/<page-slug>.md 页面覆盖文件")
+    parser.add_argument("--output-dir", "-o", type=str, default=None, help="持久化文件的输出目录（默认：当前目录）")
 
     args = parser.parse_args()
 

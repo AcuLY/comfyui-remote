@@ -1,0 +1,39 @@
+{
+  "events_total": 3,
+  "paths": [
+    {
+      "access_total": 1,
+      "operations": {
+        "search": 1
+      },
+      "path": "docs",
+      "sessions_total": 1,
+      "tools": {
+        "Bash": 1
+      }
+    },
+    {
+      "access_total": 1,
+      "operations": {
+        "read": 1
+      },
+      "path": "docs/guide.md",
+      "sessions_total": 1,
+      "tools": {
+        "Bash": 1
+      }
+    },
+    {
+      "access_total": 1,
+      "operations": {
+        "write": 1
+      },
+      "path": "notes.txt",
+      "sessions_total": 1,
+      "tools": {
+        "apply_patch": 1
+      }
+    }
+  ],
+  "schema_version": 1
+}

@@ -700,7 +700,7 @@ export function verifyPhase1Evaluation(
 }
 
 export function getDefaultPhase1OutputDir(projectRoot = process.cwd()): string {
-  return path.join(projectRoot, "docs", "plans", "auto-review-analysis");
+  return path.join(projectRoot, "reports", "quality", "auto-review-analysis");
 }
 
 export function getDefaultPhase1LabeledImagesPath(projectRoot = process.cwd()): string {
