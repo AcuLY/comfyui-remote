@@ -35,7 +35,7 @@ const colorSpecs = [
   ['canvas', '页面底色', '承托整页内容'], ['surface', '主要表面', '表单与编辑区域'],
   ['surface-secondary', '次级表面', '工具栏和分组'], ['border-control', '控件边界', '清楚标示输入区域'],
   ['text', '主要文字', '名称、内容、操作'], ['text-secondary', '次要文字', '说明与补充信息'],
-  ['image', '图像生产', '青绿色模块强调'], ['training', 'LoRA 训练', '粉色模块强调'],
+  ['image', '图像生产', '青绿色模块强调'], ['training', 'LoRA 训练', '品红色模块强调'],
 ];
 const statusSpecs = [['success', '已完成', 'pi-check-circle'], ['info', '运行中', 'pi-play-circle'], ['warning', '已暂停', 'pi-pause-circle'], ['danger', '失败', 'pi-exclamation-circle']];
 const typeSpecs = [
@@ -226,7 +226,7 @@ function App() {
         </Section>
 
         <Section id="decisions" title="这轮先确认这些" description="方向已有依据，具体数值仍可调整。确认基础后，再扩展导航外壳和业务组合。">
-          <div className="decision-table"><div><span>F-01～F-03</span><strong>主题、模块色与语义色</strong><p>明暗同等支持；青绿与粉色保持同等权重。</p></div><div><span>F-04～F-07</span><strong>字体、间距与基础尺寸</strong><p>14px 正文、4px 间距基准、8px / 12px 圆角。</p></div><div><span>F-08～F-12</span><strong>控件与状态</strong><p>操作层级清晰；字段、焦点、加载与错误保持一致。</p></div><div><span>F-13～F-14</span><strong>主题操作与交互适配</strong><p>实时跟随系统；小屏重排，触摸目标至少 44px。</p></div></div>
+          <div className="decision-table"><div><span>F-01～F-03</span><strong>主题、模块色与语义色</strong><p>明暗同等支持；青绿与品红色保持同等权重。</p></div><div><span>F-04～F-07</span><strong>字体、间距与基础尺寸</strong><p>14px 正文、4px 间距基准、8px / 12px 圆角。</p></div><div><span>F-08～F-12</span><strong>控件与状态</strong><p>操作层级清晰；字段、焦点、加载与错误保持一致。</p></div><div><span>F-13～F-14</span><strong>主题操作与交互适配</strong><p>实时跟随系统；小屏重排，触摸目标至少 44px。</p></div></div>
           <div className="next-step"><p>你可以按编号提出调整，例如“F-04 字体换成另一种”或“F-07 控件再紧凑一点”。</p><a className="text-link" href="./README.md">打开完整设计清单<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
         </Section>
         <footer className="page-footer"><span>ComfyUI Manager · 基础设计原型</span><span>仅示例数据 · 尚未接入业务接口</span></footer>

@@ -5,7 +5,7 @@ button, input, textarea, select { font: inherit; }
 button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
 ::selection { background: var(--selection); color: var(--text); }
 input, textarea { caret-color: var(--accent); }
-:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; box-shadow: none; }
 a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 h1, h2, h3, p { margin: 0; }
 h1, h2, h3 { font-weight: 600; text-wrap: balance; }

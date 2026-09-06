@@ -5,7 +5,7 @@
   "extensions": {
     "colorMeta": {
       "image": { "role": "primary", "displayName": "图像生产青绿" },
-      "training": { "role": "primary", "displayName": "LoRA 训练品红至粉色" },
+      "training": { "role": "primary", "displayName": "LoRA 训练品红色" },
       "canvas": { "role": "neutral", "displayName": "页面底色" },
       "surface": { "role": "neutral", "displayName": "主要表面" },
       "surface-secondary": { "role": "neutral", "displayName": "次级表面" },
@@ -88,7 +88,7 @@
   ],
   "narrative": {
     "northStar": "清晰可操作的创作工作台（HTML 基础原型候选）",
-    "overview": "仅适用于 docs/design/prototypes/，所有具体设计仍待用户审核，不改变根 DESIGN.md、PRODUCT.md 或生产代码。柔和中性表面承托内容，青绿与粉色表达两个对等模块，独立状态语义解释结果；用真实控件比较选择，再组合业务页面。原始颜色、字体、间距与圆角以 src/tokens.css 为唯一候选值源；正文记录在 design-foundations.md，布局与组件实现以 src/prototype.css 和 src/main.jsx 为准。此 sidecar 为局部扩展记录，不宣称根 Impeccable 面板会自动加载它；预览宿主需先加载原型 tokens.css，并在 html 上设置主题、模块及密度上下文。",
+    "overview": "仅适用于 docs/design/prototypes/，所有具体设计仍待用户审核，不改变根 DESIGN.md、PRODUCT.md 或生产代码。柔和中性表面承托内容，青绿与品红色表达两个对等模块，独立状态语义解释结果；用真实控件比较选择，再组合业务页面。原始颜色、字体、间距与圆角以 src/tokens.css 为唯一候选值源；正文记录在 design-foundations.md，布局与组件实现以 src/prototype.css 和 src/main.jsx 为准。此 sidecar 为局部扩展记录，不宣称根 Impeccable 面板会自动加载它；预览宿主需先加载原型 tokens.css，并在 html 上设置主题、模块及密度上下文。",
     "keyCharacteristics": ["具体设计待用户审核", "中性表面与对等模块色", "独立状态语义", "自托管中英文字体与参数等宽字体", "44px 移动触摸保障"],
     "rules": [
       { "name": "单一色值来源", "body": "src/tokens.css 同时供页面实际样式及色样读数使用；本文与扩展 sidecar 只描述角色，不维护第二份完整色值表。", "section": "colors" },
