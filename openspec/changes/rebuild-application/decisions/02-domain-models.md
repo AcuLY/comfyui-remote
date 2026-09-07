@@ -52,7 +52,7 @@ Shared 数据模型只保存真正跨模块的配置、资源索引和平台记�
 | `SD-06` | `RevisionEntry` | SQLite 通用记录 | 使用 RV-01～RV-10 的单快照模型；shared 负责记录、索引、分页和路由，模块处理器负责捕获、校验、摘要与恢复 |
 | `SD-07` | `AuditLog` | SQLite 追加记录 | 只保存操作者、动作、目标、结果和时间等最小审计信息；涉及业务对象时，目标使用 module/resourceType/resourceId 完整身份以区分生产/训练、公共小节/具体配置/任务等。应用级操作不虚构业务对象；不保存完整业务快照、Prompt、图片、Token 或秘密，与 RevisionEntry 独立 |
 | `SD-08` | 非数据库状态 | 环境变量 / 浏览器 / 文件 | AUTH_TOKEN、APP_DATA_ROOT、EXPORT_ROOT 和 Codex auth 文件指针来自环境变量；主题、SFW、导航偏好在浏览器；结构化日志写轮转文件，不建立数据库副本或 fallback |
-| `SD-09` | GPU 协调 | 无独立表 | 删除 GpuTaskLock。协调服务通过图像 Task/Attempt 的 submitted/running/提交 claim 和 TrainingRun pending/running 状态，在同一 SQLite 事务内决定提交或训练启动；状态记录本身是唯一真相 |
+| `SD-09` | GPU 协调 | shared / 无独立表 | 删除 GpuTaskLock。协调服务通过图片 Task/Attempt 的 submitted/running/提交 claim 和 TrainingRun pending/running 状态，在同一 SQLite 事务内决定提交或训练启动；状态记录本身是唯一真相。单 compute target、单 GPU、训练优先及既有互斥/恢复规则保持；未来新增执行类型必须明确接入占用和协调边界，本版不实现视频调度，也不新增万能任务或锁表 |
 
 ## A10. 生产公共层与图片最终领域模型
 

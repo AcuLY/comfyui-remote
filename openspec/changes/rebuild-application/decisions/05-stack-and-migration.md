@@ -16,7 +16,7 @@
 | `TS-04` | SQLite 访问 | Drizzle ORM + better-sqlite3，使用一套 SQLite schema 和迁移链；新版移除 Prisma schema/client 生成依赖及所有 PostgreSQL 专属依赖、配置和构建分支。旧 SQLite 数据仍需按 INFRA-011 在副本上验证一次性迁移 |
 | `TS-05` | 开发与构建 | 开发时 Vite 和 Fastify 分别运行并独立更新，Vite 代理 API；前后端分别构建和类型检查，生产运行编译后的后端与前端静态文件。框架插件按兼容范围选版本并锁定，不盲目拼接各包 latest |
 | `TS-06` | 同源交付与认证 | 生产由 Fastify 托管 API、前端静态产物和深链页面响应，使用同一域名/端口。保留 AUTH_TOKEN、浏览器 Cookie 和跨网络 Bearer 认证；应用页面、受保护资源、API 和文件下载在服务端执行门禁，登录本身所需页面/资源有明确边界。SPA 回退只服务页面路径，不把 API/文件错误改成 index.html |
-| `TS-07` | 后台执行 | 按已确认规则全新实现图像调度/恢复、批量打码和 GPU 恢复检查，并接入 Fastify 服务生命周期；不迁入旧 instrumentation 或调度代码。训练素材与 LoRA 训练轻量执行器保持已确认职责，LoRA 训练调用作为新版依赖安装的 sd-scripts + Accelerate |
+| `TS-07` | 后台执行 | production 内的公共 ComfyUI 技术服务负责通信、队列同步、文件传输和受控进程操作；图片适配器负责图片 Workflow 校验/注入、输出识别和图片结果落盘，图片调度/恢复与批量打码保持既定规则。上述生产执行能力及 shared GPU 协调/恢复检查按职责接入 Fastify 生命周期，不迁入旧 instrumentation 或调度代码。训练素材与 LoRA 训练轻量执行器保持已确认职责，LoRA 训练调用 sd-scripts + Accelerate；本版不实现视频调度或通用执行平台 |
 | `TS-08` | 性能与验证 | 实施时分别测前端冷启动/热更新/生产构建、后端启动/编译和代表性页面加载，便于定位具体耗时来源；继续采用已确认的慢事件及任务阶段耗时协议。CPU 密集打码等保持在已有独立执行链，避免阻塞 API；不因框架替换增加完整可观测性平台 |
 
 官方接入依据：[PrimeReact v10 安装](https://v10.primereact.org/installation/)、[PrimeReact v10 主题](https://v10.primereact.org/theming/)、[Fastify 技术原则](https://fastify.dev/docs/latest/Reference/Principles/)、[Vite](https://vite.dev/guide/why)、[Drizzle](https://orm.drizzle.team/docs/overview)。

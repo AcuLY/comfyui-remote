@@ -25,6 +25,6 @@
 - [x] 4.1 将已逐组确认的 production/training 标识、公共生产项目/模板、图片模型及 Training 前缀同步到设计定义、API 和功能决策。
 - [x] 4.2 同步项目级操作范围、前端小节组织与本地 Figma 设计输入；不增加视频命名、页面或开发任务。
 - [x] 4.3 核对文档链接、既有决策编号覆盖、已确认名称和保留的历史来源，验证本次 OpenSpec 变更；完整文档门禁的环境限制见 [同步验证记录](evidence/2026-09-07-confirmed-design-sync.md)。
-- [ ] 4.4 继续按 [待确认事项](decisions/09-forward-compatibility.md)逐组讨论；每轮确认后先更新文档，再进入下一组。
+- [x] 4.4 完成本轮逐组讨论，每轮确认后写回文档；24 个审视条目已按确认、替代或未来范围收口，见 [处理索引](evidence/2026-09-07-forward-compatibility-closure.md)。视频具体行为及实现期 Schema 细化不阻止恢复当前 UI 设计。
 
 本节是文档与设计输入任务，不表示前后端实现或 Figma 页面已批准。

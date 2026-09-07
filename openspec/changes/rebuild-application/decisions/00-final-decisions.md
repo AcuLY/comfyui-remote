@@ -19,7 +19,7 @@
 - 生产与训练两个模块存在项目、运行、预制、模板、产物等共同概念，但已按 SI-01～SI-10 明确区分“真正共享资源”与“名称相同但生命周期不同的模块聚合”：不建立跨生产/训练的 shared Project、万能 Task、跨模块 Preset/Template 或全局图片库。生产模块内部的公共 Project/Template 不改变这一模块间边界；同一生产项目下的图片结果、文件资产与未来其他类型素材仍有明确身份和生命周期。
 - 模型资源、认证、媒体投递、设置、通知和其他共同依赖必须由 shared 平台提供稳定接口；两个业务模块以对等消费者身份依赖它们。
 - LoRA Training checkpoint 输出目录与模型模块管理的 ComfyUI LoRA 模型目录必须在文件路径和领域身份上彻底隔离。TrainingProject 只拥有训练输出目录中的 checkpoint；用户可将任意 checkpoint 单向复制到 ComfyUI LoRA 模型目录。复制后的模型是独立资源，不与 TrainingProject、TrainingRun、Checkpoint 或源文件建立外键、共享 Artifact 身份或反向同步。文档、API 和 UI 只使用实际领域名称，不采用 A/B 等临时简称。
-- 新版明确假设整个应用只使用一个物理 GPU。shared 平台只维护一个可配置为本机或远程机器的 compute target 及全应用 GPU 占用事实；图像生产的 ComfyUI adapter 与 LoRA 训练 runner adapter 都使用该目标，而不是把训练从属于 ComfyUI。
+- 新版明确假设整个应用只使用一个物理 GPU。shared 平台只维护一个可配置为本机或远程机器的 compute target 及全应用 GPU 占用事实；生产公共 ComfyUI 技术服务与 LoRA 训练 runner adapter 都使用该目标，训练不从属于 ComfyUI。生产公共层负责通信、队列同步、文件传输和受控进程操作；图片适配器负责图片 Workflow 校验/注入、输出识别及图片结果落盘。GPU 协调保持 shared 归属、训练优先和既有互斥/恢复规则，本版不增加视频调度。
 - 当唯一 compute target 位于远程机器时，ComfyUI 与 LoRA 训练 runner 都在该远程目标执行；连接、文件路径和进程控制仍通过各自 adapter 处理，但不设计多 target、多 GPU 或并行 TrainingRun 调度。
 - GPU 互斥以任务状态而不是进程状态判断：ComfyUI 空闲运行不占用调度权，也不要求在训练前停止；只有已提交到 ComfyUI 或正在运行的图像生产任务会阻止训练启动，未提交和已暂停任务不阻止训练。
 - GPU 可用性在实际 compute target 上独立于 ComfyUI HTTP 状态检测。检测到 GPU 从可用变为不可用时停止新任务提交并持久化“ComfyUI 需要在 GPU 恢复后重启”；GPU 恢复后只执行一次受控 ComfyUI restart，健康检查通过才恢复调度，失败后停止自动尝试并提供手工重试。
@@ -68,4 +68,4 @@
 - 训练素材 Task 删除与被 Section、参考图、其他输入或 RunSample 引用的候选之间的处置。必须遵守已确认引用保护，不能套用图像生产的全部字节删除规则。
 - PrimeReact v10 的图片缩放、跨区域多选拖放、复杂列表能力按页面实际需要核对；确有缺口再组合或补充。
 - 数据映射中的真实缺失/冲突项在只读数据盘点后列出，不能伪造快照或静默遗漏。
-- 本轮前向兼容讨论的剩余事项与当前不实施范围见 [待确认清单](09-forward-compatibility.md#本版排除与尚未确认事项)；未确认建议不进入正式定义。
+- 本轮前向兼容讨论已收口；视频范围与实现期细化见 [后续事项](09-forward-compatibility.md#本版排除与尚未确认事项)，原 24 个审视条目的处理见 [收口记录](../evidence/2026-09-07-forward-compatibility-closure.md)。未来视频细节不作为当前图片功能与 UI 设计的前置确认项。

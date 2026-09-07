@@ -31,6 +31,8 @@
 
 ## A3. 生产模块的 ComfyUI Adapter、图片 Workflow 与任务提交设置
 
+按 FC-17，ComfyUI 通信、队列同步、文件传输及受控进程操作属于 production 内的公共技术服务；连接和进程设置仍归生产模块。图片 Workflow 校验、参数注入、输出识别与图片结果落盘归图片专属适配器。shared 平台负责 GPU 协调与既有恢复决策，调用生产公共进程服务；本版不增加视频执行类型或设置。
+
 | ID | 设置项 | 所有权 / 持久化 | 决策 |
 | --- | --- | --- | --- |
 | `IP-01` | ComfyUI API | production / SQLite | 本机模式配置完整 API URL；SSH 模式配置远程 API Host/Port，本地转发 URL 由 Shared Target 自动生成 |
@@ -38,9 +40,9 @@
 | `IP-03` | 进程命令 | production / SQLite | 配置可选 start、stop 命令，本机模式另配命令工作目录；不配置独立 restart。自动 GPU 恢复和手工 restart 都串行执行 stop→确认停止→start→等待健康；缺少任一命令时只提示手工处理 |
 | `IP-04` | Workflow 文件目录 | production / 文件系统 | 固定 `<APP_DATA_ROOT>/production/workflows/image/`，仅存放生产模块的图片 Workflow；当前确认目录设计，实际文件转换在新版迁移时执行。用户通过机器文件系统添加/更新 JSON 后刷新扫描，不提供浏览器上传或在线编辑 |
 | `IP-05` | 当前 Workflow | production / SQLite | 为生产模块的图片生成能力，从扫描且验证通过的图片 Workflow 中选择唯一当前版本；切换只影响之后创建的 ProductionImageTask，历史图片任务使用自身 Workflow 快照；不把该配置扩张为所有未来小节类型的统一 Workflow |
-| `IP-06` | Workflow 验证 | production | 扫描时解析 JSON 并检查图片生成注入协议所需节点；失败文件显示错误且不能激活，原始/调试图片 Workflow 下载保持不变 |
+| `IP-06` | Workflow 验证 | production 的图片适配器 | 扫描时由图片适配器解析 JSON 并检查图片生成注入协议所需节点；失败文件显示错误且不能激活，原始/调试图片 Workflow 下载保持不变。图片节点与参数语义不进入公共 ComfyUI 通信服务 |
 | `IP-07` | 图像任务提交 | production 固定协议 | 不限制 ComfyUI 队列中 submitted 任务数量；条件允许时按应用顺序把所有 unsubmitted 任务提交到 ComfyUI 自有队列。仅对 HTTP 提交请求做内部有界并发/批处理，不能作为业务并发上限；TrainingRun pending 后停止继续提交，已经 submitted/running 的任务仍按既定互斥规则处理 |
-| `IP-08` | 状态同步与超时 | production 固定协议 | ComfyUI WebSocket 只负责即时执行/进度事件；存在 submitted/running 任务时，系统后台固定每 1 秒执行一次 HTTP queue/history 权威对账，不使用 500ms fallback 或 250ms 队列缓存。没有活动任务时停止队列轮询，只维持 WebSocket reconnect 与 shared GPU 检查；请求超时固定 10 秒，不提供用户频率设置 |
+| `IP-08` | 状态同步与超时 | production 公共 ComfyUI 技术服务 | WebSocket 只负责即时执行/进度事件；存在 submitted/running 任务时，唯一后台同步循环固定每 1 秒执行一次 HTTP queue/history 权威对账并分发结果，图片执行逻辑据此维护自己的 Task/Attempt。不使用 500ms fallback 或 250ms 队列缓存；没有活动任务时停止队列轮询，WebSocket reconnect 与 shared GPU 检查各按既有规则维持。请求超时固定 10 秒，不提供用户频率设置 |
 | `IP-09` | 手工 start/stop/restart | production | 只出现在模块设置，不进入任务创建流程；存在真实 submitted/running 图像任务或 running TrainingRun 时禁止 stop/restart。restart 复用 IP-03 的 stop/start 串行流程，操作前显示影响并确认 |
 | `IP-10` | 设置持久化 | production | ComfyUI API、路径、命令和当前图片 Workflow 存生产模块 SQLite 配置；Workflow JSON 存应用数据目录；不再从多组环境变量和旧 target JSON 互相 fallback；本期不增加未来小节类型的空设置 |
 

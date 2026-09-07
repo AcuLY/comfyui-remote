@@ -49,7 +49,7 @@
 | `IAPI-14` | `/api/production/templates` | 提供 ProductionTemplate、ProductionTemplateSectionFolder 和公共 ProductionTemplateSection 的 CRUD；本版图片模板小节通过一对一 ProductionTemplateImageSection 保存图片配置及 Segment、Binding、LoRA 关联。逻辑小节的创建、复制、删除协调公共及专属记录；项目另存 Template、向项目导入整套 Template 和批量替换图片 Preset 使用明确 action |
 | `IAPI-15` | Workflow 下载 | `/sections/:sectionId/workflow?variant=original\|debug` 下载当前图片小节解析结果；`/tasks/:taskId/workflow?variant=original\|debug` 下载历史图片任务不可变快照，两者均返回文件流，只适用于当前图片 Workflow 协议 |
 | `IAPI-16` | `/api/production/projects/:projectId/actions/**` | 提供 generate、import-template、sync-variant-assignments、export、archive、set-cover、clear-cover 等项目聚合动作；generate 表示为项目内全部图片小节生成任务，export 本版只导出原规则的图片包，archive 按小节类型调用各自归档逻辑，本版仅处理图片能力；不把这些副作用隐藏进普通 PATCH |
-| `IAPI-17` | `/api/production/comfyui/**` | 提供模块 settings、当前连接/队列状态及手工 start/stop/restart；任务创建不调用启停提示接口，GPU 恢复流程复用同一受控进程服务 |
+| `IAPI-17` | `/api/production/comfyui/**` | 通过 production 公共 ComfyUI 技术服务提供连接/进程设置、当前连接/队列状态及手工 start/stop/restart；图片 Workflow 的业务校验和参数处理仍调用图片适配器。任务创建不调用启停提示接口，shared GPU 恢复流程复用同一受控进程服务；不增加视频或多实例接口 |
 | `IAPI-18` | 修改历史 | 在图片小节、图片 Preset/Group 及 Template 等已确认覆盖的具体资源下提供 `/revisions` 和 `/:revisionId/restore`；不新增项目元信息恢复。查询、恢复及关联清理按完整 module/resourceType/resourceId 定位；公共 ProductionSection 与图片配置 ProductionImageSection 的身份通过已定义关系解析，不能混用资源类型。shared 只记录并路由，恢复与清理进入 production 的所属业务处理器和领域事务 |
 
 ## A14. LoRA 训练 HTTP API 路由
