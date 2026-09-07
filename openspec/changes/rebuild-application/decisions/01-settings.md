@@ -36,7 +36,7 @@
 | `IP-01` | ComfyUI API | production / SQLite | 本机模式配置完整 API URL；SSH 模式配置远程 API Host/Port，本地转发 URL 由 Shared Target 自动生成 |
 | `IP-02` | ComfyUI 根目录 | production / SQLite | 配置目标机器真实绝对根目录；模型目录固定派生为 `<ComfyUI 根>/models`，输出目录默认 `<ComfyUI 根>/output` 且允许单独覆盖；路径向认证用户显示/复制 |
 | `IP-03` | 进程命令 | production / SQLite | 配置可选 start、stop 命令，本机模式另配命令工作目录；不配置独立 restart。自动 GPU 恢复和手工 restart 都串行执行 stop→确认停止→start→等待健康；缺少任一命令时只提示手工处理 |
-| `IP-04` | Workflow 文件目录 | production / 文件系统 | 固定 `<APP_DATA_ROOT>/workflows/image-production`，当前仅存放生产模块的图片 Workflow；本次技术命名空间调整不改运行数据目录，后续布局见前向兼容补充。用户通过机器文件系统添加/更新 JSON 后刷新扫描，不提供浏览器上传或在线编辑 |
+| `IP-04` | Workflow 文件目录 | production / 文件系统 | 固定 `<APP_DATA_ROOT>/production/workflows/image/`，仅存放生产模块的图片 Workflow；当前确认目录设计，实际文件转换在新版迁移时执行。用户通过机器文件系统添加/更新 JSON 后刷新扫描，不提供浏览器上传或在线编辑 |
 | `IP-05` | 当前 Workflow | production / SQLite | 为生产模块的图片生成能力，从扫描且验证通过的图片 Workflow 中选择唯一当前版本；切换只影响之后创建的 ProductionImageTask，历史图片任务使用自身 Workflow 快照；不把该配置扩张为所有未来小节类型的统一 Workflow |
 | `IP-06` | Workflow 验证 | production | 扫描时解析 JSON 并检查图片生成注入协议所需节点；失败文件显示错误且不能激活，原始/调试图片 Workflow 下载保持不变 |
 | `IP-07` | 图像任务提交 | production 固定协议 | 不限制 ComfyUI 队列中 submitted 任务数量；条件允许时按应用顺序把所有 unsubmitted 任务提交到 ComfyUI 自有队列。仅对 HTTP 提交请求做内部有界并发/批处理，不能作为业务并发上限；TrainingRun pending 后停止继续提交，已经 submitted/running 的任务仍按既定互斥规则处理 |
@@ -72,7 +72,7 @@
 | `TG-04` | Base URL 与宿主模型 | training 固定协议 | Codex Base URL 和宿主模型固定为应用支持值，不放入普通设置；升级时随应用版本一起调整 |
 | `TG-05` | 图片参数来源 | TrainingTemplate / TrainingProject / TrainingSection | 只持久化真实请求参数 `size`、`quality`、`background`；界面可将横向、纵向、方形等快捷选项即时换算成 `size`，不再保存独立 `aspect`。候选数量是 Section 的产品参数，不是 Provider 参数。以上参数继续按 TrainingTemplate → TrainingProject → TrainingSection 继承，不在 Provider 设置中维护另一套默认值 |
 | `TG-06` | 超时 | training 固定协议 | 每个独立候选图片的 Provider 调用固定使用 300 秒超时，不提供用户设置；这不是官方规定值，而是官方约两分钟延迟说明、Generator 历史最大 242.2 秒和现有 bridge 300 秒默认值之间的应用保护边界。超时作为同一生成 Task 的可重试技术错误记录 |
-| `TG-07` | 输出位置 | training 固定协议 | 固定写入当前 TrainingProject 的项目媒体区，由 TrainingImageArtifact / TrainingImage 管理；不允许配置输出路径模板 |
+| `TG-07` | 输出位置 | training 固定协议 | 固定写入应用侧 `<APP_DATA_ROOT>/training/projects/<projectId>/images/`，由当前 TrainingProject 的 TrainingImageArtifact / TrainingImage 管理；不允许配置输出路径模板。训练执行工作区仍按 LE-05 独立组织 |
 | `TG-08` | 执行并发与多候选 | training 固定协议 | 执行器一次只领取一个训练素材生成 Task，不提供 Worker 数量或并发设置；一个 Task 的候选数量通过若干次“一次一张”的 Provider 调用实现，结果仍统一属于该 Task，不谎称 bridge 支持 Image API 的 `n`。候选调用如何做内部有界调度属于实现细节，不成为业务设置；该任务不占用 shared GPU 锁 |
 | `TG-09` | 可用性检查 | training | 不提供用户主动测试按钮。内部执行器启动时自动检查认证文件和 Provider 基本可用性；不可用时不领取任务，pending 任务显示“训练素材生成环境不可用”及错误 |
 

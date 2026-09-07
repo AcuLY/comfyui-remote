@@ -69,7 +69,7 @@ Shared 数据模型只保存真正跨模块的配置、资源索引和平台记�
 | `IPD-09` | `ProductionImageTask` | 取代旧 Run；保存 ProductionProject、ProductionImageSection、创建时完整 resolved config/Prompt/Workflow JSON 快照、预期图片输出数量、当前状态、等待原因、提交 claim 和累计阶段耗时。任务输入不可在创建后修改，图片任务模型不承担其他媒体生成规则 |
 | `IPD-10` | `ProductionImageAttempt` | 每次真正向 ComfyUI 提交图片生成任务时创建，保存 promptId、内部状态、submittedAt、startedAt、finishedAt、排队/生成耗时、错误和中断原因；同一 ProductionImageTask 重试新增 Attempt，但不新建 Task |
 | `IPD-11` | `ProductionImageResult` | 图片结果业务记录，保存所属 ProductionImageTask、ProductionProject、ProductionImageSection、项目内 ProductionImageArtifact、审核状态 pending/kept、P站/预览布尔标记和可选打码 Artifact；唯一图片封面引用保存在 Project。任务不存在部分成功，只有完成图片任务才产生正式结果记录 |
-| `IPD-12` | `ProductionImageArtifact` | 图片文件资产，只在同一 ProductionProject 的图片资产范围内按 Hash 复用图片字节，保存受管路径、缩略图、尺寸和引用状态；不与训练 Artifact 或未来其他媒体的资产业务模型共表，不跨项目复用 |
+| `IPD-12` | `ProductionImageArtifact` | 图片文件资产，受管根为 `<APP_DATA_ROOT>/production/projects/<projectId>/images/`；只在同一 ProductionProject 的图片资产范围内按 Hash 复用图片字节，保存受管路径、缩略图、尺寸和引用状态。具体文件、缩略图和打码版本由图片资产逻辑组织；不与训练 Artifact 或未来其他媒体的资产业务模型共表，不跨项目复用 |
 | `IPD-13` | `ProductionImageTrashEntry` | 保存图片及原 Project/图片小节/图片任务、原路径、删除时间等恢复上下文；恢复成功后删除 TrashEntry，永久删除时清理图片关系、缩略图、原图/打码字节和封面引用 |
 | `IPD-14` | `ProductionImageCensoringBatchTask` / `ProductionImageCensoringBatchItem` | 一次“P站＋预览＋封面”批量打码对应一个用户任务，每张去重后的图片对应一个 Item 并保存执行结果；手工单图打码和单图自动打码直接更新图片打码 Artifact，不创建大量批量任务 |
 | `IPD-15` | 图片导出状态 | 不建立导出历史表或版本实体；Project 只保存当前图片交付包的最新导出时间、ZIP 绝对路径和最小摘要。交付包路径为 `<EXPORT_ROOT>/<项目名>/<slug>.zip`，项目名称用于外层文件夹，slug 用于 ZIP 文件名，中间不加 images 层。每次重新导出覆盖上一份，项目删除仍保留 EXPORT_ROOT 中的交付文件；JPEG、ZIP、P站、预览与封面规则不推广为其他媒体的交付规则 |
@@ -83,7 +83,7 @@ Shared 数据模型只保存真正跨模块的配置、资源索引和平台记�
 | --- | --- | --- |
 | `LTD-01` | `TrainingProject` | 保存名称、active/archived、排序、可选 Base checkpoint 业务键和项目训练默认参数；不需要 slug，也不保存缺图、缺 Caption、生成中或训练中等派生业务状态 |
 | `LTD-02` | `TrainingCharacterProfile` | 与 Project 一对一，只保存允许为空的 triggerToken、characterDescription、imageProductionPrompt；imageProductionPrompt 是供后续生图使用的角色 tag 提示词，Section Caption 不进入 Profile |
-| `LTD-03` | `TrainingImageArtifact` | 只在同一个 TrainingProject 内按 Hash 保存一份图片字节、受管路径、尺寸和引用状态；不跨项目或模块复用 |
+| `LTD-03` | `TrainingImageArtifact` | 应用侧受管根为 `<APP_DATA_ROOT>/training/projects/<projectId>/images/`，只在同一个 TrainingProject 内按 Hash 保存一份图片字节、受管路径、尺寸和引用状态；不跨项目或模块复用，不与训练执行工作区混为一个目录 |
 | `LTD-04` | `TrainingReferenceImage` | 引用项目 Artifact，保存 name、可选 description 和 sortOrder；删除参考图关系时，仍被 Section、Task 或 TrainingRunSample 引用的字节继续保留 |
 | `LTD-05` | `TrainingSection` | 保存名称、项目内 sortOrder、size/quality/background、候选数量、权威 trainingCaption 和唯一 selectedImageId；不保存 enabled 或独立 generationPrompt |
 | `LTD-06` | `TrainingSectionInput` | 保存 Section、Artifact、顺序和可选用途说明；输入可来自项目参考图库、Section 手工上传或历史生成结果，创建项目时上传的参考图默认建立到每个初始 Section 的输入关系 |
