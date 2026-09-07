@@ -77,12 +77,12 @@ Shared 数据模型只保存真正跨模块的配置、资源索引和平台记�
 
 ## A11. 训练最终领域模型
 
-训练模块命名空间为 `training`，原 LoraTraining 实体前缀统一简化为 Training；本版训练功能仍只涵盖 LoRA，命名不扩大能力范围。当前可编辑真相归 Project/Profile/Section，训练素材候选统一归 Section，训练启动时直接创建不可变 TrainingRunSample，不再经过 DatasetVersion。训练素材图片和实际 LoRA 训练都保留自己的任务与 Attempt，但只共享状态、耗时、日志和反馈协议，不与生产图片任务共表。productionPrompt 保持现有字段名，本轮未确认字段改名。
+训练模块命名空间为 `training`，原 LoraTraining 实体前缀统一简化为 Training；本版训练功能仍只涵盖 LoRA，命名不扩大能力范围。当前可编辑真相归 Project/Profile/Section，训练素材候选统一归 Section，训练启动时直接创建不可变 TrainingRunSample，不再经过 DatasetVersion。训练素材图片和实际 LoRA 训练都保留自己的任务与 Attempt，但只共享状态、耗时、日志和反馈协议，不与生产图片任务共表。角色资料中供后续生图使用的 tag 提示词字段采用已确认的 imageProductionPrompt。
 
 | ID | 领域模型 | 决策 |
 | --- | --- | --- |
 | `LTD-01` | `TrainingProject` | 保存名称、active/archived、排序、可选 Base checkpoint 业务键和项目训练默认参数；不需要 slug，也不保存缺图、缺 Caption、生成中或训练中等派生业务状态 |
-| `LTD-02` | `TrainingCharacterProfile` | 与 Project 一对一，只保存允许为空的 triggerToken、characterDescription、productionPrompt；Section Caption 不进入 Profile |
+| `LTD-02` | `TrainingCharacterProfile` | 与 Project 一对一，只保存允许为空的 triggerToken、characterDescription、imageProductionPrompt；imageProductionPrompt 是供后续生图使用的角色 tag 提示词，Section Caption 不进入 Profile |
 | `LTD-03` | `TrainingImageArtifact` | 只在同一个 TrainingProject 内按 Hash 保存一份图片字节、受管路径、尺寸和引用状态；不跨项目或模块复用 |
 | `LTD-04` | `TrainingReferenceImage` | 引用项目 Artifact，保存 name、可选 description 和 sortOrder；删除参考图关系时，仍被 Section、Task 或 TrainingRunSample 引用的字节继续保留 |
 | `LTD-05` | `TrainingSection` | 保存名称、项目内 sortOrder、size/quality/background、候选数量、权威 trainingCaption 和唯一 selectedImageId；不保存 enabled 或独立 generationPrompt |

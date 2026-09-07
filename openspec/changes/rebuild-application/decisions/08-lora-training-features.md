@@ -2,7 +2,7 @@
 
 本文件记录本轮对话已确认的新版目标，尚不代表运行代码已实现。编号保留原清单 ID；冲突时采用最新用户决策及 [最终口径](00-final-decisions.md)，旧实现列仅供数据转换核对。模块与实体命名按 [向前兼容补充决策](09-forward-compatibility.md) 更新。
 
-新版模块统一为 `training`，与 `production` 对称；代码目录为 `modules/training/**`，页面为 `/training/**`，HTTP API 为 `/api/training/**`。所有新版正式实体的原 LoraTraining 前缀统一简化为 Training，完整定义见领域模型；本版功能仍仅涵盖 LoRA 训练，不因命名而扩展能力。旧实现、证据列和明确移除的历史模型保留真实旧名；productionPrompt 保持现有字段名。
+新版模块统一为 `training`，与 `production` 对称；代码目录为 `modules/training/**`，页面为 `/training/**`，HTTP API 为 `/api/training/**`。所有新版正式实体的原 LoraTraining 前缀统一简化为 Training，完整定义见领域模型；本版功能仍仅涵盖 LoRA 训练，不因命名而扩展能力。旧实现、证据列和明确移除的历史模型保留真实旧名；角色资料使用 imageProductionPrompt 表达后续生图用的 tag 提示词。
 
 ## C. LoRA Training 模式
 
@@ -43,8 +43,8 @@
 | `TRN-CREATE-006` | 初始化 sections | 新建时预置/复制/启停初始 sections | 现用 | TrainingSection | project create form | 保留并简化：从 TemplateSection 完整初始化 Section 参数区；不再复制 enabled。创建项目时上传的全部角色参考图默认填入每个 Section 的有序输入图片列表，但各列表只创建指向同一 Artifact 的轻量关系，不复制文件。项目创建后新增的角色参考图保持可选，并提供“添加到全部构图”批量动作，不静默改动既有 Section |
 | `TRN-CREATE-007` | 未落地创建配置 | baseModel、captionStrategy、perSectionImageCount、trainingSteps 基本不进入执行 | 部分/表单承诺 | 删除或真正接线 | project form/service | 拆分并真正接线：图片候选数量已归每个 TemplateSection/Section；Base model 与训练参数默认值归 TrainingTemplate 顶层，创建项目时复制到 TrainingProject，启动训练时允许覆盖并固化到 TrainingRun。不存在独立 captionStrategy；Caption 是 Section 普通文本 |
 | `TRN-CREATE-008` | 未落地自动流程 | autoGenerateSamples、autoFreezeDataset 可被 schema 接受但无自动执行 | 部分 | 不能当现成功能 | project create schema | 新版移除 `autoGenerateSamples`、`autoFreezeDataset` 等不会执行的 schema 字段和 API 参数，不保留虚假自动流程 |
-| `TRN-PROFILE-001` | 角色档案 | `/profile` 编辑 `loraUsagePrompt` 与角色细节 JSON；triggerToken 只展示/创建时设置，不能在该页持久修改 | 现用 | TrainingCharacterProfile | profile page/service | 保留并重构：角色级文本只有三个一等字段——后续生产触发词 `triggerToken`（不得与项目 URL `slug` 混淆）、Agent 分析后由用户审核的完整 `characterDescription`、由完整描述简化为 tag 形式的后续生产 `productionPrompt`。三个字段都允许为空，triggerToken 不根据项目名称自动生成；前端使用普通单行/多行编辑组件和规范 GET/PATCH 接口。训练 Caption 属于 Section，不归入角色文本 |
-| `TRN-PROFILE-002` | profileSummary 与生成任务关联残留 | 参数不持久化，现有 Profile 还含若干文本生成 Task 关联 | 部分/缺失 | 已确认三个权威文本字段 | profile service/schema | 移除 profileSummary、loraUsagePromptGenerationTaskId、characterDetailPromptGenerationTaskId 等残留；Profile 只保留 triggerToken、characterDescription、productionPrompt |
+| `TRN-PROFILE-001` | 角色档案 | `/profile` 编辑 `loraUsagePrompt` 与角色细节 JSON；triggerToken 只展示/创建时设置，不能在该页持久修改 | 现用 | TrainingCharacterProfile | profile page/service | 保留并重构：角色级文本只有三个一等字段——后续生产触发词 `triggerToken`（不得与项目 URL `slug` 混淆）、Agent 分析后由用户审核的完整 `characterDescription`、由完整描述简化为 tag 形式供后续生图使用的 `imageProductionPrompt`。三个字段都允许为空，triggerToken 不根据项目名称自动生成；前端使用普通单行/多行编辑组件和规范 GET/PATCH 接口。训练 Caption 属于 Section，不归入角色文本 |
+| `TRN-PROFILE-002` | profileSummary 与生成任务关联残留 | 参数不持久化，现有 Profile 还含若干文本生成 Task 关联 | 部分/缺失 | 已确认三个权威文本字段 | profile service/schema | 移除 profileSummary、loraUsagePromptGenerationTaskId、characterDetailPromptGenerationTaskId 等残留；Profile 只保留 triggerToken、characterDescription、imageProductionPrompt |
 | `TRN-REF-001` | 参考图上传 | 写文件、TrainingArtifact、TrainingCharacterImage | 现用/写文件 | references 目录 | reference API | 保留并重构：项目参考图使用 Artifact/Blob 单份存储和 Hash 去重；Section 输入、Task 输入快照和其他引用都复用同一字节对象，只保存关系、顺序及当时 Hash |
 | `TRN-REF-002` | 参考图名称、说明与排序 | 当前 PATCH label/note/sortOrder | 现用 | TrainingCharacterImage | reference API/UI | 保留但改用明确名称：`name` 是项目内短名称，默认取文件名，用于缩略图、选择器和 Prompt 引用；`description` 是可选的角色/用途说明；`sortOrder` 控制项目参考图库顺序。删除含义模糊的 label/note 命名；某张图在具体 Section 中承担的角色可由 SectionInput 自己的可选说明覆盖 |
 | `TRN-REF-003` | 删除参考图 | 当前只删关系，不删 Artifact 或文件 | 现用/生命周期不完整 | 会遗留磁盘资产 | reference delete route | 保留删除关系能力并重构文件生命周期：从角色参考图列表移除不等于立即删除底层字节；只要仍被 Section、生成 Task、结果或 TrainingRun 输入快照引用，Artifact/Blob 就必须保留。无任何引用后才进入可清理状态 |

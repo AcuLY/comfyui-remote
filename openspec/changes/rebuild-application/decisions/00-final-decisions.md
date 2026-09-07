@@ -11,6 +11,7 @@
 - `ProductionProject` 与 `ProductionTemplate` 属于生产公共层；项目和模板内的文件夹、小节列表与排序允许未来容纳不同类型的小节。本版使用 `ProductionImageSection` 和 `ProductionTemplateImageSection`，其参数编辑、任务和结果保持图片类型归属；前端采用相同的公共容器与按类型进入专属界面的结构。
 - 图片任务及执行尝试为 `ProductionImageTask`/`ProductionImageAttempt`，结果及文件资产为 `ProductionImageResult`/`ProductionImageArtifact`。项目任务入口统一查看并明确区分任务类型、状态和计数；不因共同项目或入口合并业务模型。
 - 训练侧所有既有正式 `LoraTraining*` 实体统一简化为 `Training*`；这不扩大训练范围，也不改变训练数据与执行生命周期。
+- 训练角色资料的 `productionPrompt` 已确认改名为 `imageProductionPrompt`，明确表示后续生图使用的角色 tag 提示词；领域定义、GET/PATCH、设计输入和迁移映射同步使用新名，内容与可空规则保持。
 - 两个模块在产品信息架构、导航层级、前端组件能力、页面外壳、路由命名空间、后端领域模块、API 边界、数据访问层、测试和运维责任上都不得存在主次关系。
 - 禁止让训练继续作为生产、Design Demo 或其他模块的 adapter、re-export、子路由或特殊兼容分支。
 - 共享模型、设置、认证、媒体投递和全局反馈属于独立 shared 平台层，不归属任何一个业务模块。
@@ -66,4 +67,4 @@
 - 训练素材 Task 删除与被 Section、参考图、其他输入或 RunSample 引用的候选之间的处置。必须遵守已确认引用保护，不能套用图像生产的全部字节删除规则。
 - PrimeReact v10 的图片缩放、跨区域多选拖放、复杂列表能力按页面实际需要核对；确有缺口再组合或补充。
 - 数据映射中的真实缺失/冲突项在只读数据盘点后列出，不能伪造快照或静默遗漏。
-- 本轮前向兼容讨论的剩余事项与当前不实施范围见 [待确认清单](09-forward-compatibility.md#本版排除与尚未确认事项)；`productionPrompt` 改名等未确认建议不进入正式定义。
+- 本轮前向兼容讨论的剩余事项与当前不实施范围见 [待确认清单](09-forward-compatibility.md#本版排除与尚未确认事项)；未确认建议不进入正式定义。

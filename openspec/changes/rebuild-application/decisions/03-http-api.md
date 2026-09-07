@@ -57,7 +57,7 @@ LoRA 训练前端与 Agent 只使用 `/api/training/**`；训练素材图片执�
 | ID | 路由组 | 决策 |
 | --- | --- | --- |
 | `LAPI-01` | `/api/training/projects` | GET 支持 active/archived、名称和活动任务筛选；POST 统一创建空白或可选 Template 项目。`/:projectId` 提供 GET/PATCH/DELETE，并通过明确 archive action 进入永久只读归档 |
-| `LAPI-02` | `/api/training/projects/:projectId/profile` | GET/PATCH triggerToken、characterDescription、productionPrompt；三个字段都允许为空，每次明确保存进入 shared 修改历史协议 |
+| `LAPI-02` | `/api/training/projects/:projectId/profile` | GET/PATCH triggerToken、characterDescription、imageProductionPrompt；三个字段都允许为空，imageProductionPrompt 表示后续生图使用的角色 tag 提示词，每次明确保存进入 shared 修改历史协议 |
 | `LAPI-03` | `/api/training/projects/:projectId/reference-images` | 提供上传、查询、改名、description、排序和移除；内容通过资源自身 `/:referenceImageId/content` 返回，不接受任意路径 |
 | `LAPI-04` | `/api/training/projects/:projectId/sections` | 提供 Section CRUD、复制、排序和批量删除；不提供 enabled、全量重建或另一套 SectionRun 接口 |
 | `LAPI-05` | `/api/training/sections/:sectionId/inputs` | 从本项目参考图选择、手工上传、引用历史候选、删除和排序；不接受其他 Project Artifact 或跨项目复用 |
