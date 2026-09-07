@@ -57,7 +57,7 @@
 | `IC-07` | 推理设备 | production 固定协议 | 固定在应用机器使用 CPU，避免自动打码与唯一 GPU 上的生成/训练竞争；不增加 CPU/GPU 设备选择 |
 | `EX-01` | 导出根目录 | production / 环境变量 | 新增启动配置 `EXPORT_ROOT`，默认 `<APP_DATA_ROOT>/exports`；网页只读显示/复制，不允许在线修改，项目删除不清理其中交付包 |
 | `EX-02` | JPEG 质量 | production / SQLite | 允许调整，默认 90、范围 1～100；同一次打包的普通图、P站、预览和封面统一使用该值 |
-| `EX-03` | 文件结构 | production 固定协议 | 固定 `<slug>.zip`、`<slug>_01.jpg`、`pixiv/`、`preview/`、`cover.jpg`、`cover_censored.jpg`，不提供命名设置 |
+| `EX-03` | 文件结构 | production 固定协议 | 图片交付包固定写入 `<EXPORT_ROOT>/<项目名>/<slug>.zip`；外层文件夹使用项目名称，不使用 slug，也不额外增加 images 层。ZIP 文件名仍为 `<slug>.zip`，包内保留 `<slug>_01.jpg`、`pixiv/`、`preview/`、`cover.jpg`、`cover_censored.jpg`，不提供命名设置 |
 | `EX-04` | 导出版本 | production 固定协议 | 每个 ProductionProject 只保留并覆盖最新图片打包结果，不维护历史导出版本或相关设置；本版导出只包含图片包 |
 
 ## A5. LoRA 训练素材图片 Provider 设置
