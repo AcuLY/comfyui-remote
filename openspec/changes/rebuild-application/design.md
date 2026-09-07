@@ -4,11 +4,15 @@
 
 ## 技术边界
 
-前端 React/Vite/React Router 与后端 Fastify 独立构建；生产同源提供页面与 API。PrimeReact v10 为唯一主组件库，样式主题模块化集中复用。两个业务模块对等，模型/认证/设置/监控等平台能力按实际模块名公开。SQLite 使用 Drizzle 和 better-sqlite3。
+前端 React/Vite/React Router 与后端 Fastify 独立构建；生产同源提供页面与 API。PrimeReact v10 为唯一主组件库，样式主题模块化集中复用。`production` 与 `training` 两个业务模块对等，模型/认证/设置/监控等平台能力按实际模块名公开。SQLite 使用 Drizzle 和 better-sqlite3。
+
+生产模块的 `ProductionProject`、`ProductionTemplate` 以及文件夹、小节列表和排序属于公共组织层；图片配置、任务、结果与资产采用明确的图片类型。本版只接入图片小节，前端按小节类型进入相应编辑器与结果视图。训练模型统一使用 `Training*` 前缀，当前仍只提供 LoRA 训练。完整已确认名称与项目操作边界见 [命名与小节扩展边界](decisions/09-forward-compatibility.md)，视频具体命名、模型、页面和执行功能均不在本版范围。
 
 ## 设计与实现
 
 Figma 是页面布局、视觉、交互状态的审核载体；领域模型和 API 由仓库文档拥有。每个页面标明对应决策 ID、组件来源、关键状态及审核状态。未通过用户审核的页面只属于设计稿，不能据此展开正式页面实现。
+
+逐组讨论时，每轮用户确认后先更新相关文档与设计输入，再进入下一组；设计确认和页面批准分别记录，不能互相替代。
 
 ## 迁移
 

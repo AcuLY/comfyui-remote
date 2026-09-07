@@ -1,6 +1,8 @@
 # 图像生产功能清单
 
-本文件记录本轮对话已确认的新版目标，尚不代表运行代码已实现。编号保留原清单 ID；冲突时采用最新用户决策及 [最终口径](00-final-decisions.md)，旧实现列仅供数据转换核对。
+本文件记录本轮对话已确认的新版目标，尚不代表运行代码已实现。编号保留原清单 ID；冲突时采用最新用户决策及 [最终口径](00-final-decisions.md)，旧实现列仅供数据转换核对。生产公共层与图片专属能力的最新边界见 [向前兼容补充决策](09-forward-compatibility.md)。
+
+新版模块为 `production`；Project、Template、小节文件夹、列表与排序属于生产公共层，项目与模板允许未来组织不同类型小节。本文件中的图片参数、运行、审核、打码、回收站和导出规则只适用于本版图片能力，不作为其他小节类型的共同要求。正式实体名按领域模型使用 ProductionProject、ProductionTemplate、ProductionImageSection、ProductionImageTask、ProductionImageAttempt、ProductionImageResult 等；后文在图片上下文中保留 Project、Section、Task、Attempt、Preset 等简称。前端保留统一项目页面与小节列表，图片编辑器及图片结果视图按类型接入；本版只呈现图片小节，不开发视频功能，也不确定视频模型名称。
 
 ## B. Generation 生图模式
 
@@ -8,18 +10,18 @@
 
 | ID | 功能点 | 当前入口与行为 | 状态 | 主要依赖 / 移除影响 | 代码证据 | 决策 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `GEN-RUN-001` | 运行总览 | `/queue` 汇总待审核、运行中、打码、失败、回收站五个 Tab | 现用 | Run、ImageResult、CensoringTask、TrashRecord | queue page/client | 保留并重做：任务主视图按统一状态机分类，清晰区分未提交、已提交、运行中、已暂停、已完成、失败和已取消；活动任务显示当前已用时间，终态任务显示总耗时，并可展开查看应用内等待、ComfyUI 队列、实际生成、暂停和各 Attempt 耗时。同时改善最近成功/失败浏览、上下文跳转和重试流程，审核与打码作为后处理维度而非混入执行状态 |
+| `GEN-RUN-001` | 运行总览 | `/queue` 汇总待审核、运行中、打码、失败、回收站五个 Tab | 现用 | Run、ImageResult、CensoringTask、TrashRecord | queue page/client | 保留统一的生产任务入口，任务、状态和计数按类型区分，本版只接入图片生成与已有图片后处理任务。图片任务主视图按统一状态机分类，清晰区分未提交、已提交、运行中、已暂停、已完成、失败和已取消；活动任务显示当前已用时间，终态任务显示总耗时，并可展开查看应用内等待、ComfyUI 队列、实际生成、暂停和各 Attempt 耗时。同时改善最近成功/失败浏览、上下文跳转和重试流程，审核与打码作为后处理维度而非混入执行状态 |
 | `GEN-RUN-002` | 队列分页与自动刷新 | 分页读取，运行状态下每 5 秒刷新 | 现用 | `/api/queue-data`；GET 会触发 stale recovery | queue client、queue-data route | 移除为产品功能：前端不提供手工刷新或固定轮询；任务子系统在存在 submitted/running 任务时每 1 秒执行一次 HTTP queue/history 权威对账，WebSocket 只补充即时进度事件，页面消费本应用最新状态。读取接口不得顺带执行恢复等写操作 |
 | `GEN-RUN-003` | 失败运行查看与重试 | 展示错误、重新提交失败运行 | 现用 | Run 已保存的 prompt/config snapshot | queue failed UI、run lifecycle | 保留并重做：失败重试直接复用同一任务及其不可变输入快照，保留旧 Attempt，清除任务当前执行字段并回到 `unsubmitted`；下一次实际提交时再创建新 Attempt。原 `comfyPromptId`、错误和时间保留在旧 Attempt 中，不使用 `retryOfTaskId` / `resolvedByTaskId`。失败列表只显示当前状态仍为 `failed` 的任务，因此重试后立即退出失败列表，不堆积重复任务历史。失败和已取消任务支持按选择、项目或时间范围物理清理 |
 | `GEN-RUN-004` | 单运行取消 | 取消 queued/running/paused run，并尝试取消 ComfyUI prompt | 现用/高副作用 | DB + ComfyUI 队列 | cancel route、run-lifecycle | 保留并重构：未提交任务在本应用内取消；已提交任务精确删除对应 prompt；运行中任务经确认后中断。只有外部执行器确认停止后才转为 `cancelled`，取消失败时保留权威原状态并展示原因 |
 | `GEN-RUN-005` | 单运行暂停/恢复 | 暂停时取消 Comfy prompt；恢复时重提交并轮询 | 现用/高副作用 | DB + ComfyUI | run-lifecycle | 保留并重构：`paused` 纳入状态机。未提交任务可直接暂停；已提交/运行中任务必须先从 ComfyUI 精确撤销或中断，确认释放 GPU 后暂停。ComfyUI 不支持从生成中间进度续跑，因此恢复统一回到 `unsubmitted` 并从头执行；暂停任务不阻止 LoRA 训练 |
 | `GEN-RUN-006` | 活动运行批量暂停/部署批次恢复 | 暂停全部活动项；恢复只处理由 `pause-active` 标记的暂停批次，并可限定 batchId/runIds，不恢复普通手工暂停项 | 现用/运维 | 部署流程依赖精确来源标记 | queue pause/resume routes | 不进入新版产品功能或正式领域 API；以后整理部署流程时基于新版任务状态重新设计必要的内部维护动作，不保留当前 batchId/pause-active 实现 |
 | `GEN-RUN-007` | 清空活动队列 | 流式报告取消进度，取消 Manager 与 ComfyUI 活动任务 | 现用/高副作用 | queue-control stream | 保留能力但取消“清空队列”模型：每个状态可独立查询、选择和执行适用的批量操作；任务工作台支持按时间排序、按项目分组及在这些视图中多选。相关交互由新版任务工作台重新设计，不依赖或保留 Design Demo 实现 |
-| `GEN-RUN-008` | 清除终态运行及输出 | 先删除每个 Run 的受管输出目录，再删除 Run 并级联 ImageResult 等关联记录 | 现用/破坏性 | DB + 受管文件目录 | clear route、run-lifecycle | 保留并简化：终态任务默认永久保留、不自动过期，用户可按状态、项目、Section 和时间筛选后手动批量删除。删除任务只有一种语义：物理删除任务、全部 Attempt、全部 ImageResult、缩略图和受管图片字节，不提供“仅删记录并保留输出”。领域模型不支持“部分成功”；一次执行只有全部完成或失败，失败过程中产生的临时文件由执行器清理，不作为可管理结果保留 |
-| `GEN-RUN-009` | 简化队列读取 API | `/api/queue` 返回简化队列；页面主要不用 | 隐藏/兼容 | 外部客户端可能依赖 | queue route | 新版移除 `/api/queue`；前端和跨网络 Agent 统一使用 `/api/image-production/tasks` |
+| `GEN-RUN-008` | 清除终态运行及输出 | 先删除每个 Run 的受管输出目录，再删除 Run 并级联 ImageResult 等关联记录 | 现用/破坏性 | DB + 受管文件目录 | clear route、run-lifecycle | 保留并简化：终态任务默认永久保留、不自动过期，用户可按状态、项目、Section 和时间筛选后手动批量删除。删除任务只有一种语义：物理删除任务、全部 Attempt、全部 ProductionImageResult、缩略图和受管图片字节，不提供“仅删记录并保留输出”。领域模型不支持“部分成功”；一次执行只有全部完成或失败，失败过程中产生的临时文件由执行器清理，不作为可管理结果保留 |
+| `GEN-RUN-009` | 简化队列读取 API | `/api/queue` 返回简化队列；页面主要不用 | 隐藏/兼容 | 外部客户端可能依赖 | queue route | 新版移除 `/api/queue`；前端和跨网络 Agent 统一使用 `/api/production/tasks` |
 | `GEN-REV-001` | Run 审核组 | `/queue/[runId]` 展示一次 run 的全部图片 | 现用 | Run、ImageResult、受管图片 | queue run page | 保留并重做：作为某次图像生产任务结果的筛选视图，图片仍归属项目和 Section；任务、项目和 Section 入口复用生产模块自己的审核能力，不与 LoRA 训练的候选选择流程合并 |
 | `GEN-REV-002` | 图片灯箱 | 大图预览、上一/下一张、键盘导航 | 现用 | 图片 route | review lightbox components | 保留并按模块分别设计：图像生产灯箱支持前后切换、键盘导航、保留、丢弃、P站、预览和封面操作；LoRA 训练灯箱围绕代表训练素材选择与参考图使用设计，不出现生产模块的发布动作。两者只复用图片展示、缩放和导航等中性基础组件 |
-| `GEN-REV-003` | 选择与批量审核 | 单选、全选、批量 keep/trash | 现用 | ImageResult.reviewStatus | review mutations | 保留并简化：活动图片只有“未审核、已保留”两种审核状态；丢弃由 TrashRecord 生命周期表达，不再同时保存 `trashed` 审核状态。多选状态只属于当前 UI 会话，不持久化；批量操作支持当前任务、当前 Section 和当前筛选结果范围 |
+| `GEN-REV-003` | 选择与批量审核 | 单选、全选、批量 keep/trash | 现用 | ImageResult.reviewStatus | review mutations | 保留并简化：活动图片只有“未审核、已保留”两种审核状态；丢弃由 ProductionImageTrashEntry 生命周期表达，不再同时保存 `trashed` 审核状态。多选状态只属于当前 UI 会话，不持久化；批量操作支持当前任务、当前 Section 和当前筛选结果范围 |
 | `GEN-REV-004` | 删除剩余图片 | 保留已选后批量删除其他待审图片 | 现用 | DB + 文件移动到 trash | review UI/actions | 保留，操作名称为“删除剩余”：保留当前已选图片，将当前任务其余未审核图片移入回收站；执行前显示保留数和删除数 |
 | `GEN-REV-005` | 撤销删除 | 将 TrashRecord 对应文件移回原路径 | 现用 | TrashRecord、文件移动 | restore actions | 保留即时撤销；即时入口消失后仍可从当前 Section、当前项目或全局回收站恢复 |
 | `GEN-REV-006` | 审核组连续导航 | 上一/下一审核组、完成后自动跳转、快捷键 | 现用 | Review group repository | queue detail client | 保留上一组、下一组和快捷键；完成当前任务审核后自动进入下一个仍有未审核图片的图像生产任务 |
@@ -27,9 +29,9 @@
 | `GEN-IMG-001` | “P站”标记 | 设置/取消 `featured`，并自动 keep | 现用 | ImageResult.featured | featured route | 保留名称和功能：与“预览”“封面”同为图像生产项目一次打包发布所使用的图片用途；可多选，设置后自动将图片标为已保留。新版所有用户界面和文档统一写作“P站” |
 | `GEN-IMG-002` | “预览”标记 | 设置/取消 `featured2`，并自动 keep | 现用 | ImageResult.featured2 | featured2 route | 保留名称和功能：与“P站”“封面”同为图像生产项目一次打包发布所使用的图片用途；可多选，设置后自动将图片标为已保留 |
 | `GEN-IMG-003` | 项目封面 | 设置项目唯一封面并自动 keep | 现用 | Project.coverImageId | cover route | 保留并重新定位：不是普通项目装饰，而是与“P站”“预览”并列的打包发布用途；每个项目只能选择一张封面，设置后自动保留。封面图片移入回收站时清空引用，恢复图片后不自动重新设为封面 |
-| `GEN-TRASH-001` | 全局回收站列表 | `/queue` 回收站 Tab 分页显示已删除图片 | 现用 | TrashRecord | queue trash tab | 保留并重做：既有全局回收站之外，项目和 Section 内也提供各自范围的回收站入口、筛选、批量恢复和永久删除；TrashRecord 保留 `projectId`、`sectionId`、来源任务和结果上下文，支持按时间排序及按项目/Section 分组 |
+| `GEN-TRASH-001` | 全局回收站列表 | `/queue` 回收站 Tab 分页显示已删除图片 | 现用 | TrashRecord | queue trash tab | 保留并重做：既有全局回收站之外，项目和 Section 内也提供各自范围的回收站入口、筛选、批量恢复和永久删除；ProductionImageTrashEntry 保留 `projectId`、`sectionId`、来源任务和结果上下文，支持按时间排序及按项目/Section 分组 |
 | `GEN-TRASH-002` | 回收站恢复 | 标记 TrashRecord 已恢复，将既有 ImageResult 重置为 pending 并恢复原路径；文件移动失败不阻断 DB 更新，可能留下 DB/文件不一致 | 现用/尽力而为 | DB + 文件系统 | image-review actions | 保留并重做：单项或批量恢复都回到原项目和原 Section；文件恢复与数据库状态更新必须作为同一个受控操作，文件恢复失败时不得把数据库标成已恢复，并明确报告失败项 |
-| `GEN-TRASH-003` | 永久清空回收站 | 重置引用图片的项目封面，删除 TrashRecord 与 ImageResult，再尽力删除 trash、原图和缩略图文件 | 现用/破坏性 | DB + `data/images/.trash/**` | clearTrash | 保留并重做：支持全局、项目和 Section 范围永久清空；删除 TrashRecord、ImageResult、原图/缩略图并清理项目封面等引用。任何失败都报告具体未清理项，不再静默尽力而为；任务历史删除与图片回收站始终是两个独立概念 |
+| `GEN-TRASH-003` | 永久清空回收站 | 重置引用图片的项目封面，删除 TrashRecord 与 ImageResult，再尽力删除 trash、原图和缩略图文件 | 现用/破坏性 | DB + `data/images/.trash/**` | clearTrash | 保留并重做：支持全局、项目和 Section 范围永久清空；删除 ProductionImageTrashEntry、ProductionImageResult、原图/缩略图并清理项目封面等引用。任何失败都报告具体未清理项，不再静默尽力而为；任务历史删除与图片回收站始终是两个独立概念 |
 
 ### B2. 项目、文件夹与小节
 
@@ -39,26 +41,26 @@
 | `GEN-PROJ-002` | 项目 UI 范围筛选 | 页面处理文件夹浏览与“显示归档”；没有标题/status/pending 搜索控件 | 现用 | Project query | projects page/repository | 保留并补齐普通 UI：支持名称搜索、文件夹范围、正常/归档、是否有活动任务和是否有待审核图片；页面与正式 HTTP API 使用同一查询语义 |
 | `GEN-PROJ-003` | 项目文件夹 | 新建、重命名、删除、排序、进入文件夹 | 现用 | ProjectFolder | project-folder service | 保留多级文件夹、新建、改名、排序和导航。删除非空文件夹必须弹出模态框并列明包含的子文件夹和项目数量，只允许“删除整个文件夹及其中全部项目”或取消；不提供删除时移动/保留内容的功能 |
 | `GEN-PROJ-004` | 项目移动与批量移动 | 单项目或多选移动到文件夹/根 | 现用 | Project.folderId | project folder actions/API | 保留并重做交互：项目元素可直接拖入目标文件夹，拖动时显示有效落点；多选后拖动可一次移动全部已选项目。为键盘、触屏和精确选择保留“移动到”菜单作为同一能力的备用入口 |
-| `GEN-PROJ-005` | 统一项目创建入口 | 当前 `/projects/new` 主要按空白参数/项目级预制创建 | 现用 | Project、ProjectTemplate、bindings | project form/service | 保留并重做：图像生产也只提供一个新建项目入口；表单内可选 ProjectTemplate，选择后预填可编辑元信息/默认参数，提交时深复制模板 Sections、Bindings、CustomText 和参数。未选模板则创建空白项目，与 LoRA 训练采用相同创建心智。创建表单正式提供必填“英文标识（slug）”，与可含中文的项目名称分离；只允许小写英文字母、数字和连字符并校验全局唯一，模板不得复制另一个项目的 slug |
-| `GEN-PROJ-006` | 从已有项目创建 | `/projects/new/from-existing` 复制结构并重新选择 checkpoint/预制 | 现用 | 源项目及所有 sections | createProjectFromExisting | 新版移除：暂不保留“从已有项目创建”，删除独立页面、表单分支、服务写路径和相关兼容入口；统一新建项目只支持空白项目或可选 ProjectTemplate |
+| `GEN-PROJ-005` | 统一项目创建入口 | 当前 `/projects/new` 主要按空白参数/项目级预制创建 | 现用 | Project、ProjectTemplate、bindings | project form/service | 保留并重做：图像生产也只提供一个新建项目入口；表单内可选 ProductionTemplate，选择后预填可编辑元信息/默认参数，提交时深复制模板 Sections、Bindings、CustomText 和参数。未选模板则创建空白项目，与 LoRA 训练采用相同创建心智。创建表单正式提供必填“英文标识（slug）”，与可含中文的项目名称分离；只允许小写英文字母、数字和连字符并校验全局唯一，模板不得复制另一个项目的 slug |
+| `GEN-PROJ-006` | 从已有项目创建 | `/projects/new/from-existing` 复制结构并重新选择 checkpoint/预制 | 现用 | 源项目及所有 sections | createProjectFromExisting | 新版移除：暂不保留“从已有项目创建”，删除独立页面、表单分支、服务写路径和相关兼容入口；统一新建项目只支持空白项目或可选 ProductionTemplate |
 | `GEN-PROJ-007` | 直接复制项目 API | 复制完整项目；当前项目卡片无复制按钮，仅 action/API 可达 | 隐藏/API-only | Project/Section/bindings | copyProject | 新版移除：删除原样复制项目的 action、HTTP API、服务/仓储写路径和相关兼容入口；若以后出现明确的一键副本需求，再按新版领域模型重新设计，不保留当前隐藏实现 |
-| `GEN-PROJ-008` | 项目编辑 | `/projects/[id]/edit` 修改标题、默认尺寸、批次、checkpoint 等 | 现用 | Project | project edit form | 保留：项目参数作为新 Section 的默认值；修改默认值不暗中覆盖既有 Section，也不改变历史任务快照。编辑页允许修改“英文标识（slug）”并执行格式/唯一性校验；它用于导出目录、ZIP 和图片文件名，不替代中文项目名称 |
-| `GEN-PROJ-009` | 参数应用到全部小节 | 将单个项目参数批量写入全部 sections | 现用 | ProjectSection | apply-param route | 保留为显式批量操作：用户选择要覆盖的字段后应用到全部 Section，不使用“保存项目时顺带同步”的隐式行为 |
-| `GEN-PROJ-010` | 项目详情 | `/projects/[id]` 汇总 sections、运行、结果和项目动作 | 现用 | Project detail view | project detail page | 保留：汇总 Section、近期任务、结果和项目操作，具体布局在前端设计阶段单独确定 |
-| `GEN-SEC-001` | 小节新增 | 在项目内创建普通 section | 现用 | ProjectSection | addSection/API | 保留：从项目当前默认参数创建空白 Section，创建后独立编辑 |
-| `GEN-SEC-002` | 小节复制 | 复制 section 参数、bindings、blocks、LoRA，并插入源后 | 现用 | Section 子表 | copySection | 保留并重做：副本插入来源 Section 之后，复制参数、Prompt Segment、Preset Binding 和 LoRA，不复制任务、结果、回收站或变更历史 |
-| `GEN-SEC-003` | 小节删除 | 删除单个 section 及关联运行/资源 | 现用/破坏性 | DB + 可能的运行/图片 | deleteSection | 保留并统一语义：单个与批量删除使用同一领域操作；存在非终态任务时阻止删除并要求先取消。确认删除后物理清理 Section、终态任务、结果和受管文件 |
+| `GEN-PROJ-008` | 项目编辑 | `/projects/[id]/edit` 修改标题、默认尺寸、批次、checkpoint 等 | 现用 | Project | project edit form | 保留：项目中的图片默认参数只作为新 ProductionImageSection 的默认值；修改默认值不暗中覆盖既有图片小节，也不改变历史任务快照，不把图片参数作为未来其他小节类型的公共配置。编辑页允许修改“英文标识（slug）”并执行格式/唯一性校验；它用于图片导出目录、ZIP 和图片文件名，不替代中文项目名称 |
+| `GEN-PROJ-009` | 参数应用到全部小节 | 将单个项目参数批量写入全部 sections | 现用 | ProjectSection | apply-param route | 保留为显式批量操作：用户选择要覆盖的图片字段后应用到全部图片小节，不使用“保存项目时顺带同步”的隐式行为，也不跨类型覆盖参数 |
+| `GEN-PROJ-010` | 项目详情 | `/projects/[id]` 汇总 sections、运行、结果和项目动作 | 现用 | Project detail view | project detail page | 保留统一 ProductionProject 页面、小节列表和项目操作；小节与任务按类型识别，编辑器和结果界面由对应类型负责。本版汇总图片小节、近期图片任务和图片结果，具体布局在前端设计阶段单独确定 |
+| `GEN-SEC-001` | 小节新增 | 在项目内创建普通 section | 现用 | ProjectSection | addSection/API | 本版只支持新增 ProductionImageSection：从项目当前图片默认参数创建空白图片小节，创建后独立编辑；公共小节组织结构允许未来扩展其他类型，前端本版不提供尚未实现的类型入口 |
+| `GEN-SEC-002` | 小节复制 | 复制 section 参数、bindings、blocks、LoRA，并插入源后 | 现用 | Section 子表 | copySection | 公共组织层协调复制并将副本插入来源小节之后，对应类型处理配置复制。本版图片小节复制参数、Prompt Segment、Preset Binding 和 LoRA，不复制任务、结果、回收站或变更历史 |
+| `GEN-SEC-003` | 小节删除 | 删除单个 section 及关联运行/资源 | 现用/破坏性 | DB + 可能的运行/图片 | deleteSection | 公共层协调小节删除，各类型负责自己的配置、结果和文件。本版保留图片删除语义：单个与批量删除使用同一领域操作；存在非终态任务时阻止删除并要求先取消。确认删除后物理清理图片小节、终态图片任务、图片结果和受管文件 |
 | `GEN-SEC-004` | 小节批量删除 | 多选删除、服务端阻塞检查 | 现用/破坏性 | 多 section 及关联资源 | batch-delete route | 保留并并入统一 Section 删除能力：多选后一次确认，服务端按同一规则检查非终态任务并返回无法删除的具体 Section，不维护另一套删除语义 |
 | `GEN-SEC-005` | 清空全部小节 | 预览后删除项目所有 sections | 现用/高风险 | 项目全部 section 数据 | clearAllSections | 新版移除：“全选后批量删除”已经覆盖相同需求，删除独立按钮、action/API 和专用写路径 |
-| `GEN-SEC-006` | 小节排序 | 拖拽持久化 section 顺序 | 现用 | sortOrder | reorderSections | 保留：以拖放为主要交互，并持久化项目及文件夹范围内的 Section 顺序 |
-| `GEN-SEC-007` | 小节文件夹 | 新建、改名、删除、排序、移动 sections | 现用 | ProjectSectionFolder | section-folder actions | 保留多级文件夹并重做交互：支持直接将 Section 或多选 Section 拖入文件夹。删除非空文件夹时弹出模态框，只允许连同全部子文件夹和 Section 删除或取消；不提供删除时移动/保留内容的功能 |
+| `GEN-SEC-006` | 小节排序 | 拖拽持久化 section 顺序 | 现用 | sortOrder | reorderSections | 保留：以拖放为主要交互，由公共组织层统一持久化项目及文件夹范围内的小节顺序，顺序不分成图片专用列表；本版列表只包含图片小节 |
+| `GEN-SEC-007` | 小节文件夹 | 新建、改名、删除、排序、移动 sections | 现用 | ProjectSectionFolder | section-folder actions | 保留公共 ProductionSectionFolder 多级文件夹并重做交互：支持直接将小节或多选小节拖入文件夹，组织结构允许未来包含不同类型。删除非空文件夹时弹出模态框，只允许连同全部子文件夹和小节删除或取消；公共层按类型协调清理，本版只执行图片小节逻辑，不提供删除时移动/保留内容的功能 |
 | `GEN-SEC-008` | 紧凑/展开视图 | 项目详情切换卡片密度与展开状态 | 现用/UI | 浏览器状态 | section cards | 保留为纯界面偏好，不进入领域模型；项目和页面之间切换后恢复用户最后使用的视图 |
 | `GEN-SEC-009` | 批量创建小节 | `/batch-create` 搜索预制/组，构建导入队列并连续创建 | 现用 | Preset/Group/Section | batch-create client | 新版移除：该功能实际没有被使用，删除独立页面、客户端状态、专用 action/API 和兼容入口；普通新增、复制和模板导入覆盖新版需要的创建方式 |
 | `GEN-SEC-010` | 批量创建覆盖同分类 | 导入时替换已有同分类绑定 | 现用 | Category/bindings | batch create logic | 新版移除：它只是旧批量创建页中的“覆盖添加”按钮——选择一个 Preset/Group 时先从临时导入列表删除同分类项，再保留当前选择；不是独立领域能力，也没有单独持久化。随 `GEN-SEC-009` 一并删除 |
 | `GEN-SEC-011` | 从模板创建小节 | 选择模板 section 复制进项目 | 清单误判/无真实功能 | 实际未读取 ProjectTemplateSection | 名为 create-from-template 的 route/action | 纠正清单并移除误导实现：当前没有“选择一个模板 Section 复制进项目”的产品入口。`createSectionFromTemplate` 只是旧批量创建页的普通建节助手，不读取 Template；`create-from-template` API 的 `sectionId` 参数也未使用。随批量创建功能删除该误命名函数和无效路由，不把它迁移到新版 |
 | `GEN-SEC-012` | 导入整套模板 | 将模板的 sections/folders/bindings 导入项目 | 现用 | ProjectTemplate 全树 | template import | 保留：允许向已有项目追加模板中的全部文件夹和 Section，不覆盖已有内容；导入后项目数据与模板独立，Preset Binding 继续保持绑定 |
-| `GEN-SEC-013` | 整项目运行 | 对所有 enabled sections 入队 | 现用 | Run、ComfyUI | runProject | 保留但移除 `enabled` 语义：新版 Section 不再有“启用/停用”字段；运行整个项目时为项目内全部未删除 Section 分别创建 `unsubmitted` 任务，ComfyUI 不可达或 LoRA 训练占用 GPU 时由任务状态机等待 |
-| `GEN-SEC-014` | 指定小节运行 | 运行单个或选择的一组 sections | 现用 | Run、ComfyUI | runSection/runSections | 保留单个和多选运行；按当前 Section 参数分别创建不可变任务快照并进入 `unsubmitted`，不依赖 Section 启用状态 |
+| `GEN-SEC-013` | 整项目运行 | 对所有 enabled sections 入队 | 现用 | Run、ComfyUI | runProject | 保留并明确为“生成全部图片小节”，移除 `enabled` 语义：新版图片小节不再有“启用/停用”字段；为项目内全部未删除 ProductionImageSection 分别创建 `unsubmitted` ProductionImageTask，ComfyUI 不可达或 LoRA 训练占用 GPU 时由图片任务状态机等待。未来其他类型是否参加项目批量运行另行设计 |
+| `GEN-SEC-014` | 指定小节运行 | 运行单个或选择的一组 sections | 现用 | Run、ComfyUI | runSection/runSections | 本版保留单个和多选图片小节运行；按当前 ProductionImageSection 参数分别创建 ProductionImageTask 不可变快照并进入 `unsubmitted`，不依赖小节启用状态，不向其他类型隐式应用图片运行规则 |
 | `GEN-PROJ-015` | 外部项目搜索与状态筛选 | Service/Agent/MCP 支持 title、status、hasPending；普通项目页无对应控件 | 隐藏/外部自动化 | Project query | listProjects、Agent/MCP | 保留查询能力并统一到正式项目列表 HTTP API 和普通 UI；删除随 MCP 模块存在的重复入口，不再维护仅外部可用的另一套筛选语义 |
 | `GEN-PROJ-016` | 参考项目同步角色变体 | 项目详情可选择来源项目/文件夹，Dry Run、抽查后 Apply，同步 role preset variants | 现用/深层入口 | 两个项目的 section role bindings | SyncPresetVariantFlowDialog、agent flow API | 保留但大幅简化为一次“同步变体分配”：在目标项目选择来源项目和 Preset 分类，系统按 Section 名称精确匹配，在同一个模态框列出将要改变的 Section→Variant 及未匹配数量，用户确认后直接应用。删除来源文件夹筛选、独立 Dry Run、抽查步骤、分阶段 Apply 和专用 Agent flow；持续 Preset Binding 仍只负责内容更新，不能替代该分配复制能力 |
 
@@ -72,7 +74,7 @@
 | `GEN-EDIT-004` | 两阶段 KSampler | KSampler1/2 参数、是否启用第二阶段 | 现用 | resolved config snapshot | section params | 保留两阶段能力和“是否使用第二阶段”；详细采样参数放入高级区域但允许完整编辑 |
 | `GEN-EDIT-005` | Seed 策略 | random/fixed/increment 等两阶段策略 | 现用 | run payload | section params | 保留随机、固定和递增策略，用于复现结果或批量生成不同结果 |
 | `GEN-EDIT-006` | 最近结果预览 | 编辑页显示近期运行与结果 | 现用 | Run/ImageResult | section edit page service | 保留：编辑 Section 时直接查看近期任务和图片，并可进入完整结果页 |
-| `GEN-EDIT-007` | 小节变更历史 | 展示参数、提示词、LoRA 等维度的变更记录 | 现用/深层入口 | SectionChangeLog | section-change-history UI/service | 保留并迁移到 RV-01～RV-10：Section 的 Prompt、LoRA 和生成参数分别作为明确 scope 接入 shared 修改历史协议，由 image-production adapter 校验和恢复；删除专属 SectionChangeLog 模型和服务 |
+| `GEN-EDIT-007` | 小节变更历史 | 展示参数、提示词、LoRA 等维度的变更记录 | 现用/深层入口 | SectionChangeLog | section-change-history UI/service | 保留并迁移到 RV-01～RV-10：Section 的 Prompt、LoRA 和生成参数分别作为明确 scope 接入 shared 修改历史协议，由 production adapter 校验和恢复；删除专属 SectionChangeLog 模型和服务 |
 | `GEN-PROMPT-001` | 自定义提示词块 CRUD | 正/负文本、label、新增/编辑/删除 | 现用 | SectionPromptBlock | prompt-block service | 保留并迁移为 `CustomText` Segment：包含普通正向文本、负向文本和可选名称；名称只用于界面识别，不参与 Prompt 编译 |
 | `GEN-PROMPT-002` | 提示词块排序 | 拖拽顺序并影响最终 prompt | 现用 | sortOrder | reorder blocks | 保留拖放排序；最终正向和负向 Prompt 严格按当前 Segment 顺序解析 |
 | `GEN-PROMPT-003` | 导入预制 | 把 preset variant 作为绑定导入 section | 现用 | SectionPresetBinding | importPresetToSection | 保留并迁移为持续 `PresetBinding` Segment，不复制预制文本；Preset 更新影响仍绑定的 Section，任务保存当时的解析快照 |
@@ -88,12 +90,14 @@
 
 ### B4. 结果、打码、导出与生命周期
 
+项目导出在本版明确指图片交付包，继续使用既有 JPEG、ZIP、P站、预览与封面规则。归档和删除由生产公共层协调，各类小节负责配置、结果和文件的处理；下表仅规定本版图片能力的具体行为，不预先定义未来其他类型的生命周期。
+
 | ID | 功能点 | 当前入口与行为 | 状态 | 主要依赖 / 移除影响 | 代码证据 | 决策 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `GEN-RESULT-001` | 小节结果页 | `/projects/[id]/sections/[id]/results` 按 Run 展示 | 现用 | Run/ImageResult | section results | 保留：按任务分组展示当前 Section 的全部结果，任务默认按时间倒序；可展开查看任务参数、Attempt 和图片 |
 | `GEN-RESULT-002` | 跨小节连续审核 | 完成当前 section 后导航下一 pending section | 现用 | Section pending counts | results client | 保留：完成当前 Section 后进入下一个仍有未审核图片的 Section；与已确认的生产审核导航共用同一实现 |
 | `GEN-RESULT-003` | 临时批次重跑 | 从结果页以临时 batch 覆盖重新运行 | 现用 | enqueue overrideBatchSize | results actions | 保留为本次任务覆盖：从结果页“按当前小节再次生成”时允许临时修改本次生成数量，不修改 Section 默认值；新任务保存实际数量快照 |
-| `GEN-RESULT-004` | 项目结果汇总 | `/projects/[id]/results` 汇总全部 sections | 现用 | Project/Run/ImageResult | project results | 保留：汇总项目全部 Section 图片，支持按 Section 分组或按时间浏览，并可跳回来源 Section 和任务 |
+| `GEN-RESULT-004` | 项目结果汇总 | `/projects/[id]/results` 汇总全部 sections | 现用 | Project/Run/ImageResult | project results | 保留为项目图片结果汇总：只汇总项目全部 ProductionImageSection 的 ProductionImageResult，支持按图片小节分组或按时间浏览，并可跳回来源图片小节和任务；不把未来其他类型的素材或结果混入图片结果集合 |
 | `GEN-RESULT-005` | 结果筛选 | 全部、P站、预览、封面筛选 | 现用 | featured flags | project results client | 保留“全部、P站、预览、封面”四类筛选；不扩展成通用标签系统 |
 | `GEN-RESULT-006` | 删除项目全部图片 | 项目结果页批量移入回收站 | 现用/破坏性 | 全部 ImageResult 与文件 | trashProjectImages | 保留并重做：项目或 Section 范围批量丢弃结果时统一进入图片回收站，并保留原项目、Section、任务和结果上下文；不与任务历史清理合并 |
 | `GEN-CENSOR-001` | 手工快速打码 | 单图画布手工绘制并持久化打码图片 | 现用 | 原图/censored 文件 | quick-censor canvas | 保留：用户在单图画布绘制打码区域并保存独立打码版本，原图不被覆盖 |
@@ -103,11 +107,13 @@
 | `GEN-CENSOR-005` | 项目范围打码暂停/恢复/取消 | actions 以 projectId 批量控制项目下任务，没有单 CensoringTask 控制入口 | 现用/运维 | CensoringTask 与外部进程 | censoring actions | 保留并改为控制具体批量任务：暂停后不再领取下一张，当前图片处理完即暂停；恢复后继续剩余图片；取消后停止领取新图片。项目范围可多选任务批量控制，但不再只能一次控制项目下全部任务 |
 | `GEN-EXPORT-001` | 图片整合导出 | 生成 ZIP、封面、P站、预览目录 | 现用/写文件 | `data/images`、`data/export`、Archiver | project-export service | 保留并重做为单一完整 ZIP：全部已保留原图、封面、P站打码图和预览打码图一次打包。ZIP、导出目录和普通图片文件名统一使用项目“英文标识（slug）”，例如 `<slug>.zip`、`<slug>_01.jpg`；保留原有兼容性更好的英文结构与文件名 `pixiv/`、`preview/`、`cover.jpg`、`cover_censored.jpg`，用户界面仍显示“P站、预览、封面”。同时支持浏览器下载 ZIP，并向认证用户显示/复制服务器导出绝对路径 |
 | `GEN-EXPORT-002` | 导出前置检查 | 要求唯一封面和 kept 图片；成功写 `publishedAt` | 现用 | Project/ImageResult | export route | 保留并重构检查：要求有效且唯一的 slug、恰好一张封面及至少一张已保留图片；P站和预览允许为空。所有被标记为封面/P站/预览的图片都必须已有打码版本，否则阻止导出并列出缺失项。每次导出覆盖该项目上一份结果，不保留历史版本；记录 `lastExportedAt`，移除把本地打包等同外部发布的 `publishedAt` 语义 |
-| `GEN-LIFE-001` | 项目归档 | 要求完成/导出，取消任务并尽力清理图片、trash、Comfy output、export，写 archivedAt | 现用/高风险 | DB + 本地/SSH 文件系统 | archive service | 保留并重构为永久只读归档，不要求先导出，只要求没有非终态任务。保留 Project、文件夹、Section、参数、Prompt/LoRA 配置、任务/Attempt、数据库中的任务 Workflow JSON 快照、全部正常图片及打码版本和最新导出文件；删除执行临时文件、磁盘上的 Workflow 下载/缓存文件及回收站中的图片。归档后仍通过原 Preset/Group Binding 正常解析最新内容，不保存额外 resolved config/Prompt/LoRA 归档快照 |
+| `GEN-LIFE-001` | 项目归档 | 要求完成/导出，取消任务并尽力清理图片、trash、Comfy output、export，写 archivedAt | 现用/高风险 | DB + 本地/SSH 文件系统 | archive service | 公共层协调永久只读项目归档，各类小节负责自己的资源处理；不要求先导出，只要求没有非终态任务。本版保留 Project、文件夹、图片小节、图片参数、Prompt/LoRA 配置、图片任务/Attempt、数据库中的任务 Workflow JSON 快照、全部正常图片及打码版本和最新图片导出文件；删除执行临时文件、磁盘上的 Workflow 下载/缓存文件及回收站中的图片。归档后仍通过原图片 Preset/Group Binding 正常解析最新内容，不保存额外 resolved config/Prompt/LoRA 归档快照；未来其他类型的资源规则另行设计 |
 | `GEN-LIFE-002` | 项目反归档 | 当前没有反归档 | 缺失 | 归档会已删除多类文件，难以恢复 | 无 | 新版不增加：归档项目永久只读且不可恢复为 active；只允许浏览、下载保留文件和彻底删除项目 |
-| `GEN-LIFE-003` | 项目彻底删除 | 清理任务/文件后级联删除项目 DB | 现用/高风险 | Project 全树、文件、Comfy output | deletion service | 保留并重构为真正彻底删除：要求先取消全部非终态任务，随后删除 Project 全部数据库记录、Section、任务/Attempt、数据库中的 Workflow JSON 快照、磁盘 Workflow 文件、图片、打码版本、回收站和临时文件，并清理已成功持久化后的已知 ComfyUI 输出副本。`data/export/<slug>/` 等打包目录中的交付文件完全保留，不随项目删除；文件清理失败时不得把项目错误标记为已删除 |
+| `GEN-LIFE-003` | 项目彻底删除 | 清理任务/文件后级联删除项目 DB | 现用/高风险 | Project 全树、文件、Comfy output | deletion service | 公共层协调真正彻底删除，各类小节负责自己的配置、结果和文件；要求先取消全部非终态任务。本版随后删除 Project 全部数据库记录、图片小节、图片任务/Attempt、数据库中的 Workflow JSON 快照、磁盘 Workflow 文件、图片、打码版本、图片回收站和临时文件，并清理已成功持久化后的已知 ComfyUI 输出副本。`data/export/<slug>/` 等图片打包目录中的交付文件完全保留，不随项目删除；文件清理失败时不得把项目错误标记为已删除，不预设未来其他类型的文件处理规则 |
 
 ### B5. Generation 预制与模板
+
+本组 Preset、分类、文件夹、Variant 与 Group 均为图片专属，正式名称统一使用 ProductionImagePreset 前缀。ProductionTemplate 与 ProductionProject 同级；模板的公共列表、ProductionTemplateSectionFolder 与排序允许未来扩展其他类型小节，本版只有 ProductionTemplateImageSection。模板图片小节与项目 ProductionImageSection 复用配置协议、独立拥有配置记录，导入和另存仍深复制。
 
 | ID | 功能点 | 当前入口与行为 | 状态 | 主要依赖 / 移除影响 | 代码证据 | 决策 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -120,7 +126,7 @@
 | `GEN-PRESET-007` | 变体提示词与 LoRA | positive/negative、LoRA path/weight 属于 PresetVariant；Civitai links 属于 Preset 主记录 | 现用 | Preset + PresetVariant | preset form | 保留 Variant 的正向文本、负向文本、第一阶段 LoRA 和第二阶段 LoRA，LoRA 必须从 shared 模型管理模块选择。Civitai 等普通参考链接归 Preset；若链接指向具体 LoRA 模型，则由模型模块维护，Preset 只引用该模型 |
 | `GEN-PRESET-008` | 关联变体 | 一个变体递归引用其他变体并防循环 | 现用/复杂 | PresetVariantLink | preset resolver | 保留旧版设计：Variant 可递归关联其他 Variant，解析时按原规则展开，并继续执行循环引用检测和拒绝写入 |
 | `GEN-PRESET-009` | 跨变体批量文本替换 | 对选中变体预览并替换 prompt 文本 | 现用 | 多个 PresetVariant | bulk text utilities | 保留：选择若干 Variant，预览正向/负向文本替换结果后一次应用 |
-| `GEN-PRESET-010` | 预制变更历史 | 记录和展示 preset/group 变更 | 现用 | PresetChangeLog/GroupChangeLog | change history service/UI | 保留并迁移到 RV-01～RV-10：Preset、Variant、Group 及 Template 的可编辑配置接入 shared 修改历史协议，由 image-production adapter 负责快照和恢复；删除 PresetChangeLog/GroupChangeLog 专属模型和服务 |
+| `GEN-PRESET-010` | 预制变更历史 | 记录和展示 preset/group 变更 | 现用 | PresetChangeLog/GroupChangeLog | change history service/UI | 保留并迁移到 RV-01～RV-10：Preset、Variant、Group 及 Template 的可编辑配置接入 shared 修改历史协议，由 production adapter 负责快照和恢复；删除 PresetChangeLog/GroupChangeLog 专属模型和服务 |
 | `GEN-PRESET-011` | 使用情况查询 | 查找预制在项目/模板中的使用 | 现用+API | bindings | usage route | 保留为领域查询和正式 HTTP API，不新增独立“使用情况”页面。当前生产 UI 在删除 Preset 前调用该查询并列出受影响的项目/模板 Section；新版继续复用同一查询完成删除确认和外部调用 |
 | `GEN-PRESET-012` | 级联清理并停用预制 | 清理 links、bindings、prompt blocks、manual LoRA 后设 `Preset.isActive=false`；Preset/Variant 主记录保留 | 现用/高风险 | 多域 bindings | cascade route | 改为物理删除而非停用/软删除：删除前把各 Section/Template Binding 的当前 Prompt 转为 `CustomText`、Preset LoRA 转为手动 LoRA，并从 Group 中移除成员；随后物理删除 Preset 和 Variant。归档项目也执行这项系统级转换 |
 | `GEN-PRESET-013` | 绑定惰性解析最新预制 | Section/Template 绑定读取时解析最新源内容；手工 detach 不重新附着 | 现用/核心 | bindings/provenance/resolvers | preset resolvers | 保留惰性解析：未 detach 的 Binding 始终读取最新 Preset/Variant，不向使用方批量写入缓存 |
@@ -134,7 +140,7 @@
 | `GEN-TPL-001` | 模板列表与 CRUD | `/assets/templates` 创建、编辑、删除 | 现用 | ProjectTemplate | template actions | 保留创建、编辑和物理删除，不增加归档或软删除；删除 Template 不影响已经创建或导入过它的项目 |
 | `GEN-TPL-002` | 模板小节 CRUD/排序/复制 | 管理模板 sections | 现用 | ProjectTemplateSection | template actions/API | 保留新增、编辑、复制、删除和拖放排序；移除 `enabled` |
 | `GEN-TPL-003` | 模板小节文件夹 | CRUD、排序、移动 template sections | 现用 | ProjectTemplateSectionFolder | section-folder actions | 保留多级文件夹和拖放移动。删除空文件夹可直接执行；删除非空文件夹时只允许“连同全部子文件夹和 Template Section 删除”或取消，不提供保留 Section 并移动到其他位置的功能 |
-| `GEN-TPL-004` | 模板小节参数编辑 | KSampler、尺寸、批次、workflow | 现用 | TemplateSection params | template section page | 与项目 Section 使用同一参数协议：尺寸、生成数量、两阶段 KSampler、Seed、Checkpoint 覆盖和 LoRA；Workflow 由图像生产模块统一选择，不作为 Template Section 字段 |
+| `GEN-TPL-004` | 模板小节参数编辑 | KSampler、尺寸、批次、workflow | 现用 | TemplateSection params | template section page | ProductionTemplateImageSection 与 ProductionImageSection 使用同一图片参数协议、独立配置记录：尺寸、生成数量、两阶段 KSampler、Seed、Checkpoint 覆盖和 LoRA；Workflow 仍按已确认的本版图片设置统一选择，不作为模板图片小节字段，不把图片 Workflow 规则推广为其他类型的公共要求 |
 | `GEN-TPL-005` | 模板提示词/预制/LoRA | 与项目 section 类似的 bindings、blocks、manual LoRA | 现用/复杂 | Template section 子表 | template prompt editor | 与项目 Section 使用同一 Segment、Binding、Group 和 LoRA 协议；Group 仍展开为多个独立 Preset Binding |
 | `GEN-TPL-006` | 项目另存模板 | 将项目结构固化为 template | 现用 | Project -> Template clone | saveProjectAsTemplate | 保留：复制项目的完整文件夹层级、Section 归属/名称/顺序、参数、Segment、Binding 和手动 LoRA；不复制任务、结果、图片、项目 slug 或导出文件 |
 | `GEN-TPL-007` | 模板导入项目 | 复制 template sections/folders/bindings | 现用 | Template -> Project clone | importTemplateToProject | 保留并完整迁移结构：向当前项目深复制 Template 的全部文件夹层级、父子关系、同级顺序以及每个 Section 的文件夹归属和顺序，不扁平化、不覆盖已有项目内容；导入后项目与 Template 独立，Preset Binding 继续保持绑定 |
@@ -152,7 +158,7 @@
 | `GEN-EXEC-001` | 事务入队 | 按 enabled section / aspect ratio 创建 queued Run | 后台核心 | Project/Section/Run | enqueue.ts | 保留并重做：创建任务时先持久化为 `unsubmitted`；不得因 ComfyUI 未连接或训练占用 GPU 而丢失或直接失败，不再另建“缓冲队列”领域概念 |
 | `GEN-EXEC-002` | ComfyUI 提交 | 验证 graph、提交 prompt、保存 promptId | 后台核心 | ComfyUI HTTP | run-executor/comfyui-service | 保留并重做：调度器只提交 `unsubmitted` 任务；每次提交先创建内部 Attempt，ComfyUI 可达且没有活动训练任务时幂等、有序提交，接收 promptId 后写入该 Attempt 并原子地把任务转为 `submitted`；不可达时任务保持 `unsubmitted`，不提示启动 ComfyUI；训练结束后自动恢复调度 |
 | `GEN-EXEC-003` | 队列位置与历史轮询 | 等待开始、轮询完成/失败、有限并发 | 后台核心 | ComfyUI queue/history | run-executor | 保留并重构：WebSocket 按 promptId 接收即时 execution/progress/completion/error 事件；只要存在 submitted/running 任务，后台同时固定每 1 秒查询一次 queue/history 并以其校正权威状态，WebSocket 断线也不改变频率。Attempt 保存 submittedAt、startedAt、finishedAt、ComfyUI 排队耗时、实际生成耗时和错误，Task 按 `ARCH-010` 累计各阶段。一次 Attempt 不建模部分成功，全部结果持久化后才 completed |
-| `GEN-EXEC-004` | 输出下载与持久化 | 下载图片、写 ImageResult 和受管文件 | 后台核心 | ComfyUI output、`data/images` | image-result-service | 保留并改为全有或全无：全部预期图片下载、校验和落盘成功后才创建正式 ImageResult；任一失败则任务失败并清理本次临时文件，不产生“部分成功” |
+| `GEN-EXEC-004` | 输出下载与持久化 | 下载图片、写 ImageResult 和受管文件 | 后台核心 | ComfyUI output、`data/images` | image-result-service | 保留并改为全有或全无：全部预期图片下载、校验和落盘成功后才创建正式 ProductionImageResult；任一失败则任务失败并清理本次临时文件，不产生“部分成功” |
 | `GEN-EXEC-005` | 延迟提交与恢复 | ComfyUI 不可达时保留 queued；后台恢复 stale runs | 后台核心 | Run 状态、恢复上限 | run-executor | 保留并重构：延迟提交就是任务保持 `unsubmitted`，等待原因包括 ComfyUI 不可达、GPU unavailable、GPU 恢复后等待 ComfyUI restart、restart 失败或 LoRA 训练占用；不另建缓冲队列。条件恢复后自动、幂等、有序转为 `submitted`；前端显示等待原因，不在任务创建流程提示启停 ComfyUI |
 | `GEN-EXEC-006` | 启动孤儿清理 | server 启动把超过 30 分钟 running 标记 failed | 后台 | instrumentation + DB | instrumentation.node.ts | 移除固定“超过 30 分钟即失败”的孤儿清理；超时不能替代 ComfyUI 权威状态查询 |
 | `GEN-EXEC-007` | 启动恢复 | server 启动恢复有 promptId 的活动运行；可选恢复 paused | 后台 | Run/ComfyUI | instrumentation.node.ts | 保留并按共同中断场景重做：应用启动后按 Attempt promptId 查询 ComfyUI queue/history，仍存在则恢复监控，已经完成则下载结果；ComfyUI 不可达时等待后续检查，确认可达但旧 prompt 不存在时把 Attempt 记为 interrupted，并将同一任务自动退回 `unsubmitted` 重新排队。paused 任务保持暂停，不自动恢复 |
