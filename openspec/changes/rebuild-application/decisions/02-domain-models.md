@@ -6,18 +6,20 @@
 
 修改历史与审计日志职责分离：修改历史用于查看差异和恢复可编辑业务内容；审计日志用于记录谁在何时执行了什么操作。Shared 只统一记录、查询、分页和通用界面，不直接理解或任意修改各模块业务表；生产与训练分别注册自己的快照、校验、摘要和恢复处理器。本版生产处理器只接入已确认的图片能力，训练功能仍为 LoRA 训练。
 
+涉及业务对象的共享记录统一以 module + resourceType + resourceId 表达目标身份。resourceType 区分公共小节、具体配置、任务等对象；resourceId 对应所声明类型的真实身份，不能根据当前页面或相近名称猜测目标。平台负责记录和路由，业务校验、恢复与清理由所属模块或小节类型处理；这是一套引用协议，不建立共享业务资源表。没有业务目标的系统日志不虚构资源身份。
+
 | ID | 能力 | 所有权 / 持久化 | 决策 |
 | --- | --- | --- | --- |
 | `RV-01` | 与审计日志的边界 | shared | 修改历史用于差异和恢复；审计日志用于操作追踪。一次可恢复修改可以同时产生一条 RevisionEntry 和一条 AuditLog，但两者不共享 payload，也不能互相替代 |
-| `RV-02` | 统一模型与领域适配 | shared + 模块处理器 | 删除 `SectionChangeLog`、`PresetChangeLog`、`PresetGroupChangeLog`、`TrainingTextRevision` 等专属记录模型，改用一个 shared `RevisionEntry` 表；shared 根据 module/resourceType/scope 路由到模块注册的 capture、validate、summarize 和 restore 处理器，绝不直接按 JSON 任意更新业务表 |
+| `RV-02` | 统一模型与领域适配 | shared + 模块处理器 | 删除 `SectionChangeLog`、`PresetChangeLog`、`PresetGroupChangeLog`、`TrainingTextRevision` 等专属记录模型，改用一个 shared `RevisionEntry` 表；目标由 module/resourceType/resourceId 完整定位，shared 结合 scope 路由到所属模块或小节类型注册的 capture、validate、summarize 和 restore 处理器，绝不直接按 JSON 任意更新业务表 |
 | `RV-03` | 生产覆盖范围（本版图片能力） | production adapter | 覆盖图片小节的 Prompt、LoRA 和生成参数，以及图片 Preset、Variant、Group 和模板图片配置；项目名称、文件夹移动等普通元数据只写审计，不提供恢复 |
 | `RV-04` | 训练覆盖范围 | training adapter | 覆盖三个角色文本、Section Caption、Prompt Segment、输入图片关系、Provider 参数、代表图片，以及 Prompt Preset、Template 的可编辑配置 |
 | `RV-05` | 排除范围 | shared 固定协议 | Task、Attempt、TrainingRun、checkpoint 和图片字节不创建修改历史；它们使用不可变快照或自身生命周期。删除、回收站和任务状态变化只写审计 |
 | `RV-06` | 记录时机与粒度 | 模块领域事务 | 每次成功的新增、编辑、删除、排序、绑定或解绑请求最多产生一条对应逻辑范围的记录；无实际变化时不记录。只记录明确保存的语义操作，不记录每次键盘输入、后台进度、idle checkpoint、start training 或 dataset freeze 等伪修订原因 |
 | `RV-07` | RevisionEntry 内容 | shared / SQLite | 每条保存 module、resourceType、resourceId、scope、schemaVersion、单份完整 snapshot、summary、actorType 和 createdAt；不同时保存 before/after。差异在读取时与相邻快照或当前状态计算，图片、完整任务 payload、Token 和秘密不得进入 snapshot |
-| `RV-08` | 恢复 | 模块领域事务 | 恢复只作用于该记录的逻辑范围；模块处理器先验证实体、schemaVersion 和领域约束，再在同一事务中保存当前状态的新 RevisionEntry 并应用目标快照，因此恢复后仍可撤销。shared 不绕过模块服务直接写库 |
-| `RV-09` | 保留策略 | shared / SQLite | 不设数量或时间上限，不自动删除；按 resourceType、resourceId、scope、createdAt 建索引并强制分页。归档项目保留历史，彻底删除资源时由模块删除事务同步删除对应 RevisionEntry；只有实际体积形成负担后才另行设计手工清理能力 |
-| `RV-10` | 界面与 HTTP 接口 | shared UI + 模块 API | 在具体编辑页提供统一“修改历史”抽屉，展示时间、操作者、摘要和差异并支持恢复，不建设全局历史中心。前端与 Agent 共用规范的历史查询、详情和恢复 HTTP 接口，恢复仍进入对应模块处理器和审计流程 |
+| `RV-08` | 恢复 | 模块领域事务 | 恢复只作用于完整 module/resourceType/resourceId 目标身份及该记录的 scope；所属业务处理器先验证身份、实体、schemaVersion 和领域约束，再在同一事务中保存当前状态的新 RevisionEntry 并应用目标快照，因此恢复后仍可撤销。shared 不凭单独 resourceId 恢复，也不绕过模块服务直接写库 |
+| `RV-09` | 保留策略 | shared / SQLite | 不设数量或时间上限，不自动删除；查询按完整 module/resourceType/resourceId 及 scope 过滤，索引包含 module、resourceType、resourceId、scope、createdAt，并强制分页。归档项目保留历史，彻底删除资源时由所属业务删除事务按完整目标身份同步删除对应 RevisionEntry；只有实际体积形成负担后才另行设计手工清理能力 |
+| `RV-10` | 界面与 HTTP 接口 | shared UI + 模块 API | 在具体编辑页提供统一“修改历史”抽屉，展示时间、操作者、摘要和差异并支持恢复，不建设全局历史中心。前端与 Agent 共用规范的历史查询、详情和恢复 HTTP 接口，按完整目标身份定位，恢复仍进入所属业务处理器和审计流程。界面显示自然业务名称，目标跳转由完整身份解析，不要求用户填写技术身份字段 |
 
 ## A8. Shared 实体与跨模块关系
 
@@ -48,7 +50,7 @@ Shared 数据模型只保存真正跨模块的配置、资源索引和平台记�
 | `SD-04` | `ModelFileRecord` | SQLite 文件投影 | 以 modelKind + relativePath 为唯一业务键，保存 present/missing 状态、普通备注、Trigger words、Civitai URL、最近扫描时间等元数据；取代旧 LoraAsset 身份，同时覆盖 checkpoint、LoRA 和其他已支持模型类型 |
 | `SD-05` | `PinnedModelFolder` | SQLite 有序关系 | 保存相对 ComfyUI `models` 根目录的文件夹路径和置顶顺序；目录缺失时保留记录并显示缺失，用户可取消置顶 |
 | `SD-06` | `RevisionEntry` | SQLite 通用记录 | 使用 RV-01～RV-10 的单快照模型；shared 负责记录、索引、分页和路由，模块处理器负责捕获、校验、摘要与恢复 |
-| `SD-07` | `AuditLog` | SQLite 追加记录 | 只保存操作者、动作、目标、结果和时间等最小审计信息，不保存完整业务快照、Prompt、图片、Token 或秘密；与 RevisionEntry 独立 |
+| `SD-07` | `AuditLog` | SQLite 追加记录 | 只保存操作者、动作、目标、结果和时间等最小审计信息；涉及业务对象时，目标使用 module/resourceType/resourceId 完整身份以区分生产/训练、公共小节/具体配置/任务等。应用级操作不虚构业务对象；不保存完整业务快照、Prompt、图片、Token 或秘密，与 RevisionEntry 独立 |
 | `SD-08` | 非数据库状态 | 环境变量 / 浏览器 / 文件 | AUTH_TOKEN、APP_DATA_ROOT、EXPORT_ROOT 和 Codex auth 文件指针来自环境变量；主题、SFW、导航偏好在浏览器；结构化日志写轮转文件，不建立数据库副本或 fallback |
 | `SD-09` | GPU 协调 | 无独立表 | 删除 GpuTaskLock。协调服务通过图像 Task/Attempt 的 submitted/running/提交 claim 和 TrainingRun pending/running 状态，在同一 SQLite 事务内决定提交或训练启动；状态记录本身是唯一真相 |
 

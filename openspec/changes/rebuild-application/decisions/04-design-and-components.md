@@ -4,6 +4,8 @@
 
 生产容器、图片专属模型及模块命名遵循 [前向兼容边界](09-forward-compatibility.md)，小节结构按 FC-15（SC-01～03）执行：ProductionSection 只保存项目、文件夹、名称、类型和排序这些公共组织信息，ProductionImageSection 只保存图片专属配置及关联，二者一对一；模板对应 ProductionTemplateSection 与 ProductionTemplateImageSection。用户与 API 始终操作一个小节资源，不需要先建公共记录再建图片配置。本版只设计和实现图片能力，不新增视频页面、占位入口或空接口。
 
+资源目标按 FC-16（ID-01～03）统一使用 `module + resourceType + resourceId`：修改历史、针对业务对象的审计/日志及相关页面跳转必须区分公共 ProductionSection、ProductionImageSection 图片配置与具体任务等资源。平台负责记录和路由，业务校验、恢复与清理由所属模块或小节类型负责。界面仍显示自然业务名称，不增加技术身份输入表单；无业务目标的系统日志不制造资源 ID，也不因此扩大日志或历史功能。
+
 ## A15. 前端信息架构与导航
 
 新版是长期操作型生产工作台，不采用营销页、大 KPI 仪表盘或依赖单一颜色表达状态的设计。React Router 页面路由、稳定深链、浏览器历史和模块对称性是信息架构基础；Fastify 托管前端静态产物并支持页面深链刷新，API 和文件错误不得被 SPA 回退吞掉。
@@ -20,7 +22,7 @@
 | `IA-08` | LoRA 训练项目页 | 项目内导航为概览、角色档案、参考图、构图、训练素材、任务；训练素材页集中选择代表图并编辑 Caption |
 | `IA-09` | 小节编辑器 | 用户进入一个 ProductionSection 小节资源，其名称和组织信息来自公共记录，图片参数/Prompt 与相关能力来自一对一 ProductionImageSection；图片编辑器与结果仍独立。ProductionTemplateSection 同样拥有一对一 ProductionTemplateImageSection，复用图片配置协议和编辑器，但模板与项目记录独立、应用时深复制；新增/编辑不拆为公共记录与图片配置两步。TrainingSection 围绕 Prompt、输入图、候选、代表图和 Caption 设计，不强行使用同一业务布局，也不把图片编辑器扩展为通用媒体编辑器 |
 | `IA-10` | 模块与项目任务 | 各模块的跨项目任务页支持筛选、时间排序和按项目分组；项目内任务页复用该模块相同任务交互但固定 ProductionProject 或 TrainingProject 范围。配置、状态、结果和数量按各任务类型表达，不以共用展示组件合并任务业务模型 |
-| `IA-11` | 深层导航 | 三级以上页面显示面包屑，项目与小节的名称可点击返回；生产使用 ProductionProject/ProductionSection，模板使用 ProductionTemplate/ProductionTemplateSection，训练使用 TrainingProject/TrainingSection。生产面包屑与小节导航基于公共小节身份，进入后按类型调用编辑器和结果。每个视图具有稳定可复制 URL，浏览器后退/前进不得被自定义路由状态破坏 |
+| `IA-11` | 深层导航 | 三级以上页面显示面包屑，项目与小节的名称可点击返回；生产使用 ProductionProject/ProductionSection，模板使用 ProductionTemplate/ProductionTemplateSection，训练使用 TrainingProject/TrainingSection。生产面包屑与小节导航基于公共小节身份，进入后按类型调用编辑器和结果。来自历史、业务审计/日志的资源跳转按完整 module + resourceType + resourceId 解析；图片配置定位回其关联的公共小节页面，不把配置身份当作公共小节身份。界面使用自然业务名称。每个视图具有稳定可复制 URL，浏览器后退/前进不得被自定义路由状态破坏 |
 | `IA-12` | 页面状态持久化 | 保留每个模块最后路由、查询、展开状态、选中 Tab 和滚动位置；刷新后恢复。生产项目与模板的小节选中状态分别基于 ProductionSection/ProductionTemplateSection 的身份，不另维护图片配置选中项；失效资源按页面级尽力规则回退最近可用父页面 |
 | `IA-13` | 归档项目 | 使用持续可见的只读标识和禁用原因；隐藏或禁用全部写入动作，保留浏览、文件下载和彻底删除。ProductionProject 的归档/删除入口及小节复制/删除按类型执行所属业务规则，本版落实图片逻辑；图片导出和文件保留规则继续有效 |
 | `IA-14` | 加载与错误 | 每个真实路由提供页面级加载骨架和局部错误状态；操作错误保留当前输入并允许复制详情，不跳转独立错误页 |
