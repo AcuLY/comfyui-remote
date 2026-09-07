@@ -41,13 +41,19 @@
 
 ### Requirement: 公共生产组织与按类型划分的小节
 
-生产模块 SHALL 由 `ProductionProject` 与 `ProductionTemplate` 拥有公共文件夹、小节列表和排序，使用 `ProductionImageSection` 与 `ProductionTemplateImageSection` 表达当前图片配置。公共组织与前端容器应允许后续接入其他小节类型，图片编辑器、任务、结果和文件资产仍保持明确的类型归属。
+生产模块 SHALL 由 `ProductionProject` 与 `ProductionTemplate` 拥有公共组织层，分别使用 `ProductionSection` 与 `ProductionTemplateSection` 保存小节身份、容器、文件夹、名称、类型和排序；当前图片配置分别由一对一的 `ProductionImageSection` 与 `ProductionTemplateImageSection` 拥有，组织字段不重复保存。公共组织与前端容器应允许后续接入其他小节类型，图片编辑器、任务、结果和文件资产仍保持明确的类型归属。
 
 #### Scenario: 编辑生产项目或模板
 
 - **WHEN** 用户浏览小节列表、调整文件夹或排序、进入小节编辑
 - **THEN** 公共层处理组织信息，由小节类型对应的界面处理配置与结果，本版只提供图片小节
 - **AND** 项目与模板复用配置协议但独立拥有记录，模板导入项目继续深复制
+
+#### Scenario: 创建或复制本版图片小节
+
+- **WHEN** 用户创建或复制一个项目图片小节或模板图片小节
+- **THEN** 领域操作整体创建公共组织记录和一对一图片配置及其适用关联
+- **AND** 用户与 API 始终操作一个逻辑小节，名称和排序只从公共记录读取与修改，不要求用户先后创建两种记录
 
 #### Scenario: 查看与执行当前图片任务
 

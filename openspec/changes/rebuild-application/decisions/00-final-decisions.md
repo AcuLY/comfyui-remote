@@ -8,7 +8,7 @@
 - 新版本保留生产与训练两个完全对等的业务模块，技术标识为 `production` 与 `training`。本版生产功能只实现图片生成，训练功能只实现 LoRA 训练。
 - 2026-09-05 技术选型确认：前端使用 React 19 + Vite + React Router，唯一主组件库为 PrimeReact v10 Styled（primereact 10.9.9，MIT，无需注册、license key 或续期）；后端使用 Fastify 5 + TypeScript + TypeBox，数据库使用 Drizzle ORM + better-sqlite3 + SQLite。具体约束见 CA-01～CA-14 和 TS-01～TS-08；这些是新版设计结论，不表示已完成依赖安装或运行时迁移。
 - 页面路由使用 `/production/**` 与 `/training/**`，API 使用 `/api/production/**` 与 `/api/training/**`，模块目录使用 `modules/production/**` 与 `modules/training/**`。默认任务入口为 `/production/tasks`，有效导航记录仍按 IA-01 恢复。
-- `ProductionProject` 与 `ProductionTemplate` 属于生产公共层；项目和模板内的文件夹、小节列表与排序允许未来容纳不同类型的小节。本版使用 `ProductionImageSection` 和 `ProductionTemplateImageSection`，其参数编辑、任务和结果保持图片类型归属；前端采用相同的公共容器与按类型进入专属界面的结构。
+- `ProductionProject` 与 `ProductionTemplate` 属于生产公共层；公共 `ProductionSection` 与 `ProductionTemplateSection` 保存小节身份、所属容器、文件夹、名称、类型和排序，允许未来容纳不同类型。本版分别一对一关联 `ProductionImageSection` 和 `ProductionTemplateImageSection` 保存图片配置；名称和排序不在图片配置层重复保存。前端仍操作一个逻辑小节，公共列表使用公共身份，参数编辑、任务和结果保持图片类型归属。
 - 图片任务及执行尝试为 `ProductionImageTask`/`ProductionImageAttempt`，结果及文件资产为 `ProductionImageResult`/`ProductionImageArtifact`。项目任务入口统一查看并明确区分任务类型、状态和计数；不因共同项目或入口合并业务模型。
 - 训练侧所有既有正式 `LoraTraining*` 实体统一简化为 `Training*`；这不扩大训练范围，也不改变训练数据与执行生命周期。
 - 训练角色资料的 `productionPrompt` 已确认改名为 `imageProductionPrompt`，明确表示后续生图使用的角色 tag 提示词；领域定义、GET/PATCH、设计输入和迁移映射同步使用新名，内容与可空规则保持。

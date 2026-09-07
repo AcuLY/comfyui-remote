@@ -2,7 +2,7 @@
 
 本文件记录本轮对话已确认的新版目标，尚不代表运行代码已实现。编号保留原清单 ID；冲突时采用最新用户决策及 [最终口径](00-final-decisions.md)，旧实现列仅供数据转换核对。
 
-生产容器、图片专属模型及模块命名遵循 [前向兼容边界](09-forward-compatibility.md)。生产模块的项目、模板、文件夹和小节排序统一组织；配置、编辑器、任务执行与结果按小节类型分开。本版只设计和实现图片能力，不新增视频页面、占位入口或空接口。
+生产容器、图片专属模型及模块命名遵循 [前向兼容边界](09-forward-compatibility.md)，小节结构按 FC-15（SC-01～03）执行：ProductionSection 只保存项目、文件夹、名称、类型和排序这些公共组织信息，ProductionImageSection 只保存图片专属配置及关联，二者一对一；模板对应 ProductionTemplateSection 与 ProductionTemplateImageSection。用户与 API 始终操作一个小节资源，不需要先建公共记录再建图片配置。本版只设计和实现图片能力，不新增视频页面、占位入口或空接口。
 
 ## A15. 前端信息架构与导航
 
@@ -16,12 +16,12 @@
 | `IA-04` | 全局工具入口 | 模型、监控与日志、设置作为全局入口，不归入任何业务模块；模块专属设置仍可从对应模块和设置中心进入 |
 | `IA-05` | 桌面导航 | 使用稳定侧边导航：顶部为模块切换，中部为当前模块的项目/任务/预制/模板，底部为模型、监控与日志、设置和注销；内容为导航预留固定空间，不被遮挡 |
 | `IA-06` | 移动导航 | 顶部保留模块切换，底部放当前模块的项目/任务/预制/模板四个入口；模型、监控、设置和注销进入明确“更多”菜单，任务入口不得被收起 |
-| `IA-07` | 生产项目页 | ProductionProject 内统一组织概览、小节列表、文件夹、排序和项目任务入口；本版项目内导航为概览、小节、图片、任务。小节按类型进入独立编辑器和结果，本版只有图片。编辑项目、图片导出、归档等作为当前项目操作，不增加同级主页面；“运行整个项目”在本版明确为生成全部图片小节 |
+| `IA-07` | 生产项目页 | ProductionProject 内统一组织概览、小节列表、文件夹、排序和项目任务入口；公共列表、选中项与排序以 ProductionSection 的身份和组织信息为准，本版项目内导航为概览、小节、图片、任务。小节按类型进入独立编辑器和结果，本版使用一对一 ProductionImageSection 图片配置。编辑项目、图片导出、归档等作为当前项目操作，不增加同级主页面；“运行整个项目”在本版明确为生成全部图片小节 |
 | `IA-08` | LoRA 训练项目页 | 项目内导航为概览、角色档案、参考图、构图、训练素材、任务；训练素材页集中选择代表图并编辑 Caption |
-| `IA-09` | 小节编辑器 | ProductionImageSection 围绕图片参数/Prompt 编辑和近期图片结果设计；ProductionTemplateImageSection 复用图片配置协议和编辑器，但模板与项目记录独立、应用时深复制。TrainingSection 围绕 Prompt、输入图、候选、代表图和 Caption 设计，不强行使用同一业务布局，也不把图片编辑器扩展为通用媒体编辑器 |
+| `IA-09` | 小节编辑器 | 用户进入一个 ProductionSection 小节资源，其名称和组织信息来自公共记录，图片参数/Prompt 与相关能力来自一对一 ProductionImageSection；图片编辑器与结果仍独立。ProductionTemplateSection 同样拥有一对一 ProductionTemplateImageSection，复用图片配置协议和编辑器，但模板与项目记录独立、应用时深复制；新增/编辑不拆为公共记录与图片配置两步。TrainingSection 围绕 Prompt、输入图、候选、代表图和 Caption 设计，不强行使用同一业务布局，也不把图片编辑器扩展为通用媒体编辑器 |
 | `IA-10` | 模块与项目任务 | 各模块的跨项目任务页支持筛选、时间排序和按项目分组；项目内任务页复用该模块相同任务交互但固定 ProductionProject 或 TrainingProject 范围。配置、状态、结果和数量按各任务类型表达，不以共用展示组件合并任务业务模型 |
-| `IA-11` | 深层导航 | 三级以上页面显示面包屑，项目与对应类型小节的名称可点击返回；生产使用 ProductionProject/ProductionImageSection，训练使用 TrainingProject/TrainingSection。每个视图具有稳定可复制 URL，浏览器后退/前进不得被自定义路由状态破坏 |
-| `IA-12` | 页面状态持久化 | 保留每个模块最后路由、查询、展开状态、选中 Tab 和滚动位置；刷新后恢复。失效资源按页面级尽力规则回退最近可用父页面 |
+| `IA-11` | 深层导航 | 三级以上页面显示面包屑，项目与小节的名称可点击返回；生产使用 ProductionProject/ProductionSection，模板使用 ProductionTemplate/ProductionTemplateSection，训练使用 TrainingProject/TrainingSection。生产面包屑与小节导航基于公共小节身份，进入后按类型调用编辑器和结果。每个视图具有稳定可复制 URL，浏览器后退/前进不得被自定义路由状态破坏 |
+| `IA-12` | 页面状态持久化 | 保留每个模块最后路由、查询、展开状态、选中 Tab 和滚动位置；刷新后恢复。生产项目与模板的小节选中状态分别基于 ProductionSection/ProductionTemplateSection 的身份，不另维护图片配置选中项；失效资源按页面级尽力规则回退最近可用父页面 |
 | `IA-13` | 归档项目 | 使用持续可见的只读标识和禁用原因；隐藏或禁用全部写入动作，保留浏览、文件下载和彻底删除。ProductionProject 的归档/删除入口及小节复制/删除按类型执行所属业务规则，本版落实图片逻辑；图片导出和文件保留规则继续有效 |
 | `IA-14` | 加载与错误 | 每个真实路由提供页面级加载骨架和局部错误状态；操作错误保留当前输入并允许复制详情，不跳转独立错误页 |
 | `IA-15` | Design Demo 处置 | 新版全新工程从一开始就不纳入 `/design-demos/**`、Demo Shell、DemoData、design-demo-ui、展示注册表、演示夹具和 Demo 专属测试；总体视觉方向仍按 VD 参考。不再要求先完成旧生产页面替换才移除旧 Demo；实际整理旧目录前先保存 MIG 规定的数据和业务文件 |
@@ -60,7 +60,7 @@
 | `CA-02` | 依赖与文档范围 | 使用 primereact 包，从 `primereact/button` 等组件路径按需导入，Provider 来自 `primereact/api`；主题使用发行包内免费 theme.css。删除此前 v11 的 `@primereact/ui`、`@primereact/core`、`@primeuix/themes` 选型要求，不增加 license 配置或申请流程；保留 MIT 声明 |
 | `CA-03` | 图标 | 使用 primeicons 7.0.0（MIT）及其配套 CSS；不采用需要 key 的新发行线，不同时引入多套图标库或按页面手绘同类图标 |
 | `CA-04` | 组件复用顺序 | 优先直接使用 v10 已有的 Button、InputText、Dropdown、MultiSelect、Dialog、Sidebar、TabView、Toast、Tree、DataTable、Paginator、Galleria 等；其次使用其公开属性、Pass Through 和模板；确有缺口才开发职责明确的业务组合组件，不混用 v11 Compound API |
-| `CA-05` | 包装与组合边界 | 页面直接复用稳定组件与组合方式；Provider 支持的全局选项、主题及必要默认属性集中管理，不假设 v10 具有 v11 的统一 defaults API。仅当需要跨页面的稳定行为契约时做轻量包装，不按颜色/尺寸逐个创建 Button/Card/Panel。生产项目容器、小节列表、文件夹、排序和模板组织共用对应组合；配置编辑、Prompt/预制解析、任务执行、图片审核及资产生命周期属于各类型业务实现，不能因展示相似而合并；稳定基础展示交互仍可复用 |
+| `CA-05` | 包装与组合边界 | 页面直接复用稳定组件与组合方式；Provider 支持的全局选项、主题及必要默认属性集中管理，不假设 v10 具有 v11 的统一 defaults API。仅当需要跨页面的稳定行为契约时做轻量包装，不按颜色/尺寸逐个创建 Button/Card/Panel。生产项目容器、小节列表、文件夹、排序和模板组织共用对应组合，以 ProductionSection/ProductionTemplateSection 的身份、名称、类型和组织信息为输入；图片配置来自各自一对一的图片配置记录。配置编辑、Prompt/预制解析、任务执行、图片审核及资产生命周期属于各类型业务实现，不能因展示相似而合并；稳定基础展示交互仍可复用 |
 | `CA-06` | 样式技术 | 允许组件库主题引擎和模块化 CSS-in-JS，也允许独立 CSS Module；禁止 Tailwind、shadcn/Tailwind 生成链和 PrimeFlex 等工具类体系。本项目自有样式必须有明确文件所有者，不散落在 JSX、逐页 style 对象或一次性覆盖中 |
 | `CA-07` | 样式文件组织 | `ui/theme/tokens.css` 管理应用基础/语义 CSS 变量，`ui/theme/themes.ts` 统一管理 v10 免费明暗 theme.css 的选择/加载，`ui/theme/components/**` 集中放置必要组件样式及 Pass Through 配置；`ui/styles/base.css` 只放字体、基础文档规则。业务布局放所属组件旁的 `.module.css` 或集中复用的 `.styles.ts`，不维护两份同义样式；不使用 v11 preset API |
 | `CA-08` | 稳定定制接口 | 从 v10 配套免费主题出发，优先使用公开 CSS 变量、组件属性及应用命名变体；主题未暴露的必要定制统一在组件主题层通过公开类名或 Pass Through 表达，不按页面各写一套覆盖、不依赖生成类名、不使用付费主题设计器 |

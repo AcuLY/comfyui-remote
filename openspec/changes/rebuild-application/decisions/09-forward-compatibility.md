@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | `FC-01` | 模块标识对称 | 使用 `production` 与 `training`；代码目录为 `modules/production/**`、`modules/training/**`，页面为 `/production/**`、`/training/**`，API 为 `/api/production/**`、`/api/training/**`。默认任务入口为 `/production/tasks`；有有效导航记录时仍按 IA-01 恢复页面。训练功能本版仍只涵盖 LoRA。 |
 | `FC-02` | 生产公共项目与模板 | `ProductionProject` 与 `ProductionTemplate` 是生产模块中的同级概念，不带区别图片/视频的前缀。同一个生产项目与模板在结构上允许未来包含不同类型的小节；不为每种生成类型另建独立的项目体系。生产与训练两个模块仍各自拥有项目、模板和业务生命周期。 |
-| `FC-03` | 小节分型 | 本版图片小节为 `ProductionImageSection`，模板中的图片小节为 `ProductionTemplateImageSection`。统一项目容器、小节列表和组织操作需要表达小节类型；参数编辑、生成配置和结果视图由对应类型负责。本版只实现和显示图片小节。 |
+| `FC-03` | 小节分型 | 生产公共小节为 `ProductionSection`，本版图片专属配置为与其一对一的 `ProductionImageSection`；模板由 `ProductionTemplateSection` 与一对一 `ProductionTemplateImageSection` 构成。统一项目容器、小节列表和组织操作读取公共记录的类型；参数编辑、生成配置和结果视图由对应类型负责。本版只实现和显示图片小节。 |
 | `FC-04` | 文件夹与排序 | `ProductionProjectFolder` 组织生产项目；`ProductionSectionFolder` 组织项目中的小节；`ProductionTemplateSectionFolder` 组织模板中的小节。项目或模板内的文件夹、小节列表和排序是公共组织能力，允许未来容纳不同类型，不按图片/视频各建一套组织树。 |
 | `FC-05` | 图片任务与执行尝试 | 使用 `ProductionImageTask` 与 `ProductionImageAttempt`。项目任务入口可统一查看已接入的任务类型，类型、状态和计数明确区分；各类型分别负责自己的配置、结果要求、执行记录和重试规则，共享适用的状态展示、耗时和反馈协议。不得因统一入口合并为万能业务 Task。 |
 | `FC-06` | 图片结果与文件资产 | `ProductionImageResult` 保存图片结果所属小节/任务、审核状态及用途标记；`ProductionImageArtifact` 管理文件路径、尺寸、缩略图和文件生命周期。二者归属 `ProductionProject`。未来视频输入素材应有独立业务身份，文件为图片并不使其自动成为图片生成结果；本轮不决定物理复制或引用方式。 |
@@ -20,6 +20,7 @@
 | `FC-12` | 角色生图提示词字段 | TrainingCharacterProfile 的 productionPrompt 改为 imageProductionPrompt，明确表示后续生图用的角色 tag 提示词。领域定义、GET/PATCH、前端设计输入和迁移映射同步更新；三个角色文本字段的内容、可空和修改历史规则不变，不新增视频提示词字段。 |
 | `FC-13` | 图片导出目录（FS-04） | 用户修订后的交付包路径为 `<EXPORT_ROOT>/<项目名>/<slug>.zip`；外层文件夹直接使用项目名称，不使用 slug，中间不加 images 层。ZIP 文件名和包内图片命名规则保持，项目删除仍保留交付文件。 |
 | `FC-14` | 内部数据目录（FS-01～03） | 按用户“未评论项视为确认”的反馈，生产图片资产采用 `<APP_DATA_ROOT>/production/projects/<projectId>/images/`，应用侧训练项目图片采用 `<APP_DATA_ROOT>/training/projects/<projectId>/images/`，图片 Workflow 采用 `<APP_DATA_ROOT>/production/workflows/image/`。内部项目目录使用稳定 projectId；SQLite、日志、ComfyUI 模型目录及训练执行工作区保持既有约定，视频目录本版不定。 |
+| `FC-15` | 公共小节与图片配置（SC-01～03） | ProductionSection 只拥有项目、文件夹、名称、类型、排序等组织信息及小节身份；ProductionImageSection 拥有图片专属配置和关联，与公共记录一对一。模板同样分为 ProductionTemplateSection 与 ProductionTemplateImageSection。名称和排序不在配置层重复保存；用户/API仍操作一个逻辑小节，领域服务协调公共与专属记录的整体创建、复制和删除。本版仅接入图片类型，不确定未来视频实体名称。 |
 
 ## 当前名称对照
 
@@ -30,8 +31,10 @@
 | `ImageProductionProjectFolder` | `ProductionProjectFolder` |
 | `ImageProductionSectionFolder` | `ProductionSectionFolder` |
 | 生产模板中的小节文件夹 | `ProductionTemplateSectionFolder` |
-| `ImageProductionSection` | `ProductionImageSection` |
-| 生产模板中的图片小节 | `ProductionTemplateImageSection` |
+| 原生产小节的公共组织部分 | `ProductionSection` |
+| `ImageProductionSection` 的图片配置部分 | `ProductionImageSection` |
+| 原生产模板小节的公共组织部分 | `ProductionTemplateSection` |
+| 生产模板中的图片配置部分 | `ProductionTemplateImageSection` |
 | `ImageProductionTask` | `ProductionImageTask` |
 | `ImageProductionAttempt` | `ProductionImageAttempt` |
 | `ImageProductionImage` | `ProductionImageResult` |
@@ -55,7 +58,7 @@
 - 项目归档、删除和批量操作的公共分发边界已确认，未来小节类型的具体行为及是否参与项目批量生成未定。
 - 模块目录、页面和 API 前缀以及 FS-01～04 当前文件目录已确认；文件名、缩略图及打码版本的细部组织仍由所属图片资产逻辑负责。当前是设计更新，实际文件转换按 MIG-05 在新版迁移阶段执行，视频目录本版不定。
 - ComfyUI 技术服务的归属拆分、未来 GPU 协调参与者、平台审计/历史的补充身份协议，仍待后续逐组确认；现有配置、调度与恢复规则保持。
-- 通用组织与图片专属 API 的类型语义已确认；需要新增或拆分的精确路由后缀与公共小节数据结构仍需具体设计，本轮不预建视频协议。
+- 通用组织、图片专属 API 类型语义及公共/图片配置一对一结构已确认；需要新增或拆分的精确路由后缀仍需具体设计，本轮不预建视频协议。
 
 ## 来源与联动
 

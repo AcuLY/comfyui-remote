@@ -8,6 +8,8 @@
 
 生产模块的 `ProductionProject`、`ProductionTemplate` 以及文件夹、小节列表和排序属于公共组织层；图片配置、任务、结果与资产采用明确的图片类型。本版只接入图片小节，前端按小节类型进入相应编辑器与结果视图。训练模型统一使用 `Training*` 前缀，当前仍只提供 LoRA 训练。完整已确认名称与项目操作边界见 [命名与小节扩展边界](decisions/09-forward-compatibility.md)，视频具体命名、模型、页面和执行功能均不在本版范围。
 
+小节组织字段与配置分开保存：ProductionSection 与 ProductionImageSection 一对一，模板对应 ProductionTemplateSection 与 ProductionTemplateImageSection。公共记录拥有名称、文件夹、类型和排序，图片记录拥有参数及图片配置关联；对用户和 API 保持单一逻辑小节，由原领域操作协调创建、复制与删除，不增加两步创建流程。
+
 ## 设计与实现
 
 Figma 是页面布局、视觉、交互状态的审核载体；领域模型和 API 由仓库文档拥有。每个页面标明对应决策 ID、组件来源、关键状态及审核状态。未通过用户审核的页面只属于设计稿，不能据此展开正式页面实现。

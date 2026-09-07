@@ -29,7 +29,7 @@
 | `SI-02` | 两类项目直接关联 | 无 | 不增加项目外键。训练 checkpoint 经用户复制并由模型模块扫描后成为独立模型文件，图像生产只引用 shared 模型业务键；复制后的模型与原训练项目完全解绑 |
 | `SI-03` | 项目通用界面 | shared UI primitives | 只复用项目卡片、排序、归档提示等中性组件，不复用或交叉调用另一模块的具体页面、服务或数据库实体 |
 | `SI-04` | 模型资源 | shared 模型模块 | 模型文件是真正 shared 的业务资源；模型模块直接扫描当前 compute target 的 ComfyUI `models` 根目录，统一向两个模块提供 checkpoint、LoRA 等文件选择能力 |
-| `SI-05` | 模型文件身份与任务快照 | shared 模型模块 + 模块配置 | 使用“模型类型 + 相对 `models` 根目录路径”作为业务键；文件移动后由受管移动操作更新当前可编辑引用。Project、Section、Preset 和 Template 保存业务键，Task/TrainingRun 创建时保存实际绝对路径快照，之后不得随当前文件位置改写 |
+| `SI-05` | 模型文件身份与任务快照 | shared 模型模块 + 模块配置 | 使用“模型类型 + 相对 `models` 根目录路径”作为业务键；文件移动后由受管移动操作更新当前可编辑引用。各模块实际模型配置记录保存业务键；生产小节与模板小节的模型引用分别归 ProductionImageSection、ProductionTemplateImageSection，公共小节组织记录不保存图片模型参数。Task/TrainingRun 创建时保存实际绝对路径快照，之后不得随当前文件位置改写 |
 | `SI-06` | 模型元数据与缺失处置 | shared 模型模块 / SQLite | 普通备注、Trigger words、Civitai URL 和缺失状态按模型业务键保存；扫描不到时保留记录并显示缺失，不自动换成同名文件。按 MODEL-009 支持清理无当前引用的缺失记录，或由用户选择同类型文件替换旧记录及当前可编辑引用；历史快照永不重写 |
 | `SI-07` | 图片与 Artifact | 各业务模块 / 项目 | 不建立跨模块、跨项目的全局图片库或全局 Hash 去重；生产图片资产与训练图片资产分别管理，各自在所属项目及资产类型范围内保证同一字节不重复保存并管理引用生命周期。共用 ProductionProject 不表示未来不同媒体类型共用资产业务表。Shared 只提供安全读取、缩略图和文件操作基础设施；未来将图片用作其他生成输入时需要独立的素材业务身份，复制文件还是引用文件尚未确定 |
 | `SI-08` | Preset 与 Template | 两个业务模块 | 两模块分别拥有自己的 Preset、Group 和 Template；生产 Template 与 Project 同属公共层，模板中的图片小节与项目图片小节复用配置协议、独立拥有配置记录，图片 Preset 与 Group 保持图片专属。可以共享编辑器基础组件与修改历史协议，但不共享跨模块业务表或允许跨模块绑定 |
@@ -61,11 +61,11 @@ Shared 数据模型只保存真正跨模块的配置、资源索引和平台记�
 | `IPD-01` | `ProductionProject` | 保存名称、唯一 slug、active/archived、项目文件夹和排序；本版还保存明确属于图片能力的小节默认参数、唯一图片封面引用、lastExportedAt、最新图片 ZIP 路径和最小导出摘要，这些字段不成为未来其他类型小节的共同配置或交付要求。活动任务数、待审核图片数等按类型实时派生，不复制任务状态 |
 | `IPD-02` | `ProductionProjectFolder` | 生产公共层多级树结构，保存父文件夹和同级顺序；删除非空文件夹时由同一领域操作连同全部子文件夹和项目处理，不提供删除时迁移内容 |
 | `IPD-03` | `ProductionSectionFolder` | 生产公共层的项目内多级树结构，统一管理不同类型小节的文件夹归属与同级顺序，本版只有图片小节；Template 使用独立的 ProductionTemplateSectionFolder，导入项目时完整复制层级、父子关系和小节归属 |
-| `IPD-04` | `ProductionImageSection` | 图片小节保存名称、文件夹、项目内公共顺序以及画幅/尺寸/生成数量/放大参数、Checkpoint 模型业务键、两阶段 KSampler 和 Seed 策略等图片当前权威配置；不保存 enabled、任务状态或历史任务参数。图片编辑器与结果界面由图片小节负责，公共组织层不承载图片生成参数 |
+| `IPD-04` | `ProductionImageSection` | 与一条图片类型的 ProductionSection 一对一，保存画幅/尺寸/生成数量/放大参数、Checkpoint 模型业务键、两阶段 KSampler、Seed 策略及图片配置关联；名称、项目、文件夹、类型和排序只由公共记录拥有，不在图片配置中重复保存。Prompt Segment、Preset Binding 和 LoRA 条目仍归图片配置。图片编辑器与结果界面使用这一专属配置；不保存 enabled、任务状态或历史任务参数 |
 | `IPD-05` | `ProductionImagePromptSegment` | 有序 Segment，只能是 CustomText 或 PresetBinding；正向/负向内容、名称和来源明确，不维护另一份可编辑整段 Prompt。Group 导入仍产生多个独立 PresetBinding Segment |
 | `IPD-06` | `ProductionImageLoraEntry` | 保存第一/第二阶段、模型业务键、权重、顺序、是否启用和来源；手动 LoRA、Preset LoRA、转为手动及图片小节停用关系使用明确字段，UI 不暴露 tombstone 等实现词 |
 | `IPD-07` | 图片 Preset 聚合 | 保留 ProductionImagePresetCategory、ProductionImagePresetFolder、ProductionImagePreset、ProductionImagePresetVariant、ProductionImagePresetVariantLink、ProductionImagePresetGroup、ProductionImagePresetGroupMember 和 ProductionImagePresetCategorySlot；均为图片专属配置，Group 始终组合多个独立 Preset/Variant，保留嵌套与循环检测，不融合成员内容 |
-| `IPD-08` | 生产 Template 聚合 | ProductionTemplate 与 ProductionProject 同属公共层，拥有独立的 ProductionTemplateSectionFolder；本版小节为 ProductionTemplateImageSection，Segment、Binding 和 LoRA 使用与 ProductionImageSection 同构的图片配置协议，但拥有独立配置记录、业务表和物理删除生命周期。模板公共组织结构允许未来扩展其他小节类型；导入/另存时按已确认规则深复制 |
+| `IPD-08` | 生产 Template 聚合 | ProductionTemplate 拥有 ProductionTemplateSectionFolder 和公共 ProductionTemplateSection；本版每条图片类型的公共模板小节与一条 ProductionTemplateImageSection 一对一。图片参数及 Segment、Binding、LoRA 关联属于图片配置，使用与 ProductionImageSection 同构的协议；公共与图片配置记录及其生命周期均独立于项目实例。导入/另存时按已确认规则深复制公共组织记录和对应图片配置 |
 | `IPD-09` | `ProductionImageTask` | 取代旧 Run；保存 ProductionProject、ProductionImageSection、创建时完整 resolved config/Prompt/Workflow JSON 快照、预期图片输出数量、当前状态、等待原因、提交 claim 和累计阶段耗时。任务输入不可在创建后修改，图片任务模型不承担其他媒体生成规则 |
 | `IPD-10` | `ProductionImageAttempt` | 每次真正向 ComfyUI 提交图片生成任务时创建，保存 promptId、内部状态、submittedAt、startedAt、finishedAt、排队/生成耗时、错误和中断原因；同一 ProductionImageTask 重试新增 Attempt，但不新建 Task |
 | `IPD-11` | `ProductionImageResult` | 图片结果业务记录，保存所属 ProductionImageTask、ProductionProject、ProductionImageSection、项目内 ProductionImageArtifact、审核状态 pending/kept、P站/预览布尔标记和可选打码 Artifact；唯一图片封面引用保存在 Project。任务不存在部分成功，只有完成图片任务才产生正式结果记录 |
@@ -74,6 +74,8 @@ Shared 数据模型只保存真正跨模块的配置、资源索引和平台记�
 | `IPD-14` | `ProductionImageCensoringBatchTask` / `ProductionImageCensoringBatchItem` | 一次“P站＋预览＋封面”批量打码对应一个用户任务，每张去重后的图片对应一个 Item 并保存执行结果；手工单图打码和单图自动打码直接更新图片打码 Artifact，不创建大量批量任务 |
 | `IPD-15` | 图片导出状态 | 不建立导出历史表或版本实体；Project 只保存当前图片交付包的最新导出时间、ZIP 绝对路径和最小摘要。交付包路径为 `<EXPORT_ROOT>/<项目名>/<slug>.zip`，项目名称用于外层文件夹，slug 用于 ZIP 文件名，中间不加 images 层。每次重新导出覆盖上一份，项目删除仍保留 EXPORT_ROOT 中的交付文件；JPEG、ZIP、P站、预览与封面规则不推广为其他媒体的交付规则 |
 | `IPD-16` | 公共项目操作与类型边界 | 项目归档、删除以及小节复制、删除由公共层协调，各类小节处理自己的配置、结果和文件；本版仅接入已有图片逻辑并保留其重试、审核和彻底删除规则。“运行整个项目”明确为“生成全部图片小节”，不得隐式承诺未来其他类型也参与运行 |
+| `IPD-17` | `ProductionSection` | 公共小节记录，只拥有小节身份、所属 ProductionProject、ProductionSectionFolder、名称、类型和排序等组织信息；本版只接入图片类型，并与 ProductionImageSection 一对一。列表、文件夹、排序和前端导航以公共记录为依据，图片参数和配置关联由专属记录负责。对用户仍是一个小节资源，创建、复制和删除由同一领域操作协调公共记录及专属配置 |
+| `IPD-18` | `ProductionTemplateSection` | 模板公共小节记录，只拥有身份、所属 ProductionTemplate、ProductionTemplateSectionFolder、名称、类型和排序等组织信息；本版图片类型与 ProductionTemplateImageSection 一对一。公共组织和图片配置分开保存，模板编辑与导入仍以一个逻辑小节操作，不要求用户先后创建两种记录 |
 
 ## A11. 训练最终领域模型
 

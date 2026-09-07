@@ -29,11 +29,13 @@
 
 生产模块的前端与 Agent 只使用 `/api/production/**` 领域路由，由 Fastify 路由调用对应模块的领域服务；新版移除 Next.js Server Action。本版仅实现图片生成、审核、打码和导出；ProductionProject / ProductionTemplate 与文件夹属于生产公共容器，图片小节及其配置、任务和资产属于图片能力。下表沿用已确认资源后缀，类型适配不代表已确定未来接口或新增空接口。除明确的文件流和异步 Task 响应外，全部遵循 API-01～API-16。
 
+生产小节路由中的 sectionId 标识公共 ProductionSection，模板小节同理由 ProductionTemplateSection 提供组织身份；图片专属动作按公共记录的类型解析一对一图片配置。HTTP 和用户界面仍将公共记录及专属配置作为一个逻辑小节资源，不暴露“先建公共记录、再建图片配置”的额外工作流，既有版本与领域事务约束继续适用。
+
 | ID | 路由组 | 决策 |
 | --- | --- | --- |
 | `IAPI-01` | `/api/production/projects` | GET 支持名称、文件夹、active/archived、活动任务和待审核图片筛选；POST 统一创建空白或可选 ProductionTemplate 的 ProductionProject。`/:projectId` 提供 GET/PATCH/DELETE，PATCH 使用 version/If-Match；项目删除按所含小节类型调用各自清理逻辑，本版仅处理图片小节并保留原删除规则 |
 | `IAPI-02` | `/api/production/project-folders` | 提供 ProductionProjectFolder CRUD、排序和项目移动；删除非空文件夹使用明确 action，服务端按相同领域规则连同全部子文件夹和 ProductionProject 处理 |
-| `IAPI-03` | `/api/production/projects/:projectId/sections` | 提供生产项目小节列表、新建、详情、PATCH、DELETE、复制、排序、批量删除及运行单个/所选小节；本版仅实现 ProductionImageSection。小节复制、删除按类型调用自身逻辑，单项与批量复用同一领域服务；图片生成使用图片小节参数和独立任务模型 |
+| `IAPI-03` | `/api/production/projects/:projectId/sections` | 提供 ProductionSection 列表、新建、详情、PATCH、DELETE、复制、排序、批量删除及本版图片生成动作；名称、文件夹、类型和排序来自公共记录，图片详情使用一对一 ProductionImageSection 配置。创建/复制/删除在同一小节领域操作中协调两类记录，单项与批量复用服务；图片生成读取专属配置并创建独立图片任务 |
 | `IAPI-04` | `/api/production/projects/:projectId/section-folders` | 提供 ProductionSectionFolder CRUD、排序、拖放移动和连同全部内容删除；文件夹属于生产公共组织结构，删除其中小节按类型调用自身逻辑，本版仅有图片小节；不提供删除时迁移/保留内容的分支 |
 | `IAPI-05` | `/api/production/sections/:sectionId/segments` 与 `/loras` | 仅服务 ProductionImageSection 的 ProductionImagePromptSegment、图片 PresetBinding 和 ProductionImageLoraEntry，提供增删改、排序、detach、仅本图片小节停用及转为手动；所有写操作创建适用的修改历史，不将图片参数作为未来所有小节的通用合同 |
 | `IAPI-06` | `/api/production/tasks` | 提供生产模块内全局、Project、Section、任务类型、状态和时间范围查询；项目任务保持统一入口，按类型返回独立记录、状态和计数，不合并业务表。图片生成任务使用 ProductionImageTask，提供创建、详情、DELETE，以及 retry/pause/resume/cancel 等明确 action；删除终态图片任务按原规则同时删除 ProductionImageAttempt、ProductionImageResult 和受管图片输出 |
@@ -44,7 +46,7 @@
 | `IAPI-11` | `/api/production/trash` | 仅查询生产模块的 ProductionImageTrashEntry，支持模块内全局、Project 和图片小节范围分页查询、批量恢复与永久删除；文件与数据库必须保持受控一致，批量响应逐项报告结果，不扩张为混合资产回收站 |
 | `IAPI-12` | `/api/production/censoring-tasks` | 创建“P站＋预览＋封面”的 ProductionImageCensoringBatchTask，按 ProductionImageCensoringBatchItem 记录图片处理结果；查询列表/详情并提供 pause/resume/cancel action，单图打码不伪造成批量任务 |
 | `IAPI-13` | Preset 资源路由 | `/preset-categories`、`/preset-folders`、`/presets`、`/preset-groups` 及子资源仅服务 ProductionImagePreset 系列，提供图片 Category、Folder、Variant、VariantLink、GroupMember、Slot、排序、usage、replace 和物理删除能力；Group 成员始终保持独立，不成为生产公共 Preset 表 |
-| `IAPI-14` | `/api/production/templates` | 提供公共 ProductionTemplate、ProductionTemplateSectionFolder，以及本版 ProductionTemplateImageSection 的 CRUD；图片小节的 Segment、Binding 和 LoRA 继续使用图片专属协议。小节复制和删除按类型调用自身逻辑；项目另存 Template、向项目导入整套 Template 和批量替换图片 Preset 使用明确 action |
+| `IAPI-14` | `/api/production/templates` | 提供 ProductionTemplate、ProductionTemplateSectionFolder 和公共 ProductionTemplateSection 的 CRUD；本版图片模板小节通过一对一 ProductionTemplateImageSection 保存图片配置及 Segment、Binding、LoRA 关联。逻辑小节的创建、复制、删除协调公共及专属记录；项目另存 Template、向项目导入整套 Template 和批量替换图片 Preset 使用明确 action |
 | `IAPI-15` | Workflow 下载 | `/sections/:sectionId/workflow?variant=original\|debug` 下载当前图片小节解析结果；`/tasks/:taskId/workflow?variant=original\|debug` 下载历史图片任务不可变快照，两者均返回文件流，只适用于当前图片 Workflow 协议 |
 | `IAPI-16` | `/api/production/projects/:projectId/actions/**` | 提供 generate、import-template、sync-variant-assignments、export、archive、set-cover、clear-cover 等项目聚合动作；generate 表示为项目内全部图片小节生成任务，export 本版只导出原规则的图片包，archive 按小节类型调用各自归档逻辑，本版仅处理图片能力；不把这些副作用隐藏进普通 PATCH |
 | `IAPI-17` | `/api/production/comfyui/**` | 提供模块 settings、当前连接/队列状态及手工 start/stop/restart；任务创建不调用启停提示接口，GPU 恢复流程复用同一受控进程服务 |
