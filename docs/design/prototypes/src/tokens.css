@@ -1,6 +1,9 @@
 :root {
   --font-sans: 'Geist Variable', 'Noto Sans SC Variable', sans-serif;
   --font-mono: 'IBM Plex Mono', monospace;
+  --font-family: var(--font-sans);
+  --font-feature-settings: normal;
+  --maskbg: var(--scrim);
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-md: 1rem;
@@ -117,7 +120,7 @@
   --on-accent: var(--training-on);
 }
 
-@media (pointer: coarse), (max-width: 640px) {
+@media (pointer: coarse), (width < 768px) {
   :root {
     --control-height: 44px;
     --control-padding: 14px;

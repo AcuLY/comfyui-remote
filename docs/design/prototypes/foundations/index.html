@@ -17,6 +17,7 @@
         document.documentElement.dataset.module = saved.module === 'training' ? 'training' : 'image';
       } catch {
         document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        document.documentElement.dataset.module = 'image';
       }
     </script>
   </head>

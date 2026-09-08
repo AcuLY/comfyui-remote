@@ -97,6 +97,11 @@ scope:
       - docs/design/prototypes/vite.config.js
       - docs/design/prototypes/**/*.html
       - docs/design/prototypes/src/**/*.{css,jsx}
+      - docs/design/prototypes/scripts/build-theme.mjs
+      - docs/design/prototypes/src/theme/theme-inputs.mjs
+      - docs/design/prototypes/src/theme/LICENSE.primereact-sass-theme
+      - docs/design/prototypes/src/theme/vendor/primereact-sass-theme/**/*.scss
+      - docs/design/prototypes/src/theme/vendor/primereact-sass-theme/UPSTREAM.json
     kind: prototype-source
     frontmatter: none
     links: false

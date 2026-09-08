@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { PrimeReactProvider, addLocale, locale } from 'primereact/api';
+import { PrototypeProvider } from './prototype-provider.jsx';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
 import { InputTextarea } from 'primereact/inputtextarea';
@@ -18,18 +18,10 @@ import { Skeleton } from 'primereact/skeleton';
 import { TabView, TabPanel } from 'primereact/tabview';
 import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
-import '@fontsource-variable/geist';
-import '@fontsource-variable/noto-sans-sc';
-import '@fontsource/ibm-plex-mono/latin-400.css';
-import 'primeicons/primeicons.css';
-import 'primereact/resources/themes/lara-light-teal/theme.css';
-import './tokens.css';
-import './prototype.css';
+import './prototype-layout.css';
 import './foundations.css';
 import { usePrototypePreference, themeOptions } from './use-prototype-preference.jsx';
 
-addLocale('zh-CN', { aria: { close: '关闭', selectAll: '选择全部', unselectAll: '取消全选' } });
-locale('zh-CN');
 const moduleOptions = [{ label: '生产', value: 'image' }, { label: '训练', value: 'training' }];
 const sections = [['colors', '色彩与主题'], ['typography', '字体与排版'], ['dimensions', '尺寸与适配'], ['components', '基础组件'], ['feedback', '状态与反馈'], ['decisions', '确认清单']];
 const sectionOptions = sections.map(([value, label]) => ({ value, label }));
@@ -60,13 +52,8 @@ function Specimen({ title, hint, children, className = '' }) {
   return <div className={`specimen ${className}`}><div className="specimen-heading"><h3>{title}</h3>{hint ? <span>{hint}</span> : null}</div>{children}</div>;
 }
 
-function InputHitArea({ id, children }) {
-  return <div className="foundation-text-control"><label className="input-hit-edge input-hit-top" htmlFor={id} aria-hidden="true" />{children}<label className="input-hit-edge input-hit-bottom" htmlFor={id} aria-hidden="true" /></div>;
-}
-
 function Field({ id, label, hint, error, liveError = false, children }) {
-  const textInput = children.type === InputText || children.type === InputTextarea;
-  return <div className="field"><label htmlFor={id}>{label}</label><div className="foundation-field-control">{textInput ? <InputHitArea id={id}>{children}</InputHitArea> : children}</div>
+  return <div className="field"><label htmlFor={id}>{label}</label><div className="foundation-field-control p-fluid">{children}</div>
     {hint ? <small id={`${id}-hint`}>{hint}</small> : null}
     {error ? <small id={`${id}-error`} className="field-error" role={liveError ? 'alert' : undefined}><i className="pi pi-exclamation-circle" aria-hidden="true" />{error}</small> : null}
   </div>;
@@ -150,14 +137,14 @@ function App() {
     });
   }
 
-  return <PrimeReactProvider value={{ ripple: false, locale: 'zh-CN', hideOverlaysOnDocumentScrolling: true }}><div className="foundation-page">
+  return <PrototypeProvider><div className="foundation-page">
     <a className="skip-link" href="#foundation-main">跳到设计内容</a>
     <div className="foundation-chrome" ref={chrome}>
     <header className="app-header foundation-header">
       <a href="#colors" className="wordmark">ComfyUI <span>Manager</span></a>
       <span className="header-divider" aria-hidden="true" />
       <span className="header-context">基础设计</span>
-      <span className="review-status"><span className="review-dot" />基础已确认</span>
+      <span className="review-status"><span className="review-dot" />主题调整</span>
       <div className="header-controls">
         <SelectButton value={preference.module} options={moduleOptions} onChange={(e) => updatePreference('module', e.value)} aria-label="模块色" allowEmpty={false} />
         <SelectButton value={preference.theme} options={themeOptions} onChange={(e) => updatePreference('theme', e.value)} aria-label="主题偏好" allowEmpty={false} />
@@ -210,15 +197,15 @@ function App() {
           <div className="viewport-rules" aria-label="视口适配规则">
             <div className="viewport-rule rule-wide"><div><strong>桌面</strong><small>≥ 1200px</small></div><p>表单控件 36px · 内容边距 32px · 分区间隔 48px</p><span className="current-band">当前</span></div>
             <div className="viewport-rule rule-medium"><div><strong>窄屏</strong><small>768–1199px</small></div><p>表单控件 36px · 内容边距 24px · 分区间隔 40px</p><span className="current-band">当前</span></div>
-            <div className="viewport-rule rule-phone"><div><strong>手机</strong><small>≤ 767px</small></div><p>表单控件 40px · 内容边距 12–16px · 分区间隔 32px</p><span className="current-band">当前</span></div>
+            <div className="viewport-rule rule-phone"><div><strong>手机</strong><small>≤ 767px</small></div><p>表单控件 44px · 内容边距 12–16px · 分区间隔 32px</p><span className="current-band">当前</span></div>
           </div>
-          <p className="spec-note">触控设备使用 40px 表单控件，输入文字为 16px。触控目标以 44×44px 为基准，优先通过原生尺寸与可点击标签实现；数量控件保留库原生交互。</p>
+          <p className="spec-note">触控设备使用实际 44px 表单控件与 16px 输入文字；选择控件配合可点击标签。主题统一生成，组件内部结构与交互保持原生。</p>
           <div className="dimension-grid"><Specimen title="间距刻度" hint="4 / 8 / 12 / 16 / 24 / 32 / 48">
             <div className="spacing-scale">{[4, 8, 12, 16, 24, 32, 48].map((n) => <div key={n}><span className="mono">{n}</span><span className={`spacing-bar spacing-${n}`} /></div>)}</div>
           </Specimen><Specimen title="圆角与层次" hint="控件 8px · 面板 12px">
             <div className="shape-row"><div className="shape-control">8px<span>控件</span></div><div className="shape-panel">12px<span>面板</span></div><div className="shape-float">浮层<span>柔和阴影</span></div></div>
           </Specimen></div>
-          <div className="density-preview"><div><h3>同排控件</h3><p>同排保持等高，组合最大宽 640px，窄屏随容器收缩。</p></div><div className="density-sample"><InputHitArea id="aligned-input"><InputText id="aligned-input" aria-label="同排控件样本输入" placeholder="名称" /></InputHitArea><Button label="应用" onClick={() => toast.current.show({ severity: 'success', summary: '样本已应用', detail: '仅演示同排操作反馈。', life: 2500 })} /><Button icon="pi pi-search" outlined aria-label="查看同排控件样本" onClick={() => toast.current.show({ severity: 'info', summary: '同排控件', detail: '三种控件按当前设备等高对齐。', life: 2500 })} /></div></div>
+          <div className="density-preview"><div><h3>同排控件</h3><p>同排保持等高，组合最大宽 640px，窄屏随容器收缩。</p></div><div className="density-sample"><InputText id="aligned-input" aria-label="同排控件样本输入" placeholder="名称" /><Button label="应用" onClick={() => toast.current.show({ severity: 'success', summary: '样本已应用', detail: '仅演示同排操作反馈。', life: 2500 })} /><Button icon="pi pi-search" outlined aria-label="查看同排控件样本" onClick={() => toast.current.show({ severity: 'info', summary: '同排控件', detail: '三种控件按当前设备等高对齐。', life: 2500 })} /></div></div>
         </Section>
 
         <Section id="components" title="基础组件" description="统一操作层级与字段状态，直接使用组件库现有能力。所有示例均可操作。">
@@ -227,10 +214,10 @@ function App() {
             <p className="spec-note">悬停与按下查看反馈；按 Tab 查看焦点。危险操作使用独立语义色。</p>
           </Specimen>
           <Specimen title="输入与校验" hint="默认 / 帮助 / 错误 / 只读 / 禁用">
-            <div className="field-grid"><Field id="normal-field" label="名称" hint="简短明确，便于在列表中辨认。"><InputText id="normal-field" placeholder="请输入名称" aria-describedby="normal-field-hint" /></Field><Field id="invalid-field" label="校验错误样本" error="名称不能为空，请填写后重试。"><InputText id="invalid-field" placeholder="请输入名称" invalid aria-invalid="true" aria-describedby="invalid-field-error" /></Field><Field id="readonly-field" label="只读内容" hint="只读仍可选中与复制。"><InputText id="readonly-field" value="已归档的内容" readOnly aria-describedby="readonly-field-hint" /></Field><Field id="disabled-field" label="不可编辑" hint="当前状态暂不支持修改。"><InputText id="disabled-field" value="默认参数" disabled aria-describedby="disabled-field-hint" /></Field><Field id="amount-field" label="数量"><InputNumber inputId="amount-field" value={amount} onValueChange={(e) => setAmount(e.value)} min={1} max={16} showButtons buttonLayout="horizontal" incrementButtonIcon="pi pi-plus" decrementButtonIcon="pi pi-minus" pt={{ incrementButton: { "aria-label": "增加数量" }, decrementButton: { "aria-label": "减少数量" } }} /></Field><Field id="select-field" label="单项选择"><Dropdown inputId="select-field" value={dropdown} options={['标准', '精细', '自定义']} onChange={(e) => setDropdown(e.value)} /></Field></div>
+            <div className="field-grid"><Field id="normal-field" label="名称" hint="简短明确，便于在列表中辨认。"><InputText id="normal-field" placeholder="请输入名称" aria-describedby="normal-field-hint" /></Field><Field id="invalid-field" label="校验错误样本" error="名称不能为空，请填写后重试。"><InputText id="invalid-field" placeholder="请输入名称" invalid aria-invalid="true" aria-describedby="invalid-field-error" /></Field><Field id="readonly-field" label="只读内容" hint="只读仍可选中与复制。"><InputText id="readonly-field" value="已归档的内容" readOnly variant="filled" aria-describedby="readonly-field-hint" /></Field><Field id="disabled-field" label="不可编辑" hint="当前状态暂不支持修改。"><InputText id="disabled-field" value="默认参数" disabled variant="filled" aria-describedby="disabled-field-hint" /></Field><Field id="amount-field" label="数量"><InputNumber inputId="amount-field" value={amount} onValueChange={(e) => setAmount(e.value)} min={1} max={16} showButtons buttonLayout="horizontal" incrementButtonIcon="pi pi-plus" decrementButtonIcon="pi pi-minus" pt={{ incrementButton: { "aria-label": "增加数量" }, decrementButton: { "aria-label": "减少数量" } }} /></Field><Field id="select-field" label="单项选择"><Dropdown inputId="select-field" value={dropdown} options={['标准', '精细', '自定义']} onChange={(e) => setDropdown(e.value)} /></Field></div>
             <div className="field-grid field-grid-wide"><Field id="textarea-field" label="补充说明"><InputTextarea id="textarea-field" rows={3} placeholder="输入多行内容，查看正文、行高与边界。" autoResize /></Field><Field id="multi-field" label="多项选择" hint="在菜单中选择或取消字段，支持搜索。"><MultiSelect inputId="multi-field" value={multiValue} options={['名称', '状态', '时间', '来源']} onChange={(e) => setMultiValue(e.value)} maxSelectedLabels={2} selectedItemsLabel="{0} 项已选" filter placeholder="选择字段" aria-describedby="multi-field-hint" /></Field></div>
           </Specimen>
-          <div className="dimension-grid"><Specimen title="选择控件" hint="明确的已选状态"><div className="selection-examples"><div className="choice-row"><Checkbox inputId="example-check" checked={checked} onChange={(e) => setChecked(e.checked)} /><label htmlFor="example-check">选中当前项</label></div><div className="choice-row"><InputSwitch inputId="example-switch" checked={switchOn} onChange={(e) => setSwitchOn(e.value)} /><label htmlFor="example-switch">开启此选项</label></div><div className="radio-row" role="group" aria-label="质量选项">{['标准', '精细'].map((option) => <div className="choice-row" key={option}><RadioButton inputId={`radio-${option}`} name="quality" value={option} checked={radio === option} onChange={(e) => setRadio(e.value)} /><label htmlFor={`radio-${option}`}>{option}</label></div>)}</div></div></Specimen><Specimen title="分段与页签" hint="同级视图切换"><SelectButton value={view} options={['网格', '列表']} onChange={(e) => { if (e.value) setView(e.value); }} allowEmpty={false} aria-label="视图样本" /><TabView><TabPanel header="参数"><p className="tab-sample">数量 <strong className="mono">{amount ?? '—'}</strong> · 方案 <strong>{dropdown}</strong></p></TabPanel><TabPanel header="说明"><p className="tab-sample">页签保留当前位置，切换同一对象的不同内容。</p></TabPanel></TabView></Specimen></div>
+          <div className="dimension-grid"><Specimen title="选择控件" hint="明确的已选状态"><div className="selection-examples"><div className="choice-row"><Checkbox inputId="example-check" checked={checked} onChange={(e) => setChecked(e.checked)} /><label htmlFor="example-check">选中当前项</label></div><div className="choice-row"><InputSwitch inputId="example-switch" checked={switchOn} onChange={(e) => setSwitchOn(e.value)} /><label htmlFor="example-switch">开启此选项</label></div><div className="radio-row" role="group" aria-label="质量选项">{['标准', '精细'].map((option) => <div className="choice-row" key={option}><RadioButton inputId={`radio-${option}`} name="quality" value={option} checked={radio === option} onChange={(e) => setRadio(e.value)} /><label htmlFor={`radio-${option}`}>{option}</label></div>)}</div></div></Specimen><Specimen title="分段与页签" hint="同级视图切换" className="view-switches"><SelectButton value={view} options={['网格', '列表']} onChange={(e) => { if (e.value) setView(e.value); }} allowEmpty={false} aria-label="视图样本" /><TabView><TabPanel header="参数"><p className="tab-sample">数量 <strong className="mono">{amount ?? '—'}</strong> · 方案 <strong>{dropdown}</strong></p></TabPanel><TabPanel header="说明"><p className="tab-sample">页签保留当前位置，切换同一对象的不同内容。</p></TabPanel></TabView></Specimen></div>
         </Section>
 
         <Section id="feedback" title="状态与反馈" description="状态带文字和图标。加载保持布局，错误说明原因并提供恢复动作。">
@@ -260,7 +247,7 @@ function App() {
       <p>确认框应写清操作对象和影响范围。这是交互演示，不会删除任何内容。</p>
     </Dialog>
     <Toast ref={toast} position="bottom-center" />
-  </div></PrimeReactProvider>;
+  </div></PrototypeProvider>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);

@@ -17,6 +17,7 @@ document:
     - docs/design/prototypes/ui-design-roadmap.md
     - docs/design/prototypes/reviews/R01.md
     - docs/design/prototypes/reviews/F-responsive.md
+    - docs/design/prototypes/reviews/F-theme.md
   verifiedBy:
     - node --import tsx --test tests/test-product-design-doc-governance.test.ts
     - npm run docs:check
@@ -28,7 +29,7 @@ document:
 
 本区域承载[根设计契约](../../DESIGN.md)之下、由源码支持的详细说明。它描述当前模式和归属边界；不会把原型、固件或未导入的样式表提升为生产环境的权威来源。
 
-[HTML 设计原型](prototypes/README.md)单独承载新版可运行稿，与当前生产页面及 `/design-demos/**` 分开。当前[基础页各视口适配](prototypes/reviews/F-responsive.md)修订稿已具备，`F-07`、`F-08`～`F-12` 设备呈现及 `F-14` 待用户复审，已明确的色相、字体和标准密度保留。本轮使用基础专属样式层，实际矩阵、交互验证、独立审查结论及限制分别记录。[完整 UI 设计路线](prototypes/ui-design-roadmap.md)仍暂停后续推进；[R01 列表稿](prototypes/reviews/R01.md)和历史成果保留，待基础适配获用户确认后恢复。
+[HTML 设计原型](prototypes/README.md)单独承载新版可运行稿，与当前生产页面及 `/design-demos/**` 分开。当前审核[基础统一主题版](prototypes/reviews/F-theme.md)：保留已确认的色相、纯白底色、字体与页面布局，使用官方主题源生成组件样式，并集中管理全局配置。原[基础适配记录](prototypes/reviews/F-responsive.md)及批准历史保留，新主题仍待用户审核。[R01 列表稿](prototypes/reviews/R01.md)继续保留旧入口和样式，暂停制作与迁移，后续顺序见[完整 UI 设计路线](prototypes/ui-design-roadmap.md)。
 
 ## 路由
 
@@ -41,7 +42,8 @@ document:
 | 修改队列或项目图像审核 | [审核工作台](review-workbench.md) | 涵盖筛选、选择、审核操作、灯箱、快捷键和撤销。 |
 | 修改 `/design-demos/**` 路由、数据、页头或展示项 | [设计演示治理](design-demo-governance.md) | 标明生效中的注册表和生产/演示边界。 |
 | 复用或调整新版基础规则 | [基础规范](prototypes/design-foundations.md)及[基础清单](prototypes/foundations/README.md) | 区分仍保留的规则和需要重新审核的设备呈现，不取消全部基础确认。 |
-| 完成当前基础页各视口适配 | [基础适配审计与审核](prototypes/reviews/F-responsive.md) | 从本轮截图记录问题，按同轮代码与证据检查桌面／中间宽度／手机，待用户确认。 |
+| 审核当前统一主题及全局配置 | [基础统一主题版](prototypes/reviews/F-theme.md) | 区分官方主题生成、公开配置和页面布局，查看本轮实际验证及迁移边界。 |
+| 回查基础适配与局部修订历史 | [基础适配审计与审核](prototypes/reviews/F-responsive.md) | 保留批准基线、数值输入与章节浮层修订，不能代替新主题验证。 |
 | 判断后续组件与页面何时恢复设计 | [完整 UI 设计路线](prototypes/ui-design-roadmap.md) | 当前暂停推进，基础适配获用户确认后按依赖恢复。 |
 | 回查已做列表工具栏、数据表与分页组合 | [R01 审核记录](prototypes/reviews/R01.md) | 已有稿与历史验证保留，暂停继续扩展，不以旧验证批准本轮基础适配。 |
 | 启动和查看新版可运行设计稿 | [HTML 设计原型](prototypes/README.md) | 使用独立原型依赖与模拟数据，不作为当前生产实现入口。 |
