@@ -16,10 +16,12 @@ document:
     - docs/design/prototypes/design-foundations.md
     - docs/design/prototypes/ui-design-roadmap.md
     - docs/design/prototypes/reviews/R01.md
+    - docs/design/prototypes/reviews/F-responsive.md
     - docs/design/prototypes/.impeccable/design.json
     - docs/design/prototypes/src/main.jsx
     - docs/design/prototypes/src/lists.jsx
     - docs/design/prototypes/src/use-prototype-preference.jsx
+    - docs/design/prototypes/src/foundations.css
   verifiedBy:
     - npm --prefix docs/design/prototypes run build
     - npm run docs:check
@@ -27,11 +29,11 @@ document:
 
 # HTML 设计原型
 
-本目录是新版界面的独立审核工程。2026-09-07 已确认将设计审核载体从 `Figma` 改为浏览器中的 HTML 原型；2026-09-08 用户确认当前基础方案无问题。已确认的色彩、字体、尺寸和基础组件统一记录在[新版前端基础设计规范](design-foundations.md)，可操作样本见[基础设计清单](foundations/README.md)和[页面入口](foundations/index.html)。
+本目录是新版界面的独立审核工程。2026-09-07 已确认将设计审核载体从 `Figma` 改为浏览器中的 HTML 原型；2026-09-08 用户确认了原始基础方案。当前[基础原型](http://127.0.0.1:5178/foundations/)的各视口修订稿已具备，待用户复审；改前审计、八视口矩阵、实际检查、独立审查及验证限制见[基础适配审核记录](reviews/F-responsive.md)。规则保留及复审范围分别见[基础规范](design-foundations.md)与[基础清单](foundations/README.md)。
 
-基础确认覆盖 `P-03` 与 `F-01`～`F-14`，视觉基线源提交为 `7fdf13de`。后续业务组合、完整页面和业务流程仍需逐项设计与审核；基础已确认不代表这些内容已完成，也不代表生产代码已经实现。
+原始基础确认覆盖 `P-03` 与 `F-01`～`F-14`，基线源提交为 `7fdf13de`；当前仅重新审核 `F-07` 设备尺寸、`F-08`～`F-12` 设备呈现及 `F-14` 响应式适配。已明确的色相、字体、语义规则和固定标准密度保持。设备呈现重新审核不取消全部基础，也不代表后续页面或生产实现完成。
 
-用户已于 2026-09-08 同意按[全前端界面设计路线](ui-design-roadmap.md)逐项推进共享组件、图像生产、`LoRA` 训练与全局界面。当前 `R01-01` 列表工具栏、数据表与分页组合首稿已完成，待用户审核，详见 [R01 审核记录](reviews/R01.md)；路线为每项保留设计和确认状态，便于按编号制作原型、反馈、调整和确认。
+用户已同意按[全前端界面设计路线](ui-design-roadmap.md)逐项推进，但当前明确暂停继续扩展列表、后续组件组合和完整页面，先完成基础适配并取得用户确认。`R01-01` 已有列表稿和历史验证保留在 [R01 审核记录](reviews/R01.md)，不删除、不继续扩展，也不据其通过记录代替本轮基础审核。
 
 ## 审核范围
 
@@ -39,9 +41,9 @@ document:
 | --- | --- | --- | --- |
 | P-01 | 审核载体 | 在仓库 `docs/design/prototypes/` 维护可运行 HTML 原型 | 已确认，2026-09-07 |
 | P-02 | 推进顺序 | 先基础元素与小组件，再业务组合，最后完整页面及流程 | 已确认，2026-09-07 |
-| P-03 | 基础设计 | 明暗主题、模块色与状态色、字体、间距、圆角、尺寸和基础控件样本 | 已确认，2026-09-08；覆盖 `F-01`～`F-14` |
-| P-04 | 业务组合 | 筛选工具栏、任务行、图片卡片、参数表单等 | R01-01 列表组合待用户审核；其余未开始，均未取得组合确认 |
-| P-05 | 完整页面 | 两模块的项目、任务、预制、模板及全局工具页面 | 待设计与审核；未开始完整页面 |
+| P-03 | 基础设计 | 保留已确认原则，基础页设备尺寸、组件呈现与响应式已形成修订稿 | `F-07`、`F-08`～`F-12` 设备呈现和 `F-14` 待用户复审；最终审查结果见审核记录 |
+| P-04 | 业务组合 | 筛选工具栏、任务行、图片卡片、参数表单等 | 暂停继续扩展；R01-01 已有稿保留，未获组合确认 |
+| P-05 | 完整页面 | 两模块的项目、任务、预制、模板及全局工具页面 | 未开始，待基础适配获用户确认后恢复路线 |
 
 已确认的新版基础是紧凑、图片优先的工作台：图像生产使用绿色，`LoRA` 训练使用玫瑰粉，两个模块同等重要；状态语义独立；明暗主题支持实时系统跟随、持久手动选择及明确重置。沿用已选择的 `PrimeReact v10 Styled` 及 `PrimeIcons`，不复制旧 `Demo` 组件体系。具体色值、字体文件、字号、尺寸和控件表现以已确认规范及其源码为准，后续调整按原编号记录。
 
@@ -56,7 +58,7 @@ npm --prefix docs/design/prototypes run dev
 
 浏览器访问 [基础设计原型](http://127.0.0.1:5178/foundations/)。开发服务仅监听 `127.0.0.1:5178`，端口已占用时直接退出，不自动改用其他端口。应通过开发服务访问；直接双击源码 HTML 不会执行依赖构建。
 
-当前待审核入口为[列表工具栏、数据表与分页组合](http://127.0.0.1:5178/components/lists/)，对应 `components/lists/index.html`。该入口只展示通用列表组合；可审核范围、验证与用户确认分别记录在 [R01 审核记录](reviews/R01.md)。
+当前审核重点为[基础原型](http://127.0.0.1:5178/foundations/)。[列表组合](http://127.0.0.1:5178/components/lists/)继续保留供回查，对应 `components/lists/index.html`；历史范围、验证与暂停边界记录在 [R01 审核记录](reviews/R01.md)，本轮不继续扩展。
 
 构建检查：
 
@@ -72,17 +74,19 @@ npm run docs:check
 | 位置 | 职责 |
 | --- | --- |
 | `foundations/index.html` | 基础设计页面的浏览器入口 |
-| `foundations/README.md` | 已确认基础编号、适用范围和后续调整方式 |
-| [design-foundations.md](design-foundations.md) | 新版前端已确认基础规范、组件来源及验证边界 |
+| `foundations/README.md` | 基础编号、保留规则、重新审核的设备呈现范围 |
+| [design-foundations.md](design-foundations.md) | 基础规范、重新审核边界及后续复用条件 |
+| [reviews/F-responsive.md](reviews/F-responsive.md) | 当前基础页各视口审计、整改计划、同轮验证和恢复条件 |
 | [ui-design-roadmap.md](ui-design-roadmap.md) | 覆盖全前端的设计顺序、页面与组件清单、逐项审核状态 |
-| `components/lists/index.html` | `R01-01` 列表工具栏、数据表与分页组合入口，待用户审核 |
-| [reviews/R01.md](reviews/R01.md) | 当前子项范围、模拟行为、实际验证与逐项用户反馈 |
+| `components/lists/index.html` | `R01-01` 已有列表稿，保留并暂停继续扩展 |
+| [reviews/R01.md](reviews/R01.md) | 已有列表子项、模拟行为、历史验证与暂停说明 |
 | [.impeccable/design.json](.impeccable/design.json) | `Impeccable` `schemaVersion 2` 原型扩展 `sidecar`，仅记录元信息及静态组件摘录 |
 | `src/main.jsx` | `PrimeReact` 组件样本及本地演示交互 |
 | `src/lists.jsx`、`src/lists.css` | 列表组合、模拟数据、桌面表格与手机卡片及其适配样式 |
 | `src/use-prototype-preference.jsx` | 基础和列表两原型共用的主题及模块偏好；实时系统跟随、手动覆盖与持久保存；密度固定标准，不读写密度偏好 |
 | `src/tokens.css` | 原型的基础、模块与语义变量 |
 | `src/prototype.css` | 原型布局、组件呈现与响应式样式 |
+| `src/foundations.css` | 基础页专属设备适配；由基础入口的 `data-prototype="foundations"` 启用，不在列表入口加载 |
 | `package.json`、`package-lock.json` | 与根应用分开的依赖及可重复安装记录 |
 
 技术基线为 `React` `19.2.4`、`Vite` `8.2.2`、`PrimeReact` `10.9.9` `Styled` 与 `PrimeIcons` `7.0.0`。字体通过本工程依赖自托管：`@fontsource-variable/geist@5.3.0`、`@fontsource-variable/noto-sans-sc@5.3.0`、`@fontsource/ibm-plex-mono@5.3.0`。实际锁定版本以本目录依赖清单为准。
@@ -105,7 +109,7 @@ npm run docs:check
 
 ## 交付与后续使用
 
-按基础清单中的 `F-01` 等编号提出后续修改。当前 `F-01`～`F-14` 保持已确认基线；新的调整需明确影响的编号，同步可操作样本、变量、基础规范与确认记录。后续业务组合及完整页面复用此基线，各自记录设计和审核状态，未确认的内容不自动通过。
+按基础清单中的 `F-01` 等编号记录调整。当前先完成[基础适配审核](reviews/F-responsive.md)：保留已明确的色相、字体和标准密度，重新审核指定设备呈现。用户确认基础适配后，再恢复后续组合和页面设计；已有列表稿按实际受影响范围复核，不自动获得确认。
 
 本工程使用本地模拟数据，不调用生产 API、不读取应用登录令牌、不连接数据库、不控制工作队列。原型 `node_modules/` 和构建产物不提交；正式实施时需要另行完成接口接入、业务状态和应用验证。当前生产设计仍查阅[设计文档](../README.md)及[根设计契约](../../../DESIGN.md)。
 

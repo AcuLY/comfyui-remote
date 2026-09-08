@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-08T08:03:58.000Z",
-  "title": "ComfyUI Manager 新版前端基础设计（2026-09-08 已确认 F-01～F-14，基线源提交 7fdf13de）",
+  "generatedAt": "2026-09-08T10:48:14.000Z",
+  "title": "ComfyUI Manager 基础设计（已明确原则保留，设备适配待用户复审）",
   "extensions": {
     "colorMeta": {
       "image": { "role": "primary", "displayName": "图像生产绿色" },
@@ -23,9 +23,10 @@
       { "name": "ease-out", "value": "var(--ease-out)", "purpose": "色样与按钮状态过渡缓动；减少动态效果时关闭位移并缩短动画。" }
     ],
     "breakpoints": [
-      { "name": "compact-desktop", "value": "1200px" },
-      { "name": "stacked-workspace", "value": "900px" },
-      { "name": "mobile", "value": "640px" }
+      { "name": "foundations-wide-sidebar", "value": "1200px" },
+      { "name": "foundations-stacked-palette", "value": "1024px" },
+      { "name": "foundations-phone", "value": "768px" },
+      { "name": "foundations-small-phone", "value": "360px" }
     ]
   },
   "components": [
@@ -60,14 +61,14 @@
     {
       "name": "具名输入框",
       "kind": "input",
-      "description": "保留可见标签、辅助说明和焦点；示例值不代表业务字段。",
+      "description": "保留标签、辅助说明和焦点的静态摘录；本轮手机输入与热区适配以实际基础原型为准，示例值不代表业务字段。",
       "html": "<div class=\"ds-field\"><label for=\"ds-name\">名称</label><input id=\"ds-name\" class=\"ds-input\" placeholder=\"请输入名称\" aria-describedby=\"ds-name-hint\"><small id=\"ds-name-hint\">简短明确，便于在列表中辨认。</small></div>",
       "css": ".ds-field{font-family:var(--font-sans);font-size:var(--text-sm);color:var(--text);display:flex;flex-direction:column;gap:8px;min-width:0}.ds-field label{font-weight:550}.ds-field small{font-size:var(--text-xs);line-height:1.5;color:var(--text-muted)}.ds-input{font-family:var(--font-sans);font-size:var(--text-sm);background:var(--surface);color:var(--text);border:1px solid var(--border-control);border-radius:var(--radius-control);min-height:var(--control-height);height:var(--control-height);padding:3px 12px;caret-color:var(--accent)}.ds-input::placeholder{color:var(--text-muted);opacity:1}.ds-input:hover{border-color:var(--text-secondary)}.ds-input:focus-visible{border-color:var(--focus);outline:2px solid var(--focus);outline-offset:3px}"
     },
     {
       "name": "基础目录",
       "kind": "nav",
-      "description": "仅为基础展示页目录摘录；不是生产导航方案。",
+      "description": "基础目录的静态形态摘录；当前设备方案为宽屏侧目录、窄屏章节下拉，交互和断点以实际基础原型为准，不是生产导航方案。",
       "html": "<nav class=\"ds-nav\" aria-label=\"基础设计目录\"><a href=\"#colors\">色彩与主题</a><a href=\"#typography\">字体与排版</a><a href=\"#components\">基础组件</a></nav>",
       "css": ".ds-nav{font-family:var(--font-sans);font-size:var(--text-sm);display:flex;flex-direction:column;gap:4px}.ds-nav a{display:flex;align-items:center;min-height:40px;padding:8px 0;text-decoration:none;color:var(--text-secondary)}.ds-nav a:hover{color:var(--accent)}.ds-nav a:focus-visible{outline:2px solid var(--focus);outline-offset:3px}@media(max-width:900px){.ds-nav{flex-direction:row;flex-wrap:wrap;gap:0 20px}.ds-nav a{font-size:var(--text-xs)}}@media(max-width:640px){.ds-nav a{min-height:44px}}"
     },
@@ -81,22 +82,22 @@
     {
       "name": "组件预览面板",
       "kind": "card",
-      "description": "原型实际预览容器的静态摘录，展示常驻表面、边界及面板间距。",
+      "description": "常驻表面与边界的静态摘录；本轮基础预览容器的设备间距和排列以 foundations.css 为准。",
       "html": "<section class=\"ds-preview\"><div class=\"ds-preview-heading\"><h3>组件预览</h3><span>可操作样本</span></div></section>",
       "css": ".ds-preview{font-family:var(--font-sans);font-size:var(--text-sm);color:var(--text);border-radius:var(--radius-panel);background:var(--surface);border:1px solid var(--border);padding:24px;display:flex;flex-direction:column;gap:16px}.ds-preview-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:4px}.ds-preview-heading h3{margin:0;font-size:var(--text-md);font-weight:600;line-height:1.5}.ds-preview-heading span{font-size:var(--text-xs);color:var(--text-muted)}@media(max-width:640px){.ds-preview{padding:20px}}"
     }
   ],
   "narrative": {
     "northStar": "清晰可操作的创作工作台",
-    "overview": "用户于 2026-09-08 确认当前方案无问题，F-01～F-14 和 P-03 已确认，原始视觉基线源提交为 7fdf13de。此后用户明确要求全原型固定标准密度：桌面通用控件高36px、行垂直内边距12px，手机继续使用独立尺寸；不提供密度选择，不读取或保存旧密度偏好。本文扩展新版前端基础规范，供后续设计复用；可运行样本位于 docs/design/prototypes/。柔和中性表面承托内容，绿色与玫瑰粉表达两个对等模块，独立状态语义解释结果；真实控件保持紧凑、清晰和可操作，再逐步组合业务页面。颜色、字体、间距与圆角以 src/tokens.css 为唯一值源；规范正文在 design-foundations.md，布局与组件实现以 src/prototype.css 和 src/main.jsx 为准。现有生产生效样式仍由根 DESIGN.md 界定；基础已确认不代表后续业务组合、完整页面或生产实现已通过。此 sidecar 为局部扩展记录，不宣称根 Impeccable 面板会自动加载它；预览宿主需先加载原型 tokens.css，并在 html 上设置主题与模块上下文。",
-    "keyCharacteristics": ["F-01～F-14 基础已确认", "中性表面与对等模块色", "深色中性黑白灰与模块焦点", "独立状态语义", "自托管中英文字体与参数等宽字体", "固定标准密度与独立手机尺寸", "44px 移动触摸保障"],
+    "overview": "原始基础确认基线为 7fdf13de。当前保留用户已明确的色相、字体、语义与固定标准密度，F-07设备尺寸、F-08至F-12设备呈现及F-14响应式已有修订稿，待用户复审；R01已有列表稿保留，后续扩展暂停，基础适配获用户确认后恢复。精细指针桌面采用标准36px控件，手机或粗指针采用独立40px外观及44px触摸范围；不提供密度选择或保存密度偏好。原始变量以 src/tokens.css 为准，共享组件层为 src/prototype.css，本轮基础设备层为 src/foundations.css，章节与样本交互在 src/main.jsx；仅 foundations/index.html 的 data-prototype=foundations 上下文启用该设备层，列表不加载它。规则正文在 design-foundations.md，本轮实际证据、独立审查结论、验证限制和用户确认范围在 reviews/F-responsive.md。静态组件摘录只展示部分基础形态，不能替代实际设备布局、热区、焦点与浮层行为。此 sidecar 为局部扩展，预览宿主需加载原型变量及相应样式上下文，不宣称根 Impeccable 面板自动发现局部文件；现有生产生效样式仍由根 DESIGN.md 界定。",
+    "keyCharacteristics": ["已明确基础原则保留", "设备适配待用户复审", "中性表面与对等模块色", "深色中性黑白灰与模块焦点", "独立状态语义", "自托管中英文字体与参数等宽字体", "固定标准密度与独立手机尺寸", "44px 移动触摸保障"],
     "rules": [
       { "name": "单一色值来源", "body": "src/tokens.css 同时供页面实际样式及色样读数使用；本文与扩展 sidecar 只描述角色，不维护第二份完整色值表。", "section": "colors" },
       { "name": "模块与状态分开", "body": "模块强调由上下文切换，成功、信息、警告和危险保留独立语义及文字或图标。", "section": "colors" },
       { "name": "平面与浮层分工", "body": "常驻分区以中性表面和细边界区分；浮层阴影统一引用 shadow-floating。", "section": "elevation" },
       {"name":"后续色相与设备尺寸","body":"模块色相按用户指定的 #176E5A 和 #A23F5D 更新，保持现有色阶；柔和强调背景文字使用 on-accent-soft。手机组合独立设计视觉尺寸并保障至少44px触摸区域，每轮与桌面同时审核。","section":"colors"}
     ],
-    "dos": ["后续新版设计先复用已确认的语义变量、字体角色、触摸规则与 PrimeReact 控件；改变基础时同步实际样本和本规范，按 F-01～F-14 记录修改及用户确认结果。", "保留主次操作、可见标签、错误原因与恢复动作；浮层从根元素继承主题和模块，状态始终有可读文字或图标。"],
+    "dos": ["当前先完成基础页各视口复审，保留已明确的语义变量、字体角色、标准密度与PrimeReact来源；后续列表和页面扩展待基础适配获用户确认后恢复。", "保留主次操作、可见标签、错误原因与恢复动作；浮层继承基础上下文，状态始终有可读文字或图标；实际尺寸、边缘命中与焦点行为按本轮证据分别记录。"],
     "donts": ["不把基础已确认等同于后续页面已通过或生产已实现，不把本页目录、模拟内容或局部展示尺寸提升为业务需求；不从 sidecar 复制静态样本代替库组件行为。", "不把未使用变量、单次展示值或现有工具兼容提示编成设计基准。根 PRODUCT.md 的旧 schema 提示属于以后可选的 Impeccable init 适配，本次基础定稿不因此重写现有生产产品契约。"]
   }
 }
