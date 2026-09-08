@@ -218,7 +218,7 @@ function App() {
           </Specimen><Specimen title="圆角与层次" hint="控件 8px · 面板 12px">
             <div className="shape-row"><div className="shape-control">8px<span>控件</span></div><div className="shape-panel">12px<span>面板</span></div><div className="shape-float">浮层<span>柔和阴影</span></div></div>
           </Specimen></div>
-          <div className="density-preview"><div><h3>同排控件</h3><p>输入、文字按钮与纯图标按钮使用相同高度。</p></div><div className="density-sample"><InputHitArea id="aligned-input"><InputText id="aligned-input" aria-label="同排控件样本输入" placeholder="名称" /></InputHitArea><Button label="应用" onClick={() => toast.current.show({ severity: 'success', summary: '样本已应用', detail: '仅演示同排操作反馈。', life: 2500 })} /><Button icon="pi pi-search" outlined aria-label="查看同排控件样本" onClick={() => toast.current.show({ severity: 'info', summary: '同排控件', detail: '三种控件按当前设备等高对齐。', life: 2500 })} /></div></div>
+          <div className="density-preview"><div><h3>同排控件</h3><p>同排保持等高，组合最大宽 640px，窄屏随容器收缩。</p></div><div className="density-sample"><InputHitArea id="aligned-input"><InputText id="aligned-input" aria-label="同排控件样本输入" placeholder="名称" /></InputHitArea><Button label="应用" onClick={() => toast.current.show({ severity: 'success', summary: '样本已应用', detail: '仅演示同排操作反馈。', life: 2500 })} /><Button icon="pi pi-search" outlined aria-label="查看同排控件样本" onClick={() => toast.current.show({ severity: 'info', summary: '同排控件', detail: '三种控件按当前设备等高对齐。', life: 2500 })} /></div></div>
         </Section>
 
         <Section id="components" title="基础组件" description="统一操作层级与字段状态，直接使用组件库现有能力。所有示例均可操作。">

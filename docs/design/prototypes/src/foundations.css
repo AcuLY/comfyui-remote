@@ -43,7 +43,7 @@
 .input-hit-edge { display: none; }
 .foundation-page .specimen { padding: 20px 0; }
 .foundation-page .specimen-heading { margin-bottom: 16px; gap: 8px 16px; }
-.foundation-page .density-preview { margin-top: 16px; padding: 20px; }
+.foundation-page .density-preview { width: 100%; max-width: 640px; margin-top: 16px; padding: 20px; }
 .foundation-page .density-sample { display: grid; grid-template-columns: minmax(0, 1fr) auto var(--control-height); gap: 12px; align-items: center; }
 .foundation-page .density-sample .p-inputtext { width: 100%; }
 .foundation-page .font-summary { gap: 24px; }
