@@ -183,7 +183,10 @@ textarea.p-inputtext { resize: vertical; min-height: 96px; height: auto; padding
 .p-multiselect-panel .p-multiselect-header { background: var(--surface-secondary); color: var(--text); padding: 12px; border-radius: var(--radius-control) var(--radius-control) 0 0; }
 .p-multiselect-panel .p-multiselect-close { color: var(--text-secondary); }
 .p-multiselect .p-multiselect-token { color: var(--on-accent-soft); background: var(--accent-soft); padding: 2px 8px; border-radius: var(--radius-small); font-size: var(--text-xs); }
-.p-inputnumber { min-width: 0; width: 100%; }
+.p-inputnumber { position: relative; min-width: 0; width: 100%; border-radius: var(--radius-control); }
+.p-inputnumber:focus-within::before { content: ''; position: absolute; inset: var(--inputnumber-focus-inset, 0px) 0; border-radius: inherit; outline: 2px solid var(--focus); outline-offset: 3px; pointer-events: none; }
+.p-inputnumber .p-inputtext:enabled:focus, .p-inputnumber .p-button:focus { outline: none; box-shadow: none; }
+.p-inputnumber:not(.p-invalid) .p-inputtext:enabled:focus { border-color: var(--border-control); }
 .p-inputnumber-input { min-width: 0; }
 .p-inputnumber .p-button { min-height: 0; border-color: var(--border-control); background: var(--surface-secondary); color: var(--text-secondary); border-radius: 0; width: 32px; padding: 0; }
 .p-inputnumber .p-inputnumber-button-up { border-radius: 0 var(--radius-control) 0 0; }
