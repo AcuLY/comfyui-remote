@@ -150,7 +150,7 @@ function App() {
     });
   }
 
-  return <PrimeReactProvider value={{ ripple: false, locale: 'zh-CN' }}><div className="foundation-page">
+  return <PrimeReactProvider value={{ ripple: false, locale: 'zh-CN', hideOverlaysOnDocumentScrolling: true }}><div className="foundation-page">
     <a className="skip-link" href="#foundation-main">跳到设计内容</a>
     <div className="foundation-chrome" ref={chrome}>
     <header className="app-header foundation-header">
@@ -164,7 +164,7 @@ function App() {
       </div>
       <Button className="foundation-preview-button" label="预览" icon="pi pi-sliders-h" text aria-label="打开主题与模块设置" onClick={() => setShowPreviewSettings(true)} />
     </header>
-    <div className="foundation-section-nav"><label htmlFor="chapter-select">章节</label><Dropdown inputId="chapter-select" value={currentSection} options={sectionOptions} onChange={(event) => goToSection(event.value)} /></div>
+    <div className="foundation-section-nav"><label htmlFor="chapter-select">章节</label><Dropdown inputId="chapter-select" appendTo="self" value={currentSection} options={sectionOptions} onChange={(event) => goToSection(event.value)} /></div>
     </div>
 
     <div className="workspace">
