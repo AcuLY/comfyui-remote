@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [{
     name: 'include-design-notes',
     generateBundle() {
-      for (const fileName of ['README.md', 'foundations/README.md', 'design-foundations.md', '.impeccable/design.json']) {
+      for (const fileName of ['README.md', 'foundations/README.md', 'design-foundations.md', 'ui-design-roadmap.md', '.impeccable/design.json']) {
         this.emitFile({ type: 'asset', fileName, source: readFileSync(new URL(`./${fileName}`, import.meta.url), 'utf8') });
       }
     },

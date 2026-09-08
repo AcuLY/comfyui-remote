@@ -41,6 +41,12 @@ ComfyUI Manager 是紧凑且以任务为导向的工作台。应保持清晰的�
 
 ## 详细指引
 
+### 新版已确认基础
+
+2026-09-08 用户确认了[新版前端基础设计规范](docs/design/prototypes/design-foundations.md)，覆盖色彩、字体、尺寸、基础组件状态与通用交互；编号和确认范围见[基础设计清单](docs/design/prototypes/foundations/README.md)。新版原型及后续页面设计复用该基线。本文上方仍描述现有生产界面的生效样式与边界；基础定稿不替换现有生产实现，也不表示后续业务组合、完整页面或生产迁移已通过。
+
+### 现有生产界面
+
 - [布局与密度](docs/design/layout-and-density.md)
 - [组件模式](docs/design/component-patterns.md)
 - [交互与动效](docs/design/interaction-and-motion.md)

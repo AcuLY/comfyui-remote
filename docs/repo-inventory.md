@@ -211,6 +211,7 @@ document:
 | `docs/design/prototypes/src/main.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/prototype.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/tokens.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/ui-design-roadmap.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/vite.config.js` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/responsive-and-accessibility.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/review-workbench.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |

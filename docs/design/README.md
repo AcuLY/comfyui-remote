@@ -9,10 +9,12 @@ document:
     kind: router
   readWhen:
     - 查找当前界面布局、组件、交互、响应式、审核或 design-demo 指引时
-    - 查找新版 HTML 设计原型及基础设计候选时
+    - 查找新版 HTML 设计原型、已确认基础规范与前端设计路线时
   sources:
     - DESIGN.md
     - docs/design/prototypes/README.md
+    - docs/design/prototypes/design-foundations.md
+    - docs/design/prototypes/ui-design-roadmap.md
   verifiedBy:
     - node --import tsx --test tests/test-product-design-doc-governance.test.ts
     - npm run docs:check
@@ -24,7 +26,7 @@ document:
 
 本区域承载[根设计契约](../../DESIGN.md)之下、由源码支持的详细说明。它描述当前模式和归属边界；不会把原型、固件或未导入的样式表提升为生产环境的权威来源。
 
-[HTML 设计原型](prototypes/README.md)单独承载新版的可运行审核稿。它使用自己的依赖、模拟数据和样式，与当前生产页面及 `/design-demos/**` 分开；其中待审核的基础数值和组件表现不改变根设计契约。
+[HTML 设计原型](prototypes/README.md)单独承载新版的可运行审核稿。它使用自己的依赖、模拟数据和样式，与当前生产页面及 `/design-demos/**` 分开。[新版前端基础设计规范](prototypes/design-foundations.md)已于 2026-09-08 获用户确认，是后续新版设计复用的基础；[完整 UI 设计路线](prototypes/ui-design-roadmap.md)按更新后的业务决策安排全部 64 个覆盖项，路线待审核，业务组合与页面尚未开始。这些设计产物不表示当前生产样式已经迁移。
 
 ## 路由
 
@@ -36,7 +38,9 @@ document:
 | 修改移动端布局或无障碍行为 | [响应式设计与无障碍](responsive-and-accessibility.md) | 记录受支持的断点衔接、安全区域、目标尺寸、ARIA 和媒体契约。 |
 | 修改队列或项目图像审核 | [审核工作台](review-workbench.md) | 涵盖筛选、选择、审核操作、灯箱、快捷键和撤销。 |
 | 修改 `/design-demos/**` 路由、数据、页头或展示项 | [设计演示治理](design-demo-governance.md) | 标明生效中的注册表和生产/演示边界。 |
-| 审核新版的色彩、字体、间距和基础组件 | [HTML 设计原型](prototypes/README.md) | 从基础设计开始审核，记录候选及确认状态；不是生产实现入口。 |
+| 复用或调整新版色彩、字体、间距和基础组件 | [新版前端基础设计规范](prototypes/design-foundations.md)及[确认清单](prototypes/foundations/README.md) | F-01～F-14 已确认；修改按原编号记录和审核。 |
+| 选择下一项新版组件、页面或流程设计 | [完整 UI 设计路线](prototypes/ui-design-roadmap.md) | 按组件依赖逐项推进，查阅页面／浮层覆盖、业务来源、状态及审核记录。 |
+| 启动和查看新版可运行设计稿 | [HTML 设计原型](prototypes/README.md) | 使用独立原型依赖与模拟数据，不作为当前生产实现入口。 |
 
 ## 上级路由
 

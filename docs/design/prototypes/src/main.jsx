@@ -145,7 +145,7 @@ function App() {
       <a href="#colors" className="wordmark">ComfyUI <span>Manager</span></a>
       <span className="header-divider" aria-hidden="true" />
       <span className="header-context">基础设计</span>
-      <span className="review-status"><span className="review-dot" />待审核</span>
+      <span className="review-status"><span className="review-dot" />基础已确认</span>
       <div className="header-controls">
         <SelectButton value={preference.module} options={moduleOptions} onChange={(e) => updatePreference('module', e.value)} aria-label="模块色" allowEmpty={false} />
         <SelectButton value={preference.theme} options={themeOptions} onChange={(e) => updatePreference('theme', e.value)} aria-label="主题偏好" allowEmpty={false} />
@@ -156,12 +156,12 @@ function App() {
       <aside className="design-sidebar">
         <div className="sidebar-title">设计基础</div>
         <nav aria-label="基础设计目录">{sections.map(([id, label]) => <a key={id} href={`#${id}`}>{label}<i className="pi pi-arrow-up-right" aria-hidden="true" /></a>)}</nav>
-        <div className="sidebar-note"><strong>先确定基础，再组合页面。</strong><p>这一页是可操作的设计样本。具体色值与尺寸，等你看过后确认。</p><a href="./README.md">查看设计清单<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
+        <div className="sidebar-note"><strong>基础已确认，开始组合页面。</strong><p>2026-09-08 已确认本页基础。后续业务组合与完整页面逐项设计、调整和审核。</p><a href="./README.md">查看设计清单<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
         <div className="sidebar-footer">PrimeReact 10.9.9<br />Impeccable 4.2.1</div>
       </aside>
 
       <main>
-        <div className="page-heading"><div><h1>先把基础，设计清楚。</h1><p>同一套组件，两种创作模式。调整顶部选项，直接感受它们在真实界面中的变化。</p></div><a className="text-link" href="#decisions">查看待确认项<i className="pi pi-arrow-down" aria-hidden="true" /></a></div>
+        <div className="page-heading"><div><h1>先把基础，设计清楚。</h1><p>同一套组件，两种创作模式。调整顶部选项，直接感受它们在真实界面中的变化。</p></div><a className="text-link" href="#decisions">查看已确认项<i className="pi pi-arrow-down" aria-hidden="true" /></a></div>
 
         <Section id="colors" title="色彩与主题" description="中性色承托内容，模块色标识操作；成功、失败等状态使用各自的语义色。">
           <div className="color-layout">
@@ -225,9 +225,9 @@ function App() {
           <div className="progress-sample"><label htmlFor="progress-demo">进度样本 <span className="mono">64%</span></label><ProgressBar id="progress-demo" value={64} showValue={false} aria-label="样本进度" /><p>进度表示过程；模块色不替代完成与失败状态。</p></div>
         </Section>
 
-        <Section id="decisions" title="这轮先确认这些" description="方向已有依据，具体数值仍可调整。确认基础后，再扩展导航外壳和业务组合。">
+        <Section id="decisions" title="已确认的设计基础" description="2026-09-08 已确认 F-01～F-14。后续页面复用这套基础，业务组合与完整流程继续逐项审核。">
           <div className="decision-table"><div><span>F-01～F-03</span><strong>主题、模块色与语义色</strong><p>明暗同等支持；绿色与玫瑰粉保持同等权重。</p></div><div><span>F-04～F-07</span><strong>字体、间距与基础尺寸</strong><p>14px 正文、4px 间距基准、8px / 12px 圆角。</p></div><div><span>F-08～F-12</span><strong>控件与状态</strong><p>操作层级清晰；字段、焦点、加载与错误保持一致。</p></div><div><span>F-13～F-14</span><strong>主题操作与交互适配</strong><p>实时跟随系统；小屏重排，触摸目标至少 44px。</p></div></div>
-          <div className="next-step"><p>你可以按编号提出调整，例如“F-04 字体换成另一种”或“F-07 控件再紧凑一点”。</p><a className="text-link" href="./README.md">打开完整设计清单<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
+          <div className="next-step"><p>后续仍可按编号提出调整。基础已确认，业务组合、页面和生产实现分别记录进度。</p><a className="text-link" href="./README.md">打开完整设计清单<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
         </Section>
         <footer className="page-footer"><span>ComfyUI Manager · 基础设计原型</span><span>仅示例数据 · 尚未接入业务接口</span></footer>
       </main>
