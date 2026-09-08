@@ -80,12 +80,14 @@ npm run docs:check
 | [.impeccable/design.json](.impeccable/design.json) | `Impeccable` `schemaVersion 2` 原型扩展 `sidecar`，仅记录元信息及静态组件摘录 |
 | `src/main.jsx` | `PrimeReact` 组件样本及本地演示交互 |
 | `src/lists.jsx`、`src/lists.css` | 列表组合、模拟数据、桌面表格与手机卡片及其适配样式 |
-| `src/use-prototype-preference.jsx` | 基础和列表两原型共用的主题、模块及密度偏好；实时系统跟随、手动覆盖与持久保存 |
+| `src/use-prototype-preference.jsx` | 基础和列表两原型共用的主题及模块偏好；实时系统跟随、手动覆盖与持久保存；密度固定标准，不读写密度偏好 |
 | `src/tokens.css` | 原型的基础、模块与语义变量 |
 | `src/prototype.css` | 原型布局、组件呈现与响应式样式 |
 | `package.json`、`package-lock.json` | 与根应用分开的依赖及可重复安装记录 |
 
 技术基线为 `React` `19.2.4`、`Vite` `8.2.2`、`PrimeReact` `10.9.9` `Styled` 与 `PrimeIcons` `7.0.0`。字体通过本工程依赖自托管：`@fontsource-variable/geist@5.3.0`、`@fontsource-variable/noto-sans-sc@5.3.0`、`@fontsource/ibm-plex-mono@5.3.0`。实际锁定版本以本目录依赖清单为准。
+
+全原型按用户指示固定标准密度：桌面通用控件高 `36px`、行垂直内边距 `12px`，手机继续使用独立尺寸。当前不提供密度选择器，也不读取或保存旧密度偏好；历史审核记录中的密度比较仅说明当时的检查，不代表当前能力。
 
 `Impeccable` 用作项目内的界面设计与审核指导，由智能体按其技能入口使用；它不是浏览器运行框架，也不增加到原型运行时依赖中。
 

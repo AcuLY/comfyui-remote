@@ -25,7 +25,7 @@ import 'primeicons/primeicons.css';
 import 'primereact/resources/themes/lara-light-teal/theme.css';
 import './tokens.css';
 import './prototype.css';
-import { usePrototypePreference, themeOptions, densityOptions } from './use-prototype-preference.jsx';
+import { usePrototypePreference, themeOptions } from './use-prototype-preference.jsx';
 
 const moduleOptions = [{ label: '图像生产', value: 'image' }, { label: 'LoRA 训练', value: 'training' }];
 const sections = [['colors', '色彩与主题'], ['typography', '字体与排版'], ['dimensions', '尺寸与密度'], ['components', '基础组件'], ['feedback', '状态与反馈'], ['decisions', '确认清单']];
@@ -167,7 +167,7 @@ function App() {
           </Specimen><Specimen title="圆角与层次" hint="控件 8px · 面板 12px">
             <div className="shape-row"><div className="shape-control">8px<span>控件</span></div><div className="shape-panel">12px<span>面板</span></div><div className="shape-float">浮层<span>柔和阴影</span></div></div>
           </Specimen></div>
-          <div className="density-preview"><div><h3>试试不同密度</h3><p>字号保持不变，只调整控件高度和行间距。</p></div><SelectButton value={preference.density} options={densityOptions} onChange={(e) => updatePreference('density', e.value)} allowEmpty={false} aria-label="内容密度" /><div className="density-sample"><InputText aria-label="密度预览输入" placeholder="输入名称或关键词" /><Button label="主要操作" icon="pi pi-plus" onClick={() => toast.current.show({ severity: 'info', summary: '密度样本', detail: '同一套控件随密度选择变化。', life: 2500 })} /></div></div>
+          <div className="density-preview"><div><h3>标准密度</h3><p>桌面固定 36px 控件高度与 12px 行内边距；手机按组件独立适配。</p></div><div className="density-sample"><InputText aria-label="标准密度样本输入" placeholder="输入名称或关键词" /><Button label="主要操作" icon="pi pi-plus" onClick={() => toast.current.show({ severity: 'info', summary: '标准密度', detail: '桌面统一使用标准密度，字号保持不变。', life: 2500 })} /></div></div>
         </Section>
 
         <Section id="components" title="基础组件" description="统一操作层级与字段状态，直接使用组件库现有能力。所有示例均可操作。">

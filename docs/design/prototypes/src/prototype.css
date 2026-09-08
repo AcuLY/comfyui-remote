@@ -159,7 +159,8 @@ main { min-width: 0; padding: 36px 40px 24px; max-width: 1380px; width: 100%; }
 .p-button.p-button-danger { background: var(--danger); border-color: var(--danger); }
 .p-button.p-button-danger.p-button-outlined { color: var(--danger); background: transparent; border-color: var(--danger); }
 .p-button.p-button-danger:enabled:hover { color: var(--danger); background: var(--danger-soft); border-color: var(--danger); }
-.p-button.p-button-icon-only { min-width: var(--control-height); width: var(--control-height); padding: 8px; }
+.p-button.p-button-icon-only { min-width: var(--control-height); width: var(--control-height); padding: 8px; gap: 0; }
+.p-button.p-button-icon-only .p-button-label { display: none; }
 .p-button:focus, .p-inputtext:enabled:focus, .p-dropdown.p-focus, .p-multiselect.p-focus, .p-checkbox:not(.p-disabled):has(:focus-visible) .p-checkbox-box, .p-radiobutton:not(.p-disabled):has(:focus-visible) .p-radiobutton-box, .p-inputswitch:has(:focus-visible) .p-inputswitch-slider { box-shadow: none; outline: 2px solid var(--focus); outline-offset: 3px; }
 .p-disabled, .p-component:disabled { opacity: 1; cursor: not-allowed; }
 .p-button:disabled, .p-inputtext:disabled { background: var(--disabled-surface); border-color: var(--border); color: var(--disabled); }
@@ -318,7 +319,6 @@ textarea.p-inputtext { resize: vertical; min-height: 96px; height: auto; padding
   .density-preview { grid-template-columns: 1fr; padding: 20px; }
   .density-sample { grid-column: 1; flex-direction: column; align-items: stretch; }
   .density-sample .p-inputtext { width: 100%; }
-  .density-preview > .p-selectbutton { justify-self: start; }
   .specimen-heading { align-items: flex-start; flex-direction: column; gap: 6px; }
   .choice-row { min-height: 44px; }
   .choice-row label { min-height: 44px; display: flex; align-items: center; }

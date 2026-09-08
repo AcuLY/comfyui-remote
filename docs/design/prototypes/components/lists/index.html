@@ -8,13 +8,13 @@
     <link rel="icon" href="data:," />
     <title>列表与分页 · ComfyUI Manager</title>
     <script>
+      document.documentElement.dataset.density = 'standard';
       try {
         const saved = JSON.parse(localStorage.getItem('cm-prototype-preference-v1') || '{}');
         const preference = ['light', 'dark'].includes(saved.theme) ? saved.theme : 'system';
         document.documentElement.dataset.theme = preference === 'system'
           ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : preference;
         document.documentElement.dataset.module = saved.module === 'training' ? 'training' : 'image';
-        document.documentElement.dataset.density = ['compact', 'relaxed'].includes(saved.density) ? saved.density : 'standard';
       } catch {
         document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       }

@@ -117,10 +117,8 @@
   --on-accent: var(--training-on);
 }
 
-:root[data-density='compact'] { --control-height: 32px; --row-padding: 8px; }
-:root[data-density='relaxed'] { --control-height: 44px; --row-padding: 16px; }
 @media (pointer: coarse), (max-width: 640px) {
-  :root, :root[data-density='compact'], :root[data-density='standard'], :root[data-density='relaxed'] {
+  :root {
     --control-height: 44px;
     --control-padding: 14px;
   }

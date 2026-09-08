@@ -13,7 +13,7 @@ import { Skeleton } from 'primereact/skeleton';
 import { Tag } from 'primereact/tag';
 import { Toolbar } from 'primereact/toolbar';
 import { Toast } from 'primereact/toast';
-import { usePrototypePreference, themeOptions, densityOptions } from './use-prototype-preference.jsx';
+import { usePrototypePreference, themeOptions } from './use-prototype-preference.jsx';
 import '@fontsource-variable/geist';
 import '@fontsource-variable/noto-sans-sc';
 import '@fontsource/ibm-plex-mono/latin-400.css';
@@ -155,7 +155,6 @@ function App() {
         <div className="list-mobile-preferences"><span>模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={(event) => updatePreference('module', event.value)} aria-label="手机模块色" allowEmpty={false} /></div>
         <div className="list-mobile-preferences"><span>主题</span><SelectButton value={preference.theme} options={themeOptions} onChange={(event) => updatePreference('theme', event.value)} aria-label="手机主题偏好" allowEmpty={false} /></div>
         <div><span id="preview-state-label">预览状态</span><SelectButton value={previewState} options={stateOptions} onChange={(event) => changeState(event.value)} aria-labelledby="preview-state-label" allowEmpty={false} /></div>
-        <div className="list-density-preview"><div><span id="density-label">桌面密度 · 预览</span><SelectButton value={preference.density} options={densityOptions} onChange={(event) => updatePreference('density', event.value)} aria-labelledby="density-label" aria-describedby="density-help" allowEmpty={false} /></div><p id="density-help">比较控件高度与行距：32 / 36 / 44px，字号不变。</p></div>
         <p className="list-mobile-size-note">手机使用独立尺寸，保持至少 44px 的触摸范围。</p>
       </div>
       <section className="list-surface" aria-labelledby="list-title">
