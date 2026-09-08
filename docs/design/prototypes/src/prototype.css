@@ -5,7 +5,7 @@ button, input, textarea, select { font: inherit; }
 button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
 ::selection { background: var(--selection); color: var(--text); }
 input, textarea { caret-color: var(--accent); }
-:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; box-shadow: none; }
+:focus-visible:not(.p-component):not(.p-component *) { outline: 2px solid var(--focus); outline-offset: 3px; box-shadow: none; }
 a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 h1, h2, h3, p { margin: 0; }
 h1, h2, h3 { font-weight: 600; text-wrap: balance; }
@@ -145,7 +145,8 @@ main { min-width: 0; padding: 36px 40px 24px; max-width: 1380px; width: 100%; }
 .next-step p { color: var(--text-secondary); max-width: 65ch; }
 .page-footer { display: flex; justify-content: space-between; gap: 24px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text-muted); font-size: var(--text-xs); }
 
-/* The single prototype theme layer customizes PrimeReact v10 public classes. */
+/* Keep theme overrides in the library layer so its structural selectors retain priority. */
+@layer primereact {
 .p-component { font-family: var(--font-sans); font-size: var(--text-sm); }
 .p-button { min-height: var(--control-height); padding: max(3px, calc((var(--control-height) - 24px) / 2)) var(--control-padding); gap: 8px; border-radius: var(--radius-control); background: var(--accent); border: 1px solid var(--accent); color: var(--on-accent); box-shadow: none; transition: background var(--duration-quick) var(--ease-out), border-color var(--duration-quick) var(--ease-out); }
 .p-button .p-button-label { font-weight: 550; }
@@ -161,7 +162,7 @@ main { min-width: 0; padding: 36px 40px 24px; max-width: 1380px; width: 100%; }
 .p-button.p-button-danger:enabled:hover { color: var(--danger); background: var(--danger-soft); border-color: var(--danger); }
 .p-button.p-button-icon-only { min-width: var(--control-height); width: var(--control-height); padding: 8px; gap: 0; }
 .p-button.p-button-icon-only .p-button-label { display: none; }
-.p-button:focus, .p-inputtext:enabled:focus, .p-dropdown.p-focus, .p-multiselect.p-focus, .p-checkbox:not(.p-disabled):has(:focus-visible) .p-checkbox-box, .p-radiobutton:not(.p-disabled):has(:focus-visible) .p-radiobutton-box, .p-inputswitch:has(:focus-visible) .p-inputswitch-slider { box-shadow: none; outline: 2px solid var(--focus); outline-offset: 3px; }
+.p-button:not(.p-inputnumber-button):focus, .p-inputtext:not(.p-inputnumber-input):enabled:focus, .p-dropdown.p-focus, .p-multiselect.p-focus, .p-checkbox:not(.p-disabled):has(:focus-visible) .p-checkbox-box, .p-radiobutton:not(.p-disabled):has(:focus-visible) .p-radiobutton-box, .p-inputswitch:has(:focus-visible) .p-inputswitch-slider { box-shadow: none; outline: 2px solid var(--focus); outline-offset: 3px; }
 .p-disabled, .p-component:disabled { opacity: 1; cursor: not-allowed; }
 .p-button:disabled, .p-inputtext:disabled { background: var(--disabled-surface); border-color: var(--border); color: var(--disabled); }
 .p-inputtext, .p-dropdown, .p-multiselect { background: var(--surface); color: var(--text); border: 1px solid var(--border-control); border-radius: var(--radius-control); min-height: var(--control-height); }
@@ -183,20 +184,11 @@ textarea.p-inputtext { resize: vertical; min-height: 96px; height: auto; padding
 .p-multiselect-panel .p-multiselect-header { background: var(--surface-secondary); color: var(--text); padding: 12px; border-radius: var(--radius-control) var(--radius-control) 0 0; }
 .p-multiselect-panel .p-multiselect-close { color: var(--text-secondary); }
 .p-multiselect .p-multiselect-token { color: var(--on-accent-soft); background: var(--accent-soft); padding: 2px 8px; border-radius: var(--radius-small); font-size: var(--text-xs); }
-.p-inputnumber { position: relative; min-width: 0; width: 100%; border-radius: var(--radius-control); }
-.p-inputnumber:focus-within::before { content: ''; position: absolute; inset: var(--inputnumber-focus-inset, 0px) 0; border-radius: inherit; outline: 2px solid var(--focus); outline-offset: 3px; pointer-events: none; }
-.p-inputnumber .p-inputtext:enabled:focus, .p-inputnumber .p-button:focus { outline: none; box-shadow: none; }
-.p-inputnumber:not(.p-invalid) .p-inputtext:enabled:focus { border-color: var(--border-control); }
+.p-inputnumber { min-width: 0; width: 100%; }
 .p-inputnumber-input { min-width: 0; }
-.p-inputnumber .p-button { min-height: 0; border-color: var(--border-control); background: var(--surface-secondary); color: var(--text-secondary); border-radius: 0; width: 32px; padding: 0; }
-.p-inputnumber .p-inputnumber-button-up { border-radius: 0 var(--radius-control) 0 0; }
-.p-inputnumber .p-inputnumber-button-down { border-radius: 0 0 var(--radius-control) 0; }
-.p-inputnumber .p-button:enabled:hover { background: var(--surface-hover); color: var(--text); }
-.p-inputnumber .p-button svg { width: 10px; height: 10px; }
-.p-inputnumber.p-inputnumber-buttons-horizontal .p-button { width: var(--control-height); min-width: var(--control-height); min-height: var(--control-height); }
-.p-inputnumber.p-inputnumber-buttons-horizontal .p-inputnumber-button-down { border-radius: var(--radius-control) 0 0 var(--radius-control); }
-.p-inputnumber.p-inputnumber-buttons-horizontal .p-inputnumber-button-up { border-radius: 0 var(--radius-control) var(--radius-control) 0; }
-.p-inputnumber.p-inputnumber-buttons-horizontal .p-inputnumber-input { border-radius: 0; text-align: center; }
+/* Native Lara focus shapes; only the palette is mapped to the active module. */
+.p-inputnumber-input:enabled:focus { box-shadow: 0 0 0 0.2rem var(--accent-soft); }
+.p-inputnumber-button:focus { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--accent), 0 1px 2px 0 rgb(0 0 0); }
 .p-checkbox .p-checkbox-box, .p-radiobutton .p-radiobutton-box { background: var(--surface); border: 1px solid var(--border-control); width: 20px; height: 20px; }
 .p-checkbox { width: 20px; height: 20px; }
 .p-checkbox .p-checkbox-box { border-radius: var(--radius-small); }
@@ -252,6 +244,7 @@ textarea.p-inputtext { resize: vertical; min-height: 96px; height: auto; padding
 .p-toast .p-toast-summary { font-weight: 600; }
 .p-toast .p-toast-detail { color: var(--text-secondary); margin-top: 4px; }
 .p-toast .p-toast-icon-close { color: var(--text-secondary); }
+}
 
 @media (max-width: 1200px) {
   .workspace { grid-template-columns: 188px minmax(0, 1fr); }

@@ -31,7 +31,7 @@ import { usePrototypePreference, themeOptions } from './use-prototype-preference
 addLocale('zh-CN', { aria: { close: '关闭', selectAll: '选择全部', unselectAll: '取消全选' } });
 locale('zh-CN');
 const moduleOptions = [{ label: '生产', value: 'image' }, { label: '训练', value: 'training' }];
-const sections = [['colors', '色彩与主题'], ['typography', '字体与排版'], ['dimensions', '尺寸与适配'], ['components', '基础组件'], ['feedback', '状态与反馈'], ['decisions', '复审清单']];
+const sections = [['colors', '色彩与主题'], ['typography', '字体与排版'], ['dimensions', '尺寸与适配'], ['components', '基础组件'], ['feedback', '状态与反馈'], ['decisions', '确认清单']];
 const sectionOptions = sections.map(([value, label]) => ({ value, label }));
 const colorSpecs = [
   ['canvas', '页面底色', '承托整页内容'], ['surface', '主要表面', '表单与编辑区域'],
@@ -157,7 +157,7 @@ function App() {
       <a href="#colors" className="wordmark">ComfyUI <span>Manager</span></a>
       <span className="header-divider" aria-hidden="true" />
       <span className="header-context">基础设计</span>
-      <span className="review-status"><span className="review-dot" />适配复审</span>
+      <span className="review-status"><span className="review-dot" />基础已确认</span>
       <div className="header-controls">
         <SelectButton value={preference.module} options={moduleOptions} onChange={(e) => updatePreference('module', e.value)} aria-label="模块色" allowEmpty={false} />
         <SelectButton value={preference.theme} options={themeOptions} onChange={(e) => updatePreference('theme', e.value)} aria-label="主题偏好" allowEmpty={false} />
@@ -171,7 +171,7 @@ function App() {
       <aside className="design-sidebar">
         <div className="sidebar-title">设计基础</div>
         <nav aria-label="基础设计目录">{sections.map(([id, label]) => <a key={id} href={`#${id}`} aria-current={currentSection === id ? 'location' : undefined}>{label}<i className="pi pi-arrow-up-right" aria-hidden="true" /></a>)}</nav>
-        <div className="sidebar-note"><strong>先稳定各视口下的基础。</strong><p>色彩、字体和标准密度保留。尺寸、间距与交互适配重新审核，后续设计暂停。</p><a href="../reviews/F-responsive.md">查看适配审核记录<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
+        <div className="sidebar-note"><strong>优先使用组件库原生能力。</strong><p>基础基线已确认，组件用法按后续原则调整。R01-01 工作稿保留，暂缓继续设计。</p><a href="../components/lists/">查看列表工作稿<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
         <div className="sidebar-footer">PrimeReact 10.9.9<br />Impeccable 4.2.1</div>
       </aside>
 
@@ -212,7 +212,7 @@ function App() {
             <div className="viewport-rule rule-medium"><div><strong>窄屏</strong><small>768–1199px</small></div><p>表单控件 36px · 内容边距 24px · 分区间隔 40px</p><span className="current-band">当前</span></div>
             <div className="viewport-rule rule-phone"><div><strong>手机</strong><small>≤ 767px</small></div><p>表单控件 40px · 内容边距 12–16px · 分区间隔 32px</p><span className="current-band">当前</span></div>
           </div>
-          <p className="spec-note">触控设备使用 40px 表单控件，交互目标至少 44×44px；输入文字为 16px。字阶展示保留标注字号，实际页面标题随视口调整。</p>
+          <p className="spec-note">触控设备使用 40px 表单控件，输入文字为 16px。触控目标以 44×44px 为基准，优先通过原生尺寸与可点击标签实现；数量控件保留库原生交互。</p>
           <div className="dimension-grid"><Specimen title="间距刻度" hint="4 / 8 / 12 / 16 / 24 / 32 / 48">
             <div className="spacing-scale">{[4, 8, 12, 16, 24, 32, 48].map((n) => <div key={n}><span className="mono">{n}</span><span className={`spacing-bar spacing-${n}`} /></div>)}</div>
           </Specimen><Specimen title="圆角与层次" hint="控件 8px · 面板 12px">
@@ -227,7 +227,7 @@ function App() {
             <p className="spec-note">悬停与按下查看反馈；按 Tab 查看焦点。危险操作使用独立语义色。</p>
           </Specimen>
           <Specimen title="输入与校验" hint="默认 / 帮助 / 错误 / 只读 / 禁用">
-            <div className="field-grid"><Field id="normal-field" label="名称" hint="简短明确，便于在列表中辨认。"><InputText id="normal-field" placeholder="请输入名称" aria-describedby="normal-field-hint" /></Field><Field id="invalid-field" label="校验错误样本" error="名称不能为空，请填写后重试。"><InputText id="invalid-field" placeholder="请输入名称" invalid aria-invalid="true" aria-describedby="invalid-field-error" /></Field><Field id="readonly-field" label="只读内容" hint="只读仍可选中与复制。"><InputText id="readonly-field" value="已归档的内容" readOnly aria-describedby="readonly-field-hint" /></Field><Field id="disabled-field" label="不可编辑" hint="当前状态暂不支持修改。"><InputText id="disabled-field" value="默认参数" disabled aria-describedby="disabled-field-hint" /></Field><Field id="amount-field" label="数量"><InputNumber onClick={(event) => { if (event.target === event.currentTarget) event.currentTarget.querySelector("input")?.focus(); }} inputId="amount-field" value={amount} onValueChange={(e) => setAmount(e.value)} min={1} max={16} showButtons buttonLayout="horizontal" incrementButtonIcon="pi pi-plus" decrementButtonIcon="pi pi-minus" pt={{ incrementButton: { "aria-label": "增加数量" }, decrementButton: { "aria-label": "减少数量" } }} /></Field><Field id="select-field" label="单项选择"><Dropdown inputId="select-field" value={dropdown} options={['标准', '精细', '自定义']} onChange={(e) => setDropdown(e.value)} /></Field></div>
+            <div className="field-grid"><Field id="normal-field" label="名称" hint="简短明确，便于在列表中辨认。"><InputText id="normal-field" placeholder="请输入名称" aria-describedby="normal-field-hint" /></Field><Field id="invalid-field" label="校验错误样本" error="名称不能为空，请填写后重试。"><InputText id="invalid-field" placeholder="请输入名称" invalid aria-invalid="true" aria-describedby="invalid-field-error" /></Field><Field id="readonly-field" label="只读内容" hint="只读仍可选中与复制。"><InputText id="readonly-field" value="已归档的内容" readOnly aria-describedby="readonly-field-hint" /></Field><Field id="disabled-field" label="不可编辑" hint="当前状态暂不支持修改。"><InputText id="disabled-field" value="默认参数" disabled aria-describedby="disabled-field-hint" /></Field><Field id="amount-field" label="数量"><InputNumber inputId="amount-field" value={amount} onValueChange={(e) => setAmount(e.value)} min={1} max={16} showButtons buttonLayout="horizontal" incrementButtonIcon="pi pi-plus" decrementButtonIcon="pi pi-minus" pt={{ incrementButton: { "aria-label": "增加数量" }, decrementButton: { "aria-label": "减少数量" } }} /></Field><Field id="select-field" label="单项选择"><Dropdown inputId="select-field" value={dropdown} options={['标准', '精细', '自定义']} onChange={(e) => setDropdown(e.value)} /></Field></div>
             <div className="field-grid field-grid-wide"><Field id="textarea-field" label="补充说明"><InputTextarea id="textarea-field" rows={3} placeholder="输入多行内容，查看正文、行高与边界。" autoResize /></Field><Field id="multi-field" label="多项选择" hint="在菜单中选择或取消字段，支持搜索。"><MultiSelect inputId="multi-field" value={multiValue} options={['名称', '状态', '时间', '来源']} onChange={(e) => setMultiValue(e.value)} maxSelectedLabels={2} selectedItemsLabel="{0} 项已选" filter placeholder="选择字段" aria-describedby="multi-field-hint" /></Field></div>
           </Specimen>
           <div className="dimension-grid"><Specimen title="选择控件" hint="明确的已选状态"><div className="selection-examples"><div className="choice-row"><Checkbox inputId="example-check" checked={checked} onChange={(e) => setChecked(e.checked)} /><label htmlFor="example-check">选中当前项</label></div><div className="choice-row"><InputSwitch inputId="example-switch" checked={switchOn} onChange={(e) => setSwitchOn(e.value)} /><label htmlFor="example-switch">开启此选项</label></div><div className="radio-row" role="group" aria-label="质量选项">{['标准', '精细'].map((option) => <div className="choice-row" key={option}><RadioButton inputId={`radio-${option}`} name="quality" value={option} checked={radio === option} onChange={(e) => setRadio(e.value)} /><label htmlFor={`radio-${option}`}>{option}</label></div>)}</div></div></Specimen><Specimen title="分段与页签" hint="同级视图切换"><SelectButton value={view} options={['网格', '列表']} onChange={(e) => { if (e.value) setView(e.value); }} allowEmpty={false} aria-label="视图样本" /><TabView><TabPanel header="参数"><p className="tab-sample">数量 <strong className="mono">{amount ?? '—'}</strong> · 方案 <strong>{dropdown}</strong></p></TabPanel><TabPanel header="说明"><p className="tab-sample">页签保留当前位置，切换同一对象的不同内容。</p></TabPanel></TabView></Specimen></div>
@@ -246,9 +246,9 @@ function App() {
           <div className="progress-sample"><label htmlFor="progress-demo">进度样本 <span className="mono">64%</span></label><ProgressBar id="progress-demo" value={64} showValue={false} aria-label="样本进度" /><p>进度表示过程；模块色不替代完成与失败状态。</p></div>
         </Section>
 
-        <Section id="decisions" title="基础规范与本轮复审" description="色相、字体与标准密度保留；F-07、基础控件的设备呈现及 F-14 适配重新审核。">
+        <Section id="decisions" title="基础规范与确认记录" description="基础基线已于 2026-09-08 确认；组件用法按后续设计原则持续调整。">
           <div className="decision-table"><div><span>F-01～F-03</span><strong>主题、模块色与语义色</strong><p>明暗同等支持；绿色与玫瑰粉保持同等权重。</p></div><div><span>F-04～F-07</span><strong>字体、间距与基础尺寸</strong><p>14px 正文、4px 间距基准、8px / 12px 圆角。</p></div><div><span>F-08～F-12</span><strong>控件与状态</strong><p>操作层级清晰；字段、焦点、加载与错误保持一致。</p></div><div><span>F-13～F-14</span><strong>主题操作与交互适配</strong><p>实时跟随系统；小屏重排，触摸目标至少 44px。</p></div></div>
-          <div className="next-step"><p>先确认桌面、窄屏与手机的基础适配，再恢复后续设计。</p><a className="text-link" href="../reviews/F-responsive.md">打开本轮审核记录<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
+          <div className="next-step"><p>复用原生组件与必要主题配置；R01-01 工作稿保留，组合另行审核。</p><a className="text-link" href="../components/lists/">查看列表工作稿<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
         </Section>
         <footer className="page-footer"><span>ComfyUI Manager · 基础设计原型</span><span>仅示例数据 · 尚未接入业务接口</span></footer>
       </main>

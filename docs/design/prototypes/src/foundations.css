@@ -114,8 +114,8 @@
 @media (width < 768px), (pointer: coarse) {
   :root[data-prototype='foundations'] { --control-height: 40px; --control-padding: 12px; }
   :root[data-prototype='foundations'] .p-button { position: relative; overflow: visible; }
-  :root[data-prototype='foundations'] .p-button::after { content: ''; position: absolute; inset: -2px 0; }
-  :root[data-prototype='foundations'] .p-button.p-button-icon-only::after { inset: -2px; }
+  :root[data-prototype='foundations'] .p-button:not(.p-inputnumber-button)::after { content: ''; position: absolute; inset: -2px 0; }
+  :root[data-prototype='foundations'] .p-button.p-button-icon-only:not(.p-inputnumber-button)::after { inset: -2px; }
   :root[data-prototype='foundations'] .p-selectbutton { padding: 2px; gap: 4px; }
   :root[data-prototype='foundations'] .p-selectbutton .p-button { min-height: 36px; height: 36px; padding: 4px 10px; }
   :root[data-prototype='foundations'] .p-selectbutton .p-button::after { inset: -4px 0; }
@@ -130,9 +130,6 @@
   .input-hit-edge { display: block; position: absolute; left: 0; right: 0; height: 2px; cursor: text; }
   .input-hit-top { top: 0; }
   .input-hit-bottom { bottom: 0; }
-  :root[data-prototype='foundations'] .p-inputnumber { padding-block: 2px; --inputnumber-focus-inset: 2px; }
-  :root[data-prototype='foundations'] .p-inputnumber.p-inputnumber-buttons-horizontal .p-button { min-width: 44px; width: 44px; }
-  :root[data-prototype='foundations'] .p-inputnumber .p-button::after { inset: -2px 0; }
   :root[data-prototype='foundations'] .p-dropdown-panel .p-dropdown-item,
   :root[data-prototype='foundations'] .p-multiselect-panel .p-multiselect-item { min-height: 44px; padding: 10px 12px; display: flex; align-items: center; }
   :root[data-prototype='foundations'] .p-checkbox input, :root[data-prototype='foundations'] .p-radiobutton input { width: 44px; height: 44px; min-width: 44px; min-height: 44px; left: -12px; top: -12px; }
