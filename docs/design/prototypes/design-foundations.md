@@ -33,7 +33,7 @@ document:
 ## 色彩
 
 1. **单一色值来源。** [tokens.css](src/tokens.css) 同时供页面实际样式及色样读数使用；本文与[扩展 sidecar](.impeccable/design.json)只描述角色，不维护第二份完整色值表。`canvas` 承托整页，`surface` 承载表单与面板，`surface-secondary` 区分工具栏和分组，`surface-hover` 表达悬停，`surface-floating` 用于顶部浮动表面。
-2. **模块与状态分开。** 本轮按用户指定的 `#60DC87`（图像生产）和 `#EC8EB0`（训练）更新色相；明暗主题的各级颜色保留原有饱和度、明度与层级。 `image` 为图像生产绿色，`training` 为 `LoRA` 训练玫瑰粉；`accent`、`accent-hover`、`accent-soft`、`on-accent` 随根元素 `data-module` 切换。成功、信息、警告和危险分别使用 `success`、`info`、`warning`、`danger` 及其柔和背景，保留文字或图标；暂停样本使用警告语义。
+2. **模块与状态分开。** 本轮按用户指定的 `#5CE09C`（图像生产）和 `#EC8EB0`（训练）更新色相；明暗主题的各级颜色保留原有饱和度、明度与层级。 `image` 为图像生产绿色，`training` 为 `LoRA` 训练玫瑰粉；`accent`、`accent-hover`、`accent-soft`、`on-accent` 随根元素 `data-module` 切换。成功、信息、警告和危险分别使用 `success`、`info`、`warning`、`danger` 及其柔和背景，保留文字或图标；暂停样本使用警告语义。
 3. **文字、边界与焦点分工。** 主要、次要和辅助文字分别使用 `text`、`text-secondary`、`text-muted`；分组线用 `border`，输入边界用 `border-control`，焦点由语义变量 `focus` 引用当前模块的 `accent`，输入边框和外轮廓随模块切换；不使用独立蓝色焦点。深色的页面、面板、文字及边框使用等量 `RGB` 通道的中性黑白灰，不带蓝色底调。整改记录中的浅色辅助文字对页面底色为 4.96:1、对次级表面为 4.73:1；该结论仅覆盖这两个组合。
 4. **主题上下文在根元素。** 默认监听系统主题变化；手动选择明或暗后保存在原型专用 `cm-prototype-preference-v1`，直到点击“改为跟随系统”或选择“系统”。`data-theme` 与 `data-module` 在 `html` 上生效，因此挂到页面外层的下拉、对话框和 `Toast` 同样继承当前变量。模块和密度选择也保存到同一原型偏好记录。
 
