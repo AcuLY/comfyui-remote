@@ -55,12 +55,21 @@ const records = [
   ['细节说明为空的样本', '细节', ''],
 ].map(([name, category, note], index) => ({ id: `sample-${index + 1}`, name, category, note, updatedAt: `2026-09-${String(8 - Math.floor(index / 3)).padStart(2, '0')} ${String(16 - index % 3).padStart(2, '0')}:30` }));
 
+function ListSkeleton({ className }) {
+  return <Skeleton className={className} width="var(--skeleton-width, 100%)" height="var(--skeleton-height, 12px)" />;
+}
+
 function ListLoading() {
   return <div className="list-loading" role="status" aria-label="正在加载列表">
     <span className="visually-hidden">正在加载列表</span>
-    {Array.from({ length: 5 }, (_, index) => <div className="list-skeleton-row" key={index} aria-hidden="true">
-      <Skeleton className="list-skeleton-check" /><div><Skeleton className="list-skeleton-name" /><Skeleton className="list-skeleton-note" /></div><Skeleton className="list-skeleton-tag" /><Skeleton className="list-skeleton-date" />
-    </div>)}
+    <div className="list-desktop" aria-hidden="true">
+      <div className="list-skeleton-line list-skeleton-header">{['check', 'name', 'category', 'note', 'date', 'action'].map((column) => <div key={column}><ListSkeleton className={`list-skeleton-${column}`} /></div>)}</div>
+      {Array.from({ length: 5 }, (_, index) => <div className="list-skeleton-line list-skeleton-row" key={index}>{['check', 'name', 'category', 'note', 'date', 'action'].map((column) => <div key={column}><ListSkeleton className={`list-skeleton-${column}`} /></div>)}</div>)}
+    </div>
+    <div className="list-mobile" aria-hidden="true">
+      <div className="list-skeleton-mobile-header"><ListSkeleton className="list-skeleton-check" /><ListSkeleton className="list-skeleton-name" /></div>
+      {Array.from({ length: 5 }, (_, index) => <div className="list-skeleton-card" key={index}><div><ListSkeleton className="list-skeleton-check" /><ListSkeleton className="list-skeleton-name" /></div><ListSkeleton className="list-skeleton-note" /><div className="list-skeleton-card-meta"><ListSkeleton className="list-skeleton-category" /><ListSkeleton className="list-skeleton-date" /><ListSkeleton className="list-skeleton-action" /></div></div>)}
+    </div>
   </div>;
 }
 
@@ -114,9 +123,9 @@ function App() {
   }
 
   const toolbarStart = <div className="list-filter-fields">
-    <div className="list-search"><label htmlFor="list-search">搜索</label><div className="list-search-input"><i className="pi pi-search" aria-hidden="true" /><InputText id="list-search" value={query} onChange={(event) => changeFilter(setQuery, event.target.value)} placeholder="名称或备注" disabled={!contentAvailable} /></div></div>
-    <div className="list-category"><label htmlFor="list-category">分类</label><Dropdown inputId="list-category" value={category} options={categoryOptions} onChange={(event) => changeFilter(setCategory, event.value)} disabled={!contentAvailable} /></div>
-    <div className="list-sort"><label htmlFor="list-sort">排序</label><Dropdown inputId="list-sort" value={`${sortField}:${sortOrder}`} options={sortOptions} onChange={(event) => { const [field, order] = event.value.split(':'); changeFilter(setSortField, field); setSortOrder(Number(order)); }} disabled={!contentAvailable} /></div>
+    <div className="list-search"><label htmlFor="list-search">搜索</label><div className="list-search-row"><label className="list-search-input" htmlFor="list-search"><i className="pi pi-search" aria-hidden="true" /><InputText id="list-search" value={query} onChange={(event) => changeFilter(setQuery, event.target.value)} placeholder="搜索名称或备注" disabled={!contentAvailable} /></label><Button className="list-mobile-reset" text icon="pi pi-filter-slash" aria-label="重置筛选" disabled={!hasFilter || !contentAvailable} onClick={resetFilters} /></div></div>
+    <div className="list-category"><label htmlFor="list-category">分类</label><Dropdown panelClassName="list-options-panel" inputId="list-category" value={category} options={categoryOptions} onChange={(event) => changeFilter(setCategory, event.value)} disabled={!contentAvailable} /></div>
+    <div className="list-sort"><label htmlFor="list-sort">排序</label><Dropdown panelClassName="list-options-panel" inputId="list-sort" value={`${sortField}:${sortOrder}`} options={sortOptions} onChange={(event) => { const [field, order] = event.value.split(':'); changeFilter(setSortField, field); setSortOrder(Number(order)); }} disabled={!contentAvailable} /></div>
   </div>;
   const nameCell = (record) => <span className="list-record-name">{record.name}</span>;
   const noteCell = (record) => <span className="list-record-note">{record.note || '未填写备注'}</span>;
@@ -137,12 +146,18 @@ function App() {
     <a className="skip-link" href="#list-main">跳到列表内容</a>
     <header className="app-header"><a href="../../foundations/" className="wordmark">ComfyUI <span>Manager</span></a><span className="header-context">组件组合</span><span className="review-status"><span className="review-dot" />R01-01 · 待审核</span>
       <div className="header-controls"><SelectButton value={preference.module} options={moduleOptions} onChange={(event) => updatePreference('module', event.value)} aria-label="模块色" allowEmpty={false} /><SelectButton value={preference.theme} options={themeOptions} onChange={(event) => updatePreference('theme', event.value)} aria-label="主题偏好" allowEmpty={false} /></div>
+      <Button className="list-preview-toggle" text label="预览" icon="pi pi-sliders-h" aria-label={previewControlsOpen ? '收起预览设置' : '打开预览设置'} aria-expanded={previewControlsOpen} aria-controls="list-preview-controls" onClick={() => setPreviewControlsOpen(!previewControlsOpen)} />
     </header>
     <main id="list-main" className="list-main" tabIndex={-1}>
       <nav className="list-demo-nav" aria-label="设计原型"><a href="../../foundations/">基础规范</a><span aria-hidden="true">/</span><span aria-current="page">列表与分页</span><a className="list-review-link" href="../../reviews/R01.md">审核记录<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></nav>
-      <div className="list-page-heading"><h1>列表、筛选与分页</h1><p>先让一行内容清楚，再让整张列表好用。试试搜索、选择和翻页。</p></div>
-      <Button className="list-preview-toggle" outlined label={previewControlsOpen ? '收起预览设置' : '预览设置'} icon={previewControlsOpen ? 'pi pi-chevron-up' : 'pi pi-sliders-h'} aria-expanded={previewControlsOpen} aria-controls="list-preview-controls" onClick={() => setPreviewControlsOpen(!previewControlsOpen)} />
-      <div id="list-preview-controls" className={`list-preview-controls${previewControlsOpen ? ' is-open' : ''}`}><div><span id="preview-state-label">预览状态</span><SelectButton value={previewState} options={stateOptions} onChange={(event) => changeState(event.value)} aria-labelledby="preview-state-label" allowEmpty={false} /></div><div><span id="density-label">内容密度</span><SelectButton value={preference.density} options={densityOptions} onChange={(event) => updatePreference('density', event.value)} aria-labelledby="density-label" allowEmpty={false} /></div></div>
+      <div className="list-page-heading"><h1>列表、筛选与分页</h1><p>搜索、筛选、选择与分页的可操作样本。</p></div>
+      <div id="list-preview-controls" className={`list-preview-controls${previewControlsOpen ? ' is-open' : ''}`}>
+        <div className="list-mobile-preferences"><span>模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={(event) => updatePreference('module', event.value)} aria-label="手机模块色" allowEmpty={false} /></div>
+        <div className="list-mobile-preferences"><span>主题</span><SelectButton value={preference.theme} options={themeOptions} onChange={(event) => updatePreference('theme', event.value)} aria-label="手机主题偏好" allowEmpty={false} /></div>
+        <div><span id="preview-state-label">预览状态</span><SelectButton value={previewState} options={stateOptions} onChange={(event) => changeState(event.value)} aria-labelledby="preview-state-label" allowEmpty={false} /></div>
+        <div className="list-density-preview"><div><span id="density-label">桌面密度 · 预览</span><SelectButton value={preference.density} options={densityOptions} onChange={(event) => updatePreference('density', event.value)} aria-labelledby="density-label" aria-describedby="density-help" allowEmpty={false} /></div><p id="density-help">比较控件高度与行距：32 / 36 / 44px，字号不变。</p></div>
+        <p className="list-mobile-size-note">手机使用独立尺寸，保持至少 44px 的触摸范围。</p>
+      </div>
       <section className="list-surface" aria-labelledby="list-title">
         <div className="list-title-row"><h2 id="list-title">列表样本</h2><span>18 条模拟记录</span></div>
         <Toolbar className="list-toolbar" aria-label="列表筛选工具栏" start={toolbarStart} end={<Button text label="重置筛选" icon="pi pi-filter-slash" disabled={!hasFilter || !contentAvailable} onClick={resetFilters} />} />
@@ -160,7 +175,7 @@ function App() {
         </div>
         <div className="list-pagination"><span className="list-page-report" aria-live="polite">{contentAvailable && filtered.length ? `${first + 1}–${Math.min(first + rows, filtered.length)} / ${filtered.length} 条` : '—'}</span>
           <Paginator first={first} rows={rows} totalRecords={contentAvailable ? filtered.length : 0} pageLinkSize={3} template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink" onPageChange={(event) => { setFirst(event.first); clearSelection(); }} />
-          <div className="list-page-size"><label htmlFor="page-size">每页</label><Dropdown inputId="page-size" value={rows} options={[5, 10, 20]} onChange={(event) => { setRows(event.value); setFirst(0); clearSelection(); }} disabled={!contentAvailable} /><span>条</span></div>
+          <div className="list-page-size"><label htmlFor="page-size">每页</label><Dropdown panelClassName="list-options-panel" inputId="page-size" value={rows} options={[5, 10, 20]} onChange={(event) => { setRows(event.value); setFirst(0); clearSelection(); }} disabled={!contentAvailable} /><span>条</span></div>
         </div>
       </section>
       {copyFallback ? <section className="list-feedback" aria-label="手动复制"><p>自动复制未完成，请手动选择以下文本。</p><pre id="copy-fallback" tabIndex={0} aria-label="可手动复制的文本">{copyFallback}</pre></section> : null}

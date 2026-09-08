@@ -126,7 +126,7 @@ main { min-width: 0; padding: 36px 40px 24px; max-width: 1380px; width: 100%; }
 .state-toolbar { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); }
 .state-stage { min-height: 128px; padding: 20px; display: flex; align-items: center; }
 .sample-row, .skeleton-row, .empty-sample { display: flex; width: 100%; align-items: center; gap: 16px; padding: var(--row-padding) 0; }
-.sample-icon { width: 44px; height: 44px; flex-shrink: 0; border-radius: var(--radius-control); display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: var(--text-lg); }
+.sample-icon { width: 44px; height: 44px; flex-shrink: 0; border-radius: var(--radius-control); display: grid; place-items: center; background: var(--accent-soft); color: var(--on-accent-soft); font-size: var(--text-lg); }
 .sample-info, .skeleton-row > div { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 0; }
 .sample-info span, .empty-sample p { color: var(--text-muted); font-size: var(--text-xs); margin-top: 2px; }
 .sample-row strong, .empty-sample strong { font-weight: 550; }
@@ -155,7 +155,7 @@ main { min-width: 0; padding: 36px 40px 24px; max-width: 1380px; width: 100%; }
 .p-button.p-button-outlined { color: var(--text); background: var(--surface); border-color: var(--border-control); }
 .p-button.p-button-outlined:enabled:hover { background: var(--surface-hover); color: var(--text); border-color: var(--text-secondary); }
 .p-button.p-button-text { background: transparent; color: var(--accent); border-color: transparent; }
-.p-button.p-button-text:enabled:hover { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.p-button.p-button-text:enabled:hover { background: var(--accent-soft); color: var(--on-accent-soft); border-color: transparent; }
 .p-button.p-button-danger { background: var(--danger); border-color: var(--danger); }
 .p-button.p-button-danger.p-button-outlined { color: var(--danger); background: transparent; border-color: var(--danger); }
 .p-button.p-button-danger:enabled:hover { color: var(--danger); background: var(--danger-soft); border-color: var(--danger); }
@@ -177,11 +177,11 @@ textarea.p-inputtext { resize: vertical; min-height: 96px; height: auto; padding
 .p-dropdown-panel, .p-multiselect-panel { background: var(--surface); color: var(--text); border: 0; box-shadow: var(--shadow-floating); border-radius: var(--radius-control); }
 .p-dropdown-panel .p-dropdown-items, .p-multiselect-panel .p-multiselect-items { padding: 6px; }
 .p-dropdown-panel .p-dropdown-item, .p-multiselect-panel .p-multiselect-item { color: var(--text); padding: 9px 12px; border-radius: var(--radius-small); }
-.p-dropdown-panel .p-dropdown-item.p-highlight, .p-multiselect-panel .p-multiselect-item.p-highlight { color: var(--accent); background: var(--accent-soft); }
+.p-dropdown-panel .p-dropdown-item.p-highlight, .p-multiselect-panel .p-multiselect-item.p-highlight { color: var(--on-accent-soft); background: var(--accent-soft); }
 .p-dropdown-panel .p-dropdown-item:not(.p-highlight):not(.p-disabled):hover, .p-dropdown-panel .p-dropdown-item.p-focus, .p-multiselect-panel .p-multiselect-item:not(.p-highlight):hover, .p-multiselect-panel .p-multiselect-item.p-focus { background: var(--surface-hover); color: var(--text); }
 .p-multiselect-panel .p-multiselect-header { background: var(--surface-secondary); color: var(--text); padding: 12px; border-radius: var(--radius-control) var(--radius-control) 0 0; }
 .p-multiselect-panel .p-multiselect-close { color: var(--text-secondary); }
-.p-multiselect .p-multiselect-token { color: var(--accent); background: var(--accent-soft); padding: 2px 8px; border-radius: var(--radius-small); font-size: var(--text-xs); }
+.p-multiselect .p-multiselect-token { color: var(--on-accent-soft); background: var(--accent-soft); padding: 2px 8px; border-radius: var(--radius-small); font-size: var(--text-xs); }
 .p-inputnumber { min-width: 0; width: 100%; }
 .p-inputnumber-input { min-width: 0; }
 .p-inputnumber .p-button { min-height: 0; border-color: var(--border-control); background: var(--surface-secondary); color: var(--text-secondary); border-radius: 0; width: 32px; padding: 0; }
