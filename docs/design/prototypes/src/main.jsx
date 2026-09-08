@@ -25,11 +25,9 @@ import 'primeicons/primeicons.css';
 import 'primereact/resources/themes/lara-light-teal/theme.css';
 import './tokens.css';
 import './prototype.css';
+import { usePrototypePreference, themeOptions, densityOptions } from './use-prototype-preference.jsx';
 
-const preferenceKey = 'cm-prototype-preference-v1';
 const moduleOptions = [{ label: '图像生产', value: 'image' }, { label: 'LoRA 训练', value: 'training' }];
-const themeOptions = [{ label: '系统', value: 'system' }, { label: '浅色', value: 'light' }, { label: '深色', value: 'dark' }];
-const densityOptions = [{ label: '紧凑', value: 'compact' }, { label: '标准', value: 'standard' }, { label: '舒展', value: 'relaxed' }];
 const sections = [['colors', '色彩与主题'], ['typography', '字体与排版'], ['dimensions', '尺寸与密度'], ['components', '基础组件'], ['feedback', '状态与反馈'], ['decisions', '确认清单']];
 const colorSpecs = [
   ['canvas', '页面底色', '承托整页内容'], ['surface', '主要表面', '表单与编辑区域'],
@@ -46,17 +44,6 @@ const typeSpecs = [
   ['14 / 22', 'body', '编辑参数、选择素材、查看状态。紧凑，但不挤。', '表单与列表'],
   ['12 / 18', 'caption', '辅助信息保持可读，不把重要内容藏进小字。', '辅助文字'],
 ];
-
-function readPreference() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(preferenceKey) || '{}');
-    return {
-      theme: ['light', 'dark'].includes(saved.theme) ? saved.theme : 'system',
-      module: saved.module === 'training' ? 'training' : 'image',
-      density: ['compact', 'relaxed'].includes(saved.density) ? saved.density : 'standard',
-    };
-  } catch { return { theme: 'system', module: 'image', density: 'standard' }; }
-}
 
 function Section({ id, title, description, children }) {
   return <section id={id} className="design-section" aria-labelledby={`${id}-title`}>
@@ -77,8 +64,7 @@ function Field({ id, label, hint, error, children }) {
 }
 
 function App() {
-  const [preference, setPreference] = useState(readPreference);
-  const [systemDark, setSystemDark] = useState(() => matchMedia('(prefers-color-scheme: dark)').matches);
+  const { preference, theme, updatePreference } = usePrototypePreference();
   const [previewName, setPreviewName] = useState('基础组件样本');
   const [previewModel, setPreviewModel] = useState('标准');
   const [previewChecked, setPreviewChecked] = useState(true);
@@ -100,28 +86,12 @@ function App() {
   const toast = useRef(null);
   const saveTimer = useRef(null);
   const copyTimer = useRef(null);
-  const theme = preference.theme === 'system' ? (systemDark ? 'dark' : 'light') : preference.theme;
-
   useEffect(() => {
-    const media = matchMedia('(prefers-color-scheme: dark)');
-    const change = () => setSystemDark(media.matches);
-    media.addEventListener('change', change);
-    return () => media.removeEventListener('change', change);
-  }, []);
-  useEffect(() => {
-    const root = document.documentElement;
-    root.dataset.theme = theme;
-    root.dataset.module = preference.module;
-    root.dataset.density = preference.density;
-    const computed = getComputedStyle(root);
+    const computed = getComputedStyle(document.documentElement);
     setColorValues(Object.fromEntries(colorSpecs.map(([token]) => [token, computed.getPropertyValue(`--${token}`).trim()])));
-    try { localStorage.setItem(preferenceKey, JSON.stringify(preference)); } catch { /* Preview still works when storage is unavailable. */ }
   }, [preference, theme]);
   useEffect(() => () => { clearTimeout(saveTimer.current); clearTimeout(copyTimer.current); }, []);
 
-  function updatePreference(key, value) {
-    if (value) setPreference((old) => ({ ...old, [key]: value }));
-  }
   async function copyToken(token) {
     const value = getComputedStyle(document.documentElement).getPropertyValue(`--${token}`).trim();
     try {
@@ -156,7 +126,7 @@ function App() {
       <aside className="design-sidebar">
         <div className="sidebar-title">设计基础</div>
         <nav aria-label="基础设计目录">{sections.map(([id, label]) => <a key={id} href={`#${id}`}>{label}<i className="pi pi-arrow-up-right" aria-hidden="true" /></a>)}</nav>
-        <div className="sidebar-note"><strong>基础已确认，开始组合页面。</strong><p>2026-09-08 已确认本页基础。后续业务组合与完整页面逐项设计、调整和审核。</p><a href="./README.md">查看设计清单<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
+        <div className="sidebar-note"><strong>基础已确认，开始组合页面。</strong><p>2026-09-08 已确认本页基础。后续业务组合与完整页面逐项设计、调整和审核。</p><a href="../components/lists/">查看列表与分页首稿<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
         <div className="sidebar-footer">PrimeReact 10.9.9<br />Impeccable 4.2.1</div>
       </aside>
 

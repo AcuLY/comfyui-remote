@@ -12,6 +12,7 @@ document:
     - 核对原型实际样式、审核状态与生产契约的边界时
   sources:
     - docs/design/prototypes/src/main.jsx
+    - docs/design/prototypes/src/use-prototype-preference.jsx
     - docs/design/prototypes/src/tokens.css
     - docs/design/prototypes/src/prototype.css
     - docs/design/prototypes/package.json
@@ -28,7 +29,7 @@ document:
 
 1. **确认状态与适用范围。** 用户于 2026-09-08 明确确认当前方案无问题，视觉基线源提交为 `7fdf13de`。本文是新版前端基础设计的权威规范，覆盖[基础设计清单](foundations/README.md)的 `F-01`～`F-14`，供后续业务组合和页面复用；可运行样本位于 `docs/design/prototypes/`。已确认的基础包括实际色彩、字体、尺寸、控件状态和通用交互，不含尚未设计的业务组合、完整页面或业务流程。现有生产界面的生效样式及边界仍由[根设计契约](../../../DESIGN.md)管理，本文定稿不表示生产迁移已经完成。
 2. **设计方向：清晰可操作的创作工作台。** 柔和中性表面承托内容，绿色与玫瑰粉表达两个对等模块，独立状态语义解释结果；真实控件保持紧凑、清晰和可操作，再逐步组合业务页面。这是已确认基础的描述，不增加品牌命名或整页布局要求。基础展示页的目录、示例文案和模拟数据仅用于比较样式及交互，不成为业务需求。
-3. **规则来源与验证边界。** 本文从 `src/tokens.css`、`src/prototype.css` 与 `src/main.jsx` 提取；三者分别负责变量、呈现和通用交互。原型建立时已有独立收尾审查与整改复核，1440px 桌面、390px 手机截图及测量保存在本机 `.impeccable/review/`。其中 `checks.json`、`fix-metrics.json` 与 `contrast.json` 是当时的原型验证记录，不表示后续业务页面或生产环境已经验收。后续基础变更需按原编号同步样本、规范和用户确认结果。
+3. **规则来源与验证边界。** 本文从 `src/tokens.css`、`src/prototype.css` 与 `src/main.jsx` 提取；分别负责变量、呈现和基础样本交互。`src/use-prototype-preference.jsx` 统一维护基础页与列表组合页的主题、模块和密度偏好，原有偏好键及行为不变。原型建立时已有独立收尾审查与整改复核，1440px 桌面、390px 手机截图及测量保存在本机 `.impeccable/review/`。其中 `checks.json`、`fix-metrics.json` 与 `contrast.json` 是当时的原型验证记录，不表示后续业务页面或生产环境已经验收。后续基础变更需按原编号同步样本、规范和用户确认结果。
 
 ## 色彩
 
