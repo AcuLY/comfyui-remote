@@ -218,6 +218,7 @@ document:
 | `docs/design/prototypes/reviews/R01-02.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/reviews/R01.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/scripts/build-theme.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/scripts/snapshot-organization.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/foundations.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/lists.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/lists.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |

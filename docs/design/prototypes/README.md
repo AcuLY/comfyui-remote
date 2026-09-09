@@ -23,6 +23,7 @@ document:
     - docs/design/prototypes/src/main.jsx
     - docs/design/prototypes/src/lists.jsx
     - docs/design/prototypes/src/organization.jsx
+    - docs/design/prototypes/scripts/snapshot-organization.mjs
     - docs/design/prototypes/src/use-prototype-preference.jsx
     - docs/design/prototypes/src/foundations.css
     - docs/design/prototypes/src/prototype-provider.jsx
@@ -135,6 +136,18 @@ npm --prefix docs/design/prototypes run theme:check
 
 3. [基础规范](design-foundations.md)采用本仓库 `design` 文档元数据；[局部 sidecar](.impeccable/design.json)采用 `Impeccable` 扩展格式，预览宿主需要加载原型变量，不能假定根面板会自动发现局部文件。`src/tokens.css` 始终是已确认色值的唯一来源；两份记录指导新版设计，现有生产样式的生效来源仍由根设计契约界定。
 4. 根 `PRODUCT.md` 的旧 `schema` 提示只涉及以后可选的 `Impeccable` `init` 格式适配，不影响本轮有界原型记录；本轮未据此重写产品契约。安装技能、检测通过与用户确认设计是三个独立状态。
+
+## 本机目录快照
+
+`R01-02` 优先读取 `public/local-mocks/organization.json` 作为本机模拟数据；没有快照时回退到内置样本。来源按新版设置 `IP-02` 与 `MODEL-001` 确定，为本机 ComfyUI 的 `models` 根目录；真实路径从本地目标配置的 `modelBaseDir` 核对，不使用示例配置路径。
+
+需要重新读取目录时，在仓库根执行一次：
+
+```powershell
+node docs/design/prototypes/scripts/snapshot-organization.mjs --root "<本机 ComfyUI 根>/models" --out docs/design/prototypes/public/local-mocks/organization.json
+```
+
+脚本仅读取目录、文件名、大小及修改时间，不读取文件内容、不计算哈希、不跟随符号链接或目录联接；保留空目录并记录跳过原因。快照目录已忽略，不提交真实文件清单。页面的排序、移动、重置只改变浏览器中的数据，刷新回到同一份快照，不会移动真实文件，也不会重新扫描磁盘。包含本机快照的本地构建产物仍属于忽略的预览文件，不作为共享设计数据。
 
 ## 交付与后续使用
 

@@ -5,6 +5,7 @@
 .org-folders h2, .org-location h2 { font-size: var(--text-lg); }
 .org-folders > p { color: var(--text-secondary); font-size: var(--text-xs); margin: 6px 0 20px; }
 .org-tree { border: 0; padding: 0; width: 100%; }
+.org-folders .org-tree { max-height: min(64dvh, 720px); overflow: auto; }
 .org-folder-name { overflow-wrap: anywhere; white-space: normal; }
 .org-panel { min-width: 0; padding: 24px; }
 .org-location { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
