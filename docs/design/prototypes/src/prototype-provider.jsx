@@ -13,6 +13,7 @@ addLocale('zh-CN', { aria: {
   firstPageLabel: '第一页', lastPageLabel: '最后一页',
   nextPageLabel: '下一页', prevPageLabel: '上一页',
   pageLabel: '第 {page} 页', rowsPerPageLabel: '每页条数',
+  moveUp: '上移', moveTop: '移至顶部', moveDown: '下移', moveBottom: '移至底部',
 } });
 // DataTable's row selection labels read the global locale before Provider effects run.
 locale('zh-CN');

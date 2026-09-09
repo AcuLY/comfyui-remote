@@ -16,11 +16,13 @@ document:
     - docs/design/prototypes/design-foundations.md
     - docs/design/prototypes/ui-design-roadmap.md
     - docs/design/prototypes/reviews/R01.md
+    - docs/design/prototypes/reviews/R01-02.md
     - docs/design/prototypes/reviews/F-responsive.md
     - docs/design/prototypes/reviews/F-theme.md
     - docs/design/prototypes/.impeccable/design.json
     - docs/design/prototypes/src/main.jsx
     - docs/design/prototypes/src/lists.jsx
+    - docs/design/prototypes/src/organization.jsx
     - docs/design/prototypes/src/use-prototype-preference.jsx
     - docs/design/prototypes/src/foundations.css
     - docs/design/prototypes/src/prototype-provider.jsx
@@ -40,7 +42,7 @@ document:
 
 原始基础与后续适配、数字输入局部修订保留在[历史记录](reviews/F-responsive.md)，不代替新生成主题的验证。当前组件内部结构、状态、焦点与真实触控尺寸重新检查；其余浅色中性色去色比较未采纳，不扩大为新业务页面。
 
-用户于2026-09-09要求恢复 `R01-01`。当前[列表候选稿](reviews/R01.md)与基础页共用提供器、生成主题和 `prototype-layout.css`；各自的 `foundations.css`／`lists.css` 负责页面布局。旧的布局与组件补丁混合层随列表迁移移除。本轮仅覆盖列表工具栏、表格／卡片、选择与分页，候选稿待用户审核，其他组件及业务页面按路线逐项推进。
+用户于2026-09-09确认 [R01-01 列表组合](reviews/R01.md)的 `30fd53db` 版本，并要求继续下一项。当前制作 [R01-02 层级、手动排序与移动到](reviews/R01-02.md)，沿用共享提供器、生成主题和 `prototype-layout.css`；各入口局部样式只负责页面布局。列表确认不扩大为整个 `R01`、`C03` 或业务页面获批。
 
 ## 审核范围
 
@@ -49,7 +51,7 @@ document:
 | P-01 | 审核载体 | 在仓库 `docs/design/prototypes/` 维护可运行 HTML 原型 | 已确认，2026-09-07 |
 | P-02 | 推进顺序 | 先基础元素与小组件，再业务组合，最后完整页面及流程 | 已确认，2026-09-07 |
 | P-03 | 基础设计 | 官方完整组件主题、统一入口与独立页面布局，保留既有设计方向 | 统一主题版已制作，待用户审核；已测范围和最终门禁分别记录 |
-| P-04 | 业务组合 | 筛选工具栏、任务行、图片卡片、参数表单等 | R01-01 按统一主题恢复，候选稿待用户审核；其余未开始 |
+| P-04 | 业务组合 | 筛选工具栏、任务行、图片卡片、参数表单等 | R01-01 已确认（`30fd53db`）；R01-02 待用户审核；其余未开始 |
 | P-05 | 完整页面 | 两模块的项目、任务、预制、模板及全局工具页面 | 未开始，按路线依赖逐项推进 |
 
 保留的方向是紧凑、图片优先、两模块同等重要的工作台，状态语义独立，明暗主题支持系统跟随与手动选择。组件运行依赖保持 `PrimeReact 10.9.9 Styled`，主题构建工具按本目录清单单独锁定。新组件主题从 `src/tokens.css` 这一份色值来源生成，具体新呈现和交互以本轮实际审核为准。
@@ -65,7 +67,7 @@ npm --prefix docs/design/prototypes run dev
 
 浏览器访问 [基础设计原型](http://127.0.0.1:5178/foundations/)。开发服务仅监听 `127.0.0.1:5178`，端口已占用时直接退出，不自动改用其他端口。应通过开发服务访问；直接双击源码 HTML 不会执行依赖构建。
 
-当前审核重点为[列表组合](http://127.0.0.1:5178/components/lists/)，对应 `components/lists/index.html`；本轮范围、验证与批准边界记录在 [R01 审核记录](reviews/R01.md)。[基础原型](http://127.0.0.1:5178/foundations/)继续作为共同主题与基础组件的参考入口。
+当前审核重点为[层级、手动排序与移动到](http://127.0.0.1:5178/components/organization/)，对应 `components/organization/index.html`；范围、验证与批准边界记录在 [R01-02 审核记录](reviews/R01-02.md)。[列表组合](http://127.0.0.1:5178/components/lists/)保留已确认版本，[基础原型](http://127.0.0.1:5178/foundations/)继续作为共同主题与基础组件的参考入口。
 
 构建检查：
 
@@ -95,12 +97,15 @@ npm --prefix docs/design/prototypes run theme:check
 | [reviews/F-theme.md](reviews/F-theme.md) | 当前官方主题生成方案、入口职责和待测记录 |
 | [reviews/F-responsive.md](reviews/F-responsive.md) | 旧适配、局部原生修订及批准历史，不充当新主题验证 |
 | [ui-design-roadmap.md](ui-design-roadmap.md) | 覆盖全前端的设计顺序、页面与组件清单、逐项审核状态 |
-| `components/lists/index.html` | `R01-01` 列表候选稿，按统一主题恢复 |
+| `components/lists/index.html` | `R01-01` 已确认列表稿（`30fd53db`） |
 | [reviews/R01.md](reviews/R01.md) | 当前列表子项、模拟行为、本轮验证与历史交付 |
+| `components/organization/index.html` | `R01-02` 层级、手动排序与移动到原型 |
+| [reviews/R01-02.md](reviews/R01-02.md) | 当前组织子项、模拟行为、待测场景与用户审核 |
 | [.impeccable/design.json](.impeccable/design.json) | `Impeccable` `schemaVersion 2` 原型扩展 `sidecar`，仅记录元信息及静态组件摘录 |
 | `src/main.jsx` | `PrimeReact` 组件样本及本地演示交互 |
 | `src/lists.jsx`、`src/lists.css` | 列表组合、模拟数据、桌面表格与手机卡片及其适配样式 |
-| `src/use-prototype-preference.jsx` | 基础和列表两原型共用的主题及模块偏好；实时系统跟随、手动覆盖与持久保存；密度固定标准，不读写密度偏好 |
+| `src/organization.jsx`、`src/organization.css` | 文件夹定位、内容多选、排序与移动对话框及其响应式布局 |
+| `src/use-prototype-preference.jsx` | 各原型共用的主题及模块偏好；实时系统跟随、手动覆盖与持久保存；密度固定标准，不读写密度偏好 |
 | `src/tokens.css` | 唯一色值来源，供页面变量及本轮主题生成读取 |
 | `src/theme/theme-inputs.mjs` | 从语义变量映射官方主题参数，并集中定义标准／触控尺寸 |
 | `src/theme/vendor/primereact-sass-theme/` | 固定官方纯 `Sass` 快照：88份基础样式及浅／深两份变量文件，保留来源清单与许可，不包含包脚本或 `JavaScript` |
@@ -133,7 +138,7 @@ npm --prefix docs/design/prototypes run theme:check
 
 ## 交付与后续使用
 
-按基础清单中的 `F-01` 等编号记录基础调整；当前按 `R01-01-A`～`R01-01-I` 审核列表组合。两入口共用[基础统一主题](reviews/F-theme.md)，列表本轮适配及交互结果单独记录，不能把主题复用或列表候选稿完成当作整个前端已迁移或获批。
+按基础清单中的 `F-01` 等编号记录基础调整；`R01-01` 已由用户确认，当前按 `R01-02-A`～`R01-02-I` 制作和审核组织组合。各入口共用[基础统一主题](reviews/F-theme.md)，每个子项分别记录适配、交互和确认，不能把主题复用或一个组合的批准当作整个前端已迁移或获批。
 
 本工程使用本地模拟数据，不调用生产 API、不读取应用登录令牌、不连接数据库、不控制工作队列。原型 `node_modules/` 和构建产物不提交；正式实施时需要另行完成接口接入、业务状态和应用验证。当前生产设计仍查阅[设计文档](../README.md)及[根设计契约](../../../DESIGN.md)。
 

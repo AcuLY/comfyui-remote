@@ -16,6 +16,7 @@ document:
     - docs/design/prototypes/design-foundations.md
     - docs/design/prototypes/ui-design-roadmap.md
     - docs/design/prototypes/reviews/R01.md
+    - docs/design/prototypes/reviews/R01-02.md
     - docs/design/prototypes/reviews/F-responsive.md
     - docs/design/prototypes/reviews/F-theme.md
   verifiedBy:
@@ -29,7 +30,7 @@ document:
 
 本区域承载[根设计契约](../../DESIGN.md)之下、由源码支持的详细说明。它描述当前模式和归属边界；不会把原型、固件或未导入的样式表提升为生产环境的权威来源。
 
-[HTML 设计原型](prototypes/README.md)单独承载新版可运行稿，与当前生产页面及 `/design-demos/**` 分开。当前按用户要求恢复 [R01-01 列表组合](prototypes/reviews/R01.md)，采用[基础统一主题](prototypes/reviews/F-theme.md)及共享提供器，保留已确认的色相、纯白底色、字体与页面布局。本轮按用户确认将手机／粗指针普通控件收至40px，可编辑输入保留16px字号，纯图标按钮、关闭及分页动作保留44px，桌面36px不变；详见[当前基础规范](prototypes/design-foundations.md)。原[基础适配记录](prototypes/reviews/F-responsive.md)及批准历史保留；恢复制作不等于组合设计或全部主题状态获批，后续顺序见[完整 UI 设计路线](prototypes/ui-design-roadmap.md)。
+[HTML 设计原型](prototypes/README.md)单独承载新版可运行稿，与当前生产页面及 `/design-demos/**` 分开。用户于2026-09-09确认 [R01-01 列表组合](prototypes/reviews/R01.md)的 `30fd53db` 版本，并要求继续下一项。当前进入 [R01-02 层级、手动排序与移动到](prototypes/reviews/R01-02.md)，共用[基础统一主题](prototypes/reviews/F-theme.md)及提供器，保留色相、纯白底色、字体与页面布局。桌面普通控件36px，手机／粗指针普通控件40px、可编辑输入字号16px、纯图标动作44px；详见[基础规范](prototypes/design-foundations.md)。列表确认不扩大为整个 `R01`、`C03` 或业务页面完成，后续顺序见[完整 UI 设计路线](prototypes/ui-design-roadmap.md)。
 
 ## 路由
 
@@ -44,8 +45,9 @@ document:
 | 复用或调整新版基础规则 | [基础规范](prototypes/design-foundations.md)及[基础清单](prototypes/foundations/README.md) | 区分仍保留的规则和需要重新审核的设备呈现，不取消全部基础确认。 |
 | 审核当前统一主题及全局配置 | [基础统一主题版](prototypes/reviews/F-theme.md) | 区分官方主题生成、公开配置和页面布局，查看本轮实际验证及迁移边界。 |
 | 回查基础适配与局部修订历史 | [基础适配审计与审核](prototypes/reviews/F-responsive.md) | 保留批准基线、数值输入与章节浮层修订，不能代替新主题验证。 |
-| 判断当前与后续组件设计范围 | [完整 UI 设计路线](prototypes/ui-design-roadmap.md) | 当前仅恢复 R01-01，其他子项和业务页面仍按依赖逐项制作、审核。 |
-| 审核列表工具栏、数据表与分页组合 | [R01 审核记录](prototypes/reviews/R01.md) | 查看统一主题下的列表候选稿、适配要求和本轮验证；历史结果不替代当前验收。 |
+| 判断当前与后续组件设计范围 | [完整 UI 设计路线](prototypes/ui-design-roadmap.md) | R01-01 已确认，当前进入 R01-02；其余子项和业务页面仍按依赖逐项制作、审核。 |
+| 回查列表工具栏、数据表与分页组合 | [R01 审核记录](prototypes/reviews/R01.md) | 查看用户确认的列表版本、适配要求和实际验证；历史结果不替代新组合验收。 |
+| 审核层级、手动排序与移动到 | [R01-02 审核记录](prototypes/reviews/R01-02.md) | 查看文件夹定位、当前内容多选、排序及移动对话框的本地模拟范围和独立审核状态。 |
 | 启动和查看新版可运行设计稿 | [HTML 设计原型](prototypes/README.md) | 使用独立原型依赖与模拟数据，不作为当前生产实现入口。 |
 
 ## 上级路由

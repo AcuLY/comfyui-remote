@@ -1,0 +1,18 @@
+---
+version: 1
+slug: "docs-design-prototypes-components-organization-index-html"
+primary_target: "docs/design/prototypes/components/organization/index.html"
+related_targets: ["docs/design/prototypes/src/organization.jsx","docs/design/prototypes/src/organization.css"]
+---
+
+# 层级与排序组合
+
+范围：R01-02，`Operate`。延续用户已确认的 R01-01 和统一组件主题，服务于定位目录、选择内容、调整顺序及移动的通用样本，不定义业务页面或真实文件操作。
+
+方向：桌面目录树与内容并列，手机目录进入对话框；内容多选与移动共享选择，原生 `OrderList` 的排序编辑独立打开、应用或取消，避免读取库内部选择状态。桌面36px，触控普通40px、图标44px。继承基础色相、字体、白底和灰阶。
+
+使用路径：选文件夹 → 选内容 → 移动到另一目录；或打开调整顺序 → 拖放／原生顺序按钮 → 应用。当前位置、所选数量、目标和成功／失败始终明确。空文件夹可接收内容，只读状态无修改入口。
+
+首屏：文件夹导航次于当前内容，主要动作位于内容标题下；窄屏保留路径与文件夹入口，主题和模拟状态单独收进预览。无装饰性位图或新的视觉方向选择。
+
+完成条件：核对实际桌面、窄屏、手机的选择、排序、移动、空态、失败、只读与键盘路径；记录实际验证，R01-02待用户审核，不连带批准C03或R01。
