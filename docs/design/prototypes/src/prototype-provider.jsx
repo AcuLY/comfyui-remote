@@ -1,5 +1,5 @@
 import React from 'react';
-import { PrimeReactProvider, addLocale } from 'primereact/api';
+import { PrimeReactProvider, addLocale, locale } from 'primereact/api';
 import '@fontsource-variable/geist';
 import '@fontsource-variable/noto-sans-sc';
 import '@fontsource/ibm-plex-mono/latin-400.css';
@@ -14,6 +14,8 @@ addLocale('zh-CN', { aria: {
   nextPageLabel: '下一页', prevPageLabel: '上一页',
   pageLabel: '第 {page} 页', rowsPerPageLabel: '每页条数',
 } });
+// DataTable's row selection labels read the global locale before Provider effects run.
+locale('zh-CN');
 
 // Use documented application-wide behavior; component-specific exceptions stay in props.
 export const prototypeConfig = {

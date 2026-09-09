@@ -221,7 +221,6 @@ document:
 | `docs/design/prototypes/src/main.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/prototype-layout.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/prototype-provider.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/prototype.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/theme/LICENSE.primereact-sass-theme` | `docs` | `repository-maintainers` | 仓库文件 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/theme/README.md` | `docs` | `product-design` | `Markdown` 文档 | `router` | 文档元数据 |
 | `docs/design/prototypes/src/theme/primereact.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |

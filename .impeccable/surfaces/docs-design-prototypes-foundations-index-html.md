@@ -2,7 +2,7 @@
 version: 1
 slug: "docs-design-prototypes-foundations-index-html"
 primary_target: "docs/design/prototypes/foundations/index.html"
-related_targets: ["docs/design/prototypes/src/main.jsx","docs/design/prototypes/src/prototype.css","docs/design/prototypes/src/tokens.css"]
+related_targets: ["docs/design/prototypes/src/main.jsx","docs/design/prototypes/src/prototype-provider.jsx","docs/design/prototypes/src/prototype-layout.css","docs/design/prototypes/src/tokens.css"]
 ---
 
 # 基础设计原型

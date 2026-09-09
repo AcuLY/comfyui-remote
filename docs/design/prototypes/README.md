@@ -40,7 +40,7 @@ document:
 
 原始基础与后续适配、数字输入局部修订保留在[历史记录](reviews/F-responsive.md)，不代替新生成主题的验证。当前组件内部结构、状态、焦点与真实触控尺寸重新检查；其余浅色中性色去色比较未采纳，不扩大为新业务页面。
 
-R01仍是暂停的列表稿，已有稿和历史验证保留。基础新版只加载新的提供器、生成主题、`prototype-layout.css` 和清理后的 `foundations.css`；旧 `prototype.css` 暂供R01使用，后续迁移再删除。本轮不声称全原型已统一迁移，后续路线仍按实际范围和用户审核推进。
+用户于2026-09-09要求恢复 `R01-01`。当前[列表候选稿](reviews/R01.md)与基础页共用提供器、生成主题和 `prototype-layout.css`；各自的 `foundations.css`／`lists.css` 负责页面布局。旧的布局与组件补丁混合层随列表迁移移除。本轮仅覆盖列表工具栏、表格／卡片、选择与分页，候选稿待用户审核，其他组件及业务页面按路线逐项推进。
 
 ## 审核范围
 
@@ -49,8 +49,8 @@ R01仍是暂停的列表稿，已有稿和历史验证保留。基础新版只�
 | P-01 | 审核载体 | 在仓库 `docs/design/prototypes/` 维护可运行 HTML 原型 | 已确认，2026-09-07 |
 | P-02 | 推进顺序 | 先基础元素与小组件，再业务组合，最后完整页面及流程 | 已确认，2026-09-07 |
 | P-03 | 基础设计 | 官方完整组件主题、统一入口与独立页面布局，保留既有设计方向 | 统一主题版已制作，待用户审核；已测范围和最终门禁分别记录 |
-| P-04 | 业务组合 | 筛选工具栏、任务行、图片卡片、参数表单等 | 暂停继续扩展；R01-01 已有稿保留，未获组合确认 |
-| P-05 | 完整页面 | 两模块的项目、任务、预制、模板及全局工具页面 | 未开始，待基础适配获用户确认后恢复路线 |
+| P-04 | 业务组合 | 筛选工具栏、任务行、图片卡片、参数表单等 | R01-01 按统一主题恢复，候选稿待用户审核；其余未开始 |
+| P-05 | 完整页面 | 两模块的项目、任务、预制、模板及全局工具页面 | 未开始，按路线依赖逐项推进 |
 
 保留的方向是紧凑、图片优先、两模块同等重要的工作台，状态语义独立，明暗主题支持系统跟随与手动选择。组件运行依赖保持 `PrimeReact 10.9.9 Styled`，主题构建工具按本目录清单单独锁定。新组件主题从 `src/tokens.css` 这一份色值来源生成，具体新呈现和交互以本轮实际审核为准。
 
@@ -65,7 +65,7 @@ npm --prefix docs/design/prototypes run dev
 
 浏览器访问 [基础设计原型](http://127.0.0.1:5178/foundations/)。开发服务仅监听 `127.0.0.1:5178`，端口已占用时直接退出，不自动改用其他端口。应通过开发服务访问；直接双击源码 HTML 不会执行依赖构建。
 
-当前审核重点为[基础原型](http://127.0.0.1:5178/foundations/)。[列表组合](http://127.0.0.1:5178/components/lists/)继续保留供回查，对应 `components/lists/index.html`；历史范围、验证与暂停边界记录在 [R01 审核记录](reviews/R01.md)，本轮不继续扩展。
+当前审核重点为[列表组合](http://127.0.0.1:5178/components/lists/)，对应 `components/lists/index.html`；本轮范围、验证与批准边界记录在 [R01 审核记录](reviews/R01.md)。[基础原型](http://127.0.0.1:5178/foundations/)继续作为共同主题与基础组件的参考入口。
 
 构建检查：
 
@@ -95,8 +95,8 @@ npm --prefix docs/design/prototypes run theme:check
 | [reviews/F-theme.md](reviews/F-theme.md) | 当前官方主题生成方案、入口职责和待测记录 |
 | [reviews/F-responsive.md](reviews/F-responsive.md) | 旧适配、局部原生修订及批准历史，不充当新主题验证 |
 | [ui-design-roadmap.md](ui-design-roadmap.md) | 覆盖全前端的设计顺序、页面与组件清单、逐项审核状态 |
-| `components/lists/index.html` | `R01-01` 已有列表稿，保留并暂停继续扩展 |
-| [reviews/R01.md](reviews/R01.md) | 已有列表子项、模拟行为、历史验证与暂停说明 |
+| `components/lists/index.html` | `R01-01` 列表候选稿，按统一主题恢复 |
+| [reviews/R01.md](reviews/R01.md) | 当前列表子项、模拟行为、本轮验证与历史交付 |
 | [.impeccable/design.json](.impeccable/design.json) | `Impeccable` `schemaVersion 2` 原型扩展 `sidecar`，仅记录元信息及静态组件摘录 |
 | `src/main.jsx` | `PrimeReact` 组件样本及本地演示交互 |
 | `src/lists.jsx`、`src/lists.css` | 列表组合、模拟数据、桌面表格与手机卡片及其适配样式 |
@@ -106,10 +106,9 @@ npm --prefix docs/design/prototypes run theme:check
 | `src/theme/vendor/primereact-sass-theme/` | 固定官方纯 `Sass` 快照：88份基础样式及浅／深两份变量文件，保留来源清单与许可，不包含包脚本或 `JavaScript` |
 | `scripts/build-theme.mjs` | 只读编译本地快照生成四主题与两种设备变体；支持生成和只读新鲜度检查 |
 | `src/theme/primereact.css` | 生成的浅／深×生产／训练组件主题；组件内部结构和焦点由官方源提供 |
-| `src/prototype-provider.jsx` | 集中提供器行为、库语言配置、字体及主题导入；基础先使用，R01后续迁移 |
-| `src/prototype-layout.css` | 新基础入口的页面布局，不承担组件内部样式定制 |
+| `src/prototype-provider.jsx` | 基础与列表共用的提供器行为、库语言配置、字体及主题导入 |
+| `src/prototype-layout.css` | 基础与列表共用的页面布局，不承担组件内部样式定制 |
 | `src/foundations.css` | 清理后的基础视口布局，保留页面结构并移除透明热区等内部覆盖 |
-| `src/prototype.css` | R01暂停稿暂用的旧布局与组件样式混合层；基础新版不导入，后续迁移再删除 |
 | `package.json`、`package-lock.json` | 与根应用分开的依赖及可重复安装记录 |
 
 技术基线为 `React` `19.2.4`、`Vite` `8.2.2`、`PrimeReact` `10.9.9` `Styled` 与 `PrimeIcons` `7.0.0`。字体通过本工程依赖自托管：`@fontsource-variable/geist@5.3.0`、`@fontsource-variable/noto-sans-sc@5.3.0`、`@fontsource/ibm-plex-mono@5.3.0`。实际锁定版本以本目录依赖清单为准。
@@ -134,7 +133,7 @@ npm --prefix docs/design/prototypes run theme:check
 
 ## 交付与后续使用
 
-按基础清单中的 `F-01` 等编号记录调整。本轮先完成[基础统一主题审核](reviews/F-theme.md)，保留设计方向并验证完整四主题、真实尺寸和库原生交互。R01的恢复、迁移和旧文件删除在后续明确范围中处理，不能把基础主题生成完成当作整个前端已迁移或获批。
+按基础清单中的 `F-01` 等编号记录基础调整；当前按 `R01-01-A`～`R01-01-I` 审核列表组合。两入口共用[基础统一主题](reviews/F-theme.md)，列表本轮适配及交互结果单独记录，不能把主题复用或列表候选稿完成当作整个前端已迁移或获批。
 
 本工程使用本地模拟数据，不调用生产 API、不读取应用登录令牌、不连接数据库、不控制工作队列。原型 `node_modules/` 和构建产物不提交；正式实施时需要另行完成接口接入、业务状态和应用验证。当前生产设计仍查阅[设计文档](../README.md)及[根设计契约](../../../DESIGN.md)。
 

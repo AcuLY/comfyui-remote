@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { PrimeReactProvider, addLocale, locale } from 'primereact/api';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
 import { Column } from 'primereact/column';
 import { DataTable } from 'primereact/datatable';
 import { Dropdown } from 'primereact/dropdown';
+import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
+import { IconField } from 'primereact/iconfield';
+import { InputIcon } from 'primereact/inputicon';
 import { Paginator } from 'primereact/paginator';
 import { SelectButton } from 'primereact/selectbutton';
 import { Skeleton } from 'primereact/skeleton';
@@ -14,22 +16,10 @@ import { Tag } from 'primereact/tag';
 import { Toolbar } from 'primereact/toolbar';
 import { Toast } from 'primereact/toast';
 import { usePrototypePreference, themeOptions } from './use-prototype-preference.jsx';
-import '@fontsource-variable/geist';
-import '@fontsource-variable/noto-sans-sc';
-import '@fontsource/ibm-plex-mono/latin-400.css';
-import 'primeicons/primeicons.css';
-import 'primereact/resources/themes/lara-light-teal/theme.css';
-import './tokens.css';
-import './prototype.css';
+import { PrototypeProvider } from './prototype-provider.jsx';
+import './prototype-layout.css';
 import './lists.css';
 
-addLocale('zh-CN', { aria: {
-  selectAll: '选择本页全部记录', unselectAll: '取消本页全部选择',
-  selectRow: '选择记录', unselectRow: '取消选择记录',
-  firstPageLabel: '第一页', lastPageLabel: '最后一页', nextPageLabel: '下一页', prevPageLabel: '上一页',
-  pageLabel: '第 {page} 页', rowsPerPageLabel: '每页条数',
-} });
-locale('zh-CN');
 const moduleOptions = [{ label: '生产', value: 'image' }, { label: '训练', value: 'training' }];
 const categoryOptions = ['全部分类', '人像', '场景', '细节'];
 const stateOptions = [{ label: '内容', value: 'content' }, { label: '加载', value: 'loading' }, { label: '无数据', value: 'empty' }, { label: '失败', value: 'error' }];
@@ -55,20 +45,21 @@ const records = [
   ['细节说明为空的样本', '细节', ''],
 ].map(([name, category, note], index) => ({ id: `sample-${index + 1}`, name, category, note, updatedAt: `2026-09-${String(8 - Math.floor(index / 3)).padStart(2, '0')} ${String(16 - index % 3).padStart(2, '0')}:30` }));
 
-function ListSkeleton({ className }) {
-  return <Skeleton className={className} width="var(--skeleton-width, 100%)" height="var(--skeleton-height, 12px)" />;
+function ListSkeleton({ className, header = false }) {
+  return <Skeleton className={className} pt={header ? { root: { style: { backgroundColor: 'var(--border)' } } } : undefined} width="var(--skeleton-width, 100%)" height="var(--skeleton-height, 12px)" />;
 }
 
-function ListLoading() {
+function ListLoading({ count }) {
   return <div className="list-loading" role="status" aria-label="正在加载列表">
     <span className="visually-hidden">正在加载列表</span>
     <div className="list-desktop" aria-hidden="true">
-      <div className="list-skeleton-line list-skeleton-header">{['check', 'name', 'category', 'note', 'date', 'action'].map((column) => <div key={column}><ListSkeleton className={`list-skeleton-${column}`} /></div>)}</div>
-      {Array.from({ length: 5 }, (_, index) => <div className="list-skeleton-line list-skeleton-row" key={index}>{['check', 'name', 'category', 'note', 'date', 'action'].map((column) => <div key={column}><ListSkeleton className={`list-skeleton-${column}`} /></div>)}</div>)}
+      <DataTable value={Array.from({ length: count }, (_, id) => ({ id }))} dataKey="id" className="list-data-table" tableStyle={{ tableLayout: 'fixed', width: '100%' }}>
+        {['select', 'name', 'category', 'note', 'date', 'action'].map((column) => <Column key={column} headerClassName={`list-${column}-column`} bodyClassName={`list-${column}-column`} header={<span className="list-skeleton-header"><ListSkeleton header className={`list-skeleton-${column}`} /></span>} body={() => <span className="list-skeleton-cell"><ListSkeleton className={`list-skeleton-${column}`} /></span>} />)}
+      </DataTable>
     </div>
     <div className="list-mobile" aria-hidden="true">
       <div className="list-skeleton-mobile-header"><ListSkeleton className="list-skeleton-check" /><ListSkeleton className="list-skeleton-name" /></div>
-      {Array.from({ length: 5 }, (_, index) => <div className="list-skeleton-card" key={index}><div><ListSkeleton className="list-skeleton-check" /><ListSkeleton className="list-skeleton-name" /></div><ListSkeleton className="list-skeleton-note" /><div className="list-skeleton-card-meta"><ListSkeleton className="list-skeleton-category" /><ListSkeleton className="list-skeleton-date" /><ListSkeleton className="list-skeleton-action" /></div></div>)}
+      <div className="list-skeleton-cards">{Array.from({ length: count }, (_, index) => <div className="list-skeleton-card" key={index}><div className="list-skeleton-card-heading"><ListSkeleton className="list-skeleton-check" /><ListSkeleton className="list-skeleton-name" /></div><ListSkeleton className="list-skeleton-note" /><div className="list-skeleton-card-meta"><ListSkeleton className="list-skeleton-category" /><ListSkeleton className="list-skeleton-date" /><ListSkeleton className="list-skeleton-action" /></div></div>)}</div>
     </div>
   </div>;
 }
@@ -114,7 +105,7 @@ function App() {
     catch {
       setCopyFallback(text);
       toast.current.replace({ severity: 'warn', summary: '浏览器未允许自动复制', sticky: true,
-        detail: <a href="#copy-fallback" onClick={() => toast.current.clear()}>查看可手动复制的文本<i className="pi pi-arrow-down" aria-hidden="true" /></a> });
+        detail: <a className="list-copy-fallback-link" href="#copy-fallback" onClick={() => toast.current.clear()}>查看可手动复制的文本<i className="pi pi-arrow-down" aria-hidden="true" /></a> });
     }
   }
   function toggleRecord(record, checked) {
@@ -123,16 +114,16 @@ function App() {
   }
 
   const toolbarStart = <div className="list-filter-fields">
-    <div className="list-search"><label htmlFor="list-search">搜索</label><div className="list-search-row"><label className="list-search-input" htmlFor="list-search"><i className="pi pi-search" aria-hidden="true" /><InputText id="list-search" value={query} onChange={(event) => changeFilter(setQuery, event.target.value)} placeholder="搜索名称或备注" disabled={!contentAvailable} /></label><Button className="list-mobile-reset" text icon="pi pi-filter-slash" aria-label="重置筛选" disabled={!hasFilter || !contentAvailable} onClick={resetFilters} /></div></div>
-    <div className="list-category"><label htmlFor="list-category">分类</label><Dropdown panelClassName="list-options-panel" inputId="list-category" value={category} options={categoryOptions} onChange={(event) => changeFilter(setCategory, event.value)} disabled={!contentAvailable} /></div>
-    <div className="list-sort"><label htmlFor="list-sort">排序</label><Dropdown panelClassName="list-options-panel" inputId="list-sort" value={`${sortField}:${sortOrder}`} options={sortOptions} onChange={(event) => { const [field, order] = event.value.split(':'); changeFilter(setSortField, field); setSortOrder(Number(order)); }} disabled={!contentAvailable} /></div>
+    <div className="list-search"><label htmlFor="list-search">搜索</label><div className="list-search-row"><IconField className="list-search-input" iconPosition="left"><InputIcon className="pi pi-search" aria-hidden="true" /><InputText id="list-search" value={query} onChange={(event) => changeFilter(setQuery, event.target.value)} className="list-search-control" placeholder="搜索名称或备注" disabled={!contentAvailable} /></IconField><Button className="list-mobile-reset" text icon="pi pi-filter-slash" aria-label="重置筛选" disabled={!hasFilter || !contentAvailable} onClick={resetFilters} /></div></div>
+    <div className="list-category"><label htmlFor="list-category">分类</label><Dropdown className="list-filter-control" inputId="list-category" value={category} options={categoryOptions} onChange={(event) => changeFilter(setCategory, event.value)} disabled={!contentAvailable} /></div>
+    <div className="list-sort"><label htmlFor="list-sort">排序</label><Dropdown className="list-filter-control" inputId="list-sort" value={`${sortField}:${sortOrder}`} options={sortOptions} onChange={(event) => { const [field, order] = event.value.split(':'); changeFilter(setSortField, field); setSortOrder(Number(order)); }} disabled={!contentAvailable} /></div>
   </div>;
   const nameCell = (record) => <span className="list-record-name">{record.name}</span>;
   const noteCell = (record) => <span className="list-record-note">{record.note || '未填写备注'}</span>;
-  const copyCell = (record) => <Button text icon="pi pi-copy" aria-label={`复制名称：${record.name}`} onClick={() => copyText(record.name, '已复制名称。')} />;
+  const copyCell = (record) => <Button className="list-copy-button" text icon="pi pi-copy" aria-label={`复制名称：${record.name}`} onClick={() => copyText(record.name, '已复制名称。')} />;
   const table = <DataTable value={page} dataKey="id" selectionMode="checkbox" selection={selected} onSelectionChange={(event) => { setSelected(event.value); toast.current?.clear(); setCopyFallback(''); }}
     selectionPageOnly selectionAriaLabel="name" sortField={sortField} sortOrder={sortOrder} onSort={(event) => { setSortField(event.sortField); setSortOrder(event.sortOrder); setFirst(0); clearSelection(); }}
-    className="list-data-table" pt={{ table: { 'aria-label': '列表样本' } }}>
+    className="list-data-table" rowHover tableStyle={{ tableLayout: 'fixed', width: '100%' }} pt={{ table: { 'aria-label': '列表样本' } }}>
     <Column selectionMode="multiple" headerClassName="list-select-column" bodyClassName="list-select-column" pt={{ headerCheckbox: { root: { 'aria-label': selected.length === page.length ? '取消本页全部选择' : '选择本页全部记录' }, input: { 'aria-label': selected.length === page.length ? '取消本页全部选择' : '选择本页全部记录' } } }} />
     <Column field="name" header="名称" sortable body={nameCell} headerClassName="list-name-column" bodyClassName="list-name-column" />
     <Column field="category" header="分类" body={(record) => <Tag value={record.category} />} headerClassName="list-category-column" bodyClassName="list-category-column" />
@@ -141,31 +132,28 @@ function App() {
     <Column header="操作" body={copyCell} headerClassName="list-action-column" bodyClassName="list-action-column" />
   </DataTable>;
 
-  return <PrimeReactProvider value={{ ripple: false, locale: 'zh-CN' }}><div className="list-page">
+  return <PrototypeProvider><div className="list-page">
     <Toast ref={toast} position="bottom-center" className="list-copy-toast" />
     <a className="skip-link" href="#list-main">跳到列表内容</a>
     <header className="app-header"><a href="../../foundations/" className="wordmark">ComfyUI <span>Manager</span></a><span className="header-context">组件组合</span><span className="review-status"><span className="review-dot" />R01-01 · 待审核</span>
       <div className="header-controls"><SelectButton value={preference.module} options={moduleOptions} onChange={(event) => updatePreference('module', event.value)} aria-label="模块色" allowEmpty={false} /><SelectButton value={preference.theme} options={themeOptions} onChange={(event) => updatePreference('theme', event.value)} aria-label="主题偏好" allowEmpty={false} /></div>
-      <Button className="list-preview-toggle" text label="预览" icon="pi pi-sliders-h" aria-label={previewControlsOpen ? '收起预览设置' : '打开预览设置'} aria-expanded={previewControlsOpen} aria-controls="list-preview-controls" onClick={() => setPreviewControlsOpen(!previewControlsOpen)} />
+      <Button className="list-preview-toggle" text label="预览" icon="pi pi-sliders-h" aria-label="打开预览设置" aria-haspopup="dialog" onClick={() => setPreviewControlsOpen(true)} />
     </header>
     <main id="list-main" className="list-main" tabIndex={-1}>
       <nav className="list-demo-nav" aria-label="设计原型"><a href="../../foundations/">基础规范</a><span aria-hidden="true">/</span><span aria-current="page">列表与分页</span><a className="list-review-link" href="../../reviews/R01.md">审核记录<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></nav>
       <div className="list-page-heading"><h1>列表、筛选与分页</h1><p>搜索、筛选、选择与分页的可操作样本。</p></div>
-      <div id="list-preview-controls" className={`list-preview-controls${previewControlsOpen ? ' is-open' : ''}`}>
-        <div className="list-mobile-preferences"><span>模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={(event) => updatePreference('module', event.value)} aria-label="手机模块色" allowEmpty={false} /></div>
-        <div className="list-mobile-preferences"><span>主题</span><SelectButton value={preference.theme} options={themeOptions} onChange={(event) => updatePreference('theme', event.value)} aria-label="手机主题偏好" allowEmpty={false} /></div>
+      <div id="list-preview-controls" className="list-preview-controls">
         <div><span id="preview-state-label">预览状态</span><SelectButton value={previewState} options={stateOptions} onChange={(event) => changeState(event.value)} aria-labelledby="preview-state-label" allowEmpty={false} /></div>
-        <p className="list-mobile-size-note">手机使用独立尺寸，保持至少 44px 的触摸范围。</p>
       </div>
       <section className="list-surface" aria-labelledby="list-title">
         <div className="list-title-row"><h2 id="list-title">列表样本</h2><span>18 条模拟记录</span></div>
-        <Toolbar className="list-toolbar" aria-label="列表筛选工具栏" start={toolbarStart} end={<Button text label="重置筛选" icon="pi pi-filter-slash" disabled={!hasFilter || !contentAvailable} onClick={resetFilters} />} />
+        <Toolbar className="list-toolbar" pt={{ start: { className: 'list-toolbar-start' }, end: { className: 'list-toolbar-end' } }} aria-label="列表筛选工具栏" start={toolbarStart} end={<Button text label="重置筛选" icon="pi pi-filter-slash" disabled={!hasFilter || !contentAvailable} onClick={resetFilters} />} />
         <div className={`list-selection-bar${selected.length ? ' has-selection' : ''}`}>
           <div aria-live="polite">{selected.length ? <><strong>已选 {selected.length} 项</strong><span>仅当前页</span></> : <span>{contentAvailable ? `共 ${filtered.length} 条${hasFilter ? '匹配记录' : '记录'} · 勾选后批量操作` : previewState === 'loading' ? '正在获取记录…' : previewState === 'empty' ? '暂无记录' : '记录暂不可用'}</span>}</div>
-          {selected.length ? <div className="list-selection-actions"><Button label="复制名称" icon="pi pi-copy" onClick={() => copyText(selected.map((record) => record.name).join('\n'), `已复制 ${selected.length} 个名称。`)} /><Button text label="取消选择" onClick={clearSelection} /></div> : null}
+          {selected.length ? <div className="list-selection-actions"><Button label="复制名称" onClick={() => copyText(selected.map((record) => record.name).join('\n'), `已复制 ${selected.length} 个名称。`)} /><Button text label="取消选择" onClick={clearSelection} /></div> : null}
         </div>
         <div className="list-content" aria-busy={previewState === 'loading'}>
-          {previewState === 'loading' ? <ListLoading /> : previewState === 'error' ? <div className="list-empty" role="alert"><i className="pi pi-exclamation-circle" aria-hidden="true" /><h3>列表加载失败</h3><p>暂时无法获取记录，搜索和筛选条件已保留。</p><div><Button label="重试" icon="pi pi-refresh" onClick={retry} /><Button text label="复制错误" onClick={() => copyText('示例错误：列表请求超时。原型模拟场景，无真实接口请求。', '已复制错误详情。')} /></div></div>
+          {previewState === 'loading' ? <ListLoading count={page.length || rows} /> : previewState === 'error' ? <div className="list-empty" role="alert"><i className="pi pi-exclamation-circle" aria-hidden="true" /><h3>列表加载失败</h3><p>暂时无法获取记录，搜索和筛选条件已保留。</p><div><Button label="重试" icon="pi pi-refresh" onClick={retry} /><Button text label="复制错误" onClick={() => copyText('示例错误：列表请求超时。原型模拟场景，无真实接口请求。', '已复制错误详情。')} /></div></div>
             : previewState === 'empty' ? <div className="list-empty"><i className="pi pi-inbox" aria-hidden="true" /><h3>还没有记录</h3><p>有内容后，名称、分类与更新信息会显示在这里。</p><Button outlined label="载入示例记录" onClick={() => { resetFilters(); changeState('content'); }} /></div>
               : filtered.length === 0 ? <div className="list-empty"><i className="pi pi-search" aria-hidden="true" /><h3>没有匹配的记录</h3><p>试试更短的关键词，或取消分类限制。</p><Button outlined label="清空筛选" onClick={resetFilters} /></div>
                 : <><div className="list-desktop">{table}</div><div className="list-mobile"><div className="list-mobile-select"><Checkbox inputId="mobile-all" checked={selected.length === page.length} onChange={(event) => { setSelected(event.checked ? page : []); toast.current?.clear(); setCopyFallback(''); }} /><label htmlFor="mobile-all">{selected.length && selected.length !== page.length ? `已选 ${selected.length} / ${page.length} 项` : '选择本页全部'}</label></div>
@@ -173,15 +161,18 @@ function App() {
                 </div></>}
         </div>
         <div className="list-pagination"><span className="list-page-report" aria-live="polite">{contentAvailable && filtered.length ? `${first + 1}–${Math.min(first + rows, filtered.length)} / ${filtered.length} 条` : '—'}</span>
-          <Paginator first={first} rows={rows} totalRecords={contentAvailable ? filtered.length : 0} pageLinkSize={3} template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink" onPageChange={(event) => { setFirst(event.first); clearSelection(); }} />
-          <div className="list-page-size"><label htmlFor="page-size">每页</label><Dropdown panelClassName="list-options-panel" inputId="page-size" value={rows} options={[5, 10, 20]} onChange={(event) => { setRows(event.value); setFirst(0); clearSelection(); }} disabled={!contentAvailable} /><span>条</span></div>
+          <Paginator first={first} rows={rows} totalRecords={contentAvailable ? filtered.length : 0} pageLinkSize={3} className="list-paginator" template="PrevPageLink PageLinks NextPageLink" onPageChange={(event) => { setFirst(event.first); clearSelection(); }} />
+          <div className="list-page-size"><label htmlFor="page-size">每页</label><Dropdown className="list-filter-control" inputId="page-size" value={rows} options={[5, 10, 20]} onChange={(event) => { setRows(event.value); setFirst(0); clearSelection(); }} disabled={!contentAvailable} /><span>条</span></div>
         </div>
       </section>
       {copyFallback ? <section className="list-feedback" aria-label="手动复制"><p>自动复制未完成，请手动选择以下文本。</p><pre id="copy-fallback" tabIndex={0} aria-label="可手动复制的文本">{copyFallback}</pre></section> : null}
-      <div className="list-review-notes"><p><i className="pi pi-info-circle" aria-hidden="true" />选择仅作用于当前页；搜索、筛选、排序或翻页会清空选择。</p><p>手机改为卡片，名称与主要操作完整保留。<a href="../../ui-design-roadmap.md">查看设计路线</a></p></div>
-      <footer className="page-footer"><span>R01-01 · 组件组合首稿 · 固定模拟数据</span><span>{theme === 'dark' ? '深色' : '浅色'}主题 · {preference.theme === 'system' ? '实时跟随系统' : '手动选择，可切回系统'}</span></footer>
+      <div className="list-review-notes"><p><i className="pi pi-info-circle" aria-hidden="true" />选择仅作用于当前页；搜索、筛选、排序或翻页会清空选择。</p><p>窄屏使用卡片，名称与主要操作完整保留。<a href="../../ui-design-roadmap.md">查看设计路线</a></p></div>
+      <footer className="page-footer"><span>R01-01 · 统一主题修订稿 · 固定模拟数据</span><span>{theme === 'dark' ? '深色' : '浅色'}主题 · {preference.theme === 'system' ? '实时跟随系统' : '手动选择，可切回系统'}</span></footer>
     </main>
-  </div></PrimeReactProvider>;
+    <Dialog header="预览设置" visible={previewControlsOpen} onHide={() => setPreviewControlsOpen(false)} className="list-preview-dialog" draggable={false} blockScroll footer={<Button label="完成" onClick={() => setPreviewControlsOpen(false)} />}>
+      <div className="list-settings-fields"><div><span id="list-settings-module">模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={(event) => updatePreference('module', event.value)} aria-labelledby="list-settings-module" allowEmpty={false} /></div><div><span id="list-settings-theme">主题</span><SelectButton value={preference.theme} options={themeOptions} onChange={(event) => updatePreference('theme', event.value)} aria-labelledby="list-settings-theme" allowEmpty={false} /></div><div><span id="list-settings-state">预览状态</span><SelectButton value={previewState} options={stateOptions} onChange={(event) => changeState(event.value)} aria-labelledby="list-settings-state" allowEmpty={false} /></div></div>
+    </Dialog>
+  </div></PrototypeProvider>;
 }
 
 createRoot(document.getElementById('root')).render(<App />);
