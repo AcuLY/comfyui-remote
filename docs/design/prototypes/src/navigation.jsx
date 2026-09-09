@@ -16,7 +16,7 @@ const sections = [
   { id: 'presets', label: '预制', icon: 'pi-sliders-h' },
   { id: 'templates', label: '模板', icon: 'pi-clone' },
 ];
-const modules = [{ id: 'production', label: '生产' }, { id: 'training', label: '训练' }];
+const modules = [{ id: 'production', label: '生产', icon: 'pi pi-image' }, { id: 'training', label: '训练', icon: 'pi pi-microchip-ai' }];
 const tools = [
   { id: 'models', label: '模型', icon: 'pi-box' },
   { id: 'monitoring', label: '监控与日志', icon: 'pi-desktop' },
@@ -85,7 +85,7 @@ function App() {
     setMoreOpen(false);
     toast.current.show({ severity: 'info', summary: '退出登录入口', detail: '这是导航预览，未改变登录状态。', life: 3000 });
   }
-  const moduleSwitch = <div className="nav-module-switch" role="group" aria-label="切换业务模块">{modules.map(module => <Button key={module.id} label={module.label} className="nav-module-button" text={navigation.activeModule !== module.id} plain={navigation.activeModule !== module.id} aria-pressed={navigation.activeModule === module.id} onClick={() => navigate(`${module.id}/${navigation.last[module.id]}`)} />)}</div>;
+  const moduleSwitch = (iconOnly = false) => <div className="nav-module-switch" role="group" aria-label="切换业务模块">{modules.map(module => <Button key={module.id} label={iconOnly ? undefined : module.label} icon={iconOnly ? module.icon : undefined} aria-label={module.label} title={iconOnly ? module.label : undefined} className="nav-module-button" text={navigation.activeModule !== module.id} plain={navigation.activeModule !== module.id} aria-pressed={navigation.activeModule === module.id} onClick={() => navigate(`${module.id}/${navigation.last[module.id]}`)} />)}</div>;
   function navigationLink(item, key, mobile = false) {
     const active = navigation.route === key;
     return <a key={key} href={`#${key}`} className={`${mobile ? 'nav-tab' : 'nav-item'}${active ? ' is-active' : ''}`} aria-label={item.label} aria-current={active ? 'page' : undefined} title={item.label} onClick={() => setMoreOpen(false)}>
@@ -102,7 +102,7 @@ function App() {
     <div className={`nav-layout${collapsed ? ' is-collapsed' : ''}`}>
       <aside className="nav-sidebar" id="desktop-sidebar-navigation" aria-label="应用侧栏">
         <div className="nav-brand" aria-label="ComfyUI Manager"><span className="nav-brand-full">ComfyUI <span>Manager</span></span><span className="nav-brand-short" aria-hidden="true">CM</span></div>
-        {moduleSwitch}
+        {moduleSwitch(collapsed)}
         <nav className="nav-primary" aria-label={`${moduleLabel}主导航`}>{businessLinks}</nav>
         <div className="nav-sidebar-bottom"><span className="nav-group-label">全局工具</span><nav aria-label="全局工具">{globalLinks}</nav>
           <Button text className="nav-logout" icon="pi pi-sign-out" label={collapsed ? undefined : '退出登录'} aria-label="退出登录" title="退出登录" onClick={demonstrateLogout} />
@@ -110,7 +110,7 @@ function App() {
         </div>
       </aside>
       <div className="nav-workspace">
-        <header className="nav-mobile-header"><span className="nav-mobile-brand">ComfyUI</span>{moduleSwitch}<Button text icon="pi pi-ellipsis-h" className={!route.module ? 'nav-more-active' : ''} aria-label="更多全局工具" aria-expanded={moreOpen} aria-haspopup="dialog" onClick={() => setMoreOpen(true)} /></header>
+        <header className="nav-mobile-header"><span className="nav-mobile-brand">ComfyUI</span>{moduleSwitch()}<Button text icon="pi pi-ellipsis-h" className={!route.module ? 'nav-more-active' : ''} aria-label="更多全局工具" aria-expanded={moreOpen} aria-haspopup="dialog" onClick={() => setMoreOpen(true)} /></header>
         <div className="nav-page-heading"><h1 aria-live="polite">{route.title}</h1>{!route.module && <span className="nav-global-label">全局工具</span>}<span className="nav-preview-label">导航预览</span></div>
         <main ref={main} id="navigation-main" className="nav-main" tabIndex={-1}>
           <section className="nav-content-placeholder" aria-label="业务内容占位"><div className="nav-placeholder-copy"><i className="pi pi-window-maximize" aria-hidden="true" /><h2>{route.title}内容区</h2><p>此处用于检查导航位置与可用空间。<br />业务内容将在对应任务中单独设计。</p></div></section>
