@@ -85,7 +85,7 @@ function App() {
     setMoreOpen(false);
     toast.current.show({ severity: 'info', summary: '退出登录入口', detail: '这是导航预览，未改变登录状态。', life: 3000 });
   }
-  const moduleSwitch = (iconOnly = false) => <div className="nav-module-switch" role="group" aria-label="切换业务模块">{modules.map(module => <Button key={module.id} label={iconOnly ? undefined : module.label} icon={iconOnly ? module.icon : undefined} aria-label={module.label} title={iconOnly ? module.label : undefined} className="nav-module-button" text={navigation.activeModule !== module.id} plain={navigation.activeModule !== module.id} aria-pressed={navigation.activeModule === module.id} onClick={() => navigate(`${module.id}/${navigation.last[module.id]}`)} />)}</div>;
+  const moduleSwitch = (iconOnly = false) => <div className="nav-module-switch" role="group" aria-label="切换业务模块">{modules.map(module => <Button key={module.id} label={iconOnly ? undefined : module.label} icon={iconOnly ? module.icon : undefined} aria-label={module.label} title={iconOnly ? module.label : undefined} className="nav-module-button" rounded={iconOnly} text={navigation.activeModule !== module.id} plain={navigation.activeModule !== module.id} aria-pressed={navigation.activeModule === module.id} onClick={() => navigate(`${module.id}/${navigation.last[module.id]}`)} />)}</div>;
   function navigationLink(item, key, mobile = false) {
     const active = navigation.route === key;
     return <a key={key} href={`#${key}`} className={`${mobile ? 'nav-tab' : 'nav-item'}${active ? ' is-active' : ''}`} aria-label={item.label} aria-current={active ? 'page' : undefined} title={item.label} onClick={() => setMoreOpen(false)}>

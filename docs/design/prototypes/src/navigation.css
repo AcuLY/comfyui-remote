@@ -23,7 +23,7 @@
 .nav-collapse-row { display: flex; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px; }
 .is-collapsed .nav-brand-full, .is-collapsed .nav-sidebar .nav-item-label, .is-collapsed .nav-sidebar .nav-current-mark, .is-collapsed .nav-group-label { display: none; }
 .is-collapsed .nav-brand-short { display: inline; }
-.is-collapsed .nav-sidebar .nav-module-switch { flex-direction: column; align-items: center; }
+.is-collapsed .nav-sidebar .nav-module-switch { flex-direction: column; align-items: center; align-self: center; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); }
 .is-collapsed .nav-sidebar .nav-item { justify-content: center; padding-inline: 8px; }
 .is-collapsed .nav-logout { align-self: center; }
 .is-collapsed .nav-collapse-row { justify-content: center; }
