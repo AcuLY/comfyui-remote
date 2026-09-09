@@ -147,7 +147,7 @@ function App() {
       </div>
       <section className="list-surface" aria-labelledby="list-title">
         <div className="list-title-row"><h2 id="list-title">列表样本</h2><span>18 条模拟记录</span></div>
-        <Toolbar className="list-toolbar" pt={{ start: { className: 'list-toolbar-start' }, end: { className: 'list-toolbar-end' } }} aria-label="列表筛选工具栏" start={toolbarStart} end={<Button text label="重置筛选" icon="pi pi-filter-slash" disabled={!hasFilter || !contentAvailable} onClick={resetFilters} />} />
+        <Toolbar className="list-toolbar" pt={{ start: { className: 'list-toolbar-start' }, center: { style: { display: 'none' } }, end: { className: 'list-toolbar-end' } }} aria-label="列表筛选工具栏" start={toolbarStart} end={<Button text label="重置筛选" icon="pi pi-filter-slash" disabled={!hasFilter || !contentAvailable} onClick={resetFilters} />} />
         <div className={`list-selection-bar${selected.length ? ' has-selection' : ''}`}>
           <div aria-live="polite">{selected.length ? <><strong>已选 {selected.length} 项</strong><span>仅当前页</span></> : <span>{contentAvailable ? `共 ${filtered.length} 条${hasFilter ? '匹配记录' : '记录'} · 勾选后批量操作` : previewState === 'loading' ? '正在获取记录…' : previewState === 'empty' ? '暂无记录' : '记录暂不可用'}</span>}</div>
           {selected.length ? <div className="list-selection-actions"><Button label="复制名称" onClick={() => copyText(selected.map((record) => record.name).join('\n'), `已复制 ${selected.length} 个名称。`)} /><Button text label="取消选择" onClick={clearSelection} /></div> : null}

@@ -197,15 +197,15 @@ function App() {
           <div className="viewport-rules" aria-label="视口适配规则">
             <div className="viewport-rule rule-wide"><div><strong>桌面</strong><small>≥ 1200px</small></div><p>表单控件 36px · 内容边距 32px · 分区间隔 48px</p><span className="current-band">当前</span></div>
             <div className="viewport-rule rule-medium"><div><strong>窄屏</strong><small>768–1199px</small></div><p>表单控件 36px · 内容边距 24px · 分区间隔 40px</p><span className="current-band">当前</span></div>
-            <div className="viewport-rule rule-phone"><div><strong>手机</strong><small>≤ 767px</small></div><p>表单控件 44px · 内容边距 12–16px · 分区间隔 32px</p><span className="current-band">当前</span></div>
+            <div className="viewport-rule rule-phone"><div><strong>手机</strong><small>≤ 767px</small></div><p>表单控件 40px · 内容边距 12–16px · 分区间隔 32px</p><span className="current-band">当前</span></div>
           </div>
-          <p className="spec-note">触控设备使用实际 44px 表单控件与 16px 输入文字；选择控件配合可点击标签。主题统一生成，组件内部结构与交互保持原生。</p>
+          <p className="spec-note">触控设备普通表单控件 40px、输入文字 16px，纯图标操作保留 44px；选择控件配合可点击标签。主题统一生成，组件内部结构与交互保持原生。</p>
           <div className="dimension-grid"><Specimen title="间距刻度" hint="4 / 8 / 12 / 16 / 24 / 32 / 48">
             <div className="spacing-scale">{[4, 8, 12, 16, 24, 32, 48].map((n) => <div key={n}><span className="mono">{n}</span><span className={`spacing-bar spacing-${n}`} /></div>)}</div>
           </Specimen><Specimen title="圆角与层次" hint="控件 8px · 面板 12px">
             <div className="shape-row"><div className="shape-control">8px<span>控件</span></div><div className="shape-panel">12px<span>面板</span></div><div className="shape-float">浮层<span>柔和阴影</span></div></div>
           </Specimen></div>
-          <div className="density-preview"><div><h3>同排控件</h3><p>同排保持等高，组合最大宽 640px，窄屏随容器收缩。</p></div><div className="density-sample"><InputText id="aligned-input" aria-label="同排控件样本输入" placeholder="名称" /><Button label="应用" onClick={() => toast.current.show({ severity: 'success', summary: '样本已应用', detail: '仅演示同排操作反馈。', life: 2500 })} /><Button icon="pi pi-search" outlined aria-label="查看同排控件样本" onClick={() => toast.current.show({ severity: 'info', summary: '同排控件', detail: '三种控件按当前设备等高对齐。', life: 2500 })} /></div></div>
+          <div className="density-preview"><div><h3>同排控件</h3><p>输入与文字按钮等高，触控图标按钮保留 44px；组合最大宽 640px。</p></div><div className="density-sample"><InputText id="aligned-input" aria-label="同排控件样本输入" placeholder="名称" /><Button label="应用" onClick={() => toast.current.show({ severity: 'success', summary: '样本已应用', detail: '仅演示同排操作反馈。', life: 2500 })} /><Button icon="pi pi-search" outlined aria-label="查看同排控件样本" onClick={() => toast.current.show({ severity: 'info', summary: '同排控件', detail: '输入与文字按钮等高，图标按钮按触控尺寸居中对齐。', life: 2500 })} /></div></div>
         </Section>
 
         <Section id="components" title="基础组件" description="统一操作层级与字段状态，直接使用组件库现有能力。所有示例均可操作。">
@@ -234,7 +234,7 @@ function App() {
         </Section>
 
         <Section id="decisions" title="基础规范与确认记录" description="基础基线已于 2026-09-08 确认；组件用法按后续设计原则持续调整。">
-          <div className="decision-table"><div><span>F-01～F-03</span><strong>主题、模块色与语义色</strong><p>明暗同等支持；绿色与玫瑰粉保持同等权重。</p></div><div><span>F-04～F-07</span><strong>字体、间距与基础尺寸</strong><p>14px 正文、4px 间距基准、8px / 12px 圆角。</p></div><div><span>F-08～F-12</span><strong>控件与状态</strong><p>操作层级清晰；字段、焦点、加载与错误保持一致。</p></div><div><span>F-13～F-14</span><strong>主题操作与交互适配</strong><p>实时跟随系统；小屏重排，触摸目标至少 44px。</p></div></div>
+          <div className="decision-table"><div><span>F-01～F-03</span><strong>主题、模块色与语义色</strong><p>明暗同等支持；绿色与玫瑰粉保持同等权重。</p></div><div><span>F-04～F-07</span><strong>字体、间距与基础尺寸</strong><p>14px 正文、4px 间距基准、8px / 12px 圆角。</p></div><div><span>F-08～F-12</span><strong>控件与状态</strong><p>操作层级清晰；字段、焦点、加载与错误保持一致。</p></div><div><span>F-13～F-14</span><strong>主题操作与交互适配</strong><p>实时跟随系统；小屏重排，普通控件 40px，图标操作 44px。</p></div></div>
           <div className="next-step"><p>复用原生组件与必要主题配置；R01-01 工作稿保留，组合另行审核。</p><a className="text-link" href="../components/lists/">查看列表工作稿<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
         </Section>
         <footer className="page-footer"><span>ComfyUI Manager · 基础设计原型</span><span>仅示例数据 · 尚未接入业务接口</span></footer>

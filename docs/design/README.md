@@ -29,7 +29,7 @@ document:
 
 本区域承载[根设计契约](../../DESIGN.md)之下、由源码支持的详细说明。它描述当前模式和归属边界；不会把原型、固件或未导入的样式表提升为生产环境的权威来源。
 
-[HTML 设计原型](prototypes/README.md)单独承载新版可运行稿，与当前生产页面及 `/design-demos/**` 分开。当前按用户要求恢复 [R01-01 列表组合](prototypes/reviews/R01.md)，采用[基础统一主题](prototypes/reviews/F-theme.md)及共享提供器，保留已确认的色相、纯白底色、字体与页面布局。原[基础适配记录](prototypes/reviews/F-responsive.md)及批准历史保留；恢复制作不等于组合设计或全部主题状态获批，后续顺序见[完整 UI 设计路线](prototypes/ui-design-roadmap.md)。
+[HTML 设计原型](prototypes/README.md)单独承载新版可运行稿，与当前生产页面及 `/design-demos/**` 分开。当前按用户要求恢复 [R01-01 列表组合](prototypes/reviews/R01.md)，采用[基础统一主题](prototypes/reviews/F-theme.md)及共享提供器，保留已确认的色相、纯白底色、字体与页面布局。本轮按用户确认将手机／粗指针普通控件收至40px，可编辑输入保留16px字号，纯图标按钮、关闭及分页动作保留44px，桌面36px不变；详见[当前基础规范](prototypes/design-foundations.md)。原[基础适配记录](prototypes/reviews/F-responsive.md)及批准历史保留；恢复制作不等于组合设计或全部主题状态获批，后续顺序见[完整 UI 设计路线](prototypes/ui-design-roadmap.md)。
 
 ## 路由
 

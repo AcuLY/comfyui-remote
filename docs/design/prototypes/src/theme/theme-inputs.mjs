@@ -2,15 +2,15 @@
 export function themeDensity(touch) {
   return {
     font: touch ? '1rem' : '0.875rem',
-    padding: touch ? '0.5625rem 0.75rem' : '0.40625rem 0.75rem',
+    padding: touch ? '0.4375rem 0.75rem' : '0.40625rem 0.75rem',
     iconSize: touch ? '2.75rem' : '2.25rem',
-    controlHeight: touch ? '44px' : '36px',
+    controlHeight: touch ? '40px' : '36px',
   };
 }
 
 export function createThemeInputs(token, { theme, touch }) {
   // The official source adds fixed rem lengths (for example InputOtp), so use
-  // numeric rem inputs. At the browser's 16px root these are 14/16 and 36/44px.
+  // numeric rem inputs. At the browser's 16px root these are 14/16 and 36/40px for ordinary controls; touch icons remain 44px.
   const { font, padding, iconSize: size } = themeDensity(touch);
   const surface = token('surface');
   const text = token('text');

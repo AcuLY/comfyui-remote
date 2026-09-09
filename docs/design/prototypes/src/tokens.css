@@ -122,7 +122,7 @@
 
 @media (pointer: coarse), (width < 768px) {
   :root {
-    --control-height: 44px;
+    --control-height: 40px;
     --control-padding: 14px;
   }
 }

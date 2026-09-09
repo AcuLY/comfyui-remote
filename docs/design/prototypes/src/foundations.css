@@ -38,7 +38,7 @@
 .foundation-page .specimen { padding: 20px 0; }
 .foundation-page .specimen-heading { margin-bottom: 16px; gap: 8px 16px; }
 .foundation-page .density-preview { width: 100%; max-width: 640px; margin-top: 16px; padding: 20px; grid-template-columns: 1fr; }
-.foundation-page .density-sample { display: grid; grid-template-columns: minmax(0, 1fr) auto var(--control-height); gap: 12px; align-items: center; }
+.foundation-page .density-sample { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; }
 .foundation-page .density-sample .p-inputtext { width: 100%; }
 .foundation-page .font-summary { gap: 24px; }
 .foundation-page .type-row { gap: 12px 20px; }
@@ -154,7 +154,7 @@
   .foundation-page .state-toolbar { display: block; padding: 16px; }
   .foundation-page .state-toolbar > .p-selectbutton { display: flex; margin-top: 12px; width: 100%; }
   .foundation-page .state-stage { padding: 16px; min-height: 144px; }
-  .foundation-page .sample-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) var(--control-height); gap: 8px 12px; }
+  .foundation-page .sample-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 8px 12px; }
   .foundation-page .sample-icon { grid-row: 1 / 3; }
   .foundation-page .sample-info { grid-column: 2; }
   .foundation-page .sample-row > .p-tag { grid-column: 2; margin: 0; justify-self: start; }

@@ -41,7 +41,7 @@
 .list-name-column { width: var(--list-name-width); }
 .list-category-column { width: 88px; }
 .list-date-column { width: var(--list-date-width); }
-.list-action-column { width: calc(var(--control-height) + 32px); }
+.list-action-column { width: calc(var(--list-action-size, var(--control-height)) + 32px); }
 .list-record-name { font-weight: 550; overflow-wrap: anywhere; }
 .list-record-note { color: var(--text-secondary); font-size: var(--text-xs); overflow-wrap: anywhere; line-height: 1.6; }
 .list-date { color: var(--text-secondary); font-size: var(--text-xs); font-variant-numeric: tabular-nums; display: inline-flex; flex-wrap: wrap; gap: 0 6px; }
@@ -58,7 +58,7 @@
 .list-empty p { color: var(--text-secondary); max-width: 48ch; }
 .list-empty > div { display: flex; gap: 12px; margin-top: 4px; flex-wrap: wrap; justify-content: center; }
 .list-skeleton-header { display: flex; align-items: center; height: 22px; width: 40px; max-width: 100%; }
-.list-skeleton-cell { display: flex; align-items: center; height: var(--control-height); }
+.list-skeleton-cell { display: flex; align-items: center; height: var(--list-action-size, var(--control-height)); }
 .list-skeleton-select, .list-skeleton-check { --skeleton-width: 22px; --skeleton-height: 22px; flex: 0 0 22px; }
 .list-skeleton-action { --skeleton-width: 20px; --skeleton-height: 20px; }
 .list-skeleton-name { --skeleton-width: 65%; }
@@ -135,7 +135,12 @@
   .list-mobile-records li:nth-child(odd), .list-skeleton-card:nth-child(odd) { border-right: 1px solid var(--border); }
   .list-pagination { display: flex; }
 }
+@media (width < 768px), (pointer: coarse) {
+  .list-surface { --list-action-size: 44px; }
+}
 @media (width < 768px) {
+  .list-toolbar { padding: 12px; }
+  .list-filter-fields { gap: 8px; }
   .list-page .app-header { padding-inline: 16px; gap: 8px; }
   .list-page .review-dot { display: none; }
   .list-main { padding: 8px 16px 20px; }

@@ -73,6 +73,7 @@ ${scope} {
   @layer primereact {
     .p-component { line-height: 1.5; }
     .p-button, input.p-inputtext, .p-dropdown, .p-multiselect { min-height: ${density.controlHeight}; }
+    .p-button.p-button-icon-only { min-height: ${density.iconSize}; }
   }
 }
 `;
