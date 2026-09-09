@@ -161,6 +161,7 @@ document:
 | `.impeccable/surfaces/docs-design-prototypes-components-lists-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `.impeccable/surfaces/docs-design-prototypes-components-organization-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `.impeccable/surfaces/docs-design-prototypes-foundations-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.impeccable/surfaces/docs-design-prototypes-shell-navigation-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `AGENTS.md` | `root` | `agent-policy` | `Markdown` 文档 | `router` | 文档元数据 |
 | `ARCHITECTURE.md` | `root` | `system-architecture` | `Markdown` 文档 | `architecture` | 文档元数据 |
 | `CLAUDE.md` | `root` | `agent-policy` | `Markdown` 文档 | `router` | 文档元数据 |
@@ -217,12 +218,16 @@ document:
 | `docs/design/prototypes/reviews/F-theme.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/reviews/R01-02.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/reviews/R01.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/prototypes/reviews/R02-01.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/scripts/build-theme.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/scripts/snapshot-organization.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/shell/navigation/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/foundations.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/lists.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/lists.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/main.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/src/navigation.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/src/navigation.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/organization.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/organization.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/prototype-layout.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
