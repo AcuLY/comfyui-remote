@@ -7,6 +7,8 @@ related_targets: ["docs/design/prototypes/src/organization.jsx","docs/design/pro
 
 # 层级与排序组合
 
+**当前暂停：用户指出通用定位及临时拆分偏差。以下是历史原型说明，不是继续开发授权；先按 docs/design/prototypes/ui-design-roadmap.md 审核事前登记的具体任务。是否局部参考模型管理尚未确认。**
+
 范围：R01-02，`Operate`。延续用户已确认的 R01-01 和统一组件主题，服务于定位目录、选择内容、调整顺序及移动的通用样本，不定义业务页面或真实文件操作。
 
 方向：桌面目录树与内容并列，手机目录进入对话框；内容多选与移动共享选择，原生 `OrderList` 的排序编辑独立打开、应用或取消，避免读取库内部选择状态。桌面36px，触控普通40px、图标44px。继承基础色相、字体、白底和灰阶。

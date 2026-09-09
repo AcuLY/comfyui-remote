@@ -15,6 +15,10 @@ document:
     - docs/design/prototypes/foundations/README.md
     - docs/design/prototypes/design-foundations.md
     - docs/design/prototypes/ui-design-roadmap.md
+    - docs/design/prototypes/ui-design-coverage.md
+    - docs/design/prototypes/ui-design-shared-plan.md
+    - docs/design/prototypes/ui-design-production-plan.md
+    - docs/design/prototypes/ui-design-training-plan.md
     - docs/design/prototypes/reviews/R01.md
     - docs/design/prototypes/reviews/R01-02.md
     - docs/design/prototypes/reviews/F-responsive.md
@@ -43,7 +47,7 @@ document:
 
 原始基础与后续适配、数字输入局部修订保留在[历史记录](reviews/F-responsive.md)，不代替新生成主题的验证。当前组件内部结构、状态、焦点与真实触控尺寸重新检查；其余浅色中性色去色比较未采纳，不扩大为新业务页面。
 
-用户于2026-09-09确认 [R01-01 列表组合](reviews/R01.md)的 `30fd53db` 版本，并要求继续下一项。当前制作 [R01-02 层级、手动排序与移动到](reviews/R01-02.md)，沿用共享提供器、生成主题和 `prototype-layout.css`；各入口局部样式只负责页面布局。列表确认不扩大为整个 `R01`、`C03` 或业务页面获批。
+用户已确认 [R01-01 列表组合](reviews/R01.md)的 `30fd53db` 版本。随后指出 [R01-02](reviews/R01-02.md)的通用定位和临时拆分方式存在偏差，当前暂停制作，先审核[总路线与事前任务登记](ui-design-roadmap.md)。新任务必须在分册中有独立编号、具体范围、排除项、验收及确认状态；不能由“继续下一个”临时派生组件原型。
 
 ## 审核范围
 
@@ -52,7 +56,7 @@ document:
 | P-01 | 审核载体 | 在仓库 `docs/design/prototypes/` 维护可运行 HTML 原型 | 已确认，2026-09-07 |
 | P-02 | 推进顺序 | 先基础元素与小组件，再业务组合，最后完整页面及流程 | 已确认，2026-09-07 |
 | P-03 | 基础设计 | 官方完整组件主题、统一入口与独立页面布局，保留既有设计方向 | 统一主题版已制作，待用户审核；已测范围和最终门禁分别记录 |
-| P-04 | 业务组合 | 筛选工具栏、任务行、图片卡片、参数表单等 | R01-01 已确认（`30fd53db`）；R01-02 待用户审核；其余未开始 |
+| P-04 | 业务组合 | 筛选工具栏、任务行、图片卡片、参数表单等 | R01-01 已确认（`30fd53db`）；R01-02定位偏差，暂停；新任务先审说明 |
 | P-05 | 完整页面 | 两模块的项目、任务、预制、模板及全局工具页面 | 未开始，按路线依赖逐项推进 |
 
 保留的方向是紧凑、图片优先、两模块同等重要的工作台，状态语义独立，明暗主题支持系统跟随与手动选择。组件运行依赖保持 `PrimeReact 10.9.9 Styled`，主题构建工具按本目录清单单独锁定。新组件主题从 `src/tokens.css` 这一份色值来源生成，具体新呈现和交互以本轮实际审核为准。
@@ -68,7 +72,7 @@ npm --prefix docs/design/prototypes run dev
 
 浏览器访问 [基础设计原型](http://127.0.0.1:5178/foundations/)。开发服务仅监听 `127.0.0.1:5178`，端口已占用时直接退出，不自动改用其他端口。应通过开发服务访问；直接双击源码 HTML 不会执行依赖构建。
 
-当前审核重点为[层级、手动排序与移动到](http://127.0.0.1:5178/components/organization/)，对应 `components/organization/index.html`；范围、验证与批准边界记录在 [R01-02 审核记录](reviews/R01-02.md)。[列表组合](http://127.0.0.1:5178/components/lists/)保留已确认版本，[基础原型](http://127.0.0.1:5178/foundations/)继续作为共同主题与基础组件的参考入口。
+当前审核重点是仓库中的[任务路线](ui-design-roadmap.md)，不是继续制作原型。[R01-02历史原型](http://127.0.0.1:5178/components/organization/)保留供回查，页面中的旧指引不代表新的制作授权；本轮只改文档。[列表组合](http://127.0.0.1:5178/components/lists/)保持已确认，基础规则沿用已声明范围。
 
 构建检查：
 
@@ -103,6 +107,10 @@ npm --prefix docs/design/prototypes run theme:check
 | `components/organization/index.html` | `R01-02` 层级、手动排序与移动到原型 |
 | [reviews/R01-02.md](reviews/R01-02.md) | 当前组织子项、模拟行为、待测场景与用户审核 |
 | [.impeccable/design.json](.impeccable/design.json) | `Impeccable` `schemaVersion 2` 原型扩展 `sidecar`，仅记录元信息及静态组件摘录 |
+| [ui-design-coverage.md](ui-design-coverage.md) | 64个业务／能力覆盖编号和适用状态，负责查漏 |
+| [ui-design-shared-plan.md](ui-design-shared-plan.md) | 26个导航、任务与共享工具子项说明草案 |
+| [ui-design-production-plan.md](ui-design-production-plan.md) | 30个生产业务子项说明草案 |
+| [ui-design-training-plan.md](ui-design-training-plan.md) | 23个训练业务子项说明草案 |
 | `src/main.jsx` | `PrimeReact` 组件样本及本地演示交互 |
 | `src/lists.jsx`、`src/lists.css` | 列表组合、模拟数据、桌面表格与手机卡片及其适配样式 |
 | `src/organization.jsx`、`src/organization.css` | 文件夹定位、内容多选、排序与移动对话框及其响应式布局 |
@@ -151,7 +159,7 @@ node docs/design/prototypes/scripts/snapshot-organization.mjs --root "<本机 Co
 
 ## 交付与后续使用
 
-按基础清单中的 `F-01` 等编号记录基础调整；`R01-01` 已由用户确认，当前按 `R01-02-A`～`R01-02-I` 制作和审核组织组合。各入口共用[基础统一主题](reviews/F-theme.md)，每个子项分别记录适配、交互和确认，不能把主题复用或一个组合的批准当作整个前端已迁移或获批。
+按[总路线](ui-design-roadmap.md)先登记并确认具体任务。`R01-01` 已确认，`R01-02` 暂停且不作为其他页面前置；当前所有新拆解条目均为待确认草案。已批准任务中的局部修正仍绑定原编号；新增目的、对象或流程必须事前变更任务说明，不先写原型再补文档。
 
 本工程使用本地模拟数据，不调用生产 API、不读取应用登录令牌、不连接数据库、不控制工作队列。原型 `node_modules/` 和构建产物不提交；正式实施时需要另行完成接口接入、业务状态和应用验证。当前生产设计仍查阅[设计文档](../README.md)及[根设计契约](../../../DESIGN.md)。
 
