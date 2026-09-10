@@ -26,19 +26,18 @@ const routes = [
   ...tools.map(tool => ({ key: `global/${tool.id}`, section: tool.id, label: tool.label, title: tool.label })),
 ];
 const routeFor = key => routes.find(route => route.key === key);
-const defaultNavigation = () => ({ route: 'production/tasks', activeModule: 'production', last: { production: 'tasks', training: 'tasks' } });
+const defaultNavigation = () => ({ route: 'production/tasks', activeModule: 'production' });
 function readNavigation() {
   let state = defaultNavigation();
   try {
     const saved = JSON.parse(localStorage.getItem(storageKey) || 'null');
     if (saved && routeFor(saved.route) && modules.some(module => module.id === saved.activeModule)) {
       state = { ...state, route: saved.route, activeModule: saved.activeModule };
-      for (const module of modules) if (sections.some(section => section.id === saved.last?.[module.id])) state.last[module.id] = saved.last[module.id];
     }
   } catch { /* Navigation remains usable when storage is unavailable. */ }
   if (location.hash) state.route = routeFor(location.hash.slice(1))?.key ?? 'production/tasks';
   const route = routeFor(state.route);
-  if (route.module) { state.activeModule = route.module; state.last[route.module] = route.section; }
+  if (route.module) state.activeModule = route.module;
   return state;
 }
 function useMedia(query) {
@@ -71,7 +70,7 @@ function App() {
     const onHashChange = () => {
       const next = routeFor(location.hash.slice(1)) ?? routeFor('production/tasks');
       if (location.hash.slice(1) !== next.key) history.replaceState(null, '', `#${next.key}`);
-      setNavigation(current => ({ route: next.key, activeModule: next.module ?? current.activeModule, last: next.module ? { ...current.last, [next.module]: next.section } : current.last }));
+      setNavigation(current => ({ route: next.key, activeModule: next.module ?? current.activeModule }));
       setMoreOpen(false);
     };
     window.addEventListener('hashchange', onHashChange);
@@ -89,7 +88,7 @@ function App() {
   }
   const themeAction = theme === 'dark' ? '切换到浅色' : '切换到深色';
   const themeSwitch = (iconOnly = false) => <Button text plain className="nav-theme-toggle" icon={theme === 'dark' ? 'pi pi-sun' : 'pi pi-moon'} label={iconOnly ? undefined : themeAction} aria-label={themeAction} title={themeAction} onClick={() => updatePreference('theme', theme === 'dark' ? 'light' : 'dark')} />;
-  const moduleSwitch = (iconOnly = false) => <ChoiceRail label="切换业务模块" value={navigation.activeModule} options={modules.map(module => ({ ...module, value: module.id }))} iconOnly={iconOnly} onChange={value => navigate(`${value}/${navigation.last[value]}`)} />;
+  const moduleSwitch = (iconOnly = false) => <ChoiceRail label="切换业务模块" value={navigation.activeModule} options={modules.map(module => ({ ...module, value: module.id }))} iconOnly={iconOnly} onChange={value => navigate(`${value}/tasks`)} />;
   const themeRail = () => <ChoiceRail label="主题" value={preference.theme} options={themeChoices} onChange={value => updatePreference('theme', value)} />;
   function navigationLink(item, key, mobile = false) {
     const active = navigation.route === key;
