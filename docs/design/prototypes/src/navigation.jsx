@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
+import { Menu } from 'primereact/menu';
 import { SelectButton } from 'primereact/selectbutton';
 import { Toast } from 'primereact/toast';
 import { PrototypeProvider } from './prototype-provider.jsx';
@@ -56,6 +57,7 @@ function App() {
   const collapsed = manualCollapsed ?? narrow;
   const { preference, theme, updatePreference } = usePrototypePreference();
   const main = useRef(null);
+  const moduleMenu = useRef(null);
   const toast = useRef(null);
   const route = routeFor(navigation.route);
   const moduleLabel = modules.find(module => module.id === navigation.activeModule).label;
@@ -83,7 +85,8 @@ function App() {
   }
   const themeAction = theme === 'dark' ? '切换到浅色' : '切换到深色';
   const themeSwitch = (iconOnly = false) => <Button text plain className="nav-theme-toggle" icon={theme === 'dark' ? 'pi pi-sun' : 'pi pi-moon'} label={iconOnly ? undefined : themeAction} aria-label={themeAction} title={themeAction} onClick={() => updatePreference('theme', theme === 'dark' ? 'light' : 'dark')} />;
-  const moduleSwitch = (iconOnly = false) => <div className="nav-module-switch" role="group" aria-label="切换业务模块">{modules.map(module => <Button key={module.id} label={iconOnly ? undefined : module.label} icon={iconOnly ? module.icon : undefined} aria-label={module.label} title={iconOnly ? module.label : undefined} className="nav-module-button" rounded={iconOnly} text={navigation.activeModule !== module.id} plain={navigation.activeModule !== module.id} aria-pressed={navigation.activeModule === module.id} onClick={() => navigate(`${module.id}/${navigation.last[module.id]}`)} />)}</div>;
+  const moduleChoices = modules.map(module => ({ label: module.label, icon: navigation.activeModule === module.id ? 'pi pi-check' : module.icon, command: () => navigate(`${module.id}/${navigation.last[module.id]}`) }));
+  const moduleSwitch = () => <SelectButton value={navigation.activeModule} options={modules} optionLabel="label" optionValue="id" allowEmpty={false} aria-label="业务模块" onChange={event => navigate(`${event.value}/${navigation.last[event.value]}`)} />;
   function navigationLink(item, key, mobile = false) {
     const active = navigation.route === key;
     return <a key={key} href={`#${key}`} className={`${mobile ? 'nav-tab' : 'nav-item'}${active ? ' is-active' : ''}`} aria-label={item.label} aria-current={active ? 'page' : undefined} title={item.label} onClick={() => setMoreOpen(false)}>
@@ -101,8 +104,8 @@ function App() {
       <aside className="nav-sidebar" id="desktop-sidebar-navigation" aria-label="应用侧栏">
         <div className="nav-brand" aria-label="ComfyUI Manager"><span className="nav-brand-full">ComfyUI <span>Manager</span></span><span className="nav-brand-short" aria-hidden="true">CM</span></div>
         <div className="nav-module-zone">
-          <div className="nav-module-expanded" aria-hidden={collapsed} inert={collapsed}>{moduleSwitch()}</div>
-          <div className="nav-module-compact" aria-hidden={!collapsed} inert={!collapsed}>{moduleSwitch(true)}</div>
+          <Button text plain className="nav-module-trigger" label={collapsed ? undefined : moduleLabel} icon={collapsed ? modules.find(module => module.id === navigation.activeModule).icon : 'pi pi-angle-down'} iconPos={collapsed ? 'left' : 'right'} aria-label={`切换业务模块，当前：${moduleLabel}`} title={`当前：${moduleLabel}，切换模块`} aria-haspopup="menu" aria-controls="navigation-module-menu" onClick={event => moduleMenu.current.toggle(event)} />
+          <Menu popup ref={moduleMenu} model={moduleChoices} id="navigation-module-menu" />
         </div>
         <nav className="nav-primary" aria-label={`${moduleLabel}主导航`}>{businessLinks}</nav>
         <div className="nav-sidebar-bottom"><span className="nav-group-label">全局工具</span><nav aria-label="全局工具">{globalLinks}</nav>
@@ -120,8 +123,8 @@ function App() {
     <div className="nav-mobile-dock">
       <nav className="nav-mobile-tabs" aria-label={`${moduleLabel}底部导航`}>{sections.map(section => navigationLink(section, `${navigation.activeModule}/${section.id}`, true))}<button type="button" className={`nav-tab${!route.module ? ' is-active' : ''}`} aria-label={`更多，当前模块：${moduleLabel}`} aria-expanded={moreOpen} aria-haspopup="dialog" onClick={() => setMoreOpen(true)}><i className="pi pi-ellipsis-h" aria-hidden="true" /><span>更多</span></button></nav>
     </div>
-    <Dialog visible={moreOpen} onHide={() => setMoreOpen(false)} position="right" header="更多" className="nav-more-sidebar" draggable={false} resizable={false} dismissableMask blockScroll>
-      <div className="nav-more-modules"><span>业务模块</span>{moduleSwitch()}</div><p className="nav-more-description">全局工具</p><nav className="nav-more-links" aria-label="更多中的全局工具">{globalLinks}</nav><div className="nav-more-theme"><span id="more-theme-label">主题</span><SelectButton value={preference.theme} options={themeOptions} onChange={event => updatePreference('theme', event.value)} aria-labelledby="more-theme-label" allowEmpty={false} /></div>
+    <Dialog visible={moreOpen} onHide={() => setMoreOpen(false)} position="bottom" header="导航与外观" className="nav-more-sheet" draggable={false} resizable={false} dismissableMask blockScroll>
+      <div className="nav-more-modules"><span>当前模块</span>{moduleSwitch()}</div><p className="nav-more-description">全局工具</p><nav className="nav-more-links" aria-label="更多中的全局工具">{globalLinks}</nav><div className="nav-more-theme"><span id="more-theme-label">主题</span><SelectButton value={preference.theme} options={themeOptions} onChange={event => updatePreference('theme', event.value)} aria-labelledby="more-theme-label" allowEmpty={false} /></div>
     </Dialog>
     <Dialog header="导航预览设置" visible={previewOpen} onHide={() => setPreviewOpen(false)} className="nav-preview-dialog" draggable={false} blockScroll footer={<Button label="完成" onClick={() => setPreviewOpen(false)} />}>
       <div className="nav-preview-fields"><div><span id="nav-theme-label">主题</span><SelectButton value={preference.theme} options={themeOptions} onChange={event => updatePreference('theme', event.value)} aria-labelledby="nav-theme-label" allowEmpty={false} /></div><p>桌面侧栏可收放；窄屏默认收起。手机全局导航集中在底部，顶部预留给页面操作。</p><Button outlined icon="pi pi-refresh" label="模拟首次访问" onClick={resetVisit} /><a href="../../ui-design-shared-plan.md">查看 R02-01 任务范围</a></div>
