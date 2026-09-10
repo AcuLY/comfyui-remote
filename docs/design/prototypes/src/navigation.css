@@ -13,8 +13,8 @@
 .nav-module-zone { height: 86px; flex-shrink: 0; position: relative; }
 .nav-module-expanded, .nav-module-compact { position: absolute; top: 50%; transform: translateY(-50%); transition: opacity var(--duration-quick); }
 .nav-module-expanded { width: 207px; left: 0; }
-.nav-module-compact { left: 4px; opacity: 0; visibility: hidden; }
-.nav-module-compact .nav-module-switch { flex-direction: column; align-items: center; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-pill); background: var(--surface); }
+.nav-module-compact { left: 50%; translate: -50% 0; opacity: 0; visibility: hidden; }
+.nav-module-compact .nav-module-switch { flex-direction: column; align-items: center; padding: 4px; border: 1px solid transparent; border-radius: var(--radius-pill); background: var(--surface-hover); }
 .nav-module-switch { display: flex; gap: 4px; }
 .nav-module-button { flex: 1; min-width: 0; }
 .nav-sidebar nav { display: flex; flex-direction: column; gap: 4px; }
@@ -28,11 +28,11 @@
 .nav-sidebar-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
 .nav-group-label { height: 19px; white-space: nowrap; transition: opacity var(--duration-quick); padding: 0 12px; color: var(--text-muted); font-size: var(--text-xs); }
 .nav-utility-row { height: 44px; display: flex; align-items: center; flex-shrink: 0; }
-.nav-logout, .nav-theme-toggle, .nav-collapse-row > button { white-space: nowrap; flex-shrink: 0; }
+.nav-theme-toggle, .nav-collapse-row > button { white-space: nowrap; flex-shrink: 0; }
 .nav-collapse-row { height: 53px; flex-shrink: 0; display: flex; align-items: center; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px; }
 .is-collapsed .nav-brand-full, .is-collapsed .nav-sidebar .nav-item-label, .is-collapsed .nav-sidebar .nav-current-mark, .is-collapsed .nav-group-label, .is-collapsed .nav-module-expanded { opacity: 0; visibility: hidden; }
 .is-collapsed .nav-brand-short, .is-collapsed .nav-module-compact { opacity: 1; visibility: visible; }
-.is-collapsed .nav-utility-row, .is-collapsed .nav-collapse-row { justify-content: flex-start; padding-left: 9px; }
+.is-collapsed .nav-utility-row, .is-collapsed .nav-collapse-row { justify-content: center; padding-left: 0; }
 .nav-workspace { min-width: 0; display: flex; flex-direction: column; }
 .nav-page-heading { min-height: 68px; padding: 16px 32px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
 .nav-page-heading h1 { font-size: var(--text-lg); line-height: 1.4; letter-spacing: -0.015em; }
@@ -50,7 +50,7 @@
 .nav-more-description { color: var(--text-secondary); font-size: var(--text-xs); margin-bottom: 12px; }
 .nav-more-links { display: grid; gap: 8px; }
 .nav-more-theme { display: grid; gap: 12px; margin-top: 24px; }
-.nav-more-footer { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); }
+.nav-more-modules { display: grid; gap: 12px; margin-bottom: 24px; }
 .nav-preview-dialog { width: 440px; max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
 .nav-preview-fields { display: grid; gap: 24px; }
 .nav-preview-fields > div { display: grid; gap: 12px; }
@@ -68,27 +68,25 @@
   :root[data-prototype='navigation'] { --nav-review-height: 52px; }
   .nav-review-bar { padding-inline: 12px; gap: 8px; }
   .nav-review-bar > a { min-height: 44px; }
-  .nav-layout, .nav-layout.is-collapsed { display: block; padding-bottom: calc(125px + env(safe-area-inset-bottom)); }
+  .nav-layout, .nav-layout.is-collapsed { display: block; padding-bottom: calc(65px + env(safe-area-inset-bottom)); }
   .nav-sidebar { display: none; }
   .nav-mobile-dock { position: fixed; bottom: 0; left: 0; right: 0; z-index: 15; display: block; padding-bottom: env(safe-area-inset-bottom); background: var(--surface); border-top: 1px solid var(--border); }
-  .nav-mobile-controls { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 8px 16px; min-height: 60px; }
-  .nav-mobile-controls .nav-module-switch { flex: 0 0 128px; }
-  .nav-mobile-utilities { display: flex; align-items: center; gap: 8px; }
-  .nav-more-active { background: var(--accent-soft); }
   .nav-page-heading { min-height: 60px; padding: 16px; flex-wrap: wrap; gap: 8px; }
   .nav-page-heading h1 { font-size: 18px; }
-  .nav-main { padding: 16px 16px 20px; min-height: calc(100dvh - var(--nav-review-height) - 185px - env(safe-area-inset-bottom)); }
+  .nav-main { padding: 16px 16px 20px; min-height: calc(100dvh - var(--nav-review-height) - 125px - env(safe-area-inset-bottom)); }
   .nav-content-placeholder { min-height: 240px; padding: 20px 12px; }
-  .nav-mobile-tabs { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); min-height: 64px; padding: 4px 8px; border-top: 1px solid var(--border); }
-  .nav-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 56px; padding: 6px 4px; color: var(--text-secondary); text-decoration: none; border-radius: var(--radius-control); border: 1px solid transparent; font-size: var(--text-xs); }
+  .nav-mobile-tabs { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); min-height: 64px; padding: 4px 8px; border-top: 1px solid var(--border); }
+  .nav-tab { appearance: none; background: transparent; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 56px; padding: 6px 4px; color: var(--text-secondary); text-decoration: none; border-radius: var(--radius-control); border: 1px solid transparent; font-size: var(--text-xs); }
   .nav-tab > i { font-size: 18px; }
   .nav-tab.is-active { background: var(--accent-soft); color: var(--on-accent-soft); border-color: var(--border-control); font-weight: 600; }
 }
 @media (width < 360px) {
-  .nav-mobile-controls { padding-inline: 12px; gap: 8px; }
   .nav-main { padding-inline: 12px; }
   .nav-page-actions { display: none; }
 }
 @media (max-height: 500px) {
   .nav-content-placeholder { min-height: 160px; }
 }
+
+.is-collapsed .nav-sidebar .nav-item { position: relative; justify-content: center; padding-inline: 0; gap: 0; }
+.is-collapsed .nav-sidebar .nav-item-label, .is-collapsed .nav-sidebar .nav-current-mark { position: absolute; }

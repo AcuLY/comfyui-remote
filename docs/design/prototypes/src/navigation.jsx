@@ -81,10 +81,6 @@ function App() {
     history.replaceState(null, '', '#production/tasks');
     toast.current.show({ severity: 'info', summary: '已回到首次访问状态', detail: '默认进入生产任务。', life: 2600 });
   }
-  function demonstrateLogout() {
-    setMoreOpen(false);
-    toast.current.show({ severity: 'info', summary: '退出登录入口', detail: '这是导航预览，未改变登录状态。', life: 3000 });
-  }
   const themeAction = theme === 'dark' ? '切换到浅色' : '切换到深色';
   const themeSwitch = (iconOnly = false) => <Button text plain className="nav-theme-toggle" icon={theme === 'dark' ? 'pi pi-sun' : 'pi pi-moon'} label={iconOnly ? undefined : themeAction} aria-label={themeAction} title={themeAction} onClick={() => updatePreference('theme', theme === 'dark' ? 'light' : 'dark')} />;
   const moduleSwitch = (iconOnly = false) => <div className="nav-module-switch" role="group" aria-label="切换业务模块">{modules.map(module => <Button key={module.id} label={iconOnly ? undefined : module.label} icon={iconOnly ? module.icon : undefined} aria-label={module.label} title={iconOnly ? module.label : undefined} className="nav-module-button" rounded={iconOnly} text={navigation.activeModule !== module.id} plain={navigation.activeModule !== module.id} aria-pressed={navigation.activeModule === module.id} onClick={() => navigate(`${module.id}/${navigation.last[module.id]}`)} />)}</div>;
@@ -111,7 +107,6 @@ function App() {
         <nav className="nav-primary" aria-label={`${moduleLabel}主导航`}>{businessLinks}</nav>
         <div className="nav-sidebar-bottom"><span className="nav-group-label">全局工具</span><nav aria-label="全局工具">{globalLinks}</nav>
           <div className="nav-utility-row">{themeSwitch(collapsed)}</div>
-          <div className="nav-utility-row"><Button text className="nav-logout" icon="pi pi-sign-out" label={collapsed ? undefined : '退出登录'} aria-label="退出登录" title="退出登录" onClick={demonstrateLogout} /></div>
           <div className="nav-collapse-row"><Button text icon={collapsed ? 'pi pi-angle-double-right' : 'pi pi-angle-double-left'} label={collapsed ? undefined : '收起侧栏'} aria-label={collapsed ? '展开侧栏' : '收起侧栏'} aria-expanded={!collapsed} aria-controls="desktop-sidebar-navigation" onClick={() => setManualCollapsed(!collapsed)} /></div>
         </div>
       </aside>
@@ -123,11 +118,10 @@ function App() {
       </div>
     </div>
     <div className="nav-mobile-dock">
-      <div className="nav-mobile-controls">{moduleSwitch()}<div className="nav-mobile-utilities">{themeSwitch(true)}<Button text icon="pi pi-ellipsis-h" className={!route.module ? 'nav-more-active' : ''} aria-label="更多全局工具" aria-expanded={moreOpen} aria-haspopup="dialog" onClick={() => setMoreOpen(true)} /></div></div>
-      <nav className="nav-mobile-tabs" aria-label={`${moduleLabel}底部导航`}>{sections.map(section => navigationLink(section, `${navigation.activeModule}/${section.id}`, true))}</nav>
+      <nav className="nav-mobile-tabs" aria-label={`${moduleLabel}底部导航`}>{sections.map(section => navigationLink(section, `${navigation.activeModule}/${section.id}`, true))}<button type="button" className={`nav-tab${!route.module ? ' is-active' : ''}`} aria-label={`更多，当前模块：${moduleLabel}`} aria-expanded={moreOpen} aria-haspopup="dialog" onClick={() => setMoreOpen(true)}><i className="pi pi-ellipsis-h" aria-hidden="true" /><span>更多</span></button></nav>
     </div>
     <Dialog visible={moreOpen} onHide={() => setMoreOpen(false)} position="right" header="更多" className="nav-more-sidebar" draggable={false} resizable={false} dismissableMask blockScroll>
-      <p className="nav-more-description">全局工具</p><nav className="nav-more-links" aria-label="更多中的全局工具">{globalLinks}</nav><div className="nav-more-theme"><span id="more-theme-label">主题</span><SelectButton value={preference.theme} options={themeOptions} onChange={event => updatePreference('theme', event.value)} aria-labelledby="more-theme-label" allowEmpty={false} /></div><div className="nav-more-footer"><Button text icon="pi pi-sign-out" label="退出登录" onClick={demonstrateLogout} /></div>
+      <div className="nav-more-modules"><span>业务模块</span>{moduleSwitch()}</div><p className="nav-more-description">全局工具</p><nav className="nav-more-links" aria-label="更多中的全局工具">{globalLinks}</nav><div className="nav-more-theme"><span id="more-theme-label">主题</span><SelectButton value={preference.theme} options={themeOptions} onChange={event => updatePreference('theme', event.value)} aria-labelledby="more-theme-label" allowEmpty={false} /></div>
     </Dialog>
     <Dialog header="导航预览设置" visible={previewOpen} onHide={() => setPreviewOpen(false)} className="nav-preview-dialog" draggable={false} blockScroll footer={<Button label="完成" onClick={() => setPreviewOpen(false)} />}>
       <div className="nav-preview-fields"><div><span id="nav-theme-label">主题</span><SelectButton value={preference.theme} options={themeOptions} onChange={event => updatePreference('theme', event.value)} aria-labelledby="nav-theme-label" allowEmpty={false} /></div><p>桌面侧栏可收放；窄屏默认收起。手机全局导航集中在底部，顶部预留给页面操作。</p><Button outlined icon="pi pi-refresh" label="模拟首次访问" onClick={resetVisit} /><a href="../../ui-design-shared-plan.md">查看 R02-01 任务范围</a></div>
