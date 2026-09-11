@@ -37,6 +37,7 @@
 .nav-sidebar .nav-item-label, .nav-current-mark, .nav-brand-full, .nav-module-wide, .nav-group-label, .nav-expanding-label { opacity: clamp(0, calc(1 - var(--nav-fold) * 5), 1); }
 .nav-sidebar-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
 .nav-group-label { height: 19px; white-space: nowrap; padding: 0 12px; color: var(--nav-secondary); font-size: var(--text-xs); }
+.nav-theme-toggle { appearance: none; background: transparent; font: inherit; text-align: left; cursor: pointer; }
 .nav-utility-row { height: 44px; display: flex; align-items: center; flex-shrink: 0; }
 .nav-theme-toggle, .nav-collapse-row > button { white-space: nowrap; flex-shrink: 0; }
 .nav-collapse-row { height: 53px; flex-shrink: 0; display: flex; align-items: center; border-top: 1px solid var(--nav-border); padding-top: 8px; margin-top: 4px; }

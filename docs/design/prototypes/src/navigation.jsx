@@ -88,7 +88,7 @@ function App() {
   }
   const themeAction = theme === 'dark' ? '切换到浅色' : '切换到深色';
   const sidebarButtonSlots = { icon: { className: 'nav-control-icon' }, label: { className: 'nav-expanding-label' } };
-  const themeSwitch = () => <Button text plain className="nav-theme-toggle" icon={theme === 'dark' ? 'pi pi-sun' : 'pi pi-moon'} label={themeAction} pt={sidebarButtonSlots} aria-label={themeAction} title={themeAction} onClick={() => updatePreference('theme', theme === 'dark' ? 'light' : 'dark')} />;
+  const themeSwitch = () => <button type="button" className="nav-item nav-theme-toggle" aria-label={themeAction} title={themeAction} onClick={() => updatePreference('theme', theme === 'dark' ? 'light' : 'dark')}><i className={theme === 'dark' ? 'pi pi-sun' : 'pi pi-moon'} aria-hidden="true" /><span className="nav-item-label">{themeAction}</span></button>;
   const moduleSwitch = (iconOnly = false) => <ChoiceRail label="切换业务模块" value={navigation.activeModule} options={modules.map(module => ({ ...module, value: module.id }))} iconOnly={iconOnly} onChange={value => navigate(`${value}/tasks`)} />;
   const themeRail = () => <ChoiceRail label="主题" value={preference.theme} options={themeChoices} onChange={value => updatePreference('theme', value)} />;
   function navigationLink(item, key, mobile = false) {
