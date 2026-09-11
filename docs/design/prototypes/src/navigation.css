@@ -1,3 +1,8 @@
+@property --nav-tab-active {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
 @property --nav-fold {
   syntax: '<number>';
   inherits: true;
@@ -77,7 +82,6 @@
 :root[data-prototype='navigation'] .nav-more-sheet .nav-more-close:hover { background: transparent; color: var(--nav-secondary); }
 :root[data-prototype='navigation'] .nav-more-sheet .nav-rail-button.is-active:hover { background: var(--surface); color: var(--accent); }
 .nav-more-links .nav-item:active { background: var(--accent-soft); color: var(--on-accent-soft); }
-.nav-tab:active > .nav-tab-icon { background: var(--accent-soft); }
 @media (max-width: 399px) {
   .nav-more-links .nav-item { height: 52px; flex-direction: column; gap: 4px; padding-block: 4px; }
 }
@@ -105,12 +109,12 @@
   .nav-page-heading h1 { font-size: 18px; }
   .nav-main { padding: 16px 16px 20px; min-height: calc(100dvh - var(--nav-review-height) - 141px - env(safe-area-inset-bottom)); }
   .nav-content-placeholder { min-height: 240px; padding: 20px 12px; }
-  .nav-mobile-tabs { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 4px; min-height: 80px; padding: 10px 12px; }
-  .nav-tab { appearance: none; background: transparent; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 60px; padding: 0; color: var(--nav-secondary); text-decoration: none; border-radius: var(--radius-control); border: 0; font-size: 12px; line-height: 18px; }
-  .nav-tab > .nav-tab-icon { width: 44px; height: 32px; display: grid; place-items: center; border-radius: var(--radius-pill); font-size: 18px; }
-  .nav-tab:active, .nav-tab.is-active { color: var(--on-accent-soft); }
-  .nav-tab.is-active { font-weight: 600; }
-  .nav-tab.is-active > .nav-tab-icon { background: var(--accent-soft); }
+  .nav-mobile-tab-list { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 4px; min-height: 80px; }
+  .nav-tab-item { --nav-tab-active: 0; min-width: 0; color: color-mix(in srgb, var(--nav-secondary), var(--on-accent-soft) calc(var(--nav-tab-active) * 100%)); transition: --nav-tab-active var(--duration-quick) var(--ease-out); }
+  .nav-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 60px; width: 100%; text-decoration: none; }
+  .nav-tab-icon { width: 44px; height: 32px; display: grid; place-items: center; border-radius: var(--radius-pill); font-size: 18px; background: color-mix(in srgb, transparent, var(--accent-soft) calc(var(--nav-tab-active) * 100%)); }
+  .nav-tab-item:active, .nav-tab-item.is-active { --nav-tab-active: 1; }
+
 
 }
 @media (width < 360px) {

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
+import { TabMenu } from 'primereact/tabmenu';
 import { Toast } from 'primereact/toast';
 import { PrototypeProvider } from './prototype-provider.jsx';
 import { usePrototypePreference, themeOptions } from './use-prototype-preference.jsx';
@@ -98,19 +99,39 @@ function App() {
   const themeSwitch = () => <button type="button" className="nav-item nav-theme-toggle" aria-label={themeAction} title={themeAction} onClick={() => updatePreference('theme', theme === 'dark' ? 'light' : 'dark')}><i className={theme === 'dark' ? 'pi pi-sun' : 'pi pi-moon'} aria-hidden="true" /><span className="nav-item-label">{themeAction}</span></button>;
   const moduleSwitch = (iconOnly = false) => <ChoiceRail label="切换业务模块" value={navigation.activeModule} options={modules.map(module => ({ ...module, value: module.id }))} iconOnly={iconOnly} onChange={value => navigate(`${value}/tasks`)} />;
   const themeRail = (iconOnly = false) => <ChoiceRail iconOnly={iconOnly} vertical={false} label="主题" value={theme} options={themeChoices} onChange={value => updatePreference('theme', value)} />;
-  function navigationLink(item, key, mobile = false) {
+  function selectRoute(event, key) {
+    if (event.defaultPrevented || (event.button != null && event.button !== 0) || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const next = routeFor(key);
+    setNavigation(current => ({ route: next.key, activeModule: next.module ?? current.activeModule }));
+    setMoreOpen(false);
+    return true;
+  }
+  function navigationLink(item, key) {
     const active = navigation.route === key;
-    function selectLink(event) {
-      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const next = routeFor(key);
-      // Commit the selected appearance with the click, before the deferred hashchange.
-      setNavigation(current => ({ route: next.key, activeModule: next.module ?? current.activeModule }));
-      setMoreOpen(false);
-    }
-    return <a key={key} href={`#${key}`} className={`${mobile ? 'nav-tab' : 'nav-item'}${active ? ' is-active' : ''}`} aria-label={item.label} aria-current={active ? 'page' : undefined} title={item.label} onClick={selectLink}>
-      <i className={`pi ${item.icon}${mobile ? ' nav-tab-icon' : ''}`} aria-hidden="true" /><span className="nav-item-label">{item.label}</span>{active && !mobile && <i className="pi pi-check nav-current-mark" aria-hidden="true" />}
+    return <a key={key} href={`#${key}`} className={`nav-item${active ? ' is-active' : ''}`} aria-label={item.label} aria-current={active ? 'page' : undefined} title={item.label} onClick={event => selectRoute(event, key)}>
+      <i className={`pi ${item.icon}`} aria-hidden="true" /><span className="nav-item-label">{item.label}</span>{active && <i className="pi pi-check nav-current-mark" aria-hidden="true" />}
     </a>;
   }
+  const mobileItems = [
+    ...sections.map(section => ({ id: section.id, label: section.label, icon: `pi ${section.icon}`, url: `#${navigation.activeModule}/${section.id}` })),
+    { id: 'more', label: '更多', icon: 'pi pi-ellipsis-h' },
+  ];
+  const mobileActiveIndex = route.module ? sections.findIndex(section => section.id === route.section) : sections.length;
+  function changeMobileTab({ originalEvent, index }) {
+    if (index === sections.length) setMoreOpen(true);
+    else {
+      const key = `${navigation.activeModule}/${sections[index].id}`;
+      const selected = selectRoute(originalEvent, key);
+      if (selected && originalEvent.type === 'keydown') location.hash = key;
+    }
+  }
+  const mobileTabSlots = {
+    menu: { className: 'nav-mobile-tab-list', 'aria-label': `${moduleLabel}导航入口`, style: { background: 'transparent', border: 0, padding: '10px 12px' } },
+    menuitem: ({ context }) => ({ className: `nav-tab-item${context.index === mobileActiveIndex ? ' is-active' : ''}`, style: { margin: 0 } }),
+    action: ({ context }) => ({ className: 'nav-tab', 'aria-current': context.index === mobileActiveIndex && context.index < sections.length ? 'page' : undefined, 'aria-haspopup': context.index === sections.length ? 'dialog' : undefined, 'aria-expanded': context.index === sections.length ? moreOpen : undefined, style: { color: 'inherit', background: 'transparent', border: 0, padding: 0, margin: 0, fontSize: '12px', fontWeight: 500, borderRadius: 'var(--radius-control)' } }),
+    icon: { className: 'nav-tab-icon', style: { color: 'inherit', margin: 0 } },
+    label: { className: 'nav-tab-label', style: { color: 'inherit', fontWeight: 'inherit', lineHeight: '18px', transition: 'none' } },
+  };
   const businessLinks = sections.map(section => navigationLink(section, `${navigation.activeModule}/${section.id}`));
   const globalLinks = tools.map(tool => navigationLink(tool, `global/${tool.id}`));
 
@@ -138,9 +159,9 @@ function App() {
         </main>
       </div>
     </div>
-    <div className="nav-mobile-dock">
-      <nav className="nav-mobile-tabs" aria-label={`${moduleLabel}底部导航`}>{sections.map(section => navigationLink(section, `${navigation.activeModule}/${section.id}`, true))}<button type="button" className={`nav-tab${!route.module ? ' is-active' : ''}`} aria-label={`更多，当前模块：${moduleLabel}`} aria-expanded={moreOpen} aria-haspopup="dialog" onClick={() => setMoreOpen(true)}><i className="pi pi-ellipsis-h nav-tab-icon" aria-hidden="true" /><span>更多</span></button></nav>
-    </div>
+    <nav className="nav-mobile-dock" aria-label={`${moduleLabel}底部导航`}>
+      <TabMenu className="nav-mobile-tabs" model={mobileItems} activeIndex={mobileActiveIndex} onTabChange={changeMobileTab} pt={mobileTabSlots} />
+    </nav>
     <Dialog visible={moreOpen} onHide={() => setMoreOpen(false)} position="bottom" showHeader={false} aria-label="更多导航与外观" className="nav-more-sheet" contentStyle={{ padding: 0, borderRadius: 'inherit' }} draggable={false} resizable={false} dismissableMask blockScroll>
       <div className="nav-more-content">
         <div className="nav-more-top">{moduleSwitch()}{themeRail(true)}<Button text plain className="nav-more-close" icon="pi pi-times" aria-label="关闭更多" onClick={() => setMoreOpen(false)} /></div>
