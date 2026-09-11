@@ -54,6 +54,7 @@ document:
 | `.agents/skills/impeccable/reference/degraded/finish-reviewer.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `.agents/skills/impeccable/reference/degraded/manual-edit-applier.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `.agents/skills/impeccable/reference/delight.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.agents/skills/impeccable/reference/delivery-quality.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `.agents/skills/impeccable/reference/distill.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `.agents/skills/impeccable/reference/doctor.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `.agents/skills/impeccable/reference/document.md` | `.agents` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |

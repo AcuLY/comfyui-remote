@@ -6,6 +6,8 @@ Adapt an existing design to a different context: another screen size, device, pl
 
 ---
 
+Use [delivery-quality.md](delivery-quality.md) for current contracts, component responsibilities, and evidence limits. Decide fill, bounded width, or content size per container; no overflow alone does not prove good space use. Keep hit areas intact when reducing redundant headings, labels, or grouping.
+
 ## Assess Adaptation Challenge
 
 Understand what needs adaptation and why:
@@ -178,7 +180,7 @@ Choose appropriate breakpoints:
 
 ## Verify Adaptations
 
-Test thoroughly across contexts:
+Choose relevant contexts from the supported product scope and the change's risks; this is a pool of checks, not a mandatory cross-product:
 
 - **Real devices**: Test on actual phones, tablets, desktops
 - **Different orientations**: Portrait and landscape
@@ -305,7 +307,7 @@ DevTools device emulation is useful for layout but misses:
 - Font rendering differences
 - Browser chrome/keyboard appearances
 
-**Test on at least**: One real iPhone, one real Android, a tablet if relevant. Cheap Android phones reveal performance issues you'll never see on simulators.
+**Real-device coverage**: Use representative devices from the actual support scope when hardware, keyboard chrome, touch, or performance is relevant. Low-end devices can expose issues simulators miss. If only simulation is available, report that limit instead of claiming real-device validation; do not make unrelated device purchases or tests a prerequisite for a local style fix.
 
 ---
 

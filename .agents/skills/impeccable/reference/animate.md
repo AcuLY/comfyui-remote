@@ -78,6 +78,8 @@ Every web animation needs a `prefers-reduced-motion` path with an intentional al
 
 ## Verify
 
+Use the interaction sequence in [delivery-quality.md](delivery-quality.md). Inspect press, release, application state commit, completion, and cancellation or reversal as one path. Check icon, text, background, font weight, clipping, and focus together. Keep text metrics stable unless intentionally animated; shared timing is useful when needed, not a reason to impose a fixed duration or custom state machine everywhere. Matching endpoints or matching colors alone do not prove complete motion quality.
+
 - The focal motion is specific to the selected world and surface.
 - Every supporting animation explains feedback, state, or relationship.
 - Interruption and repeated use behave correctly.
@@ -86,4 +88,4 @@ Every web animation needs a `prefers-reduced-motion` path with an intentional al
 - Expensive effects stay smooth on the target device.
 - Removing an animation would lose meaning or authored character, not merely decoration.
 
-When motion earns its place, hand off to `$impeccable polish` for the final pass.
+If broader polish is needed, recommend `$impeccable polish` with the remaining scope. Reuse the completed motion evidence; this handoff does not automatically start an additional review round or detector pass.

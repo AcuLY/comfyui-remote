@@ -2,7 +2,7 @@
 
 Polish is refinement, never concealed redesign. Preserve the incumbent visual world, content, behavior, and everything outside scope. If the concept itself is wrong, say so and recommend redesign or `bolder` instead of smuggling in a replacement.
 
-A detector result is defect evidence, not proof of quality. Inspect the rendered experience and real interaction path.
+A detector result is defect evidence, not proof of quality. Inspect the rendered experience and real interaction path using [delivery-quality.md](delivery-quality.md). When the same class of defect recurs, revisit component responsibilities and state handoff before adding another local style patch.
 
 ## 1. Establish the system
 
@@ -59,7 +59,7 @@ Do not perfect one corner while leaving the rest below the same quality bar.
 - Align to the project's grid and spacing scale; fix optical as well as mathematical alignment.
 - Group related content tightly and separate distinct groups generously.
 - Keep same-role typography consistent; test measure, wrapping, localization expansion, zoom, and font loading.
-- Verify every supported viewport rather than correcting only the current screenshot.
+- Verify representative supported viewports affected by this change, including intermediate or breakpoint-edge cases when layout changes; do not correct only the current screenshot or mechanically enumerate every size.
 
 ### Color, imagery, and icons
 
@@ -70,7 +70,7 @@ Do not perfect one corner while leaving the rest below the same quality bar.
 
 ### Interaction and state
 
-- Every control needs appropriate default, hover, focus, active, disabled, loading, error, and success behavior.
+- Every control needs its applicable states and a continuous handoff from input feedback to committed state. Check color, font metrics, background, and focus together; do not fabricate loading, error, or success states for a control that cannot enter them.
 - Preserve visible keyboard focus, logical tab order, labels, and platform-appropriate touch targets.
 - Keep motion coherent, interruptible, and performant. Do not add animation merely to make polish visible.
 - Validate long, missing, localized, offline, slow, and permission-limited content where the product can encounter it.
@@ -84,13 +84,13 @@ Do not perfect one corner while leaving the rest below the same quality bar.
 
 ## 5. Verify and finish
 
-Walk the complete path again with mouse, keyboard, and touch where applicable. Check:
+Confirm the affected path with mouse, keyboard, and touch where applicable, reusing evidence from the current bounded pass. Select relevant checks below; a handoff is not a reason to repeat an already completed matrix:
 
 - mobile, intermediate, and wide layouts on the web; phone and tablet size classes in both supported orientations on native;
 - loading, empty, error, success, disabled, long-content, and missing-content states;
 - zoom, contrast, focus, semantics, and screen-reader names;
 - console errors, layout shift, interaction latency, and image loading everywhere; supported browsers on the web; supported OS versions, runtime warnings, and dropped frames on native;
-- agreement with DESIGN.md, neighboring features, and the user's scope.
+- agreement with the current contract in DESIGN.md or the surface record, neighboring features, and the user's scope; update current summaries when decisions change and keep superseded decisions in history.
 
 Follow the quality guidance supplied by `impeccable context` and hooks, then run any other relevant QA commands. Context requests a manual scan only when no automatic detector is active; never add another detector pass. Fix real defects and document only narrow intentional exceptions. A clean scan does not replace visual judgment.
 

@@ -2,6 +2,8 @@
 
 Use this flow for a new surface or a replacement visual identity. PRODUCT.md owns product truth. DESIGN.md owns durable visual decisions. A surface brief keeps strategy that belongs to one route or artifact. Complete [init.md](init.md) first when PRODUCT.md is missing; a missing DESIGN.md does not route back to init.
 
+For interactive UI, establish the current contract and installed-library responsibilities with [delivery-quality.md](delivery-quality.md) before custom implementation. Keep this inside the existing task/surface record; a local addition does not require another planning artifact.
+
 ## 1. Decide what is already true
 
 Read DESIGN.md, representative code, tokens, components, and assets.

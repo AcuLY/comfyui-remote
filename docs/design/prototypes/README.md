@@ -143,7 +143,7 @@ npm --prefix docs/design/prototypes run theme:check
 
 ## `Impeccable` 安装与使用
 
-1. 项目级技能已安装在 [.agents/skills/impeccable/SKILL.md](../../../.agents/skills/impeccable/SKILL.md)，技能版本为 `4.2.1`，本地引擎版本为 `0.1.2`。来源、许可和安装命令保存在[安装记录](../../../.impeccable/installation.json)；引擎二进制是被忽略的本机产物，其他机器可由随附启动器下载锁定版本。仓库适配仅为默认提示补充技能名称及清除三个上游参考文件的尾部空白；技能检查已通过。
+1. 项目级技能已安装在 [.agents/skills/impeccable/SKILL.md](../../../.agents/skills/impeccable/SKILL.md)，技能版本为 `4.2.1`，本地引擎版本为 `0.1.2`。来源、许可和安装命令保存在[安装记录](../../../.impeccable/installation.json)；引擎二进制是被忽略的本机产物，其他机器可由随附启动器下载锁定版本。初次仓库适配包含默认提示补充技能名称及清理上游尾部空白。2026-09-11另将设计交付复盘提炼为[技能内的交付质量指引](../../../.agents/skills/impeccable/reference/delivery-quality.md)，并接入入口和相关流程；这是本地文档扩展，上游技能版本和引擎版本未变。升级重装后按安装记录复核并保留该扩展。
 2. 项目 `hook` 适配器只把 `docs/design/prototypes/` 的界面编辑交给官方检测器，并保留既有文件访问 `hook`。自动执行仍取决于 `Codex` 对项目 `hook` 的启用状态；手工复核基础新版时明确列出自有源码，不递归扫描依赖或把官方生成主题当作手写补丁：
 
 ```powershell

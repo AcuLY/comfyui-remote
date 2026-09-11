@@ -19,6 +19,7 @@ document:
     - docs/design/prototypes/src/navigation.css
     - docs/design/prototypes/src/use-prototype-preference.jsx
     - .agents/skills/impeccable/SKILL.md
+    - .agents/skills/impeccable/reference/delivery-quality.md
   verifiedBy:
     - npm run docs:check
 ---
@@ -30,6 +31,8 @@ document:
 这次返工的主要原因，是助手把一个连续的交互体验拆成了多次局部样式修补：先实现，再等用户发现不一致；验证只证明某个尺寸、端点或颜色正确，随后就把这一类问题视为已经解决。用户因此承担了本应由助手完成的跨状态、跨视口检查。改进方向是提前选对组件与交互模型，用完整操作链验收，并让交付结论严格对应证据。
 
 本次是交付过程复盘，不是对当前页面重新运行一次视觉审计；文中测量值均注明为既有版本证据，不新增界面验收结论。逐轮原始记录见 [R02-01](reviews/R02-01.md)。
+
+通用执行原则已集成到 [技能交付质量指引](../../../.agents/skills/impeccable/reference/delivery-quality.md)，由技能入口及组件设计、适配、动效、审计和收尾流程加载。技能指引负责可迁移的方法；本文继续保留项目案例、决定演进及具体基线。
 
 ## 一、哪些返工可以避免
 

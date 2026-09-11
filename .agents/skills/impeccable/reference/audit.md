@@ -1,6 +1,6 @@
 Run systematic **technical** quality checks and generate a comprehensive report. Don't fix issues; document them for other commands to address.
 
-This is a code-level audit, not a design critique. Check what's measurable and verifiable in the implementation.
+This is a code-level audit, not a design critique. Check what's measurable and verifiable in the implementation. Apply [delivery-quality.md](delivery-quality.md) when selecting representative contexts and reporting evidence: name what was observed, mark untested dimensions, and do not turn a technical pass into whole-experience approval.
 
 **Web only.** Native platforms (`ios` / `android` / `adaptive`) route to [audit.native.md](audit.native.md) instead; if the project is native, switch to it now.
 
@@ -47,7 +47,7 @@ Run comprehensive checks across 5 dimensions. Score each dimension 0-4 using the
 
 **Check for**:
 - **Fixed widths**: Hard-coded widths that break on mobile
-- **Touch targets**: Interactive elements < 44x44px
+- **Touch targets**: Compare actual hit areas against the adopted platform and project requirements for the control role. Inspect points inside the visible shape near its edges; one center click or visual icon size is not sufficient evidence.
 - **Horizontal scroll**: Content overflow on narrow viewports
 - **Text scaling**: Layouts that break when text size increases
 - **Missing breakpoints**: No mobile/tablet variants

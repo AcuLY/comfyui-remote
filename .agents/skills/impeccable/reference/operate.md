@@ -21,7 +21,7 @@ Product defaults to Restrained. A single surface can earn Committed (a dashboard
 
 - State-rich semantic vocabulary: hover, focus, active, disabled, selected, loading, error, warning, success, info. Standardize these.
 - Accent color used for primary actions, current selection, and state indicators only, not decoration.
-- A second neutral layer for sidebars, toolbars, and panels (slightly cooler or warmer than the content surface).
+- A second neutral layer for sidebars, toolbars, and panels, using the approved palette. It may be achromatic; do not introduce a cool or warm tint solely to distinguish a container. Check borders and compiled component styles as well as the main accent.
 
 ## Layout
 
@@ -29,7 +29,7 @@ Product defaults to Restrained. A single surface can earn Committed (a dashboard
 
 ## Components
 
-Every interactive component has: default, hover, focus, active, disabled, loading, error. Don't ship with half of these.
+Implement the states the action can actually enter: current/default, focus, pressed, selected, disabled, and asynchronous feedback where applicable. Do not invent loading or error flows for a static navigation control. Follow [delivery-quality.md](delivery-quality.md) to choose a semantic library component and separate its behavior from application routing and state commits.
 
 - Skeleton states for loading, not spinners in the middle of content.
 - Empty states that teach the interface, not "nothing here."

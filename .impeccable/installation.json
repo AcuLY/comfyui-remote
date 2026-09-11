@@ -21,5 +21,25 @@
     "Installation does not approve design proposals or migrate the production frontend.",
     "Trailing whitespace in three upstream reference Markdown files was normalized for git diff --check; semantic content is unchanged.",
     "The Codex provider default prompt explicitly names $impeccable to satisfy the repository skill validator."
+  ],
+  "localExtensions": [
+    {
+      "id": "delivery-quality",
+      "integratedOn": "2026-09-11",
+      "source": "docs/design/prototypes/design-delivery-guide.md",
+      "reference": ".agents/skills/impeccable/reference/delivery-quality.md",
+      "patchedFiles": [
+        "SKILL.md",
+        "reference/new-work.md",
+        "reference/operate.md",
+        "reference/craft-floor.md",
+        "reference/polish.md",
+        "reference/adapt.md",
+        "reference/animate.md",
+        "reference/audit.md"
+      ],
+      "scope": "Skill documentation only; upstream skill and engine versions are unchanged.",
+      "upgradeNote": "Review and reapply this local documentation extension after an upstream reinstall; verify its entrypoint and workflow links."
+    }
   ]
 }
