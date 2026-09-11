@@ -100,7 +100,14 @@ function App() {
   const themeRail = (iconOnly = false) => <ChoiceRail iconOnly={iconOnly} vertical={false} label="主题" value={theme} options={themeChoices} onChange={value => updatePreference('theme', value)} />;
   function navigationLink(item, key, mobile = false) {
     const active = navigation.route === key;
-    return <a key={key} href={`#${key}`} className={`${mobile ? 'nav-tab' : 'nav-item'}${active ? ' is-active' : ''}`} aria-label={item.label} aria-current={active ? 'page' : undefined} title={item.label} onClick={() => setMoreOpen(false)}>
+    function selectLink(event) {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const next = routeFor(key);
+      // Commit the selected appearance with the click, before the deferred hashchange.
+      setNavigation(current => ({ route: next.key, activeModule: next.module ?? current.activeModule }));
+      setMoreOpen(false);
+    }
+    return <a key={key} href={`#${key}`} className={`${mobile ? 'nav-tab' : 'nav-item'}${active ? ' is-active' : ''}`} aria-label={item.label} aria-current={active ? 'page' : undefined} title={item.label} onClick={selectLink}>
       <i className={`pi ${item.icon}${mobile ? ' nav-tab-icon' : ''}`} aria-hidden="true" /><span className="nav-item-label">{item.label}</span>{active && !mobile && <i className="pi pi-check nav-current-mark" aria-hidden="true" />}
     </a>;
   }
