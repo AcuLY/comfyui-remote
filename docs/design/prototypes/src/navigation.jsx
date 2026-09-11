@@ -45,8 +45,8 @@ function useMedia(query) {
   useEffect(() => { const media = matchMedia(query); const update = () => setMatches(media.matches); media.addEventListener('change', update); return () => media.removeEventListener('change', update); }, [query]);
   return matches;
 }
-function ChoiceRail({ label, value, options, onChange, iconOnly = false }) {
-  return <div className={`nav-rail${iconOnly ? ' is-icon-rail' : ''}`} role="group" aria-label={label}>
+function ChoiceRail({ label, value, options, onChange, iconOnly = false, vertical = iconOnly }) {
+  return <div className={`nav-rail${iconOnly ? ' is-icon-rail' : ''}${vertical ? ' is-vertical' : ''}`} role="group" aria-label={label}>
     {options.map(option => <Button key={option.value} text plain className={`nav-rail-button${value === option.value ? ' is-active' : ''}`} label={iconOnly ? undefined : option.label} icon={iconOnly ? option.icon : undefined} aria-label={option.label} title={iconOnly ? option.label : undefined} aria-pressed={value === option.value} onClick={() => onChange(option.value)} />)}
   </div>;
 }
@@ -97,7 +97,7 @@ function App() {
   const sidebarButtonSlots = { icon: { className: 'nav-control-icon' }, label: { className: 'nav-expanding-label' } };
   const themeSwitch = () => <button type="button" className="nav-item nav-theme-toggle" aria-label={themeAction} title={themeAction} onClick={() => updatePreference('theme', theme === 'dark' ? 'light' : 'dark')}><i className={theme === 'dark' ? 'pi pi-sun' : 'pi pi-moon'} aria-hidden="true" /><span className="nav-item-label">{themeAction}</span></button>;
   const moduleSwitch = (iconOnly = false) => <ChoiceRail label="切换业务模块" value={navigation.activeModule} options={modules.map(module => ({ ...module, value: module.id }))} iconOnly={iconOnly} onChange={value => navigate(`${value}/tasks`)} />;
-  const themeRail = () => <ChoiceRail label="主题" value={theme} options={themeChoices} onChange={value => updatePreference('theme', value)} />;
+  const themeRail = (iconOnly = false) => <ChoiceRail iconOnly={iconOnly} vertical={false} label="主题" value={theme} options={themeChoices} onChange={value => updatePreference('theme', value)} />;
   function navigationLink(item, key, mobile = false) {
     const active = navigation.route === key;
     return <a key={key} href={`#${key}`} className={`${mobile ? 'nav-tab' : 'nav-item'}${active ? ' is-active' : ''}`} aria-label={item.label} aria-current={active ? 'page' : undefined} title={item.label} onClick={() => setMoreOpen(false)}>
@@ -136,9 +136,8 @@ function App() {
     </div>
     <Dialog visible={moreOpen} onHide={() => setMoreOpen(false)} position="bottom" showHeader={false} aria-label="更多导航与外观" className="nav-more-sheet" contentStyle={{ padding: 0, borderRadius: 'inherit' }} draggable={false} resizable={false} dismissableMask blockScroll>
       <div className="nav-more-content">
-        <div className="nav-more-top">{moduleSwitch()}<Button text plain icon="pi pi-times" aria-label="关闭更多" onClick={() => setMoreOpen(false)} /></div>
+        <div className="nav-more-top">{moduleSwitch()}{themeRail(true)}<Button text plain className="nav-more-close" icon="pi pi-times" aria-label="关闭更多" onClick={() => setMoreOpen(false)} /></div>
         <nav className="nav-more-links" aria-label="全局工具">{globalLinks}</nav>
-        <div className="nav-more-theme"><span>主题</span>{themeRail()}</div>
       </div>
     </Dialog>
     <Dialog header="导航预览设置" visible={previewOpen} onHide={() => setPreviewOpen(false)} className="nav-preview-dialog" draggable={false} blockScroll footer={<Button label="完成" onClick={() => setPreviewOpen(false)} />}>
