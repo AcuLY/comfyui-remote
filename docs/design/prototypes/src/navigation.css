@@ -108,7 +108,8 @@
   .nav-mobile-tabs { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 4px; min-height: 80px; padding: 10px 12px; }
   .nav-tab { appearance: none; background: transparent; font-family: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 60px; padding: 0; color: var(--nav-secondary); text-decoration: none; border-radius: var(--radius-control); border: 0; font-size: 12px; line-height: 18px; }
   .nav-tab > .nav-tab-icon { width: 44px; height: 32px; display: grid; place-items: center; border-radius: var(--radius-pill); font-size: 18px; }
-  .nav-tab.is-active { color: var(--on-accent-soft); font-weight: 600; }
+  .nav-tab:active, .nav-tab.is-active { color: var(--on-accent-soft); }
+  .nav-tab.is-active { font-weight: 600; }
   .nav-tab.is-active > .nav-tab-icon { background: var(--accent-soft); }
 
 }
