@@ -11,6 +11,7 @@ document:
     - 修改用户可见的布局、组件、交互、响应式行为或无障碍能力时
     - 判断生产界面、Training 与 design-demo 界面能否共享实现时
   sources:
+    - docs/design/prototypes/design-delivery-guide.md
     - src/app/layout.tsx
     - src/app/globals.css
     - src/components/app-shell.tsx
@@ -44,6 +45,8 @@ ComfyUI Manager 是紧凑且以任务为导向的工作台。应保持清晰的�
 ### 新版已确认基础
 
 2026-09-08 用户确认了[新版前端基础设计规范](docs/design/prototypes/design-foundations.md)，覆盖色彩、字体、尺寸、基础组件状态与通用交互；编号和确认范围见[基础设计清单](docs/design/prototypes/foundations/README.md)。新版原型及后续页面设计复用该基线。本文上方仍描述现有生产界面的生效样式与边界；基础定稿不替换现有生产实现，也不表示后续业务组合、完整页面或生产迁移已通过。
+
+新版原型制作和局部修正先参照[前端设计交付指导](docs/design/prototypes/design-delivery-guide.md)：先明确交互契约与组件职责，再按完整操作链验证；该指导来自R02-01复盘，不改变现有生产界面的权威来源。
 
 ### 现有生产界面
 

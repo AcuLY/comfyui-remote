@@ -11,6 +11,7 @@ document:
     - 启动或审核新版 HTML 设计原型时
     - 判断已确认基础、后续设计与生产实现的边界时
   sources:
+    - docs/design/prototypes/design-delivery-guide.md
     - docs/design/prototypes/package.json
     - docs/design/prototypes/foundations/README.md
     - docs/design/prototypes/design-foundations.md
@@ -49,6 +50,8 @@ document:
 原始基础与后续适配、数字输入局部修订保留在[历史记录](reviews/F-responsive.md)，不代替新生成主题的验证。当前组件内部结构、状态、焦点与真实触控尺寸重新检查；其余浅色中性色去色比较未采纳，不扩大为新业务页面。
 
 用户已确认 [R01-01 列表组合](reviews/R01.md)的 `30fd53db` 版本。[R01-02](reviews/R01-02.md)因通用定位和临时拆分偏差保持暂停。完成[总路线与事前任务登记](ui-design-roadmap.md)并核对R01台账后，用户要求继续计划下一项；本轮选定既有 [R02-01 全局导航外壳](reviews/R02-01.md)，先写明确范围再制作，结果待用户审核。其他78项仍为草案；不能由“继续下一个”临时派生组件原型。
+
+开始设计或局部修正前阅读[前端设计交付指导](design-delivery-guide.md)，先核对当前契约、组件复用及实际验收范围；R02-01的反复返工原因与改进措施集中记录于该文档。
 
 ## 审核范围
 
@@ -99,6 +102,7 @@ npm --prefix docs/design/prototypes run theme:check
 | --- | --- |
 | `foundations/index.html` | 基础设计页面的浏览器入口 |
 | `foundations/README.md` | 基础编号、保留方向和本轮统一主题审核范围 |
+| [design-delivery-guide.md](design-delivery-guide.md) | 设计交付复盘、制作方法、验证边界和当前契约维护 |
 | [design-foundations.md](design-foundations.md) | 基础规则、新主题职责和旧版本边界 |
 | [reviews/F-theme.md](reviews/F-theme.md) | 当前官方主题生成方案、入口职责和待测记录 |
 | [reviews/F-responsive.md](reviews/F-responsive.md) | 旧适配、局部原生修订及批准历史，不充当新主题验证 |

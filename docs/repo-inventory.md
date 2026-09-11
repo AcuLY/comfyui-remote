@@ -209,6 +209,7 @@ document:
 | `docs/design/prototypes/README.md` | `docs` | `product-design` | `Markdown` 文档 | `router` | 文档元数据 |
 | `docs/design/prototypes/components/lists/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/components/organization/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/design-delivery-guide.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/design-foundations.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/foundations/README.md` | `docs` | `product-design` | `Markdown` 文档 | `router` | 文档元数据 |
 | `docs/design/prototypes/foundations/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |

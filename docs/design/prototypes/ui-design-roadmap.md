@@ -11,6 +11,7 @@ document:
     - 选择或新增前端设计任务之前
     - 判断继续下一个具体指哪项以及能否开始制作时
   sources:
+    - docs/design/prototypes/design-delivery-guide.md
     - docs/design/prototypes/design-foundations.md
     - docs/design/prototypes/ui-design-coverage.md
     - docs/design/prototypes/ui-design-shared-plan.md
@@ -35,6 +36,7 @@ document:
 
 | 文档 | 负责回答的问题 | 不能作为的依据 |
 | --- | --- | --- |
+| [设计交付指导](design-delivery-guide.md) | 如何选组件、设计完整交互并验证，如何避免R02-01式反复返工 | 不是新业务需求或新增任务授权 |
 | 本文 | 批次如何组织、已有子项是什么状态、开始制作需要什么 | 不用批次标题直接派生实现 |
 | [共享工具任务](ui-design-shared-plan.md) | 导航、登录、生产任务、模型、设置、监控及跨页验收的逐项范围 | 不把本分册当所有业务页的统一模板 |
 | [生产任务](ui-design-production-plan.md) | 生产项目、小节、审核、打码、导出、预制、模板各任务的入口和动作 | 不提前强制目录树、卡片或排序弹窗 |

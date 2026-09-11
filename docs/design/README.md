@@ -11,6 +11,7 @@ document:
     - 查找当前界面布局、组件、交互、响应式、审核或 design-demo 指引时
     - 查找新版 HTML 设计原型、已确认基础规范与前端设计路线时
   sources:
+    - docs/design/prototypes/design-delivery-guide.md
     - DESIGN.md
     - docs/design/prototypes/README.md
     - docs/design/prototypes/design-foundations.md
@@ -37,6 +38,7 @@ document:
 
 | 任务 | 阅读 | 原因 |
 | --- | --- | --- |
+| 开始新版设计、处理反复返工或准备设计交付 | [前端设计交付指导](prototypes/design-delivery-guide.md) | R02-01复盘、组件选择、完整交互验证与证据口径。 |
 | 修改页面外壳、导航栏、内容框架或密度 | [布局与密度](layout-and-density.md) | 区分 Generation、Training 和 design-demo 界面的组成方式。 |
 | 添加或复用控件或功能组件 | [组件模式](component-patterns.md) | 在生产基础组件、共享 demo/Training 组件和功能所有者之间选择。 |
 | 修改导航、快捷键、乐观反馈、撤销或动画 | [交互与动效](interaction-and-motion.md) | 保持当前交互语义和减少动态效果行为。 |
