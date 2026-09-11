@@ -138,7 +138,7 @@ function App({ snapshot }) {
     <Toast ref={toast} position="bottom-center" />
     <a className="skip-link" href="#organization-main">跳到内容</a>
     <header className="app-header"><a href="../../foundations/" className="wordmark">ComfyUI <span>Manager</span></a><span className="header-context">组件组合</span><span className="review-status"><span className="review-dot" />R01-02 · 待审核</span>
-      <div className="header-controls"><SelectButton value={preference.module} options={moduleOptions} onChange={e => updatePreference('module', e.value)} aria-label="模块色" allowEmpty={false} /><SelectButton value={preference.theme} options={themeOptions} onChange={e => updatePreference('theme', e.value)} aria-label="主题偏好" allowEmpty={false} /></div>
+      <div className="header-controls"><SelectButton value={preference.module} options={moduleOptions} onChange={e => updatePreference('module', e.value)} aria-label="模块色" allowEmpty={false} /><SelectButton value={theme} options={themeOptions} onChange={e => updatePreference('theme', e.value)} aria-label="主题偏好" allowEmpty={false} /></div>
       <Button className="list-preview-toggle" text label="预览" icon="pi pi-sliders-h" aria-label="打开预览设置" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)} />
     </header>
     <main id="organization-main" className="list-main org-main" tabIndex={-1}>
@@ -175,7 +175,7 @@ function App({ snapshot }) {
       {moveError && <Message severity="error" text="移动未完成，内容仍在原位置。目标与选择已保留，可以重试。" />}
     </Dialog>
     <Dialog header="预览设置" visible={settingsOpen} onHide={() => setSettingsOpen(false)} className="list-preview-dialog" draggable={false} blockScroll footer={<Button label="完成" onClick={() => setSettingsOpen(false)} />}>
-      <div className="list-settings-fields"><div><span id="org-module">模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={e => updatePreference('module', e.value)} aria-labelledby="org-module" allowEmpty={false} /></div><div><span id="org-theme">主题</span><SelectButton value={preference.theme} options={themeOptions} onChange={e => updatePreference('theme', e.value)} aria-labelledby="org-theme" allowEmpty={false} /></div><div><label htmlFor="org-state">预览状态</label><Dropdown inputId="org-state" value={previewState} options={stateOptions} onChange={e => changeState(e.value)} /></div><div className="org-failure-option"><Checkbox inputId="org-move-failure" checked={moveFailure} onChange={e => setMoveFailure(e.checked)} /><label htmlFor="org-move-failure">模拟下一次移动失败</label></div><Button outlined label="重置预览数据" icon="pi pi-refresh" onClick={resetSample} /></div>
+      <div className="list-settings-fields"><div><span id="org-module">模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={e => updatePreference('module', e.value)} aria-labelledby="org-module" allowEmpty={false} /></div><div><span id="org-theme">主题</span><SelectButton value={theme} options={themeOptions} onChange={e => updatePreference('theme', e.value)} aria-labelledby="org-theme" allowEmpty={false} /></div><div><label htmlFor="org-state">预览状态</label><Dropdown inputId="org-state" value={previewState} options={stateOptions} onChange={e => changeState(e.value)} /></div><div className="org-failure-option"><Checkbox inputId="org-move-failure" checked={moveFailure} onChange={e => setMoveFailure(e.checked)} /><label htmlFor="org-move-failure">模拟下一次移动失败</label></div><Button outlined label="重置预览数据" icon="pi pi-refresh" onClick={resetSample} /></div>
     </Dialog>
   </div>;
 }

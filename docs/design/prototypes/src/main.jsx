@@ -147,7 +147,7 @@ function App() {
       <span className="review-status"><span className="review-dot" />主题调整</span>
       <div className="header-controls">
         <SelectButton value={preference.module} options={moduleOptions} onChange={(e) => updatePreference('module', e.value)} aria-label="模块色" allowEmpty={false} />
-        <SelectButton value={preference.theme} options={themeOptions} onChange={(e) => updatePreference('theme', e.value)} aria-label="主题偏好" allowEmpty={false} />
+        <SelectButton value={theme} options={themeOptions} onChange={(e) => updatePreference('theme', e.value)} aria-label="主题偏好" allowEmpty={false} />
       </div>
       <Button className="foundation-preview-button" label="预览" icon="pi pi-sliders-h" text aria-label="打开主题与模块设置" onClick={() => setShowPreviewSettings(true)} />
     </header>
@@ -173,7 +173,6 @@ function App() {
               </button>)}</div>
               <div className="semantic-strip">{statusSpecs.map(([severity, label, icon]) => <Tag key={severity} severity={severity} value={label} icon={`pi ${icon}`} />)}</div>
               <p className="color-note" aria-live="polite">{copied ? '色值已复制。' : `当前${theme === 'light' ? '浅色' : '深色'}主题 · ${preference.theme === 'system' ? '实时跟随系统' : '已手动选择'}`}
-                {preference.theme !== 'system' ? <button className="inline-link" onClick={() => updatePreference('theme', 'system')}>改为跟随系统</button> : null}
               </p>
             </div>
             <form className="live-preview" onSubmit={submitPreview}>
@@ -241,7 +240,7 @@ function App() {
       </main>
     </div>
     <Dialog header="主题与模块" visible={showPreviewSettings} onHide={() => setShowPreviewSettings(false)} className="sample-dialog foundation-dialog" draggable={false} blockScroll footer={<Button label="完成" onClick={() => setShowPreviewSettings(false)} />}>
-      <div className="foundation-settings"><div><span id="settings-module-label">模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={(e) => updatePreference('module', e.value)} aria-labelledby="settings-module-label" allowEmpty={false} /></div><div><span id="settings-theme-label">主题</span><SelectButton value={preference.theme} options={themeOptions} onChange={(e) => updatePreference('theme', e.value)} aria-labelledby="settings-theme-label" allowEmpty={false} /></div></div>
+      <div className="foundation-settings"><div><span id="settings-module-label">模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={(e) => updatePreference('module', e.value)} aria-labelledby="settings-module-label" allowEmpty={false} /></div><div><span id="settings-theme-label">主题</span><SelectButton value={theme} options={themeOptions} onChange={(e) => updatePreference('theme', e.value)} aria-labelledby="settings-theme-label" allowEmpty={false} /></div></div>
     </Dialog>
     <Dialog header="确认操作样本" visible={showDialog} onHide={() => setShowDialog(false)} className="sample-dialog foundation-dialog" draggable={false} blockScroll footer={<><Button label="取消" outlined onClick={() => setShowDialog(false)} /><Button label="确认示例" severity="danger" onClick={() => { setShowDialog(false); toast.current.show({ severity: 'info', summary: '示例已确认', detail: '没有修改或删除任何业务数据。', life: 3000 }); }} /></>}>
       <p>确认框应写清操作对象和影响范围。这是交互演示，不会删除任何内容。</p>

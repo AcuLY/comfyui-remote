@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export const themeOptions = [{ label: '系统', value: 'system' }, { label: '浅色', value: 'light' }, { label: '深色', value: 'dark' }];
+export const themeOptions = [{ label: '浅色', value: 'light' }, { label: '深色', value: 'dark' }];
 const preferenceKey = 'cm-prototype-preference-v1';
 
 function readPreference() {
@@ -31,7 +31,10 @@ export function usePrototypePreference() {
     try { localStorage.setItem(preferenceKey, JSON.stringify(preference)); } catch { /* 存储不可用时仍可预览。 */ }
   }, [preference, theme]);
   function updatePreference(key, value) {
-    if (value) setPreference((old) => ({ ...old, [key]: value }));
+    if (!value) return;
+    const systemTheme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const nextValue = key === 'theme' && value === systemTheme ? 'system' : value;
+    setPreference((old) => ({ ...old, [key]: nextValue }));
   }
   return { preference, theme, updatePreference };
 }

@@ -50,7 +50,7 @@ function ChoiceRail({ label, value, options, onChange, iconOnly = false }) {
     {options.map(option => <Button key={option.value} text plain className={`nav-rail-button${value === option.value ? ' is-active' : ''}`} label={iconOnly ? undefined : option.label} icon={iconOnly ? option.icon : undefined} aria-label={option.label} title={iconOnly ? option.label : undefined} aria-pressed={value === option.value} onClick={() => onChange(option.value)} />)}
   </div>;
 }
-const themeChoices = themeOptions.map(option => ({ ...option, icon: { system: 'pi pi-desktop', light: 'pi pi-sun', dark: 'pi pi-moon' }[option.value] }));
+const themeChoices = themeOptions.map(option => ({ ...option, icon: { light: 'pi pi-sun', dark: 'pi pi-moon' }[option.value] }));
 
 function App() {
   const [navigation, setNavigation] = useState(readNavigation);
@@ -59,8 +59,9 @@ function App() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const narrow = useMedia('(width < 1200px)');
   const collapsed = manualCollapsed ?? narrow;
-  const { preference, theme, updatePreference } = usePrototypePreference();
+  const { theme, updatePreference } = usePrototypePreference();
   const main = useRef(null);
+  const moduleRouteChange = useRef(null);
   const toast = useRef(null);
   const route = routeFor(navigation.route);
   const moduleLabel = modules.find(module => module.id === navigation.activeModule).label;
@@ -71,7 +72,8 @@ function App() {
       const next = routeFor(location.hash.slice(1)) ?? routeFor('production/tasks');
       if (location.hash.slice(1) !== next.key) history.replaceState(null, '', `#${next.key}`);
       setNavigation(current => ({ route: next.key, activeModule: next.module ?? current.activeModule }));
-      setMoreOpen(false);
+      if (moduleRouteChange.current !== next.key) setMoreOpen(false);
+      moduleRouteChange.current = null;
     };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
@@ -79,9 +81,14 @@ function App() {
   useEffect(() => { try { localStorage.setItem(storageKey, JSON.stringify(navigation)); } catch { /* Keep this session usable. */ } }, [navigation]);
   useEffect(() => { updatePreference('module', navigation.activeModule === 'production' ? 'image' : 'training'); }, [navigation.activeModule]);
 
-  function navigate(key) { setMoreOpen(false); if (location.hash.slice(1) !== key) location.hash = key; }
+  function navigate(key) {
+    if (location.hash.slice(1) === key) return;
+    moduleRouteChange.current = key;
+    location.hash = key;
+  }
   function resetVisit() {
     const initial = defaultNavigation();
+    moduleRouteChange.current = null;
     setNavigation(initial); setManualCollapsed(null); setMoreOpen(false); setPreviewOpen(false);
     history.replaceState(null, '', '#production/tasks');
     toast.current.show({ severity: 'info', summary: '已回到首次访问状态', detail: '默认进入生产任务。', life: 2600 });
@@ -90,7 +97,7 @@ function App() {
   const sidebarButtonSlots = { icon: { className: 'nav-control-icon' }, label: { className: 'nav-expanding-label' } };
   const themeSwitch = () => <button type="button" className="nav-item nav-theme-toggle" aria-label={themeAction} title={themeAction} onClick={() => updatePreference('theme', theme === 'dark' ? 'light' : 'dark')}><i className={theme === 'dark' ? 'pi pi-sun' : 'pi pi-moon'} aria-hidden="true" /><span className="nav-item-label">{themeAction}</span></button>;
   const moduleSwitch = (iconOnly = false) => <ChoiceRail label="切换业务模块" value={navigation.activeModule} options={modules.map(module => ({ ...module, value: module.id }))} iconOnly={iconOnly} onChange={value => navigate(`${value}/tasks`)} />;
-  const themeRail = () => <ChoiceRail label="主题" value={preference.theme} options={themeChoices} onChange={value => updatePreference('theme', value)} />;
+  const themeRail = () => <ChoiceRail label="主题" value={theme} options={themeChoices} onChange={value => updatePreference('theme', value)} />;
   function navigationLink(item, key, mobile = false) {
     const active = navigation.route === key;
     return <a key={key} href={`#${key}`} className={`${mobile ? 'nav-tab' : 'nav-item'}${active ? ' is-active' : ''}`} aria-label={item.label} aria-current={active ? 'page' : undefined} title={item.label} onClick={() => setMoreOpen(false)}>
@@ -129,7 +136,7 @@ function App() {
     </div>
     <Dialog visible={moreOpen} onHide={() => setMoreOpen(false)} position="bottom" showHeader={false} aria-label="更多导航与外观" className="nav-more-sheet" contentStyle={{ padding: 0, borderRadius: 'inherit' }} draggable={false} resizable={false} dismissableMask blockScroll>
       <div className="nav-more-content">
-        <div className="nav-more-top"><span>模块</span>{moduleSwitch()}<Button text plain icon="pi pi-times" aria-label="关闭更多" onClick={() => setMoreOpen(false)} /></div>
+        <div className="nav-more-top">{moduleSwitch()}<Button text plain icon="pi pi-times" aria-label="关闭更多" onClick={() => setMoreOpen(false)} /></div>
         <nav className="nav-more-links" aria-label="全局工具">{globalLinks}</nav>
         <div className="nav-more-theme"><span>主题</span>{themeRail()}</div>
       </div>
