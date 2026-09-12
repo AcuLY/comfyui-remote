@@ -1,0 +1,51 @@
+R02-02 project-context prototype image sources
+
+These public stock photographs are mock content for the local design prototype.
+They are not user images, generated results, training materials, or real project
+data. No private application images were copied. The prototype's project names
+and associations with these photographs are synthetic.
+
+Provider: Unsplash
+License: https://unsplash.com/license
+Downloaded: 2026-09-12
+Photographer names: not independently verified; no attribution is inferred from
+the image CDN identifiers below.
+
+The exact source URLs request 600 x 400 JPEGs. The files were downloaded directly
+without local image processing, and their format and dimensions were verified.
+
+scene-1.jpg
+Subject: forest path
+Source: https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=600&h=400&fit=crop&fm=jpg&q=78
+Dimensions: 600 x 400 pixels
+File size: 84347 bytes
+
+scene-2.jpg
+Subject: beach at sunset
+Source: https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=400&fit=crop&fm=jpg&q=78
+Dimensions: 600 x 400 pixels
+File size: 39717 bytes
+
+scene-3.jpg
+Subject: bookshelves
+Source: https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=600&h=400&fit=crop&fm=jpg&q=78
+Dimensions: 600 x 400 pixels
+File size: 88198 bytes
+
+scene-4.jpg
+Subject: interior wall and floor lamp
+Source: https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?w=600&h=400&fit=crop&fm=jpg&q=78
+Dimensions: 600 x 400 pixels
+File size: 19335 bytes
+
+scene-5.jpg
+Subject: illuminated city street at night
+Source: https://images.unsplash.com/photo-1519608487953-e999c86e7455?w=600&h=400&fit=crop&fm=jpg&q=78
+Dimensions: 600 x 400 pixels
+File size: 44074 bytes
+
+scene-6.jpg
+Subject: mountain valley
+Source: https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=600&h=400&fit=crop&fm=jpg&q=78
+Dimensions: 600 x 400 pixels
+File size: 70649 bytes

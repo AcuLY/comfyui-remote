@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/documentation.schema.json",
+  "$defs": {
+    "common": {
+      "type": "object",
+      "required": ["schemaVersion", "document"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "document": {
+          "type": "object",
+          "required": ["type", "status", "owner", "authority", "readWhen", "sources", "verifiedBy"],
+          "properties": {
+            "type": { "type": "string" },
+            "status": { "enum": ["current", "deferred"] },
+            "owner": { "type": "string", "minLength": 1 },
+            "authority": { "type": "string", "minLength": 1 },
+            "readWhen": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+            "sources": { "type": "array", "items": { "type": "string" } },
+            "verifiedBy": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "profiles": {
+      "router": { "$ref": "#/$defs/common" },
+      "architecture": { "$ref": "#/$defs/common" }
+    }
+  }
+}

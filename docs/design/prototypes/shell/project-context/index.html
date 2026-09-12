@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN" data-prototype="navigation">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="R02-02 项目上下文：项目页签、来源返回、筛选与滚动恢复。" />
+    <link rel="icon" href="data:," />
+    <title>项目上下文 · ComfyUI Manager</title>
+    <script>
+      document.documentElement.dataset.density = 'standard';
+      try {
+        const saved = JSON.parse(localStorage.getItem('cm-prototype-preference-v1') || '{}');
+        const preference = ['light', 'dark'].includes(saved.theme) ? saved.theme : 'system';
+        document.documentElement.dataset.theme = preference === 'system'
+          ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : preference;
+        document.documentElement.dataset.module = saved.module === 'training' ? 'training' : 'image';
+      } catch {
+        document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="../../src/project-context.jsx"></script>
+  </body>
+</html>

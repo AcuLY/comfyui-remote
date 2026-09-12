@@ -1,41 +1,43 @@
 ## Why
 
-The repository already contains useful agent rules, documentation maps, tests, and logging pieces, but they do not form a coherent harness that keeps knowledge current, makes runtime behavior queryable, and enforces repository-wide architecture. A staged, evidence-backed program is needed so agent throughput can increase without multiplying stale documentation, opaque performance failures, or structural drift.
+仓库已经完成大部分文档治理、OpenSpec 接入和生产运维规则迁移，但原父计划仍要求继续实施可观测性、工程规范与统一 CI。继续这些阶段会与当前生产恢复、产品删减和前端重构争夺同一基线，并把尚未设计的未来目标长期留在活动范围中。
+
+用户于 2026-08-26 明确选择先收口文档治理并缩减 Harness。因此本父变更只保留已经落地且仍有当前价值的基础，不再把未实施阶段作为已批准后续工作。
 
 ## What Changes
 
-- **BREAKING**: Adopt OpenSpec as the required lifecycle for significant feature, architecture, performance, and engineering-policy changes.
-- Establish a parent harness program with documentation governance first, observability second, engineering standards third, and documentation/CI convergence last.
-- Require each later stage to present a fresh proposal, spec, design, and tasks for explicit user approval before apply.
-- Require local, worktree, and production verification to use agent-legible evidence while preserving strict data isolation.
-- Treat self-hosting, implementation-identical local/production observability, per-worktree isolation, and hard-cutover enforcement as approved program constraints; later child changes still choose the concrete stacks and thresholds.
-- Require repository-specific automated gates only where OpenSpec itself does not cover domain constraints such as deployment safety, queue handling, approval validity, and telemetry isolation.
-- Keep generic artifact dependencies, apply, verify, archive, and recovery behavior aligned with the installed OpenSpec version rather than inventing a parallel lifecycle.
+- 保留 OpenSpec 作为重要功能、架构、性能和仓库策略变更的生命周期入口。
+- 保留当前事实、已批准目标和历史意图的证据分类。
+- 完成并验收 `rebuild-documentation-governance` 子变更，不扩大其产品或运行时范围。
+- 保留部署锁、双 worker 门、队列安全、Git 范围和运行手册等已经落地的仓库安全边界。
+- 取消父计划中尚未实施的可观测性、工程规范与最终统一 CI 阶段；取消不等于完成，也不会把它们同步为现行能力。
+- 要求任何未来可观测性、工程规范或 CI 统一工作基于当时仓库基线另立 OpenSpec，并重新取得用户批准。
+- 记录 Git 工作树、Git 暂存快照、个人脚本和运行资产的只读处置清单；本变更不执行清理。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `agent-harness`: Governs the repository-wide harness program, stage ordering, approval boundaries, evidence rules, and cross-stage completion contract.
+- `agent-harness`：定义重要变更的 OpenSpec 入口、证据类别、用户验收门和仓库专用运维安全扩展。
 
 ### Modified Capabilities
 
-None.
+无。
 
-## Non-goals
+## 非目标
 
-- This parent change does not choose the detailed observability stack or engineering-rule toolchain.
-- This parent change does not authorize applying observability or engineering-standards work before their separate approvals.
-- This parent change does not promote scratch drafts or unverified historical designs into current truth.
+- 不实施或选择可观测性技术、工程规则、性能预算或统一 CI。
+- 不把 PreToolUse 路径计数实验提升为生产可观测性。
+- 不开始产品删减、前端重写、后端重构或数据迁移。
+- 不删除、移动、应用或丢弃任何 Git 工作树、Git 暂存快照、个人脚本、数据库、数据目录、日志或私有配置。
+- 不构建、重启、部署或控制队列。
 
-## Related Changes
+## 相关变更
 
-- `rebuild-documentation-governance` is the first child and is authored from the repository-specific documentation information architecture approved on 2026-07-10; its exact artifact revision still requires user review before apply.
-- `build-agent-observability` will be proposed only after documentation governance is accepted.
-- `enforce-engineering-standards` will be proposed only after the observability stage is accepted.
+- `rebuild-documentation-governance` 是本父变更唯一已经批准并实施的子变更。
+- 未来产品重构、可观测性、工程规范或 CI 变更彼此独立，不从本父变更继承实施批准。
 
 ## Impact
 
-- Adds repository-local OpenSpec configuration and change artifacts.
-- Will eventually affect `AGENTS.md`, `agent-rules/**`, `docs/**`, documentation tooling, CI, runtime observability, and code-quality enforcement through separately approved child changes.
-- Does not change application runtime behavior in this parent proposal.
+- 更新本父变更工件、仓库 OpenSpec 上下文与指南，并增加只读处置证据。
+- 不改变应用运行时、数据库、生产资产或部署状态。

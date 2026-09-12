@@ -1,0 +1,69 @@
+name: 文档治理
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  documentation-governance:
+    name: 文档治理门禁
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出完整历史
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: 配置 Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "20.19"
+          cache: npm
+
+      - name: 安装固定依赖
+        run: npm ci
+
+      - name: 运行文档聚焦测试
+        shell: pwsh
+        run: >-
+          node --import tsx --test
+          tests/test-docs-check-core.test.ts
+          tests/test-docs-check-metadata.test.ts
+          tests/test-docs-check-language.test.ts
+          tests/test-docs-check-generators.test.ts
+          tests/test-docs-audit-skill.test.ts
+          tests/test-skills-check.test.ts
+          tests/test-documentation-governance.test.ts
+          tests/test-agent-policy-runbooks.test.ts
+          tests/test-product-design-doc-governance.test.ts
+
+      - name: 运行完整文档检查
+        shell: pwsh
+        env:
+          DOCS_COMPARISON_BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          $base = $env:DOCS_COMPARISON_BASE
+          if ([string]::IsNullOrWhiteSpace($base) -or $base -match '^0+$') {
+            $base = git rev-parse HEAD^
+            if ($LASTEXITCODE -ne 0) { throw "无法解析文档比较基线。" }
+          }
+          npm run docs:check -- --mode full --base $base
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: 证明检查未写入仓库
+        shell: pwsh
+        run: |
+          git diff --exit-code
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $status = git status --porcelain=v1 --untracked-files=all
+          if ($status) {
+            $status | Write-Error
+            throw "文档检查后工作树不干净。"
+          }

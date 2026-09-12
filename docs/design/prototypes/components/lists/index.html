@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN" data-prototype="lists">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="R01-01 列表组合设计：工具栏、选择、数据表、分页与手机卡片。" />
+    <link rel="icon" href="data:," />
+    <title>列表与分页 · ComfyUI Manager</title>
+    <script>
+      document.documentElement.dataset.density = 'standard';
+      try {
+        const saved = JSON.parse(localStorage.getItem('cm-prototype-preference-v1') || '{}');
+        const preference = ['light', 'dark'].includes(saved.theme) ? saved.theme : 'system';
+        document.documentElement.dataset.theme = preference === 'system'
+          ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : preference;
+        document.documentElement.dataset.module = saved.module === 'training' ? 'training' : 'image';
+      } catch {
+        document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="../../src/lists.jsx"></script>
+  </body>
+</html>

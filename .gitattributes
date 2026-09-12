@@ -1,0 +1,2 @@
+# Preserve the pinned upstream Sass snapshot, including its original whitespace.
+docs/design/prototypes/src/theme/vendor/primereact-sass-theme/**/*.scss text eol=lf -whitespace

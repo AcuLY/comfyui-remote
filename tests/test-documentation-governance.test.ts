@@ -2,36 +2,19 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
+import { NextRequest } from "next/server";
 
-const ROOT_DOCS = {
-  readme: "README.md",
-  design: "DESIGN.md",
-  claude: "CLAUDE.md",
-  agents: "AGENTS.md",
-  positionPresets: "position_presets.md",
-} as const;
+import { fail } from "../src/lib/api-response";
+import { proxy } from "../src/proxy";
 
-const DOCUMENTATION_MAP_PATH = "docs/documentation-map.md";
-const DOC_INDEX_PATH = "docs/index.md";
-const RETAINED_CONTEXT_DOCS = [
-  "docs/archive/historical/handoff.md",
-  "docs/archive/historical/development-progress.md",
-  "docs/archive/historical/development-todo.md",
-  "docs/archive/historical/integration-test-plan.md",
-  "docs/archive/design-system/DESIGN_SYSTEM_SUMMARY.md",
-  "docs/archive/design-system/design-system-migration.md",
-  "docs/archive/design-system/shadcn-design-guide.md",
-  "docs/design-v0.1.md",
-  "docs/design-v0.3-workflow-integration.md",
-  "docs/quick-reference.md",
-  "docs/WORKFLOW_QUICK_REFERENCE.md",
-  "docs/WORKFLOW_SYSTEM_ANALYSIS.md",
-  "docs/analysis_comprehensive.md",
-] as const;
+function normalizeRepositoryPath(value: string): string {
+  return value.replace(/\\/g, "/").replace(/^\.\//, "");
+}
 
 function read(path: string): string {
-  assert.ok(existsSync(path), `${path} must exist`);
-  return readFileSync(path, "utf8");
+  const normalized = normalizeRepositoryPath(path);
+  assert.ok(existsSync(normalized), `${normalized} must exist`);
+  return readFileSync(normalized, "utf8");
 }
 
 function listFiles(root: string, fileName: string): string[] {
@@ -39,319 +22,232 @@ function listFiles(root: string, fileName: string): string[] {
 
   for (const entry of readdirSync(root, { withFileTypes: true })) {
     const path = join(root, entry.name);
-
     if (entry.isDirectory()) {
       files.push(...listFiles(path, fileName));
-      continue;
-    }
-
-    if (entry.name === fileName) {
-      files.push(path);
+    } else if (entry.name === fileName) {
+      files.push(normalizeRepositoryPath(path));
     }
   }
 
-  return files.sort();
-}
-
-function appRouteFromPage(path: string): string {
-  const rel = path.replace(/^src\/app\//, "").replace(/\/page\.tsx$/, "");
-
-  if (rel === "" || rel === "page.tsx") {
-    return "/";
-  }
-
-  return `/${rel
-    .replace(/\[\[\.\.\.([^\]]+)\]\]/g, ":$1*")
-    .replace(/\[\.\.\.([^\]]+)\]/g, ":$1*")
-    .replace(/\[([^\]]+)\]/g, ":$1")}`;
-}
-
-function apiRouteFromRouteFile(path: string): string {
-  const rel = path.replace(/^src\/app\/api\//, "").replace(/\/route\.ts$/, "");
-
-  return `/api/${rel
-    .replace(/\[\[\.\.\.([^\]]+)\]\]/g, ":$1...")
-    .replace(/\[\.\.\.([^\]]+)\]/g, ":$1...")
-    .replace(/\[([^\]]+)\]/g, ":$1")}`;
+  return files.sort((left, right) => left.localeCompare(right));
 }
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-test("root docs declare their maintained role and point to the documentation map", () => {
-  const readme = read(ROOT_DOCS.readme);
-  const design = read(ROOT_DOCS.design);
-  const claude = read(ROOT_DOCS.claude);
-  const positionPresets = read(ROOT_DOCS.positionPresets);
-
-  assert.match(readme, /分类：当前文档/, "README must declare its documentation class");
-  assert.match(readme, /更新触发：/, "README must declare when it changes");
-  assert.match(readme, /docs\/index\.md/, "README must point agents to the read-first index");
-  assert.match(readme, /docs\/documentation-map\.md/, "README must point to the documentation map");
-  assert.match(readme, /docs\/repo-inventory\.md/, "README must point to generated inventory");
-  for (const maintainedSource of [
-    ".env.example",
-    "docs/local-verification.md",
-    "docs/runbooks/config-runtime-assets.md",
-    "docs/agent-api.md",
-    "docs/api/README.md",
-    "docs/workflow.api.json",
-    "src/server/mcp/server.ts",
-    "DESIGN.md",
-    "docs/ui/README.md",
-    "docs/prisma-provider-matrix.md",
-    "docs/prisma-schema-compatibility.md",
-    "docs/worker-boundaries.md",
-    "AGENTS.md",
-  ]) {
-    assert.match(readme, new RegExp(maintainedSource.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `README must route ${maintainedSource} readers to the maintained source`);
-  }
-
-  for (const feature of ["生图", "训练", "审核", "导出", "Comfy 运行态", "Agent API", "MCP"]) {
-    assert.match(readme, new RegExp(feature, "i"), `README feature map must mention ${feature}`);
-  }
-  for (const staleReadmeClaim of [
-    /##\s*文档规则/,
-    /Keep README stable/,
-    /Do not add exact page inventories/,
-    /Re-run `npx tsx scripts\/docs\/generate-repo-inventory\.ts`/,
-    /7 个专为 AI Agent/,
-    /6 个 Resources/,
-    /\/settings\/workflows/,
-    /\/settings\/templates/,
-    /\/assets\/prompts/,
-    /\|\s*回收站\s*\|\s*`\/trash`/,
-    /IMAGE_BASE_DIR/,
-    /AUTO_CENSOR_PYTHON_CMD`\s*\|\s*否\s*\|\s*`python3`/,
-    /LOG_ENABLE_FILE/,
-    /config\/workflows\/\*\.json/,
-  ]) {
-    assert.doesNotMatch(readme, staleReadmeClaim, `README must not keep stale claim ${staleReadmeClaim}`);
-  }
-
-  assert.match(design, /Classification: product\/design reference/);
-  assert.match(design, /root-level file is intentional/);
-  assert.match(design, /src\/components\/design-demo-shell\/app-shell\.module\.css/);
-  assert.match(design, /src\/components\/design-demo-ui\/primitives\/\*\*/);
-  assert.doesNotMatch(design, /implementation inventory/i);
-
-  assert.match(claude, /AGENTS\.md is the source of truth/);
-  assert.match(positionPresets, /Classification: active product prompt reference/);
-});
-
-test("README current route and MCP facts match source", () => {
-  const readme = read(ROOT_DOCS.readme);
-  const routeFiles = listFiles("src/app/api", "route.ts");
-  const pageRoutes = listFiles("src/app", "page.tsx").map(appRouteFromPage);
-  const mcpSource = read("src/server/mcp/server.ts");
-
-  const apiEndpoints = routeFiles.flatMap((path) => {
-    const methods = [...read(path).matchAll(/export async function (GET|POST|PUT|PATCH|DELETE)/g)].map((match) => match[1]);
-    return methods.map((method) => ({ method, route: apiRouteFromRouteFile(path) }));
-  });
-  const countByPrefix = (predicate: (route: string) => boolean) =>
-    apiEndpoints.filter(({ route }) => predicate(route)).length;
-  const agentEndpoints = apiEndpoints.filter(({ route }) => route.startsWith("/api/agent/"));
-  const toolNames = [...mcpSource.matchAll(/server\.tool\(\s*"([^"]+)"/g)].map((match) => match[1]);
-  const resourceUris = [...mcpSource.matchAll(/new ResourceTemplate\("([^"]+)"/g)].map((match) => match[1]);
-
-  assert.match(readme, new RegExp(`当前源码里有 ${pageRoutes.length} 个 .*page\\.tsx`));
-  assert.match(readme, new RegExp(`当前源码里有 ${routeFiles.length} 个 .*route\\.ts`));
-  assert.match(readme, new RegExp(`导出 ${apiEndpoints.length} 个 HTTP 方法入口`));
+test("root README is a stable router instead of a volatile source inventory", () => {
+  const readme = read("README.md");
 
   for (const route of [
-    "/",
-    "/queue/:runId",
-    "/projects/:projectId/sections/:sectionId/results",
-    "/assets/templates/:templateId/sections/:sectionIndex",
-    "/training/:route*",
-    "/design-demos/:route*",
-  ]) {
-    assert.ok(pageRoutes.includes(route), `${route} must be present in source page routes`);
-    assert.match(readme, new RegExp(escapeRegExp(route)), `${route} must be listed in README page overview`);
-  }
-
-  const areaCounts = [
-    ["`/api/agent/**`", countByPrefix((route) => route.startsWith("/api/agent/"))],
-    ["`/api/training/**`", countByPrefix((route) => route.startsWith("/api/training/"))],
-    ["`/api/preset-library/**`", countByPrefix((route) => route.startsWith("/api/preset-library/"))],
-    ["`/api/queue/**` / `/api/queue-data`", countByPrefix((route) => route.startsWith("/api/queue"))],
-  ] as const;
-  for (const [label, count] of areaCounts) {
-    assert.match(readme, new RegExp(`${escapeRegExp(label)}\\s*\\|\\s*${count}\\s*\\|`), `${label} count must match source`);
-  }
-
-  assert.match(readme, new RegExp(`/api/agent/\\*\\*.*${agentEndpoints.length} 个 HTTP 方法入口`, "s"));
-  for (const { method, route } of agentEndpoints) {
-    assert.match(readme, new RegExp(`\\|\\s*\\\`${method}\\\`\\s*\\|\\s*\\\`${escapeRegExp(route)}\\\``), `${method} ${route} must be documented in README`);
-  }
-
-  assert.match(readme, new RegExp(`当前 MCP 注册 ${toolNames.length} 个 tools`));
-  for (const toolName of toolNames) {
-    assert.match(readme, new RegExp(`\\\`${toolName}\\\``), `${toolName} must be listed in README`);
-  }
-
-  assert.match(readme, new RegExp(`当前 MCP 注册 ${resourceUris.length} 个 resources`));
-  for (const uri of resourceUris) {
-    assert.match(readme, new RegExp(`\\\`${escapeRegExp(uri)}\\\``), `${uri} must be listed in README`);
-  }
-});
-
-test("agent API docs stay synchronized with MCP registry and current trash surface", () => {
-  const agentApi = read("docs/agent-api.md");
-  const mcpSource = read("src/server/mcp/server.ts");
-
-  for (const toolName of [
-    "list_projects",
-    "update_project",
-    "update_project_section",
-    "run_all_sections",
-    "run_section",
-    "review_images",
-    "list_prompt_blocks",
-    "add_prompt_block",
-    "update_prompt_block",
-    "remove_prompt_block",
-    "reorder_prompt_blocks",
-  ]) {
-    assert.match(mcpSource, new RegExp(`"${toolName}"`), `${toolName} must remain registered in MCP source`);
-    assert.match(agentApi, new RegExp(`\\\`${toolName}\\\``), `${toolName} must be documented in agent API docs`);
-  }
-
-  for (const resourceUri of [
-    "comfyui://projects/{projectId}/context",
-    "comfyui://runs/{runId}/context",
-    "comfyui://sections/{sectionId}/blocks",
-  ]) {
-    assert.match(mcpSource, new RegExp(resourceUri.replace(/[{}]/g, "\\$&")));
-    assert.match(agentApi, new RegExp(resourceUri.replace(/[{}]/g, "\\$&")));
-  }
-
-  assert.doesNotMatch(agentApi, /GET`\s*\|\s*`\/api\/trash`/, "trash is no longer a standalone API route");
-  assert.match(agentApi, /\/api\/queue-data\?includeTrash=1/, "trash listing must route through queue-data refresh");
-  assert.doesNotMatch(mcpSource, /resources to read detailed context for projects, runs, workflows, and prompt blocks/);
-});
-
-test("documentation map defines the maintained layers and classifies root docs", () => {
-  const documentationMap = read(DOCUMENTATION_MAP_PATH);
-
-  for (const layer of [
-    "README.md",
-    "docs/architecture/",
-    "docs/runbooks/",
-    "docs/api/",
-    "docs/ui/",
-    "docs/testing/",
-    "docs/archive/",
-    "docs/superpowers/plans/",
-  ]) {
-    assert.match(documentationMap, new RegExp(layer.replaceAll("/", "\\/")), `${layer} must be mapped`);
-  }
-
-  for (const classification of [
-    "current",
-    "runbook",
-    "architecture reference",
-    "API contract",
-    "product/design reference",
-    "testing reference",
-    "historical record",
-    "generated artifact",
-    "superseded",
-  ]) {
-    assert.match(documentationMap, new RegExp(classification, "i"), `${classification} must be documented`);
-  }
-
-  for (const authority of [
-    "README vs handoff",
-    "design docs vs frontend guides",
-    "workflow quick references vs API JSON",
-    "local verification vs deploy rules",
-  ]) {
-    assert.match(documentationMap, new RegExp(authority, "i"), `${authority} must have an authority decision`);
-  }
-});
-
-test("documentation layer README files exist for current target directories", () => {
-  for (const path of [
-    "docs/architecture/README.md",
-    "docs/runbooks/README.md",
+    "PRODUCT.md",
+    "ARCHITECTURE.md",
+    "DESIGN.md",
+    "docs/README.md",
     "docs/api/README.md",
-    "docs/ui/README.md",
     "docs/testing/README.md",
-    "docs/archive/README.md",
+    "docs/runbooks/README.md",
+    "openspec/README.md",
   ]) {
+    assert.match(readme, new RegExp(escapeRegExp(route)), `README must route to ${route}`);
+  }
+
+  assert.match(readme, /Node\.js \*\*20\.19/);
+  assert.match(readme, /OpenSpec/);
+  assert.doesNotMatch(readme, /current(?:ly)?\s+(?:registers?|contains?|has)\s+\d+/i);
+  assert.doesNotMatch(readme, /\b\d+\s+(?:HTTP\s+)?(?:endpoints?|routes?|tools?|resources?)\b/i);
+  assert.doesNotMatch(readme, /当前(?:注册|包含|具有|共有)\s*\d+\s*(?:个)?(?:端点|路由|工具|资源)/);
+});
+
+test("documentation router owns authority classification and task routing", () => {
+  const docs = read("docs/README.md");
+
+  for (const authorityClass of [
+    "当前",
+    "已批准目标",
+    "生成的当前产物",
+    "延期占位",
+    "历史",
+  ]) {
+    assert.match(docs, new RegExp(`\\| ${escapeRegExp(authorityClass)} \\|`));
+  }
+
+  for (const route of [
+    "architecture/README.md",
+    "product/README.md",
+    "design/README.md",
+    "api/README.md",
+    "testing/README.md",
+    "runbooks/README.md",
+    "_meta/README.md",
+    "../openspec/README.md",
+  ]) {
+    assert.match(docs, new RegExp(escapeRegExp(route)), `docs router must route to ${route}`);
+  }
+});
+
+test("future context files are honest deferred placeholders", () => {
+  const placeholders = [
+    ["docs/QUALITY_SCORE.md", "enforce-engineering-standards", /分数、阈值/],
+    ["docs/RELIABILITY.md", "build-agent-observability", /指标、SLO/],
+    ["docs/SECURITY.md", "future-approved-security-governance", /威胁模型、控制集/],
+  ] as const;
+
+  for (const [path, stage, boundary] of placeholders) {
     const source = read(path);
-    assert.match(source, /Classification:/, `${path} must declare its documentation class`);
-    assert.match(source, /Update trigger:/, `${path} must declare when it changes`);
+    assert.match(source, /type: placeholder/);
+    assert.match(source, /status: deferred/);
+    assert.match(source, /kind: placeholder/);
+    assert.match(source, new RegExp(`stage: ${escapeRegExp(stage)}`));
+    assert.match(source, /condition:/);
+    assert.match(source, boundary);
+    assert.match(source, /OpenSpec/);
+    assert.match(source, /不(?:拥有|定义|授权)/);
+    assert.match(source, /待办/);
+    assert.doesNotMatch(source, /\b(?:score|threshold|SLO|risk rating)\s*[:=]\s*\d/i);
+    assert.doesNotMatch(source, /(?:分数|阈值|SLO|风险等级)\s*[:=：]\s*\d/i);
   }
 });
 
-test("agent rule entrypoint stays synchronized with source rule files", () => {
-  const agents = read(ROOT_DOCS.agents);
-  const index = read(DOC_INDEX_PATH);
+test("documented API families are a source-backed subset without volatile counts", () => {
+  const apiDocs = read("docs/api/README.md");
+  const documentedFamilies = [
+    ["/api/agent/**", "src/app/api/agent"],
+    ["/api/projects/**", "src/app/api/projects"],
+    ["/api/training/**", "src/app/api/training"],
+    ["/api/preset-library/**", "src/app/api/preset-library"],
+    ["/api/queue/**", "src/app/api/queue"],
+    ["/api/worker/**", "src/app/api/worker"],
+    ["/api/mcp", "src/app/api/mcp"],
+  ] as const;
 
-  assert.match(agents, /manual synchronization/i);
-  assert.match(agents, /workflow changes/i);
-  assert.match(agents, /agent-rules\/\*\*/);
-  assert.match(agents, /rendered AGENTS\.md summary/i);
+  for (const [family, sourceRoot] of documentedFamilies) {
+    assert.match(apiDocs, new RegExp(escapeRegExp(family)), `${family} must be documented`);
+    assert.ok(listFiles(sourceRoot, "route.ts").length > 0, `${family} must exist in current source`);
+  }
 
-  assert.match(index, /testing/i, "documentation index must include test documentation");
-  assert.match(index, /docs\/documentation-map\.md/);
+  assert.doesNotMatch(apiDocs, /\b\d+\s+(?:HTTP\s+)?(?:endpoints?|routes?|tools?|resources?)\b/i);
+  assert.doesNotMatch(apiDocs, /\d+\s*(?:个)?(?:端点|路由|工具|资源)/);
 });
 
-test("agent rule files keep deploy, dev-service, and mypc concerns separate", () => {
-  const deployIndex = read("agent-rules/deploy/index.md");
-  const devService = read("agent-rules/dev-service.md");
-  const mypcPowerShell = read("agent-rules/mypc-powershell.md");
+test("public login and auth routes stay reachable while protected surfaces require auth", () => {
+  const previousAuthToken = process.env.AUTH_TOKEN;
+  process.env.AUTH_TOKEN = "documentation-governance-test-token";
 
-  for (const deployRule of [
-    "agent-rules/deploy/lock.md",
-    "agent-rules/deploy/queue.md",
-    "agent-rules/deploy/prisma.md",
-    "agent-rules/deploy/next-build.md",
-    "agent-rules/deploy/service-restart.md",
-    "agent-rules/deploy/verification.md",
+  try {
+    const loginResponse = proxy(new NextRequest("http://localhost/login"));
+    assert.equal(loginResponse.status, 200);
+
+    const publicAuthResponse = proxy(new NextRequest("http://localhost/api/auth/verify"));
+    assert.equal(publicAuthResponse.status, 200);
+
+    const protectedPageResponse = proxy(new NextRequest("http://localhost/projects/example"));
+    assert.equal(protectedPageResponse.status, 307);
+    const redirect = new URL(protectedPageResponse.headers.get("location") ?? "");
+    assert.equal(redirect.pathname, "/login");
+    assert.equal(redirect.searchParams.get("from"), "/projects/example");
+
+    const protectedApiResponse = proxy(new NextRequest("http://localhost/api/projects"));
+    assert.equal(protectedApiResponse.status, 401);
+
+    const authorizedApiResponse = proxy(
+      new NextRequest("http://localhost/api/projects", {
+        headers: { authorization: "Bearer documentation-governance-test-token" },
+      }),
+    );
+    assert.equal(authorizedApiResponse.status, 200);
+  } finally {
+    if (previousAuthToken === undefined) {
+      delete process.env.AUTH_TOKEN;
+    } else {
+      process.env.AUTH_TOKEN = previousAuthToken;
+    }
+  }
+});
+
+test("API auth, envelope, MCP transport, and workflow ownership match source", async () => {
+  const apiDocs = read("docs/api/README.md");
+  const proxy = read("src/proxy.ts");
+  const responses = read("src/lib/api-response.ts");
+  const mcpRoute = read("src/app/api/mcp/route.ts");
+  const workflowReader = read("src/server/services/comfyui-service.ts");
+
+  for (const [sourceToken, documentedToken] of [
+    ["authorization", "Bearer token"],
+    ["x-api-token", "x-api-token"],
+    ["x-auth-token", "x-auth-token"],
+    ["auth_token", "auth_token"],
+  ] as const) {
+    assert.match(proxy, new RegExp(escapeRegExp(sourceToken), "i"));
+    assert.match(apiDocs, new RegExp(escapeRegExp(documentedToken), "i"));
+  }
+
+  assert.match(responses, /\{ ok: true, data \}/);
+  assert.match(responses, /\{ ok: false, error: \{ message, details \} \}/);
+  assert.match(apiDocs, /\{ "ok": true, "data": \.\.\. \}/);
+  assert.match(apiDocs, /只有[^。]*提供 `details`[^。]*才包含[^。]*`"details": \.\.\.`/);
+
+  assert.deepEqual(await fail("without details").json(), {
+    ok: false,
+    error: { message: "without details" },
+  });
+  assert.deepEqual(await fail("with details", 422, { field: "name" }).json(), {
+    ok: false,
+    error: { message: "with details", details: { field: "name" } },
+  });
+
+  for (const method of ["GET", "POST", "DELETE"]) {
+    assert.match(mcpRoute, new RegExp(`export async function ${method}\\(`));
+    assert.match(apiDocs, new RegExp(`\\b${method}\\b`));
+  }
+  assert.match(mcpRoute, /WebStandardStreamableHTTPServerTransport/);
+  assert.match(mcpRoute, /sessionIdGenerator: undefined/);
+  assert.match(apiDocs, /Web Standard Streamable HTTP 传输实现/);
+  assert.match(apiDocs, /无状态传输实例/);
+
+  assert.match(
+    workflowReader,
+    /"config",\s*"workflows",\s*"standard-workflow\.api\.json"/,
+  );
+  assert.match(workflowReader, /fs\.readFile\(filePath, "utf-8"\)/);
+  assert.match(apiDocs, /config\/workflows\/standard-workflow\.api\.json/);
+  assert.match(apiDocs, /src\/server\/services\/comfyui-service\.ts/);
+});
+
+test("route template keeps the reusable pattern and not an adopter inventory", () => {
+  const template = read("docs/api/route-handler-template.md");
+
+  for (const helper of ["readJsonObject", "ok", "fail", "failFromError"]) {
+    assert.match(template, new RegExp(`\\b${helper}\\b`));
+  }
+  assert.doesNotMatch(template, /## Current Adopters/i);
+  assert.deepEqual(
+    [...template.matchAll(/`(src\/app\/api\/[^`]+\/route\.ts)`/g)].map((match) => match[1]),
+    ["src/app/api/logs/route.ts", "src/app/api/queue-data/route.ts"],
+    "the template may name only its two controlled compatibility exceptions",
+  );
+});
+
+test("testing docs preserve path portability and the current quality contract", () => {
+  const testing = read("docs/testing/README.md");
+  const quality = read("docs/testing/quality-analysis.md");
+
+  assert.equal(normalizeRepositoryPath("tests\\fixtures\\example.json"), "tests/fixtures/example.json");
+  assert.match(testing, /由源码支持的子集和不变量/);
+  assert.match(testing, /仓库路径统一为 `\/`/);
+  assert.match(testing, /本地运行数据库、日志、指标、生成缓存和密钥都不是 fixture/);
+
+  for (const path of [
+    "tests/fixtures/quality/auto-review-analysis/reference-section-exclusions.json",
+    "reports/quality/auto-review-analysis/phase0-labeled-images.csv",
+    "reports/quality/auto-review-analysis/valid-projects-trash-rate-summary.json",
   ]) {
-    assert.ok(existsSync(deployRule), `${deployRule} must remain a separate deploy rule`);
-    assert.match(deployIndex, new RegExp(deployRule.replace("agent-rules/deploy/", "")));
+    assert.ok(existsSync(path), `${path} must exist`);
+    assert.match(quality, new RegExp(escapeRegExp(path)));
   }
 
-  assert.match(devService, /Pure dev-service work is not a full deployment/);
-  assert.match(devService, /does not require `\.deploy\.lock`/);
-  assert.match(devService, /Do not upgrade dev-service verification into public production verification/);
-
-  assert.match(mypcPowerShell, /EncodedCommand/);
-  assert.match(mypcPowerShell, /UTF-16LE/);
-  assert.match(mypcPowerShell, /ssh mypc powershell -NoProfile -EncodedCommand/);
-});
-
-test("retained context docs declare current replacement sources", () => {
-  for (const path of RETAINED_CONTEXT_DOCS) {
-    const source = read(path);
-
-    assert.match(source, /Classification:/, `${path} must declare classification`);
-    assert.match(source, /Current source:/, `${path} must name current source of truth`);
-    assert.match(source, /docs\/index\.md/, `${path} must route readers through the read-first index`);
-  }
-});
-
-test("local verification runbook covers auth, service modes, ComfyUI, and protected pages", () => {
-  const localVerification = read("docs/local-verification.md");
-
-  for (const requiredText of [
-    "Classification: runbook",
-    "Update trigger:",
-    ".env",
-    "/api/auth/verify",
-    "protected pages",
-    "npm run dev",
-    "next dev",
-    "next start",
-    "COMFY_API_URL",
-    "ComfyUI",
-  ]) {
-    assert.match(localVerification, new RegExp(requiredText.replaceAll("/", "\\/")), `local verification must mention ${requiredText}`);
-  }
+  assert.match(quality, /干净检出[^。]*只能[^。]*已提交的 `summary` 产物/);
+  assert.match(quality, /重生成依赖未提交的本地 SQLite 数据库/);
+  assert.match(quality, /sourceDb[^。]*reportPaths[^。]*绝对来源追踪路径/);
+  assert.match(quality, /历史 PRD[^；]*不是当前流水线承诺/);
 });

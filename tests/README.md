@@ -1,35 +1,35 @@
-# Test Suite Map
+# 测试套件地图
 
-This directory is the safety net for staged refactors. Keep tests scoped to the behavior they protect, and update this map when adding a new fixture helper, source-contract family, or environment-dependent test group.
+本目录是分阶段重构的安全网。每项测试应只覆盖它所保护的行为；新增测试固件辅助模块、源码契约测试系列或依赖环境的测试组时，请同步更新本地图。
 
-## Fixture Helpers
+## 测试固件辅助模块
 
-- `tests/fixtures/domain-builders.ts` owns lightweight project, section, preset category, preset, preset group, template, run, image result, training project, training section, generation task, dataset revision, and training run fixture builders. Use these for pure tests that only need stable IDs, relationship fields, and override-friendly object shapes.
-- `tests/fixtures/sqlite-db.ts` owns `better-sqlite3` temp database setup, `file:` URL exposure, SQL bootstrap, open/close wrapping, and cleanup.
-- `tests/fixtures/prisma-schema-source.ts` owns cached Prisma schema source reads, model block parsing, enum discovery, and directive lookup for source-contract tests.
+- `tests/fixtures/domain-builders.ts` 负责轻量的项目、分区、预设分类、预设、预设组、模板、运行记录、图片结果、训练项目、训练分区、生成任务、数据集版本与训练运行记录固件构造器。只需要稳定 ID、关系字段和易于覆盖的对象结构时，应在纯测试中使用这些构造器。
+- `tests/fixtures/sqlite-db.ts` 负责 `better-sqlite3` 临时数据库初始化、`file:` URL 暴露、SQL 引导、打开/关闭封装与清理。
+- `tests/fixtures/prisma-schema-source.ts` 负责缓存读取 Prisma schema 源码、解析模型块、发现枚举，以及为源码契约测试查找指令。
 
-## Native Modules And Local Data
+## 原生模块与本地数据
 
-Some DB tests require regenerated native modules such as `better-sqlite3` or generated Prisma clients. When those fail to load, treat the failure as an environment/tooling issue first, not as proof that the domain behavior changed.
+部分数据库测试需要重新生成的原生模块（例如 `better-sqlite3`）或生成的 Prisma 客户端。无法加载这些依赖时，应先把失败视为环境或工具问题，而不是领域行为已经变化的证据。
 
-Local DB files such as `data/comfyui.db` and `prisma/data/comfyui.db` are runtime data, not fixtures. Tests that need SQLite state should create fresh DB/file fixtures in a temp directory through `tests/fixtures/sqlite-db.ts` or an equivalent per-test temp setup.
+`data/comfyui.db` 和 `prisma/data/comfyui.db` 等本地数据库文件属于运行时数据，不是测试固件。需要 SQLite 状态的测试应通过 `tests/fixtures/sqlite-db.ts` 或等价的逐测试临时初始化，在临时目录中新建数据库/文件固件。
 
-## Source Contract Tests
+## 源码契约测试
 
-Source contract tests inspect file text to protect architecture boundaries that runtime tests cannot see directly, such as import direction, route ownership, App Router compatibility, generated/runtime-file boundaries, and UI module split decisions. Keep source contract assertions explicit about the behavior they protect and avoid duplicating runtime assertions.
+源码契约测试通过检查文件文本，保护运行时测试无法直接观察的架构边界，例如导入方向、路由归属、App Router 兼容性、生成文件/运行时文件边界与 UI 模块拆分决策。源码契约断言必须明确指出所保护的行为，并避免重复运行时断言。
 
-Tests named `test-*-source`, `test-*-boundary`, `test-*-governance`, and source-scanning sections inside broader route or UI suites are source contract tests. Runtime behavior tests should import modules or call services/routes directly instead of scanning source text.
+名称符合 `test-*-source`、`test-*-boundary`、`test-*-governance` 的测试，以及更大路由或 UI 套件中的源码扫描部分，都属于源码契约测试。运行时行为测试应直接导入模块或调用服务/路由，而不是扫描源码文本。
 
-Default `npm test` also runs colocated design-demo regression tests under `src/app/design-demos/**/*.test.{ts,mjs}` and `src/components/design-demo-ui/**/*.test.{ts,mjs}`. Keep these tests near their source modules when their value comes from local component, route, or CSS contracts; move them to `tests/` only when they become repo-level contracts.
+默认的 `npm test` 还会运行位于 `src/app/design-demos/**/*.test.{ts,mjs}` 与 `src/components/design-demo-ui/**/*.test.{ts,mjs}` 的就近设计演示回归测试。如果测试价值来自本地组件、路由或 CSS 契约，应让它们留在源码模块附近；只有成为仓库级契约后才移入 `tests/`。
 
-## Route And Environment Order
+## 路由与环境初始化顺序
 
-Route tests must import route modules only after test env vars are set. Set `AUTH_TOKEN`, `DB_PROVIDER`, `DATABASE_URL`, or other required process env values before `await import("../src/app/api/.../route")`, and restore changed env values in `finally` blocks when the test mutates global process state.
+路由测试只能在设置测试环境变量后导入路由模块。执行 `await import("../src/app/api/.../route")` 前，应先设置 `AUTH_TOKEN`、`DB_PROVIDER`、`DATABASE_URL` 或其他必需的进程环境变量；测试修改全局进程状态时，必须在 `finally` 块中恢复变更过的环境值。
 
-Static imports from `src/app/api/**` in test files are disallowed because they can load route modules before env setup. Use dynamic imports inside the test body or setup block instead.
+测试文件不得静态导入 `src/app/api/**`，因为这可能在环境初始化前加载路由模块。请改用测试正文或初始化块中的动态导入。
 
-## Isolation Rules
+## 隔离规则
 
-- Create fresh DB/file fixtures per test file or per test case; do not rely on another test's database rows, temp files, process env mutation, or execution order.
-- Keep visual and UI source tests focused on rendered output, stable component contracts, or documented source-contract boundaries rather than incidental CSS class order.
-- Keep skipped tests explicit about the missing local capability, such as unavailable `node:sqlite`, and do not hide unexpected failures behind broad skips.
+- 每个测试文件或测试用例都应创建全新的数据库/文件固件；不得依赖其他测试的数据库记录、临时文件、进程环境变更或执行顺序。
+- 视觉与 UI 源码测试应聚焦渲染输出、稳定组件契约或已经记录的源码契约边界，而不是偶然的 CSS 类名顺序。
+- 跳过测试时必须明确说明缺失的本地能力，例如不可用的 `node:sqlite`；不得用宽泛跳过隐藏意外失败。

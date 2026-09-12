@@ -5,44 +5,33 @@ import { pathToFileURL } from "node:url";
 import test from "node:test";
 
 const repoRoot = process.cwd();
-const workerBoundaryDocPath = "docs/worker-boundaries.md";
+const queueWorkerDocPath = "docs/architecture/system/execution/queue-worker.md";
+const executionRouterPath = "docs/architecture/system/execution/README.md";
+const systemRouterPath = "docs/architecture/system/README.md";
+const architectureRouterPath = "docs/architecture/README.md";
 
 function readSource(path: string) {
   return readFileSync(join(repoRoot, path), "utf8");
 }
 
-test("worker boundary doc records generation payload and repository ownership", () => {
-  assert.ok(existsSync(join(repoRoot, workerBoundaryDocPath)), `${workerBoundaryDocPath} should document worker ownership`);
+test("queue and worker architecture is owned and routed from the architecture tree", () => {
+  for (const path of [queueWorkerDocPath, executionRouterPath, systemRouterPath, architectureRouterPath]) {
+    assert.ok(existsSync(join(repoRoot, path)), `${path} should exist`);
+  }
 
-  const doc = readSource(workerBoundaryDocPath);
-  const docsIndex = readSource("docs/index.md");
+  const queueWorkerDoc = readSource(queueWorkerDocPath);
+  const executionRouter = readSource(executionRouterPath);
+  const systemRouter = readSource(systemRouterPath);
+  const architectureRouter = readSource(architectureRouterPath);
 
-  assert.match(doc, /src\/server\/worker\/payload-builder\.ts[\s\S]*owns generation prompt draft normalization/);
-  assert.match(doc, /src\/server\/worker\/repository\.ts[\s\S]*owns generation run persistence/);
-  assert.match(doc, /src\/server\/worker\/fallback-prompt-builder\.ts[\s\S]*last resort only/);
-  assert.match(doc, /src\/server\/worker\/training\/task-id\.ts[\s\S]*owns training worker task ID parsing/);
-  assert.match(doc, /src\/server\/worker\/training\/target-discovery\.ts[\s\S]*owns training worker target discovery/);
-  assert.match(doc, /src\/server\/worker\/training\/task-serialization\.ts[\s\S]*owns serialized worker task shaping/);
-  assert.match(doc, /src\/server\/worker\/training\/task-errors\.ts[\s\S]*owns training worker task error mapping/);
-  assert.match(doc, /src\/server\/worker\/training\/leasing\.ts[\s\S]*owns training worker leasing/);
-  assert.match(doc, /src\/server\/worker\/training\/task-json\.ts[\s\S]*owns worker task JSON normalization/);
-  assert.match(doc, /src\/server\/worker\/training\/heartbeat\.ts[\s\S]*owns training worker heartbeat handling/);
-  assert.match(doc, /src\/server\/worker\/training\/completion\.ts[\s\S]*owns training worker completion handling/);
-  assert.match(doc, /src\/server\/worker\/training\/failure\.ts[\s\S]*owns training worker failure handling/);
-  assert.match(doc, /src\/server\/worker\/training\/scheduler\.ts[\s\S]*owns training worker scheduler handling/);
-  assert.match(doc, /docs\/workflow\.api\.json[\s\S]*default standard workflow/);
-  assert.match(doc, /Do not let repositories import payload builders/);
-  assert.match(doc, /Do not reintroduce worker task ID prefix parsing into task-api/);
-  assert.match(doc, /Do not reintroduce target discovery queries into task-api/);
-  assert.match(doc, /Do not reintroduce lease request parsing or mark-running transitions into task-api/);
-  assert.match(doc, /Do not reintroduce heartbeat request parsing or heartbeat progress writes into task-api/);
-  assert.match(doc, /Do not reintroduce completion request parsing or artifact completion writes into task-api/);
-  assert.match(doc, /Do not reintroduce failure request parsing or failure status writes into task-api/);
-  assert.match(doc, /Do not reintroduce scheduler tick routing or training progress writes into task-api/);
-  assert.match(doc, /lease owners, heartbeat progress payloads, failure summaries, and provider error payloads/);
-  assert.match(doc, /ComfyUI cancellation HTTP failures must fail the current batch and stop later batches/);
-  assert.match(doc, /Do not call the fallback prompt builder from run-executor/);
-  assert.match(docsIndex, /docs\/worker-boundaries\.md/, "documentation index should point agents to worker boundaries");
+  assert.match(queueWorkerDoc, /owner: queue-runtime/);
+  assert.match(queueWorkerDoc, /subject: queue-worker-execution/);
+  assert.match(queueWorkerDoc, /^## Generation 执行$/m);
+  assert.match(queueWorkerDoc, /^## Training 工作进程$/m);
+  assert.match(queueWorkerDoc, /^## 失败与恢复边界$/m);
+  assert.match(executionRouter, /\[队列与工作进程执行\]\(queue-worker\.md\)/);
+  assert.match(systemRouter, /\[执行架构\]\(execution\/README\.md\)/);
+  assert.match(architectureRouter, /\[执行架构\]\(system\/execution\/README\.md\)/);
 });
 
 test("generation worker payload building stays separate from run persistence", () => {
@@ -79,7 +68,7 @@ test("fallback prompt builder remains a ComfyUI validation last resort", () => {
   assert.match(fallbackBuilder, /export function buildFallbackPromptNodes/);
   assert.doesNotMatch(fallbackBuilder, /@\/lib\/db|@\/server\/worker\/repository/);
   assert.match(comfyService, /1\) explicit comfyPrompt in extraParams/);
-  assert.match(comfyService, /2\) standard workflow\.api\.json/);
+  assert.match(comfyService, /2\) config\/workflows\/standard-workflow\.api\.json/);
   assert.match(comfyService, /3\) built-in SDXL txt2img fallback/);
   assert.match(comfyService, /function shouldUseStandardWorkflow\(\)[\s\S]*return true;/);
   assert.match(comfyService, /const standardPrompt = await resolveStandardWorkflowPrompt\(promptDraft\);[\s\S]*apiPrompt = standardPrompt \?\? buildFallbackPromptNodes\(promptDraft\);/);

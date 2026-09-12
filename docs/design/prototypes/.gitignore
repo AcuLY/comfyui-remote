@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.vite/
+
+# Machine-local filename snapshots; never publish as repository data.
+public/local-mocks/

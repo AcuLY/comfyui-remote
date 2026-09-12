@@ -1,0 +1,20 @@
+schemaVersion: 1
+document:
+  type: runbook
+  status: current
+  owner: deployment-operations
+  authority:
+    subject: operations/deployment
+    kind: operational
+  readWhen:
+    - 记录已实际演练的生产流程时
+  sources:
+    - package.json
+  verifiedBy:
+    - npm run docs:check
+  environment:
+    - mypc-production
+  risk: 已实际演练的流程必须记录演练日期。
+  recovery: "#故障处理与恢复"
+  verificationState: exercised
+  lastVerified: null

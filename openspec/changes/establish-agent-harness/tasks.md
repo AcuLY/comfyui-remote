@@ -1,44 +1,24 @@
-## 1. OpenSpec Program Foundation
+## 1. OpenSpec 与治理基础
 
-- [ ] 1.1 Replace the bootstrap `npx @fission-ai/openspec@1.5.0` validation path with a repository-pinned OpenSpec version/profile; document native status, validate, instructions, and archive commands plus the upstream agent apply/verify workflows.
-- [ ] 1.2 Implement repository-specific approval records that bind exact artifact content digests and become stale on any content change.
-- [ ] 1.3 Implement a narrow parent/child stage-order check without replacing OpenSpec's lifecycle.
+- [x] 1.1 将 `@fission-ai/openspec` 固定为仓库版本，并提供状态、指令、校验与归档包脚本。
+- [x] 1.2 以 `AGENTS.md` 和运行手册保留 Git、服务、数据库、队列和部署安全边界。
+- [x] 1.3 区分当前实现、已批准目标和历史意图，不建立平行生命周期状态机。
 
-## 2. Documentation Structure and Governance Specification Gate
+## 2. 文档治理子变更
 
-- [x] 2.1 Reverify the current documentation inventory, authority map, module boundaries, generated artifacts, and historical surfaces needed to compare target structures.
-- [x] 2.2 Present two or three repository-specific documentation information architectures with exact trees, ownership, routing, lifecycle, OpenSpec boundaries, and migration trade-offs.
-- [x] 2.3 Obtain explicit user approval for the target tree before authoring complete documentation-governance specs, design, or tasks.
-- [x] 2.4 Create `rebuild-documentation-governance` and author its complete proposal, specs, design, and tasks from the approved structure.
-- [x] 2.5 Ensure the child routes significant future changes through the approved OpenSpec entrypoints and records the boundary in the repository agent map.
-- [ ] 2.6 Obtain user review of the exact child artifacts and record approval against their content digests.
-- [ ] 2.7 Approve the child `tasks.md` as the only implementation task plan for the OpenSpec foundation and documentation-governance stage; do not create a parallel Plan artifact.
-- [ ] 2.8 Apply the documentation-governance child change in verified batches under its own tasks.
-- [ ] 2.9 Record user acceptance against the applied revision and verification evidence, then archive the child only after its blocking documentation gate is required and green.
+- [x] 2.1 批准并创建 `rebuild-documentation-governance` 的 proposal、spec、design 和 tasks。
+- [x] 2.2 按子变更任务实施文档控制面、知识迁移、运行手册、配置迁移与文档 CI。
+- [x] 2.3 完成子任务 `13.7` 的最终语义审计、独立复核和验证。
+- [ ] 2.4 用户明确验收最终 revision 后执行子任务 `13.9` 并按 OpenSpec 归档。
 
-## 3. Observability Stage Gate
+## 3. 2026-08-26 范围缩减
 
-- [ ] 3.1 After documentation governance is accepted, capture a fresh runtime and performance baseline.
-- [ ] 3.2 Present two or three observability design options that preserve the approved self-hosted, isomorphic, per-worktree isolation invariants.
-- [ ] 3.3 Create, validate, and obtain user approval for `build-agent-observability` artifacts before apply.
-- [ ] 3.4 Apply, verify, and obtain user acceptance for the approved observability child change.
+- [x] 3.1 记录用户决定：取消尚未实施的可观测性、工程规范和统一 CI 父计划范围，不把取消项描述为完成。
+- [x] 3.2 更新父 proposal、design、spec、tasks 和仓库 OpenSpec 路由，使未来能力必须另立并重新批准。
+- [x] 3.3 生成 Git 工作树、Git 暂存快照、个人脚本和运行资产的脱敏只读处置清单，不执行清理。
+- [x] 3.4 严格验证缩减后的两个活动 OpenSpec、文档门禁、Skill、聚焦测试和 Git 写入边界。
 
-## 4. Engineering Standards Stage Gate
+## 4. 父变更完成条件
 
-- [ ] 4.1 After observability is accepted, capture a fresh repository-wide style, dependency, complexity, test, and architecture baseline.
-- [ ] 4.2 Present two or three engineering-standards design options with automated and human-review trade-offs.
-- [ ] 4.3 Create, validate, and obtain user approval for `enforce-engineering-standards` artifacts before apply.
-- [ ] 4.4 Clear all in-scope legacy violations, apply blocking enforcement, and obtain user acceptance.
-
-## 5. Final Documentation and CI Convergence
-
-- [ ] 5.1 Propose and obtain user approval for the final documentation-convergence and unified-CI change.
-- [ ] 5.2 Update maintained architecture, module, observability, standards, runbook, and testing documentation from implemented reality.
-- [ ] 5.3 Verify living specs and archive completed child changes under OpenSpec conventions.
-- [ ] 5.4 Enable the unified blocking CI only after every gate is green locally and in CI.
-
-## 6. Parent Completion
-
-- [ ] 6.1 Verify that all required child stages are accepted and no unapproved future behavior appears as current truth.
-- [ ] 6.2 Run strict OpenSpec validation and the repository's full harness verification suite.
-- [ ] 6.3 Obtain final user acceptance and archive `establish-agent-harness` last.
+- [ ] 4.1 文档治理子变更已经用户验收并归档，且取消范围没有被提升为当前能力。
+- [ ] 4.2 用户审查范围缩减、处置清单和最终验证结果后，明确验收并按 OpenSpec 归档父变更。
