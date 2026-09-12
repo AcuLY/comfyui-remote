@@ -19,6 +19,7 @@ document:
     - docs/design/prototypes/reviews/R01.md
     - docs/design/prototypes/reviews/R01-02.md
     - docs/design/prototypes/reviews/R02-01.md
+    - docs/design/prototypes/reviews/R02-02.md
     - docs/design/prototypes/reviews/F-responsive.md
     - docs/design/prototypes/reviews/F-theme.md
   verifiedBy:
@@ -32,7 +33,7 @@ document:
 
 本区域承载[根设计契约](../../DESIGN.md)之下、由源码支持的详细说明。它描述当前模式和归属边界；不会把原型、固件或未导入的样式表提升为生产环境的权威来源。
 
-[HTML 设计原型](prototypes/README.md)与当前生产页面分开。`R01-01` 的 `30fd53db` 已获用户确认；`R01-02` 因通用定位及临时拆分偏差暂停。用户核对台账后要求继续计划下一项，本轮按[总路线与事前任务说明](prototypes/ui-design-roadmap.md)制作既有 [R02-01 全局导航外壳](prototypes/reviews/R02-01.md)，业务内容仅占位，设计结果待用户审核。其他78项仍为草案；新任务先有独立编号、范围、排除、验收和确认状态，再制作，不能从模糊批次标题直接开发。
+[HTML 设计原型](prototypes/README.md)与当前生产页面分开。R01-01已确认，R01-02保持暂停。用户于2026-09-12要求继续下一原型，本轮按已有台账制作 [R02-02 项目上下文与导航恢复](prototypes/reviews/R02-02.md)，复用R02-01外壳，业务内容仅占位；其余77项仍为草案。开始制作前必须有独立范围与验收，设计批准仍逐项记录。
 
 ## 路由
 
@@ -52,6 +53,7 @@ document:
 | 回查列表工具栏、数据表与分页组合 | [R01 审核记录](prototypes/reviews/R01.md) | 查看用户确认的列表版本、适配要求和实际验证；历史结果不替代新组合验收。 |
 | 回查已暂停的组织组合 | [R01-02 审核记录](prototypes/reviews/R01-02.md) | 查看偏差原因与历史产物；不作为其他业务页面的通用模板或前置。 |
 | 审核本轮导航外壳 | [R02-01 审核记录](prototypes/reviews/R02-01.md) | 两模块四入口与全局工具、桌面收放和手机导航；业务内容仅占位。 |
+| 审核项目页签、来源返回与恢复 | [R02-02审核记录](prototypes/reviews/R02-02.md) | 项目／任务来源、两模块页签、深链与失效父级回退。 |
 | 启动和查看新版可运行设计稿 | [HTML 设计原型](prototypes/README.md) | 使用独立原型依赖与模拟数据，不作为当前生产实现入口。 |
 
 ## 上级路由

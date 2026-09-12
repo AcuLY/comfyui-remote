@@ -23,6 +23,7 @@ document:
     - docs/design/prototypes/reviews/R01.md
     - docs/design/prototypes/reviews/R01-02.md
     - docs/design/prototypes/reviews/R02-01.md
+    - docs/design/prototypes/reviews/R02-02.md
     - docs/design/prototypes/reviews/F-responsive.md
     - docs/design/prototypes/reviews/F-theme.md
     - docs/design/prototypes/.impeccable/design.json
@@ -49,7 +50,7 @@ document:
 
 原始基础与后续适配、数字输入局部修订保留在[历史记录](reviews/F-responsive.md)，不代替新生成主题的验证。当前组件内部结构、状态、焦点与真实触控尺寸重新检查；其余浅色中性色去色比较未采纳，不扩大为新业务页面。
 
-用户已确认 [R01-01 列表组合](reviews/R01.md)的 `30fd53db` 版本。[R01-02](reviews/R01-02.md)因通用定位和临时拆分偏差保持暂停。完成[总路线与事前任务登记](ui-design-roadmap.md)并核对R01台账后，用户要求继续计划下一项；本轮选定既有 [R02-01 全局导航外壳](reviews/R02-01.md)，先写明确范围再制作，结果待用户审核。其他78项仍为草案；不能由“继续下一个”临时派生组件原型。
+用户已确认 [R01-01 列表组合](reviews/R01.md)的 `30fd53db` 版本，R01-02保持暂停。用户于2026-09-12要求基于整理后的规则继续下一原型，本轮制作已登记的 [R02-02 项目上下文与导航恢复](reviews/R02-02.md)，复用R02-01最近外壳；各自审核状态独立记录，其余77项仍为草案。
 
 开始设计或局部修正前阅读[前端设计交付指导](design-delivery-guide.md)，先核对当前契约、组件复用及实际验收范围；R02-01的反复返工原因与改进措施集中记录于该文档。
 
@@ -61,7 +62,7 @@ document:
 | P-02 | 推进顺序 | 先基础元素与小组件，再业务组合，最后完整页面及流程 | 已确认，2026-09-07 |
 | P-03 | 基础设计 | 官方完整组件主题、统一入口与独立页面布局，保留既有设计方向 | 统一主题版已制作，待用户审核；已测范围和最终门禁分别记录 |
 | P-04 | 业务组合 | 筛选工具栏、任务行、图片卡片、参数表单等 | R01-01 已确认（`30fd53db`）；R01-02定位偏差，暂停；新任务先审说明 |
-| P-05 | 完整页面 | 两模块的项目、任务、预制、模板及全局工具页面 | R02-01导航外壳制作中，业务内容仅占位；具体业务页面未开始 |
+| P-05 | 完整页面 | 两模块的项目、任务、预制、模板及全局工具页面 | R02-02项目上下文首稿待审核；业务内容仍占位，具体业务页面未开始 |
 
 保留的方向是紧凑、图片优先、两模块同等重要的工作台，状态语义独立，明暗主题支持系统跟随与手动选择。组件运行依赖保持 `PrimeReact 10.9.9 Styled`，主题构建工具按本目录清单单独锁定。新组件主题从 `src/tokens.css` 这一份色值来源生成，具体新呈现和交互以本轮实际审核为准。
 
@@ -76,7 +77,7 @@ npm --prefix docs/design/prototypes run dev
 
 浏览器访问 [基础设计原型](http://127.0.0.1:5178/foundations/)。开发服务仅监听 `127.0.0.1:5178`，端口已占用时直接退出，不自动改用其他端口。应通过开发服务访问；直接双击源码 HTML 不会执行依赖构建。
 
-当前审核入口为 [R02-01 全局导航外壳](http://127.0.0.1:5178/shell/navigation/)，范围和检查结果查阅[独立记录](reviews/R02-01.md)。[R01-02历史原型](http://127.0.0.1:5178/components/organization/)保留供回查，页面中的旧指引不代表新的制作授权。[列表组合](http://127.0.0.1:5178/components/lists/)保持已确认，基础规则沿用已声明范围。
+当前审核入口为 [R02-02 项目上下文](http://127.0.0.1:5178/shell/project-context/#production/projects)，范围和检查结果查阅[独立记录](reviews/R02-02.md)；[R02-01独立外壳](http://127.0.0.1:5178/shell/navigation/)继续保留。[R01-02历史原型](http://127.0.0.1:5178/components/organization/)保留供回查，页面中的旧指引不代表新的制作授权。[列表组合](http://127.0.0.1:5178/components/lists/)保持已确认，基础规则沿用已声明范围。
 
 构建检查：
 
@@ -121,7 +122,9 @@ npm --prefix docs/design/prototypes run theme:check
 | `src/main.jsx` | `PrimeReact` 组件样本及本地演示交互 |
 | `src/lists.jsx`、`src/lists.css` | 列表组合、模拟数据、桌面表格与手机卡片及其适配样式 |
 | `src/organization.jsx`、`src/organization.css` | 文件夹定位、内容多选、排序与移动对话框及其响应式布局 |
-| `src/navigation.jsx`、`src/navigation.css` | 两模块四入口、全局工具、桌面收放和手机导航布局 |
+| `src/navigation.jsx`、`src/navigation-shell.jsx`、`src/navigation.css` | 独立R02-01入口及复用的全局外壳 |
+| `shell/project-context/index.html`、`src/project-context.jsx`、`src/project-context.css` | R02-02来源样本、项目上下文与返回恢复 |
+| `src/project-context-model.mjs`、`tests/project-context-model.test.mjs` | 静态导航样本、片段规范化、失效回退与模型测试 |
 | `src/use-prototype-preference.jsx` | 各原型共用的主题及模块偏好；实时系统跟随、手动覆盖与持久保存；密度固定标准，不读写密度偏好 |
 | `src/tokens.css` | 唯一色值来源，供页面变量及本轮主题生成读取 |
 | `src/theme/theme-inputs.mjs` | 从语义变量映射官方主题参数，并集中定义标准／触控尺寸 |

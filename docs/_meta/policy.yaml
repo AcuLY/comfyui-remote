@@ -99,6 +99,8 @@ scope:
       - docs/design/prototypes/src/**/*.{css,jsx}
       - docs/design/prototypes/scripts/build-theme.mjs
       - docs/design/prototypes/scripts/snapshot-organization.mjs
+      - docs/design/prototypes/src/project-context-model.mjs
+      - docs/design/prototypes/tests/project-context-model.test.mjs
       - docs/design/prototypes/src/theme/theme-inputs.mjs
       - docs/design/prototypes/src/theme/LICENSE.primereact-sass-theme
       - docs/design/prototypes/src/theme/vendor/primereact-sass-theme/**/*.scss

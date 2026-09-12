@@ -2,12 +2,12 @@
 version: 1
 slug: "docs-design-prototypes-shell-navigation-index-html"
 primary_target: "docs/design/prototypes/shell/navigation/index.html"
-related_targets: ["docs/design/prototypes/src/navigation.jsx","docs/design/prototypes/src/navigation.css"]
+related_targets: ["docs/design/prototypes/src/navigation.jsx","docs/design/prototypes/src/navigation.css","docs/design/prototypes/src/navigation-shell.jsx"]
 ---
 
 # 全局导航外壳
 
-范围为事前已登记的R02-01，`Operate`模式；任务及制作边界见 docs/design/prototypes/reviews/R02-01.md。用户要求继续计划下一项，本轮只执行此项，不能临时追加项目导航、登录或业务列表。
+范围为事前已登记的R02-01，`Operate`模式；任务及制作边界见 docs/design/prototypes/reviews/R02-01.md。该记录只约束R02-01；R02-02已于2026-09-12单独获准制作，复用外壳而不改变此处导航基线。
 
 沿用已确认的基础主题、字号与40px触控普通控件／44px图标控件。桌面侧栏顶部模块、中部四入口、底部全局工具及主题快捷按钮。2026-09-10用户指令覆盖IA-06的手机顶部模块布局：手机顶部留给页面实际操作，模块切换、四入口及更多共同放到底部。两模块在桌面与手机均按任务、项目、预制、模板排序。其余业务边界保留，不重新选择视觉世界或无关版式。
 

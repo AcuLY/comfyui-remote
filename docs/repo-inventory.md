@@ -163,6 +163,7 @@ document:
 | `.impeccable/surfaces/docs-design-prototypes-components-organization-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `.impeccable/surfaces/docs-design-prototypes-foundations-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `.impeccable/surfaces/docs-design-prototypes-shell-navigation-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `.impeccable/surfaces/docs-design-prototypes-shell-project-context-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `AGENTS.md` | `root` | `agent-policy` | `Markdown` 文档 | `router` | 文档元数据 |
 | `ARCHITECTURE.md` | `root` | `system-architecture` | `Markdown` 文档 | `architecture` | 文档元数据 |
 | `CLAUDE.md` | `root` | `agent-policy` | `Markdown` 文档 | `router` | 文档元数据 |
@@ -221,17 +222,23 @@ document:
 | `docs/design/prototypes/reviews/R01-02.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/reviews/R01.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/reviews/R02-01.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/prototypes/reviews/R02-02.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/scripts/build-theme.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/scripts/snapshot-organization.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/shell/navigation/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/shell/project-context/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/foundations.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/lists.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/lists.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/main.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/src/navigation-shell.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/navigation.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/navigation.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/organization.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/organization.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/src/project-context-model.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/src/project-context.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/src/project-context.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/prototype-layout.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/prototype-provider.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/theme/LICENSE.primereact-sass-theme` | `docs` | `repository-maintainers` | 仓库文件 | `prototype-source` | 治理策略 |
@@ -331,6 +338,7 @@ document:
 | `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/themes/lara/lara-light/_variables.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/tokens.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/src/use-prototype-preference.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/tests/project-context-model.test.mjs` | `docs` | `repository-maintainers` | 测试代码 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/ui-design-coverage.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/ui-design-production-plan.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/ui-design-roadmap.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
