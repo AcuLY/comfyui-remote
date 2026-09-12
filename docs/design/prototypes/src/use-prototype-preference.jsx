@@ -1,7 +1,25 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { SelectButton } from 'primereact/selectbutton';
 
 export const themeOptions = [{ label: '浅色', value: 'light' }, { label: '深色', value: 'dark' }];
 const preferenceKey = 'cm-prototype-preference-v1';
+
+export function ThemePreferenceSelect({ value, onSelect, ...props }) {
+  return <SelectButton {...props} value={value} options={themeOptions} allowEmpty={false}
+    onChange={event => onSelect(event.value)}
+    pt={{ button: ({ context }) => ({
+      // v10 suppresses onChange for the selected option. Its public button slot
+      // preserves that activation so choosing the system color can resume follow.
+      onClick: () => { if (context.selected && !context.disabled) onSelect(context.option.value); },
+      onKeyDown: event => {
+        if (context.disabled || event.repeat) return;
+        if (event.code === 'Enter' || (event.code === 'Space' && context.selected)) {
+          event.preventDefault();
+          onSelect(context.option.value);
+        }
+      },
+    }) }} />;
+}
 
 function readPreference() {
   try {

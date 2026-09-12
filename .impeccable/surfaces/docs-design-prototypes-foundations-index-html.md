@@ -7,7 +7,7 @@ related_targets: ["docs/design/prototypes/src/main.jsx","docs/design/prototypes/
 
 # 基础设计原型
 
-目标：`docs/design/prototypes/**` 中可操作的新版前端基础样本，采用代码制作。用户已于 2026-09-08 确认当前方案无问题，`F-01`～`F-14` 与 `P-03` 已确认，视觉基线源提交为 `7fdf13de`。规则见 [新版前端基础设计规范](../../docs/design/prototypes/design-foundations.md)。后续业务组合、完整页面及生产实现尚未因此通过，不增加新品牌方向。
+目标：`docs/design/prototypes/**` 中可操作的新版前端基础样本，采用代码制作。基础方向及 `8029fdfb` 批准历史保留；后续统一主题生成版与状态修订仍待用户审核，不能将整个 `F-01`～`F-14` 或 `P-03` 当前版本标为已确认。`R01-01` 的 `30fd53db` 确认历史保留，`R01-02` 暂停，`R02-01/02` 待用户审核。规则见 [新版前端基础设计规范](../../docs/design/prototypes/design-foundations.md)及[基础台账](../../docs/design/prototypes/foundations/README.md)。
 
 ## 方向约定
 
@@ -23,4 +23,4 @@ related_targets: ["docs/design/prototypes/src/main.jsx","docs/design/prototypes/
 
 形式：在已确认方向中直接制作基础展示画布；属于明确限定的小范围任务，不进行概念抽签。
 
-完成状态：基础样本已有独立收尾审查和整改复核，并取得用户确认；本次将规范和原型状态同步为已确认。后续业务组合与完整页面需独立设计、验证和审核。此次无交付位图素材，截图仅作验证。
+完成状态：基础旧版确认与后续统一主题待审核分别记录。2026-09-13已修复基础／列表主题恢复边界及共享键盘焦点：鼠标、空格、`Enter` 的系统追上固定色后重选路径均恢复实时跟随；所测焦点为清晰模块色实线。实际范围与宿主尺寸限制写入 `docs/design/prototypes/reviews/R02-02.md` 的复盘 `I09/I10/I14` 验收，不自动批准修订或宣称全矩阵通过。当前普通触控40px／图标44px；历史44px普通输入测量只证明对应旧版本。后续业务组合与完整页面各自设计、验证和审核，无交付位图素材。

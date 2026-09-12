@@ -19,6 +19,8 @@ export function createThemeInputs(token, { theme, touch }) {
   const hover = token('surface-hover');
   const accent = token('accent');
   const accentHover = token('accent-hover');
+  const focus = token('focus');
+  const focusGap = `0 0 0 2px ${surface}`;
   const inputs = {
     primaryColor: accent,
     primaryLightColor: theme === 'dark' ? accentHover : token('accent-soft'),
@@ -42,10 +44,10 @@ export function createThemeInputs(token, { theme, touch }) {
     transitionDuration: token('duration-quick'),
     maskBg: token('scrim'),
     errorColor: token('danger'),
-    focusOutlineColor: token('focus'),
-    focusOutline: '0 none',
-    focusOutlineOffset: '0',
-    focusShadow: `0 0 0 0.2rem ${token('accent-soft')}`,
+    focusOutlineColor: focus,
+    focusOutline: `2px solid ${focus}`,
+    focusOutlineOffset: '2px',
+    focusShadow: focusGap,
     actionIconWidth: size,
     actionIconHeight: size,
     actionIconColor: secondary,
@@ -57,7 +59,7 @@ export function createThemeInputs(token, { theme, touch }) {
     inputIconColor: secondary,
     inputBorder: `1px solid ${token('border-control')}`,
     inputHoverBorderColor: secondary,
-    inputFocusBorderColor: token('focus'),
+    inputFocusBorderColor: focus,
     inputPlaceholderTextColor: token('text-muted'),
     inputFilledBg: token('surface-secondary'),
     inputFilledHoverBg: hover,
@@ -73,6 +75,7 @@ export function createThemeInputs(token, { theme, touch }) {
     inputListItemHoverBg: hover,
     inputListItemTextHoverColor: text,
     inputListItemFocusBg: hover,
+    inputListItemFocusShadow: `inset 0 0 0 2px ${focus}`,
     inputListItemTextFocusColor: text,
     inputListItemBorderRadius: token('radius-small'),
     inputListHeaderBg: token('surface-secondary'),
@@ -88,6 +91,7 @@ export function createThemeInputs(token, { theme, touch }) {
     plainButtonTextColor: secondary,
     plainButtonHoverBgColor: hover,
     plainButtonActiveBgColor: token('surface-secondary'),
+    linkButtonFocusShadow: focusGap,
     inputSwitchSliderOffBg: token('border-control'),
     inputSwitchSliderOffHoverBg: secondary,
     inputSwitchHandleOffBg: surface,
@@ -141,7 +145,7 @@ export function createThemeInputs(token, { theme, touch }) {
       [`${name}ButtonActiveBg`]: `mix(${text}, ${color}, 18%)`,
       [`${name}ButtonTextActiveColor`]: onSemantic,
       [`${name}ButtonActiveBorderColor`]: `mix(${text}, ${color}, 18%)`,
-      [`${name}ButtonFocusShadow`]: `0 0 0 0.2rem ${token(`${role}-soft`)}`,
+      [`${name}ButtonFocusShadow`]: focusGap,
     });
     if (name !== 'help') {
       const message = name === 'danger' ? 'error' : name;
@@ -164,7 +168,7 @@ export function createThemeInputs(token, { theme, touch }) {
       [`${name}ButtonActiveBg`]: text,
       [`${name}ButtonTextActiveColor`]: surface,
       [`${name}ButtonActiveBorderColor`]: text,
-      [`${name}ButtonFocusShadow`]: `0 0 0 0.2rem ${token('surface-secondary')}`,
+      [`${name}ButtonFocusShadow`]: focusGap,
     });
   }
   return inputs;

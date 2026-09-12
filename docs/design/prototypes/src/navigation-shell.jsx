@@ -132,7 +132,7 @@ export function NavigationShell({
     <nav className="nav-mobile-dock" aria-label={`${moduleLabel}底部导航`}>
       <TabMenu className="nav-mobile-tabs" model={mobileItems} activeIndex={mobileActiveIndex} onTabChange={changeMobileTab} pt={mobileTabSlots} />
     </nav>
-    <Dialog visible={moreOpen} onHide={() => setMoreOpen(false)} position="bottom" showHeader={false} aria-label="更多导航与外观" className="nav-more-sheet" contentStyle={{ padding: 0, borderRadius: 'inherit' }} draggable={false} resizable={false} dismissableMask blockScroll>
+    <Dialog visible={moreOpen} onHide={() => setMoreOpen(false)} position="bottom" showHeader={false} aria-label="更多导航与外观" className="nav-more-sheet" style={{ borderColor: 'var(--nav-border)' }} contentStyle={{ padding: 0, borderRadius: 'inherit' }} draggable={false} resizable={false} dismissableMask blockScroll>
       <div className="nav-more-content">
         <div className="nav-more-top">{moduleSwitch()}{themeRail(true)}<Button text plain className="nav-more-close" icon="pi pi-times" aria-label="关闭更多" onClick={() => setMoreOpen(false)} /></div>
         <nav className="nav-more-links" aria-label="全局工具">{globalLinks}</nav>

@@ -15,7 +15,7 @@ import { Skeleton } from 'primereact/skeleton';
 import { Tag } from 'primereact/tag';
 import { Toolbar } from 'primereact/toolbar';
 import { Toast } from 'primereact/toast';
-import { usePrototypePreference, themeOptions } from './use-prototype-preference.jsx';
+import { usePrototypePreference, ThemePreferenceSelect } from './use-prototype-preference.jsx';
 import { PrototypeProvider } from './prototype-provider.jsx';
 import './prototype-layout.css';
 import './lists.css';
@@ -132,11 +132,11 @@ function App() {
     <Column header="操作" body={copyCell} headerClassName="list-action-column" bodyClassName="list-action-column" />
   </DataTable>;
 
-  return <PrototypeProvider><div className="list-page">
+  return <div className="list-page">
     <Toast ref={toast} position="bottom-center" className="list-copy-toast" />
     <a className="skip-link" href="#list-main">跳到列表内容</a>
     <header className="app-header"><a href="../../foundations/" className="wordmark">ComfyUI <span>Manager</span></a><span className="header-context">组件组合</span><span className="review-status"><span className="review-dot" />R01-01 · 已确认</span>
-      <div className="header-controls"><SelectButton value={preference.module} options={moduleOptions} onChange={(event) => updatePreference('module', event.value)} aria-label="模块色" allowEmpty={false} /><SelectButton value={theme} options={themeOptions} onChange={(event) => updatePreference('theme', event.value)} aria-label="主题偏好" allowEmpty={false} /></div>
+      <div className="header-controls"><SelectButton value={preference.module} options={moduleOptions} onChange={(event) => updatePreference('module', event.value)} aria-label="模块色" allowEmpty={false} /><ThemePreferenceSelect value={theme} onSelect={value => updatePreference('theme', value)} aria-label="主题偏好" /></div>
       <Button className="list-preview-toggle" text label="预览" icon="pi pi-sliders-h" aria-label="打开预览设置" aria-haspopup="dialog" onClick={() => setPreviewControlsOpen(true)} />
     </header>
     <main id="list-main" className="list-main" tabIndex={-1}>
@@ -166,13 +166,13 @@ function App() {
         </div>
       </section>
       {copyFallback ? <section className="list-feedback" aria-label="手动复制"><p>自动复制未完成，请手动选择以下文本。</p><pre id="copy-fallback" tabIndex={0} aria-label="可手动复制的文本">{copyFallback}</pre></section> : null}
-      <div className="list-review-notes"><p><i className="pi pi-info-circle" aria-hidden="true" />选择仅作用于当前页；搜索、筛选、排序或翻页会清空选择。</p><p>窄屏使用卡片，名称与主要操作完整保留。<a href="../organization/">下一项：层级与排序</a></p></div>
+      <div className="list-review-notes"><p><i className="pi pi-info-circle" aria-hidden="true" />选择仅作用于当前页；搜索、筛选、排序或翻页会清空选择。</p><p>窄屏使用卡片，名称与主要操作完整保留。<a href="../../ui-design-roadmap.md">查看设计路线</a></p></div>
       <footer className="page-footer"><span>R01-01 · 已确认组件组合 · 固定模拟数据</span><span>{theme === 'dark' ? '深色' : '浅色'}主题 · {preference.theme === 'system' ? '实时跟随系统' : '固定外观，选回系统当前颜色即恢复跟随'}</span></footer>
     </main>
     <Dialog header="预览设置" visible={previewControlsOpen} onHide={() => setPreviewControlsOpen(false)} className="list-preview-dialog" draggable={false} blockScroll footer={<Button label="完成" onClick={() => setPreviewControlsOpen(false)} />}>
-      <div className="list-settings-fields"><div><span id="list-settings-module">模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={(event) => updatePreference('module', event.value)} aria-labelledby="list-settings-module" allowEmpty={false} /></div><div><span id="list-settings-theme">主题</span><SelectButton value={theme} options={themeOptions} onChange={(event) => updatePreference('theme', event.value)} aria-labelledby="list-settings-theme" allowEmpty={false} /></div><div><span id="list-settings-state">预览状态</span><SelectButton value={previewState} options={stateOptions} onChange={(event) => changeState(event.value)} aria-labelledby="list-settings-state" allowEmpty={false} /></div></div>
+      <div className="list-settings-fields"><div><span id="list-settings-module">模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={(event) => updatePreference('module', event.value)} aria-labelledby="list-settings-module" allowEmpty={false} /></div><div><span id="list-settings-theme">主题</span><ThemePreferenceSelect value={theme} onSelect={value => updatePreference('theme', value)} aria-labelledby="list-settings-theme" /></div><div><span id="list-settings-state">预览状态</span><SelectButton value={previewState} options={stateOptions} onChange={(event) => changeState(event.value)} aria-labelledby="list-settings-state" allowEmpty={false} /></div></div>
     </Dialog>
-  </div></PrototypeProvider>;
+  </div>;
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(<PrototypeProvider><App /></PrototypeProvider>);

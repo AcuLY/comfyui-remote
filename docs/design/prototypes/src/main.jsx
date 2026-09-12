@@ -20,7 +20,7 @@ import { Dialog } from 'primereact/dialog';
 import { Toast } from 'primereact/toast';
 import './prototype-layout.css';
 import './foundations.css';
-import { usePrototypePreference, themeOptions } from './use-prototype-preference.jsx';
+import { usePrototypePreference, ThemePreferenceSelect } from './use-prototype-preference.jsx';
 
 const moduleOptions = [{ label: '生产', value: 'image' }, { label: '训练', value: 'training' }];
 const sections = [['colors', '色彩与主题'], ['typography', '字体与排版'], ['dimensions', '尺寸与适配'], ['components', '基础组件'], ['feedback', '状态与反馈'], ['decisions', '确认清单']];
@@ -137,7 +137,7 @@ function App() {
     });
   }
 
-  return <PrototypeProvider><div className="foundation-page">
+  return <div className="foundation-page">
     <a className="skip-link" href="#foundation-main">跳到设计内容</a>
     <div className="foundation-chrome" ref={chrome}>
     <header className="app-header foundation-header">
@@ -147,7 +147,7 @@ function App() {
       <span className="review-status"><span className="review-dot" />主题调整</span>
       <div className="header-controls">
         <SelectButton value={preference.module} options={moduleOptions} onChange={(e) => updatePreference('module', e.value)} aria-label="模块色" allowEmpty={false} />
-        <SelectButton value={theme} options={themeOptions} onChange={(e) => updatePreference('theme', e.value)} aria-label="主题偏好" allowEmpty={false} />
+        <ThemePreferenceSelect value={theme} onSelect={value => updatePreference('theme', value)} aria-label="主题偏好" />
       </div>
       <Button className="foundation-preview-button" label="预览" icon="pi pi-sliders-h" text aria-label="打开主题与模块设置" onClick={() => setShowPreviewSettings(true)} />
     </header>
@@ -158,7 +158,7 @@ function App() {
       <aside className="design-sidebar">
         <div className="sidebar-title">设计基础</div>
         <nav aria-label="基础设计目录">{sections.map(([id, label]) => <a key={id} href={`#${id}`} aria-current={currentSection === id ? 'location' : undefined}>{label}<i className="pi pi-arrow-up-right" aria-hidden="true" /></a>)}</nav>
-        <div className="sidebar-note"><strong>优先使用组件库原生能力。</strong><p>基础基线已确认，组件用法按后续原则调整。R01-01 工作稿保留，暂缓继续设计。</p><a href="../components/lists/">查看列表工作稿<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
+        <div className="sidebar-note"><strong>优先使用组件库原生能力。</strong><p>基础基线与 R01-01 列表组合已确认；R01-02 层级与排序保留为暂停的历史实验。</p><a href="../components/lists/">查看已确认列表组合<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
         <div className="sidebar-footer">PrimeReact 10.9.9<br />Impeccable 4.2.1</div>
       </aside>
 
@@ -234,19 +234,19 @@ function App() {
 
         <Section id="decisions" title="基础规范与确认记录" description="基础基线已于 2026-09-08 确认；组件用法按后续设计原则持续调整。">
           <div className="decision-table"><div><span>F-01～F-03</span><strong>主题、模块色与语义色</strong><p>明暗同等支持；绿色与玫瑰粉保持同等权重。</p></div><div><span>F-04～F-07</span><strong>字体、间距与基础尺寸</strong><p>14px 正文、4px 间距基准、8px / 12px 圆角。</p></div><div><span>F-08～F-12</span><strong>控件与状态</strong><p>操作层级清晰；字段、焦点、加载与错误保持一致。</p></div><div><span>F-13～F-14</span><strong>主题操作与交互适配</strong><p>实时跟随系统；小屏重排，普通控件 40px，图标操作 44px。</p></div></div>
-          <div className="next-step"><p>复用原生组件与必要主题配置；R01-01 工作稿保留，组合另行审核。</p><a className="text-link" href="../components/lists/">查看列表工作稿<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
+          <div className="next-step"><p>R01-01 列表组合已确认；R01-02 层级与排序因定位偏差暂停，保留历史实验。</p><a className="text-link" href="../components/lists/">查看已确认列表组合<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></div>
         </Section>
         <footer className="page-footer"><span>ComfyUI Manager · 基础设计原型</span><span>仅示例数据 · 尚未接入业务接口</span></footer>
       </main>
     </div>
     <Dialog header="主题与模块" visible={showPreviewSettings} onHide={() => setShowPreviewSettings(false)} className="sample-dialog foundation-dialog" draggable={false} blockScroll footer={<Button label="完成" onClick={() => setShowPreviewSettings(false)} />}>
-      <div className="foundation-settings"><div><span id="settings-module-label">模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={(e) => updatePreference('module', e.value)} aria-labelledby="settings-module-label" allowEmpty={false} /></div><div><span id="settings-theme-label">主题</span><SelectButton value={theme} options={themeOptions} onChange={(e) => updatePreference('theme', e.value)} aria-labelledby="settings-theme-label" allowEmpty={false} /></div></div>
+      <div className="foundation-settings"><div><span id="settings-module-label">模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={(e) => updatePreference('module', e.value)} aria-labelledby="settings-module-label" allowEmpty={false} /></div><div><span id="settings-theme-label">主题</span><ThemePreferenceSelect value={theme} onSelect={value => updatePreference('theme', value)} aria-labelledby="settings-theme-label" /></div></div>
     </Dialog>
     <Dialog header="确认操作样本" visible={showDialog} onHide={() => setShowDialog(false)} className="sample-dialog foundation-dialog" draggable={false} blockScroll footer={<><Button label="取消" outlined onClick={() => setShowDialog(false)} /><Button label="确认示例" severity="danger" onClick={() => { setShowDialog(false); toast.current.show({ severity: 'info', summary: '示例已确认', detail: '没有修改或删除任何业务数据。', life: 3000 }); }} /></>}>
       <p>确认框应写清操作对象和影响范围。这是交互演示，不会删除任何内容。</p>
     </Dialog>
     <Toast ref={toast} position="bottom-center" />
-  </div></PrototypeProvider>;
+  </div>;
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+createRoot(document.getElementById('root')).render(<PrototypeProvider><App /></PrototypeProvider>);

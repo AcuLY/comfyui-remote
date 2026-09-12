@@ -76,11 +76,12 @@
 .nav-more-links .nav-current-mark { position: absolute; top: 8px; right: 8px; }
 @media (hover: hover) and (pointer: fine) and (min-width: 768px) {
   .nav-sidebar .nav-item:not(.is-active):hover { color: var(--text); background: var(--nav-hover); }
-  :root[data-prototype='navigation'] .nav-sidebar .nav-rail .nav-rail-button:not(.is-active):hover { background: var(--nav-muted); color: var(--nav-ink); }
+  :root[data-prototype='navigation'] .nav-sidebar .nav-rail .nav-rail-button:not(.is-active):not(:active):hover { background: var(--nav-muted); color: var(--nav-ink); }
 }
-:root[data-prototype='navigation'] .nav-more-sheet .nav-rail-button:not(.is-active):hover,
+:root[data-prototype='navigation'] .nav-more-sheet .nav-rail-button:not(.is-active):not(:active):hover,
 :root[data-prototype='navigation'] .nav-more-sheet .nav-more-close:hover { background: transparent; color: var(--nav-secondary); }
-:root[data-prototype='navigation'] .nav-more-sheet .nav-rail-button.is-active:hover { background: var(--surface); color: var(--accent); }
+:root[data-prototype='navigation'] .nav-more-sheet .nav-rail-button.is-active:not(:active):hover { background: var(--surface); color: var(--accent); }
+:root[data-prototype='navigation'] .nav-rail .nav-rail-button:active { background: var(--accent-soft); color: var(--on-accent-soft); border-color: var(--accent); }
 .nav-more-links .nav-item:active { background: var(--accent-soft); color: var(--on-accent-soft); }
 @media (max-width: 399px) {
   .nav-more-links .nav-item { height: 52px; flex-direction: column; gap: 4px; padding-block: 4px; }

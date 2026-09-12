@@ -13,7 +13,7 @@ import { Skeleton } from 'primereact/skeleton';
 import { Toast } from 'primereact/toast';
 import { Tree } from 'primereact/tree';
 import { PrototypeProvider } from './prototype-provider.jsx';
-import { usePrototypePreference, themeOptions } from './use-prototype-preference.jsx';
+import { usePrototypePreference, ThemePreferenceSelect } from './use-prototype-preference.jsx';
 import './prototype-layout.css';
 import './lists.css';
 import './organization.css';
@@ -137,13 +137,13 @@ function App({ snapshot }) {
   return <div className="list-page org-page">
     <Toast ref={toast} position="bottom-center" />
     <a className="skip-link" href="#organization-main">跳到内容</a>
-    <header className="app-header"><a href="../../foundations/" className="wordmark">ComfyUI <span>Manager</span></a><span className="header-context">组件组合</span><span className="review-status"><span className="review-dot" />R01-02 · 待审核</span>
-      <div className="header-controls"><SelectButton value={preference.module} options={moduleOptions} onChange={e => updatePreference('module', e.value)} aria-label="模块色" allowEmpty={false} /><SelectButton value={theme} options={themeOptions} onChange={e => updatePreference('theme', e.value)} aria-label="主题偏好" allowEmpty={false} /></div>
+    <header className="app-header"><a href="../../foundations/" className="wordmark">ComfyUI <span>Manager</span></a><span className="header-context">历史实验</span><span className="review-status"><span className="review-dot" />R01-02 · 已暂停</span>
+      <div className="header-controls"><SelectButton value={preference.module} options={moduleOptions} onChange={e => updatePreference('module', e.value)} aria-label="模块色" allowEmpty={false} /><ThemePreferenceSelect value={theme} onSelect={value => updatePreference('theme', value)} aria-label="主题偏好" /></div>
       <Button className="list-preview-toggle" text label="预览" icon="pi pi-sliders-h" aria-label="打开预览设置" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)} />
     </header>
     <main id="organization-main" className="list-main org-main" tabIndex={-1}>
       <nav className="list-demo-nav" aria-label="设计原型"><a href="../lists/">列表与分页</a><span aria-hidden="true">/</span><span aria-current="page">层级与排序</span><a className="list-review-link" href="../../reviews/R01-02.md">审核记录<i className="pi pi-arrow-up-right" aria-hidden="true" /></a></nav>
-      <div className="list-page-heading"><h1>层级、排序与移动</h1><p>在文件夹中定位内容，调整展示顺序或移动到其他位置。</p></div>
+      <div className="list-page-heading"><h1>层级、排序与移动</h1><p>因定位偏差暂停的历史实验；保留原交互供回看，当前设计进度见路线记录。</p></div>
       <div className="org-preview-row"><div className="list-preview-controls"><div><span>预览状态</span><SelectButton value={previewState} options={stateOptions} onChange={e => changeState(e.value)} allowEmpty={false} aria-label="预览状态" /></div></div><Button className="org-desktop-settings" text label="更多预览设置" icon="pi pi-cog" onClick={() => setSettingsOpen(true)} /></div>
       <section className="org-workspace" aria-label="层级与内容样本">
         <aside className="org-folders"><h2>文件夹</h2><p>选择一个位置查看其中内容。</p>{previewState === 'loading' ? <LoadingRows tree /> : folderTree}</aside>
@@ -161,7 +161,7 @@ function App({ snapshot }) {
         </div>
       </section>
       <div className="list-review-notes"><p><i className="pi pi-info-circle" aria-hidden="true" />排序只改变当前文件夹内的顺序；移动后追加到目标末尾。</p><p>{snapshot ? `本机目录快照 · ${folders.length} 个文件夹 · ${Object.values(initialGroups).reduce((sum, group) => sum + group.length, 0)} 个文件；操作仅影响当前预览。` : '内置模拟数据，刷新恢复初始内容。'}<a href="../../ui-design-roadmap.md">查看设计路线</a></p></div>
-      <footer className="page-footer"><span>R01-02 · 组件组合待审核</span><span>{theme === 'dark' ? '深色' : '浅色'} · {preference.module === 'training' ? '训练' : '生产'}</span></footer>
+      <footer className="page-footer"><span>R01-02 · 历史实验已暂停</span><span>{theme === 'dark' ? '深色' : '浅色'} · {preference.module === 'training' ? '训练' : '生产'}</span></footer>
     </main>
     <Dialog header="选择文件夹" visible={foldersOpen} onHide={() => setFoldersOpen(false)} className="org-folder-dialog" draggable={false} blockScroll footer={<Button label="查看此文件夹" onClick={() => setFoldersOpen(false)} />}>{folderTree}</Dialog>
     <Dialog header="调整顺序" visible={orderOpen} onHide={() => setOrderOpen(false)} className="org-order-dialog" draggable={false} blockScroll footer={<div className="org-dialog-actions"><Button text label="取消" onClick={() => setOrderOpen(false)} /><Button label="应用顺序" disabled={!orderChanged} onClick={applyOrder} /></div>}>
@@ -175,7 +175,7 @@ function App({ snapshot }) {
       {moveError && <Message severity="error" text="移动未完成，内容仍在原位置。目标与选择已保留，可以重试。" />}
     </Dialog>
     <Dialog header="预览设置" visible={settingsOpen} onHide={() => setSettingsOpen(false)} className="list-preview-dialog" draggable={false} blockScroll footer={<Button label="完成" onClick={() => setSettingsOpen(false)} />}>
-      <div className="list-settings-fields"><div><span id="org-module">模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={e => updatePreference('module', e.value)} aria-labelledby="org-module" allowEmpty={false} /></div><div><span id="org-theme">主题</span><SelectButton value={theme} options={themeOptions} onChange={e => updatePreference('theme', e.value)} aria-labelledby="org-theme" allowEmpty={false} /></div><div><label htmlFor="org-state">预览状态</label><Dropdown inputId="org-state" value={previewState} options={stateOptions} onChange={e => changeState(e.value)} /></div><div className="org-failure-option"><Checkbox inputId="org-move-failure" checked={moveFailure} onChange={e => setMoveFailure(e.checked)} /><label htmlFor="org-move-failure">模拟下一次移动失败</label></div><Button outlined label="重置预览数据" icon="pi pi-refresh" onClick={resetSample} /></div>
+      <div className="list-settings-fields"><div><span id="org-module">模块色</span><SelectButton value={preference.module} options={moduleOptions} onChange={e => updatePreference('module', e.value)} aria-labelledby="org-module" allowEmpty={false} /></div><div><span id="org-theme">主题</span><ThemePreferenceSelect value={theme} onSelect={value => updatePreference('theme', value)} aria-labelledby="org-theme" /></div><div><label htmlFor="org-state">预览状态</label><Dropdown inputId="org-state" value={previewState} options={stateOptions} onChange={e => changeState(e.value)} /></div><div className="org-failure-option"><Checkbox inputId="org-move-failure" checked={moveFailure} onChange={e => setMoveFailure(e.checked)} /><label htmlFor="org-move-failure">模拟下一次移动失败</label></div><Button outlined label="重置预览数据" icon="pi pi-refresh" onClick={resetSample} /></div>
     </Dialog>
   </div>;
 }
