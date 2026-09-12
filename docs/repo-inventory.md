@@ -217,6 +217,13 @@ document:
 | `docs/design/prototypes/foundations/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/package-lock.json` | `docs` | `repository-maintainers` | 结构化数据 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/package.json` | `docs` | `repository-maintainers` | 结构化数据 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/public/media/context/SOURCES.txt` | `docs` | `repository-maintainers` | 仓库文件 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/public/media/context/scene-1.jpg` | `docs` | `repository-maintainers` | 图像资产 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/public/media/context/scene-2.jpg` | `docs` | `repository-maintainers` | 图像资产 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/public/media/context/scene-3.jpg` | `docs` | `repository-maintainers` | 图像资产 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/public/media/context/scene-4.jpg` | `docs` | `repository-maintainers` | 图像资产 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/public/media/context/scene-5.jpg` | `docs` | `repository-maintainers` | 图像资产 | `prototype-source` | 治理策略 |
+| `docs/design/prototypes/public/media/context/scene-6.jpg` | `docs` | `repository-maintainers` | 图像资产 | `prototype-source` | 治理策略 |
 | `docs/design/prototypes/reviews/F-responsive.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/reviews/F-theme.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/prototypes/reviews/R01-02.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |

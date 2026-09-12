@@ -101,6 +101,13 @@ scope:
       - docs/design/prototypes/scripts/snapshot-organization.mjs
       - docs/design/prototypes/src/project-context-model.mjs
       - docs/design/prototypes/tests/project-context-model.test.mjs
+      - docs/design/prototypes/public/media/context/SOURCES.txt
+      - docs/design/prototypes/public/media/context/scene-1.jpg
+      - docs/design/prototypes/public/media/context/scene-2.jpg
+      - docs/design/prototypes/public/media/context/scene-3.jpg
+      - docs/design/prototypes/public/media/context/scene-4.jpg
+      - docs/design/prototypes/public/media/context/scene-5.jpg
+      - docs/design/prototypes/public/media/context/scene-6.jpg
       - docs/design/prototypes/src/theme/theme-inputs.mjs
       - docs/design/prototypes/src/theme/LICENSE.primereact-sass-theme
       - docs/design/prototypes/src/theme/vendor/primereact-sass-theme/**/*.scss

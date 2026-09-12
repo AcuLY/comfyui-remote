@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   childrenFor, filterProjects, listKey, projectKey, projects, projectTabs, resolveContextRoute,
+  initialDataset, filterChildren, filterTasks, taskKey, foldersFor, folderTrail, projectFolderScope, sectionFolderScope,
+  createFolder, renameFolder, moveFolder, moveResource,
 } from '../src/project-context-model.mjs';
 
 const production = projects.find((project) => project.id === 'p01');
@@ -157,4 +159,184 @@ test('normalization is stable for incomplete, malformed and over-deep fragment r
     assert.equal(second.key, first.key);
     assert.equal(second.notice, undefined);
   }
+});
+
+test('related image records distinguish tasks from projects and unfinished outputs', () => {
+  for (const project of projects) {
+    assert.match(project.photo, /^\/media\/context\/scene-[1-6]\.jpg$/);
+    const ownChildren = childrenFor(project);
+    assert.equal(ownChildren.length, 6);
+    assert.ok(ownChildren.every(child => child.projectId === project.id && child.module === project.module && child.photo));
+    const ownTasks = filterTasks(project.module, { projectId: project.id });
+    assert.equal(ownTasks.length, 4);
+    for (const task of ownTasks) {
+      assert.notEqual(task.id, project.id);
+      assert.ok(task.sourcePhoto);
+      assert.equal(task.photo !== null, task.state === 'done');
+      if (task.childId) assert.ok(ownChildren.some(child => child.id === task.childId));
+      const route = resolveContextRoute(taskKey(task));
+      assert.equal(route.kind, 'task');
+      assert.equal(route.section, 'tasks');
+      assert.equal(route.project.id, project.id);
+      assert.equal(route.task.id, task.id);
+    }
+  }
+  assert.deepEqual(new Set(initialDataset.tasks.map(task => task.type)), new Set(['image-generation', 'material-generation', 'lora-training']));
+  assert.ok(filterTasks('production', { q: '雨后街角', status: 'running' }).every(task => task.projectId === 'p01' && task.state === 'running'));
+});
+
+test('project and section folder URLs preserve current scope and list origins', () => {
+  const scope = projectFolderScope('production');
+  assert.equal(foldersFor(scope).length, 2);
+  assert.ok(filterProjects('production', { folder: '' }).length >= 4);
+  assert.equal(production.folderId, '');
+  assert.equal(projects.find(project => project.id === 'p02').folderId, 'f-project-city');
+  const source = listKey('production', 'projects', { q: '薄暮', folder: 'f-project-city' });
+  const route = resolveContextRoute(projectKey(production, 'sections', source, '', { folder: 'f-p01-scenes', q: '光线' }));
+  assert.equal(route.filters.folder, 'f-p01-scenes');
+  assert.equal(route.filters.q, '光线');
+  assert.equal(route.from, source);
+  assert.deepEqual(folderTrail(scope, 'f-project-city').map(folder => folder.name), ['场景创作', '城市日常']);
+  assert.equal(filterChildren(production, { folder: 'f-p01-scenes', q: '光线' })[0].id, 's03');
+  const deep = resolveContextRoute(projectKey(production, 'sections', source, 's03', route.filters));
+  assert.equal(deep.child.projectId, 'p01');
+  assert.equal(deep.filters.folder, 'f-p01-scenes');
+  assert.equal(resolveContextRoute(deep.key).key, deep.key);
+  assert.equal(resolveContextRoute('training/projects?folder=f-project-scenes').filters.folder, undefined);
+});
+
+test('folder mutations are immutable and stay inside one organizational scope', () => {
+  const scope = sectionFolderScope(production);
+  const created = createFolder(initialDataset, { scope, name: '  新镜头  ', id: 'local-new' });
+  assert.equal(created.folders.at(-1).name, '新镜头');
+  assert.equal(initialDataset.folders.some(folder => folder.id === 'local-new'), false);
+  const renamed = renameFolder(created, { id: 'local-new', name: '补充镜头' });
+  assert.equal(created.folders.at(-1).name, '新镜头');
+  assert.equal(renamed.folders.at(-1).name, '补充镜头');
+  const moved = moveFolder(renamed, { id: 'local-new', parentId: 'f-p01-scenes' });
+  assert.equal(moved.folders.at(-1).parentId, 'f-p01-scenes');
+  assert.equal(renamed.folders.at(-1).parentId, '');
+  assert.throws(() => moveFolder(moved, { id: 'local-new', parentId: 'f-p02-scenes' }), /当前范围/);
+  assert.throws(() => createFolder(initialDataset, { scope: 'training/projects', name: '错误' }), /不支持/);
+  assert.throws(() => createFolder(initialDataset, { scope, parentId: 'f-project-scenes', name: '错误' }), /当前范围/);
+  assert.throws(() => renameFolder(initialDataset, { id: 'f-project-scenes', name: '人物研究' }), /同名/);
+  assert.throws(() => createFolder(initialDataset, { scope, name: '   ' }), /名称/);
+});
+
+test('folder moving prevents self and descendant cycles while allowing same-scope reparenting', () => {
+  assert.throws(() => moveFolder(initialDataset, { id: 'f-project-scenes', parentId: 'f-project-scenes' }), /自身/);
+  assert.throws(() => moveFolder(initialDataset, { id: 'f-project-scenes', parentId: 'f-project-city' }), /子文件夹/);
+  const moved = moveFolder(initialDataset, { id: 'f-project-city', parentId: 'f-project-portraits' });
+  assert.deepEqual(folderTrail('production/projects', 'f-project-city', moved).map(folder => folder.id), ['f-project-portraits', 'f-project-city']);
+  assert.equal(initialDataset.folders.find(folder => folder.id === 'f-project-city').parentId, 'f-project-scenes');
+});
+
+test('moving a project or section changes only that exact resource and preserves child identity', () => {
+  const movedProject = moveResource(initialDataset, { kind: 'project', id: 'p01', module: 'production', folderId: 'f-project-city' });
+  assert.equal(filterProjects('production', { folder: 'f-project-city' }, movedProject).some(project => project.id === 'p01'), true);
+  assert.equal(production.folderId, '');
+  const movedChild = moveResource(movedProject, { kind: 'child', module: 'production', projectId: 'p01', id: 's01', folderId: 'f-p01-scenes' });
+  assert.equal(filterChildren(production, { folder: 'f-p01-scenes' }, movedChild).some(child => child.id === 's01'), true);
+  assert.equal(childrenFor(projects.find(project => project.id === 'p02'), movedChild)[0].folderId, '');
+  assert.equal(resolveContextRoute('production/projects/p01/sections/s01', movedChild).child.folderId, 'f-p01-scenes');
+  assert.throws(() => moveResource(initialDataset, { kind: 'child', module: 'production', projectId: 'p01', id: 's01', folderId: 'f-p02-scenes' }), /当前范围/);
+  assert.throws(() => moveResource(initialDataset, { kind: 'project', module: 'training', id: 't01', folderId: '' }), /不支持/);
+});
+
+test('missing folders recover to their surviving parent within the same scope', () => {
+  const removed = { ...initialDataset, folders: initialDataset.folders.filter(folder => !['f-project-city', 'f-p01-details'].includes(folder.id)) };
+  const rootList = resolveContextRoute('production/projects?folder=f-project-city&q=薄暮', removed);
+  assert.equal(rootList.filters.folder, 'f-project-scenes');
+  assert.equal(rootList.filters.q, '薄暮');
+  assert.match(rootList.notice, /上级文件夹/);
+  const sectionList = resolveContextRoute('production/projects/p01/sections?folder=f-p01-details', removed);
+  assert.equal(sectionList.filters.folder, 'f-p01-scenes');
+  assert.equal(sectionList.project.id, 'p01');
+  const invalid = resolveContextRoute('production/projects/p01/sections?folder=f-p02-scenes', removed);
+  assert.equal(invalid.filters.folder, undefined);
+  assert.equal(invalid.key, 'production/projects/p01/sections');
+  assert.equal(resolveContextRoute('production/projects?folder=unknown', removed).key, 'production/projects');
+});
+
+test('task detail restores its real task source without cross-module or recursive origins', () => {
+  const task = initialDataset.tasks[0];
+  const list = listKey('production', 'tasks', { q: '场景', status: 'done' });
+  assert.equal(resolveContextRoute(taskKey(task, list)).from, list);
+  const projectSource = projectKey(production, 'tasks', listKey('production', 'projects', { folder: 'f-project-city' }), '', { q: '场景', status: 'done' });
+  const routed = resolveContextRoute(taskKey(task, projectSource));
+  const safeProjectSource = projectSource;
+  assert.equal(routed.from, safeProjectSource);
+  assert.equal(resolveContextRoute(routed.from).filters.status, 'done');
+  assert.equal(resolveContextRoute(routed.from).from, listKey('production', 'projects', { folder: 'f-project-city' }));
+  for (const from of ['training/tasks', 'production/projects', 'production/tasks/run-p01-1', 'https://example.com/production/tasks', '//example.com/production/tasks', 'production/projects/missing/tasks']) {
+    assert.equal(resolveContextRoute(taskKey(task, from)).from, undefined);
+  }
+  const missing = resolveContextRoute(`production/tasks/missing?from=${encodeURIComponent(safeProjectSource)}`);
+  assert.equal(missing.kind, 'project');
+  assert.equal(missing.key, safeProjectSource);
+  assert.match(missing.notice, /任务不存在/);
+  assert.equal(resolveContextRoute('training/tasks/run-p01-1').key, 'training/tasks');
+});
+
+test('task details return to the exact project overview, child workspace or collection', () => {
+  for (const project of [production, training]) {
+    const task = filterTasks(project.module, { projectId: project.id, status: 'done' })[0];
+    const childTab = project.module === 'production' ? 'sections' : 'compositions';
+    const child = childrenFor(project).find(item => item.id === task.childId);
+    const origin = listKey(project.module, 'projects', { q: project.name, status: 'active', ...(project.module === 'production' ? { folder: 'f-project-city' } : {}) });
+    const filters = project.module === 'production' ? { folder: 'f-p01-scenes', q: '场景' } : { q: '正面' };
+    for (const [tab, childId, query] of [['overview', '', {}], [childTab, child.id, filters], [childTab, '', filters]]) {
+      const source = projectKey(project, tab, origin, childId, query);
+      const expected = source;
+      const detail = resolveContextRoute(taskKey(task, source));
+      assert.equal(detail.kind, 'task');
+      assert.equal(detail.from, expected);
+      const restored = resolveContextRoute(detail.from);
+      assert.equal(restored.kind, childId ? 'child' : 'project');
+      assert.equal(restored.project.id, project.id);
+      assert.equal(restored.tab, tab);
+      assert.equal(restored.child?.id || '', childId);
+      assert.equal(restored.from, origin);
+      assert.deepEqual(resolveContextRoute(restored.from).filters, resolveContextRoute(origin).filters);
+      assert.equal(restored.notice, undefined);
+    }
+    for (const invalid of [
+      `${project.module}/projects/${project.id}/${childTab}/missing`,
+      `${project.module}/projects/${project.id}/${childTab}/${child.id}/extra`,
+      `${project.module}/projects/${project.id}/overview/${child.id}`,
+      `${project.module}/projects/${project.id}/tasks/${child.id}`,
+      `${project.module}/projects/${project.id}/${project.module === 'production' ? 'compositions' : 'sections'}/${child.id}`,
+      `${project.module}/projects/${project.module === 'production' ? 't01' : 'p01'}/${childTab}/${child.id}`,
+      `${project.module}/projects/${project.id}/images`,
+    ]) assert.equal(resolveContextRoute(taskKey(task, invalid)).from, undefined);
+  }
+  const withoutChild = { ...initialDataset, children: initialDataset.children.filter(child => !(child.projectId === 'p01' && child.id === 's01')) };
+  assert.equal(resolveContextRoute(taskKey(initialDataset.tasks[0], 'production/projects/p01/sections/s01', withoutChild), withoutChild).from, undefined);
+});
+
+test('task source retains one bounded list origin and strips deeper or invalid origins', () => {
+  const task = initialDataset.tasks[0];
+  const childSource = 'production/projects/p01/sections/s01';
+  const listOrigin = listKey('production', 'projects', { q: '雨后', status: 'active', folder: 'f-project-city' });
+  const tooDeepList = `${listOrigin}&from=${encodeURIComponent('production/projects/p02/overview?from=training%2Fprojects')}`;
+  const sourceWithNestedList = `${childSource}?from=${encodeURIComponent(tooDeepList)}`;
+  const route = resolveContextRoute(taskKey(task, sourceWithNestedList));
+  const restoredChild = resolveContextRoute(route.from);
+  assert.equal(restoredChild.kind, 'child');
+  assert.equal(restoredChild.from, listOrigin);
+  assert.equal(resolveContextRoute(restoredChild.from).key, listOrigin);
+  assert.equal(resolveContextRoute(restoredChild.from).from, undefined);
+  for (const invalidInner of [
+    'training/projects?q=跨模块', 'production/projects/p02/overview',
+    'production/projects/p01/sections/s02', 'production/tasks/run-p01-1',
+    'https://example.com/production/projects', '//example.com/production/projects',
+  ]) {
+    const source = `${childSource}?from=${encodeURIComponent(invalidInner)}`;
+    const detail = resolveContextRoute(taskKey(task, source));
+    assert.equal(detail.from, childSource);
+    assert.equal(resolveContextRoute(detail.from).from, undefined);
+  }
+  const taskListOrigin = listKey('production', 'tasks', { q: '场景', status: 'running' });
+  const projectSource = `production/projects/p01/overview?from=${encodeURIComponent(taskListOrigin)}`;
+  assert.equal(resolveContextRoute(resolveContextRoute(taskKey(task, projectSource)).from).from, taskListOrigin);
 });
