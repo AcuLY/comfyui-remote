@@ -2,10 +2,14 @@
 version: 1
 slug: "docs-design-prototypes-shell-project-context-index-html"
 primary_target: "docs/design/prototypes/shell/project-context/index.html"
-related_targets: ["docs/design/prototypes/src/project-context.jsx","docs/design/prototypes/src/project-context.css","docs/design/prototypes/src/project-context-model.mjs"]
+related_targets: ["docs/design/prototypes/src/production-app.jsx","docs/design/prototypes/src/production-projects.jsx","docs/design/prototypes/src/production-tasks.jsx","docs/design/prototypes/src/production-libraries.jsx","docs/design/prototypes/src/production-domain.mjs","docs/design/prototypes/src/project-context.jsx"]
 ---
 
-# 项目上下文与导航恢复
+# 生产工作台与训练上下文
+
+2026-09-14 当前方向：用户要求丢弃原生产项目/任务方案，任务和项目以设计演示的结构和操作路径为主要参考，预制和模板以旧前端为主要参考，沿用新版基础和 PrimeReact 公开组件规则，完整制作 R03/R05～R09。当前范围与验证由 `docs/design/prototypes/reviews/production-rebuild.md` 维护，入口为 `src/production-app.jsx`，不再复用下方历史生产通用卡片和概览架构。训练布局及旧记录不由本轮重做。模式仍为操作型，图片缩略图带、紧凑信息与就近操作优先；不是新的品牌或视觉方向探索。
+
+以下为被替换的 R02-02 生产方案及保留训练原型的历史记录。
 
 既有 `R02-02`，2026-09-12用户明确要求继续下一原型，2026-09-13授权“先处理已知的问题”。采用 `Operate` 模式，扩展 `R02-01` 外壳，沿用基础视觉与共享组件。范围、复盘 `I01`～`I14` 验收表和实际结果由 `docs/design/prototypes/reviews/R02-02.md` 维护；本轮已按所列范围完成修复及针对性验证，`R02-01/02` 均待用户审核。
 

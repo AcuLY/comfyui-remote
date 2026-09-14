@@ -1,0 +1,11 @@
+.production-preview { color: var(--nav-ink); }
+.production-main { display: block; padding: 20px 24px 32px; }
+.production-surface { width: 100%; min-width: 0; }
+.production-surface > .p-message { margin-bottom: 12px; }
+.production-preview h1 { font-size: 22px; line-height: 1.4; letter-spacing: -.015em; }
+.production-preview h2 { font-size: 17px; line-height: 1.5; }
+.production-preview h3 { font-size: 14px; line-height: 1.5; }
+@media (width < 768px) {
+  .production-main { padding: 12px 12px 20px; }
+  .production-preview h1 { font-size: 20px; }
+}

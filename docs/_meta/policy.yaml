@@ -100,6 +100,11 @@ scope:
       - docs/design/prototypes/scripts/build-theme.mjs
       - docs/design/prototypes/scripts/snapshot-organization.mjs
       - docs/design/prototypes/src/project-context-model.mjs
+      - docs/design/prototypes/src/production-model.mjs
+      - docs/design/prototypes/src/production-domain.mjs
+      - docs/design/prototypes/src/production-export-model.mjs
+      - docs/design/prototypes/tests/production-model.test.mjs
+      - docs/design/prototypes/tests/production-domain.test.mjs
       - docs/design/prototypes/tests/project-context-model.test.mjs
       - docs/design/prototypes/public/media/context/SOURCES.txt
       - docs/design/prototypes/public/media/context/scene-1.jpg
