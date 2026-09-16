@@ -161,6 +161,7 @@ document:
 | `ARCHITECTURE.md` | `root` | `system-architecture` | `Markdown` 文档 | `architecture` | 文档元数据 |
 | `CLAUDE.md` | `root` | `agent-policy` | `Markdown` 文档 | `router` | 文档元数据 |
 | `DESIGN.md` | `root` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `FRONTEND-DESIGN-NOTES.tmp.md` | `root` | `repository-maintainers` | `Markdown` 文档 | `source-adjacent` | 治理策略 |
 | `PRODUCT.md` | `root` | `product` | `Markdown` 文档 | `product` | 文档元数据 |
 | `README.md` | `root` | `repository-maintainers` | `Markdown` 文档 | `router` | 文档元数据 |
 | `components.json` | `root` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |

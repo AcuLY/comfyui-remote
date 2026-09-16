@@ -128,6 +128,14 @@ scope:
     links: true
     navigation: false
 
+  - id: frontend-feedback-draft
+    include:
+      - FRONTEND-DESIGN-NOTES.tmp.md
+    kind: source-adjacent
+    frontmatter: none
+    links: true
+    navigation: false
+
   - id: documentation-governance-fixtures
     include:
       - tests/fixtures/documentation-governance/**
