@@ -19,7 +19,7 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-const STANDALONE_ROOT_SURFACE_PREFIXES = ["/design-demos", "/training", "/prototype"] as const;
+const STANDALONE_ROOT_SURFACE_PREFIXES = ["/design-demos", "/training"] as const;
 
 export const metadata: Metadata = {
   title: "ComfyUI Manager",

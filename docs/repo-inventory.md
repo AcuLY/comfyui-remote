@@ -309,6 +309,31 @@ document:
 | `prisma/schema.prisma` | `prisma` | `repository-maintainers` | `Prisma` 结构 | `仓库文件` | 通用回退 |
 | `prisma/schema.sqlite.prisma` | `prisma` | `repository-maintainers` | `Prisma` 结构 | `仓库文件` | 通用回退 |
 | `prisma/seed.ts` | `prisma` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/.gitignore` | `prototypes` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
+| `prototypes/app/DESIGN.md` | `prototypes` | `repository-maintainers` | `Markdown` 文档 | `source-adjacent` | 治理策略 |
+| `prototypes/app/README.md` | `prototypes` | `repository-maintainers` | `Markdown` 文档 | `source-adjacent` | 治理策略 |
+| `prototypes/app/index.html` | `prototypes` | `repository-maintainers` | 网页资产 | `仓库文件` | 通用回退 |
+| `prototypes/app/package-lock.json` | `prototypes` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
+| `prototypes/app/package.json` | `prototypes` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/App.tsx` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/assets.d.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/data.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/feedback.tsx` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/main.tsx` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/pages/LightPages.tsx` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/pages/TasksPage.tsx` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/router.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/routes.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/shell/Shell.tsx` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/styles.css` | `prototypes` | `repository-maintainers` | 样式 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/tasks/TaskDetailSidebar.tsx` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/tasks/task-parts.tsx` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/tasks/useTasks.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/theme.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/vite-env.d.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/workMode.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/tsconfig.json` | `prototypes` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
+| `prototypes/app/vite.config.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `reports/quality/auto-review-analysis/phase0-labeled-images.csv` | `reports` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
 | `reports/quality/auto-review-analysis/valid-projects-trash-rate-by-section-project.csv` | `reports` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
 | `reports/quality/auto-review-analysis/valid-projects-trash-rate-by-section.csv` | `reports` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
@@ -828,7 +853,6 @@ document:
 | `src/app/design-demos/fonts/ibm-plex-mono/IBMPlexMono-Regular.ttf` | `src` | `repository-maintainers` | 字体资产 | `仓库文件` | 通用回退 |
 | `src/app/design-demos/fonts/ibm-plex-mono/IBMPlexMono-SemiBold.ttf` | `src` | `repository-maintainers` | 字体资产 | `仓库文件` | 通用回退 |
 | `src/app/design-demos/fonts/ibm-plex-mono/OFL.txt` | `src` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
-| `src/app/design-demos/fonts/plex-mono.ts` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `src/app/design-demos/layout.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `src/app/design-demos/routing/header-specs.ts` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `src/app/design-demos/routing/href.ts` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
@@ -926,27 +950,6 @@ document:
 | `src/app/projects/project-section-card-components.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `src/app/projects/projects-client.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `src/app/projects/use-project-list-view-state.ts` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/DESIGN.md` | `src` | `repository-maintainers` | `Markdown` 文档 | `source-adjacent` | 治理策略 |
-| `src/app/prototype/README.md` | `src` | `repository-maintainers` | `Markdown` 文档 | `source-adjacent` | 治理策略 |
-| `src/app/prototype/[[...route]]/page.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/data.ts` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/features/light/light-pages.module.css` | `src` | `repository-maintainers` | 样式 | `仓库文件` | 通用回退 |
-| `src/app/prototype/features/light/light-pages.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/features/tasks/confirm-sheet.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/features/tasks/task-detail-sheet.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/features/tasks/task-parts.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/features/tasks/tasks-page.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/features/tasks/tasks.module.css` | `src` | `repository-maintainers` | 样式 | `仓库文件` | 通用回退 |
-| `src/app/prototype/features/tasks/use-tasks.ts` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/header-specs.ts` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/layout.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/not-found-page.module.css` | `src` | `repository-maintainers` | 样式 | `仓库文件` | 通用回退 |
-| `src/app/prototype/not-found-page.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/prototype-app-client.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/routes.test.ts` | `src` | `repository-maintainers` | 测试代码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/routes.ts` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/theme.ts` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `src/app/prototype/use-work-mode.ts` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `src/app/queue/[runId]/image-lightbox.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `src/app/queue/[runId]/loading.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `src/app/queue/[runId]/page.tsx` | `src` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |

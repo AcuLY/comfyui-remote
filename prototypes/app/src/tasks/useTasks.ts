@@ -1,12 +1,7 @@
-"use client";
-
 import { useCallback, useState } from "react";
 
-import {
-  initialPrototypeTasks,
-  type PrototypeTask,
-  type PrototypeTaskStatus,
-} from "../../data";
+import { initialPrototypeTasks } from "../data";
+import type { PrototypeTask, PrototypeTaskStatus } from "../data";
 
 export const ACTIVE_TASK_STATES: PrototypeTaskStatus[] = ["running", "submitted", "queued"];
 

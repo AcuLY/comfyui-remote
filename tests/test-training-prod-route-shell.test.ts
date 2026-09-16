@@ -59,7 +59,7 @@ function extractTrainingPageSwitchCases() {
 test("production app shell treats /training routes as standalone surfaces", () => {
   assert.match(
     layoutSource,
-    /const STANDALONE_ROOT_SURFACE_PREFIXES = \["\/design-demos", "\/training", "\/prototype"\] as const;/,
+    /const STANDALONE_ROOT_SURFACE_PREFIXES = \["\/design-demos", "\/training"\] as const;/,
     "root layout should recognize training as an explicit standalone surface prefix",
   );
   assert.match(
@@ -72,7 +72,7 @@ test("production app shell treats /training routes as standalone surfaces", () =
 test("root layout remains a global provider and shell boundary only", () => {
   assert.match(
     layoutSource,
-    /const STANDALONE_ROOT_SURFACE_PREFIXES = \["\/design-demos", "\/training", "\/prototype"\] as const;/,
+    /const STANDALONE_ROOT_SURFACE_PREFIXES = \["\/design-demos", "\/training"\] as const;/,
     "standalone root surfaces should be named at the layout boundary.",
   );
   assert.match(

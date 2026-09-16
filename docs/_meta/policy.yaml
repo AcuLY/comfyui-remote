@@ -138,8 +138,8 @@ scope:
 
   - id: app-prototype-record
     include:
-      - src/app/prototype/README.md
-      - src/app/prototype/DESIGN.md
+      - prototypes/app/README.md
+      - prototypes/app/DESIGN.md
     kind: source-adjacent
     frontmatter: none
     links: true

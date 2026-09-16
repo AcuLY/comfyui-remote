@@ -1,10 +1,14 @@
-import type { DemoData } from "@/app/design-demos/data";
+/* 手工编写的连贯演示数据；操作仅更新浏览器内存，刷新后恢复。 */
 
-/* ------------------------------------------------------------------ */
-/* 原型演示数据（手工编写的连贯样本；仅浏览器内存，刷新恢复）          */
-/* ------------------------------------------------------------------ */
+export type PrototypeTaskStatus =
+  | "running"
+  | "submitted"
+  | "queued"
+  | "paused"
+  | "done"
+  | "failed"
+  | "cancelled";
 
-export type PrototypeTaskStatus = "running" | "submitted" | "queued" | "paused" | "done" | "failed" | "cancelled";
 export type PrototypeTaskKind = "image" | "material" | "lora";
 export type PrototypeModule = "generation" | "training";
 
@@ -95,29 +99,3 @@ export const prototypeLogEntries = [
   { time: "14:28", level: "error", message: "模型加载失败：显存不足", target: "植物手记 · 叶片" },
   { time: "14:06", level: "info", message: "素材生成完成，12 张图片可用", target: "凛 · 正面半身" },
 ];
-
-/* ------------------------------------------------------------------ */
-/* 外壳数据：DesignDemoShell 需要 DemoData 形状；本原型页面使用上方   */
-/* 自己的样本，外壳只要求结构安全的空集合。                           */
-/* ------------------------------------------------------------------ */
-
-export const prototypeShellData: DemoData = {
-  source: {
-    loadedFromSqlite: false,
-    databaseLabel: "",
-    imageSourceLabel: "",
-    modelBaseLabel: "",
-    comfyApiLabel: "",
-    warning: null,
-  },
-  metrics: { projects: 0, sections: 0, runs: 0, pendingImages: 0, presets: 0, templates: 0, loras: 0 },
-  projectFolders: [],
-  projects: [],
-  runs: [],
-  categories: [],
-  templates: [],
-  loras: [],
-  models: [],
-  auditLogs: [],
-  images: [],
-};
