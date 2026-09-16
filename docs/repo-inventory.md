@@ -309,6 +309,16 @@ document:
 | `prisma/schema.prisma` | `prisma` | `repository-maintainers` | `Prisma` 结构 | `仓库文件` | 通用回退 |
 | `prisma/schema.sqlite.prisma` | `prisma` | `repository-maintainers` | `Prisma` 结构 | `仓库文件` | 通用回退 |
 | `prisma/seed.ts` | `prisma` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/task-workspace/DESIGN.md` | `prototypes` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `prototypes/task-workspace/README.md` | `prototypes` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
+| `prototypes/task-workspace/app.js` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/task-workspace/components.html` | `prototypes` | `repository-maintainers` | 网页资产 | `仓库文件` | 通用回退 |
+| `prototypes/task-workspace/components.js` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/task-workspace/data.js` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/task-workspace/index.html` | `prototypes` | `repository-maintainers` | 网页资产 | `仓库文件` | 通用回退 |
+| `prototypes/task-workspace/server.mjs` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/task-workspace/ui.css` | `prototypes` | `repository-maintainers` | 样式 | `仓库文件` | 通用回退 |
+| `prototypes/task-workspace/ui.js` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `reports/quality/auto-review-analysis/phase0-labeled-images.csv` | `reports` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
 | `reports/quality/auto-review-analysis/valid-projects-trash-rate-by-section-project.csv` | `reports` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
 | `reports/quality/auto-review-analysis/valid-projects-trash-rate-by-section.csv` | `reports` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
