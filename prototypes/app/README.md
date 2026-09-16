@@ -14,12 +14,13 @@
 
 - 基础组件全部来自 `PrimeReact`（按钮、状态徽标、面板、输入框、下拉选择、分段选择、复选框、进度条、抽屉、确认面板、消息提示等），图标为 `PrimeIcons`。不手写基础组件，也不维护独立的基础组件演示页。
 - 页面布局、列表行与外壳是本原型功能自有界面，只使用 PrimeReact 主题变量与少量业务语义色（执行=青绿、等待=琥珀、排队=天蓝、错误=红、训练=粉）。
-- 主题为深/浅切换（`Lara Teal`），保存在 `localStorage` 的 `comfyui-manager-prototype:theme`；工作模式保存在 `comfyui-manager-prototype:work-mode`。均不与应用本体的存储键共享。
+- 主题默认实时跟随系统，仅提供浅色／深色两项：选择与系统当前外观不同的选项时固定，选择相同选项时恢复跟随。主题与工作模式保存在 `localStorage` 的 `cm-prototype-preference-v1`，不与应用本体的存储键共享。
 
 ## 与应用本体的关系
 
 - 本目录拥有自己的 `package.json`、`node_modules` 与开发服务（`Vite`），全部外部依赖独立管理；与应用本体的依赖冗余可以接受。
 - 源码不 import 任何 `src/**`、`src/proxy.ts`、应用根布局、API、服务或业务功能；应用本体也不引用本目录。生产业务路由、运行时、数据库和服务均未修改。
+- 组件库与非侵入式定制契约见[新版前端基础规范](../../docs/design/prototypes/design-foundations.md)；具体颜色、字体与尺寸属视觉风格内容，不写入该契约。
 
 ## 演示数据与交互
 

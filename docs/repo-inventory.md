@@ -205,6 +205,12 @@ document:
 | `docs/design/planning/ui-design-roadmap.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/planning/ui-design-shared-plan.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/planning/ui-design-training-plan.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/prototypes/README.md` | `docs` | `product-design` | `Markdown` 文档 | `router` | 文档元数据 |
+| `docs/design/prototypes/design-delivery-guide.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/prototypes/design-foundations.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/prototypes/reviews/F-responsive.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/prototypes/reviews/F-theme.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/prototypes/reviews/production-rebuild.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/responsive-and-accessibility.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/review-workbench.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/prisma-schema-compatibility.md` | `docs` | `data-architecture` | `Markdown` 文档 | `architecture` | 文档元数据 |
@@ -322,6 +328,7 @@ document:
 | `prototypes/app/src/main.tsx` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `prototypes/app/src/pages/LightPages.tsx` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `prototypes/app/src/pages/TasksPage.tsx` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
+| `prototypes/app/src/preferences.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `prototypes/app/src/router.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `prototypes/app/src/routes.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `prototypes/app/src/shell/Shell.tsx` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
@@ -331,7 +338,6 @@ document:
 | `prototypes/app/src/tasks/useTasks.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `prototypes/app/src/theme.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `prototypes/app/src/vite-env.d.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `prototypes/app/src/workMode.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `prototypes/app/tsconfig.json` | `prototypes` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
 | `prototypes/app/vite.config.ts` | `prototypes` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
 | `reports/quality/auto-review-analysis/phase0-labeled-images.csv` | `reports` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |

@@ -1,18 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Panel } from "primereact/panel";
 
 import { FeedbackProvider } from "./feedback";
 import { ModelsPage, MonitorPage, PresetsPage, ProjectsPage, SettingsPage, TemplatesPage } from "./pages/LightPages";
 import { TasksPage } from "./pages/TasksPage";
+import {
+  resolveTheme,
+  setPrototypeWorkMode,
+  setThemePreference,
+  systemTheme,
+  usePrototypePreferences,
+} from "./preferences";
 import { navigateTo, useHashRoute } from "./router";
 import { buildNavLinks, headerFor, matchRoute } from "./routes";
 import type { PrototypeMatch } from "./routes";
 import { Shell } from "./shell/Shell";
-import { applyTheme, readStoredTheme } from "./theme";
-import type { PrototypeTheme } from "./theme";
+import { applyTheme } from "./theme";
 import { usePrototypeTasks } from "./tasks/useTasks";
 import type { PrototypeTasksState } from "./tasks/useTasks";
-import { setPrototypeWorkMode, usePrototypeWorkMode } from "./workMode";
 
 function NotFoundPage() {
   return (
@@ -55,8 +60,9 @@ function CurrentPage({ match, tasksState }: { match: PrototypeMatch; tasksState:
 
 export default function App() {
   const route = useHashRoute();
-  const workMode = usePrototypeWorkMode();
-  const [theme, setTheme] = useState<PrototypeTheme>(readStoredTheme);
+  const preferences = usePrototypePreferences();
+  const workMode = preferences.module;
+  const theme = resolveTheme(preferences.theme);
   const tasksState = usePrototypeTasks();
   const match = matchRoute(route);
   const routeMode = route.startsWith("/training/")
@@ -70,16 +76,16 @@ export default function App() {
     if (routeMode && routeMode !== workMode) setPrototypeWorkMode(routeMode);
   }, [routeMode, workMode]);
 
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
   const effectiveMode = routeMode ?? workMode;
   const navLinks = buildNavLinks(effectiveMode);
   const header = headerFor(match.key);
 
-  function toggleTheme() {
-    setTheme((current) => {
-      const next: PrototypeTheme = current === "dark" ? "light" : "dark";
-      applyTheme(next);
-      return next;
-    });
+  function selectTheme(choice: "light" | "dark") {
+    setThemePreference(choice === systemTheme() ? "system" : choice);
   }
 
   return (
@@ -88,10 +94,11 @@ export default function App() {
         currentRoute={route}
         workMode={effectiveMode}
         theme={theme}
+        followingSystem={preferences.theme === "system"}
         navLinks={navLinks}
         header={header}
         onNavigate={navigateTo}
-        onToggleTheme={toggleTheme}
+        onSelectTheme={selectTheme}
       >
         <CurrentPage match={match} tasksState={tasksState} />
       </Shell>

@@ -11,6 +11,9 @@ document:
     - 查找功能规划、交互、无障碍、审核或组件职责时
   sources:
     - DESIGN.md
+    - docs/design/prototypes/README.md
+    - docs/design/prototypes/design-foundations.md
+    - docs/design/prototypes/design-delivery-guide.md
     - docs/design/planning/ui-design-roadmap.md
     - docs/design/planning/ui-design-coverage.md
     - docs/design/planning/ui-design-shared-plan.md
@@ -25,7 +28,7 @@ document:
 
 ## 用途与权威性
 
-本区域保留[根设计契约](../../DESIGN.md)之下的功能规划、交互语义、无障碍要求及运行时职责。上一轮原型及其批准基线不再适用；2026-09-16 按用户要求使用 PrimeReact 重新开始[新版应用完整原型](../../prototypes/app/README.md)（独立原型目录、独立依赖，不 import 应用本体），当前待用户评审。
+本区域保留[根设计契约](../../DESIGN.md)之下的功能规划、交互语义、无障碍要求及运行时职责。2026-09-16 按用户要求使用 `PrimeReact` 重新开始[新版应用完整原型](../../prototypes/app/README.md)（独立原型目录、独立依赖，不 `import` 应用本体），当前待用户评审；组件库与非侵入式定制契约已恢复于[新版前端基础规范](prototypes/design-foundations.md)。
 
 功能规划不表示已经实现或通过验收。生产能力由实际路由、组件与数据契约确定，演示数据不能成为生产状态依据。
 
@@ -38,6 +41,15 @@ document:
 | [共享功能](planning/ui-design-shared-plan.md) | 跨模块资源、导航与公共操作。 |
 | [生产模块](planning/ui-design-production-plan.md) | 项目、任务、队列与结果功能。 |
 | [训练模块](planning/ui-design-training-plan.md) | 训练资源、任务与结果功能。 |
+
+## 新版前端契约
+
+| 任务 | 阅读 |
+| --- | --- |
+| 启动或审核新版应用原型 | [原型契约](prototypes/README.md) |
+| 选用组件库或非侵入式定制边界 | [新版前端基础规范](prototypes/design-foundations.md) |
+| 设计交付方法与验证口径 | [前端设计交付指导](prototypes/design-delivery-guide.md) |
+| 回查统一主题、响应式与生产模块审核 | [审核记录](prototypes/reviews/F-theme.md) |
 
 ## 交互与运行时职责
 

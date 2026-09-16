@@ -109,13 +109,28 @@ body {
   border-top: 1px solid var(--surface-border);
 }
 
-.shell-theme-toggle {
+.shell-tools-title {
+  padding: 0 10px 6px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-color-secondary);
+}
+
+.shell-theme-options {
   display: flex;
+  gap: 6px;
+  padding: 0 8px;
+}
+
+.shell-theme-option {
+  display: flex;
+  flex: 1;
   align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 8px 10px;
-  border: 0;
+  justify-content: center;
+  gap: 8px;
+  min-height: 34px;
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
   background: transparent;
   color: var(--text-color);
@@ -124,14 +139,24 @@ body {
   cursor: pointer;
 }
 
-.shell-theme-toggle:hover {
+.shell-theme-option:hover {
   background: var(--surface-hover);
 }
 
-.shell-theme-toggle .pi {
-  width: 18px;
-  text-align: center;
+.shell-theme-option.active {
+  border-color: var(--primary-color);
+  background: color-mix(in srgb, var(--primary-color) 12%, transparent);
+  color: var(--primary-color);
+}
+
+.shell-theme-option .pi {
   font-size: 14px;
+}
+
+.shell-theme-follow {
+  padding: 6px 10px 0;
+  font-size: 11px;
+  color: var(--text-color-secondary);
 }
 
 .shell-main {

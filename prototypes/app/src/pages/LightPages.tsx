@@ -16,8 +16,8 @@ import {
   prototypeTrainingTemplates,
 } from "../data";
 import { navigateTo } from "../router";
-import { setPrototypeWorkMode, usePrototypeWorkMode } from "../workMode";
-import type { PrototypeWorkMode } from "../workMode";
+import { setPrototypeWorkMode, usePrototypeWorkMode } from "../preferences";
+import type { PrototypeWorkMode } from "../preferences";
 
 function DefList({ items }: { items: Array<{ label: string; value: ReactNode }> }) {
   return (

@@ -1,4 +1,4 @@
-import type { PrototypeWorkMode } from "./workMode";
+import type { PrototypeWorkMode } from "./preferences";
 
 export type PrototypeRouteKey =
   | "production-tasks"

@@ -5,20 +5,22 @@ import { Sidebar } from "primereact/sidebar";
 import { isNavActive } from "../routes";
 import type { NavLink } from "../routes";
 import type { PrototypeTheme } from "../theme";
-import type { PrototypeWorkMode } from "../workMode";
+import type { PrototypeWorkMode } from "../preferences";
 
 function SidebarNav({
   links,
   currentRoute,
   onNavigate,
   theme,
-  onToggleTheme,
+  followingSystem,
+  onSelectTheme,
 }: {
   links: NavLink[];
   currentRoute: string;
   onNavigate: (href: string) => void;
   theme: PrototypeTheme;
-  onToggleTheme: () => void;
+  followingSystem: boolean;
+  onSelectTheme: (choice: "light" | "dark") => void;
 }) {
   const groups: Array<{ group: string; links: NavLink[] }> = [];
   for (const link of links) {
@@ -45,16 +47,28 @@ function SidebarNav({
           ))}
           {group === "系统" ? (
             <div className="shell-tools">
-              <button
-                type="button"
-                className="shell-theme-toggle"
-                role="switch"
-                aria-checked={theme === "dark"}
-                onClick={onToggleTheme}
-              >
-                <i className={theme === "dark" ? "pi pi-sun" : "pi pi-moon"} />
-                <span>{theme === "dark" ? "浅色" : "暗色"}</span>
-              </button>
+              <div className="shell-tools-title">外观</div>
+              <div className="shell-theme-options" role="group" aria-label="主题外观">
+                <button
+                  type="button"
+                  className={`shell-theme-option${theme === "light" ? " active" : ""}`}
+                  aria-pressed={theme === "light"}
+                  onClick={() => onSelectTheme("light")}
+                >
+                  <i className="pi pi-sun" />
+                  <span>浅色</span>
+                </button>
+                <button
+                  type="button"
+                  className={`shell-theme-option${theme === "dark" ? " active" : ""}`}
+                  aria-pressed={theme === "dark"}
+                  onClick={() => onSelectTheme("dark")}
+                >
+                  <i className="pi pi-moon" />
+                  <span>深色</span>
+                </button>
+              </div>
+              {followingSystem ? <div className="shell-theme-follow">跟随系统</div> : null}
             </div>
           ) : null}
         </div>
@@ -67,19 +81,21 @@ export function Shell({
   currentRoute,
   workMode,
   theme,
+  followingSystem,
   navLinks,
   header,
   onNavigate,
-  onToggleTheme,
+  onSelectTheme,
   children,
 }: {
   currentRoute: string;
   workMode: PrototypeWorkMode;
   theme: PrototypeTheme;
+  followingSystem: boolean;
   navLinks: NavLink[];
   header: { eyebrow: string; title: string };
   onNavigate: (href: string) => void;
-  onToggleTheme: () => void;
+  onSelectTheme: (choice: "light" | "dark") => void;
   children: ReactNode;
 }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -95,7 +111,8 @@ export function Shell({
           currentRoute={currentRoute}
           onNavigate={onNavigate}
           theme={theme}
-          onToggleTheme={onToggleTheme}
+          followingSystem={followingSystem}
+          onSelectTheme={onSelectTheme}
         />
       </aside>
 
@@ -152,7 +169,8 @@ export function Shell({
             setMobileNavOpen(false);
           }}
           theme={theme}
-          onToggleTheme={onToggleTheme}
+          followingSystem={followingSystem}
+          onSelectTheme={onSelectTheme}
         />
       </Sidebar>
     </div>

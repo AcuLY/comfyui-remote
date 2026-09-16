@@ -30,11 +30,11 @@
 | 移动端导航抽屉 | `Sidebar`（左侧） |
 | 图标 | PrimeIcons（`pi pi-*`） |
 
-主题为 `Lara Teal` 深浅两套，由 `index.html` 的 `theme-link` 按 `data-prototype-theme` 切换。
+主题为 `Lara Teal` 深浅两套，由 `index.html` 的 `theme-link` 按 `data-prototype-theme` 切换；默认实时跟随系统，仅提供浅色／深色两项，选择与系统当前外观不同的选项时固定，选择相同选项时恢复跟随。偏好保存在 `cm-prototype-preference-v1`。
 
 ## 业务语义色
 
-青绿用于主要操作、选中、执行与完成；粉色用于训练语义；琥珀用于等待；红色用于错误；排队为天蓝。状态徽标由 `Tag` 承载并同时提供文字。圆角、边框与动效沿用 PrimeReact 主题，本目录只新增上述状态色映射，不新增形状令牌。
+状态徽标由 `Tag` 承载并同时提供文字，模块强调与结果状态语义独立，不把颜色作为唯一状态信号。具体色值属主题实现，不写入契约文档。
 
 ## 任务页行为
 
