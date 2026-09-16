@@ -88,40 +88,6 @@ scope:
     links: true
     navigation: true
 
-  - id: design-prototype-assets
-    include:
-      - docs/design/prototypes/.gitignore
-      - docs/design/prototypes/.impeccable/design.json
-      - docs/design/prototypes/package.json
-      - docs/design/prototypes/package-lock.json
-      - docs/design/prototypes/vite.config.js
-      - docs/design/prototypes/**/*.html
-      - docs/design/prototypes/src/**/*.{css,jsx}
-      - docs/design/prototypes/scripts/build-theme.mjs
-      - docs/design/prototypes/scripts/snapshot-organization.mjs
-      - docs/design/prototypes/src/project-context-model.mjs
-      - docs/design/prototypes/src/production-model.mjs
-      - docs/design/prototypes/src/production-domain.mjs
-      - docs/design/prototypes/src/production-export-model.mjs
-      - docs/design/prototypes/tests/production-model.test.mjs
-      - docs/design/prototypes/tests/production-domain.test.mjs
-      - docs/design/prototypes/tests/project-context-model.test.mjs
-      - docs/design/prototypes/public/media/context/SOURCES.txt
-      - docs/design/prototypes/public/media/context/scene-1.jpg
-      - docs/design/prototypes/public/media/context/scene-2.jpg
-      - docs/design/prototypes/public/media/context/scene-3.jpg
-      - docs/design/prototypes/public/media/context/scene-4.jpg
-      - docs/design/prototypes/public/media/context/scene-5.jpg
-      - docs/design/prototypes/public/media/context/scene-6.jpg
-      - docs/design/prototypes/src/theme/theme-inputs.mjs
-      - docs/design/prototypes/src/theme/LICENSE.primereact-sass-theme
-      - docs/design/prototypes/src/theme/vendor/primereact-sass-theme/**/*.scss
-      - docs/design/prototypes/src/theme/vendor/primereact-sass-theme/UPSTREAM.json
-    kind: prototype-source
-    frontmatter: none
-    links: false
-    navigation: false
-
   - id: documentation-control-plane
     include:
       - docs/_meta/**

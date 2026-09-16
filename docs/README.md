@@ -39,7 +39,7 @@ document:
 | 了解仓库 | [仓库入口](../README.md) | 稳定的人类简介与后续路由 |
 | 修改跨领域技术边界 | [架构](../ARCHITECTURE.md)和[架构详情](architecture/README.md) | 系统、领域、数据、运行时与执行架构 |
 | 修改产品行为或工作模式归属 | [产品](../PRODUCT.md)和[产品详情](product/README.md) | 生图、训练与共享资源 |
-| 修改界面或交互 | [设计](../DESIGN.md)和[设计详情](design/README.md) | 当前视觉与交互指导 |
+| 修改界面或交互 | [设计](../DESIGN.md)和[设计详情](design/README.md) | 功能交互、无障碍与界面职责 |
 | 修改 HTTP、认证、响应、MCP 或工作流接口 | [API](api/README.md) | 稳定的 API 家族与契约来源 |
 | 修改测试基础设施或质量评估 | [测试](testing/README.md) | 测试边界与质量分析契约 |
 | 执行本地开发、部署或恢复 | [运行手册](runbooks/README.md) | 可执行运维流程 |

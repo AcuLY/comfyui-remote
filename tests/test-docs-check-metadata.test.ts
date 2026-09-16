@@ -229,6 +229,7 @@ test("policy defines finite non-overlapping scope and explicit profile selection
   assert.deepEqual(policy.language.firstPartyMarkdown.include, ["*.md", "**/*.md"]);
   assert.deepEqual(policy.language.firstPartyMarkdown.exclude, [
     "tests/fixtures/**",
+    ".agents/skills/impeccable/**",
     "openspec/changes/rebuild-documentation-governance/evidence/pretooluse-file-access-poc/fixture/**",
   ]);
   assert.deepEqual(policy.language.allowedAscii, [

@@ -32,16 +32,16 @@ document:
 | `src/components/design-demo-ui/**` | design-demo 组件系统，当前 Training 生产界面也会复用。 | 保留其明确 API、无障碍、反馈和展示覆盖。它不是无关 Generation 生产基础组件的默认命名空间。 |
 | `src/app/**` 和 `src/features/training/**` | 路由或功能自有的界面与状态。 | 尚未建立复用关系时保持行为局部化；只提取稳定且经过测试的契约。 |
 
-Training 外壳可以复用共享设计外壳和 design-demo 界面组件，但不能让 design-demo 路由或固件成为生产依赖。反过来，Generation 代码也不需要仅因视觉相似就迁移到 design-demo 命名空间。
+Training 外壳可以复用共享设计外壳和 design-demo 界面组件，但不能让 design-demo 路由或固件成为生产依赖。组件复用以功能契约与所有者为依据。
 
 ## 控件契约
 
-- 创建同一操作的另一种表现形式之前，应先复用距离当前功能最近的既有控件。
+- 同一操作的不同入口应调用一致的功能契约。
 - 仅含图标的控件必须有无障碍名称。待处理控件应暴露忙碌状态并阻止重复触发；禁用控件需保持视觉可辨。
-- 组合控件应保留键盘和 ARIA 行为。例如，`FloatingSelect` 是 combobox/listbox 契约，而不是“样式化按钮加无结构菜单”。
+- 组合控件应保留键盘和 ARIA 行为。例如，`FloatingSelect` 使用 combobox/listbox 契约。
 - 功能模块拥有文案、验证、数据加载和变更操作。底层基础组件不得接管这些职责。
 
-运行时没有导入 `src/app/design-system.css`。其中的 token 清单不是组件注册表，不能覆盖实际组件源码和作用域样式。
+组件能力以实际运行时源码为依据，文档与演示记录不能代替生产依赖检查。
 
 ## 相关文档
 

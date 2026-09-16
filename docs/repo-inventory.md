@@ -153,17 +153,10 @@ document:
 | `.codex/skills/ui-ux-pro-max/scripts/design_system.py` | `.codex` | `repository-maintainers` | 源码 | `skill` | 治理策略 |
 | `.codex/skills/ui-ux-pro-max/scripts/search.py` | `.codex` | `repository-maintainers` | 源码 | `skill` | 治理策略 |
 | `.env.example` | `root` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
-| `.gitattributes` | `root` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
 | `.github/workflows/documentation-governance.yml` | `.github` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
 | `.gitignore` | `root` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
 | `.impeccable/.gitignore` | `.impeccable` | `repository-maintainers` | 仓库文件 | `仓库文件` | 通用回退 |
 | `.impeccable/installation.json` | `.impeccable` | `repository-maintainers` | 结构化数据 | `仓库文件` | 通用回退 |
-| `.impeccable/prototype-hook.mjs` | `.impeccable` | `repository-maintainers` | 源码 | `仓库文件` | 通用回退 |
-| `.impeccable/surfaces/docs-design-prototypes-components-lists-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
-| `.impeccable/surfaces/docs-design-prototypes-components-organization-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
-| `.impeccable/surfaces/docs-design-prototypes-foundations-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
-| `.impeccable/surfaces/docs-design-prototypes-shell-navigation-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
-| `.impeccable/surfaces/docs-design-prototypes-shell-project-context-index-html.md` | `.impeccable` | `repository-maintainers` | `Markdown` 文档 | `仓库文件` | 通用回退 |
 | `AGENTS.md` | `root` | `agent-policy` | `Markdown` 文档 | `router` | 文档元数据 |
 | `ARCHITECTURE.md` | `root` | `system-architecture` | `Markdown` 文档 | `architecture` | 文档元数据 |
 | `CLAUDE.md` | `root` | `agent-policy` | `Markdown` 文档 | `router` | 文档元数据 |
@@ -206,168 +199,11 @@ document:
 | `docs/design/design-demo-governance.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/interaction-and-motion.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/layout-and-density.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/.gitignore` | `docs` | `repository-maintainers` | 仓库文件 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/.impeccable/design.json` | `docs` | `repository-maintainers` | 结构化数据 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/README.md` | `docs` | `product-design` | `Markdown` 文档 | `router` | 文档元数据 |
-| `docs/design/prototypes/components/lists/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/components/organization/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/design-delivery-guide.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/design-foundations.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/foundations/README.md` | `docs` | `product-design` | `Markdown` 文档 | `router` | 文档元数据 |
-| `docs/design/prototypes/foundations/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/package-lock.json` | `docs` | `repository-maintainers` | 结构化数据 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/package.json` | `docs` | `repository-maintainers` | 结构化数据 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/public/media/context/SOURCES.txt` | `docs` | `repository-maintainers` | 仓库文件 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/public/media/context/scene-1.jpg` | `docs` | `repository-maintainers` | 图像资产 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/public/media/context/scene-2.jpg` | `docs` | `repository-maintainers` | 图像资产 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/public/media/context/scene-3.jpg` | `docs` | `repository-maintainers` | 图像资产 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/public/media/context/scene-4.jpg` | `docs` | `repository-maintainers` | 图像资产 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/public/media/context/scene-5.jpg` | `docs` | `repository-maintainers` | 图像资产 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/public/media/context/scene-6.jpg` | `docs` | `repository-maintainers` | 图像资产 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/reviews/F-responsive.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/reviews/F-theme.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/reviews/R01-02.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/reviews/R01.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/reviews/R02-01.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/reviews/R02-02.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/reviews/production-rebuild.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/scripts/build-theme.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/scripts/snapshot-organization.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/shell/navigation/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/shell/project-context/index.html` | `docs` | `repository-maintainers` | 网页资产 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/foundations.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/lists.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/lists.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/main.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/navigation-shell.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/navigation.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/navigation.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/organization.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/organization.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-app.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-app.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-domain.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-export-model.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-export.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-export.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-libraries.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-libraries.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-model.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-projects.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-projects.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-tasks.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/production-tasks.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/project-context-model.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/project-context.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/project-context.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/prototype-layout.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/prototype-provider.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/LICENSE.primereact-sass-theme` | `docs` | `repository-maintainers` | 仓库文件 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/README.md` | `docs` | `product-design` | `Markdown` 文档 | `router` | 文档元数据 |
-| `docs/design/prototypes/src/theme/primereact.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/theme-inputs.mjs` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/UPSTREAM.json` | `docs` | `repository-maintainers` | 结构化数据 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/_colors.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/_common.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/_components.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/_mixins.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/button/_button.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/button/_speeddial.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/button/_splitbutton.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/data/_carousel.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/data/_datascroller.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/data/_datatable.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/data/_dataview.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/data/_filter.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/data/_orderlist.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/data/_organizationchart.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/data/_paginator.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/data/_picklist.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/data/_timeline.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/data/_tree.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/data/_treetable.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/file/_fileupload.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_autocomplete.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_calendar.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_cascadeselect.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_checkbox.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_chips.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_colorpicker.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_dropdown.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_editor.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_iconfield.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_inputgroup.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_inputicon.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_inputnumber.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_inputotp.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_inputswitch.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_inputtext.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_listbox.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_mention.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_multiselect.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_password.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_radiobutton.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_rating.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_selectbutton.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_slider.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_togglebutton.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_treeselect.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/input/_tristatecheckbox.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/menu/_breadcrumb.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/menu/_contextmenu.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/menu/_dock.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/menu/_megamenu.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/menu/_menu.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/menu/_menubar.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/menu/_panelmenu.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/menu/_slidemenu.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/menu/_steps.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/menu/_tabmenu.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/menu/_tieredmenu.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/messages/_inlinemessage.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/messages/_message.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/messages/_toast.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/misc/_avatar.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/misc/_badge.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/misc/_blockui.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/misc/_chip.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/misc/_inplace.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/misc/_metergroup.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/misc/_progressbar.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/misc/_scrolltop.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/misc/_skeleton.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/misc/_tag.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/misc/_terminal.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/multimedia/_galleria.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/multimedia/_image.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/overlay/_confirmpopup.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/overlay/_dialog.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/overlay/_overlaypanel.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/overlay/_sidebar.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/overlay/_tooltip.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/panel/_accordion.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/panel/_card.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/panel/_divider.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/panel/_fieldset.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/panel/_panel.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/panel/_scrollpanel.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/panel/_splitter.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/panel/_stepper.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/panel/_tabview.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/theme-base/components/panel/_toolbar.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/themes/lara/lara-dark/_variables.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/theme/vendor/primereact-sass-theme/themes/lara/lara-light/_variables.scss` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/tokens.css` | `docs` | `repository-maintainers` | 样式 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/src/use-prototype-preference.jsx` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/tests/production-domain.test.mjs` | `docs` | `repository-maintainers` | 测试代码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/tests/production-model.test.mjs` | `docs` | `repository-maintainers` | 测试代码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/tests/project-context-model.test.mjs` | `docs` | `repository-maintainers` | 测试代码 | `prototype-source` | 治理策略 |
-| `docs/design/prototypes/ui-design-coverage.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/ui-design-production-plan.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/ui-design-roadmap.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/ui-design-shared-plan.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/ui-design-training-plan.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
-| `docs/design/prototypes/vite.config.js` | `docs` | `repository-maintainers` | 源码 | `prototype-source` | 治理策略 |
+| `docs/design/planning/ui-design-coverage.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/planning/ui-design-production-plan.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/planning/ui-design-roadmap.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/planning/ui-design-shared-plan.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
+| `docs/design/planning/ui-design-training-plan.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/responsive-and-accessibility.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/design/review-workbench.md` | `docs` | `product-design` | `Markdown` 文档 | `design` | 文档元数据 |
 | `docs/prisma-schema-compatibility.md` | `docs` | `data-architecture` | `Markdown` 文档 | `architecture` | 文档元数据 |

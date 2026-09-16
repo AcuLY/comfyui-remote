@@ -29,7 +29,7 @@ test("design-demo governance doc classifies the app and source-of-truth boundari
   const doc = readSource(governanceDocPath);
   const designRouter = readSource("docs/design/README.md");
 
-  assert.match(doc, /生效中的组件实验室和视觉验证界面/);
+  assert.match(doc, /生效中的组件实验室/);
   assert.match(doc, /路由模式、匹配、工作模式导航和示例路由清单[\s\S]*src\/app\/design-demos\/routing\/routes\.ts/);
   assert.match(doc, /路由身份、返回链接、元数据和页头操作[\s\S]*src\/app\/design-demos\/routing\/header-specs\.ts/);
   assert.match(doc, /只读本地 SQLite 加载与回退选择[\s\S]*src\/app\/design-demos\/data\/load-demo-data\.ts/);
@@ -38,8 +38,8 @@ test("design-demo governance doc classifies the app and source-of-truth boundari
   assert.match(doc, /src\/features\/training/);
   assert.match(doc, /刻意保持为生产 Training 界面的窄范围重新导出/);
   assert.match(doc, /不得在文档中维护人工复制的路由一致性表/);
-  assert.match(doc, /刻意不声称完整 showcase-registry 测试套件已经全绿/);
-  assert.match(designRouter, /\[设计演示治理\]\(design-demo-governance\.md\)/, "the current design router should point agents to design-demo governance");
+  assert.match(doc, /完整套件是否通过应以本次运行结果为准/);
+  assert.match(designRouter, /\[[^\]]+\]\(design-demo-governance\.md\)/, "the current design router should point agents to design-demo governance");
 });
 
 test("design-demo source files still expose the documented governance entrypoints", () => {
@@ -62,13 +62,12 @@ test("design-demo source files still expose the documented governance entrypoint
   assert.match(showcaseRegistrySource, /export const SHOWCASE_COMPONENTS/, "showcase component entries should remain owned by the registry");
 });
 
-test("design-demo styling stays inside its current CSS-module ownership boundary", () => {
+test("design-demo keeps its existing dependency ownership without prescribing a visual style", () => {
   const governanceDoc = readSource(governanceDocPath);
   const sources = sourceFilesUnder("src/app/design-demos");
 
-  assert.match(governanceDoc, /功能自有的 CSS Module/);
-  assert.match(governanceDoc, /不得通过修改 `src\/app\/globals\.css`/);
-  assert.match(governanceDoc, /Tailwind、`tailwind-merge`、`class-variance-authority`/);
+  assert.match(governanceDoc, /业务行为由对应功能负责/);
+  assert.match(governanceDoc, /组件 API 与依赖边界/);
   assert.match(governanceDoc, /不得恢复源码旁的人工组件清单、迁移表或完成度表/);
 
   for (const path of sources) {
