@@ -25,11 +25,12 @@ document:
 
 ## 界面专用外壳
 
-根布局会刻意跳过 `/training/**` 和 `/design-demos/**` 的常规 `AppShell`。因此，布局指引必须从路由实际使用的外壳出发：
+根布局会刻意跳过 `/training/**`、`/design-demos/**` 和 `/prototype/**` 的常规 `AppShell`。因此，布局指引必须从路由实际使用的外壳出发：
 
 - Generation 页面使用生产 `AppShell` 和持久导航组件。
 - Training 使用 `TrainingShell`：它以 `navigationChrome="none"` 组合 `DesignDemoShell`，并把生产环境的持久底部导航作为页脚。Training 页面拥有 `src/features/training/**` 下的路由内容。
 - design-demo 界面使用共享外壳，外壳负责路由导航与路由身份。
+- `/prototype/**` 是待评审的新版应用完整原型：复用共享 `DesignDemoShell` 与 `design-demo-ui` 组件库，路由与页面由 `src/app/prototype/**` 拥有。
 
 这些是当前实现职责，不构成新版原型的布局要求。
 

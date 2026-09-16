@@ -136,6 +136,15 @@ scope:
     links: true
     navigation: false
 
+  - id: app-prototype-record
+    include:
+      - src/app/prototype/README.md
+      - src/app/prototype/DESIGN.md
+    kind: source-adjacent
+    frontmatter: none
+    links: true
+    navigation: false
+
   - id: documentation-governance-fixtures
     include:
       - tests/fixtures/documentation-governance/**
