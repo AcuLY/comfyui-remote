@@ -105,7 +105,10 @@ export function Shell({
   return (
     <div className="shell">
       <aside className="shell-sidebar">
-        <div className="shell-brand">ComfyUI Manager</div>
+        <div className="shell-brand">
+          <strong>ComfyUI Manager</strong>
+          <span>创作工作台</span>
+        </div>
         <SidebarNav
           links={navLinks}
           currentRoute={currentRoute}
@@ -122,14 +125,6 @@ export function Shell({
             <span className="shell-eyebrow">{header.eyebrow}</span>
             <h1>{header.title}</h1>
           </div>
-          <button
-            type="button"
-            className="shell-menu-button"
-            aria-label="打开导航"
-            onClick={() => setMobileNavOpen(true)}
-          >
-            <i className="pi pi-bars" />
-          </button>
         </header>
         <main className="shell-content">{children}</main>
       </div>
@@ -150,6 +145,14 @@ export function Shell({
           <span>{modeLabel}</span>
         </div>
       </nav>
+      <button
+        type="button"
+        className="shell-mobile-nav-drawer-button"
+        aria-label="打开导航"
+        onClick={() => setMobileNavOpen(true)}
+      >
+        <i className="pi pi-bars" />
+      </button>
 
       <Sidebar
         visible={mobileNavOpen}
@@ -159,7 +162,12 @@ export function Shell({
         dismissable
         showCloseIcon
         className="shell-mobile-drawer"
-        header={<span className="shell-brand">ComfyUI Manager</span>}
+        header={
+          <span className="shell-brand">
+            <strong>ComfyUI Manager</strong>
+            <span>创作工作台</span>
+          </span>
+        }
       >
         <SidebarNav
           links={navLinks}

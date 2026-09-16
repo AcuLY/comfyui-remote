@@ -93,7 +93,6 @@ export function TasksPage({
 
   function confirmPause(task: PrototypeTask) {
     confirmDialog({
-      className: "confirm-neutral",
       header: "暂停这次生成？",
       message: "当前生成将停止。恢复后会从头执行本次任务。",
       icon: "pi pi-pause",
