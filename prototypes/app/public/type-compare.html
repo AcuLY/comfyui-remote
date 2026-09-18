@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>字体方案对比 · ComfyUI Manager 原型</title>
+    <link rel="stylesheet" href="/src/fonts.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource-variable/inter/index.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource-variable/noto-sans-sc/index.css" />
+    <link rel="stylesheet" href="/node_modules/@fontsource-variable/geist/index.css" />
+    <style>
+      :root {
+        --canvas: #09090b;
+        --surface: #18181bbb;
+        --surface-2: #27272ab8;
+        --border: #ffffff14;
+        --text: #fafafa;
+        --text-2: #a1a1aa;
+        --text-3: #71717a;
+        --production: #34d399;
+        --production-soft: #34d3991f;
+        --training: #f9a8d4;
+        --training-soft: #f9a8d41f;
+        --success: #4ade80;
+        --success-soft: #4ade801f;
+        --warning: #fbbf24;
+        --warning-soft: #fbbf241f;
+        --danger: #fb565b;
+        --danger-soft: #fb565b1f;
+        --accent: var(--production);
+        --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+      }
+      html[data-theme="light"] {
+        --canvas: #f7f9fb;
+        --surface: #ffffffc7;
+        --surface-2: #eef2f5c7;
+        --border: #1318201a;
+        --text: #16181d;
+        --text-2: #59616d;
+        --text-3: #7f8792;
+        --production: #047857;
+        --production-soft: #0478571a;
+        --training: #db2777;
+        --training-soft: #db27771a;
+        --success: #15803d;
+        --success-soft: #15803d1a;
+        --warning: #a16207;
+        --warning-soft: #a162071a;
+        --danger: #be123c;
+        --danger-soft: #be123c1a;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 24px 20px 64px;
+        background: var(--canvas);
+        color: var(--text);
+        font-family: var(--f-sans, system-ui, sans-serif);
+      }
+      h1 { margin: 0 0 4px; font-size: 20px; line-height: 28px; font-weight: 600; }
+      .sub { margin: 0 0 20px; color: var(--text-2); font-size: 12px; }
+      .bar {
+        display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+        margin-bottom: 16px; padding: 12px; border: 1px solid var(--border);
+        border-radius: 12px; background: var(--surface);
+      }
+      .bar label { font-size: 12px; color: var(--text-2); display: inline-flex; align-items: center; gap: 6px; }
+      .bar button {
+        height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px;
+        background: transparent; color: var(--text); font: inherit; font-size: 12px; cursor: pointer;
+      }
+      .legend { font-size: 11px; color: var(--text-3); }
+      section { margin-bottom: 20px; }
+      .panel {
+        border: 1px solid var(--border); border-radius: 12px; background: var(--surface); overflow: hidden;
+      }
+      .panel-head {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--surface-2);
+      }
+      .t-panel-title { font-size: 13px; line-height: 20px; font-weight: 600; }
+      .t-page-title { font-size: 20px; line-height: 28px; font-weight: 600; }
+      .t-eyebrow { font-size: 11px; line-height: 16px; font-weight: 640; color: var(--accent); }
+      .t-body { font-size: 13px; line-height: 20px; font-weight: 400; }
+      .t-control { font-size: 13px; line-height: 20px; font-weight: 400; }
+      .t-meta { font-size: 12px; line-height: 18px; color: var(--text-2); }
+      .t-label { font-size: 11px; line-height: 16px; font-weight: 500; color: var(--text-2); }
+      .t-numeric { font-family: var(--font-mono); font-size: 12.5px; line-height: 20px; font-variant-numeric: tabular-nums; }
+      .t-reading { font-family: var(--font-mono); font-size: 16px; line-height: 24px; font-weight: 500; font-variant-numeric: tabular-nums; }
+      .row { display: grid; grid-template-columns: minmax(0, 1.6fr) auto auto auto auto; gap: 12px; align-items: center; padding: 10px 12px; }
+      .row + .row { border-top: 1px solid var(--border); }
+      .task { border: 0; padding: 0; background: none; color: var(--text); font: inherit; font-size: 13px; line-height: 20px; font-weight: 600; cursor: pointer; text-align: left; }
+      .tag { display: inline-flex; align-items: center; min-height: 22px; padding: 3px 8px; border-radius: 999px; font-size: 11px; line-height: 16px; font-weight: 520; }
+      .tag-success { background: var(--success-soft); color: var(--success); }
+      .tag-warning { background: var(--warning-soft); color: var(--warning); }
+      .tag-training { background: var(--training-soft); color: var(--training); }
+      .btn {
+        display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px;
+        border: 1px solid var(--border); border-radius: 8px; background: transparent;
+        color: var(--text); font: inherit; font-size: 11px; cursor: pointer;
+      }
+      .btn-primary { background: var(--accent); border-color: transparent; color: var(--canvas); font-weight: 600; }
+      .controls { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; }
+      .field {
+        display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px;
+        border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2);
+        font-family: var(--f-sans); font-size: 13px; color: var(--text-2);
+      }
+      table { width: 100%; border-collapse: collapse; font-size: 12px; }
+      th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+      th { color: var(--text-3); font-weight: 500; font-size: 11px; }
+      .matrix td:first-child { width: 220px; }
+      .matrix .who { font-size: 11px; line-height: 16px; color: var(--text-3); }
+      .matrix .who b { display: block; color: var(--text-2); font-size: 12px; }
+      .loaded { font-size: 11px; }
+      .loaded-ok { color: var(--success); }
+      .loaded-missing { color: var(--danger); }
+      .note { color: var(--text-3); font-size: 11px; line-height: 18px; }
+      .fragment { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: baseline; }
+      .stack { font-family: var(--font-mono); font-size: 11px; color: var(--text-3); word-break: break-all; }
+    </style>
+  </head>
+  <body>
+    <h1>字体方案对比</h1>
+    <p class="sub">
+      PrimeReact 官方 Lara／mira 主题默认是 <code>Inter var</code>，tailwind 主题是 Inter + 系统栈，viva 用 Poppins、soho 用 Lato。
+      下面把候选换成同一套界面片段与同一套字阶，方便横向比较。
+    </p>
+
+    <div class="bar">
+      <strong style="font-size: 12px">主样例：</strong>
+      <label><input type="radio" name="cand" value="inter" checked /> A · Inter（PrimeReact 默认）</label>
+      <label><input type="radio" name="cand" value="interNoto" /> B · Inter + Noto Sans SC</label>
+      <label><input type="radio" name="cand" value="geistNoto" /> C · Geist + Noto Sans SC（旧原型）</label>
+      <label><input type="radio" name="cand" value="harmony" /> D · HarmonyOS Sans SC（现状）</label>
+      <label><input type="radio" name="cand" value="system" /> E · 系统栈（零依赖）</label>
+      <button id="theme">切换深浅</button>
+    </div>
+
+    <section class="panel" id="stage" data-font="inter">
+      <div class="panel-head">
+        <div>
+          <div class="t-eyebrow">生产</div>
+          <div class="t-page-title">任务</div>
+        </div>
+        <div class="stack" id="stack"></div>
+      </div>
+      <div class="controls">
+        <span class="field t-control">搜索任务名称、编号、项目或小节</span>
+        <span class="field t-control">全部项目</span>
+        <span class="field t-control">今天</span>
+        <button class="btn btn-primary t-control">暂停</button>
+        <button class="btn t-control">取消</button>
+      </div>
+      <div class="panel-head"><span class="t-panel-title">等待队列 2</span><span class="t-label">已提交 · 未提交</span></div>
+      <div class="row">
+        <div>
+          <button class="task">沿河步道 · 清晨</button>
+          <div class="t-meta">城市漫游　6 张　已送入 ComfyUI 队列</div>
+        </div>
+        <span class="tag tag-warning">已提交</span>
+        <span class="t-numeric">6 张</span>
+        <span class="t-meta">今天 14:33</span>
+        <button class="btn t-control">取消</button>
+      </div>
+      <div class="panel-head"><span class="t-panel-title">任务记录 5</span><span class="t-reading">62%</span></div>
+      <div class="row">
+        <div>
+          <button class="task">老书店 · 窗边</button>
+          <div class="t-meta">城市漫游　G-0925</div>
+        </div>
+        <span class="tag tag-success">已完成</span>
+        <span class="t-numeric">8 / 8 张</span>
+        <span class="t-numeric">04:12</span>
+        <span class="t-numeric">今天 14:18</span>
+      </div>
+      <div class="row">
+        <div>
+          <button class="task">凛 · 人物 LoRA</button>
+          <div class="t-meta">凛　训练运行　T-0186</div>
+        </div>
+        <span class="tag tag-training">训练</span>
+        <span class="t-numeric">2400 步</span>
+        <span class="t-numeric">18:45</span>
+        <span class="t-numeric">今天 12:20</span>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="t-panel-title" style="margin: 0 0 8px">横向对比（同一片段 × 全部候选）</h2>
+      <div class="panel">
+        <table class="matrix">
+          <thead>
+            <tr><th>候选</th><th>标题 / 任务名 / 数字 / 元信息</th><th>加载</th></tr>
+          </thead>
+          <tbody id="matrixBody"></tbody>
+        </table>
+      </div>
+      <p class="note">
+        数字统一使用 <code>IBM Plex Mono</code> 与 tabular-nums；中文只走界面字体，等宽仅包裹数字片段。
+      </p>
+    </section>
+
+    <section>
+      <h2 class="t-panel-title" style="margin: 0 0 8px">字阶（各候选共用）</h2>
+      <div class="panel">
+        <table id="scaleTable">
+          <thead>
+            <tr><th>角色</th><th>字号 / 行高</th><th>字重</th><th>样例</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <script>
+      const candidates = {
+        inter: {
+          name: "Inter（PrimeReact 默认）",
+          stack: '"Inter Variable", "Inter", system-ui, sans-serif',
+          probe: '"Inter Variable"',
+        },
+        interNoto: {
+          name: "Inter + Noto Sans SC",
+          stack: '"Inter Variable", "Inter", "Noto Sans SC Variable", system-ui, sans-serif',
+          probe: '"Noto Sans SC Variable"',
+        },
+        geistNoto: {
+          name: "Geist + Noto Sans SC（旧原型）",
+          stack: '"Geist Variable", "Noto Sans SC Variable", system-ui, sans-serif',
+          probe: '"Geist Variable"',
+        },
+        harmony: {
+          name: "HarmonyOS Sans SC（现状，仅 400）",
+          stack: '"HarmonyOS Sans SC", system-ui, sans-serif',
+          probe: '"HarmonyOS Sans SC"',
+        },
+        system: {
+          name: "系统栈（零依赖）",
+          stack: 'system-ui, "Segoe UI", "Microsoft YaHei UI", sans-serif',
+          probe: 'system-ui',
+        },
+      };
+
+      const stage = document.getElementById("stage");
+      const stackLine = document.getElementById("stack");
+
+      document.querySelectorAll('input[name="cand"]').forEach((input) => {
+        input.addEventListener("change", () => apply(input.value));
+      });
+      document.getElementById("theme").addEventListener("click", () => {
+        const root = document.documentElement;
+        root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+      });
+
+      function apply(key) {
+        const cand = candidates[key];
+        stage.dataset.font = key;
+        stage.style.setProperty("--f-sans", cand.stack);
+        document.body.style.setProperty("--f-sans", cand.stack);
+        stackLine.textContent = cand.stack;
+      }
+
+      const statusCells = {};
+      const matrixBody = document.getElementById("matrixBody");
+      for (const [key, cand] of Object.entries(candidates)) {
+        const row = document.createElement("tr");
+        row.innerHTML =
+          '<td><div class="who"><b>' + cand.name + '</b><code>' + cand.stack + "</code></div></td>" +
+          '<td><div class="fragment" style="font-family:' + cand.stack + '">' +
+          '<span class="t-page-title">任务</span>' +
+          '<span class="t-body" style="font-weight:600">沿河步道 · 清晨</span>' +
+          '<span class="t-numeric">8 / 8 张</span>' +
+          '<span class="t-numeric">04:12</span>' +
+          '<span class="t-meta">今天 14:18</span>' +
+          '<span class="t-label">已提交</span>' +
+          "</div></td>" +
+          '<td><span class="loaded loaded-missing" data-cand="' + key + '">检测中…</span></td>';
+        matrixBody.appendChild(row);
+        statusCells[key] = row.querySelector(".loaded");
+      }
+
+      const probeText = "任务沿河步道 8 / 04:12";
+      async function refreshLoaded() {
+        await document.fonts.ready.catch(() => {});
+        for (const [key, cand] of Object.entries(candidates)) {
+          let ok = cand.probe === "system-ui";
+          if (!ok) {
+            try {
+              await document.fonts.load("13px " + cand.probe, probeText);
+              ok = document.fonts.check("13px " + cand.probe, probeText);
+            } catch {
+              ok = false;
+            }
+          }
+          const el = statusCells[key];
+          if (!el) continue;
+          el.textContent = ok ? "已加载" : "未加载（回退到下一顺位字体）";
+          el.className = "loaded " + (ok ? "loaded-ok" : "loaded-missing");
+        }
+      }
+      refreshLoaded();
+      if (document.fonts.addEventListener) {
+        document.fonts.addEventListener("loadingdone", refreshLoaded);
+      }
+
+      const scale = [
+        ["页面标题 page-title", "20 / 28", "600", "任务"],
+        ["面板标题 panel-title", "13 / 20", "600", "等待队列 2"],
+        ["正文 body", "13 / 20", "400", "沿河步道 · 清晨"],
+        ["控件 control", "13 / 20", "400", "全部项目"],
+        ["元信息 meta", "12 / 18", "400", "城市漫游　G-0925"],
+        ["标签 label", "11 / 16", "500", "已提交"],
+        ["数字 numeric", "12.5 / 20", "400", "8 / 8 张　04:12"],
+        ["读数 reading", "16 / 24", "500", "62%"],
+      ];
+      const tbody = document.querySelector("#scaleTable tbody");
+      for (const [role, size, weight, sample] of scale) {
+        const tr = document.createElement("tr");
+        const cls = role.split(" ")[0] === "页面标题" ? "t-page-title"
+          : role.startsWith("面板") ? "t-panel-title"
+          : role.startsWith("正文") ? "t-body"
+          : role.startsWith("控件") ? "t-control"
+          : role.startsWith("元信息") ? "t-meta"
+          : role.startsWith("标签") ? "t-label"
+          : role.startsWith("数字") ? "t-numeric" : "t-reading";
+        tr.innerHTML = "<td>" + role + "</td><td>" + size + "</td><td>" + weight +
+          '</td><td class="' + cls + '">' + sample + "</td>";
+        tbody.appendChild(tr);
+      }
+
+      apply("inter");
+    </script>
+  </body>
+</html>
