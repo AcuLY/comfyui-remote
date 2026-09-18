@@ -10,19 +10,26 @@ document:
   readWhen:
     - 调整或重新生成原型统一组件主题时
   sources:
-    - docs/design/prototypes/src/tokens.css
-    - docs/design/prototypes/src/theme/theme-inputs.mjs
-    - docs/design/prototypes/scripts/build-theme.mjs
-    - docs/design/prototypes/package.json
-    - docs/design/prototypes/package-lock.json
+    - prototypes/app/theme/tokens.css
+    - prototypes/app/theme/theme-inputs.mjs
+    - prototypes/app/scripts/build-theme.mjs
+    - prototypes/app/package.json
+    - prototypes/app/package-lock.json
   verifiedBy:
-    - npm --prefix docs/design/prototypes run theme:check
-    - npm --prefix docs/design/prototypes run build
+    - npm --prefix prototypes/app run theme:check
+    - npm --prefix prototypes/app run build
 ---
 
 # PrimeReact 统一主题构建
 
 本原型继续使用 `PrimeReact 10.9.9`，组件结构与各状态样式由官方 `Sass` 主题生成。`primereact.css` 是生成产物，不手工编辑。页面布局不在此主题中；组件配色的已确认角色值只从上一级 `tokens.css` 读取。
+
+## 本项目令牌约定
+
+- 生成产物为 `src/theme.generated.css`，按 `:where(:root[data-theme][data-module])` 作用域生效，明暗与模块上下文由根元素属性切换。
+- 控件尺寸由 `inputPadding` 与字体行盒相加得到（当前普通控件约 `36px`、触控约 `40px`），不再用 `min-height` 兜底，避免内容区比标签矮而让文字贴顶。
+- 面板标题字重通过 `panelHeaderFontWeight` 固定为 `600`；面板内容内边距为 `0`，由页面分区自己控制留白。
+- `Tag` 的柔和语义色使用组件公开 `pt` 根槽位表达；`Toast` 宽度同理。其余组件定制一律回到本目录的令牌或官方参数，页面样式文件不写组件内部选择器。
 
 ## 来源与版本
 

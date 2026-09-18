@@ -2,7 +2,8 @@
 export function themeDensity(touch) {
   return {
     font: touch ? '1rem' : '0.875rem',
-    padding: touch ? '0.4375rem 0.75rem' : '0.40625rem 0.75rem',
+    // 上下内边距与字体行盒相加后接近 36px 控件高度，文字由内边距自然居中。
+    padding: touch ? '0.5rem 0.75rem' : '0.4375rem 0.75rem',
     iconSize: touch ? '2.75rem' : '2.25rem',
     controlHeight: touch ? '40px' : '36px',
   };
@@ -100,6 +101,7 @@ export function createThemeInputs(token, { theme, touch }) {
     panelContentTextColor: text,
     panelHeaderBg: token('surface-secondary'),
     panelHeaderTextColor: text,
+    panelHeaderFontWeight: '600',
     panelContentEvenRowBg: token('surface-secondary'),
     // 面板内容由页面自己的分区负责内边距，避免与页面布局叠加成双份留白。
     panelHeaderPadding: '10px 12px',

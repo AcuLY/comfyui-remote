@@ -404,7 +404,9 @@ export function TasksPage({
                   )}
                 </div>
                 <div className="row-cell cell-secondary mono">{task.duration}</div>
-                <div className="row-cell cell-secondary mono">今天 {task.time}</div>
+                <div className="row-cell cell-secondary">
+                  今天 <span className="mono">{task.time}</span>
+                </div>
                 <div className="row-actions">
                   <TaskActions
                     task={task}

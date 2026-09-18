@@ -71,7 +71,8 @@ ${scope} {
   @import 'primereact-sass-theme/theme-base/components';
   @layer primereact {
     .p-component { line-height: 1.5; }
-    .p-button, input.p-inputtext, .p-dropdown, .p-multiselect { min-height: ${density.controlHeight}; }
+    /* 控件高度由主题的内边距决定，避免 min-height 在内容区留下空隙使文字贴顶。 */
+    .p-button { min-height: ${density.controlHeight}; }
     .p-button.p-button-icon-only { min-height: ${density.iconSize}; }
   }
 }
