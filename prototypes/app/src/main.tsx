@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "primeicons/primeicons.css";
+import "@fontsource-variable/inter";
 import "./fonts.css";
 import "../theme/tokens.css";
 import "./theme.generated.css";

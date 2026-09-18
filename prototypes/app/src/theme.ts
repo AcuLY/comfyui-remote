@@ -3,7 +3,7 @@ import type { PrototypeTheme } from "./preferences";
 
 export type { PrototypeTheme } from "./preferences";
 
-export type PrototypeThemeModule = "image" | "training";
+export type PrototypeThemeModule = "production" | "training";
 
 /**
  * 主题与模块上下文写入根元素属性；生成主题按
@@ -19,5 +19,5 @@ export function applyThemeContext(theme: PrototypeTheme, module: PrototypeThemeM
 
 export function initTheme() {
   const preferences = readPreferences();
-  applyThemeContext(resolveTheme(preferences.theme), preferences.module === "lora_training" ? "training" : "image");
+  applyThemeContext(resolveTheme(preferences.theme), preferences.module === "lora_training" ? "training" : "production");
 }

@@ -21,6 +21,8 @@ body {
   font-family: var(--font-mono);
   font-feature-settings: normal;
   font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
+  line-height: 20px;
 }
 
 .muted {
@@ -137,8 +139,8 @@ body {
   border: 1px solid transparent;
   border-radius: var(--radius-control);
   color: var(--text-secondary);
-  font-size: 12px;
-  font-weight: 540;
+  font-size: 13px;
+  font-weight: 500;
   line-height: 1.2;
   padding: 8px 12px 8px 46px;
   text-decoration: none;
@@ -211,7 +213,7 @@ body {
   border-radius: var(--radius-small);
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.2;
   cursor: pointer;
   transition: background var(--duration-quick) ease, border-color var(--duration-quick) ease, color var(--duration-quick) ease;
@@ -276,8 +278,8 @@ body {
   margin: 0;
   overflow: hidden;
   color: var(--text);
-  font-size: 19px;
-  font-weight: 450;
+  font-size: 20px;
+  font-weight: 600;
   line-height: 1.18;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -413,8 +415,10 @@ body {
 }
 
 .execution-number strong {
-  font-size: 14px;
+  font-family: var(--font-mono);
+  font-size: 16px;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
 
 .execution-number strong .muted {
@@ -431,7 +435,7 @@ body {
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   text-align: left;
   text-overflow: ellipsis;
@@ -518,7 +522,7 @@ body {
 
 .queue-info .task-meta {
   margin-top: 3px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .queue-actions {
@@ -596,7 +600,7 @@ body {
   gap: 10px;
   margin-top: 3px;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .row-cell {
@@ -669,6 +673,7 @@ body {
 .detail-title {
   margin: 0;
   font-size: 18px;
+  font-weight: 600;
   line-height: 26px;
 }
 

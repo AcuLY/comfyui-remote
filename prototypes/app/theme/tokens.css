@@ -4,7 +4,8 @@
  * PrimeReact 官方 v10 Sass 参数并生成 src/theme.generated.css。
  */
 :root {
-  --font-sans: 'HarmonyOS Sans SC', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif;
+  /* PrimeReact 官方 Lara／mira 主题默认字体为 Inter，这里沿用同一族。 */
+  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
   --font-family: var(--font-sans);
   --font-feature-settings: normal;
@@ -12,12 +13,16 @@
   --primary-color: var(--accent);
   --content-padding: 1rem;
   --inline-spacing: 0.5rem;
-  --text-xs: 0.75rem;
-  --text-sm: 0.875rem;
-  --text-md: 1rem;
-  --text-lg: 1.25rem;
-  --text-xl: 1.5rem;
-  --text-2xl: 2rem;
+  --text-label: 11px;
+  --text-meta: 12px;
+  --text-body: 13px;
+  --text-numeric: 12.5px;
+  --text-reading: 16px;
+  --text-panel-title: 13px;
+  --text-page-title: 20px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -47,10 +52,10 @@
   --text-muted: #7f8792;
   --border: #1318201a;
   --border-control: #1318202e;
-  --image: #047857;
-  --image-hover: #065f46;
-  --image-soft: #0478571a;
-  --image-on: #ffffff;
+  --production: #047857;
+  --production-hover: #065f46;
+  --production-soft: #0478571a;
+  --production-on: #ffffff;
   --training: #db2777;
   --training-hover: #be185d;
   --training-soft: #db27771a;
@@ -82,10 +87,10 @@
   --text-muted: #71717a;
   --border: #ffffff14;
   --border-control: #ffffff24;
-  --image: #34d399;
-  --image-hover: #6ee7b7;
-  --image-soft: #34d3991f;
-  --image-on: #052e22;
+  --production: #34d399;
+  --production-hover: #6ee7b7;
+  --production-soft: #34d3991f;
+  --production-on: #052e22;
   --training: #f9a8d4;
   --training-hover: #fbcfe8;
   --training-soft: #f9a8d41f;
@@ -108,11 +113,11 @@
 :root {
   --focus: var(--accent);
   --focus-ring: 0 0 0 2px var(--focus);
-  --accent: var(--image);
-  --accent-hover: var(--image-hover);
-  --accent-soft: var(--image-soft);
-  --on-accent: var(--image-on);
-  --on-accent-soft: var(--image-hover);
+  --accent: var(--production);
+  --accent-hover: var(--production-hover);
+  --accent-soft: var(--production-soft);
+  --on-accent: var(--production-on);
+  --on-accent-soft: var(--production-hover);
 }
 
 :root[data-theme='dark'] {

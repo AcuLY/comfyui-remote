@@ -77,7 +77,7 @@ export default function App() {
   }, [routeMode, workMode]);
 
   const effectiveMode = routeMode ?? workMode;
-  const themeModule = effectiveMode === "lora_training" ? "training" : "image";
+  const themeModule = effectiveMode === "lora_training" ? "training" : "production";
 
   useEffect(() => {
     applyThemeContext(theme, themeModule);

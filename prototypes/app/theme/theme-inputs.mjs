@@ -1,7 +1,7 @@
 // Semantic roles come from tokens.css. This file maps them to the official v10 Sass API.
 export function themeDensity(touch) {
   return {
-    font: touch ? '1rem' : '0.875rem',
+    font: touch ? '1rem' : '0.8125rem',
     // 上下内边距与字体行盒相加后接近 36px 控件高度，文字由内边距自然居中。
     padding: touch ? '0.5rem 0.75rem' : '0.4375rem 0.75rem',
     iconSize: touch ? '2.75rem' : '2.25rem',
