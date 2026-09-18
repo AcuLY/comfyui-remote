@@ -1,0 +1,19 @@
+schemaVersion: 1
+document:
+  type: runbook
+  status: current
+  owner: deployment-operations
+  authority:
+    subject: operations/deployment
+    kind: operational
+  readWhen:
+    - 部署生产服务时
+  sources:
+    - package.json
+  verifiedBy:
+    - npm run docs:check
+  environment:
+    - local-windows
+  risk: 不得把进程终止范围扩大到本项目之外。
+  verificationState: exercised
+  lastVerified: "2026-07-12"

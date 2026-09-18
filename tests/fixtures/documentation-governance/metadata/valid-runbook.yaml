@@ -1,0 +1,22 @@
+schemaVersion: 1
+document:
+  type: runbook
+  status: current
+  owner: deployment-operations
+  authority:
+    subject: operations/deployment
+    kind: operational
+  readWhen:
+    - 部署生产服务时
+  sources:
+    - package.json
+    - agent-rules/deploy/index.md
+  verifiedBy:
+    - npm run docs:check
+  environment:
+    - local-windows
+    - mypc-production
+  risk: 获取部署边界前不得修改队列或服务状态。
+  recovery: "#故障处理与恢复"
+  verificationState: exercised
+  lastVerified: "2026-07-12"

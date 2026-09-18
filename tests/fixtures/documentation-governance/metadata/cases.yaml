@@ -1,0 +1,34 @@
+cases:
+  - file: valid-architecture.yaml
+    profile: architecture
+    valid: true
+  - file: invalid-absolute-source.yaml
+    profile: architecture
+    valid: false
+  - file: valid-runbook.yaml
+    profile: runbook
+    valid: true
+  - file: valid-runbook-not-exercised.yaml
+    profile: runbook
+    valid: true
+  - file: invalid-runbook-missing-recovery.yaml
+    profile: runbook
+    valid: false
+  - file: invalid-runbook-exercised-with-null-date.yaml
+    profile: runbook
+    valid: false
+  - file: invalid-runbook-not-exercised-with-date.yaml
+    profile: runbook
+    valid: false
+  - file: valid-placeholder.yaml
+    profile: placeholder
+    valid: true
+  - file: invalid-placeholder-current.yaml
+    profile: placeholder
+    valid: false
+  - file: valid-generator.yaml
+    profile: existing-generator
+    valid: true
+  - file: invalid-generator-missing-check.yaml
+    profile: existing-generator
+    valid: false

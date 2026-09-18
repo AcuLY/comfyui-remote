@@ -447,10 +447,10 @@ async function fetchJson(
 
 
 // ---------------------------------------------------------------------------
-// Priority 3: Standard workflow.api.json via workflow-prompt-builder (v0.3)
+// Priority 3: Configuration-owned standard workflow via workflow-prompt-builder
 // ---------------------------------------------------------------------------
 
-/** Cached workflow template (loaded once from docs/workflow.api.json) */
+/** Cached workflow template loaded once from config/workflows. */
 let cachedStandardWorkflow: JsonRecord | null = null;
 
 async function loadStandardWorkflowTemplate(): Promise<JsonRecord> {
@@ -459,14 +459,19 @@ async function loadStandardWorkflowTemplate(): Promise<JsonRecord> {
   }
   const fs = await import("fs/promises");
   const path = await import("path");
-  const filePath = path.join(process.cwd(), "docs", "workflow.api.json");
+  const filePath = path.join(
+    process.cwd(),
+    "config",
+    "workflows",
+    "standard-workflow.api.json",
+  );
   const raw = await fs.readFile(filePath, "utf-8");
   cachedStandardWorkflow = JSON.parse(raw) as JsonRecord;
   return cachedStandardWorkflow;
 }
 
 /**
- * Always use the standard workflow.api.json template as the default.
+ * Always use the configuration-owned standard workflow template as the default.
  * Previously gated on ksampler1/ksampler2 presence; now always true
  * so that all runs use the fully-mapped template with proper LoRA/KSampler support.
  * The fallback builder is kept as a last resort if the template file is missing.
@@ -548,7 +553,7 @@ export async function validateComfyPromptDraft(
   ]);
 
   // Priority: 1) explicit comfyPrompt in extraParams
-  //           2) standard workflow.api.json (v0.3)
+  //           2) config/workflows/standard-workflow.api.json
   //           3) built-in SDXL txt2img fallback
   let apiPrompt: JsonRecord;
 

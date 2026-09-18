@@ -79,11 +79,11 @@ test("test README documents fixture, native-module, source-contract, and route-e
 
   assert.match(readme, /tests\/fixtures\/domain-builders\.ts/);
   assert.match(readme, /tests\/fixtures\/sqlite-db\.ts/);
-  assert.match(readme, /regenerated native modules/i);
-  assert.match(readme, /local DB files/i);
-  assert.match(readme, /source contract/i);
-  assert.match(readme, /route modules only after test env vars are set/i);
-  assert.match(readme, /fresh DB\/file fixtures/i);
+  assert.match(readme, /重新生成的原生模块/);
+  assert.match(readme, /本地数据库文件/);
+  assert.match(readme, /源码契约/);
+  assert.match(readme, /路由测试只能在设置测试环境变量后导入路由模块/);
+  assert.match(readme, /全新的数据库\/文件固件/);
 });
 
 test("route tests import route modules dynamically after environment setup", () => {

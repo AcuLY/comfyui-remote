@@ -30,7 +30,10 @@ type GraphWorkflow = {
 
 function loadStandardWorkflow(): WorkflowPrompt {
   return JSON.parse(
-    readFileSync(resolve(process.cwd(), "docs/workflow.api.json"), "utf8"),
+    readFileSync(
+      resolve(process.cwd(), "config/workflows/standard-workflow.api.json"),
+      "utf8",
+    ),
   ) as WorkflowPrompt;
 }
 

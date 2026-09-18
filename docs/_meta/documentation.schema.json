@@ -1,0 +1,452 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comfyui-manager.local/schemas/documentation.schema.json",
+  "title": "ComfyUI Manager 文档元数据",
+  "description": "受维护的当前文档所使用的元数据配置。校验前必须通过 docs/_meta/policy.yaml 精确选择一个配置。",
+  "$comment": "顶层 anyOf 仅用于改善编写反馈。治理工具必须校验策略精确选中的配置，避免绕过 root-file 与 existing-generator 的要求。",
+  "anyOf": [
+    { "$ref": "#/$defs/router" },
+    { "$ref": "#/$defs/architecture" },
+    { "$ref": "#/$defs/product" },
+    { "$ref": "#/$defs/design" },
+    { "$ref": "#/$defs/api" },
+    { "$ref": "#/$defs/testing" },
+    { "$ref": "#/$defs/runbook" },
+    { "$ref": "#/$defs/placeholder" },
+    { "$ref": "#/$defs/root-file" },
+    { "$ref": "#/$defs/existing-generator" }
+  ],
+  "$defs": {
+    "_nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "_ownerId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[./-][a-z0-9]+)*$"
+    },
+    "_subjectId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[-./:][a-z0-9]+)*$"
+    },
+    "_repositoryPath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/|[A-Za-z]:)(?!.*(?:^|/)\\.(?:/|$))(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)(?!.*//)(?!.*\\/$)(?!.*[\\[\\]{}*?])[^\\u0000\\r\\n]+$"
+    },
+    "_repositoryPattern": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/|[A-Za-z]:)(?!.*(?:^|/)\\.(?:/|$))(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*\\\\)(?!.*//)(?!.*\\/$)[^\\u0000\\r\\n]+$"
+    },
+    "_command": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!.*[\\r\\n]).*\\S.*$"
+    },
+    "_stringList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/_nonEmptyString" }
+    },
+    "_pathList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/_repositoryPath" }
+    },
+    "_patternList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/_repositoryPattern" }
+    },
+    "_commandList": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/_command" }
+    },
+    "_authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "kind"],
+      "properties": {
+        "subject": { "$ref": "#/$defs/_subjectId" },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "canonical",
+            "router",
+            "compatibility",
+            "operational",
+            "reference",
+            "placeholder"
+          ]
+        }
+      }
+    },
+    "_documentBase": {
+      "type": "object",
+      "required": [
+        "type",
+        "status",
+        "owner",
+        "authority",
+        "readWhen",
+        "sources",
+        "verifiedBy"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "router",
+            "architecture",
+            "product",
+            "design",
+            "api",
+            "testing",
+            "runbook",
+            "placeholder"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["current", "deferred"]
+        },
+        "owner": { "$ref": "#/$defs/_ownerId" },
+        "authority": { "$ref": "#/$defs/_authority" },
+        "readWhen": { "$ref": "#/$defs/_stringList" },
+        "sources": { "$ref": "#/$defs/_pathList" },
+        "verifiedBy": { "$ref": "#/$defs/_commandList" }
+      }
+    },
+    "_currentDocument": {
+      "allOf": [
+        { "$ref": "#/$defs/_documentBase" },
+        {
+          "type": "object",
+          "properties": {
+            "status": { "const": "current" }
+          }
+        }
+      ]
+    },
+    "_profileEnvelope": {
+      "type": "object",
+      "required": ["schemaVersion", "document"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "document": { "type": "object" }
+      }
+    },
+    "router": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/_profileEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "document": {
+              "type": "object",
+              "allOf": [
+        { "$ref": "#/$defs/_currentDocument" },
+                {
+                  "type": "object",
+                  "properties": { "type": { "const": "router" } }
+                }
+              ],
+              "unevaluatedProperties": false
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "architecture": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/_profileEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "document": {
+              "type": "object",
+              "allOf": [
+        { "$ref": "#/$defs/_currentDocument" },
+                {
+                  "type": "object",
+                  "properties": { "type": { "const": "architecture" } }
+                }
+              ],
+              "unevaluatedProperties": false
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "product": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/_profileEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "document": {
+              "type": "object",
+              "allOf": [
+        { "$ref": "#/$defs/_currentDocument" },
+                {
+                  "type": "object",
+                  "properties": { "type": { "const": "product" } }
+                }
+              ],
+              "unevaluatedProperties": false
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "design": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/_profileEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "document": {
+              "type": "object",
+              "allOf": [
+        { "$ref": "#/$defs/_currentDocument" },
+                {
+                  "type": "object",
+                  "properties": { "type": { "const": "design" } }
+                }
+              ],
+              "unevaluatedProperties": false
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "api": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/_profileEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "document": {
+              "type": "object",
+              "allOf": [
+        { "$ref": "#/$defs/_currentDocument" },
+                {
+                  "type": "object",
+                  "properties": { "type": { "const": "api" } }
+                }
+              ],
+              "unevaluatedProperties": false
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "testing": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/_profileEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "document": {
+              "type": "object",
+              "allOf": [
+        { "$ref": "#/$defs/_currentDocument" },
+                {
+                  "type": "object",
+                  "properties": { "type": { "const": "testing" } }
+                }
+              ],
+              "unevaluatedProperties": false
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "runbook": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/_profileEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "document": {
+              "type": "object",
+              "allOf": [
+        { "$ref": "#/$defs/_currentDocument" },
+                {
+                  "type": "object",
+                  "required": [
+                    "environment",
+                    "risk",
+                    "recovery",
+                    "verificationState",
+                    "lastVerified"
+                  ],
+                  "properties": {
+                    "type": { "const": "runbook" },
+                    "environment": { "$ref": "#/$defs/_stringList" },
+                    "risk": { "$ref": "#/$defs/_nonEmptyString" },
+                    "recovery": { "$ref": "#/$defs/_nonEmptyString" },
+                    "verificationState": {
+                      "type": "string",
+                      "enum": ["exercised", "not-exercised"]
+                    },
+                    "lastVerified": {}
+                  },
+                  "oneOf": [
+                    {
+                      "properties": {
+                        "verificationState": { "const": "exercised" },
+                        "lastVerified": {
+                          "type": "string",
+                          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+                        }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "verificationState": { "const": "not-exercised" },
+                        "lastVerified": { "type": "null" }
+                      }
+                    }
+                  ]
+                }
+              ],
+              "unevaluatedProperties": false
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "placeholder": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/_profileEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "document": {
+              "type": "object",
+              "allOf": [
+        { "$ref": "#/$defs/_documentBase" },
+                {
+                  "type": "object",
+                  "required": ["activation", "authorityBoundary"],
+                  "properties": {
+                    "type": { "const": "placeholder" },
+                    "status": { "const": "deferred" },
+                    "authority": {
+                      "type": "object",
+                      "properties": {
+                        "kind": { "const": "placeholder" }
+                      }
+                    },
+                    "activation": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["stage", "owner", "condition"],
+                      "properties": {
+                        "stage": { "$ref": "#/$defs/_nonEmptyString" },
+                        "owner": { "$ref": "#/$defs/_ownerId" },
+                        "condition": { "$ref": "#/$defs/_nonEmptyString" }
+                      }
+                    },
+                    "authorityBoundary": { "$ref": "#/$defs/_nonEmptyString" }
+                  }
+                }
+              ],
+              "unevaluatedProperties": false
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "root-file": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/_profileEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "document": {
+              "type": "object",
+              "allOf": [
+        { "$ref": "#/$defs/_currentDocument" },
+                {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "enum": ["router", "architecture", "product", "design"]
+                    }
+                  }
+                }
+              ],
+              "unevaluatedProperties": false
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "existing-generator": {
+      "type": "object",
+      "allOf": [
+        { "$ref": "#/$defs/_profileEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "document": {
+              "type": "object",
+              "allOf": [
+        { "$ref": "#/$defs/_currentDocument" },
+                {
+                  "type": "object",
+                  "required": ["generator", "inputs", "regenerate", "check"],
+                  "properties": {
+                    "type": {
+                      "enum": [
+                        "router",
+                        "architecture",
+                        "product",
+                        "design",
+                        "api",
+                        "testing"
+                      ]
+                    },
+                    "generator": { "$ref": "#/$defs/_repositoryPath" },
+                    "inputs": { "$ref": "#/$defs/_patternList" },
+                    "regenerate": { "$ref": "#/$defs/_command" },
+                    "check": { "$ref": "#/$defs/_command" }
+                  }
+                }
+              ],
+              "unevaluatedProperties": false
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

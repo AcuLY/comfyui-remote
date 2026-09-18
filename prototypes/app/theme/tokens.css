@@ -1,0 +1,139 @@
+/*
+ * 语义设计令牌：唯一色值来源。
+ * scripts/build-theme.mjs 读取本文件，经 theme-inputs.mjs 映射为
+ * PrimeReact 官方 v10 Sass 参数并生成 src/theme.generated.css。
+ */
+:root {
+  /* PrimeReact 官方 Lara／mira 主题默认字体为 Inter，这里沿用同一族。 */
+  --font-sans: 'Inter Variable', 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-family: var(--font-sans);
+  --font-feature-settings: normal;
+  --maskbg: var(--scrim);
+  --primary-color: var(--accent);
+  --content-padding: 1rem;
+  --inline-spacing: 0.5rem;
+  --text-label: 11px;
+  --text-meta: 12px;
+  --text-body: 13px;
+  --text-numeric: 12.5px;
+  --text-reading: 16px;
+  --text-panel-title: 13px;
+  --text-page-title: 20px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius-control: 10px;
+  --radius-panel: 12px;
+  --radius-small: 7px;
+  --radius-pill: 999px;
+  --control-height: 36px;
+  --control-padding: 12px;
+  --row-padding: 12px;
+  --duration-quick: 160ms;
+  --duration-standard: 220ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  color-scheme: light;
+
+  --canvas: #f7f9fb;
+  --surface: #ffffffc7;
+  --surface-secondary: #eef2f5c7;
+  --surface-hover: #e4eaf0d1;
+  --surface-floating: #fffffff7;
+  --text: #16181d;
+  --text-secondary: #59616d;
+  --text-muted: #7f8792;
+  --border: #1318201a;
+  --border-control: #1318202e;
+  --production: #047857;
+  --production-hover: #065f46;
+  --production-soft: #0478571a;
+  --production-on: #ffffff;
+  --training: #db2777;
+  --training-hover: #be185d;
+  --training-soft: #db27771a;
+  --training-on: #ffffff;
+  --success: #15803d;
+  --success-soft: #15803d1a;
+  --warning: #a16207;
+  --warning-soft: #a162071a;
+  --danger: #be123c;
+  --danger-soft: #be123c1a;
+  --info: #0369a1;
+  --info-soft: #0369a11a;
+  --disabled: #7f8792;
+  --disabled-surface: #e8edf0;
+  --selection: #0478571f;
+  --scrim: #0f172a6b;
+  --shadow-floating: 0 18px 54px #0f172a1a;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --canvas: #09090b;
+  --surface: #18181bbb;
+  --surface-secondary: #27272ab8;
+  --surface-hover: #3f3f469e;
+  --surface-floating: #18181bf0;
+  --text: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --border: #ffffff14;
+  --border-control: #ffffff24;
+  --production: #34d399;
+  --production-hover: #6ee7b7;
+  --production-soft: #34d3991f;
+  --production-on: #052e22;
+  --training: #f9a8d4;
+  --training-hover: #fbcfe8;
+  --training-soft: #f9a8d41f;
+  --training-on: #3f0d27;
+  --success: #4ade80;
+  --success-soft: #4ade801f;
+  --warning: #fbbf24;
+  --warning-soft: #fbbf241f;
+  --danger: #fb565b;
+  --danger-soft: #fb565b1f;
+  --info: #93c5fd;
+  --info-soft: #93c5fd1f;
+  --disabled: #71717a;
+  --disabled-surface: #35353a;
+  --selection: #34d39920;
+  --scrim: #00000085;
+  --shadow-floating: 0 18px 58px #0000003d;
+}
+
+:root {
+  --focus: var(--accent);
+  --focus-ring: 0 0 0 2px var(--focus);
+  --accent: var(--production);
+  --accent-hover: var(--production-hover);
+  --accent-soft: var(--production-soft);
+  --on-accent: var(--production-on);
+  --on-accent-soft: var(--production-hover);
+}
+
+:root[data-theme='dark'] {
+  --on-accent-soft: var(--accent);
+}
+
+:root[data-module='training'] {
+  --accent: var(--training);
+  --accent-hover: var(--training-hover);
+  --accent-soft: var(--training-soft);
+  --on-accent: var(--training-on);
+}
+
+@media (pointer: coarse), (width < 768px) {
+  :root {
+    --control-height: 40px;
+    --control-padding: 14px;
+  }
+}

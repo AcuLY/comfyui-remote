@@ -1,0 +1,19 @@
+schemaVersion: 1
+document:
+  type: placeholder
+  status: deferred
+  owner: reliability-stage
+  authority:
+    subject: reliability
+    kind: placeholder
+  readWhen:
+    - locating the deferred reliability entrypoint
+  sources:
+    - openspec/changes/establish-agent-harness/specs/agent-harness/spec.md
+  verifiedBy:
+    - npm run docs:check
+  activation:
+    stage: build-agent-observability
+    owner: reliability-stage
+    condition: Activate only after the owning OpenSpec change defines verified reliability contracts.
+  authorityBoundary: This placeholder owns no metrics, SLOs, incidents, or backlog decisions.

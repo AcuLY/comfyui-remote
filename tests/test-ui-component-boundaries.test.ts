@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 const repoRoot = process.cwd();
-const boundaryDocPath = "docs/ui/component-boundaries.md";
+const boundaryDocPath = "docs/design/component-patterns.md";
 
 function readSource(path: string) {
   return readFileSync(join(repoRoot, path), "utf8");
@@ -27,20 +27,40 @@ test("UI component boundary doc classifies shadcn and design-demo primitives", (
   assert.ok(existsSync(join(repoRoot, boundaryDocPath)), `${boundaryDocPath} should document UI component ownership`);
 
   const boundaryDoc = readSource(boundaryDocPath);
-  const docsIndex = readSource("docs/index.md");
+  const designRouter = readSource("docs/design/README.md");
 
   for (const primitive of ["button", "input", "select", "separator", "sheet", "sidebar", "skeleton", "tooltip"]) {
     assert.match(
       boundaryDoc,
-      new RegExp(`src/components/ui/${primitive}\\.tsx[\\s\\S]*production-supported shadcn local copy`),
-      `${primitive} primitive should have an explicit supported shadcn-local status`,
+      new RegExp(`src/components/ui/\\*\\*[\\s\\S]*${primitive}`),
+      `${primitive} should remain listed under the production primitive owner`,
     );
   }
 
-  assert.match(boundaryDoc, /src\/components\/design-demo-ui\//, "design-demo UI namespace should be documented");
-  assert.match(boundaryDoc, /not the default production primitive layer/, "design-demo primitives should not be documented as production defaults");
-  assert.match(boundaryDoc, /src\/components\/section-sidebar-nav\.tsx/, "sidebar wrapper owner should be documented");
-  assert.match(docsIndex, /docs\/ui\/component-boundaries\.md/, "documentation index should point agents to the UI boundary doc");
+  assert.match(boundaryDoc, /src\/components\/design-demo-ui\/\*\*/, "design-demo UI namespace should be documented");
+  assert.match(boundaryDoc, /不是无关 Generation 生产基础组件的默认命名空间/, "design-demo primitives should not be documented as production defaults");
+  assert.match(boundaryDoc, /src\/components\/\*\*[\s\S]*跨功能生产包装器/, "cross-feature production wrappers should have an owner");
+  assert.match(boundaryDoc, /Training 外壳可以复用[\s\S]*不能让 design-demo 路由或固件成为生产依赖/, "Training reuse should preserve the production/demo boundary");
+  assert.match(designRouter, /\[组件模式\]\(component-patterns\.md\)/, "the current design router should point agents to the component owner");
+});
+
+test("responsive owner records the current 42px drawer gap without weakening the 44px target", () => {
+  const responsiveDoc = readSource("docs/design/responsive-and-accessibility.md");
+  const shellCss = readSource("src/components/design-demo-shell/app-shell.module.css");
+
+  assert.match(
+    shellCss,
+    /\.mobileTopbarButton\s*\{[\s\S]*?width:\s*44px;[\s\S]*?min-height:\s*44px;/,
+    "current top-bar controls should retain their documented 44px target",
+  );
+  assert.match(
+    shellCss,
+    /\.mobileNavDrawerButton\s*\{[\s\S]*?width:\s*42px;[\s\S]*?height:\s*42px;/,
+    "the current drawer implementation should remain recorded as 42x42px",
+  );
+  assert.match(responsiveDoc, /mobileNavDrawerButton` 为 42×42px/, "the design owner must disclose the current drawer size");
+  assert.match(responsiveDoc, /目标下限应为 44×44px/, "the design owner must keep the intended touch target explicit");
+  assert.match(responsiveDoc, /不得把当前实现描述为已经达标/, "the known gap must not be reported as complete");
 });
 
 test("training shell does not import the shadcn sidebar primitive directly", () => {

@@ -1,0 +1,20 @@
+schemaVersion: 1
+document:
+  type: runbook
+  status: current
+  owner: deployment-operations
+  authority:
+    subject: operations/deployment
+    kind: operational
+  readWhen:
+    - 记录仅经过静态审查的生产流程时
+  sources:
+    - package.json
+  verifiedBy:
+    - npm run docs:check
+  environment:
+    - mypc-production
+  risk: 静态审查不得发布实际执行日期。
+  recovery: "#故障处理与恢复"
+  verificationState: not-exercised
+  lastVerified: "2026-07-12"

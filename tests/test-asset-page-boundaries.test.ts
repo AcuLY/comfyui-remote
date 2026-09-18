@@ -2,28 +2,31 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
+import { WORK_MODE_RESOURCE_TARGETS } from "../src/lib/work-mode-resources";
+
 function readSource(path: string) {
   return readFileSync(path, "utf8");
 }
 
 test("asset pages are split by resource type with explicit route boundaries", () => {
-  const roadmapSource = readSource("docs/archive/superpowers/plans/2026-07-06-whole-repo-refactor-roadmap.md");
   const modelsPageSource = readSource("src/app/assets/models/page.tsx");
   const lorasPageSource = readSource("src/app/assets/loras/page.tsx");
   const presetsPageSource = readSource("src/app/assets/presets/page.tsx");
   const presetGroupPageSource = readSource("src/app/assets/preset-groups/[groupId]/page.tsx");
   const templatesPageSource = readSource("src/app/assets/templates/page.tsx");
 
-  assert.match(roadmapSource, /### Asset Page Boundary Map/);
-  for (const surface of [
-    "Model files",
-    "LoRA files",
-    "Preset library",
-    "Preset groups",
-    "Templates",
-  ]) {
-    assert.match(roadmapSource, new RegExp(`\\| ${surface} \\|`), `${surface} should have a boundary row`);
-  }
+  assert.deepEqual(WORK_MODE_RESOURCE_TARGETS.generation.models, {
+    key: "models",
+    href: "/assets/models",
+    label: "模型",
+    owner: "shared",
+    activePrefix: ["/assets/models", "/assets/loras"],
+  });
+  assert.deepEqual(WORK_MODE_RESOURCE_TARGETS.generation.presets.activePrefix, [
+    "/assets/presets",
+    "/assets/preset-groups",
+  ]);
+  assert.equal(WORK_MODE_RESOURCE_TARGETS.generation.templates.href, "/assets/templates");
 
   assert.match(modelsPageSource, /modelKindFromSearchParam/);
   assert.match(modelsPageSource, /modelPathFromSearchParam/);

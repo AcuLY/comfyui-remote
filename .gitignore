@@ -47,6 +47,7 @@ scripts/training/sync-angle-sections.ts
 # local Manager runtime data, build artifacts, and deploy/debug logs
 /data/
 /logs/
+/metrics/
 /.deploy.lock/
 /.superpowers/
 /.tmp/

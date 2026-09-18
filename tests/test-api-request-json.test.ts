@@ -201,7 +201,13 @@ test("route-local JSON parsing is limited to the documented log-line exception",
   assert.deepEqual(routesWithJsonParse, ["src/app/api/logs/route.ts"], "log-line parsing should be the only route-local JSON.parse exception");
 
   const template = readFileSync("docs/api/route-handler-template.md", "utf8");
-  assert.match(template, /src\/app\/api\/logs\/route\.ts[\s\S]*JSONL log line parsing/);
+  const documentedException = template
+    .split(/\r?\n/)
+    .find((line) => line.includes("`src/app/api/logs/route.ts`"));
+  assert.ok(documentedException, "the route-local JSON.parse exception must be documented");
+  assert.match(documentedException, /JSONL/);
+  assert.match(documentedException, /`JSON\.parse`/);
+  assert.match(documentedException, /HTTP/);
 });
 
 test("route-local JSON response formatting is limited to documented raw-shape exceptions", () => {
@@ -213,7 +219,12 @@ test("route-local JSON response formatting is limited to documented raw-shape ex
   assert.deepEqual(routesWithDirectNextJson, ["src/app/api/queue-data/route.ts"]);
 
   const template = readFileSync("docs/api/route-handler-template.md", "utf8");
-  assert.match(template, /src\/app\/api\/queue-data\/route\.ts[\s\S]*raw JSON response shape/);
+  const documentedException = template
+    .split(/\r?\n/)
+    .find((line) => line.includes("`src/app/api/queue-data/route.ts`"));
+  assert.ok(documentedException, "the direct NextResponse.json exception must be documented");
+  assert.match(documentedException, /`NextResponse\.json\(\.\.\.\)`/);
+  assert.match(documentedException, /`new NextResponse\(stream, \.\.\.\)`/);
 });
 
 test("resume-paused route uses the shared optional JSON parser", () => {

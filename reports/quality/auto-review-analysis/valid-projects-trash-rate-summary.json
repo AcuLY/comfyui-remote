@@ -1,0 +1,1257 @@
+{
+  "phase": 0,
+  "pass": true,
+  "validProjects": 7,
+  "validProjectTitles": [
+    "叶瞬光",
+    "大乔",
+    "安魂曲",
+    "洛茜",
+    "花火",
+    "西格莉卡",
+    "零"
+  ],
+  "labeledImages": 3668,
+  "totalLabeled": 3668,
+  "canonicalSections": 68,
+  "manualExclusionsLoaded": [
+    "单人 · 拎鞋",
+    "第一人称 · 胸压"
+  ],
+  "sortOrderVarianceVerified": true,
+  "dbMutated": false,
+  "reproducible": true,
+  "failedCriteria": [],
+  "kept": 1684,
+  "trashed": 1984,
+  "other": 10,
+  "totalImages": 3678,
+  "invalidProjectRowsExcluded": 0,
+  "statsSignature": "03d61352f65a1f6744c8c060eec895179a1f387deafca489d854e6402973e529",
+  "sourceDb": "/mnt/d/Luca/Code/MyProject/comfyui-manager/prisma/data/comfyui.db",
+  "reportPaths": {
+    "labeledImagesCsv": "/mnt/d/Luca/Code/MyProject/comfyui-manager/reports/quality/auto-review-analysis/phase0-labeled-images.csv",
+    "aggregateCsv": "/mnt/d/Luca/Code/MyProject/comfyui-manager/reports/quality/auto-review-analysis/valid-projects-trash-rate-by-section.csv",
+    "sectionProjectCsv": "/mnt/d/Luca/Code/MyProject/comfyui-manager/reports/quality/auto-review-analysis/valid-projects-trash-rate-by-section-project.csv",
+    "markdown": "/mnt/d/Luca/Code/MyProject/comfyui-manager/reports/quality/auto-review-analysis/valid-projects-trash-rate-by-section.md",
+    "summaryJson": "/mnt/d/Luca/Code/MyProject/comfyui-manager/reports/quality/auto-review-analysis/valid-projects-trash-rate-summary.json"
+  },
+  "top20Raw": [
+    {
+      "canonicalSectionName": "第三人称 · 站姿后入",
+      "projectCoverage": 1,
+      "labeled": 9,
+      "kept": 0,
+      "trashed": 9,
+      "trashRate": 1,
+      "keepRate": 0,
+      "other": 0,
+      "totalImages": 9,
+      "projectPositions": [
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthjk006snkbxhrph1o5z",
+          "sectionName": "第三人称 · 站姿后入",
+          "sortOrder": 32
+        }
+      ],
+      "positions": "洛茜:32",
+      "flags": [
+        "low_sample_lt20",
+        "low_project_coverage_lt5"
+      ],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "第三人称 · 背后跪姿手交",
+      "projectCoverage": 7,
+      "labeled": 109,
+      "kept": 11,
+      "trashed": 98,
+      "trashRate": 0.8991,
+      "keepRate": 0.1009,
+      "other": 0,
+      "totalImages": 109,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg72bm0035y4bx8jbuhlpz",
+          "sectionName": "第三人称 · 背后跪姿手交",
+          "sortOrder": 12
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobkb0009mcwbxroy60xlv",
+          "sectionName": "第三人称 · 背后跪姿手交",
+          "sortOrder": 11
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i23s00vt30bx8m7148r0",
+          "sectionName": "第三人称 · 背后跪姿手交",
+          "sortOrder": 12
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthe0002vnkbx6vvjh033",
+          "sectionName": "第三人称 · 背后跪姿手交",
+          "sortOrder": 14
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzpb0194tobxogzsr94d",
+          "sectionName": "第三人称 · 背后跪姿手交",
+          "sortOrder": 11
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr1i0053ggbxlwf5w8y1",
+          "sectionName": "第三人称 · 背后跪姿手交",
+          "sortOrder": 13
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3garyn0550scbx8ez05qwg",
+          "sectionName": "第三人称 · 背后跪姿手交",
+          "sortOrder": 13
+        }
+      ],
+      "positions": "叶瞬光:12,大乔:11,安魂曲:12,洛茜:14,花火:11,西格莉卡:13,零:13",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "单人 · 拎鞋",
+      "projectCoverage": 7,
+      "labeled": 113,
+      "kept": 12,
+      "trashed": 101,
+      "trashRate": 0.8938,
+      "keepRate": 0.1062,
+      "other": 0,
+      "totalImages": 113,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg729b001my4bxcm8pzymx",
+          "sectionName": "单人 · 拎鞋",
+          "sortOrder": 20
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobkct00bdcwbx2uc48wf2",
+          "sectionName": "单人 · 拎鞋",
+          "sortOrder": 19
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i27500xk30bxxy5gkfl7",
+          "sectionName": "单人 · 拎鞋",
+          "sortOrder": 20
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthbv001cnkbxlb0dkwv7",
+          "sectionName": "单人 · 拎鞋",
+          "sortOrder": 7
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzsu01autobxn0tvnnhs",
+          "sectionName": "单人 · 拎鞋",
+          "sortOrder": 19
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr3j006tggbxj8fm7us9",
+          "sectionName": "单人 · 拎鞋",
+          "sortOrder": 21
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3gas2b056sscbxtp2p8edq",
+          "sectionName": "单人 · 拎鞋",
+          "sortOrder": 21
+        }
+      ],
+      "positions": "叶瞬光:20,大乔:19,安魂曲:20,洛茜:7,花火:19,西格莉卡:21,零:21",
+      "flags": [
+        "manual_excluded"
+      ],
+      "manualExclusionReason": "Luca confirmed this section is not representative for trash-rate/reference-risk analysis."
+    },
+    {
+      "canonicalSectionName": "第三人称 · 翘腿素股",
+      "projectCoverage": 7,
+      "labeled": 92,
+      "kept": 15,
+      "trashed": 77,
+      "trashRate": 0.837,
+      "keepRate": 0.163,
+      "other": 0,
+      "totalImages": 92,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg72ie006uy4bxlgrxd5ey",
+          "sectionName": "第三人称 · 翘腿素股",
+          "sortOrder": 29
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobk9o008acwbxfs2y2u82",
+          "sectionName": "第三人称 · 翘腿素股",
+          "sortOrder": 29
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i20k00uh30bxklua0wu3",
+          "sectionName": "第三人称 · 翘腿素股",
+          "sortOrder": 28
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthj9006knkbxfur78k2r",
+          "sectionName": "第三人称 · 翘腿素股",
+          "sortOrder": 31
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzmk017stobxfht6imjq",
+          "sectionName": "第三人称 · 翘腿素股",
+          "sortOrder": 27
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr14003rggbxc1co4yzz",
+          "sectionName": "第三人称 · 翘腿素股",
+          "sortOrder": 28
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3garwg053oscbx6o713s71",
+          "sectionName": "第三人称 · 翘腿素股",
+          "sortOrder": 7
+        }
+      ],
+      "positions": "叶瞬光:29,大乔:29,安魂曲:28,洛茜:31,花火:27,西格莉卡:28,零:7",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "第一人称 · 胸压",
+      "projectCoverage": 6,
+      "labeled": 41,
+      "kept": 7,
+      "trashed": 34,
+      "trashRate": 0.8293,
+      "keepRate": 0.1707,
+      "other": 0,
+      "totalImages": 41,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg72a90029y4bxq2ujof5j",
+          "sectionName": "第一人称 · 胸压",
+          "sortOrder": 9
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobk9w008icwbx1zxdbem7",
+          "sectionName": "第一人称 · 胸压",
+          "sortOrder": 7
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i21400up30bxsdwwxjff",
+          "sectionName": "第一人称 · 胸压",
+          "sortOrder": 7
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzn30180tobxfigebab4",
+          "sectionName": "第一人称 · 胸压",
+          "sortOrder": 7
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr16003zggbxbl4oe498",
+          "sectionName": "第一人称 · 胸压",
+          "sortOrder": 8
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3garwk053wscbxpgfa4t6o",
+          "sectionName": "第一人称 · 胸压",
+          "sortOrder": 8
+        }
+      ],
+      "positions": "叶瞬光:9,大乔:7,安魂曲:7,花火:7,西格莉卡:8,零:8",
+      "flags": [
+        "manual_excluded"
+      ],
+      "manualExclusionReason": "Luca confirmed this section is not representative for trash-rate/reference-risk analysis."
+    },
+    {
+      "canonicalSectionName": "第三人称 · 反向足交-正面",
+      "projectCoverage": 7,
+      "labeled": 127,
+      "kept": 22,
+      "trashed": 105,
+      "trashRate": 0.8268,
+      "keepRate": 0.1732,
+      "other": 0,
+      "totalImages": 127,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg72fl005by4bx4tpytjie",
+          "sectionName": "第三人称 · 反向足交-正面",
+          "sortOrder": 23
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobkdh00c1cwbxr7jzs3j3",
+          "sectionName": "第三人称 · 反向足交-正面",
+          "sortOrder": 23
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i28d00y830bx6vfb0wq6",
+          "sectionName": "第三人称 · 反向足交-正面",
+          "sortOrder": 23
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthgz0051nkbxjnbi6wo0",
+          "sectionName": "第三人称 · 反向足交-正面",
+          "sortOrder": 24
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzu901bitobxlnkz0ic4",
+          "sectionName": "第三人称 · 反向足交-正面",
+          "sortOrder": 22
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr4g007hggbxotor7qp3",
+          "sectionName": "第三人称 · 反向足交-正面",
+          "sortOrder": 24
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3gas3y057oscbxkucxti29",
+          "sectionName": "第三人称 · 反向足交-正面",
+          "sortOrder": 25
+        }
+      ],
+      "positions": "叶瞬光:23,大乔:23,安魂曲:23,洛茜:24,花火:22,西格莉卡:24,零:25",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "第一人称 · 反向足交-背面",
+      "projectCoverage": 7,
+      "labeled": 123,
+      "kept": 25,
+      "trashed": 98,
+      "trashRate": 0.7967,
+      "keepRate": 0.2033,
+      "other": 0,
+      "totalImages": 123,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg72fw005iy4bxsm4557zx",
+          "sectionName": "第一人称 · 反向足交-背面",
+          "sortOrder": 24
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobkdn00c9cwbxf112bbkk",
+          "sectionName": "第一人称 · 反向足交-背面",
+          "sortOrder": 24
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i28t00yg30bx1fnsaljg",
+          "sectionName": "第一人称 · 反向足交-背面",
+          "sortOrder": 24
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthhd0058nkbxopdtgx8n",
+          "sectionName": "第一人称 · 反向足交-背面",
+          "sortOrder": 25
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzuq01bqtobxm3dapubc",
+          "sectionName": "第一人称 · 反向足交-背面",
+          "sortOrder": 23
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr4s007pggbxkhu65nz2",
+          "sectionName": "第一人称 · 反向足交-背面",
+          "sortOrder": 25
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3gas4e057wscbxyy018f62",
+          "sectionName": "第一人称 · 反向足交-背面",
+          "sortOrder": 26
+        }
+      ],
+      "positions": "叶瞬光:24,大乔:24,安魂曲:24,洛茜:25,花火:23,西格莉卡:25,零:26",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "第一人称 · 骑乘手交",
+      "projectCoverage": 7,
+      "labeled": 92,
+      "kept": 20,
+      "trashed": 72,
+      "trashRate": 0.7826,
+      "keepRate": 0.2174,
+      "other": 0,
+      "totalImages": 92,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg72ck003ty4bxstpvhk9i",
+          "sectionName": "第一人称 · 骑乘手交",
+          "sortOrder": 15
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobkbq00aacwbx85hzhsqs",
+          "sectionName": "第一人称 · 骑乘手交",
+          "sortOrder": 14
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i25200wh30bxje5f7v1y",
+          "sectionName": "第一人称 · 骑乘手交",
+          "sortOrder": 15
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthey003jnkbxklkuf1g8",
+          "sectionName": "第一人称 · 骑乘手交",
+          "sortOrder": 17
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzqp019stobx4bmegucm",
+          "sectionName": "第一人称 · 骑乘手交",
+          "sortOrder": 14
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr27005rggbxjt0bgptg",
+          "sectionName": "第一人称 · 骑乘手交",
+          "sortOrder": 16
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3gas08055oscbxcknpxnuv",
+          "sectionName": "第一人称 · 骑乘手交",
+          "sortOrder": 16
+        }
+      ],
+      "positions": "叶瞬光:15,大乔:14,安魂曲:15,洛茜:17,花火:14,西格莉卡:16,零:16",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "第三人称 · 第三人称正常位",
+      "projectCoverage": 7,
+      "labeled": 44,
+      "kept": 10,
+      "trashed": 34,
+      "trashRate": 0.7727,
+      "keepRate": 0.2273,
+      "other": 0,
+      "totalImages": 44,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg72rt00cey4bxp0zab8wh",
+          "sectionName": "第三人称 · 第三人称正常位",
+          "sortOrder": 58
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobkjm00jdcwbxv1c0d0x2",
+          "sectionName": "第三人称 · 第三人称正常位",
+          "sortOrder": 60
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i2nt015k30bxwja21i56",
+          "sectionName": "第三人称 · 第三人称正常位",
+          "sortOrder": 57
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthqz00c4nkbxoiot3b07",
+          "sectionName": "第三人称 · 第三人称正常位",
+          "sortOrder": 56
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoy0009101iutobxdcrp2llf",
+          "sectionName": "第三人称 · 第三人称正常位",
+          "sortOrder": 58
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2drez00etggbx5nbfmw38",
+          "sectionName": "第三人称 · 第三人称正常位",
+          "sortOrder": 58
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3gasj405f8scbxpxm8e1cp",
+          "sectionName": "第三人称 · 第三人称正常位",
+          "sortOrder": 59
+        }
+      ],
+      "positions": "叶瞬光:58,大乔:60,安魂曲:57,洛茜:56,花火:58,西格莉卡:58,零:59",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "第一人称 · 站姿抓手后入",
+      "projectCoverage": 6,
+      "labeled": 46,
+      "kept": 14,
+      "trashed": 32,
+      "trashRate": 0.6957,
+      "keepRate": 0.3043,
+      "other": 0,
+      "totalImages": 46,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg72j7007ay4bxt3fve32k",
+          "sectionName": "第一人称 · 站姿抓手后入",
+          "sortOrder": 34
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobkfb00e1cwbx565aq52v",
+          "sectionName": "第一人称 · 站姿抓手后入",
+          "sortOrder": 34
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i2ce010830bxhsaljllp",
+          "sectionName": "第一人称 · 站姿抓手后入",
+          "sortOrder": 33
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzxq01datobx564cd80q",
+          "sectionName": "第一人称 · 站姿抓手后入",
+          "sortOrder": 33
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr7i009hggbx87tktupc",
+          "sectionName": "第一人称 · 站姿抓手后入",
+          "sortOrder": 33
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3gas83059oscbxxcvcml4c",
+          "sectionName": "第一人称 · 站姿抓手后入",
+          "sortOrder": 34
+        }
+      ],
+      "positions": "叶瞬光:34,大乔:34,安魂曲:33,花火:33,西格莉卡:33,零:34",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "单人 · 站姿掀裙",
+      "projectCoverage": 7,
+      "labeled": 51,
+      "kept": 16,
+      "trashed": 35,
+      "trashRate": 0.6863,
+      "keepRate": 0.3137,
+      "other": 0,
+      "totalImages": 51,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg728v0017y4bxb7cakpjk",
+          "sectionName": "单人 · 站姿掀裙",
+          "sortOrder": 5
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobk94007ncwbxqrdus45d",
+          "sectionName": "单人 · 站姿掀裙",
+          "sortOrder": 4
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i20a00tu30bx9jq73lxc",
+          "sectionName": "单人 · 站姿掀裙",
+          "sortOrder": 5
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthb8000xnkbxwbrup4rn",
+          "sectionName": "单人 · 站姿掀裙",
+          "sortOrder": 5
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzl90175tobxzryp419u",
+          "sectionName": "单人 · 站姿掀裙",
+          "sortOrder": 4
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr0v0034ggbxiwx1fgc0",
+          "sectionName": "单人 · 站姿掀裙",
+          "sortOrder": 5
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3garw60530scbxlvwgsp5a",
+          "sectionName": "单人 · 站姿掀裙",
+          "sortOrder": 4
+        }
+      ],
+      "positions": "叶瞬光:5,大乔:4,安魂曲:5,洛茜:5,花火:4,西格莉卡:5,零:4",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "第一人称 · 站姿后入",
+      "projectCoverage": 1,
+      "labeled": 9,
+      "kept": 3,
+      "trashed": 6,
+      "trashRate": 0.6667,
+      "keepRate": 0.3333,
+      "other": 0,
+      "totalImages": 9,
+      "projectPositions": [
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthjv0070nkbx1r9wl804",
+          "sectionName": "第一人称 · 站姿后入",
+          "sortOrder": 33
+        }
+      ],
+      "positions": "洛茜:33",
+      "flags": [
+        "low_sample_lt20",
+        "low_project_coverage_lt5"
+      ],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "单人 · 翘腿",
+      "projectCoverage": 7,
+      "labeled": 50,
+      "kept": 17,
+      "trashed": 33,
+      "trashRate": 0.66,
+      "keepRate": 0.34,
+      "other": 0,
+      "totalImages": 50,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg729n001uy4bx69mhqf9p",
+          "sectionName": "单人 · 翘腿",
+          "sortOrder": 28
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobk9j0083cwbxziabc2vx",
+          "sectionName": "单人 · 翘腿",
+          "sortOrder": 28
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i20h00ua30bxgyli6q1j",
+          "sectionName": "单人 · 翘腿",
+          "sortOrder": 27
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthc5001knkbxxcrde3y8",
+          "sectionName": "单人 · 翘腿",
+          "sortOrder": 8
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzm0017ltobxtdcw9ysk",
+          "sectionName": "单人 · 翘腿",
+          "sortOrder": 26
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr11003kggbxnpyx2gga",
+          "sectionName": "单人 · 翘腿",
+          "sortOrder": 7
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3garwd053gscbxpppth4nm",
+          "sectionName": "单人 · 翘腿",
+          "sortOrder": 6
+        }
+      ],
+      "positions": "叶瞬光:28,大乔:28,安魂曲:27,洛茜:8,花火:26,西格莉卡:7,零:6",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "第三人称 · 后侧足交",
+      "projectCoverage": 7,
+      "labeled": 55,
+      "kept": 19,
+      "trashed": 36,
+      "trashRate": 0.6545,
+      "keepRate": 0.3455,
+      "other": 0,
+      "totalImages": 55,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg72ga005qy4bxaq9p5opa",
+          "sectionName": "第三人称 · 后侧足交",
+          "sortOrder": 25
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobkdu00chcwbx2jki5qvw",
+          "sectionName": "第三人称 · 后侧足交",
+          "sortOrder": 25
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i29700yo30bxxp3x1pwh",
+          "sectionName": "第三人称 · 后侧足交",
+          "sortOrder": 25
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthhn005gnkbxt27rbn6o",
+          "sectionName": "第三人称 · 后侧足交",
+          "sortOrder": 26
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzv701bytobxha6973hs",
+          "sectionName": "第三人称 · 后侧足交",
+          "sortOrder": 24
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr51007xggbx7rz0bccb",
+          "sectionName": "第三人称 · 后侧足交",
+          "sortOrder": 26
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3gas4z0584scbxxydy79pf",
+          "sectionName": "第三人称 · 后侧足交",
+          "sortOrder": 27
+        }
+      ],
+      "positions": "叶瞬光:25,大乔:25,安魂曲:25,洛茜:26,花火:24,西格莉卡:26,零:27",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "单人 · 背手站立",
+      "projectCoverage": 7,
+      "labeled": 78,
+      "kept": 29,
+      "trashed": 49,
+      "trashRate": 0.6282,
+      "keepRate": 0.3718,
+      "other": 0,
+      "totalImages": 78,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg728c000by4bxb9yyz1av",
+          "sectionName": "单人 · 背手站立",
+          "sortOrder": 1
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobk85006zcwbx0n0x8k1m",
+          "sectionName": "单人 · 背手站立",
+          "sortOrder": 1
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i1zn00t630bxf34vhu4v",
+          "sectionName": "单人 · 背手站立",
+          "sortOrder": 1
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrth9w0001nkbxyq0wdnkg",
+          "sectionName": "单人 · 背手站立",
+          "sortOrder": 1
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzkn0169tobxfjluumc8",
+          "sectionName": "单人 · 背手站立",
+          "sortOrder": 1
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr0j002gggbxe7d4bj0q",
+          "sectionName": "单人 · 背手站立",
+          "sortOrder": 1
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3garvm052cscbxy15fw1cn",
+          "sectionName": "单人 · 背手站立",
+          "sortOrder": 1
+        }
+      ],
+      "positions": "叶瞬光:1,大乔:1,安魂曲:1,洛茜:1,花火:1,西格莉卡:1,零:1",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "单人 · 背身弯腰",
+      "projectCoverage": 7,
+      "labeled": 48,
+      "kept": 18,
+      "trashed": 30,
+      "trashRate": 0.625,
+      "keepRate": 0.375,
+      "other": 6,
+      "totalImages": 54,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg728s000zy4bxye5i7azp",
+          "sectionName": "单人 · 背身弯腰",
+          "sortOrder": 27
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobke800cxcwbxxuzw8uoj",
+          "sectionName": "单人 · 背身弯腰",
+          "sortOrder": 27
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i2a800z430bx03a52ery",
+          "sectionName": "单人 · 背身弯腰",
+          "sortOrder": 4
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthaw000pnkbx8i4h7mtm",
+          "sectionName": "单人 · 背身弯腰",
+          "sortOrder": 4
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzl4016xtobx1ydek0tu",
+          "sectionName": "单人 · 背身弯腰",
+          "sortOrder": 31
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr5l008dggbxdmdho3ud",
+          "sectionName": "单人 · 背身弯腰",
+          "sortOrder": 4
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3gas5u058kscbx1b41ss8l",
+          "sectionName": "单人 · 背身弯腰",
+          "sortOrder": 29
+        }
+      ],
+      "positions": "叶瞬光:27,大乔:27,安魂曲:4,洛茜:4,花火:31,西格莉卡:4,零:29",
+      "flags": [
+        "has_unreviewed"
+      ],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "第三人称 · 腋交",
+      "projectCoverage": 7,
+      "labeled": 80,
+      "kept": 31,
+      "trashed": 49,
+      "trashRate": 0.6125,
+      "keepRate": 0.3875,
+      "other": 1,
+      "totalImages": 81,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg72aw002py4bx9z0tpwj6",
+          "sectionName": "第三人称 · 腋交",
+          "sortOrder": 7
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobkai0096cwbxrheu5pi0",
+          "sectionName": "第三人称 · 腋交",
+          "sortOrder": 9
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i22x00vd30bxzil09tnj",
+          "sectionName": "第三人称 · 腋交",
+          "sortOrder": 10
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthdd002fnkbxnakj3kgp",
+          "sectionName": "第三人称 · 腋交",
+          "sortOrder": 12
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzoh018otobxb8hj360q",
+          "sectionName": "第三人称 · 腋交",
+          "sortOrder": 9
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr1d004nggbxlnwkmbq5",
+          "sectionName": "第三人称 · 腋交",
+          "sortOrder": 11
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3garxr054kscbxo54vviqg",
+          "sectionName": "第三人称 · 腋交",
+          "sortOrder": 11
+        }
+      ],
+      "positions": "叶瞬光:7,大乔:9,安魂曲:10,洛茜:12,花火:9,西格莉卡:11,零:11",
+      "flags": [
+        "has_unreviewed"
+      ],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "单人 · 空气口交",
+      "projectCoverage": 7,
+      "labeled": 72,
+      "kept": 28,
+      "trashed": 44,
+      "trashRate": 0.6111,
+      "keepRate": 0.3889,
+      "other": 0,
+      "totalImages": 72,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg72d10041y4bxqk2z4bcg",
+          "sectionName": "单人 · 空气口交",
+          "sortOrder": 16
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobkc000aicwbxzu29mj1f",
+          "sectionName": "单人 · 空气口交",
+          "sortOrder": 15
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i25i00wp30bxb1l405h5",
+          "sectionName": "单人 · 空气口交",
+          "sortOrder": 16
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthf9003rnkbxqr8ybyoy",
+          "sectionName": "单人 · 空气口交",
+          "sortOrder": 18
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzra01a0tobxj4i39z4k",
+          "sectionName": "单人 · 空气口交",
+          "sortOrder": 15
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr2h005zggbxv8wn0f1w",
+          "sectionName": "单人 · 空气口交",
+          "sortOrder": 17
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3gas0m055wscbx8brwjlfb",
+          "sectionName": "单人 · 空气口交",
+          "sortOrder": 17
+        }
+      ],
+      "positions": "叶瞬光:16,大乔:15,安魂曲:16,洛茜:18,花火:15,西格莉卡:17,零:17",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "单人 · 自摸胸",
+      "projectCoverage": 7,
+      "labeled": 58,
+      "kept": 23,
+      "trashed": 35,
+      "trashRate": 0.6034,
+      "keepRate": 0.3966,
+      "other": 0,
+      "totalImages": 58,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg729y0021y4bxznadntnh",
+          "sectionName": "单人 · 自摸胸",
+          "sortOrder": 8
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobka2008qcwbxv3vl4en0",
+          "sectionName": "单人 · 自摸胸",
+          "sortOrder": 6
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i21l00ux30bxqabgqb0p",
+          "sectionName": "单人 · 自摸胸",
+          "sortOrder": 8
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthch001rnkbxa53jzwsq",
+          "sectionName": "单人 · 自摸胸",
+          "sortOrder": 9
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzznj0188tobx28pvm8mx",
+          "sectionName": "单人 · 自摸胸",
+          "sortOrder": 6
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr180047ggbxhbx5c743",
+          "sectionName": "单人 · 自摸胸",
+          "sortOrder": 9
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3garwz0544scbxbtfoksls",
+          "sectionName": "单人 · 自摸胸",
+          "sortOrder": 9
+        }
+      ],
+      "positions": "叶瞬光:8,大乔:6,安魂曲:8,洛茜:9,花火:6,西格莉卡:9,零:9",
+      "flags": [],
+      "manualExclusionReason": ""
+    },
+    {
+      "canonicalSectionName": "第一人称 · 口交",
+      "projectCoverage": 7,
+      "labeled": 62,
+      "kept": 25,
+      "trashed": 37,
+      "trashRate": 0.5968,
+      "keepRate": 0.4032,
+      "other": 0,
+      "totalImages": 62,
+      "projectPositions": [
+        {
+          "projectId": "cmotg6xxj000ay4bxs2o2skal",
+          "projectTitle": "叶瞬光",
+          "sectionId": "cmotg72e5004hy4bxanr2gxes",
+          "sectionName": "第一人称 · 口交",
+          "sortOrder": 18
+        },
+        {
+          "projectId": "cmozo5m6g0000cwbxxbo6pp6g",
+          "projectTitle": "大乔",
+          "sectionId": "cmozobkci00aycwbxpglwwo3d",
+          "sectionName": "第一人称 · 口交",
+          "sortOrder": 17
+        },
+        {
+          "projectId": "cmov9c5wh00sp30bxzwjnshzr",
+          "projectTitle": "安魂曲",
+          "sectionId": "cmov9i26c00x530bxiu35sewj",
+          "sectionName": "第一人称 · 口交",
+          "sortOrder": 18
+        },
+        {
+          "projectId": "cmojrnyw70000nkbx0weta7bk",
+          "projectTitle": "洛茜",
+          "sectionId": "cmojrthfu0047nkbx9rh79zv8",
+          "sectionName": "第一人称 · 口交",
+          "sortOrder": 20
+        },
+        {
+          "projectId": "cmoxzzv4c0168tobxtojhgdfc",
+          "projectTitle": "花火",
+          "sectionId": "cmoxzzzs501agtobx6l2uj6xf",
+          "sectionName": "第一人称 · 口交",
+          "sortOrder": 17
+        },
+        {
+          "projectId": "cmou2cne0000nggbxxq36o4db",
+          "projectTitle": "西格莉卡",
+          "sectionId": "cmou2dr31006fggbx28fuq8z7",
+          "sectionName": "第一人称 · 口交",
+          "sortOrder": 19
+        },
+        {
+          "projectId": "cmp3ga2lj050hscbxa3ofo3o3",
+          "projectTitle": "零",
+          "sectionId": "cmp3gas1f056cscbxcihemxnw",
+          "sectionName": "第一人称 · 口交",
+          "sortOrder": 19
+        }
+      ],
+      "positions": "叶瞬光:18,大乔:17,安魂曲:18,洛茜:20,花火:17,西格莉卡:19,零:19",
+      "flags": [],
+      "manualExclusionReason": ""
+    }
+  ]
+}
