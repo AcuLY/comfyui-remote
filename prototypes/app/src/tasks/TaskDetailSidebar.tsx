@@ -41,6 +41,7 @@ export function TaskDetailSidebar({
       dismissable
       showCloseIcon
       className="detail-sidebar"
+      pt={{ content: { className: "detail-content" } }}
       header={<span>任务详情</span>}
     >
       {task ? (

@@ -13,8 +13,9 @@
 ## 组件库边界
 
 - 基础组件全部来自 `PrimeReact`（按钮、状态徽标、面板、输入框、下拉选择、分段选择、复选框、进度条、抽屉、确认面板、消息提示等），图标为 `PrimeIcons`。不手写基础组件，也不维护独立的基础组件演示页。
-- 页面布局、列表行与外壳是本原型功能自有界面，只使用 PrimeReact 主题变量与少量业务语义色（执行=青绿、等待=琥珀、排队=天蓝、错误=红、训练=粉）。
-- 主题默认实时跟随系统，仅提供浅色／深色两项：选择与系统当前外观不同的选项时固定，选择相同选项时恢复跟随。主题与工作模式保存在 `localStorage` 的 `cm-prototype-preference-v1`，不与应用本体的存储键共享。
+- 组件定制走官方推荐路径：`theme/tokens.css` 是唯一语义令牌来源，`theme/theme-inputs.mjs` 把它映射到 `PrimeReact` 官方 v10 `Sass` 参数，`scripts/build-theme.mjs` 用仓库内固定的官方 `primereact-sass-theme` 快照生成 `src/theme.generated.css`（`npm run theme:build` 生成，`theme:check` 校验新鲜度）。全局行为用库的 Provider 公开配置，组件级例外只出现在公开的 `pt` 插槽或公开属性上。
+- `src/styles.css` 只负责外壳、页面与列表布局以及玻璃效果，不覆盖组件内部样式；状态语义用 `Tag` 的 `severity` 公开属性表达。
+- 主题默认实时跟随系统，仅提供浅色／深色两项：选择与系统当前外观不同的选项时固定，选择相同选项时恢复跟随。主题与工作模式保存在 `localStorage` 的 `cm-prototype-preference-v1`，并写入根元素的 `data-theme` 与 `data-module`（生成主题按该作用域生效），不与应用本体的存储键共享。
 
 ## 与应用本体的关系
 

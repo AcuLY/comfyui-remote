@@ -1,11 +1,13 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "primereact/resources/primereact.min.css";
 import "primeicons/primeicons.css";
 import "./fonts.css";
+import "../theme/tokens.css";
+import "./theme.generated.css";
 import "./styles.css";
 
 import App from "./App";
+import { PrototypeProvider } from "./prototype-provider";
 import { DEFAULT_ROUTE } from "./router";
 import { initTheme } from "./theme";
 
@@ -17,6 +19,8 @@ initTheme();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <PrototypeProvider>
+      <App />
+    </PrototypeProvider>
   </StrictMode>,
 );

@@ -30,7 +30,7 @@
 | 移动端导航抽屉 | `Sidebar`（左侧） |
 | 图标 | PrimeIcons（`pi pi-*`） |
 
-主题为 `Lara Teal` 深浅两套，由 `index.html` 的 `theme-link` 按 `data-prototype-theme` 切换；默认实时跟随系统，仅提供浅色／深色两项，选择与系统当前外观不同的选项时固定，选择相同选项时恢复跟随。偏好保存在 `cm-prototype-preference-v1`。
+主题不再引入库的预置主题，也不再手写组件皮肤：`theme/tokens.css`（语义令牌）→ `theme/theme-inputs.mjs`（映射官方 v10 `Sass` 参数）→ `scripts/build-theme.mjs`（编译仓库内固定的官方 `primereact-sass-theme` 快照）生成 `src/theme.generated.css`，按 `:where(:root[data-theme][data-module])` 作用域生效。默认实时跟随系统，仅提供浅色／深色两项，选择与系统当前外观不同的选项时固定，选择相同选项时恢复跟随；偏好保存在 `cm-prototype-preference-v1`，并写入根元素 `data-theme` 与 `data-module`。
 
 ## 业务语义色
 

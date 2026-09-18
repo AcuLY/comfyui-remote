@@ -162,6 +162,10 @@ export function Shell({
         dismissable
         showCloseIcon
         className="shell-mobile-drawer"
+        pt={{
+          header: { className: "shell-drawer-header" },
+          content: { className: "shell-drawer-content" },
+        }}
         header={
           <span className="shell-brand">
             <strong>ComfyUI Manager</strong>

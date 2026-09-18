@@ -15,7 +15,7 @@ import { navigateTo, useHashRoute } from "./router";
 import { buildNavLinks, headerFor, matchRoute } from "./routes";
 import type { PrototypeMatch } from "./routes";
 import { Shell } from "./shell/Shell";
-import { applyTheme } from "./theme";
+import { applyThemeContext } from "./theme";
 import { usePrototypeTasks } from "./tasks/useTasks";
 import type { PrototypeTasksState } from "./tasks/useTasks";
 
@@ -76,11 +76,13 @@ export default function App() {
     if (routeMode && routeMode !== workMode) setPrototypeWorkMode(routeMode);
   }, [routeMode, workMode]);
 
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
-
   const effectiveMode = routeMode ?? workMode;
+  const themeModule = effectiveMode === "lora_training" ? "training" : "image";
+
+  useEffect(() => {
+    applyThemeContext(theme, themeModule);
+  }, [theme, themeModule]);
+
   const navLinks = buildNavLinks(effectiveMode);
   const header = headerFor(match.key);
 

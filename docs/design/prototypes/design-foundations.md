@@ -16,6 +16,9 @@ document:
     - prototypes/app/src/preferences.ts
     - prototypes/app/src/shell/Shell.tsx
     - prototypes/app/src/pages/TasksPage.tsx
+    - prototypes/app/theme/tokens.css
+    - prototypes/app/theme/theme-inputs.mjs
+    - prototypes/app/scripts/build-theme.mjs
     - docs/design/prototypes/reviews/F-theme.md
     - docs/design/prototypes/reviews/F-responsive.md
     - docs/design/prototypes/reviews/production-rebuild.md
@@ -28,7 +31,7 @@ document:
 
 ## 组件库与定制边界
 
-1. 组件运行库为 `PrimeReact` `10.9.9` `Styled` 与 `PrimeIcons` `7.0.0`。基础组件（按钮、状态徽标、面板、输入框、下拉选择、分段选择、复选框、进度条、抽屉、确认面板、消息提示等）全部来自组件库，不手写基础组件。
+1. 组件运行库为 `PrimeReact` `10.9.9` `Styled` 与 `PrimeIcons` `7.0.0`。基础组件（按钮、状态徽标、面板、输入框、下拉选择、分段选择、复选框、进度条、抽屉、确认面板、消息提示等）全部来自组件库，不手写基础组件。组件外观通过官方主题源生成：`theme/tokens.css` 是唯一语义令牌来源，`theme/theme-inputs.mjs` 映射官方 v10 `Sass` 参数，`scripts/build-theme.mjs` 使用仓库内固定的官方 `primereact-sass-theme` 快照生成主题文件；原型自带样式只负责外壳与页面布局，不覆盖组件内部样式。
 2. **非必要不侵入组件库。** 优先公开属性、统一主题配置和外层布局；不得只为像素对齐修改内部 `DOM`、重排按钮、模拟焦点或添加透明点击层。确有产品或无障碍必要且公开能力不足时，才做最小、局部且可解释的覆盖并记录验证。
 3. 选择实现按“现成语义组件 → 公开属性／主题配置／插槽 → 必要组合”的顺序；应用负责路由、数据变更、业务状态和来源关系，不得通过内部 `CSS` 选择器重新实现组件行为。原生 `HTML` 链接和操作按钮仍然合适，不机械地把所有元素换成库组件。
 

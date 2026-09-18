@@ -18,18 +18,18 @@ export function taskStatusLabel(task: PrototypeTask) {
   return STATUS_LABELS[task.status];
 }
 
-const STATUS_CLASS: Record<PrototypeTaskStatus, string> = {
-  running: "status-tag-running",
-  submitted: "status-tag-submitted",
-  queued: "status-tag-queued",
-  paused: "status-tag-paused",
-  done: "status-tag-done",
-  failed: "status-tag-failed",
-  cancelled: "status-tag-cancelled",
+const STATUS_SEVERITY: Record<PrototypeTaskStatus, "success" | "info" | "warning" | "danger" | undefined> = {
+  running: "success",
+  submitted: "warning",
+  queued: "info",
+  paused: undefined,
+  done: "success",
+  failed: "danger",
+  cancelled: undefined,
 };
 
-export function StatusTag({ task }: { task: PrototypeTask }) {
-  return <Tag value={taskStatusLabel(task)} rounded className={STATUS_CLASS[task.status]} />;
+export function StatusTag({ task, className }: { task: PrototypeTask; className?: string }) {
+  return <Tag value={taskStatusLabel(task)} rounded severity={STATUS_SEVERITY[task.status]} className={className} />;
 }
 
 export function retryLabel(task: PrototypeTask) {

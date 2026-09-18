@@ -1,0 +1,7 @@
+# 上游拷贝（官方 Sass 快照与字体许可）保留原始空白，统一按 LF 存储。
+prototypes/app/theme/vendor/** text eol=lf -whitespace
+prototypes/app/src/assets/fonts/**/*.css text eol=lf -whitespace
+prototypes/app/src/assets/fonts/**/*.txt text eol=lf -whitespace
+# 字体二进制文件不做任何行尾转换。
+prototypes/app/src/assets/fonts/**/*.ttf binary
+prototypes/app/src/assets/fonts/**/*.woff2 binary

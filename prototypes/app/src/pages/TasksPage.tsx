@@ -115,6 +115,7 @@ export function TasksPage({
       icon: "pi pi-times",
       acceptLabel: "取消任务",
       rejectLabel: "返回",
+      acceptClassName: "p-button-danger",
       accept: () => {
         state.cancelTask(task.id);
         clearSelection();
@@ -148,6 +149,7 @@ export function TasksPage({
       icon: "pi pi-trash",
       acceptLabel: "永久删除",
       rejectLabel: "返回",
+      acceptClassName: "p-button-danger",
       accept: () => {
         state.removeTasks(targets.map((task) => task.id));
         clearSelection();
@@ -224,7 +226,7 @@ export function TasksPage({
 
       <div className="toolbar">
         <IconField iconPosition="left" className="search-field">
-          <InputIcon className="pi pi-search" />
+          <InputIcon className="pi pi-search search-icon" />
           <InputText
             value={query}
             onChange={(event) => {
@@ -233,7 +235,7 @@ export function TasksPage({
             }}
             placeholder="任务名称、编号、项目或小节"
             aria-label="搜索任务名称或编号"
-            className="w-full"
+            className="search-input"
           />
         </IconField>
         <div className="toolbar-filters">
@@ -241,6 +243,7 @@ export function TasksPage({
             value={project}
             onChange={(event) => setProject(event.value as string)}
             options={projectOptions}
+            placeholder="全部项目"
             ariaLabel="项目筛选"
             className="filter-select"
           />
@@ -253,6 +256,7 @@ export function TasksPage({
                 { label: "素材生成", value: "material" },
                 { label: "LoRA 训练", value: "lora" },
               ]}
+              placeholder="全部类型"
               ariaLabel="任务类型"
               className="filter-select"
             />
@@ -264,6 +268,7 @@ export function TasksPage({
               { label: "今天", value: "" },
               { label: "14:00 以后", value: "recent" },
             ]}
+            placeholder="今天"
             ariaLabel="创建时间"
             className="filter-select"
           />
@@ -294,7 +299,7 @@ export function TasksPage({
                     </span>
                   </div>
                 </div>
-                <StatusTag task={task} />
+                <StatusTag task={task} className="queue-tag" />
                 <div className="queue-actions">
                   <TaskActions task={task} onCancel={() => confirmCancel(task)} onResumeOrRetry={() => resumeOrRetry(task)} />
                 </div>
@@ -322,6 +327,7 @@ export function TasksPage({
                     label: TASK_STATUS_LABELS[value as keyof typeof TASK_STATUS_LABELS],
                   })),
                 ]}
+                placeholder="全部状态"
                 ariaLabel="记录状态"
                 className="filter-select"
               />

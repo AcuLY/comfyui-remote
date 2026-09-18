@@ -1,20 +1,23 @@
-import darkThemeUrl from "primereact/resources/themes/lara-dark-teal/theme.css?url";
-import lightThemeUrl from "primereact/resources/themes/lara-light-teal/theme.css?url";
-
 import { readPreferences, resolveTheme } from "./preferences";
 import type { PrototypeTheme } from "./preferences";
 
 export type { PrototypeTheme } from "./preferences";
 
-export function applyTheme(theme: PrototypeTheme) {
-  const link = document.getElementById("theme-link") as HTMLLinkElement | null;
-  if (link) {
-    link.href = theme === "dark" ? darkThemeUrl : lightThemeUrl;
-  }
-  document.documentElement.dataset.prototypeTheme = theme;
-  document.documentElement.style.colorScheme = theme;
+export type PrototypeThemeModule = "image" | "training";
+
+/**
+ * 主题与模块上下文写入根元素属性；生成主题按
+ * `:where(:root[data-theme][data-module])` 作用域生效。
+ */
+export function applyThemeContext(theme: PrototypeTheme, module: PrototypeThemeModule) {
+  const root = document.documentElement;
+  root.dataset.theme = theme;
+  root.dataset.module = module;
+  root.dataset.prototypeTheme = theme;
+  root.style.colorScheme = theme;
 }
 
 export function initTheme() {
-  applyTheme(resolveTheme(readPreferences().theme));
+  const preferences = readPreferences();
+  applyThemeContext(resolveTheme(preferences.theme), preferences.module === "lora_training" ? "training" : "image");
 }
