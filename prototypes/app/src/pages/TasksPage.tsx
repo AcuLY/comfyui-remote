@@ -3,6 +3,8 @@ import { Button } from "primereact/button";
 import { Checkbox } from "primereact/checkbox";
 import { confirmDialog } from "primereact/confirmdialog";
 import { Dropdown } from "primereact/dropdown";
+import { IconField } from "primereact/iconfield";
+import { InputIcon } from "primereact/inputicon";
 import { InputText } from "primereact/inputtext";
 import { Panel } from "primereact/panel";
 import { ProgressBar } from "primereact/progressbar";
@@ -198,7 +200,6 @@ export function TasksPage({
               <ProgressBar
                 value={currentTask.progress}
                 showValue={false}
-                style={{ height: "8px" }}
                 aria-label="任务进度"
               />
             </div>
@@ -222,8 +223,8 @@ export function TasksPage({
       )}
 
       <div className="toolbar">
-        <span className="p-input-icon-left search-field">
-          <i className="pi pi-search" />
+        <IconField iconPosition="left" className="search-field">
+          <InputIcon className="pi pi-search" />
           <InputText
             value={query}
             onChange={(event) => {
@@ -234,7 +235,7 @@ export function TasksPage({
             aria-label="搜索任务名称或编号"
             className="w-full"
           />
-        </span>
+        </IconField>
         <div className="toolbar-filters">
           <Dropdown
             value={project}

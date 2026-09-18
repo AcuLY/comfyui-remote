@@ -65,7 +65,7 @@ export function TaskDetailSidebar({
                   <span>{task.stage}</span>
                   <span className="mono">{task.progress}%</span>
                 </div>
-                <ProgressBar value={task.progress} showValue={false} style={{ height: "8px" }} />
+                <ProgressBar value={task.progress} showValue={false} />
               </div>
             ) : null}
 
